@@ -1,0 +1,13 @@
+/*
+ * Fork-owned theme layer, Tier 1 — see `.fork/README.md` §3.
+ *
+ * Loaded from `main.tsx` immediately after upstream's `./index.css`, so rules
+ * here win ties against upstream at equal specificity. Keep every rule scoped
+ * under the fork marker attribute (set by `custom/forkMarker.ts`) so nothing
+ * in this file can leak into an unmarked, pure-upstream build.
+ */
+
+:root[data-fork="noahhendrickson-t3code"] {
+  /* No visual deviation yet. The first real theme change lands here; larger
+     structural UI changes go through `src/overrides/` instead. */
+}

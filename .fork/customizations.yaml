@@ -1,0 +1,38 @@
+# Register of every intentional deviation from upstream — see .fork/README.md §4a.
+#
+# This file is read by two consumers:
+#   - .fork/detect-drift.mjs (Layer 1 CI) — flags upstream commits touching
+#     watched files
+#   - the daily sync routine — reads `intent` before resolving any conflict,
+#     so it preserves the intent rather than the literal old lines
+#
+# Format constraints (the parser is dependency-free and line-based — keep it
+# simple):
+#   - each entry starts with `- id: <slug>` at column 0
+#   - list keys (files/shadows/watch/verify) are two-space indented, one
+#     `- <path>` per line beneath them; use `[]` for an empty list
+#   - `intent:` is `>`-folded free text; don't start intent lines with `-`
+#
+# Keys:
+#   files:   fork-owned files implementing the customization (Tier 1/2 paths;
+#            upstream never touches these)
+#   shadows: upstream modules replaced via src/overrides/ — drift-watched
+#   watch:   upstream files carrying Tier-4 inline edits — drift-watched
+#   verify:  guard tests that fail if the customization is silently lost
+
+- id: fork-marker
+  intent: >
+    The running app is identifiable as this fork: the document root carries
+    data-fork="noahhendrickson-t3code", and the fork-owned theme layer
+    (theme.custom.css) loads after upstream's index.css so fork styling wins
+    ties. Seed customization proving the Tier-1 + Tier-4 pattern end to end;
+    all fork CSS must stay scoped under the marker attribute.
+  tier: 1
+  files:
+    - apps/web/src/custom/forkMarker.ts
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/main.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkMarker.test.ts

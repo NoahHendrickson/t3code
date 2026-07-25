@@ -10,6 +10,10 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "@xterm/xterm/css/xterm.css";
 import "./index.css";
+/* fork:begin fork-marker — see .fork/customizations.yaml#fork-marker */
+import "./theme.custom.css";
+import { applyForkMarker } from "./custom/forkMarker";
+/* fork:end fork-marker */
 
 import { isElectron } from "./env";
 import { ManagedRelayAuthProvider } from "./cloud/managedAuth";
@@ -25,6 +29,10 @@ import { AppRoot } from "./AppRoot";
 const history = isElectron ? createHashHistory() : createBrowserHistory();
 
 const router = getRouter(history);
+
+/* fork:begin fork-marker — see .fork/customizations.yaml#fork-marker */
+applyForkMarker(document.documentElement);
+/* fork:end fork-marker */
 
 if (isElectron) {
   syncDocumentElectronPlatformClasses(navigator.platform);
