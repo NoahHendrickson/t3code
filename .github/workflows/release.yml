@@ -29,7 +29,9 @@ permissions:
 jobs:
   check_changes:
     name: Check for changes since last nightly
-    if: github.event_name == 'schedule'
+    # fork:begin release-upstream-only — see .fork/customizations.yaml#release-upstream-only
+    if: github.event_name == 'schedule' && github.repository == 'pingdotgg/t3code'
+    # fork:end release-upstream-only
     runs-on: blacksmith-8vcpu-ubuntu-2404
     outputs:
       has_changes: ${{ steps.check.outputs.has_changes }}
@@ -63,9 +65,12 @@ jobs:
   preflight:
     name: Preflight
     needs: [check_changes]
+    # fork:begin release-upstream-only — see .fork/customizations.yaml#release-upstream-only
     if: |
+      github.repository == 'pingdotgg/t3code' &&
       !failure() && !cancelled() &&
       (github.event_name != 'schedule' || needs.check_changes.outputs.has_changes == 'true')
+    # fork:end release-upstream-only
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 10
     outputs:
