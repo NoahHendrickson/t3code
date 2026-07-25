@@ -5,10 +5,10 @@ Upstream is not accepting contributions, so this fork exists to carry UI changes
 
 ## Branches
 
-| Branch | Role |
-| --- | --- |
+| Branch | Role                                                       |
+| ------ | ---------------------------------------------------------- |
 | `main` | Pristine mirror of `upstream/main`. **Never commit here.** |
-| `skin` | All fork changes. Default working branch. |
+| `skin` | All fork changes. Default working branch.                  |
 
 Not named `ui`: the fork inherited upstream's `ui/selected-checkmarks` and
 `ui/traits-picker`, and git can't hold `refs/heads/ui` alongside a `refs/heads/ui/`
@@ -36,12 +36,12 @@ replayed from your recorded resolutions.
 
 Measured over a representative 14-day window of upstream history:
 
-| Layer | Upstream churn | Verdict |
-| --- | --- | --- |
-| `apps/web/src/theme.override.css` (fork-owned) | never | **Free.** Do as much as possible here. |
-| `apps/web/src/components/ui/*` (45 shadcn primitives) | 10 commits | Cheap, and 305 components inherit the change. |
-| `apps/web/src/components/settings/*`, smaller views | low–moderate | Manageable. |
-| `ChatView.tsx` (6053 lines), `Sidebar.tsx`, `SidebarV2.tsx`, `ChatComposer.tsx` | 14–23 commits **each** | Expensive. Every sync is hand work. |
+| Layer                                                                           | Upstream churn         | Verdict                                       |
+| ------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------- |
+| `apps/web/src/theme.override.css` (fork-owned)                                  | never                  | **Free.** Do as much as possible here.        |
+| `apps/web/src/components/ui/*` (45 shadcn primitives)                           | 10 commits             | Cheap, and 305 components inherit the change. |
+| `apps/web/src/components/settings/*`, smaller views                             | low–moderate           | Manageable.                                   |
+| `ChatView.tsx` (6053 lines), `Sidebar.tsx`, `SidebarV2.tsx`, `ChatComposer.tsx` | 14–23 commits **each** | Expensive. Every sync is hand work.           |
 
 Rules of thumb that keep syncs cheap:
 
@@ -51,6 +51,22 @@ Rules of thumb that keep syncs cheap:
 - When you must change a big view, keep the diff small and localized. Wrap and
   compose rather than rewriting in place.
 - Fewer, tighter commits merge better than sprawling ones.
+
+## What tokens can't reach
+
+The blue banner behind the sidebar wordmark is `SidebarStageBackdrop`
+(`apps/web/src/components/SidebarStageBackdrop.tsx`), selected by
+`resolveSidebarStageBackdropVariant(stageLabel)` in
+`components/sidebar/SidebarChrome.tsx`. It's separate art keyed to the
+Dev/Alpha/Nightly stage label, not a token — so it stays blue no matter what
+you do in `theme.override.css`, and it may not render at all in a non-alpha
+build. Restyling it means editing that component or the `assets/` artwork.
+
+## Pre-commit formatting
+
+A staged-files hook runs `vp fmt` on commit and stashes/restores around it, so
+commits are auto-formatted. Nothing to configure — just don't be surprised when
+a commit rewrites your whitespace.
 
 ## Known trap: `Sidebar.tsx` vs `SidebarV2.tsx`
 
@@ -84,17 +100,25 @@ Keep this list as short as possible — it is exactly your merge-conflict surfac
 
 ## Running it
 
-Upstream uses [Vite+](https://viteplus.dev/guide/), which needs the global `vp`
-CLI. Not currently installed on this machine:
+Upstream uses [Vite+](https://viteplus.dev/guide/). `vp` 0.2.6 is installed at
+`~/.vite-plus/bin/vp` (on `PATH` via `~/.zshenv`); dependencies are installed
+(~5.8 GB, about a minute).
+
+Launch an isolated environment — this is the repo's own `test-t3-app` procedure:
 
 ```bash
-curl -fsSL https://vite.plus | bash
+vp run dev --home-dir "$(mktemp -d /tmp/t3code-test.XXXXXX)"
 ```
 
-Then:
+It prints a server port, a web port, and a **one-time pairing URL** ending in
+`/pair#token=...`. Open that URL exactly once as your browser's first
+navigation. Don't pass `--browser` during automated testing — an auto-opened
+tab consumes the token first. Treat pairing URLs as secrets.
+
+To reset the accent test and go back to upstream's blue-violet:
 
 ```bash
-vp i
+git revert 36f1d98b7
 ```
 
 `npx t3@latest`, the Homebrew cask, and the winget package all point at
