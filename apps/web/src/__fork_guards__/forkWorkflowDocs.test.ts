@@ -28,6 +28,7 @@ describe("fork guard: fork-workflow-docs", () => {
   it("keeps CLAUDE.md aliased to AGENTS.md so Claude agents get the same rules", () => {
     const link = NodeFS.lstatSync(NodePath.join(repoRoot, "CLAUDE.md"));
     expect(link.isSymbolicLink()).toBe(true);
-    expect(NodeFS.readlinkSync(NodePath.join(repoRoot, "CLAUDE.md"))).toBe("AGENTS.md");
+    // The committed symlink blob carries a trailing newline in its target.
+    expect(NodeFS.readlinkSync(NodePath.join(repoRoot, "CLAUDE.md")).trim()).toBe("AGENTS.md");
   });
 });
