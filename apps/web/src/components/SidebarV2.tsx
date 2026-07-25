@@ -19,8 +19,6 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CircleAlertIcon,
-  CircleCheckIcon,
-  CircleDashedIcon,
   ClockIcon,
   CopyIcon,
   FolderIcon,
@@ -129,6 +127,12 @@ import {
 } from "./Sidebar.snooze";
 import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
+import {
+  SidebarV2StatusDot,
+  SidebarV2WokeMark,
+  SidebarV2WorkingRain,
+  type SidebarV2DotTone,
+} from "~/custom/SidebarV2StatusIndicator";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import { deriveProviderInstanceEntries, type ProviderInstanceEntry } from "../providerInstances";
 import { primaryServerProvidersAtom } from "../state/server";
@@ -431,57 +435,50 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   const lastVisitedDate = lastVisitedAt === undefined ? null : parseTimestampDate(lastVisitedAt);
   const wokeAtDate = props.wokeAt === null ? null : parseTimestampDate(props.wokeAt);
   const isWoke = wokeAtDate !== null && (lastVisitedDate === null || lastVisitedDate < wokeAtDate);
-  // In-flight rows (working, or waiting on approval/input) fade as a whole:
-  // there is nothing for the user to do yet, so prominence is reserved for
-  // rows that need a human — done (unread), read-but-unsettled, failed, and
-  // freshly woken. The status label keeps its hue, so waiting rows stay
-  // findable. In-flight rows recede the same as read-ready ones (inbox-zero:
-  // working threads aren't your problem yet) — only the colored status label
-  // stands out.
-  const isInFlight = status === "working" || status === "approval" || status === "input";
+  // Receding is now about who owns the next move, not about whether a session
+  // happens to be attached. Working and read-ready rows recede (inbox-zero:
+  // a running agent isn't your problem yet); approval and input no longer do,
+  // because they are blocked ON YOU. That split is the whole point of the two
+  // drawn specimens — the approval row carries brighter metadata (65%) than
+  // the working one (45%) despite both being "in flight".
   const shouldRecede =
-    (status === "ready" || isInFlight) && !isUnread && !isWoke && !props.isActive && !isSelected;
-  // Status hues follow the system-wide convention set by sidebar v1 and the
-  // mobile Live Activity/widgets (amber approval, indigo input, sky working)
-  // so a thread reads the same color everywhere it surfaces.
-  const topStatus =
+    (status === "ready" || status === "working") &&
+    !isUnread &&
+    !isWoke &&
+    !props.isActive &&
+    !isSelected;
+  // Approval stays amber and input stays indigo, matching sidebar v1 and the
+  // mobile Live Activity/widgets. Working does NOT: v2 takes the emerald from
+  // the phanttom Ghostty sidebar this design is ported from, so a working
+  // thread reads green on web and still sky on mobile
+  // (`apps/mobile/src/features/threads/thread-list-v2-items.tsx`). Migrating
+  // mobile is a separate call; the divergence is deliberate, not an oversight.
+  // Working and done share that emerald on purpose — the mark's *form*
+  // separates them (falling pixels vs a static dot), not its hue.
+  // Only two of these were drawn (working, approval); the rest are extended
+  // from the same vocabulary. `rain` = the agent is moving, `dot` = it
+  // stopped and the row is waiting on something, `woke` keeps its own glyph.
+  // Labels are no longer painted — they survive only as the accessible name,
+  // since the mark itself is aria-hidden.
+  //
+  // Discriminated on `mark` so the dot branch cannot be handed the `working`
+  // tone, which has no dot rendering.
+  const topStatus:
+    | { label: string; tone: "working"; mark: "rain" }
+    | { label: string; tone: SidebarV2DotTone; mark: "dot" | "woke" }
+    | null =
     status === "working"
-      ? {
-          label: "Working",
-          icon: "working" as const,
-          className:
-            "animate-sidebar-working-text text-sky-600 motion-reduce:animate-none dark:text-sky-400",
-        }
+      ? { label: "Working", tone: "working", mark: "rain" }
       : status === "approval"
-        ? {
-            label: "Approval",
-            icon: null,
-            className: "text-amber-700 dark:text-amber-300",
-          }
+        ? { label: "Needs approval", tone: "approval", mark: "dot" }
         : status === "input"
-          ? {
-              label: "Input",
-              icon: null,
-              className: "text-indigo-600 dark:text-indigo-300",
-            }
+          ? { label: "Needs input", tone: "input", mark: "dot" }
           : status === "failed"
-            ? {
-                label: "Failed",
-                icon: null,
-                className: "text-red-700 dark:text-red-300",
-              }
+            ? { label: "Failed", tone: "failed", mark: "dot" }
             : isWoke
-              ? {
-                  label: "Woke",
-                  icon: "woke" as const,
-                  className: "text-amber-700 dark:text-amber-300",
-                }
+              ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
               : isUnread
-                ? {
-                    label: "Done",
-                    icon: "done" as const,
-                    className: "text-emerald-700 dark:text-emerald-300",
-                  }
+                ? { label: "Done", tone: "done", mark: "dot" }
                 : null;
 
   const gitCwd = thread.worktreePath ?? props.projectCwd;
@@ -653,19 +650,24 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   // like elevated cards while settled threads were plain rows, leaving neither
   // a useful hierarchy nor a reliable hover cue. Status now lives in the row
   // content; surface is reserved for interaction (hover, multi-select, route).
+  // Working rows carry a resting fill (the design's rgba(255,255,255,0.08))
+  // rather than the blanket opacity fade the whole in-flight group used to
+  // get: a running agent is the one thing on screen that is alive, and a lit
+  // surface says that without dimming the text you still need to read. Because
+  // that fill lands on the same value as the hover fill, working rows hover up
+  // to the active fill so the affordance survives.
+  const isWorkingSurface = status === "working" && !props.isActive && !isSelected;
   const rowSurfaceClassName = cn(
-    "group/v2-row relative w-full cursor-pointer overflow-hidden rounded-md text-left outline-none select-none",
+    "group/v2-row relative w-full cursor-pointer overflow-hidden rounded-2xl text-left outline-none select-none",
     props.isActive
       ? "bg-sidebar-row-active text-sidebar-foreground"
       : isSelected
         ? "bg-sidebar-row-selected text-sidebar-foreground"
-        : shouldRecede
-          ? "text-sidebar-muted-foreground/75 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-          : "bg-transparent text-sidebar-foreground hover:bg-sidebar-row-hover",
-    isInFlight &&
-      !props.isActive &&
-      !isSelected &&
-      "opacity-70 transition-opacity hover:opacity-100",
+        : isWorkingSurface
+          ? "bg-sidebar-row-working text-sidebar-foreground hover:bg-sidebar-row-active"
+          : shouldRecede
+            ? "text-sidebar-muted-foreground/75 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+            : "bg-transparent text-sidebar-foreground hover:bg-sidebar-row-hover",
   );
 
   const title = isRenaming ? (
@@ -684,18 +686,16 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   ) : (
     <span
       className={cn(
-        "min-w-0 flex-1 text-sm",
-        shouldRecede ? "font-normal" : "font-medium",
+        "min-w-0 flex-1",
+        variant === "card" ? "text-xs" : "text-sm",
+        shouldRecede && variant === "slim" ? "font-normal" : "font-medium",
         variant === "card"
           ? cn(
+              // Both drawn specimens keep a full-strength title — working dims
+              // its metadata, never its subject line. Only a settled, already
+              // read thread lets the title itself fall back.
               "truncate",
-              isUnread || isWoke
-                ? "text-foreground"
-                : shouldRecede
-                  ? "text-muted-foreground/80"
-                  : status === "failed"
-                    ? "text-foreground/95"
-                    : "text-foreground/90",
+              status === "ready" && shouldRecede ? "text-muted-foreground" : "text-foreground",
             )
           : cn(
               "truncate group-hover/v2-row:text-foreground",
@@ -843,7 +843,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   return (
     <li
       data-thread-item
-      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_96px]"
+      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_76px]"
     >
       <Tooltip>
         <TooltipTrigger
@@ -860,58 +860,48 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
             />
           }
         >
-          <div className="relative z-10 h-[4.875rem] px-2.5 py-2">
-            <div className="flex h-5 min-w-0 items-center gap-1.5">
-              <ProjectFavicon
-                environmentId={thread.environmentId}
-                cwd={props.projectCwd ?? ""}
-                className="size-4 shrink-0"
-              />
-              {props.projectTitle ? (
+          {/* Two rows, not three: the title leads (it is the only thing you
+              actually scan for) and the project name drops into the metadata
+              line beside the branch. The favicon is gone — at 282px it cost a
+              slot to repeat what the project name already says. */}
+          <div className="relative z-10 flex flex-col gap-2 px-[11px] py-[15px]">
+            {/* 18px, not the 16px the metadata line uses: that is the exact
+                height of the working rain's 4x5 grid, and cropping it would
+                clip the bottom row of drops. */}
+            <div className="flex h-[18px] min-w-0 items-center gap-2">
+              {title}
+              <span className="relative flex h-[18px] shrink-0 items-center justify-end">
                 <span
                   className={cn(
-                    "min-w-0 flex-1 truncate text-xs text-muted-foreground/85",
-                    shouldRecede ? "font-normal" : "font-medium",
-                  )}
-                >
-                  {props.projectTitle}
-                </span>
-              ) : (
-                <span className="flex-1" />
-              )}
-              <span className="relative ml-auto flex h-5 min-w-8 shrink-0 items-center justify-end pl-1 text-xs">
-                <span
-                  className={cn(
-                    "tabular-nums text-muted-foreground/65 transition-opacity group-hover/v2-row:opacity-0",
+                    "flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
                     snoozeMenuOpen && "opacity-0",
                   )}
                 >
                   {topStatus ? (
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1 font-medium",
-                        topStatus.className,
+                    <>
+                      {/* The mark is aria-hidden, so the label lives on as the
+                          accessible name. Keeping it off the ticking duration
+                          stops screen readers announcing every second. */}
+                      <span role="status" className="sr-only">
+                        {topStatus.label}
+                      </span>
+                      {topStatus.mark === "rain" ? (
+                        <SidebarV2WorkingRain seed={threadKey} />
+                      ) : topStatus.mark === "woke" ? (
+                        <SidebarV2WokeMark />
+                      ) : (
+                        <SidebarV2StatusDot tone={topStatus.tone} />
                       )}
-                    >
-                      {topStatus.icon === "working" ? (
-                        <CircleDashedIcon aria-hidden className="size-4 shrink-0" />
-                      ) : topStatus.icon === "done" ? (
-                        <CircleCheckIcon aria-hidden className="size-4 shrink-0" />
-                      ) : topStatus.icon === "woke" ? (
-                        <AlarmClockIcon aria-hidden className="size-4 shrink-0" />
-                      ) : null}
-                      {/* The label alone is the live region: a role="status"
-                          wrapper around the ticking duration would make
-                          screen readers announce every second. */}
-                      <span role="status">{topStatus.label}</span>
                       {status === "working" ? (
-                        <span aria-hidden>
+                        <span aria-hidden className="text-xs text-foreground tabular-nums">
                           <WorkingDuration startedAt={resolveWorkingStartedAt(thread)} />
                         </span>
                       ) : null}
-                    </span>
+                    </>
                   ) : (
-                    threadTimeLabel(thread)
+                    <span className="text-xs text-muted-foreground/65 tabular-nums">
+                      {threadTimeLabel(thread)}
+                    </span>
                   )}
                 </span>
                 {props.settlementSupported || showSnoozeButton ? (
@@ -933,20 +923,34 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         type="button"
                         aria-label="Settle thread"
                         onClick={handleSettleClick}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground"
+                        className="inline-flex cursor-pointer items-center rounded-md bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground"
                       >
+                        {/* Icon-only in v2: at 282px the "Settle" text pushed the
+                            hover actions over the title, which now shares their
+                            line. `aria-label` carries the name. */}
                         <CheckIcon className="size-3" />
-                        Settle
                       </button>
                     ) : null}
                   </span>
                 ) : null}
               </span>
             </div>
-            <div className="mt-1 flex min-w-0">{title}</div>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground/75">
+            {/* 65% for rows that want you, 45% for rows that are merely busy —
+                the one hierarchy the two drawn specimens differ on. */}
+            <div
+              className={cn(
+                "flex h-4 min-w-0 items-center gap-2 text-[11px]",
+                shouldRecede ? "text-muted-foreground/70" : "text-muted-foreground",
+              )}
+            >
+              {props.projectTitle ? (
+                <span className="max-w-[45%] shrink-0 truncate">{props.projectTitle}</span>
+              ) : null}
               {thread.branch ? (
-                <span className="min-w-0 flex-1 truncate whitespace-nowrap">{thread.branch}</span>
+                <span className="flex min-w-0 flex-1 items-center gap-0.5">
+                  <GitBranchIcon aria-hidden className="size-3 shrink-0" />
+                  <span className="truncate whitespace-nowrap">{thread.branch}</span>
+                </span>
               ) : (
                 <span className="flex-1" />
               )}
@@ -959,11 +963,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               ) : null}
               <span
                 aria-hidden
-                className="pointer-events-none ml-auto inline-flex shrink-0 items-center gap-1"
+                className="pointer-events-none inline-flex shrink-0 items-center gap-0.5"
               >
                 {isRemote ? (
                   <span className="inline-flex shrink-0 items-center text-sidebar-muted-foreground/70">
-                    <ServerIcon aria-hidden className="size-3.5" />
+                    <ServerIcon aria-hidden className="size-4" />
                   </span>
                 ) : null}
                 {driverKind ? (
@@ -971,7 +975,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                     <ProviderInstanceIcon
                       driverKind={driverKind}
                       displayName={thread.session?.providerName ?? modelInstanceId}
-                      iconClassName="size-3.5"
+                      iconClassName="size-4"
                     />
                   </span>
                 ) : null}

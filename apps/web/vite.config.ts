@@ -144,6 +144,16 @@ export default defineConfig(() => {
     resolve: {
       tsconfigPaths: true,
       dedupe: ["react", "react-dom"],
+      alias: {
+        // Fork-only: every `lucide-react` import resolves to the Phosphor
+        // duotone shim instead. Mirrored in `tsconfig.json` so types agree.
+        // Anchoring the swap here keeps all ~89 upstream import sites
+        // untouched. See `.fork/README.md` §3 and
+        // `.fork/customizations.yaml#phosphor-duotone-icons`.
+        "lucide-react": NodeURL.fileURLToPath(
+          new URL("./src/custom/icons/lucide-phosphor.tsx", import.meta.url),
+        ),
+      },
     },
     experimental: {
       bundledDev,
