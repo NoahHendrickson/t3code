@@ -10,6 +10,8 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "@xterm/xterm/css/xterm.css";
 import "./index.css";
+// Fork-owned. Must stay last so its declarations win by source order.
+import "./theme.override.css";
 
 import { isElectron } from "./env";
 import { ManagedRelayAuthProvider } from "./cloud/managedAuth";

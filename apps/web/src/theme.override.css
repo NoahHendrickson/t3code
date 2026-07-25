@@ -1,0 +1,245 @@
+/* ===========================================================================
+ * FORK-OWNED THEME OVERRIDES
+ *
+ * This file does not exist upstream, so it never produces a merge conflict.
+ * Put as much of your reskin here as possible.
+ *
+ * Loaded from main.tsx immediately after "./index.css", so plain custom
+ * property declarations here win by source order at equal specificity.
+ *
+ * As shipped this file is a visual no-op: the active values below match
+ * upstream. Change them and the app follows.
+ *
+ * ---------------------------------------------------------------------------
+ * HOW THE UPSTREAM TOKEN SYSTEM WORKS (read once, saves you an hour)
+ *
+ * index.css has two layers:
+ *   1. Raw semantic vars in :root / .dark  -->  --primary, --background, ...
+ *   2. `@theme inline` maps Tailwind tokens --> --color-primary: var(--primary)
+ *
+ * Because layer 2 is `inline`, it emits `var(--primary)` into the utilities
+ * rather than resolving at build time. So overriding the RAW var in layer 1
+ * is enough: every `bg-primary`, `text-primary`, `border-border`, etc.
+ * follows automatically. You never need to touch `@theme`.
+ *
+ * ---------------------------------------------------------------------------
+ * THE ONE GOTCHA: SCOPED RE-DECLARATIONS
+ *
+ * index.css re-declares a subset of the surface tokens inside
+ * `[data-sidebar-version="v1"], [data-sidebar-version="v2"]` (and a .dark
+ * variant). That attribute selector has the same specificity as :root but
+ * comes later, so a `:root`-only override is silently ignored inside the
+ * sidebar subtree -- which is most of the app chrome.
+ *
+ * Tokens re-declared in that scope (override in all four blocks below):
+ *   --background --foreground --card --card-foreground --accent
+ *   --accent-foreground --muted --muted-foreground --border --input
+ *   --sidebar --sidebar-foreground --sidebar-muted-foreground
+ *   --sidebar-control-surface --sidebar-row-hover --sidebar-row-active
+ *   --sidebar-row-selected --sidebar-border --sidebar-stage-fade
+ *
+ * Tokens NOT re-declared, so :root + :root.dark is sufficient:
+ *   --primary --primary-foreground --ring --radius --destructive
+ *   --secondary --popover --info --success --warning  --glass-*
+ *
+ * The selectors below are deliberately over-specific (`:root [data-...]`)
+ * so they outrank upstream regardless of future source ordering.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT YOU CANNOT USE IN THIS FILE
+ *
+ * Tailwind does not process this file -- it only processes CSS files that
+ * `@import "tailwindcss"`, which is index.css. So build-time Tailwind syntax
+ * is unavailable here and will fail silently or be dropped:
+ *
+ *   --alpha(var(--x) / 4%)  ->  use color-mix(in srgb, var(--x) 4%, transparent)
+ *   @apply ...              ->  write the plain CSS
+ *   @theme { ... }          ->  not processed; see section 4
+ *
+ * Plain `var()` on Tailwind's palette (`var(--color-zinc-200)`) is fine --
+ * those are emitted as real custom properties on :root.
+ * =========================================================================== */
+
+/* ===========================================================================
+ * 1. BRAND TOKENS -- edit these
+ * ========================================================================= */
+
+:root {
+  /* Accent / brand color. Upstream ships a blue-violet.
+     Try `oklch(0.62 0.19 150)` for green to confirm the wiring works. */
+  --fk-accent: oklch(0.488 0.217 264);
+  --fk-accent-foreground: var(--color-white);
+
+  /* Dark mode runs the accent slightly lighter for contrast on black. */
+  --fk-accent-dark: oklch(0.588 0.217 264);
+
+  /* Corner rounding. Feeds --radius-sm through --radius-4xl via calc(). */
+  --fk-radius: 0.625rem;
+
+  /* Frosted-surface feel: popovers, composer, command palette. */
+  --fk-glass-blur: 12px;
+  --fk-glass-blur-dark: 16px;
+  --fk-glass-opacity: 80%;
+  --fk-glass-saturation: 1.14;
+  --fk-glass-saturation-dark: 1.08;
+
+  /* Chrome metrics. Density levers -- topbar height is the most visible one. */
+  --fk-topbar-height: 52px;
+  --fk-scrollbar-width: 6px;
+}
+
+/* ===========================================================================
+ * 2. PLUMBING -- brand tokens into upstream's semantic tokens
+ *
+ * Active here: only tokens upstream does NOT re-declare in a scoped block,
+ * so these two rules are genuinely global.
+ * ========================================================================= */
+
+:root {
+  --primary: var(--fk-accent);
+  --primary-foreground: var(--fk-accent-foreground);
+  --ring: var(--fk-accent);
+
+  --radius: var(--fk-radius);
+
+  --glass-blur: var(--fk-glass-blur);
+  --glass-opacity: var(--fk-glass-opacity);
+  --glass-saturation: var(--fk-glass-saturation);
+
+  --workspace-topbar-height: var(--fk-topbar-height);
+  --app-scrollbar-width: var(--fk-scrollbar-width);
+}
+
+:root.dark {
+  --primary: var(--fk-accent-dark);
+  --primary-foreground: var(--fk-accent-foreground);
+  --ring: var(--fk-accent-dark);
+
+  --glass-blur: var(--fk-glass-blur-dark);
+  --glass-saturation: var(--fk-glass-saturation-dark);
+}
+
+/* ===========================================================================
+ * 3. SURFACES -- uncomment to take over backgrounds and chrome
+ *
+ * These tokens ARE re-declared in the sidebar-scoped blocks, so each one has
+ * to be set in all four rules below or the app will look inconsistent
+ * between the sidebar subtree and everything else.
+ *
+ * Upstream's current values are shown so you can see what you're replacing.
+ * Uncomment a whole set at a time, not individual lines.
+ * ========================================================================= */
+
+/* --- Light, global ------------------------------------------------------- */
+/*
+:root {
+  --background: var(--color-zinc-25);
+  --foreground: var(--color-zinc-800);
+  --card: var(--color-white);
+  --card-foreground: var(--color-zinc-800);
+  --accent: var(--color-zinc-100);
+  --accent-foreground: var(--color-zinc-900);
+  --muted: var(--color-zinc-50);
+  --muted-foreground: var(--color-zinc-500);
+  --border: var(--color-zinc-200);
+  --input: var(--color-zinc-300);
+  --sidebar: var(--color-zinc-50);
+}
+*/
+
+/* --- Light, sidebar subtree (must mirror the block above) ---------------- */
+/*
+:root [data-sidebar-version] {
+  --background: var(--color-zinc-25);
+  --foreground: var(--color-zinc-800);
+  --card: var(--color-white);
+  --card-foreground: var(--color-zinc-800);
+  --accent: var(--color-zinc-100);
+  --accent-foreground: var(--color-zinc-900);
+  --muted: var(--color-zinc-50);
+  --muted-foreground: var(--color-zinc-500);
+  --border: var(--color-zinc-200);
+  --input: var(--color-zinc-300);
+  --sidebar: var(--color-zinc-50);
+  --sidebar-foreground: var(--color-zinc-800);
+  --sidebar-muted-foreground: var(--color-zinc-500);
+  --sidebar-control-surface: var(--color-zinc-100);
+  --sidebar-row-hover: var(--color-zinc-25);
+  --sidebar-row-active: var(--color-white);
+  --sidebar-row-selected: var(--color-white);
+  --sidebar-border: var(--color-zinc-200);
+  --sidebar-stage-fade: var(--sidebar);
+  background-color: var(--sidebar);
+}
+*/
+
+/* --- Dark, global ------------------------------------------------------- */
+/*
+:root.dark {
+  --foreground: var(--color-neutral-100);
+  --card: color-mix(in srgb, var(--background) 97%, var(--color-white));
+  --card-foreground: var(--color-neutral-100);
+  --accent: color-mix(in srgb, var(--color-white) 4%, transparent);
+  --accent-foreground: var(--color-neutral-100);
+  --muted: color-mix(in srgb, var(--color-white) 4%, transparent);
+  --border: color-mix(in srgb, var(--color-white) 6%, transparent);
+  --input: color-mix(in srgb, var(--color-white) 8%, transparent);
+  --sidebar: var(--card);
+}
+*/
+
+/* --- Dark, sidebar subtree (must mirror the block above) ----------------- */
+/*
+:root.dark [data-sidebar-version] {
+  --background: #000;
+  --foreground: #f1f3f7;
+  --card: #000;
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-stage-fade: var(--card);
+}
+*/
+
+/* ===========================================================================
+ * 4. TYPOGRAPHY
+ *
+ * The base font stack is set as an inline style in apps/web/index.html, and
+ * `@theme inline` also defines --font-sans / --font-mono for the `font-sans`
+ * and `font-mono` utilities (used by ~7 components).
+ *
+ * A plain override here covers inherited text. If you also want the handful
+ * of explicit `font-sans` utility call sites to follow, you need a `@theme`
+ * block, and Tailwind only processes `@theme` in a file that imports
+ * tailwindcss -- meaning index.css itself. That is the one case where you
+ * have to touch a hot upstream file; keep it to a single appended line.
+ * ========================================================================= */
+
+/*
+:root {
+  --font-sans: "Your Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: "Your Mono", "SF Mono", Menlo, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+*/
+
+/* ===========================================================================
+ * 5. COMPONENT-LEVEL OVERRIDES
+ *
+ * Escape hatch for restyling without editing upstream .tsx files. Upstream
+ * puts `data-slot` attributes on the shadcn primitives, which makes them
+ * stable, greppable hooks -- far better to target than class names.
+ *
+ * Prefer this over editing components/*.tsx. Prefer editing
+ * components/ui/*.tsx (10 commits/2wk) over the big views like
+ * ChatView.tsx (23 commits/2wk).
+ * ========================================================================= */
+
+/*
+[data-slot="button"] {
+  letter-spacing: 0.01em;
+}
+*/
