@@ -20,6 +20,20 @@
 #   watch:   upstream files carrying Tier-4 inline edits — drift-watched
 #   verify:  guard tests that fail if the customization is silently lost
 
+- id: ci-on-custom
+  intent: >
+    Direct pushes to the custom branch run the full CI suite. Upstream's CI
+    triggers on pull_request and pushes to main only; custom is this fork's
+    working branch, so a push to it (like a merged sync) must be validated
+    the same way main is upstream.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - .github/workflows/ci.yml
+  verify:
+    - apps/web/src/__fork_guards__/ciOnCustom.test.ts
+
 - id: fork-marker
   intent: >
     The running app is identifiable as this fork: the document root carries
