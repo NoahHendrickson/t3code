@@ -22,6 +22,21 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 START_BRANCH="$(git branch --show-current)"
+
+# The script sits on `main` for part of its run. If it dies there -- SIGPIPE
+# from `| head`, Ctrl-C, a failed fast-forward -- being left checked out on
+# main is how accidental commits to the pristine mirror happen.
+return_to_fork_branch() {
+  # A conflicted merge must be left in place for you to resolve.
+  if [[ -e "$(git rev-parse --git-dir)/MERGE_HEAD" ]]; then
+    return
+  fi
+  if [[ "$(git branch --show-current)" == "main" && "$FORK_BRANCH" != "main" ]]; then
+    git checkout "$FORK_BRANCH" --quiet 2>/dev/null || true
+  fi
+}
+trap return_to_fork_branch EXIT INT TERM PIPE
+
 echo "==> Fetching upstream"
 # remote.upstream.fetch is pinned to main in this clone. Upstream carries ~745
 # agent/feature branches and fetching them all is pure noise.
