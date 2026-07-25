@@ -122,6 +122,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --animate-status-pulse: status-pulse 2s infinite;
   --animate-status-ping: status-ping 2s infinite;
   --animate-sidebar-working-text: sidebar-working-text 3.4s infinite;
+  --animate-sidebar-v2-dither: sidebar-v2-dither 1.6s ease-in-out infinite;
   --font-sans:
     "DM Sans Variable", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
     sans-serif;
@@ -160,6 +161,12 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-sidebar-row-hover: var(--sidebar-row-hover);
   --color-sidebar-row-active: var(--sidebar-row-active);
   --color-sidebar-row-selected: var(--sidebar-row-selected);
+  --color-sidebar-row-working: var(--sidebar-row-working);
+  --color-sidebar-v2-status-working: var(--sidebar-v2-status-working);
+  --color-sidebar-v2-status-done: var(--sidebar-v2-status-done);
+  --color-sidebar-v2-status-approval: var(--sidebar-v2-status-approval);
+  --color-sidebar-v2-status-input: var(--sidebar-v2-status-input);
+  --color-sidebar-v2-status-failed: var(--sidebar-v2-status-failed);
   --color-sidebar-border: var(--sidebar-border);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -216,6 +223,20 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     }
     100% {
       opacity: 1;
+    }
+  }
+  /* Each cell of the working cluster shimmers between a fraction of its
+     resting alpha and full strength, so the dim trail cells stay dim relative
+     to the live ones instead of every cell flashing to the same brightness.
+     --dither-alpha is set per cell inline; the fallback keeps the keyframe
+     valid if the variable is ever missing. */
+  @keyframes sidebar-v2-dither {
+    0%,
+    100% {
+      opacity: calc(var(--dither-alpha, 1) * 0.35);
+    }
+    50% {
+      opacity: var(--dither-alpha, 1);
     }
   }
 }
@@ -918,6 +939,15 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --sidebar-row-hover: var(--color-zinc-25);
   --sidebar-row-active: var(--color-white);
   --sidebar-row-selected: var(--color-white);
+  --sidebar-row-working: color-mix(in srgb, var(--foreground) 5%, transparent);
+  /* The design's status hues are tuned for a black panel. On the light panel
+     the same values are near-invisible at 8px, so each one drops to the
+     darkest shade that still reads as the same color family. */
+  --sidebar-v2-status-working: var(--color-emerald-600);
+  --sidebar-v2-status-done: var(--color-emerald-600);
+  --sidebar-v2-status-approval: var(--color-amber-500);
+  --sidebar-v2-status-input: var(--color-indigo-600);
+  --sidebar-v2-status-failed: var(--color-red-600);
   --sidebar-border: var(--color-zinc-200);
   --sidebar-stage-fade: var(--sidebar);
   background-color: var(--sidebar);
@@ -942,6 +972,15 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --sidebar-row-hover: color-mix(in srgb, var(--foreground) 8%, transparent);
   --sidebar-row-active: color-mix(in srgb, var(--foreground) 11%, transparent);
   --sidebar-row-selected: color-mix(in srgb, var(--foreground) 7%, transparent);
+  /* Matches the rgba(255,255,255,0.08) fill on the working specimen. It lands
+     on the same value as --sidebar-row-hover, so working rows hover to
+     --sidebar-row-active instead — see rowSurfaceClassName in SidebarV2. */
+  --sidebar-row-working: color-mix(in srgb, var(--foreground) 8%, transparent);
+  --sidebar-v2-status-working: #24fe8a;
+  --sidebar-v2-status-done: #24fe8a;
+  --sidebar-v2-status-approval: #ffcd59;
+  --sidebar-v2-status-input: #8b9cff;
+  --sidebar-v2-status-failed: #ff6b60;
   --sidebar-border: var(--border);
   /* The stage-channel header art must ramp to THIS panel's surface, not the
      global chrome background, or the fade shows a seam (same rule as the
