@@ -75,6 +75,13 @@ Rules:
 
 ### Rebase, not merge
 
+> **Amendment (2026-07-25, operational):** the automated flow runs *merge-based* syncs — the
+> routine merges `origin/main` into a `claude/sync-*` branch cut from `custom` and PRs that into
+> `custom`. Rebasing would rewrite `custom`'s history, and the PR-gated flow (no force-push to
+> `custom`) would then re-merge duplicated commits every round. The delta question stays
+> answerable as `git log main..custom --no-merges` / `git diff main...custom`. Rebase remains the
+> right tool for *manual* history cleanup, where a force-push of `custom` is a deliberate act.
+
 Merging upstream into `custom` resolves each conflict permanently and needs no force-push — which
 sounds better until you try to answer "what have I changed?" six months in, and the answer is
 entangled across 200 merge commits.
