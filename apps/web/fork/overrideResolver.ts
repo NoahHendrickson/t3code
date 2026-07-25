@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off
 /**
  * Fork override resolution — see `.fork/README.md` §3 (Tier 2).
  *

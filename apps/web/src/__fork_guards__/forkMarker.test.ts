@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off
 /**
  * Fork guard — see `.fork/README.md` §4b and `.fork/customizations.yaml#fork-marker`.
  *
