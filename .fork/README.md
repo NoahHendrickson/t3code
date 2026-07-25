@@ -110,14 +110,17 @@ tiers. Push every customization as far up this list as it will go.
 New files upstream does not know about. `.fork/`, `apps/web/src/custom/**`,
 `apps/web/src/theme.custom.css`. Upstream can never conflict with a file it has never seen.
 
+`src/custom/` is for components upstream has no equivalent of. It carries no shadow semantics —
+paths are free-form. Keep it distinct from `src/overrides/` (Tier 2), where a path that matches no
+upstream module is a silent bug.
+
 For theming: one additive stylesheet, imported by a **one-line** append to `index.css`. That file
 changed 23 times in 60 days, but a trailing `@import "./theme.custom.css";` conflicts only if
 upstream also edits the last line — and when it does, the resolution is obvious every time.
 
-### Tier 2 — The override resolver (the key enabler for non-token changes)
+### Tier 2 — The override resolver (the key enabler for non-token changes) — **implemented**
 
-The repo already aliases `~` → `apps/web/src` in the root `vite.config.ts`. Add a resolver plugin
-in `apps/web/vite.config.ts` (2 commits in 60 days) that prefers a shadow tree:
+A `fork:overrides` Vite plugin resolves a shadow tree ahead of upstream:
 
 ```
 apps/web/src/overrides/components/chat/ChatComposer.tsx
@@ -125,9 +128,40 @@ apps/web/src/overrides/components/chat/ChatComposer.tsx
 apps/web/src/components/chat/ChatComposer.tsx
 ```
 
-Every import site in the app keeps resolving `~/components/chat/ChatComposer` and silently gets
-your version. Your diff against upstream becomes: **one config file + N files upstream has never
-seen.** Structural UI changes, restructured layouts, replaced components — all at zero merge cost.
+Every import site keeps resolving `~/components/chat/ChatComposer` — or `../chat/ChatComposer` —
+and gets your version. Your diff against upstream becomes: **three small config edits + N files
+upstream has never seen.** Structural UI changes, restructured layouts, replaced components — all
+at zero merge cost.
+
+| File | Role |
+| --- | --- |
+| `apps/web/fork/overrideResolver.ts` | Pure resolution rules — no Vite import, fully unit-testable |
+| `apps/web/fork/vitePluginForkOverrides.ts` | Plugin shell: stat cache + dev-server invalidation |
+| `apps/web/fork/overrideResolver.test.ts` | Resolution tests + the shadow-tree integrity guard |
+| `apps/web/src/overrides/` | The shadow tree (see its `README.md` for usage) |
+
+Wiring, all in files with near-zero upstream churn (§1):
+
+- `apps/web/vite.config.ts` (2 commits/60d) — plugin registration, `enforce: "pre"` so it claims
+  `~/*` ahead of `resolve.tsconfigPaths`; test glob extended to cover `fork/`.
+- `apps/web/tsconfig.json` (**0** commits/60d) — `~/*` mapped override-first, plus `~upstream/*`.
+
+Three behaviours worth knowing, each covered by a test:
+
+- **Relative imports are redirected too.** This is not optional: `apps/web/src` has ~1450 relative
+  imports against ~394 `~/` imports, so an alias-only resolver would miss ~79% of import sites.
+- **The shadow tree is a transparent overlay.** An upstream file copied into `overrides/` works
+  with its imports unmodified — `../ui/button` still means "the button module", preferring a
+  sibling override and falling back to upstream. That keeps the copy diff-clean against upstream,
+  so porting later upstream changes into a shadow stays a 3-way merge.
+- **Self-imports resolve to upstream.** `~upstream/…` is the explicit escape hatch, and an
+  override importing its own path gets upstream rather than recursing. Both matter because the
+  tsconfig mapping is also override-first, so deferring to normal resolution would loop.
+
+**Known gap:** tsconfig gives type parity for `~/` imports only. Relative imports type-check
+against upstream while the bundler loads the override, so an override that changes a module's
+*public API* type-checks clean and breaks at runtime. Keep overrides API-compatible until this is
+closed by generated contract assertions (`typeof import(…)` assignability per shadowed module).
 
 **The honest trade-off:** a shadowed file is a hard fork of that file. You stop receiving upstream
 improvements to it. This is unavoidable for genuinely divergent UI, but it must be *visible* rather
@@ -306,7 +340,7 @@ Deliberately ordered so the safety net exists before the automation that needs i
 | # | Step | Why here |
 | --- | --- | --- |
 | 1 | Create `custom` off today's `main`; stop committing to `main` | Free right now — the fork is at 0/0 divergence. This is the cheapest this will ever be. |
-| 2 | Land the Tier-2 override resolver in `apps/web/vite.config.ts` | Must exist *before* you write UI changes, or they land as Tier-4 inline edits and you inherit the churn. |
+| 2 | ~~Land the Tier-2 override resolver~~ — **done** | Had to exist *before* any UI change, or those changes land as Tier-4 inline edits and inherit the churn. |
 | 3 | Add `.fork/customizations.yaml` + first guard tests | The safety net has to predate the automation that can silently tear it. |
 | 4 | Layer 1 mirror workflow + drift detector | Deterministic, free, useful standalone. |
 | 5 | Layer 2 sync routine, opening PRs only (no auto-merge) | Build trust by watching it work for a couple of weeks. |
