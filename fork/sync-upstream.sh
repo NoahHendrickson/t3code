@@ -13,7 +13,7 @@
 
 set -euo pipefail
 
-FORK_BRANCH="${FORK_BRANCH:-ui}"
+FORK_BRANCH="${FORK_BRANCH:-skin}"
 cd "$(git rev-parse --show-toplevel)"
 
 if [[ -n "$(git status --porcelain)" ]]; then

@@ -8,7 +8,11 @@ Upstream is not accepting contributions, so this fork exists to carry UI changes
 | Branch | Role |
 | --- | --- |
 | `main` | Pristine mirror of `upstream/main`. **Never commit here.** |
-| `ui` | All fork changes. Default working branch. |
+| `skin` | All fork changes. Default working branch. |
+
+Not named `ui`: the fork inherited upstream's `ui/selected-checkmarks` and
+`ui/traits-picker`, and git can't hold `refs/heads/ui` alongside a `refs/heads/ui/`
+namespace. GitHub rejects the push with `directory file conflict`.
 
 `upstream`'s push URL is set to `DISABLED` so you can't accidentally push to pingdotgg.
 
@@ -19,7 +23,7 @@ Upstream is not accepting contributions, so this fork exists to carry UI changes
 ```
 
 Fast-forwards `main` to `upstream/main`, pushes it, prints which of your modified
-files upstream also touched, then merges `main` into `ui`.
+files upstream also touched, then merges `main` into `skin`.
 
 Run it **weekly**. Upstream lands 20–45 commits/day; a month of drift is a bad time.
 
