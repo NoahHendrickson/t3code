@@ -1,0 +1,132 @@
+# Layer 1 of the fork sync automation — see .fork/README.md §5.
+#
+# Job 1 (mirror): fast-forwards `main` to pingdotgg/t3code `main`. Never
+# force-pushes; if `main` has local commits the job fails loudly, because
+# `main` must stay a pure upstream mirror ("what have I changed?" must always
+# be answerable as `git log main..custom`).
+#
+# Job 2 (drift): diffs the newly-mirrored range against the shadows/watch
+# lists in .fork/customizations.yaml (on the `custom` branch) and maintains a
+# single open "[fork-drift]" issue when upstream touches a file this fork has
+# shadowed or patched. That issue is the signal the daily sync routine and the
+# human both act on.
+#
+# NOTE: GitHub only runs `schedule` workflows from the repository's default
+# branch. Set the default branch to `custom` (Settings → General) or this
+# workflow will only ever run via manual dispatch.
+
+name: fork-sync-mirror
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: fork-sync-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    outputs:
+      old: ${{ steps.sync.outputs.old }}
+      new: ${{ steps.sync.outputs.new }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fast-forward main from upstream
+        id: sync
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/pingdotgg/t3code.git
+          git fetch upstream main
+          old="$(git rev-parse HEAD)"
+          new="$(git rev-parse upstream/main)"
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          if [ "$old" = "$new" ]; then
+            echo "Already up to date with upstream."
+            exit 0
+          fi
+          if ! git merge-base --is-ancestor "$old" "$new"; then
+            echo "::error::main has commits upstream does not — it must stay a pure fast-forward mirror. Move local work to the custom branch."
+            exit 1
+          fi
+          git push origin "$new:refs/heads/main"
+          echo "Mirrored $(git rev-list --count "$old..$new") upstream commit(s)."
+
+  drift:
+    needs: mirror
+    if: needs.mirror.outputs.old != needs.mirror.outputs.new
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: custom
+          fetch-depth: 0
+
+      - name: Detect drift against fork customizations
+        id: detect
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git diff --name-only "${{ needs.mirror.outputs.old }}" "${{ needs.mirror.outputs.new }}" \
+            > "$RUNNER_TEMP/changed-files.txt"
+          node .fork/detect-drift.mjs "$RUNNER_TEMP/changed-files.txt" > "$RUNNER_TEMP/drift.md"
+          if [ -s "$RUNNER_TEMP/drift.md" ]; then
+            echo "has_drift=true" >> "$GITHUB_OUTPUT"
+            cat "$RUNNER_TEMP/drift.md"
+          else
+            echo "has_drift=false" >> "$GITHUB_OUTPUT"
+            echo "No watched files touched in this range."
+          fi
+
+      - name: Report drift on the tracking issue
+        if: steps.detect.outputs.has_drift == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const drift = fs.readFileSync(process.env.RUNNER_TEMP + "/drift.md", "utf8").trim();
+            const oldSha = "${{ needs.mirror.outputs.old }}";
+            const newSha = "${{ needs.mirror.outputs.new }}";
+            const compare = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/compare/${oldSha}...${newSha}`;
+            const title = "[fork-drift] Upstream changes touching fork-customized files";
+            const body = [
+              `Upstream range [\`${oldSha.slice(0, 10)}...${newSha.slice(0, 10)}\`](${compare}) touches files this fork shadows or patches:`,
+              "",
+              drift,
+              "",
+              "For each customization: port upstream's change into the fork-owned file, or explicitly decline it. See `.fork/README.md` §7.",
+            ].join("\n");
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
