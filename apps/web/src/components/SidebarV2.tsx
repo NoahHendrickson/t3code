@@ -131,8 +131,8 @@ import {
   SidebarV2StatusDot,
   SidebarV2WokeMark,
   SidebarV2WorkingRain,
-  type SidebarV2StatusTone,
-} from "./SidebarV2StatusIndicator";
+  type SidebarV2DotTone,
+} from "~/custom/SidebarV2StatusIndicator";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import { deriveProviderInstanceEntries, type ProviderInstanceEntry } from "../providerInstances";
 import { primaryServerProvidersAtom } from "../state/server";
@@ -447,19 +447,26 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     !isWoke &&
     !props.isActive &&
     !isSelected;
-  // Status hues follow the system-wide convention set by sidebar v1 and the
-  // mobile Live Activity/widgets (amber approval, indigo input, sky working)
-  // so a thread reads the same color everywhere it surfaces.
+  // Approval stays amber and input stays indigo, matching sidebar v1 and the
+  // mobile Live Activity/widgets. Working does NOT: v2 takes the emerald from
+  // the phanttom Ghostty sidebar this design is ported from, so a working
+  // thread reads green on web and still sky on mobile
+  // (`apps/mobile/src/features/threads/thread-list-v2-items.tsx`). Migrating
+  // mobile is a separate call; the divergence is deliberate, not an oversight.
+  // Working and done share that emerald on purpose — the mark's *form*
+  // separates them (falling pixels vs a static dot), not its hue.
   // Only two of these were drawn (working, approval); the rest are extended
   // from the same vocabulary. `rain` = the agent is moving, `dot` = it
   // stopped and the row is waiting on something, `woke` keeps its own glyph.
   // Labels are no longer painted — they survive only as the accessible name,
   // since the mark itself is aria-hidden.
-  const topStatus: {
-    label: string;
-    tone: SidebarV2StatusTone;
-    mark: "rain" | "dot" | "woke";
-  } | null =
+  //
+  // Discriminated on `mark` so the dot branch cannot be handed the `working`
+  // tone, which has no dot rendering.
+  const topStatus:
+    | { label: string; tone: "working"; mark: "rain" }
+    | { label: string; tone: SidebarV2DotTone; mark: "dot" | "woke" }
+    | null =
     status === "working"
       ? { label: "Working", tone: "working", mark: "rain" }
       : status === "approval"
@@ -916,8 +923,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         type="button"
                         aria-label="Settle thread"
                         onClick={handleSettleClick}
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground"
+                        className="inline-flex cursor-pointer items-center rounded-md bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground"
                       >
+                        {/* Icon-only in v2: at 282px the "Settle" text pushed the
+                            hover actions over the title, which now shares their
+                            line. `aria-label` carries the name. */}
                         <CheckIcon className="size-3" />
                       </button>
                     ) : null}

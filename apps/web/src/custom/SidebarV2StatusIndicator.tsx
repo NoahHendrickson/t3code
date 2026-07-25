@@ -1,4 +1,7 @@
-import { AlarmClockIcon } from "lucide-react";
+// Imported through the shim's own path rather than the `lucide-react` alias.
+// This file is fork-owned, so there is no upstream import site to preserve —
+// the alias exists to keep *upstream's* imports untouched, not this one.
+import { AlarmClockIcon } from "./icons/lucide-phosphor";
 import type { CSSProperties } from "react";
 import { cn } from "~/lib/utils";
 
@@ -10,11 +13,22 @@ import { cn } from "~/lib/utils";
     uses in its sidebar: rain while working, 8px dots otherwise. Text labels
     ("Working", "Approval") are gone — at 282px wide the label crowded out the
     branch name, and the row already says what it is through color plus the
-    duration readout. */
+    duration readout.
+
+    Known limit (WCAG 1.4.1): form only separates rain / dot / clock, so the four
+    settled states — done, approval, input, failed — are one 8px dot apart from
+    each other and differ by hue alone. Screen readers get the `role="status"`
+    label SidebarV2 renders alongside the mark; color-blind sighted users
+    currently do not. Differentiating the dot shapes (a ring for approval, a
+    hollow dot for input) is the open follow-up. */
 export type SidebarV2StatusTone = "working" | "done" | "approval" | "input" | "failed";
 
-const TONE_COLOR_CLASS: Record<SidebarV2StatusTone, string> = {
-  working: "bg-sidebar-v2-status-working",
+/** The tones a *dot* can carry. `working` is excluded by construction: a working
+    row always draws the rain, so a working dot is unreachable — the type is what
+    keeps that true as `topStatus` in SidebarV2 grows new branches. */
+export type SidebarV2DotTone = Exclude<SidebarV2StatusTone, "working">;
+
+const TONE_COLOR_CLASS: Record<SidebarV2DotTone, string> = {
   done: "bg-sidebar-v2-status-done",
   approval: "bg-sidebar-v2-status-approval",
   input: "bg-sidebar-v2-status-input",
@@ -41,12 +55,24 @@ const COLUMNS: ReadonlyArray<{ speed: number; phase: number }> = [
   { speed: 4.367242, phase: 4.657913 },
 ];
 
-const SPAN = ROWS + 3;
+export const RAIN_SPAN = ROWS + 3;
+const SPAN = RAIN_SPAN;
 
 /** The alpha curve every drop follows: a bright head, an exponential trail
-    above it, a sharp falloff below. Swift discards anything under 0.02. */
-function dropAlpha(dy: number): number {
-  const alpha = dy >= 0 ? Math.exp(-dy * 0.8) : Math.exp(dy * 8);
+    above it, a sharp falloff below.
+
+    `rainAlpha` is the bare curve — this is what the generated keyframes in
+    `theme.custom.css` sample. `dropAlpha` adds Swift's "discard anything under
+    0.02" cutoff, which only applies to the still frame: CSS interpolates
+    between stops, so clamping the table would put a visible step in the tail
+    where the native view just fades out. Exported for
+    `__fork_guards__/sidebarV2Rain.test.ts`, which re-derives the table. */
+export function rainAlpha(dy: number): number {
+  return dy >= 0 ? Math.exp(-dy * 0.8) : Math.exp(dy * 8);
+}
+
+export function dropAlpha(dy: number): number {
+  const alpha = rainAlpha(dy);
   return alpha >= 0.02 ? alpha : 0;
 }
 
@@ -54,11 +80,14 @@ function dropAlpha(dy: number): number {
     one shared wall clock, so its working tabs all fall in lockstep; here a
     sidebar full of working threads would read as a single blinking block, so
     each row gets its own offset. Hashing the thread key rather than randomizing
-    keeps a row's phase stable across re-renders and remounts — it must not jump
-    when the list re-sorts or the row scrolls back into view. Every column moves
+    is what makes the spread deterministic: the same thread always draws the same
+    offset, so a re-render cannot reshuffle the row's phase. (A *remount* still
+    restarts the CSS delay clock, so a row that scrolls out and back re-phases
+    regardless — the hash guarantees rows differ from each other, not that any
+    one row is continuous across remount.) Every column moves
     by the same absolute amount, which preserves their relationship to each
     other: the row looks exactly like one that started working moments earlier. */
-function rainOffsetSeconds(seed: string): number {
+export function rainOffsetSeconds(seed: string): number {
   let hash = 0x811c9dc5;
   for (let index = 0; index < seed.length; index++) {
     hash ^= seed.charCodeAt(index);
@@ -78,10 +107,12 @@ function rainOffsetSeconds(seed: string): number {
 
 /** One profile per row, spelled out in full because Tailwind only sees class
     names it can find literally in the source — a template built from the row
-    index would never get generated. Duration and delay ride in as inline
+    index would never get generated. (The keyframes themselves are safe either
+    way: they live in `theme.custom.css`, outside the `@theme` block Tailwind
+    prunes, so an unreferenced one survives.) Duration and delay ride in as inline
     styles; keeping the name in a class is what lets `motion-reduce:animate-none`
     still win, since a class rule cannot override an inline `animation-name`. */
-const RAIN_ANIMATION_CLASS = [
+export const RAIN_ANIMATION_CLASS = [
   "animate-[sidebar-v2-rain-0_linear_infinite]",
   "animate-[sidebar-v2-rain-1_linear_infinite]",
   "animate-[sidebar-v2-rain-2_linear_infinite]",
@@ -161,7 +192,7 @@ export function SidebarV2WorkingRain({ seed }: { seed: string }) {
 /** The blocked/settled counterpart to the rain: one 8px dot centered in the
     same 16px box the provider icons use, so the trailing edge of every row
     lines up whether the mark is a dot, a clock, or the grid. */
-export function SidebarV2StatusDot({ tone }: { tone: SidebarV2StatusTone }) {
+export function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
   return (
     <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
       <span className={cn("size-2 rounded-full", TONE_COLOR_CLASS[tone])} />

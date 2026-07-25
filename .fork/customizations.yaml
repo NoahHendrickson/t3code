@@ -105,3 +105,29 @@
     - apps/web/tsconfig.json
   verify:
     - apps/web/src/__fork_guards__/phosphorIcons.test.ts
+
+- id: sidebar-v2-card-rows
+  intent: >
+    Sidebar V2 thread rows are restyled as two-line cards: title first, an
+    11px metadata line under it, 16px radius instead of 6px, and the status
+    text labels ("Working", "Approval") replaced by a single 16px mark in a
+    fixed trailing slot. The mark's form carries the state — falling pixels
+    while the agent runs, a static dot once it stops, a clock for woke — and
+    the hue only reinforces it, which is the vocabulary the phanttom Ghostty
+    sidebar uses. Working takes emerald from that design rather than the sky
+    the mobile Live Activity still uses; the divergence is deliberate and
+    mobile has not been migrated. The status palette and the rain keyframes
+    live in the Tier 1 stylesheet; only the six --color-sidebar-v2-* utility
+    registrations sit inline in index.css, fenced as
+    fork:sidebar-v2-status-palette, because Tailwind reads utility names from
+    the @theme block alone and will not see them anywhere else.
+  tier: 4
+  files:
+    - apps/web/src/custom/SidebarV2StatusIndicator.tsx
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts

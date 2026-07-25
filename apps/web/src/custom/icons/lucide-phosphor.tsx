@@ -14,6 +14,20 @@
  * Adding an icon: if an upstream sync introduces a lucide import this module
  * does not export, the build fails naming that icon. Add a line to the table.
  *
+ * Bundle cost, measured on the production build (main chunk, 2026-07-25) by
+ * building twice with only the two alias entries flipped:
+ *
+ *   phosphor  3,542,642 raw / 1,050,150 gzip
+ *   lucide    3,564,063 raw / 1,059,636 gzip
+ *   delta       -21,421 raw /    -9,486 gzip
+ *
+ * So the swap is slightly *cheaper*, not more expensive — worth recording,
+ * because the naive read says otherwise: each Phosphor icon module is a single
+ * `new Map` carrying all six weights, so the four weights this shim never uses
+ * cannot be tree-shaken out of an icon that is imported. That overhead is real
+ * (~341 KB raw across the icons in use) and is simply outweighed by lucide
+ * shipping more bytes overall. Re-measure if the icon count moves materially.
+ *
  * See .fork/customizations.yaml#phosphor-duotone-icons
  */
 import {
