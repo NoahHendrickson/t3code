@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - main
+      # fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom
+      - custom
+      # fork:end ci-on-custom
 
 jobs:
   check:
