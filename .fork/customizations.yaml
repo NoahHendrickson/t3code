@@ -81,3 +81,27 @@
     - apps/web/src/main.tsx
   verify:
     - apps/web/src/__fork_guards__/forkMarker.test.ts
+
+- id: phosphor-duotone-icons
+  intent: >
+    The app's iconography is Phosphor at the duotone weight, not lucide.
+    Rather than rewriting ~89 import sites across the hottest upstream files
+    (ChatView, SidebarV2, ChatComposer), "lucide-react" is aliased to a
+    fork-owned shim that re-exports Phosphor under lucide's export names. Call
+    sites keep importing "lucide-react" verbatim, so upstream can add, move, or
+    delete icon usage freely and this fork inherits it. Glyphs with no enclosed
+    area (carets, checks, arrows, spinners) are pinned to the bold weight,
+    since duotone is indistinguishable there and reads too light against
+    lucide's 2px stroke. The shim also reproduces lucide's `lucide lucide-<name>`
+    SVG classes, because upstream tests assert them to identify which icon
+    rendered — honouring the contract keeps those tests passing unmodified
+    instead of forcing Tier 4 edits into upstream test files.
+  tier: 1
+  files:
+    - apps/web/src/custom/icons/lucide-phosphor.tsx
+  shadows: []
+  watch:
+    - apps/web/vite.config.ts
+    - apps/web/tsconfig.json
+  verify:
+    - apps/web/src/__fork_guards__/phosphorIcons.test.ts

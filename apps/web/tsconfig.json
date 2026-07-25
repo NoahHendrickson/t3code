@@ -14,7 +14,11 @@
       // TS falls back to `./src/*` when no override exists.
       // See `.fork/README.md` §3.
       "~/*": ["./src/overrides/*", "./src/*"],
-      "~upstream/*": ["./src/*"]
+      "~upstream/*": ["./src/*"],
+      // Fork-only: mirrors the `lucide-react` alias in `vite.config.ts` so
+      // TypeScript sees the same Phosphor duotone shim the bundler loads.
+      // See `.fork/customizations.yaml#phosphor-duotone-icons`.
+      "lucide-react": ["./src/custom/icons/lucide-phosphor.tsx"]
     },
     "plugins": [
       {
