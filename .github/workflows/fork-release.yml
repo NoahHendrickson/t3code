@@ -1,0 +1,158 @@
+name: Fork Release
+
+# Fork-owned workflow — see .fork/customizations.yaml#fork-desktop-release.
+#
+# Upstream's Release workflow builds under upstream's identity: it deploys the
+# production Cloudflare relay, publishes the CLI to npm, signs with upstream's
+# Apple and Azure certificates, and announces to upstream's Discord. None of
+# that belongs to this fork, which is why release-upstream-only gates it off
+# here entirely.
+#
+# This is the fork's own path to a downloadable build. It shares nothing with
+# upstream's pipeline but the build script, needs no secrets beyond the token
+# GitHub already provides, and only ever runs when a human dispatches it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (for example 0.1.0 or 0.1.0-fork.1)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub Release as a prerelease"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fork-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish macOS arm64
+    # This file is fork-owned, so upstream should never see it. Belt and braces
+    # in case it ever travels: the fork must be the only place it can run.
+    if: github.repository == 'NoahHendrickson/t3code'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      # electron-builder writes the updater feed into the app from this. Without
+      # it a fork build would resolve GITHUB_REPOSITORY implicitly; setting it
+      # explicitly makes it visible that installs update from THIS repo's
+      # releases and never from upstream's.
+      T3CODE_DESKTOP_UPDATE_REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: meta
+        name: Resolve and validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw="${{ inputs.version }}"
+          version="${raw#v}"
+          # Same shape upstream's preflight accepts, so a fork tag can never be
+          # a string electron-builder will choke on halfway through a 20-minute
+          # build.
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release version: $raw" >&2
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "Tag v$version already exists. Pick a new version." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Ensure Electron runtime is installed
+        run: vp run --filter @t3tools/desktop ensure:electron
+
+      - name: Align package versions to release version
+        run: node scripts/update-release-package-versions.ts "${{ steps.meta.outputs.version }}"
+
+      - name: Build desktop artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Unsigned deliberately. The build script degrades on its own when the
+          # Apple secrets are absent ("macOS signing disabled"), so this needs no
+          # --signed handling to stay working; adding the secrets later is a
+          # contained change to this step alone.
+          vp run dist:desktop:artifact \
+            --platform mac \
+            --target dmg \
+            --arch arm64 \
+            --build-version "${{ steps.meta.outputs.version }}" \
+            --verbose
+
+      - name: Collect release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-publish
+          shopt -s nullglob
+          for pattern in \
+            "release/*.dmg" \
+            "release/*.zip" \
+            "release/*.blockmap" \
+            "release/*.yml"; do
+            for file in $pattern; do
+              cp "$file" release-publish/
+            done
+          done
+          # builder-debug.yml is build diagnostics, not an updater manifest —
+          # shipping it would put a confusing file in the release.
+          rm -f release-publish/builder-debug.yml
+          ls -lh release-publish
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: T3 Code (fork) ${{ steps.meta.outputs.tag }}
+          generate_release_notes: true
+          prerelease: ${{ inputs.prerelease }}
+          # `inputs.prerelease` is already a boolean for a typed dispatch
+          # input, so negate it directly — fromJSON() here would be handed a
+          # boolean where it expects a string.
+          make_latest: ${{ !inputs.prerelease }}
+          files: |
+            release-publish/*.dmg
+            release-publish/*.zip
+            release-publish/*.blockmap
+            release-publish/*.yml
+          fail_on_unmatched_files: true
+          body: |
+            Unsigned macOS arm64 build of this fork, built from `${{ github.sha }}`.
+
+            macOS will refuse to open it on first launch because it is not
+            signed by an identified developer. To open it:
+
+            ```
+            xattr -dr com.apple.quarantine "/Applications/T3 Code (Alpha).app"
+            ```
+
+            Or right-click the app and choose Open, then confirm.
+
+            Cloud features (T3 Connect remote access and sign-in) are not
+            configured in fork builds and will be unavailable. Everything local
+            works normally.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

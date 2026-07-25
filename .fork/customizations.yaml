@@ -86,6 +86,29 @@
   verify:
     - apps/web/src/__fork_guards__/releaseUpstreamOnly.test.ts
 
+- id: fork-desktop-release
+  intent: >
+    The fork can cut its own downloadable desktop build without borrowing any
+    part of upstream's release identity. Upstream's Release workflow deploys
+    the production Cloudflare relay, publishes the CLI to npm, signs with
+    upstream's Apple and Azure certificates and announces to upstream's
+    Discord; release-upstream-only gates all of that off here, so the fork
+    needs a path of its own. fork-release.yml builds macOS arm64 unsigned and
+    publishes to this repository's Releases, using only the automatic
+    GITHUB_TOKEN. Two properties matter more than the build itself: it runs on
+    workflow_dispatch alone, so no sync, tag or cron can ever publish from the
+    fork by surprise; and it must never grow a package-registry publish step,
+    because the fork builds under upstream's package names. Signing is absent
+    on purpose, not by oversight — the build script already degrades when the
+    Apple secrets are missing, so adding them later is a change to one step.
+  tier: 1
+  files:
+    - .github/workflows/fork-release.yml
+  shadows: []
+  watch: []
+  verify:
+    - apps/web/src/__fork_guards__/forkDesktopRelease.test.ts
+
 - id: fork-marker
   intent: >
     The running app is identifiable as this fork: the document root carries
