@@ -51,3 +51,15 @@ agents.
   examples of idiomatic usage, tests, module structure, and API design.
 - When writing relay infrastructure code with Alchemy, inspect `.repos/alchemy-effect/` for examples of
   idiomatic usage, tests, module structure, and API design.
+
+<!-- fork:begin fork-workflow — see .fork/customizations.yaml#fork-workflow-docs -->
+
+## Fork Workflow
+
+This repository is a fork of `pingdotgg/t3code` carrying permanent frontend customizations.
+Before changing anything, read `.fork/AGENTS.md` — it defines the branch rules (work from
+`custom`; `main` is a read-only upstream mirror) and where fork changes must live
+(`apps/web/src/custom/`, `apps/web/src/overrides/`, the `.fork/customizations.yaml` manifest,
+and guard tests in `apps/web/src/__fork_guards__/`).
+
+<!-- fork:end fork-workflow -->

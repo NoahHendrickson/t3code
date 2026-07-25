@@ -9,7 +9,16 @@
     "jsx": "react-jsx",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "paths": {
-      "~/*": ["./src/*"]
+      // Fork-only: mirrors the `fork:overrides` Vite plugin so TypeScript and
+      // editor navigation follow the same shadow tree the bundler does.
+      // TS falls back to `./src/*` when no override exists.
+      // See `.fork/README.md` §3.
+      "~/*": ["./src/overrides/*", "./src/*"],
+      "~upstream/*": ["./src/*"],
+      // Fork-only: mirrors the `lucide-react` alias in `vite.config.ts` so
+      // TypeScript sees the same Phosphor duotone shim the bundler loads.
+      // See `.fork/customizations.yaml#phosphor-duotone-icons`.
+      "lucide-react": ["./src/custom/icons/lucide-phosphor.tsx"]
     },
     "plugins": [
       {
@@ -25,5 +34,12 @@
       }
     ]
   },
-  "include": ["src", "vite.config.ts", "vercel.ts", "test", "../../scripts/lib/public-config.ts"]
+  "include": [
+    "src",
+    "fork",
+    "vite.config.ts",
+    "vercel.ts",
+    "test",
+    "../../scripts/lib/public-config.ts"
+  ]
 }

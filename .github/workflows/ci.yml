@@ -5,12 +5,17 @@ on:
   push:
     branches:
       - main
+      # fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom
+      - custom
+      # fork:end ci-on-custom
 
 jobs:
   check:
     name: Check
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 10
+    # fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # fork:end ci-runners
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -42,8 +47,10 @@ jobs:
 
   test:
     name: Test
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 10
+    # fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # fork:end ci-runners
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -63,8 +70,10 @@ jobs:
 
   mobile_native_static_analysis:
     name: Mobile Native Static Analysis
-    runs-on: blacksmith-12vcpu-macos-26
-    timeout-minutes: 10
+    # fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+    runs-on: macos-latest
+    timeout-minutes: 30
+    # fork:end ci-runners
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -84,8 +93,10 @@ jobs:
 
   release_smoke:
     name: Release Smoke
-    runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 10
+    # fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # fork:end ci-runners
     steps:
       - name: Checkout
         uses: actions/checkout@v6
