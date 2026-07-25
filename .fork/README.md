@@ -347,7 +347,74 @@ Deliberately ordered so the safety net exists before the automation that needs i
 | 6 | Layer 3 verification routine | Add once there are real PRs to verify. |
 | 7 | Enable auto-merge for clean + green syncs | Only after the guard suite has demonstrably caught something. |
 
-## 7. What to watch
+## 7. "Can't we skip merging entirely and just consume upstream's diffs additively?"
+
+The question deserves a direct answer, because the intuition behind it is half right, and the half
+that is right is the foundation of this whole design.
+
+### The literal version does not work
+
+The literal version — read each upstream diff, take only the lines it *adds*, and graft them onto
+our tree without ever merging — fails for reasons that are structural, not tooling gaps:
+
+1. **Upstream diffs are not additive.** Real changes are refactors, renames, deletions, and
+   signature changes. In the last 60 days `ChatView.tsx` alone saw −580 lines removed against
+   +6,633 added, and the added lines *reference the removed lines' replacements*. Take the
+   additions without the modifications and the result does not compile — the new code calls
+   functions whose signatures we declined to update.
+2. **Nobody has ever run the tree you'd synthesize.** Upstream's CI validates *their* tree. A
+   selectively-grafted tree is a combination that has never existed anywhere — every sync would
+   produce a build with no provenance, and every bug in it would be yours alone to debug.
+3. **Fixes are frequently subtractive.** Bug fixes and security patches are often deletions or
+   modifications. A policy of "only take additions" is a policy of keeping every bug whose fix
+   involved changing a line.
+4. **The failure compounds.** Each selective graft moves your tree's context further from the
+   context upstream's next diff was written against. Patch application gets less reliable every
+   round — the strategy is a treadmill that speeds up.
+
+### The inverted version is exactly what this design does
+
+Flip the polarity, and the intuition becomes correct — and buildable:
+
+> **Upstream's changes flow in wholesale and untouched. *Your* changes are the additive layer.**
+
+That is precisely the §2 topology plus the §3 Tier system:
+
+- `main` fast-forwards to upstream. No merging, ever, in the meaningful sense — their tree arrives
+  exactly as their CI validated it.
+- Your delta lives in files upstream has never seen (`.fork/`, `src/custom/`, `src/overrides/`,
+  `theme.custom.css`) that *win at build time* via the override resolver. Git never has to merge
+  upstream into your files, because from git's perspective your files don't overlap with theirs.
+- The result satisfies the actual goal behind the question — "we don't merge their updates, we
+  stay additive" — without the compile-breakage, provenance, and compounding-drift problems,
+  because the additive layer is on the side you control.
+
+The residual — the only place anything merge-like ever happens — is shadowed files. When upstream
+improves a file you've overridden, you are not *forced* to reconcile; the drift detector (§5,
+Layer 1) surfaces the upstream diff and you (or the sync routine) **choose**: port it, or
+explicitly decline it. Which brings us to the workflow the question was really reaching for.
+
+### "Look at what the diffs are" — the porting loop, done additively
+
+There *is* a legitimate diff-reading, additive-from-our-side workflow, and it is the right job for
+a cloud agent:
+
+1. Layer 1 detects upstream touched `components/chat/ChatComposer.tsx`, which we shadow.
+2. The sync routine reads upstream's diff **as intent, not as text**: "they added paste-to-attach
+   handling to the composer."
+3. It applies that intent to *our* `overrides/.../ChatComposer.tsx` — a semantic port into a file
+   we own, not a textual merge into a file we share. Because shadow copies keep their imports
+   upstream-identical (§3, Tier 2), this is usually a clean 3-way merge; when it isn't, the agent
+   reasons from `customizations.yaml` intent.
+4. Guard tests confirm our invariants survived; the port lands as an ordinary fork-owned commit.
+
+So: upstream-diffs-consumed-additively is unsound as a *repo strategy*, but exactly right as a
+*shadowed-file maintenance strategy* — and the narrower the shadow tree (prefer Tier 1/3 over
+Tier 2, prefer leaf primitives over `ChatView.tsx`), the less of this loop you ever run.
+
+---
+
+## 8. What to watch
 
 - **Guard coverage ratio** — entries in `customizations.yaml` that have no `verify:` guard. This
   number should be zero. Anything above zero is a customization that can vanish silently.
