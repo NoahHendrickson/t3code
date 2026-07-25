@@ -76,7 +76,9 @@ fi
 echo
 echo "==> Merging main into $FORK_BRANCH"
 git checkout "$FORK_BRANCH" --quiet
-if git merge main --no-edit; then
+# --no-stat: a 40-commit sync lists ~180 files and buries the outcome. The
+# targeted apps/web churn report above is the part you actually read.
+if git merge main --no-edit --no-stat; then
   echo
   echo "==> Sync complete. Review the UI, then: git push origin $FORK_BRANCH"
 else
