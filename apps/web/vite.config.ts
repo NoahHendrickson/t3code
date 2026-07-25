@@ -5,9 +5,11 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { defineProject, type TestProjectInlineConfiguration } from "vite-plus/test/config";
 import "vite-plus/test/config";
 import { defineConfig } from "vite-plus";
+import * as NodeURL from "node:url";
 import pkg from "./package.json" with { type: "json" };
 
 import { loadRepoEnv } from "../../scripts/lib/public-config";
+import { forkOverrides } from "./fork/vitePluginForkOverrides";
 
 const repoEnv = loadRepoEnv();
 Object.assign(process.env, repoEnv);
@@ -56,7 +58,7 @@ const unitTestProject = {
   extends: true,
   test: {
     name: "unit",
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "fork/**/*.test.ts"],
     // The web runtime suite exercises auth bootstrap, saved environments,
     // and websocket subscription lifecycles. Under the full monorepo test
     // run, those async tests can exceed Vitest's default 5s budget.
@@ -91,6 +93,11 @@ const devProxyTarget = resolveDevProxyTarget(configuredWsUrl);
 export default defineConfig(() => {
   return {
     plugins: [
+      // Fork-only: lets `src/overrides/**` shadow upstream modules so this
+      // fork's UI changes live in files upstream never touches. Must come
+      // first — it claims `~/*` ahead of `resolve.tsconfigPaths`.
+      // See `.fork/README.md` §3.
+      forkOverrides({ srcDir: NodeURL.fileURLToPath(new URL("./src", import.meta.url)) }),
       tanstackRouter(),
       react(),
       babel({
