@@ -49,6 +49,22 @@
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
+- id: fork-workflow-docs
+  intent: >
+    Every coding agent that opens this repo learns the fork rules before
+    changing anything: AGENTS.md (and its CLAUDE.md symlink) carries a fenced
+    Fork Workflow section pointing to .fork/AGENTS.md, which defines the
+    branch model (work from custom, never touch main) and the placement
+    ladder for fork changes.
+  tier: 4
+  files:
+    - .fork/AGENTS.md
+  shadows: []
+  watch:
+    - AGENTS.md
+  verify:
+    - apps/web/src/__fork_guards__/forkWorkflowDocs.test.ts
+
 - id: fork-marker
   intent: >
     The running app is identifiable as this fork: the document root carries
