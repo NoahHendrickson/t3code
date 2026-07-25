@@ -1,0 +1,3236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sidebar V2 — Tab Anatomy</title>
+    <style>
+      /* ══════════════════════════════════════════════════════════════════
+         PAGE CHROME — "blueprint paper", matching docs/cloud/t3-code-connect-auth-flow.html
+         ══════════════════════════════════════════════════════════════════ */
+      :root {
+        color-scheme: light;
+        --ink: #171717;
+        --muted: #62646b;
+        --faint: #8b8d95;
+        --hairline: #d8d8dd;
+        --panel: #ffffff;
+        --paper: #f5f5f2;
+        --blue: #1457d9;
+        --green: #1d7d4d;
+        --amber: #a65f00;
+        --red: #b8242c;
+        --violet: #6150b8;
+        --shadow: 0 18px 55px rgba(25, 25, 28, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px),
+          linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px), var(--paper);
+        background-size: 34px 34px;
+        color: var(--ink);
+        font-family:
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.48;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .shell {
+        width: min(1540px, calc(100vw - 40px));
+        margin: 0 auto;
+        padding: 38px 0 96px;
+      }
+
+      header.masthead {
+        border-bottom: 2px solid var(--ink);
+        padding-bottom: 24px;
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 980px;
+        margin: 8px 0 12px;
+        font-size: clamp(34px, 5vw, 66px);
+        line-height: 0.98;
+        letter-spacing: -0.02em;
+      }
+
+      .lede {
+        max-width: 74ch;
+        font-size: 16px;
+        color: var(--muted);
+        margin: 0 0 18px;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 26px;
+        line-height: 1.08;
+        letter-spacing: -0.01em;
+      }
+
+      h3 {
+        margin: 26px 0 8px;
+        font-size: 17px;
+      }
+
+      h4 {
+        margin: 20px 0 6px;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      p {
+        margin: 0 0 12px;
+        max-width: 78ch;
+      }
+
+      code,
+      .mono {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      }
+
+      code {
+        font-size: 0.9em;
+        background: rgba(20, 87, 217, 0.07);
+        color: #0f3f9e;
+        padding: 0.1em 0.36em;
+        border-radius: 4px;
+        overflow-wrap: anywhere;
+      }
+
+      a {
+        color: var(--blue);
+      }
+
+      section.block {
+        background: var(--panel);
+        border: 1px solid var(--hairline);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 26px 28px 30px;
+        margin: 0 0 26px;
+      }
+
+      .section-no {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--blue);
+        letter-spacing: 0.06em;
+      }
+
+      /* — table of contents — */
+      .toc {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 26px;
+      }
+      .toc a {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 7px;
+        border: 1px solid var(--hairline);
+        background: var(--panel);
+        border-radius: 999px;
+        padding: 6px 13px;
+        font-size: 13px;
+        text-decoration: none;
+        color: var(--ink);
+      }
+      .toc a span {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        color: var(--blue);
+        font-weight: 700;
+      }
+      .toc a:hover {
+        border-color: var(--blue);
+      }
+
+      /* — callouts — */
+      .note {
+        border-left: 3px solid var(--blue);
+        background: rgba(20, 87, 217, 0.05);
+        padding: 11px 14px;
+        border-radius: 0 8px 8px 0;
+        font-size: 14px;
+        margin: 0 0 14px;
+        max-width: 88ch;
+      }
+      .note.warn {
+        border-left-color: var(--amber);
+        background: rgba(166, 95, 0, 0.06);
+      }
+      .note.seam {
+        border-left-color: var(--violet);
+        background: rgba(97, 80, 184, 0.06);
+      }
+      .note b {
+        font-weight: 700;
+      }
+
+      /* — source citation chip — */
+      .cite {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        color: var(--faint);
+        overflow-wrap: anywhere;
+      }
+      /* Inside the scrollable tables a citation may stay on one line. */
+      td.cite {
+        white-space: nowrap;
+      }
+
+      /* — tables — */
+      /* Grid children default to min-width:auto, which lets wide content
+         (tables, the exploded diagram) push a track past the viewport.
+         Zero it everywhere so the designated scroll containers do the
+         scrolling and the page body never scrolls sideways. */
+      .anatomy > *,
+      .playground > *,
+      .pair > *,
+      .specs > *,
+      .swatches > * {
+        min-width: 0;
+      }
+
+      .table-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 0 6px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 720px;
+        font-size: 13.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 12px 8px 0;
+        border-bottom: 1px solid var(--hairline);
+      }
+      th {
+        font-size: 11px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--faint);
+        border-bottom: 1.5px solid var(--ink);
+        white-space: nowrap;
+      }
+      tbody tr:hover {
+        background: rgba(20, 87, 217, 0.035);
+      }
+      td.name {
+        font-weight: 650;
+        white-space: nowrap;
+      }
+
+      /* ══════════════════════════════════════════════════════════════════
+         SPECIMEN PANELS — carry the app's REAL tokens
+         Transcribed verbatim from apps/web/src/index.css:902-950
+         ══════════════════════════════════════════════════════════════════ */
+      /* Light and dark sit side by side so the two treatments compare
+         without flipping a toggle; they stack when the column is narrow. */
+      .pair {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(0, var(--panel-w, 16rem)));
+        gap: 16px;
+        align-items: start;
+        justify-content: start;
+      }
+
+      .panel {
+        /* Tailwind v4 default palette, transcribed (node_modules absent in
+           this checkout — see the appendix note). */
+        --color-white: #fff;
+        --color-zinc-25: oklch(99.2% 0 0);
+        --color-zinc-50: oklch(98.5% 0 0);
+        --color-zinc-100: oklch(96.7% 0.001 286.375);
+        --color-zinc-200: oklch(92% 0.004 286.32);
+        --color-zinc-300: oklch(87.1% 0.006 286.286);
+        --color-zinc-500: oklch(55.2% 0.016 285.938);
+        --color-zinc-800: oklch(27.4% 0.006 286.033);
+        --color-zinc-900: oklch(21% 0.006 285.885);
+
+        --radius: 0.625rem;
+        --radius-sm: calc(var(--radius) - 4px);
+        --radius-md: calc(var(--radius) - 2px);
+
+        --font-sans:
+          "DM Sans Variable", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+          sans-serif;
+        --font-mono:
+          "SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo,
+          monospace;
+
+        width: 100%;
+        max-width: var(--panel-w, 16rem);
+        padding: 8px;
+        border-radius: 12px;
+        background: var(--sidebar);
+        border: 1px solid var(--sidebar-border);
+        color: var(--sidebar-foreground);
+        font-family: var(--font-sans);
+        overflow: hidden;
+      }
+
+      /* ── light: [data-sidebar-version="v2"]  (index.css:902-924) ───────── */
+      .panel--light {
+        color-scheme: light;
+        --background: var(--color-zinc-25);
+        --foreground: var(--color-zinc-800);
+        --card: var(--color-white);
+        --card-foreground: var(--color-zinc-800);
+        --accent: var(--color-zinc-100);
+        --accent-foreground: var(--color-zinc-900);
+        --muted: var(--color-zinc-50);
+        --muted-foreground: var(--color-zinc-500);
+        --border: var(--color-zinc-200);
+        --input: var(--color-zinc-300);
+        --sidebar: var(--color-zinc-50);
+        --sidebar-foreground: var(--color-zinc-800);
+        --sidebar-muted-foreground: var(--color-zinc-500);
+        --sidebar-control-surface: var(--color-zinc-100);
+        --sidebar-row-hover: var(--color-zinc-25);
+        --sidebar-row-active: var(--color-white);
+        --sidebar-row-selected: var(--color-white);
+        --sidebar-border: var(--color-zinc-200);
+
+        /* status hues — hardcoded Tailwind classes in the component, not tokens */
+        --s-working: oklch(58.8% 0.158 241.966); /* sky-600   */
+        --s-approval: oklch(55.5% 0.163 48.998); /* amber-700 */
+        --s-input: oklch(51.1% 0.262 276.966); /* indigo-600 */
+        --s-failed: oklch(50.5% 0.213 27.518); /* red-700   */
+        --s-done: oklch(50.8% 0.118 165.612); /* emerald-700 */
+        --s-woke: oklch(55.5% 0.163 48.998); /* amber-700 */
+        --s-snooze: oklch(54.6% 0.245 262.881); /* blue-600  */
+        --pr-open: oklch(59.6% 0.145 163.225); /* emerald-600 */
+        --pr-merged: oklch(54.1% 0.281 293.009); /* violet-600 */
+        --pr-closed: oklch(57.7% 0.245 27.325); /* red-600   */
+        --diff-add: oklch(59.6% 0.145 163.225);
+        --diff-del: oklch(57.7% 0.245 27.325);
+        --shelf-rule-snooze: color-mix(in srgb, oklch(62.3% 0.214 259.815) 20%, transparent);
+      }
+
+      /* ── dark: .dark [data-sidebar-version="v2"]  (index.css:926-950) ──── */
+      .panel--dark {
+        color-scheme: dark;
+        --background: #000;
+        --foreground: #f1f3f7;
+        --card: #000;
+        --card-foreground: var(--foreground);
+        --accent: #191a1d;
+        --accent-foreground: #f7f9ff;
+        --muted: #0a0a0a;
+        --muted-foreground: #a3a3a3;
+        --border: rgb(255 255 255 / 8%);
+        --input: rgb(255 255 255 / 18%);
+        --sidebar: var(--card);
+        --sidebar-foreground: var(--foreground);
+        --sidebar-muted-foreground: var(--muted-foreground);
+        --sidebar-control-surface: var(--muted);
+        --sidebar-row-hover: color-mix(in srgb, var(--foreground) 8%, transparent);
+        --sidebar-row-active: color-mix(in srgb, var(--foreground) 11%, transparent);
+        --sidebar-row-selected: color-mix(in srgb, var(--foreground) 7%, transparent);
+        --sidebar-border: var(--border);
+
+        --s-working: oklch(74.6% 0.16 232.661); /* sky-400    */
+        --s-approval: oklch(87.9% 0.169 91.605); /* amber-300  */
+        --s-input: oklch(78.5% 0.115 274.713); /* indigo-300 */
+        --s-failed: oklch(80.8% 0.114 19.571); /* red-300    */
+        --s-done: oklch(84.5% 0.143 164.978); /* emerald-300 */
+        --s-woke: oklch(87.9% 0.169 91.605); /* amber-300  */
+        --s-snooze: oklch(70.7% 0.165 254.624); /* blue-400   */
+        --pr-open: color-mix(in oklab, oklch(84.5% 0.143 164.978) 90%, transparent);
+        --pr-merged: color-mix(in oklab, oklch(81.1% 0.111 293.571) 90%, transparent);
+        --pr-closed: color-mix(in oklab, oklch(80.8% 0.114 19.571) 90%, transparent);
+        --diff-add: oklch(76.5% 0.177 163.223);
+        --diff-del: oklch(70.4% 0.191 22.216);
+        --shelf-rule-snooze: color-mix(in srgb, oklch(70.7% 0.165 254.624) 15%, transparent);
+      }
+
+      .panel-label {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--faint);
+        margin: 0 0 6px;
+      }
+
+      .panel-wrap {
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ══════════════════════════════════════════════════════════════════
+         THE ROW ITSELF
+         rowSurfaceClassName — SidebarV2.tsx:656-669
+         ══════════════════════════════════════════════════════════════════ */
+      .list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1px; /* gap-px */
+      }
+      .list > li {
+        list-style: none;
+      }
+
+      .row {
+        position: relative;
+        width: 100%;
+        cursor: pointer;
+        overflow: hidden;
+        border-radius: var(--radius-md); /* rounded-md → 8px */
+        text-align: left;
+        outline: none;
+        user-select: none;
+        background: transparent;
+        color: var(--sidebar-foreground);
+        border: 0;
+        display: block;
+        font-family: inherit;
+      }
+
+      /* hover — .is-hover forces the state for at-a-glance specimens */
+      .row:hover,
+      .row.is-hover {
+        background: var(--sidebar-row-hover);
+      }
+
+      /* shouldRecede — SidebarV2.tsx:442-443, 662-663 */
+      .row.is-recede {
+        color: color-mix(in oklab, var(--sidebar-muted-foreground) 75%, transparent);
+      }
+      .row.is-recede:hover,
+      .row.is-recede.is-hover {
+        color: var(--sidebar-foreground);
+      }
+
+      /* isInFlight — SidebarV2.tsx:665-668 */
+      .row.is-inflight {
+        opacity: 0.7;
+        transition: opacity 150ms;
+      }
+      .row.is-inflight:hover,
+      .row.is-inflight.is-hover {
+        opacity: 1;
+      }
+
+      /* isActive (route) beats everything — SidebarV2.tsx:658-659 */
+      .row.is-active,
+      .row.is-active:hover {
+        background: var(--sidebar-row-active);
+        color: var(--sidebar-foreground);
+        opacity: 1;
+      }
+      /* isSelected (multi-select) — SidebarV2.tsx:660-661 */
+      .row.is-selected,
+      .row.is-selected:hover {
+        background: var(--sidebar-row-selected);
+        color: var(--sidebar-foreground);
+        opacity: 1;
+      }
+
+      /* ── card variant — SidebarV2.tsx:843-986 ─────────────────────────── */
+      .li-card {
+        padding-block: 0.125rem; /* py-0.5 */
+      }
+      .card__box {
+        position: relative;
+        z-index: 10;
+        height: 4.875rem; /* 78px */
+        padding: 0.5rem 0.625rem; /* py-2 px-2.5 */
+      }
+      .card__top {
+        display: flex;
+        height: 1.25rem; /* h-5 */
+        min-width: 0;
+        align-items: center;
+        gap: 0.375rem; /* gap-1.5 */
+      }
+      .card__project {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.75rem;
+        line-height: 1rem; /* text-xs */
+        font-weight: 500;
+        color: color-mix(in oklab, var(--muted-foreground) 85%, transparent);
+      }
+      .row.is-recede .card__project {
+        font-weight: 400;
+      }
+      .card__title-line {
+        margin-top: 0.25rem; /* mt-1 */
+        display: flex;
+        min-width: 0;
+      }
+      .card__bottom {
+        margin-top: 0.125rem; /* mt-0.5 */
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+        line-height: 1rem;
+        color: color-mix(in oklab, var(--muted-foreground) 75%, transparent);
+      }
+      .card__branch {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .card__trailing {
+        pointer-events: none;
+        margin-left: auto;
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      /* ── slim variant — SidebarV2.tsx:733-838 ─────────────────────────── */
+      .row--slim {
+        display: flex;
+        height: 2.25rem; /* h-9 */
+        align-items: center;
+        gap: 0.625rem; /* gap-2.5 */
+        padding-inline: 0.625rem; /* px-2.5 */
+      }
+      .slim__favicon {
+        flex-shrink: 0;
+        transition: opacity 150ms;
+        opacity: 0.4;
+        filter: grayscale(1);
+        display: inline-flex;
+      }
+      .row--slim:hover .slim__favicon,
+      .row--slim.is-hover .slim__favicon,
+      .row--slim.is-active .slim__favicon {
+        opacity: 1;
+        filter: none;
+      }
+
+      /* ── title — SidebarV2.tsx:671-712 ────────────────────────────────── */
+      .title {
+        min-width: 0;
+        flex: 1;
+        font-size: 0.875rem;
+        line-height: 1.25rem; /* text-sm */
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: color-mix(in oklab, var(--foreground) 90%, transparent);
+      }
+      .row.is-recede .title {
+        font-weight: 400;
+        color: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+      }
+      .row[data-attention="done"] .title,
+      .row[data-attention="woke"] .title,
+      .row[data-status="failed"] .title {
+        color: var(--foreground);
+        font-weight: 500;
+      }
+      /* slim titles run one notch quieter and lift on hover */
+      .row--slim .title {
+        color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+      }
+      .row--slim[data-attention="done"] .title {
+        color: var(--muted-foreground);
+      }
+      .row--slim.is-active .title,
+      .row--slim[data-attention="woke"] .title {
+        color: var(--foreground);
+      }
+      .row--slim:hover .title,
+      .row--slim.is-hover .title {
+        color: var(--foreground);
+      }
+
+      /* rename input — SidebarV2.tsx:672-683 */
+      .title-input {
+        min-width: 0;
+        flex: 1;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--input);
+        background: var(--card);
+        padding-inline: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--card-foreground);
+        outline: none;
+        font-family: inherit;
+      }
+      .title-input:focus {
+        border-color: var(--foreground);
+      }
+
+      /* ── right meta slot ──────────────────────────────────────────────── */
+      .meta {
+        position: relative;
+        margin-left: auto;
+        display: flex;
+        height: 1.25rem;
+        min-width: 2rem; /* min-w-8 */
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: flex-end;
+        padding-left: 0.25rem;
+        font-size: 0.75rem;
+      }
+      .row--slim .meta {
+        height: 1.5rem; /* h-6 */
+        padding-left: 0;
+      }
+      .meta__rest {
+        display: inline-flex;
+        justify-content: flex-end;
+        font-variant-numeric: tabular-nums;
+        color: color-mix(in oklab, var(--muted-foreground) 65%, transparent);
+        transition: opacity 150ms;
+      }
+      .row--slim .meta__rest {
+        color: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+      }
+      .row:hover .meta__rest,
+      .row.is-hover .meta__rest,
+      .row.is-menu-open .meta__rest {
+        opacity: 0;
+      }
+
+      /* status chips — gated purely by data-attrs, mirroring the ternary
+         chain at SidebarV2.tsx:447-485 */
+      .chip {
+        display: none;
+        align-items: center;
+        gap: 0.25rem;
+        font-weight: 500;
+      }
+      [data-status="working"] .chip--working,
+      [data-status="approval"] .chip--approval,
+      [data-status="input"] .chip--input,
+      [data-status="failed"] .chip--failed,
+      [data-status="ready"][data-attention="woke"] .chip--woke,
+      [data-status="ready"][data-attention="done"] .chip--done,
+      [data-status="ready"][data-attention="none"] .chip--time {
+        display: inline-flex;
+      }
+
+      /* Slim rows never show a run-status chip — their meta slot is
+         wake ▸ woke ▸ time, in that order.  SidebarV2.tsx:775-801 */
+      .row--slim .chip--working,
+      .row--slim .chip--approval,
+      .row--slim .chip--input,
+      .row--slim .chip--failed,
+      .row--slim .chip--done {
+        display: none !important;
+      }
+      .row--slim .chip--time {
+        display: inline-flex;
+      }
+      .row--slim[data-attention="woke"] .chip--time {
+        display: none;
+      }
+      .row--slim[data-attention="woke"] .chip--woke {
+        display: inline-flex;
+      }
+      /* A snooze return-ticket outranks both. */
+      .chip--wake {
+        display: inline-flex;
+      }
+      .meta__rest:has(.chip--wake) .chip:not(.chip--wake) {
+        display: none !important;
+      }
+
+      .chip--working {
+        color: var(--s-working);
+        animation: sidebar-working-text 3.4s infinite;
+      }
+      .chip--approval {
+        color: var(--s-approval);
+      }
+      .chip--input {
+        color: var(--s-input);
+      }
+      .chip--failed {
+        color: var(--s-failed);
+      }
+      .chip--woke {
+        color: var(--s-woke);
+      }
+      .chip--done {
+        color: var(--s-done);
+      }
+      .chip--wake {
+        color: var(--s-snooze);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* index.css:206-220 */
+      @keyframes sidebar-working-text {
+        0%,
+        36% {
+          opacity: 1;
+          animation-timing-function: steps(10);
+        }
+        50%,
+        86% {
+          opacity: 0.75;
+          animation-timing-function: steps(10);
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .chip--working {
+          animation: none;
+        }
+      }
+
+      /* hover actions — SidebarV2.tsx:917-943 (card) / 802-831 (slim) */
+      .actions {
+        position: absolute;
+        inset-block: 0;
+        right: 0;
+        display: flex;
+        align-items: stretch;
+        gap: 0.125rem;
+        opacity: 0;
+        transition: opacity 150ms;
+      }
+      .row:hover .actions,
+      .row.is-hover .actions,
+      .row.is-menu-open .actions,
+      .row:focus-within .actions {
+        opacity: 1;
+      }
+      .act {
+        display: inline-flex;
+        cursor: pointer;
+        align-items: center;
+        gap: 0.25rem;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        padding-inline: 0.5rem;
+        font-size: 0.75rem;
+        font-family: inherit;
+        color: var(--muted-foreground);
+      }
+      .act--icon {
+        padding-inline: 0.375rem;
+      }
+      .act:hover {
+        color: var(--foreground);
+      }
+
+      /* PR badge — SidebarV2.tsx:714-731 */
+      .pr {
+        flex-shrink: 0;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        border: 0;
+        background: none;
+        padding: 0;
+        cursor: pointer;
+      }
+      .pr:hover {
+        text-decoration: underline;
+      }
+      .pr--open {
+        color: var(--pr-open);
+      }
+      .pr--merged {
+        color: var(--pr-merged);
+      }
+      .pr--closed {
+        color: var(--pr-closed);
+      }
+      /* settled slim rows mute the badge until hover — SidebarV2.tsx:721-724 */
+      .pr--settled {
+        color: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+        transition: color 150ms;
+      }
+      .row--slim:hover .pr--settled.pr--open,
+      .row--slim.is-hover .pr--settled.pr--open {
+        color: var(--pr-open);
+      }
+      .row--slim:hover .pr--settled.pr--merged,
+      .row--slim.is-hover .pr--settled.pr--merged {
+        color: var(--pr-merged);
+      }
+      .row--slim:hover .pr--settled.pr--closed,
+      .row--slim.is-hover .pr--settled.pr--closed {
+        color: var(--pr-closed);
+      }
+
+      .diff {
+        flex-shrink: 0;
+        font-family: var(--font-mono);
+      }
+      .diff .add {
+        color: var(--diff-add);
+      }
+      .diff .del {
+        color: var(--diff-del);
+      }
+
+      /* jump hint pill — SidebarV2.tsx:191-200 */
+      .jump {
+        pointer-events: none;
+        position: absolute;
+        right: 0.375rem;
+        top: 50%;
+        z-index: 10;
+        display: inline-flex;
+        height: 1.25rem;
+        transform: translateY(-50%);
+        align-items: center;
+        border-radius: 999px;
+        border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+        background: color-mix(in oklab, var(--background) 95%, transparent);
+        padding-inline: 0.375rem;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        color: var(--foreground);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+
+      /* favicon stand-in. The real ProjectFavicon fetches the project's
+         favicon and falls back to an icon (MessageSquareIcon in slim). */
+      .favicon {
+        width: 1rem;
+        height: 1rem;
+        flex-shrink: 0;
+        border-radius: 4px;
+        background: linear-gradient(140deg, #4c8dff, #7b5cff);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 9px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .ico {
+        flex-shrink: 0;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .ico-4 {
+        width: 1rem;
+        height: 1rem;
+      }
+      .ico-35 {
+        width: 0.875rem;
+        height: 0.875rem;
+      }
+      .ico-3 {
+        width: 0.75rem;
+        height: 0.75rem;
+      }
+      .dim60 {
+        opacity: 0.6;
+      }
+      .server-ico {
+        color: color-mix(in oklab, var(--sidebar-muted-foreground) 70%, transparent);
+        display: inline-flex;
+      }
+
+      /* ── shelves — SidebarV2.tsx:2455-2531 ────────────────────────────── */
+      .shelf {
+        margin: 0.75rem 0 0.25rem;
+        display: flex;
+        width: 100%;
+        cursor: pointer;
+        align-items: center;
+        gap: 0.5rem;
+        padding-inline: 0.625rem;
+        text-align: left;
+        background: none;
+        border: 0;
+        font-family: inherit;
+      }
+      .shelf__label {
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+      .shelf__rule {
+        height: 1px;
+        flex: 1;
+      }
+      .shelf--snoozed .shelf__label {
+        color: var(--s-snooze);
+      }
+      .shelf--snoozed .shelf__rule {
+        background: var(--shelf-rule-snooze);
+      }
+      .shelf--snoozed .ico {
+        color: var(--s-snooze);
+      }
+      .shelf--settled .shelf__label,
+      .shelf--settled .ico {
+        color: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+      }
+      .shelf--settled .shelf__rule {
+        background: color-mix(in oklab, var(--sidebar-border) 60%, transparent);
+      }
+      .shelf .ico {
+        transition: transform 150ms;
+      }
+      .shelf.is-collapsed .ico {
+        transform: none;
+      }
+      .shelf.is-expanded .ico {
+        transform: rotate(180deg);
+      }
+
+      .showmore {
+        margin-top: 0.25rem;
+        display: flex;
+        height: 30px;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        border-radius: var(--radius-md);
+        border: 1px dashed var(--border);
+        background: none;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--muted-foreground);
+        cursor: pointer;
+        transition: all 150ms;
+      }
+      .showmore:hover {
+        border-style: solid;
+        border-color: var(--input);
+        color: var(--foreground);
+      }
+      .showmore em {
+        font-style: normal;
+        color: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+      }
+
+      .empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1.5rem 0.5rem;
+        text-align: center;
+        font-size: 0.75rem;
+        color: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+      }
+
+      /* ══════════════════════════════════════════════════════════════════
+         ANATOMY DIAGRAM
+         ══════════════════════════════════════════════════════════════════ */
+      .anatomy {
+        display: grid;
+        grid-template-columns: minmax(320px, 560px) minmax(280px, 1fr);
+        gap: 26px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .anatomy {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .zoom {
+        position: relative;
+        padding: 22px 24px;
+        border-radius: 12px;
+        border: 1px solid var(--hairline);
+        background:
+          linear-gradient(90deg, rgba(20, 87, 217, 0.05) 1px, transparent 1px),
+          linear-gradient(rgba(20, 87, 217, 0.05) 1px, transparent 1px), #fbfbfa;
+        background-size: 17px 17px;
+        overflow-x: auto;
+      }
+      .zoom + .zoom {
+        margin-top: 14px;
+      }
+      .zoom__cap {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--faint);
+        margin: 0 0 10px;
+      }
+
+      /* Exploded view: numbered badges sit INLINE between slots, so nothing
+         is ever painted over the thing it labels. Widths are relaxed on
+         purpose — this is a diagram, not a pixel-accurate render. */
+      .xray {
+        zoom: 1.35;
+        width: fit-content;
+        padding-left: 22px;
+      }
+      .xray .panel {
+        max-width: none;
+        width: max-content;
+        border: 0;
+        padding: 0;
+        background: none;
+        overflow: visible;
+      }
+      .xray .row {
+        cursor: default;
+        outline: 1px dashed rgba(20, 87, 217, 0.35);
+        outline-offset: 0;
+      }
+      .xray .card__box {
+        height: auto;
+        min-height: 4.875rem;
+      }
+      .xray .title,
+      .xray .card__project,
+      .xray .card__branch {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: nowrap;
+        flex: 0 0 auto;
+      }
+      .xray .meta,
+      .xray .row--slim .meta {
+        min-width: 0;
+        margin-left: 0.5rem;
+      }
+      .xray .card__trailing {
+        margin-left: 0.5rem;
+      }
+      .xray .meta__rest {
+        opacity: 1 !important;
+      }
+      .mk {
+        display: inline-flex;
+        flex: none;
+        width: 13px;
+        height: 13px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--blue);
+        color: #fff;
+        font-size: 8.5px;
+        font-weight: 800;
+        line-height: 1;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .mk--rail {
+        position: absolute;
+        left: -19px;
+        top: 4px;
+      }
+      .xray .li-card,
+      .xray .row--slim-wrap {
+        position: relative;
+      }
+
+      ol.legend {
+        list-style: none;
+        counter-reset: leg;
+        margin: 0;
+        padding: 0;
+      }
+      ol.legend > li {
+        counter-increment: leg;
+        position: relative;
+        padding: 9px 0 9px 30px;
+        border-bottom: 1px solid var(--hairline);
+        font-size: 13.5px;
+      }
+      ol.legend > li::before {
+        content: counter(leg);
+        position: absolute;
+        left: 0;
+        top: 10px;
+        display: inline-flex;
+        width: 19px;
+        height: 19px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--blue);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      ol.legend b {
+        font-weight: 700;
+      }
+      ol.legend .spec {
+        display: block;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 2px;
+        overflow-wrap: anywhere;
+      }
+
+      /* ══════════════════════════════════════════════════════════════════
+         SPECIMEN GRID + PLAYGROUND
+         ══════════════════════════════════════════════════════════════════ */
+      .specs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+        gap: 20px;
+      }
+      .spec {
+        border: 1px solid var(--hairline);
+        border-radius: 12px;
+        padding: 14px;
+        background: #fcfcfb;
+      }
+      .spec__name {
+        font-size: 13px;
+        font-weight: 750;
+        margin: 0 0 2px;
+      }
+      .spec__why {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin: 0 0 10px;
+      }
+      .spec .pair {
+        gap: 12px;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border-radius: 4px;
+        vertical-align: 2px;
+        margin-left: 6px;
+      }
+      .tag--forced {
+        background: rgba(166, 95, 0, 0.13);
+        color: var(--amber);
+      }
+      .tag--live {
+        background: rgba(29, 125, 77, 0.13);
+        color: var(--green);
+      }
+      .tag--seam {
+        background: rgba(97, 80, 184, 0.13);
+        color: var(--violet);
+      }
+
+      .playground {
+        display: grid;
+        grid-template-columns: minmax(260px, 340px) 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+      @media (max-width: 860px) {
+        .playground {
+          grid-template-columns: 1fr;
+        }
+      }
+      fieldset {
+        border: 1px solid var(--hairline);
+        border-radius: 10px;
+        margin: 0 0 12px;
+        padding: 10px 13px 13px;
+      }
+      legend {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--faint);
+        padding: 0 5px;
+      }
+      .ctl {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+      }
+      .ctl label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .ctl input {
+        accent-color: var(--blue);
+        margin: 0;
+      }
+      #pg-readout {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        color: var(--muted);
+        background: #f4f4f1;
+        border: 1px solid var(--hairline);
+        border-radius: 8px;
+        padding: 10px 12px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        margin-top: 12px;
+      }
+
+      /* ══════════════════════════════════════════════════════════════════
+         TOKEN APPENDIX
+         ══════════════════════════════════════════════════════════════════ */
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+        gap: 12px;
+      }
+      .sw {
+        border: 1px solid var(--hairline);
+        border-radius: 10px;
+        overflow: hidden;
+        font-size: 12px;
+      }
+      .sw__chip {
+        height: 46px;
+        border-bottom: 1px solid var(--hairline);
+        background-image:
+          linear-gradient(45deg, #eee 25%, transparent 25%),
+          linear-gradient(-45deg, #eee 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #eee 75%),
+          linear-gradient(-45deg, transparent 75%, #eee 75%);
+        background-size: 12px 12px;
+        background-position:
+          0 0,
+          0 6px,
+          6px -6px,
+          -6px 0;
+      }
+      .sw__chip > i {
+        display: block;
+        height: 100%;
+      }
+      .sw__body {
+        padding: 7px 9px 9px;
+      }
+      .sw__name {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11.5px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+      .sw__val {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10.5px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+
+      footer.foot {
+        border-top: 2px solid var(--ink);
+        padding-top: 18px;
+        margin-top: 30px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+        section.block {
+          box-shadow: none;
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- ═══ inline icon sprite (lucide-react shapes, 24×24 stroke) ═══ -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <g id="i-circle-dashed">
+          <circle cx="12" cy="12" r="10" stroke-dasharray="3.6 4.2" />
+        </g>
+        <g id="i-circle-check">
+          <circle cx="12" cy="12" r="10" />
+          <path d="m9 12 2 2 4-4" />
+        </g>
+        <g id="i-alarm-clock">
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2 2" />
+          <path d="M5 3 2 6" />
+          <path d="m22 6-3-3" />
+          <path d="M6.38 18.7 4 21" />
+          <path d="M17.64 18.67 20 21" />
+        </g>
+        <g id="i-alarm-clock-off">
+          <path d="M6.87 6.87a8 8 0 1 0 11.26 11.26" />
+          <path d="M19.9 14.25a8 8 0 0 0-9.15-9.15" />
+          <path d="m22 6-3-3" />
+          <path d="M6.26 18.67 4 21" />
+          <path d="m2 2 20 20" />
+          <path d="M4 4 2 6" />
+        </g>
+        <g id="i-check"><path d="M20 6 9 17l-5-5" /></g>
+        <g id="i-undo">
+          <path d="M9 14 4 9l5-5" />
+          <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H10" />
+        </g>
+        <g id="i-clock">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 6v6l4 2" />
+        </g>
+        <g id="i-server">
+          <rect width="20" height="8" x="2" y="2" rx="2" />
+          <rect width="20" height="8" x="2" y="14" rx="2" />
+          <path d="M6 6h.01" />
+          <path d="M6 18h.01" />
+        </g>
+        <g id="i-chevron-down"><path d="m6 9 6 6 6-6" /></g>
+        <g id="i-message-square">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </g>
+        <g id="i-sparkle">
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+        </g>
+      </defs>
+    </svg>
+
+    <div class="shell">
+      <header class="masthead">
+        <div class="eyebrow">T3 Code · Web · Design reference</div>
+        <h1>Anatomy of a sidebar tab</h1>
+        <p class="lede">
+          Every slot, every state, and every token of a thread row in <b>Sidebar&nbsp;V2</b> —
+          rendered live so you can see and hover them, in light and dark, side by side. All values
+          are transcribed from the source; nothing here is invented.
+        </p>
+        <p class="cite">
+          Source of truth: <code>apps/web/src/components/SidebarV2.tsx</code> ·
+          <code>apps/web/src/components/Sidebar.logic.ts</code> ·
+          <code>apps/web/src/index.css</code>
+        </p>
+      </header>
+
+      <nav class="toc">
+        <a href="#s1"><span>01</span> Orientation</a>
+        <a href="#s2"><span>02</span> Anatomy — card</a>
+        <a href="#s3"><span>03</span> Anatomy — slim</a>
+        <a href="#s4"><span>04</span> State specimens</a>
+        <a href="#s5"><span>05</span> Playground</a>
+        <a href="#s6"><span>06</span> Container states</a>
+        <a href="#s7"><span>07</span> State matrix</a>
+        <a href="#s8"><span>08</span> Tokens</a>
+      </nav>
+
+      <!-- ══════════════════════════════ 1 ══════════════════════════════ -->
+      <section class="block" id="s1">
+        <div class="section-no">01</div>
+        <h2>Orientation</h2>
+        <p>
+          There is no component called “tab”. What reads as a tab is a <b>thread row</b> — one
+          <code>&lt;li&gt;</code> inside the sidebar’s
+          <code>&lt;ul role="list" class="flex flex-col gap-px"&gt;</code>. Every row is rendered by
+          a single component, <code>SidebarV2Row</code>, which takes 20 props and has
+          <b>two layout variants</b>.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Variant</th>
+                <th>Height</th>
+                <th>Used for</th>
+                <th>Trailing action</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="name"><code>card</code></td>
+                <td>78&nbsp;px<span class="cite"> (h-[4.875rem])</span></td>
+                <td>The live inbox — every thread that isn’t snoozed or settled</td>
+                <td>Snooze + <b>Settle</b></td>
+                <td class="cite">SidebarV2.tsx:843-986</td>
+              </tr>
+              <tr>
+                <td class="name"><code>slim</code></td>
+                <td>36&nbsp;px<span class="cite"> (h-9)</span></td>
+                <td>The Snoozed and Settled shelves</td>
+                <td>Wake / Un-settle</td>
+                <td class="cite">SidebarV2.tsx:733-838</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>How a row picks its variant</h3>
+        <p>
+          The parent partitions threads into three sections and the variant follows mechanically:
+          <code>const isCard = section === "active"</code>.
+        </p>
+        <div class="note">
+          <b>Density is earned, not inferred.</b> Settled and snoozed are the <em>only</em> things
+          that collapse a row — the sidebar never second-guesses what still matters. Everything else
+          stays a full card. <span class="cite">SidebarV2.tsx:2377-2382</span>
+        </div>
+
+        <h3>One surface model</h3>
+        <p>
+          All rows share <code>rowSurfaceClassName</code>. Live threads used to render as elevated
+          cards while settled threads were plain rows, which gave neither a useful hierarchy nor a
+          reliable hover cue. Now <b>status lives in the row content and surface is reserved for
+          interaction</b> — hover, multi-select, route.
+          <span class="cite">SidebarV2.tsx:652-669</span>
+        </p>
+
+        <div class="note warn">
+          <b>No icon-rail state to design.</b> The sidebar is
+          <code>collapsible="offcanvas"</code> — the whole panel slides away rather than shrinking to
+          icons, so there is deliberately no mini/collapsed tab treatment.
+          <span class="cite">AppSidebarLayout.tsx:165-183</span>
+        </div>
+        <div class="note warn">
+          <b>Focus has no visible ring.</b> The row is a
+          <code>&lt;div role="button" tabIndex={0}&gt;</code> whose surface class sets
+          <code>outline-none</code> with no <code>focus-visible:</code> replacement — unlike Sidebar
+          V1, which carries <code>focus-visible:ring-1 focus-visible:ring-inset ring-ring</code>.
+          Keyboard focus is currently invisible on a V2 row. Flagging it as a design gap, not
+          documenting it as intent. <span class="cite">SidebarV2.tsx:657 vs Sidebar.logic.ts:368</span>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════ 2 ══════════════════════════════ -->
+      <section class="block" id="s2">
+        <div class="section-no">02</div>
+        <h2>Anatomy — card variant</h2>
+        <p>
+          Three stacked lines inside a <code>px-2.5 py-2</code> box. Actual size first, then an
+          exploded view with the slot numbers inline.
+        </p>
+
+        <div class="anatomy">
+          <div>
+            <div class="zoom">
+              <p class="zoom__cap">Actual size — 256 px panel</p>
+              <div class="pair" style="--panel-w: 16rem">
+                <div class="panel panel--light">
+                  <ul class="list" id="real-card-light"></ul>
+                </div>
+                <div class="panel panel--dark">
+                  <ul class="list" id="real-card-dark"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="zoom">
+              <p class="zoom__cap">Exploded — slot numbers inline</p>
+              <div class="xray">
+                <div class="panel panel--light">
+                  <ul class="list">
+                    <li class="li-card">
+                      <span class="mk mk--rail">1</span>
+                      <div class="row row--card" data-status="working" data-attention="none">
+                        <div class="card__box">
+                          <div class="card__top">
+                            <span class="mk">2</span>
+                            <span class="favicon">T3</span>
+                            <span class="mk">3</span>
+                            <span class="card__project">t3code</span>
+                            <span class="mk">4</span>
+                            <span class="meta">
+                              <span class="meta__rest">
+                                <span class="chip chip--working">
+                                  <svg class="ico ico-4" viewBox="0 0 24 24"><use href="#i-circle-dashed" /></svg>
+                                  <span>Working</span>
+                                </span>
+                              </span>
+                            </span>
+                          </div>
+                          <div class="card__title-line" style="align-items: center; gap: 6px">
+                            <span class="mk">5</span>
+                            <span class="title">Fix hover regression</span>
+                          </div>
+                          <div class="card__bottom">
+                            <span class="mk">6</span>
+                            <span class="card__branch">claude/sidebar-hover</span>
+                            <span class="mk">7</span>
+                            <button class="pr pr--open">#4821</button>
+                            <span class="mk">8</span>
+                            <span class="diff"
+                              ><span class="add">+42</span> <span class="del">−7</span></span
+                            >
+                            <span class="mk">9</span>
+                            <span class="card__trailing">
+                              <span class="server-ico"
+                                ><svg class="ico ico-35" viewBox="0 0 24 24"><use href="#i-server" /></svg
+                              ></span>
+                              <span class="dim60" style="display: inline-flex"
+                                ><svg class="ico ico-35" viewBox="0 0 24 24"><use href="#i-sparkle" /></svg
+                              ></span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ol class="legend">
+            <li>
+              <b>List item</b> — vertical rhythm and virtualisation hint.
+              <span class="spec"
+                >li: py-0.5 · content-visibility:auto · contain-intrinsic-size:auto 96px<br />box:
+                h-[4.875rem] (78px) · px-2.5 py-2 · rounded-md = calc(0.625rem − 2px) = 8px</span
+              >
+            </li>
+            <li>
+              <b>Project favicon</b> — <code>ProjectFavicon</code>, fetched per project cwd.
+              <span class="spec">size-4 (16px) · shrink-0</span>
+            </li>
+            <li>
+              <b>Project title</b> — the logical project name, quiet by design.
+              <span class="spec"
+                >flex-1 · truncate · text-xs · text-muted-foreground/85 · font-medium, dropping to
+                font-normal when the row recedes</span
+              >
+            </li>
+            <li>
+              <b>Meta slot</b> — one 32&nbsp;px-min box holding <em>either</em> the status/time
+              label <em>or</em>, on hover, the snooze + Settle buttons stacked on top of it. The two
+              cross-fade; neither displaces the other.
+              <span class="spec"
+                >relative · ml-auto · h-5 · min-w-8 · justify-end · pl-1 · text-xs<br />rest label:
+                tabular-nums · text-muted-foreground/65 · group-hover:opacity-0<br />actions:
+                absolute inset-y-0 right-0 · opacity-0 → focus-within/group-hover:opacity-100</span
+              >
+            </li>
+            <li>
+              <b>Thread title</b> — the row’s headline. Weight and opacity carry most of the state
+              signalling.
+              <span class="spec"
+                >mt-1 · text-sm · truncate · font-medium (font-normal when receded)<br />unread or
+                woke → text-foreground · failed → text-foreground/95 · receded →
+                text-muted-foreground/80 · otherwise text-foreground/90</span
+              >
+            </li>
+            <li>
+              <b>Branch</b> — git branch or worktree branch, takes the free space.
+              <span class="spec"
+                >mt-0.5 line · flex-1 · truncate · text-xs · text-muted-foreground/75</span
+              >
+            </li>
+            <li>
+              <b>PR badge</b> — clickable, opens the pull request. Coloured by PR state.
+              <span class="spec">shrink-0 · font-mono text-xs · hover:underline</span>
+            </li>
+            <li>
+              <b>Diff stats</b> — insertions/deletions for the latest turn.
+              <span class="spec">font-mono · +N emerald-600/400 · −N red-600/400</span>
+            </li>
+            <li>
+              <b>Trailing icons</b> — remote-environment server glyph, then the provider icon.
+              Decorative: <code>aria-hidden</code> and <code>pointer-events-none</code>.
+              <span class="spec"
+                >ml-auto · gap-1 · ServerIcon size-3.5 text-sidebar-muted-foreground/70 ·
+                ProviderInstanceIcon size-3.5 opacity-60</span
+              >
+            </li>
+          </ol>
+        </div>
+
+        <div class="note seam">
+          <b>Dormant slot.</b> <code>latestTurnDiff</code> currently returns <code>null</code>
+          unconditionally — thread shells don’t carry checkpoint summaries yet, and the function is
+          kept as a seam so the layout is ready. The diff stats above show what it will look like
+          when the shell projection grows it. <span class="cite">SidebarV2.tsx:989-995</span>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════ 3 ══════════════════════════════ -->
+      <section class="block" id="s3">
+        <div class="section-no">03</div>
+        <h2>Anatomy — slim variant</h2>
+        <p>
+          A single 36&nbsp;px line, used only in the Snoozed and Settled shelves. Actual size first
+          (a settled row, then a snoozed one), then an exploded view.
+        </p>
+
+        <div class="anatomy">
+          <div>
+            <div class="zoom">
+              <p class="zoom__cap">Actual size — settled row, then snoozed row</p>
+              <div class="pair" style="--panel-w: 16rem">
+                <div class="panel panel--light">
+                  <ul class="list" id="real-slim-light"></ul>
+                </div>
+                <div class="panel panel--dark">
+                  <ul class="list" id="real-slim-dark"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="zoom">
+              <p class="zoom__cap">Exploded — slot numbers inline</p>
+              <div class="xray">
+                <div class="panel panel--light">
+                  <ul class="list">
+                    <li class="row--slim-wrap">
+                      <span class="mk mk--rail">1</span>
+                      <div
+                        class="row row--slim"
+                        data-status="ready"
+                        data-attention="none"
+                        data-variant-action="unsettle"
+                      >
+                        <span class="mk">2</span>
+                        <span class="slim__favicon"><span class="favicon">T3</span></span>
+                        <span class="mk">3</span>
+                        <span class="title">Bump effect-acp</span>
+                        <span class="mk">4</span>
+                        <button class="pr pr--settled pr--merged">#4790</button>
+                        <span class="mk">5</span>
+                        <span class="meta">
+                          <span class="meta__rest"><span class="chip chip--time">3d</span></span>
+                        </span>
+                        <button class="act act--icon" aria-label="Un-settle thread">
+                          <svg class="ico ico-3" viewBox="0 0 24 24"><use href="#i-undo" /></svg>
+                        </button>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ol class="legend">
+            <li>
+              <b>List item + row</b>
+              <span class="spec"
+                >li: content-visibility:auto · contain-intrinsic-size:auto 34px<br />row: h-9 (36px)
+                · px-2.5 · gap-2.5 · rounded-md</span
+              >
+            </li>
+            <li>
+              <b>Favicon, dimmed</b> — settled history recedes at rest and comes back on hover so the
+              tail stays scannable when you’re hunting.
+              <span class="spec"
+                >size-4 · opacity-40 grayscale → group-hover: opacity-100 grayscale-0 ·
+                transition-opacity · undimmed while the row is the active route</span
+              >
+            </li>
+            <li>
+              <b>Title</b> — quieter than a card title, lifts to full contrast on hover.
+              <span class="spec"
+                >flex-1 · truncate · text-sm · group-hover:text-foreground<br />active or woke →
+                text-foreground · unread → text-muted-foreground · else
+                text-muted-foreground/70</span
+              >
+            </li>
+            <li>
+              <b>PR badge</b> — deliberately <em>outside</em> the fading slot: it must stay visible
+              <em>and</em> clickable while the row is hovered. On settled rows it sits at
+              <code>text-muted-foreground/35</code> and only takes its state colour on hover.
+              <span class="spec">shrink-0 · font-mono text-xs · transition-colors</span>
+            </li>
+            <li>
+              <b>Meta slot</b> — cross-fades the time (or wake countdown) out and the single action
+              button in.
+              <span class="spec"
+                >relative · ml-auto · h-6 · min-w-8<br />label: text-xs tabular-nums
+                text-muted-foreground/55 · group-hover:opacity-0<br />button: absolute inset-y-0
+                right-0 px-2 · opacity-0 → focus-visible/group-hover:opacity-100<br />icon: Undo2
+                (un-settle) · AlarmClockOff (wake) · Check (settle)</span
+              >
+            </li>
+          </ol>
+        </div>
+
+        <div class="note seam">
+          <b>Latent combination.</b> The props doc describes slim rows as “either settled (action:
+          un-settle) or merely quiet (seen Ready threads — action: settle)”, but
+          <code>isCard = section === "active"</code> means slim + <code>settle</code> is never
+          produced today. It’s wired and ready if you want to introduce auto-collapsing quiet rows.
+          <span class="cite">SidebarV2.tsx:358-359 vs :2381</span>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════ 4 ══════════════════════════════ -->
+      <section class="block" id="s4">
+        <div class="section-no">04</div>
+        <h2>State specimens</h2>
+        <p>
+          Every specimen is a real row: hover it. Cards marked
+          <span class="tag tag--forced">forced</span> also have the state pinned on so you can see it
+          without a pointer. <span class="tag tag--live">live</span> means it animates.
+        </p>
+
+        <div class="note">
+          <b>These stack, they don’t replace.</b> A row simultaneously has a run status, an attention
+          flag, a surface state, and a set of content flags. That’s why §05 gives you a playground —
+          the interesting cases are combinations.
+        </div>
+
+        <h3>Run status</h3>
+        <p>
+          <code>resolveSidebarV2Status</code> — mutually exclusive, evaluated top-down. Hues follow
+          the system-wide convention set by Sidebar V1 and the mobile Live Activity/widgets, so a
+          thread reads the same colour everywhere it surfaces.
+          <span class="cite">Sidebar.logic.ts:411-425 · SidebarV2.tsx:447-485</span>
+        </p>
+
+        <div class="specs" id="specs-status"></div>
+
+        <h3>Attention layer</h3>
+        <p>
+          Only reachable when the status resolved to <code>ready</code>: the status ternary falls
+          through to <code>isWoke</code>, then <code>isUnread</code>, then the plain relative time.
+          <b>Woke beats Done.</b>
+        </p>
+        <div class="specs" id="specs-attention"></div>
+
+        <h3>Surface &amp; interaction</h3>
+        <p>
+          These compose on top of any status. <code>isActive</code> (the routed thread) wins over
+          <code>isSelected</code> (multi-select), which wins over recede and in-flight dimming.
+        </p>
+        <div class="specs" id="specs-surface"></div>
+
+        <h3>Content flags</h3>
+        <p>Each is independently present or absent on any row.</p>
+        <div class="specs" id="specs-content"></div>
+
+        <h3>Capability gates</h3>
+        <p>
+          On environments whose server predates <code>thread.settle</code> /
+          <code>thread.snooze</code>, the affordances <b>hide entirely rather than fail on click</b>.
+          Snooze is additionally hidden on work that is blocked on you or has a queued turn, because
+          the server rejects both. <span class="cite">SidebarV2.tsx:361-365, 633-644</span>
+        </p>
+        <div class="specs" id="specs-caps"></div>
+      </section>
+
+      <!-- ══════════════════════════════ 5 ══════════════════════════════ -->
+      <section class="block" id="s5">
+        <div class="section-no">05</div>
+        <h2>Playground</h2>
+        <p>
+          Drive one live row through any combination. The readout shows the derived predicates the
+          component actually computes.
+        </p>
+
+        <div class="playground">
+          <div>
+            <fieldset>
+              <legend>Variant</legend>
+              <div class="ctl" id="pg-variant">
+                <label><input type="radio" name="variant" value="card" checked /> card</label>
+                <label><input type="radio" name="variant" value="slim" /> slim</label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Run status</legend>
+              <div class="ctl" id="pg-status">
+                <label><input type="radio" name="status" value="ready" checked /> ready</label>
+                <label><input type="radio" name="status" value="working" /> working</label>
+                <label><input type="radio" name="status" value="approval" /> approval</label>
+                <label><input type="radio" name="status" value="input" /> input</label>
+                <label><input type="radio" name="status" value="failed" /> failed</label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Attention</legend>
+              <div class="ctl" id="pg-attention">
+                <label><input type="radio" name="attention" value="none" checked /> none</label>
+                <label><input type="radio" name="attention" value="done" /> unread → Done</label>
+                <label><input type="radio" name="attention" value="woke" /> woke → Woke</label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Surface</legend>
+              <div class="ctl" id="pg-surface">
+                <label><input type="checkbox" data-cls="is-active" /> isActive (route)</label>
+                <label><input type="checkbox" data-cls="is-selected" /> isSelected</label>
+                <label><input type="checkbox" data-cls="is-hover" /> hover</label>
+                <label><input type="checkbox" data-cls="is-menu-open" /> snooze menu open</label>
+                <label><input type="checkbox" id="pg-rename" /> renaming</label>
+                <label><input type="checkbox" id="pg-jump" /> ⌘ held (jump hint)</label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Content</legend>
+              <div class="ctl" id="pg-content">
+                <label><input type="checkbox" id="pg-project" checked /> project title</label>
+                <label><input type="checkbox" id="pg-branch" checked /> branch</label>
+                <label><input type="checkbox" id="pg-pr" checked /> PR badge</label>
+                <label><input type="checkbox" id="pg-diff" /> diff stats</label>
+                <label><input type="checkbox" id="pg-remote" /> remote</label>
+                <label><input type="checkbox" id="pg-provider" checked /> provider icon</label>
+              </div>
+            </fieldset>
+          </div>
+
+          <div>
+            <div class="pair">
+              <div class="panel-wrap">
+                <div class="panel-label">Light</div>
+                <div class="panel panel--light">
+                  <ul class="list" id="pg-mount-light"></ul>
+                </div>
+              </div>
+              <div class="panel-wrap">
+                <div class="panel-label">Dark</div>
+                <div class="panel panel--dark">
+                  <ul class="list" id="pg-mount-dark"></ul>
+                </div>
+              </div>
+            </div>
+            <div id="pg-readout"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════ 6 ══════════════════════════════ -->
+      <section class="block" id="s6">
+        <div class="section-no">06</div>
+        <h2>Container states</h2>
+        <p>
+          Rows live in one flat <code>&lt;ul&gt;</code>: the live inbox first, then the Snoozed
+          shelf, then Settled. Shelf headers are the only chrome between them.
+        </p>
+
+        <div class="pair" style="--panel-w: 20rem">
+          <div class="panel-wrap">
+            <div class="panel-label">Light — full sidebar list</div>
+            <div class="panel panel--light" id="shelf-light"></div>
+          </div>
+          <div class="panel-wrap">
+            <div class="panel-label">Dark — full sidebar list</div>
+            <div class="panel panel--dark" id="shelf-dark"></div>
+          </div>
+        </div>
+
+        <div class="table-scroll" style="margin-top: 20px">
+          <table>
+            <thead>
+              <tr>
+                <th>Container state</th>
+                <th>Behaviour</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="name">Snoozed shelf</td>
+                <td>
+                  Sits between the inbox and Settled — out of the way, never gone. Header renders
+                  whenever anything is snoozed; rows only when expanded. <b>Collapsed by default.</b>
+                  Vanishes entirely at count&nbsp;0. Blue label + blue hairline rule.
+                </td>
+                <td class="cite">SidebarV2.tsx:1491, 2455-2487</td>
+              </tr>
+              <tr>
+                <td class="name">Settled shelf</td>
+                <td>
+                  <b>Expanded by default.</b> Muted label and border-coloured rule. Collapsing it
+                  still keeps the routed thread visible — navigating into a settled thread must never
+                  hide it.
+                </td>
+                <td class="cite">SidebarV2.tsx:1476-1486, 2488-2515</td>
+              </tr>
+              <tr>
+                <td class="name">Collapsed header</td>
+                <td>
+                  Label becomes <code>Snoozed (n)</code> / <code>Settled (n)</code> — the count is
+                  the shelf’s entire footprint when collapsed. Chevron un-rotates.
+                </td>
+                <td class="cite">SidebarV2.tsx:2471, 2499</td>
+              </tr>
+              <tr>
+                <td class="name">Settled tail paging</td>
+                <td>
+                  First 10 settled rows render; <code>Show 25 more</code> pages the rest. Recent
+                  history is the common lookup, so the deep tail stays behind an explicit click. The
+                  open thread is never hidden under it.
+                </td>
+                <td class="cite">SidebarV2.tsx:159-160, 1454-1475, 2518-2531</td>
+              </tr>
+              <tr>
+                <td class="name">Empty</td>
+                <td>
+                  When all three sections are empty: a centred prompt, branching on whether any
+                  projects exist at all.
+                </td>
+                <td class="cite">SidebarV2.tsx:2534-2545</td>
+              </tr>
+              <tr>
+                <td class="name">List reflow</td>
+                <td>
+                  AutoAnimate, <code>{duration: 150, easing: "ease-out"}</code>. Rows are keyed
+                  <code>`${threadKey}:${variant}`</code> on purpose: when a thread settles the card
+                  fades out in place and the slim row fades in at its settled position, instead of
+                  one element FLIP-sliding through every row in between. Rows are translucent, so a
+                  crossing row would read as text painted over text.
+                </td>
+                <td class="cite">SidebarV2.tsx:2183-2186, 2368, 2385-2391</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Right-click menu</h3>
+        <p>
+          A native context menu, not a DOM popover — so there is no hover/open styling on the row
+          itself when it’s up. Items, in order, all capability- and state-gated:
+          <code>New thread on {branch}</code> · <code>Settle</code>/<code>Un-settle thread</code> ·
+          <code>Snooze ▸</code> (4 presets: in 1 hour, this evening, tomorrow, next week) or
+          <code>Wake thread</code> · <code>Rename thread</code> · <code>Mark unread</code> ·
+          <code>Delete</code> (destructive). <span class="cite">SidebarV2.tsx:1985-2021</span>
+        </p>
+
+        <h3>Hover tooltip</h3>
+        <p>
+          Every row is a tooltip trigger — glass popup, <code>side="right" align="start"</code>,
+          150&nbsp;ms delay. Shows title, project, environment, branch, a branch-mismatch warning
+          (“You’re currently checked out on another branch.”), model, and the session’s last error in
+          red. <span class="cite">SidebarV2.tsx:215-301, 2362-2367</span>
+        </p>
+      </section>
+
+      <!-- ══════════════════════════════ 7 ══════════════════════════════ -->
+      <section class="block" id="s7">
+        <div class="section-no">07</div>
+        <h2>State matrix</h2>
+
+        <h4>Derived predicates — the whole logic in five lines</h4>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Predicate</th>
+                <th>Definition</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="name"><code>status</code></td>
+                <td>
+                  <code
+                    >hasPendingApprovals → "approval" · hasPendingUserInput → "input" ·
+                    session.status ∈ {running, starting} → "working" · session.status === "error" →
+                    "failed" · else "ready"</code
+                  >
+                </td>
+                <td class="cite">Sidebar.logic.ts:411-425</td>
+              </tr>
+              <tr>
+                <td class="name"><code>isUnread</code></td>
+                <td>
+                  <code>latestTurn.completedAt &gt; lastVisitedAt</code> — never-visited counts as
+                  <b>read</b>, so flipping the beta flag doesn’t light up every historical thread.
+                </td>
+                <td class="cite">Sidebar.logic.ts:223-232</td>
+              </tr>
+              <tr>
+                <td class="name"><code>isWoke</code></td>
+                <td>
+                  <code>wokeAt !== null &amp;&amp; (lastVisitedAt === null || lastVisitedAt &lt; wokeAt)</code>
+                  — unlike Done, a never-visited woke thread <em>does</em> show the pill: snoozing is
+                  an explicit act. A corrupt visit timestamp counts as never-visited rather than
+                  eating the wake signal.
+                </td>
+                <td class="cite">SidebarV2.tsx:431-433</td>
+              </tr>
+              <tr>
+                <td class="name"><code>isInFlight</code></td>
+                <td><code>status ∈ {working, approval, input}</code></td>
+                <td class="cite">SidebarV2.tsx:441</td>
+              </tr>
+              <tr>
+                <td class="name"><code>shouldRecede</code></td>
+                <td>
+                  <code
+                    >(status === "ready" || isInFlight) &amp;&amp; !isUnread &amp;&amp; !isWoke
+                    &amp;&amp; !isActive &amp;&amp; !isSelected</code
+                  >
+                  — note <code>failed</code> is excluded, so a failed row never recedes.
+                </td>
+                <td class="cite">SidebarV2.tsx:442-443</td>
+              </tr>
+              <tr>
+                <td class="name"><code>showSnoozeButton</code></td>
+                <td>
+                  <code>snoozeSupported &amp;&amp; canSnooze(thread, {now})</code>, with a derived
+                  <code>snoozeMenuOpen</code> so a stale <code>true</code> can’t permanently pin the
+                  hover actions if the button unmounts while the popover is up.
+                </td>
+                <td class="cite">SidebarV2.tsx:631-644</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Every state</h4>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>State</th>
+                <th>Source of truth</th>
+                <th>Visual delta</th>
+                <th>Cite</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="name">Working</td>
+                <td><code>session.status ∈ {running, starting}</code></td>
+                <td>
+                  <code>CircleDashedIcon</code> + “Working” + live duration ticker, sky-600/sky-400,
+                  breathing <code>animate-sidebar-working-text</code> (3.4s, opacity 1↔0.75, stepped)
+                  with <code>motion-reduce:animate-none</code>. Row dims to 70%.
+                </td>
+                <td class="cite">:447-454, 896-911</td>
+              </tr>
+              <tr>
+                <td class="name">Approval</td>
+                <td><code>hasPendingApprovals</code></td>
+                <td>“Approval”, amber-700 / amber-300, no icon. Row dims to 70%.</td>
+                <td class="cite">:455-460</td>
+              </tr>
+              <tr>
+                <td class="name">Input</td>
+                <td><code>hasPendingUserInput</code></td>
+                <td>“Input”, indigo-600 / indigo-300, no icon. Row dims to 70%.</td>
+                <td class="cite">:461-466</td>
+              </tr>
+              <tr>
+                <td class="name">Failed</td>
+                <td><code>session.status === "error"</code></td>
+                <td>
+                  “Failed”, red-700 / red-300. Title lifts to <code>text-foreground/95</code>. Never
+                  recedes, never dims.
+                </td>
+                <td class="cite">:467-472</td>
+              </tr>
+              <tr>
+                <td class="name">Woke</td>
+                <td><code>threadWokeAt()</code> vs <code>threadLastVisitedAtById</code></td>
+                <td>
+                  <code>AlarmClockIcon</code> + “Woke”, amber. Title to full
+                  <code>text-foreground</code>. Survives into the settled tail (a PR can merge while
+                  snoozed), where the slim row shows the same pill.
+                </td>
+                <td class="cite">:473-478, 783-793</td>
+              </tr>
+              <tr>
+                <td class="name">Done (unread)</td>
+                <td><code>hasUnseenCompletion</code></td>
+                <td>
+                  <code>CircleCheckIcon</code> + “Done”, emerald-700 / emerald-300. Title to full
+                  <code>text-foreground</code>. Blocks recede.
+                </td>
+                <td class="cite">:479-485</td>
+              </tr>
+              <tr>
+                <td class="name">Active (route)</td>
+                <td><code>routeThreadKey === threadKey</code></td>
+                <td>
+                  <code>bg-sidebar-row-active</code>, <code>text-sidebar-foreground</code>. Cancels
+                  recede, cancels in-flight dimming, un-dims the slim favicon.
+                </td>
+                <td class="cite">:658-659</td>
+              </tr>
+              <tr>
+                <td class="name">Multi-selected</td>
+                <td><code>useThreadSelectionStore.selectedThreadKeys</code></td>
+                <td><code>bg-sidebar-row-selected</code> (a notch quieter than active in dark).</td>
+                <td class="cite">:418, 660-661</td>
+              </tr>
+              <tr>
+                <td class="name">Hover</td>
+                <td>CSS</td>
+                <td>
+                  <code>bg-sidebar-row-hover</code>; time label fades to 0 and the action buttons
+                  fade in; slim favicon un-dims; settled PR badge takes its state colour.
+                </td>
+                <td class="cite">:663-664, 758-760, 776, 920</td>
+              </tr>
+              <tr>
+                <td class="name">Receded</td>
+                <td><code>shouldRecede</code></td>
+                <td>
+                  <code>text-sidebar-muted-foreground/75</code>, title and project drop to
+                  <code>font-normal</code>, title to <code>text-muted-foreground/80</code>. Lifts to
+                  full contrast on hover.
+                </td>
+                <td class="cite">:442-443, 662-663, 688, 874</td>
+              </tr>
+              <tr>
+                <td class="name">In-flight dim</td>
+                <td><code>isInFlight &amp;&amp; !isActive &amp;&amp; !isSelected</code></td>
+                <td>
+                  Whole row at <code>opacity-70</code>, back to 100% on hover. Inbox-zero logic:
+                  working threads aren’t your problem yet, so prominence is reserved for rows that
+                  need a human. The coloured status label still reads through.
+                </td>
+                <td class="cite">:434-441, 665-668</td>
+              </tr>
+              <tr>
+                <td class="name">Renaming</td>
+                <td><code>renamingThreadKey === threadKey</code></td>
+                <td>
+                  Title span swaps for an <code>&lt;input&gt;</code> —
+                  <code>rounded-sm border-input bg-card px-1</code>, focus border goes to
+                  <code>--foreground</code>. Entered by double-click (suppressed with modifiers or on
+                  a button/link/input); Enter commits, Escape cancels, blur commits.
+                </td>
+                <td class="cite">:564-598, 671-683</td>
+              </tr>
+              <tr>
+                <td class="name">Snooze menu open</td>
+                <td><code>snoozeMenuOpen</code></td>
+                <td>
+                  Hover actions pinned to <code>opacity-100</code> and the status label held at
+                  <code>opacity-0</code> — otherwise the pointer leaving the row would fade the
+                  actions out from under the open popover.
+                </td>
+                <td class="cite">:629-644, 886, 921</td>
+              </tr>
+              <tr>
+                <td class="name">Jump hint (⌘/Ctrl held)</td>
+                <td><code>showJumpHints</code> + <code>jumpLabelByKey</code></td>
+                <td>
+                  A mono pill floats at the row’s right edge, vertically centred, as an
+                  <em>overlay</em> — it must neither displace the status label (holding ⌘ used to
+                  blank out “Working”) nor shift layout. <code>pointer-events-none</code> so it never
+                  swallows clicks meant for the buttons it can overlap.
+                </td>
+                <td class="cite">:185-200, 833, 981</td>
+              </tr>
+              <tr>
+                <td class="name">Snoozed</td>
+                <td><code>effectiveSnoozed()</code>, <code>snoozedUntil</code></td>
+                <td>
+                  Slim row in the Snoozed shelf. The time slot shows when it comes <em>back</em>, not
+                  when it was last touched — blue, tabular. Action is
+                  <code>AlarmClockOffIcon</code> (wake now).
+                </td>
+                <td class="cite">:777-782, 802-812</td>
+              </tr>
+              <tr>
+                <td class="name">Settled</td>
+                <td>
+                  <code>effectiveSettled()</code> — <code>settledAt</code>,
+                  <code>settledOverride</code>, auto-settle after N days, or a merged/closed PR
+                </td>
+                <td>
+                  Slim row in the Settled shelf, favicon at
+                  <code>opacity-40 grayscale</code>, PR badge muted. Time label reads “how long ago
+                  did this wrap up” — same <code>resolveSettledTimestamp</code> the sort uses, so
+                  label and order can’t disagree. Action is <code>Undo2Icon</code>.
+                </td>
+                <td class="cite">:177-183, 754-769, 813-821</td>
+              </tr>
+              <tr>
+                <td class="name">Remote environment</td>
+                <td><code>thread.environmentId !== primaryEnvironmentId</code></td>
+                <td><code>ServerIcon</code> size-3.5 in the trailing cluster (card only).</td>
+                <td class="cite">:526-527, 964-968</td>
+              </tr>
+              <tr>
+                <td class="name">PR open / merged / closed</td>
+                <td><code>resolveThreadPr()</code> from the VCS status query</td>
+                <td>
+                  <code>#1234</code> in emerald-600 / violet-600 / red-600. On settled slim rows it
+                  starts at <code>text-muted-foreground/35</code> and only takes the state hue on
+                  hover.
+                </td>
+                <td class="cite">ThreadStatusIndicators.tsx:37-46, 66-96</td>
+              </tr>
+              <tr>
+                <td class="name">Branch mismatch</td>
+                <td><code>resolveLocalCheckoutBranchMismatch()</code></td>
+                <td>Warning line <b>in the tooltip only</b> — nothing on the row.</td>
+                <td class="cite">:496-501, 273-280</td>
+              </tr>
+              <tr>
+                <td class="name">Settlement unsupported</td>
+                <td><code>capabilities.threadSettlement !== true</code></td>
+                <td>Settle / Un-settle affordance is absent entirely, not disabled.</td>
+                <td class="cite">:361-363, 917, 931</td>
+              </tr>
+              <tr>
+                <td class="name">Snooze unsupported / not allowed</td>
+                <td><code>capabilities.threadSnooze</code>, <code>canSnooze()</code></td>
+                <td>
+                  Snooze button absent. Never offered on work blocked on you or with a queued turn —
+                  the server rejects both.
+                </td>
+                <td class="cite">:364-365, 633-635</td>
+              </tr>
+              <tr>
+                <td class="name">Keyboard focus</td>
+                <td><code>tabIndex={0}</code>, Enter/Space activate</td>
+                <td>
+                  <b>No visible treatment</b> — <code>outline-none</code> with no
+                  <code>focus-visible:</code> replacement. Focus <em>within</em> the row does reveal
+                  the action buttons via <code>focus-within</code>.
+                </td>
+                <td class="cite">:555-563, 657, 920</td>
+              </tr>
+              <tr>
+                <td class="name">Archived</td>
+                <td><code>archivedAt !== null</code></td>
+                <td>Not a row state — archived threads are filtered out of the list entirely.</td>
+                <td class="cite">Sidebar.tsx:3261-3264</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note">
+          <b>Not present on a V2 row</b>, in case you’re looking for them: avatar, close “×”, kebab
+          button, drag handle, nesting/indent guide, pinned state, badge counts. Thread actions come
+          from the native context menu; only projects are drag-reorderable, and that lives in Sidebar
+          V1’s project headers.
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════ 8 ══════════════════════════════ -->
+      <section class="block" id="s8">
+        <div class="section-no">08</div>
+        <h2>Tokens</h2>
+
+        <h4>Row surface — the only tokens the row surface uses</h4>
+        <div class="swatches" id="sw-surface"></div>
+
+        <h4>Status hues — hardcoded Tailwind classes, not tokens</h4>
+        <p style="font-size: 13.5px; color: var(--muted)">
+          These are written inline in the component as Tailwind utility classes. If you want them
+          themeable, they’d need promoting to CSS variables first.
+        </p>
+        <div class="swatches" id="sw-status"></div>
+
+        <h4>Geometry &amp; type</h4>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Token / class</th>
+                <th>Value</th>
+                <th>Used for</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="name"><code>--radius</code></td>
+                <td>0.625rem (10px)</td>
+                <td>Base of the radius scale</td>
+              </tr>
+              <tr>
+                <td class="name"><code>--radius-md</code> → <code>rounded-md</code></td>
+                <td>calc(--radius − 2px) = <b>8px</b></td>
+                <td>Row corners, action buttons, Show-more</td>
+              </tr>
+              <tr>
+                <td class="name"><code>--radius-sm</code> → <code>rounded-sm</code></td>
+                <td>calc(--radius − 4px) = 6px</td>
+                <td>Rename input</td>
+              </tr>
+              <tr>
+                <td class="name"><code>--sidebar-width</code></td>
+                <td>16rem (user-resizable, persisted)</td>
+                <td>Panel width</td>
+              </tr>
+              <tr>
+                <td class="name"><code>--font-sans</code></td>
+                <td>“DM Sans Variable”, “DM Sans”, -apple-system, …</td>
+                <td>Everything</td>
+              </tr>
+              <tr>
+                <td class="name"><code>--font-mono</code></td>
+                <td>“SF Mono”, “SFMono-Regular”, “JetBrains Mono”, …</td>
+                <td>PR badge, diff stats, jump pill, Show-more</td>
+              </tr>
+              <tr>
+                <td class="name"><code>text-sm</code></td>
+                <td>0.875rem / 1.25rem</td>
+                <td>Thread title — the only size at this step</td>
+              </tr>
+              <tr>
+                <td class="name"><code>text-xs</code></td>
+                <td>0.75rem / 1rem</td>
+                <td>Project, branch, status, time, PR, buttons — everything else</td>
+              </tr>
+              <tr>
+                <td class="name"><code>text-[10px]</code></td>
+                <td>10px</td>
+                <td>Jump-hint pill, snooze preset times</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Animation</h4>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Spec</th>
+                <th>Applied to</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="name"><code>sidebar-working-text</code></td>
+                <td>
+                  3.4s infinite · opacity 1 → 0.75 → 1 · <code>steps(10)</code> ramps, long holds
+                  (0–36% and 50–86%) so the compositor updates discrete frames instead of every
+                  vsync
+                </td>
+                <td>The “Working” label only, with <code>motion-reduce:animate-none</code></td>
+              </tr>
+              <tr>
+                <td class="name">AutoAnimate</td>
+                <td>150ms ease-out</td>
+                <td>Row add / remove / move in the list</td>
+              </tr>
+              <tr>
+                <td class="name"><code>transition-opacity</code></td>
+                <td>default (150ms)</td>
+                <td>Time label ↔ action buttons, slim favicon dim, in-flight row dim</td>
+              </tr>
+              <tr>
+                <td class="name"><code>transition-colors</code></td>
+                <td>default</td>
+                <td>Settled PR badge hover hue, Show-more button</td>
+              </tr>
+              <tr>
+                <td class="name"><code>transition-transform</code></td>
+                <td>default</td>
+                <td>Shelf chevrons (<code>rotate-180</code> when expanded)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note warn" style="margin-top: 18px">
+          <b>On colour accuracy.</b> The sidebar tokens above are transcribed verbatim from
+          <code>index.css</code>. Values that resolve to Tailwind’s default palette
+          (<code>zinc-*</code>, <code>sky-600</code>, …) are reproduced here from the Tailwind v4
+          palette rather than resolved from <code>node_modules</code>, which isn’t installed in this
+          checkout. The dark sidebar values are literal hexes in the source and are exact. Treat the
+          light zinc ramp and the status hues as accurate to within a rounding step — pull from the
+          running app if you need pixel-exact eyedropper values.
+        </div>
+      </section>
+
+      <footer class="foot">
+        <p style="margin: 0">
+          Generated from <code>apps/web/src/components/SidebarV2.tsx</code> (2,732 lines),
+          <code>Sidebar.logic.ts</code>, <code>ThreadStatusIndicators.tsx</code> and
+          <code>index.css</code>. Sidebar V1 (<code>Sidebar.tsx</code>, the current default when
+          <code>sidebarV2Enabled</code> is off) is a separate implementation and is not covered here.
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        /* ────────────────────────────────────────────────────────────────
+           Row builder — one function, mirroring SidebarV2Row's branches.
+           ──────────────────────────────────────────────────────────────── */
+        var ICON = {
+          working: "#i-circle-dashed",
+          done: "#i-circle-check",
+          woke: "#i-alarm-clock",
+        };
+
+        function esc(s) {
+          return String(s).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+
+        function chips(o) {
+          var wake = o.wakeLabel
+            ? '<span class="chip chip--wake">' + esc(o.wakeLabel) + "</span>"
+            : "";
+          return (
+            '<span class="chip chip--working"><svg class="ico ico-4" viewBox="0 0 24 24"><use href="' +
+            ICON.working +
+            '"/></svg><span>Working</span><span class="dur" style="font-variant-numeric:tabular-nums">' +
+            esc(o.duration || "0s") +
+            "</span></span>" +
+            '<span class="chip chip--approval">Approval</span>' +
+            '<span class="chip chip--input">Input</span>' +
+            '<span class="chip chip--failed">Failed</span>' +
+            '<span class="chip chip--woke"><svg class="ico ico-4" viewBox="0 0 24 24"><use href="' +
+            ICON.woke +
+            '"/></svg><span>Woke</span></span>' +
+            '<span class="chip chip--done"><svg class="ico ico-4" viewBox="0 0 24 24"><use href="' +
+            ICON.done +
+            '"/></svg><span>Done</span></span>' +
+            '<span class="chip chip--time">' +
+            esc(o.time || "2h") +
+            "</span>" +
+            wake
+          );
+        }
+
+        function prBadge(o) {
+          if (!o.pr) return "";
+          return (
+            '<button class="pr pr--' +
+            o.pr +
+            (o.variant === "slim" && o.variantAction === "unsettle" ? " pr--settled" : "") +
+            '">#' +
+            esc(o.prNumber || 4821) +
+            "</button>"
+          );
+        }
+
+        function actionsFor(o) {
+          if (o.variant === "slim") {
+            if (o.variantAction === "unsnooze") {
+              if (!o.snoozeSupported) return "";
+              return (
+                '<span class="actions"><button class="act act--icon" aria-label="Wake thread now">' +
+                '<svg class="ico ico-3" viewBox="0 0 24 24"><use href="#i-alarm-clock-off"/></svg></button></span>'
+              );
+            }
+            if (!o.settlementSupported) return "";
+            var icon = o.variantAction === "unsettle" ? "#i-undo" : "#i-check";
+            return (
+              '<span class="actions"><button class="act act--icon"><svg class="ico ico-3" viewBox="0 0 24 24"><use href="' +
+              icon +
+              '"/></svg></button></span>'
+            );
+          }
+          if (!o.settlementSupported && !o.snoozeSupported) return "";
+          var out = '<span class="actions">';
+          if (o.snoozeSupported) {
+            out +=
+              '<button class="act act--icon" aria-label="Snooze thread"><svg class="ico ico-3" viewBox="0 0 24 24"><use href="#i-clock"/></svg></button>';
+          }
+          if (o.settlementSupported) {
+            out +=
+              '<button class="act" aria-label="Settle thread"><svg class="ico ico-3" viewBox="0 0 24 24"><use href="#i-check"/></svg>Settle</button>';
+          }
+          return out + "</span>";
+        }
+
+        function classes(o) {
+          var c = ["row", o.variant === "slim" ? "row--slim" : "row--card"];
+          if (o.active) c.push("is-active");
+          if (o.selected) c.push("is-selected");
+          if (o.hover) c.push("is-hover");
+          if (o.menuOpen) c.push("is-menu-open");
+          if (recede(o)) c.push("is-recede");
+          if (inFlight(o) && !o.active && !o.selected) c.push("is-inflight");
+          return c.join(" ");
+        }
+
+        function inFlight(o) {
+          return o.status === "working" || o.status === "approval" || o.status === "input";
+        }
+        function recede(o) {
+          return (
+            (o.status === "ready" || inFlight(o)) &&
+            o.attention !== "done" &&
+            o.attention !== "woke" &&
+            !o.active &&
+            !o.selected
+          );
+        }
+
+        function titleEl(o) {
+          if (o.renaming) {
+            return (
+              '<input class="title-input" aria-label="Thread title" value="' +
+              esc(o.title) +
+              '" />'
+            );
+          }
+          return '<span class="title">' + esc(o.title) + "</span>";
+        }
+
+        function buildRow(opts) {
+          var o = Object.assign(
+            {
+              variant: "card",
+              variantAction: "settle",
+              status: "ready",
+              attention: "none",
+              title: "Fix sidebar row hover regression",
+              project: "t3code",
+              branch: "claude/sidebar-hover",
+              pr: null,
+              prNumber: 4821,
+              diff: null,
+              remote: false,
+              provider: true,
+              time: "2h",
+              duration: "1m 04s",
+              wakeLabel: null,
+              jump: null,
+              active: false,
+              selected: false,
+              hover: false,
+              menuOpen: false,
+              renaming: false,
+              settlementSupported: true,
+              snoozeSupported: true,
+            },
+            opts || {},
+          );
+
+          var data =
+            ' data-status="' +
+            o.status +
+            '" data-attention="' +
+            o.attention +
+            '" data-variant-action="' +
+            o.variantAction +
+            '"';
+          var jump = o.jump ? '<span class="jump">' + esc(o.jump) + "</span>" : "";
+
+          if (o.variant === "slim") {
+            return (
+              '<li><div class="' +
+              classes(o) +
+              '" role="button" tabindex="0"' +
+              data +
+              '>' +
+              '<span class="slim__favicon"><span class="favicon">T3</span></span>' +
+              titleEl(o) +
+              prBadge(o) +
+              '<span class="meta"><span class="meta__rest">' +
+              chips(o) +
+              "</span>" +
+              actionsFor(o) +
+              "</span>" +
+              jump +
+              "</div></li>"
+            );
+          }
+
+          var diff = o.diff
+            ? '<span class="diff"><span class="add">+' +
+              o.diff[0] +
+              '</span> <span class="del">−' +
+              o.diff[1] +
+              "</span></span>"
+            : "";
+          var trailing =
+            '<span class="card__trailing">' +
+            (o.remote
+              ? '<span class="server-ico"><svg class="ico ico-35" viewBox="0 0 24 24"><use href="#i-server"/></svg></span>'
+              : "") +
+            (o.provider
+              ? '<span class="dim60" style="display:inline-flex"><svg class="ico ico-35" viewBox="0 0 24 24"><use href="#i-sparkle"/></svg></span>'
+              : "") +
+            "</span>";
+
+          return (
+            '<li class="li-card"><div class="' +
+            classes(o) +
+            '" role="button" tabindex="0"' +
+            data +
+            '>' +
+            '<div class="card__box">' +
+            '<div class="card__top">' +
+            '<span class="favicon">T3</span>' +
+            (o.project
+              ? '<span class="card__project">' + esc(o.project) + "</span>"
+              : '<span style="flex:1"></span>') +
+            '<span class="meta"><span class="meta__rest">' +
+            chips(o) +
+            "</span>" +
+            actionsFor(o) +
+            "</span>" +
+            "</div>" +
+            '<div class="card__title-line">' +
+            titleEl(o) +
+            "</div>" +
+            '<div class="card__bottom">' +
+            (o.branch
+              ? '<span class="card__branch">' + esc(o.branch) + "</span>"
+              : '<span style="flex:1"></span>') +
+            prBadge(o) +
+            diff +
+            trailing +
+            "</div>" +
+            "</div>" +
+            jump +
+            "</div></li>"
+          );
+        }
+
+        /* light + dark pair for one specimen (opts may be an array of rows) */
+        function pair(opts) {
+          var row = (Array.isArray(opts) ? opts : [opts]).map(buildRow).join("");
+          return (
+            '<div class="pair">' +
+            '<div class="panel panel--light"><ul class="list">' +
+            row +
+            "</ul></div>" +
+            '<div class="panel panel--dark"><ul class="list">' +
+            row +
+            "</ul></div>" +
+            "</div>"
+          );
+        }
+
+        function renderSpecs(mountId, specs) {
+          var mount = document.getElementById(mountId);
+          if (!mount) return;
+          mount.innerHTML = specs
+            .map(function (s) {
+              return (
+                '<div class="spec">' +
+                '<p class="spec__name">' +
+                s.name +
+                (s.tag ? '<span class="tag tag--' + s.tag + '">' + s.tag + "</span>" : "") +
+                "</p>" +
+                '<p class="spec__why">' +
+                s.why +
+                "</p>" +
+                pair(s.opts) +
+                "</div>"
+              );
+            })
+            .join("");
+        }
+
+        /* ── §2 / §3 actual-size references ───────────────────────────── */
+        function mount(id, html) {
+          var el = document.getElementById(id);
+          if (el) el.innerHTML = html;
+        }
+        var realCard = buildRow({
+          status: "working",
+          pr: "open",
+          prNumber: 4821,
+          diff: [42, 7],
+          remote: true,
+        });
+        mount("real-card-light", realCard);
+        mount("real-card-dark", realCard);
+
+        var realSlim =
+          buildRow({
+            variant: "slim",
+            variantAction: "unsettle",
+            title: "Bump effect-acp to 0.14",
+            pr: "merged",
+            prNumber: 4790,
+            time: "3d",
+          }) +
+          buildRow({
+            variant: "slim",
+            variantAction: "unsnooze",
+            title: "Investigate flaky pairing test",
+            pr: null,
+            wakeLabel: "2h",
+          });
+        mount("real-slim-light", realSlim);
+        mount("real-slim-dark", realSlim);
+
+        /* ── §4 specimens ─────────────────────────────────────────────── */
+        renderSpecs("specs-status", [
+          {
+            name: "working",
+            tag: "live",
+            why: "Sky label with a breathing animation and a live duration. Row dims to 70% — it isn’t your problem yet.",
+            opts: { status: "working", pr: "open" },
+          },
+          {
+            name: "approval",
+            why: "Blocked on you. Amber, no icon. Still dims — the colour carries the signal.",
+            opts: { status: "approval", pr: "open" },
+          },
+          {
+            name: "input",
+            why: "Waiting on a reply. Indigo.",
+            opts: { status: "input" },
+          },
+          {
+            name: "failed",
+            why: "Session errored. Red, and uniquely: never recedes, never dims, title lifts to text-foreground/95.",
+            opts: { status: "failed", pr: "closed", prNumber: 4788 },
+          },
+          {
+            name: "ready + read",
+            why: "Nothing to do. The quietest a card gets: receded text, plain relative time.",
+            opts: { status: "ready", attention: "none" },
+          },
+        ]);
+
+        renderSpecs("specs-attention", [
+          {
+            name: "Done (unread)",
+            why: "Finished while you were away. Emerald check. Blocks recede — the title comes back to full contrast.",
+            opts: { status: "ready", attention: "done", pr: "open" },
+          },
+          {
+            name: "Woke",
+            why: "A snooze ended. Amber alarm clock. A woken thread reappears at its original sort position, so the pill carries all the weight.",
+            opts: { status: "ready", attention: "woke" },
+          },
+          {
+            name: "Woke, in the settled tail",
+            why: "A wake can land straight in Settled (PR merged while snoozed) — the signal survives the trip into the slim row.",
+            opts: {
+              variant: "slim",
+              variantAction: "unsettle",
+              attention: "woke",
+              pr: "merged",
+              prNumber: 4790,
+            },
+          },
+        ]);
+
+        renderSpecs("specs-surface", [
+          {
+            name: "default",
+            why: "Transparent surface. Hover it.",
+            opts: { status: "ready", attention: "done", pr: "open" },
+          },
+          {
+            name: "hover",
+            tag: "forced",
+            why: "--sidebar-row-hover. Time label out, snooze + Settle in.",
+            opts: { status: "ready", attention: "done", pr: "open", hover: true },
+          },
+          {
+            name: "active (routed thread)",
+            tag: "forced",
+            why: "--sidebar-row-active. Beats every other surface state and cancels dimming.",
+            opts: { status: "ready", active: true, pr: "open" },
+          },
+          {
+            name: "multi-selected",
+            tag: "forced",
+            why: "--sidebar-row-selected — identical to active in light, one notch quieter in dark.",
+            opts: { status: "ready", selected: true, pr: "open" },
+          },
+          {
+            name: "receded",
+            tag: "forced",
+            why: "Read, quiet, not routed: muted text at 75%, weights drop to normal.",
+            opts: { status: "ready", attention: "none" },
+          },
+          {
+            name: "renaming",
+            tag: "forced",
+            why: "Double-click the title. Enter commits, Escape cancels, blur commits.",
+            opts: { status: "ready", renaming: true, pr: "open" },
+          },
+          {
+            name: "snooze menu open",
+            tag: "forced",
+            why: "Actions pinned visible and the status label held at 0 — the pointer has left the row for the popover.",
+            opts: { status: "ready", attention: "done", menuOpen: true },
+          },
+          {
+            name: "jump hint (⌘ held)",
+            tag: "forced",
+            why: "An overlay pill, not an inline slot: it must not displace “Working” or shift layout, and must not swallow clicks.",
+            opts: { status: "working", jump: "⌘3" },
+          },
+        ]);
+
+        renderSpecs("specs-content", [
+          {
+            name: "PR — open / merged / closed",
+            why: "emerald-600 · violet-600 · red-600. Click opens the PR.",
+            opts: [
+              { status: "ready", attention: "done", pr: "open", prNumber: 4821, branch: "claude/sidebar-hover", title: "PR open" },
+              { status: "ready", attention: "none", pr: "merged", prNumber: 4790, branch: "claude/effect-acp", title: "PR merged" },
+              { status: "ready", attention: "none", pr: "closed", prNumber: 4771, branch: "claude/vcs-poll", title: "PR closed" },
+            ],
+          },
+          {
+            name: "settled row, PR muted",
+            why: "In the settled tail the badge sits at /35 and only takes its hue on hover — hover to see it.",
+            opts: {
+              variant: "slim",
+              variantAction: "unsettle",
+              pr: "merged",
+              prNumber: 4790,
+              title: "Bump effect-acp to 0.14",
+            },
+          },
+          {
+            name: "diff stats",
+            tag: "seam",
+            why: "Wired but dormant — latestTurnDiff returns null until shells carry checkpoint summaries.",
+            opts: { status: "ready", attention: "done", diff: [42, 7], pr: "open" },
+          },
+          {
+            name: "remote environment",
+            why: "ServerIcon in the trailing cluster when the thread lives on a non-primary environment.",
+            opts: { status: "ready", attention: "done", remote: true },
+          },
+          {
+            name: "no project, no branch",
+            why: "Both slots collapse to a flex spacer — the row keeps its 78px height regardless.",
+            opts: { status: "ready", project: null, branch: null, provider: false },
+          },
+          {
+            name: "snoozed — return ticket",
+            why: "The snoozed shelf replaces the timestamp with when the thread comes back. Blue, tabular.",
+            opts: {
+              variant: "slim",
+              variantAction: "unsnooze",
+              wakeLabel: "2h",
+              title: "Investigate flaky pairing test",
+              pr: null,
+            },
+          },
+        ]);
+
+        renderSpecs("specs-caps", [
+          {
+            name: "settlement unsupported",
+            tag: "forced",
+            why: "Older server: no Settle button at all. Hover — only snooze appears.",
+            opts: {
+              status: "ready",
+              attention: "done",
+              hover: true,
+              settlementSupported: false,
+            },
+          },
+          {
+            name: "snooze unsupported",
+            tag: "forced",
+            why: "No clock button. Also the state when canSnooze() is false — blocked-on-you work and queued turns.",
+            opts: { status: "ready", attention: "done", hover: true, snoozeSupported: false },
+          },
+          {
+            name: "neither supported",
+            tag: "forced",
+            why: "The whole hover-action slot never renders; the time label stays put on hover.",
+            opts: {
+              status: "ready",
+              attention: "done",
+              hover: true,
+              settlementSupported: false,
+              snoozeSupported: false,
+            },
+          },
+        ]);
+
+        /* ── §5 playground ────────────────────────────────────────────── */
+        var pgState = {
+          variant: "card",
+          status: "ready",
+          attention: "none",
+          active: false,
+          selected: false,
+          hover: false,
+          menuOpen: false,
+          renaming: false,
+          jump: null,
+          project: "t3code",
+          branch: "claude/sidebar-hover",
+          pr: "open",
+          diff: null,
+          remote: false,
+          provider: true,
+          variantAction: "settle",
+        };
+
+        function paintPlayground() {
+          pgState.variantAction = pgState.variant === "slim" ? "unsettle" : "settle";
+          var html = buildRow(pgState);
+          document.getElementById("pg-mount-light").innerHTML = html;
+          document.getElementById("pg-mount-dark").innerHTML = html;
+
+          var lines = [
+            "status        = " + pgState.status,
+            "isUnread      = " + (pgState.attention === "done"),
+            "isWoke        = " + (pgState.attention === "woke"),
+            "isInFlight    = " + inFlight(pgState),
+            "shouldRecede  = " + recede(pgState),
+            "variant       = " + pgState.variant + "  variantAction = " + pgState.variantAction,
+          ];
+          if (pgState.active && pgState.selected) {
+            lines.push("");
+            lines.push("note: isActive wins — the selected surface never paints.");
+          }
+          if (pgState.status === "failed" && pgState.attention === "none") {
+            lines.push("");
+            lines.push('note: "failed" is excluded from shouldRecede — this row stays prominent.');
+          }
+          if (pgState.attention !== "none" && pgState.status !== "ready") {
+            lines.push("");
+            lines.push(
+              "note: Done/Woke only surface when status === ready — the run status wins the label.",
+            );
+          }
+          document.getElementById("pg-readout").textContent = lines.join("\n");
+        }
+
+        function onRadio(groupId, key) {
+          var g = document.getElementById(groupId);
+          if (!g) return;
+          g.addEventListener("change", function (e) {
+            if (e.target && e.target.type === "radio") {
+              pgState[key] = e.target.value;
+              paintPlayground();
+            }
+          });
+        }
+        onRadio("pg-variant", "variant");
+        onRadio("pg-status", "status");
+        onRadio("pg-attention", "attention");
+
+        var surfaceMap = {
+          "is-active": "active",
+          "is-selected": "selected",
+          "is-hover": "hover",
+          "is-menu-open": "menuOpen",
+        };
+        var pgSurface = document.getElementById("pg-surface");
+        if (pgSurface) {
+          pgSurface.addEventListener("change", function (e) {
+            var t = e.target;
+            if (!t || t.type !== "checkbox") return;
+            if (t.dataset.cls) pgState[surfaceMap[t.dataset.cls]] = t.checked;
+            if (t.id === "pg-rename") pgState.renaming = t.checked;
+            if (t.id === "pg-jump") pgState.jump = t.checked ? "⌘3" : null;
+            paintPlayground();
+          });
+        }
+
+        var pgContent = document.getElementById("pg-content");
+        if (pgContent) {
+          pgContent.addEventListener("change", function (e) {
+            var t = e.target;
+            if (!t || t.type !== "checkbox") return;
+            if (t.id === "pg-project") pgState.project = t.checked ? "t3code" : null;
+            if (t.id === "pg-branch") pgState.branch = t.checked ? "claude/sidebar-hover" : null;
+            if (t.id === "pg-pr") pgState.pr = t.checked ? "open" : null;
+            if (t.id === "pg-diff") pgState.diff = t.checked ? [42, 7] : null;
+            if (t.id === "pg-remote") pgState.remote = t.checked;
+            if (t.id === "pg-provider") pgState.provider = t.checked;
+            paintPlayground();
+          });
+        }
+        paintPlayground();
+
+        /* ── §6 full list with shelves ────────────────────────────────── */
+        function shelfHeader(kind, label, expanded) {
+          return (
+            '<li><button class="shelf shelf--' +
+            kind +
+            (expanded ? " is-expanded" : " is-collapsed") +
+            '" aria-expanded="' +
+            expanded +
+            '">' +
+            '<span class="shelf__label">' +
+            label +
+            "</span>" +
+            '<span class="shelf__rule"></span>' +
+            '<svg class="ico ico-3" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg>' +
+            "</button></li>"
+          );
+        }
+
+        var fullList =
+          '<ul class="list">' +
+          buildRow({
+            status: "approval",
+            title: "Wire up thread snooze presets",
+            branch: "claude/snooze-presets",
+            pr: "open",
+            prNumber: 4830,
+          }) +
+          buildRow({
+            status: "working",
+            title: "Fix sidebar row hover regression",
+            branch: "claude/sidebar-hover",
+            pr: "open",
+            prNumber: 4821,
+            remote: true,
+          }) +
+          buildRow({
+            status: "ready",
+            attention: "done",
+            title: "Add settled-tail paging",
+            branch: "claude/settled-paging",
+            pr: "open",
+            prNumber: 4815,
+          }) +
+          buildRow({
+            status: "ready",
+            attention: "none",
+            title: "Rename ThreadShell projection fields",
+            branch: "claude/shell-rename",
+            pr: null,
+          }) +
+          shelfHeader("snoozed", "Snoozed (2)", false) +
+          shelfHeader("settled", "Settled", true) +
+          buildRow({
+            variant: "slim",
+            variantAction: "unsettle",
+            title: "Bump effect-acp to 0.14",
+            pr: "merged",
+            prNumber: 4790,
+            time: "3d",
+          }) +
+          buildRow({
+            variant: "slim",
+            variantAction: "unsettle",
+            title: "Drop unused vcs status poll",
+            pr: "closed",
+            prNumber: 4771,
+            time: "5d",
+          }) +
+          buildRow({
+            variant: "slim",
+            variantAction: "unsettle",
+            title: "Docs: remote environments",
+            pr: null,
+            time: "1w",
+          }) +
+          '<li><button class="showmore">Show 25 more <em>(38 settled hidden)</em></button></li>' +
+          "</ul>";
+
+        document.getElementById("shelf-light").innerHTML = fullList;
+        document.getElementById("shelf-dark").innerHTML = fullList;
+
+        /* ── §8 swatches ──────────────────────────────────────────────── */
+        function swatchGrid(mountId, rows) {
+          var mount = document.getElementById(mountId);
+          if (!mount) return;
+          mount.innerHTML = rows
+            .map(function (r) {
+              return (
+                '<div class="sw">' +
+                '<div class="sw__chip" style="display:flex">' +
+                '<i class="panel panel--light" style="flex:1;border:0;border-radius:0;padding:0;max-width:none;background:' +
+                r.light +
+                '"></i>' +
+                '<i class="panel panel--dark" style="flex:1;border:0;border-radius:0;padding:0;max-width:none;background:' +
+                r.dark +
+                '"></i>' +
+                "</div>" +
+                '<div class="sw__body">' +
+                '<div class="sw__name">' +
+                r.name +
+                "</div>" +
+                '<div class="sw__val">L&nbsp;' +
+                r.lightVal +
+                "</div>" +
+                '<div class="sw__val">D&nbsp;' +
+                r.darkVal +
+                "</div>" +
+                "</div></div>"
+              );
+            })
+            .join("");
+        }
+
+        swatchGrid("sw-surface", [
+          {
+            name: "--sidebar",
+            light: "var(--sidebar)",
+            dark: "var(--sidebar)",
+            lightVal: "zinc-50",
+            darkVal: "#000",
+          },
+          {
+            name: "--sidebar-row-hover",
+            light: "var(--sidebar-row-hover)",
+            dark: "var(--sidebar-row-hover)",
+            lightVal: "zinc-25",
+            darkVal: "color-mix(foreground 8%)",
+          },
+          {
+            name: "--sidebar-row-active",
+            light: "var(--sidebar-row-active)",
+            dark: "var(--sidebar-row-active)",
+            lightVal: "white",
+            darkVal: "color-mix(foreground 11%)",
+          },
+          {
+            name: "--sidebar-row-selected",
+            light: "var(--sidebar-row-selected)",
+            dark: "var(--sidebar-row-selected)",
+            lightVal: "white",
+            darkVal: "color-mix(foreground 7%)",
+          },
+          {
+            name: "--sidebar-foreground",
+            light: "var(--sidebar-foreground)",
+            dark: "var(--sidebar-foreground)",
+            lightVal: "zinc-800",
+            darkVal: "#f1f3f7",
+          },
+          {
+            name: "--sidebar-muted-foreground",
+            light: "var(--sidebar-muted-foreground)",
+            dark: "var(--sidebar-muted-foreground)",
+            lightVal: "zinc-500",
+            darkVal: "#a3a3a3",
+          },
+          {
+            name: "--sidebar-border",
+            light: "var(--sidebar-border)",
+            dark: "var(--sidebar-border)",
+            lightVal: "zinc-200",
+            darkVal: "rgb(255 255 255 / 8%)",
+          },
+          {
+            name: "--input (rename border)",
+            light: "var(--input)",
+            dark: "var(--input)",
+            lightVal: "zinc-300",
+            darkVal: "rgb(255 255 255 / 18%)",
+          },
+        ]);
+
+        swatchGrid("sw-status", [
+          {
+            name: "Working",
+            light: "var(--s-working)",
+            dark: "var(--s-working)",
+            lightVal: "sky-600",
+            darkVal: "sky-400",
+          },
+          {
+            name: "Approval · Woke",
+            light: "var(--s-approval)",
+            dark: "var(--s-approval)",
+            lightVal: "amber-700",
+            darkVal: "amber-300",
+          },
+          {
+            name: "Input",
+            light: "var(--s-input)",
+            dark: "var(--s-input)",
+            lightVal: "indigo-600",
+            darkVal: "indigo-300",
+          },
+          {
+            name: "Failed",
+            light: "var(--s-failed)",
+            dark: "var(--s-failed)",
+            lightVal: "red-700",
+            darkVal: "red-300",
+          },
+          {
+            name: "Done",
+            light: "var(--s-done)",
+            dark: "var(--s-done)",
+            lightVal: "emerald-700",
+            darkVal: "emerald-300",
+          },
+          {
+            name: "Snooze countdown",
+            light: "var(--s-snooze)",
+            dark: "var(--s-snooze)",
+            lightVal: "blue-600",
+            darkVal: "blue-400",
+          },
+          {
+            name: "PR open",
+            light: "var(--pr-open)",
+            dark: "var(--pr-open)",
+            lightVal: "emerald-600",
+            darkVal: "emerald-300/90",
+          },
+          {
+            name: "PR merged",
+            light: "var(--pr-merged)",
+            dark: "var(--pr-merged)",
+            lightVal: "violet-600",
+            darkVal: "violet-300/90",
+          },
+          {
+            name: "PR closed",
+            light: "var(--pr-closed)",
+            dark: "var(--pr-closed)",
+            lightVal: "red-600",
+            darkVal: "red-300/90",
+          },
+        ]);
+
+        /* ── live duration ticker on the "Working" specimens ──────────── */
+        var t0 = 64;
+        setInterval(function () {
+          t0 += 1;
+          var m = Math.floor(t0 / 60);
+          var s = t0 % 60;
+          var label = m > 0 ? m + "m " + (s < 10 ? "0" : "") + s + "s" : s + "s";
+          var nodes = document.querySelectorAll(".dur");
+          for (var i = 0; i < nodes.length; i++) nodes[i].textContent = label;
+        }, 1000);
+      })();
+    </script>
+  </body>
+</html>
