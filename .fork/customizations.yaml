@@ -65,6 +65,27 @@
   verify:
     - apps/web/src/__fork_guards__/forkWorkflowDocs.test.ts
 
+- id: release-upstream-only
+  intent: >
+    The Release workflow never runs on this fork. Upstream releases on a
+    3-hourly cron and on version tags, publishing the CLI to npm and cutting
+    GitHub Releases; neither is this fork's job, and the fork has no npm or
+    release credentials. Both entry-point jobs (check_changes, preflight) are
+    gated on the repository being upstream, and every downstream job already
+    requires preflight to have succeeded, so the gate cascades to the whole
+    workflow. Until this gate existed the runs did not publish only because
+    they hung forever on Blacksmith runners the fork cannot schedule (see
+    ci-runners) — an accident, not a safeguard. Keep the gate independent of
+    the runner labels so retiring ci-runners can never start publishing from
+    the fork.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - .github/workflows/release.yml
+  verify:
+    - apps/web/src/__fork_guards__/releaseUpstreamOnly.test.ts
+
 - id: fork-marker
   intent: >
     The running app is identifiable as this fork: the document root carries
