@@ -129,7 +129,10 @@ jobs:
           name: T3 Code (fork) ${{ steps.meta.outputs.tag }}
           generate_release_notes: true
           prerelease: ${{ inputs.prerelease }}
-          make_latest: ${{ !fromJSON(inputs.prerelease) }}
+          # `inputs.prerelease` is already a boolean for a typed dispatch
+          # input, so negate it directly — fromJSON() here would be handed a
+          # boolean where it expects a string.
+          make_latest: ${{ !inputs.prerelease }}
           files: |
             release-publish/*.dmg
             release-publish/*.zip
