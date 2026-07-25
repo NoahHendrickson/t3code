@@ -95,8 +95,48 @@ for the full explanation. The short version:
 ## Upstream files modified by this fork
 
 Keep this list as short as possible — it is exactly your merge-conflict surface.
+The number is upstream commits touching that file in a representative 14 days.
 
-- `apps/web/src/main.tsx` — one import line for `theme.override.css` (1 commit/14d upstream)
+**Theming (1 file)**
+
+- `apps/web/src/main.tsx` (1) — one import line for `theme.override.css`
+
+**Identity rename (13 files, all cold: 0–2)**
+
+- `apps/desktop/src/app/DesktopEnvironment.ts` (1) — `APP_BASE_NAME`, both userData dir
+  names, `appUserModelId`, Linux entry/WM class
+- `apps/desktop/src/electron/ElectronProtocol.ts` (0) — both URL schemes
+- `apps/desktop/scripts/electron-launcher.mjs` (1) — `APP_DISPLAY_NAME`, protocol schemes
+- `apps/desktop/package.json` (0) — `productName`
+- `apps/web/src/branding.ts` (0) — display-name fallback
+- `apps/web/src/components/SplashScreen.tsx` (0) — alt text
+- `scripts/build-desktop-artifact.ts` (1) — `DESKTOP_APP_ID` (macOS bundle id)
+- 6 test files (0–2 each) that assert the old strings
+
+## App identity
+
+This fork is **T3 Code Fork**, deliberately distinct from upstream so a build can
+coexist with an installed T3 Code (Alpha):
+
+|                 | Upstream                               | This fork                               |
+| --------------- | -------------------------------------- | --------------------------------------- |
+| Display name    | T3 Code (Alpha) / (Dev)                | T3 Code Fork (Alpha) / (Dev)            |
+| userData (prod) | `~/Library/Application Support/t3code` | `…/t3code-fork`                         |
+| userData (dev)  | `…/t3code-dev`                         | `…/t3code-fork-dev`                     |
+| URL scheme      | `t3code://` / `t3code-dev://`          | `t3code-fork://` / `t3code-fork-dev://` |
+| Bundle id       | `com.t3tools.t3code`                   | `com.t3tools.t3code.fork`               |
+
+Why this mattered: `DesktopAppIdentity.ts` resolves userData as
+`legacyPathExists ? legacyPath : userDataDirName`. Renaming only `userDataDirName`
+would have been silently defeated whenever the legacy directory existed, so
+`legacyUserDataDirName` had to move too.
+
+The base name is `"T3 Code Fork"`, not `"T3 Code (Fork)"`, because
+`formatAppDisplayName` appends the stage as `${baseName} (${stage})` — the
+parenthesised form would render "T3 Code (Fork) (Dev)".
+
+`com.t3tools.t3code.fork` still sits in T3's reverse-DNS namespace. Fine for
+private use; move it to a domain you control before distributing anything.
 
 ## Running it
 
