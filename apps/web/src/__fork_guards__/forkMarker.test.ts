@@ -11,11 +11,7 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  applyForkMarker,
-  FORK_MARKER_ATTRIBUTE,
-  FORK_MARKER_VALUE,
-} from "../custom/forkMarker";
+import { applyForkMarker, FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");

@@ -12,37 +12,37 @@ That is not an accident — it is the first application of the principle this do
 
 Measured against `upstream/main` on 2026-07-25.
 
-| Metric | Value |
-| --- | --- |
-| Fork divergence from upstream today | `0` ahead, `0` behind — clean slate |
-| Upstream commits, last 30 days | **200** (~7/day) |
-| Of those, touching `apps/web` | **113** (~4/day) |
-| Of those, touching `apps/web/src/index.css` | **23** |
+| Metric                                      | Value                               |
+| ------------------------------------------- | ----------------------------------- |
+| Fork divergence from upstream today         | `0` ahead, `0` behind — clean slate |
+| Upstream commits, last 30 days              | **200** (~7/day)                    |
+| Of those, touching `apps/web`               | **113** (~4/day)                    |
+| Of those, touching `apps/web/src/index.css` | **23**                              |
 
 Churn concentrates in exactly the files a real UI overhaul wants to edit:
 
-| File | Commits (60d) | Lines | Line churn (60d) |
-| --- | --- | --- | --- |
-| `apps/web/src/components/ChatView.tsx` | 24 | 6,053 | +6,633 / −580 |
-| `apps/web/src/index.css` | 23 | 1,580 | +1,943 / −363 |
-| `apps/web/src/components/SidebarV2.tsx` | 21 | 2,732 | — |
-| `apps/web/src/components/Sidebar.tsx` | 16 | — | — |
-| `apps/web/src/components/chat/ChatComposer.tsx` | 15 | 2,747 | — |
+| File                                            | Commits (60d) | Lines | Line churn (60d) |
+| ----------------------------------------------- | ------------- | ----- | ---------------- |
+| `apps/web/src/components/ChatView.tsx`          | 24            | 6,053 | +6,633 / −580    |
+| `apps/web/src/index.css`                        | 23            | 1,580 | +1,943 / −363    |
+| `apps/web/src/components/SidebarV2.tsx`         | 21            | 2,732 | —                |
+| `apps/web/src/components/Sidebar.tsx`           | 16            | —     | —                |
+| `apps/web/src/components/chat/ChatComposer.tsx` | 15            | 2,747 | —                |
 
 `ChatView.tsx` more than doubled in size in two months. It is not a file — it is a moving target.
 
 Contrast with the low-churn seams:
 
-| File | Commits (60d) |
-| --- | --- |
-| `apps/web/vite.config.ts` | **2** |
-| `apps/web/src/main.tsx` | **2** |
-| `vite.config.ts` (root) | **1** |
-| `apps/web/src/AppRoot.tsx` | **1** |
+| File                       | Commits (60d) |
+| -------------------------- | ------------- |
+| `apps/web/vite.config.ts`  | **2**         |
+| `apps/web/src/main.tsx`    | **2**         |
+| `vite.config.ts` (root)    | **1**         |
+| `apps/web/src/AppRoot.tsx` | **1**         |
 
 **The single most important conclusion:** a customization anchored in `vite.config.ts` costs ~2
 conflict opportunities per two months. The same customization inlined into `ChatView.tsx` costs 24.
-That is a **12x** difference in maintenance load, and it is decided by *where you put the change*,
+That is a **12x** difference in maintenance load, and it is decided by _where you put the change_,
 not by how good the automation is.
 
 Automation is the easy half of this problem. Conflict surface is the real lever.
@@ -75,12 +75,12 @@ Rules:
 
 ### Rebase, not merge
 
-> **Amendment (2026-07-25, operational):** the automated flow runs *merge-based* syncs — the
+> **Amendment (2026-07-25, operational):** the automated flow runs _merge-based_ syncs — the
 > routine merges `origin/main` into a `claude/sync-*` branch cut from `custom` and PRs that into
 > `custom`. Rebasing would rewrite `custom`'s history, and the PR-gated flow (no force-push to
 > `custom`) would then re-merge duplicated commits every round. The delta question stays
 > answerable as `git log main..custom --no-merges` / `git diff main...custom`. Rebase remains the
-> right tool for *manual* history cleanup, where a force-push of `custom` is a deliberate act.
+> right tool for _manual_ history cleanup, where a force-push of `custom` is a deliberate act.
 
 Merging upstream into `custom` resolves each conflict permanently and needs no force-push — which
 sounds better until you try to answer "what have I changed?" six months in, and the answer is
@@ -92,10 +92,12 @@ over here:
 
 1. **`git rerere`** replays previously-recorded conflict resolutions automatically. Enable it, and
    commit the cache so the cloud agent inherits your resolution history:
+
    ```bash
    git config rerere.enabled true
    git config rerere.autoUpdate true
    ```
+
    Persist `.git/rr-cache` to a `fork/rerere-cache` branch and restore it at the start of every
    automated run. Without this, every routine run starts amnesiac and re-solves solved problems.
 
@@ -140,12 +142,12 @@ and gets your version. Your diff against upstream becomes: **three small config 
 upstream has never seen.** Structural UI changes, restructured layouts, replaced components — all
 at zero merge cost.
 
-| File | Role |
-| --- | --- |
-| `apps/web/fork/overrideResolver.ts` | Pure resolution rules — no Vite import, fully unit-testable |
-| `apps/web/fork/vitePluginForkOverrides.ts` | Plugin shell: stat cache + dev-server invalidation |
-| `apps/web/fork/overrideResolver.test.ts` | Resolution tests + the shadow-tree integrity guard |
-| `apps/web/src/overrides/` | The shadow tree (see its `README.md` for usage) |
+| File                                       | Role                                                        |
+| ------------------------------------------ | ----------------------------------------------------------- |
+| `apps/web/fork/overrideResolver.ts`        | Pure resolution rules — no Vite import, fully unit-testable |
+| `apps/web/fork/vitePluginForkOverrides.ts` | Plugin shell: stat cache + dev-server invalidation          |
+| `apps/web/fork/overrideResolver.test.ts`   | Resolution tests + the shadow-tree integrity guard          |
+| `apps/web/src/overrides/`                  | The shadow tree (see its `README.md` for usage)             |
 
 Wiring, all in files with near-zero upstream churn (§1):
 
@@ -167,11 +169,11 @@ Three behaviours worth knowing, each covered by a test:
 
 **Known gap:** tsconfig gives type parity for `~/` imports only. Relative imports type-check
 against upstream while the bundler loads the override, so an override that changes a module's
-*public API* type-checks clean and breaks at runtime. Keep overrides API-compatible until this is
+_public API_ type-checks clean and breaks at runtime. Keep overrides API-compatible until this is
 closed by generated contract assertions (`typeof import(…)` assignability per shadowed module).
 
 **The honest trade-off:** a shadowed file is a hard fork of that file. You stop receiving upstream
-improvements to it. This is unavoidable for genuinely divergent UI, but it must be *visible* rather
+improvements to it. This is unavoidable for genuinely divergent UI, but it must be _visible_ rather
 than silent — which is exactly what the drift detector in §5 is for: when upstream changes a file
 you shadow, you get told, with the upstream diff, and decide whether to port it.
 
@@ -183,7 +185,7 @@ intend to own the chat surface.
 ### Tier 3 — Composition seams
 
 Before shadowing a big component, check whether the change can be expressed as a wrapper: shadow
-the *parent* that renders it, and have your version render upstream's child with different props
+the _parent_ that renders it, and have your version render upstream's child with different props
 or inside your own chrome. You keep upstream's internals and own only the arrangement.
 
 The `ui/` primitives (44 shadcn-style files, mostly `cva` variant tables) are the highest-leverage
@@ -223,7 +225,7 @@ and never get "resolved away."
 ### 4a. `.fork/customizations.yaml`
 
 The machine- and human-readable register of every intentional deviation. This is what the agent
-reads before resolving a conflict, so it knows *intent* rather than guessing from a diff.
+reads before resolving a conflict, so it knows _intent_ rather than guessing from a diff.
 
 ```yaml
 - id: composer-glass-surface
@@ -235,7 +237,7 @@ reads before resolving a conflict, so it knows *intent* rather than guessing fro
     - apps/web/src/overrides/components/chat/ChatComposer.tsx
     - apps/web/src/theme.custom.css
   shadows:
-    - apps/web/src/components/chat/ChatComposer.tsx   # watch upstream for drift
+    - apps/web/src/components/chat/ChatComposer.tsx # watch upstream for drift
   verify:
     - apps/web/src/__fork_guards__/composer-glass.test.tsx
 ```
@@ -246,14 +248,14 @@ Assertions that your UI invariants still hold. The repo already runs a `unit` Vi
 `src/**/*.test.{ts,tsx}` with browser-mode tests (`AppRoot.test.tsx`, `MessagesTimeline.test.tsx`,
 `sidebar.test.tsx` are working precedents to copy).
 
-Write one guard per manifest entry, asserting the *outcome*, not the implementation:
+Write one guard per manifest entry, asserting the _outcome_, not the implementation:
 
 ```tsx
 // Fails loudly if a "clean" rebase silently drops the customization.
 it("composer renders on the translucent glass surface", () => {
-  render(<ChatComposer {...fixture} />)
-  expect(screen.getByTestId("composer-surface")).toHaveClass("backdrop-blur-glass")
-})
+  render(<ChatComposer {...fixture} />);
+  expect(screen.getByTestId("composer-surface")).toHaveClass("backdrop-blur-glass");
+});
 ```
 
 **This is the highest-leverage single thing in this whole document.** It converts a silent,
@@ -287,7 +289,7 @@ patched, that is the signal worth acting on.
 Where the agent earns its cost: semantic conflict resolution against stated intent.
 
 - **Trigger:** daily schedule. Daily beats weekly — absorbing ~7 upstream commits produces small,
-  tractable conflicts; absorbing ~50 produces a mess. Ideally, make it *event-driven* instead:
+  tractable conflicts; absorbing ~50 produces a mess. Ideally, make it _event-driven_ instead:
   have Layer 1's drift detector `POST` to the routine's **API trigger** endpoint with the list of
   drifting files as `text`, so the routine runs when there is real work rather than every day
   regardless. (Routine prompts must explicitly opt into reading the fire payload — the docs are
@@ -299,13 +301,13 @@ Where the agent earns its cost: semantic conflict resolution against stated inte
   1. Restore the `rerere` cache from `fork/rerere-cache`.
   2. `git rebase origin/main` onto `custom`.
   3. On conflict: read `.fork/customizations.yaml` for the affected entry's stated **intent**, and
-     resolve to preserve *that*, not to preserve the literal old lines. This is the step no script
+     resolve to preserve _that_, not to preserve the literal old lines. This is the step no script
      can do.
   4. Run the guard suite, `vp check`, and `vpr typecheck`.
   5. Save the updated `rerere` cache back.
   6. Open a PR from `claude/sync-YYYY-MM-DD` into `custom`, with a summary of what upstream changed,
      which customizations needed rework, and why.
-- **Auto-merge when:** rebase was conflict-free *and* the full guard suite is green. Otherwise the
+- **Auto-merge when:** rebase was conflict-free _and_ the full guard suite is green. Otherwise the
   PR waits for you. This is the correct place to draw the human-in-the-loop line — you review
   judgment calls, not clean fast-forwards.
 
@@ -322,7 +324,7 @@ looking only at pixels, is a real one.
 ### Constraints found in the docs — read these before building
 
 - **No GitHub trigger on upstream.** GitHub triggers require the Claude GitHub App installed on the
-  repository, and only fire for repositories connected to *your* account. You do not control
+  repository, and only fire for repositories connected to _your_ account. You do not control
   `pingdotgg/t3code`, so upstream pushes and releases will never webhook you. Polling from Layer 1
   is not a shortcut — it is the only option. Plan around it.
 - **Daily routine caps:** Pro 5 runs/day, Max 15, Team/Enterprise 25. A daily sync + per-PR
@@ -335,7 +337,7 @@ looking only at pixels, is a real one.
 - **Green status ≠ success.** The docs are explicit: a green run means the session exited without
   infrastructure error, not that the task worked. Your guard suite is what actually tells you the
   sync was good. Do not treat the routine's status dot as a signal.
-- `/schedule` is unavailable *from inside* a cloud session — create and edit routines at
+- `/schedule` is unavailable _from inside_ a cloud session — create and edit routines at
   [claude.ai/code/routines](https://claude.ai/code/routines) or from the local CLI.
 
 ---
@@ -344,15 +346,15 @@ looking only at pixels, is a real one.
 
 Deliberately ordered so the safety net exists before the automation that needs it.
 
-| # | Step | Why here |
-| --- | --- | --- |
-| 1 | Create `custom` off today's `main`; stop committing to `main` | Free right now — the fork is at 0/0 divergence. This is the cheapest this will ever be. |
-| 2 | ~~Land the Tier-2 override resolver~~ — **done** | Had to exist *before* any UI change, or those changes land as Tier-4 inline edits and inherit the churn. |
-| 3 | Add `.fork/customizations.yaml` + first guard tests | The safety net has to predate the automation that can silently tear it. |
-| 4 | Layer 1 mirror workflow + drift detector | Deterministic, free, useful standalone. |
-| 5 | Layer 2 sync routine, opening PRs only (no auto-merge) | Build trust by watching it work for a couple of weeks. |
-| 6 | Layer 3 verification routine | Add once there are real PRs to verify. |
-| 7 | Enable auto-merge for clean + green syncs | Only after the guard suite has demonstrably caught something. |
+| #   | Step                                                          | Why here                                                                                                 |
+| --- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 1   | Create `custom` off today's `main`; stop committing to `main` | Free right now — the fork is at 0/0 divergence. This is the cheapest this will ever be.                  |
+| 2   | ~~Land the Tier-2 override resolver~~ — **done**              | Had to exist _before_ any UI change, or those changes land as Tier-4 inline edits and inherit the churn. |
+| 3   | Add `.fork/customizations.yaml` + first guard tests           | The safety net has to predate the automation that can silently tear it.                                  |
+| 4   | Layer 1 mirror workflow + drift detector                      | Deterministic, free, useful standalone.                                                                  |
+| 5   | Layer 2 sync routine, opening PRs only (no auto-merge)        | Build trust by watching it work for a couple of weeks.                                                   |
+| 6   | Layer 3 verification routine                                  | Add once there are real PRs to verify.                                                                   |
+| 7   | Enable auto-merge for clean + green syncs                     | Only after the guard suite has demonstrably caught something.                                            |
 
 ## 7. "Can't we skip merging entirely and just consume upstream's diffs additively?"
 
@@ -361,15 +363,15 @@ that is right is the foundation of this whole design.
 
 ### The literal version does not work
 
-The literal version — read each upstream diff, take only the lines it *adds*, and graft them onto
+The literal version — read each upstream diff, take only the lines it _adds_, and graft them onto
 our tree without ever merging — fails for reasons that are structural, not tooling gaps:
 
 1. **Upstream diffs are not additive.** Real changes are refactors, renames, deletions, and
    signature changes. In the last 60 days `ChatView.tsx` alone saw −580 lines removed against
-   +6,633 added, and the added lines *reference the removed lines' replacements*. Take the
+   +6,633 added, and the added lines _reference the removed lines' replacements_. Take the
    additions without the modifications and the result does not compile — the new code calls
    functions whose signatures we declined to update.
-2. **Nobody has ever run the tree you'd synthesize.** Upstream's CI validates *their* tree. A
+2. **Nobody has ever run the tree you'd synthesize.** Upstream's CI validates _their_ tree. A
    selectively-grafted tree is a combination that has never existed anywhere — every sync would
    produce a build with no provenance, and every bug in it would be yours alone to debug.
 3. **Fixes are frequently subtractive.** Bug fixes and security patches are often deletions or
@@ -383,40 +385,40 @@ our tree without ever merging — fails for reasons that are structural, not too
 
 Flip the polarity, and the intuition becomes correct — and buildable:
 
-> **Upstream's changes flow in wholesale and untouched. *Your* changes are the additive layer.**
+> **Upstream's changes flow in wholesale and untouched. _Your_ changes are the additive layer.**
 
 That is precisely the §2 topology plus the §3 Tier system:
 
 - `main` fast-forwards to upstream. No merging, ever, in the meaningful sense — their tree arrives
   exactly as their CI validated it.
 - Your delta lives in files upstream has never seen (`.fork/`, `src/custom/`, `src/overrides/`,
-  `theme.custom.css`) that *win at build time* via the override resolver. Git never has to merge
+  `theme.custom.css`) that _win at build time_ via the override resolver. Git never has to merge
   upstream into your files, because from git's perspective your files don't overlap with theirs.
 - The result satisfies the actual goal behind the question — "we don't merge their updates, we
   stay additive" — without the compile-breakage, provenance, and compounding-drift problems,
   because the additive layer is on the side you control.
 
 The residual — the only place anything merge-like ever happens — is shadowed files. When upstream
-improves a file you've overridden, you are not *forced* to reconcile; the drift detector (§5,
+improves a file you've overridden, you are not _forced_ to reconcile; the drift detector (§5,
 Layer 1) surfaces the upstream diff and you (or the sync routine) **choose**: port it, or
 explicitly decline it. Which brings us to the workflow the question was really reaching for.
 
 ### "Look at what the diffs are" — the porting loop, done additively
 
-There *is* a legitimate diff-reading, additive-from-our-side workflow, and it is the right job for
+There _is_ a legitimate diff-reading, additive-from-our-side workflow, and it is the right job for
 a cloud agent:
 
 1. Layer 1 detects upstream touched `components/chat/ChatComposer.tsx`, which we shadow.
 2. The sync routine reads upstream's diff **as intent, not as text**: "they added paste-to-attach
    handling to the composer."
-3. It applies that intent to *our* `overrides/.../ChatComposer.tsx` — a semantic port into a file
+3. It applies that intent to _our_ `overrides/.../ChatComposer.tsx` — a semantic port into a file
    we own, not a textual merge into a file we share. Because shadow copies keep their imports
    upstream-identical (§3, Tier 2), this is usually a clean 3-way merge; when it isn't, the agent
    reasons from `customizations.yaml` intent.
 4. Guard tests confirm our invariants survived; the port lands as an ordinary fork-owned commit.
 
-So: upstream-diffs-consumed-additively is unsound as a *repo strategy*, but exactly right as a
-*shadowed-file maintenance strategy* — and the narrower the shadow tree (prefer Tier 1/3 over
+So: upstream-diffs-consumed-additively is unsound as a _repo strategy_, but exactly right as a
+_shadowed-file maintenance strategy_ — and the narrower the shadow tree (prefer Tier 1/3 over
 Tier 2, prefer leaf primitives over `ChatView.tsx`), the less of this loop you ever run.
 
 ---

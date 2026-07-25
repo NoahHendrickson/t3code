@@ -19,10 +19,7 @@ const repoRoot = NodePath.resolve(
 
 describe("fork guard: ci-on-custom", () => {
   it("keeps the custom branch in CI's push triggers", () => {
-    const ci = NodeFS.readFileSync(
-      NodePath.join(repoRoot, ".github/workflows/ci.yml"),
-      "utf8",
-    );
+    const ci = NodeFS.readFileSync(NodePath.join(repoRoot, ".github/workflows/ci.yml"), "utf8");
     expect(ci).toMatch(/push:\s*\n\s+branches:\s*\n(?:.*\n)*?\s+- custom/u);
   });
 });
