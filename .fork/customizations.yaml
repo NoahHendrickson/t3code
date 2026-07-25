@@ -109,6 +109,36 @@
   verify:
     - apps/web/src/__fork_guards__/forkDesktopRelease.test.ts
 
+- id: fork-app-identity
+  intent: >
+    A packaged fork build is a different application from an installed
+    upstream release, and the two never share state. Upstream's release and
+    this fork's build are both non-development builds, so every identity
+    upstream derives from "is this a dev build" collapses onto the same value
+    for both: the same bundle id, the same "T3 Code (Alpha).app" path in
+    /Applications, the same ~/.t3/userdata state directory holding
+    state.sqlite and secrets, and the same Electron user data directory.
+    Installing a fork build therefore offered to replace the real app, and
+    running one would have adopted its live database — including the legacy
+    directory upstream migrates from, which is why legacyUserDataDirName is
+    redirected too rather than left pointing at "T3 Code (Alpha)". Fork builds
+    use the bundle id com.t3tools.t3code.fork, install as "T3 Code Fork.app",
+    and keep state in userdata-fork. Development paths are deliberately
+    untouched: `vp dev` in this repo is already the fork, and renaming them
+    would strand existing dev state. The URL scheme is also deliberately left
+    shared — t3code:// is the app's own internal origin, not just a deep-link
+    handler, so changing only the registration would be incoherent; two
+    installed apps contend for the scheme, which is untidy but not
+    destructive.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/desktop/src/app/DesktopEnvironment.ts
+    - scripts/build-desktop-artifact.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkAppIdentity.test.ts
+
 - id: fork-marker
   intent: >
     The running app is identifiable as this fork: the document root carries

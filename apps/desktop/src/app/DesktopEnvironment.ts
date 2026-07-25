@@ -76,7 +76,9 @@ export class DesktopEnvironment extends Context.Service<
   }
 >()("@t3tools/desktop/app/DesktopEnvironment") {}
 
-const APP_BASE_NAME = "T3 Code";
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+const APP_BASE_NAME = "T3 Code Fork";
+// fork:end fork-app-identity
 
 function resolveDesktopAppStageLabel(input: {
   readonly isDevelopment: boolean;
@@ -156,12 +158,24 @@ const make = Effect.fn("desktop.environment.make")(function* (
     appVersion: input.appVersion,
   });
   const displayName = branding.displayName;
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  // Every packaged-build path that upstream points at shared "t3code" names is
+  // redirected to a fork-owned name. Upstream's release and this fork's build
+  // are both non-development builds carrying the same bundle id, so without
+  // this they resolve to the same state directory and the same Electron user
+  // data directory, and the fork adopts the installed app's live database.
+  // Development paths are left alone: `vp dev` in this repo is already the
+  // fork, and moving them would strand the dev state that exists today.
   const stateDir = path.join(
     baseDir,
-    isDevelopment && Option.isNone(configuredBaseDir) ? "dev" : "userdata",
+    isDevelopment && Option.isNone(configuredBaseDir) ? "dev" : "userdata-fork",
   );
-  const userDataDirName = isDevelopment ? "t3code-dev" : "t3code";
-  const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+  const userDataDirName = isDevelopment ? "t3code-dev" : "t3code-fork";
+  // Upstream migrates from a legacy directory when one exists. Pointing that at
+  // upstream's own "T3 Code (Alpha)" would hand the fork the real app's data
+  // through the back door even with the names above separated.
+  const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Fork)";
+  // fork:end fork-app-identity
   const resourcesPath = input.resourcesPath;
 
   return DesktopEnvironment.of({
@@ -200,11 +214,13 @@ const make = Effect.fn("desktop.environment.make")(function* (
     otlpExportIntervalMs: config.otlpExportIntervalMs,
     branding,
     displayName,
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
     appUserModelId: Option.getOrElse(config.appUserModelIdOverride, () =>
-      isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code",
+      isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code.fork",
     ),
-    linuxDesktopEntryName: isDevelopment ? "t3code-dev.desktop" : "t3code.desktop",
-    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code",
+    linuxDesktopEntryName: isDevelopment ? "t3code-dev.desktop" : "t3code-fork.desktop",
+    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code-fork",
+    // fork:end fork-app-identity
     userDataDirName,
     legacyUserDataDirName,
     defaultDesktopSettings: DesktopAppSettings.resolveDefaultDesktopSettings(input.appVersion),
