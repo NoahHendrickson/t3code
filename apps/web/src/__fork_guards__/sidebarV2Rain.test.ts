@@ -61,6 +61,23 @@ function headOffset(percent: number, row: number): number {
   return (percent / 100) * RAIN_SPAN - 1.5 - row;
 }
 
+/** What the browser actually paints between two stops: `linear` timing on an
+    opacity keyframe is a straight line, so this is the shipped curve. */
+function interpolate(stops: Stop[], percent: number): number {
+  for (let index = 1; index < stops.length; index++) {
+    const previous = stops[index - 1];
+    const current = stops[index];
+    if (previous === undefined || current === undefined) break;
+    if (percent <= current.percent) {
+      const span = current.percent - previous.percent;
+      if (span === 0) return current.opacity;
+      const t = (percent - previous.percent) / span;
+      return previous.opacity + (current.opacity - previous.opacity) * t;
+    }
+  }
+  return stops.at(-1)?.opacity ?? 0;
+}
+
 describe("fork guard: sidebar-v2 rain keyframes", () => {
   const css = read("src/theme.custom.css");
 
@@ -131,6 +148,29 @@ describe("fork guard: sidebar-v2 rain keyframes", () => {
     expect(tail.length).toBeGreaterThan(0);
     expect(dropAlpha(4.9)).toBe(0);
     expect(rainAlpha(4.9)).toBeGreaterThan(0);
+  });
+
+  it("tracks the reference curve once the browser interpolates between stops", () => {
+    // Stop-for-stop fidelity is not the whole story: what ships is the linear
+    // interpolation between them, and a table could sample the curve perfectly
+    // yet still cut the corner off a peak. This pins the shipped motion.
+    let sum = 0;
+    let count = 0;
+    let max = 0;
+    for (let row = 0; row < ROWS; row++) {
+      const stops = keyframeStops(css, row);
+      for (let step = 0; step <= 4000; step++) {
+        const percent = (step / 4000) * 100;
+        const error = Math.abs(interpolate(stops, percent) - rainAlpha(headOffset(percent, row)));
+        sum += error;
+        count++;
+        max = Math.max(max, error);
+      }
+    }
+    // Measured 1.08e-3 mean / 0.0339 max; the worst point is the steep rise
+    // into row 0's peak. Loosening either bound means the motion changed.
+    expect(sum / count).toBeLessThan(1.5e-3);
+    expect(max).toBeLessThan(0.035);
   });
 
   it("keeps the keyframes out of the @theme block Tailwind prunes", () => {

@@ -78,8 +78,9 @@
 
    GENERATED, do not hand-edit: `__fork_guards__/sidebarV2Rain.test.ts`
    re-derives this whole table from the Swift constants and fails if it drifts.
-   Verified against the reference at <=0.046 absolute opacity error away from
-   the loop seam (mean 1.1e-3). */
+   Interpolating these stops tracks the reference curve to 1.08e-3 mean and
+   0.034 max absolute opacity (100k samples); the worst point is the steep rise
+   into row 0's peak, not the loop seam. The guard test asserts both bounds. */
 @keyframes sidebar-v2-rain-0 {
   0% {
     opacity: 0;
