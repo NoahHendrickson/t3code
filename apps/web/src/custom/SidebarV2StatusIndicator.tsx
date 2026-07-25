@@ -15,12 +15,15 @@ import { cn } from "~/lib/utils";
     branch name, and the row already says what it is through color plus the
     duration readout.
 
-    Known limit (WCAG 1.4.1): form only separates rain / dot / clock, so the four
-    settled states — done, approval, input, failed — are one 8px dot apart from
-    each other and differ by hue alone. Screen readers get the `role="status"`
-    label SidebarV2 renders alongside the mark; color-blind sighted users
-    currently do not. Differentiating the dot shapes (a ring for approval, a
-    hollow dot for input) is the open follow-up. */
+    Known limit, accepted (WCAG 1.4.1): form only separates rain / dot / clock,
+    so the four settled states — done, approval, input, failed — are one 8px dot
+    apart and differ by hue alone. Screen readers get the `role="status"` label
+    SidebarV2 renders alongside the mark; sighted users with a color vision
+    deficiency do not, and done/failed is the pair that collapses first. If that
+    ever needs fixing, vary the dot's fill rather than its shape (ring for
+    approval, hollow for input) — it keeps the all-circles vocabulary this is
+    ported from, and `SidebarV2WokeMark` below is precedent for breaking dot
+    uniformity when a state genuinely needs it. */
 export type SidebarV2StatusTone = "working" | "done" | "approval" | "input" | "failed";
 
 /** The tones a *dot* can carry. `working` is excluded by construction: a working
