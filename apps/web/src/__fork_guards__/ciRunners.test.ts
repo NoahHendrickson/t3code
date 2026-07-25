@@ -19,10 +19,7 @@ const repoRoot = NodePath.resolve(
 
 describe("fork guard: ci-runners", () => {
   it("keeps every ci.yml job off Blacksmith runner labels", () => {
-    const ci = NodeFS.readFileSync(
-      NodePath.join(repoRoot, ".github/workflows/ci.yml"),
-      "utf8",
-    );
+    const ci = NodeFS.readFileSync(NodePath.join(repoRoot, ".github/workflows/ci.yml"), "utf8");
     const blacksmithLabels = ci.match(/runs-on:.*blacksmith-\S+/gu) ?? [];
     expect(blacksmithLabels).toEqual([]);
   });

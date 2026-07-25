@@ -144,9 +144,9 @@ describe("resolveForkOverride", () => {
     });
 
     it("falls back to upstream for a tilde import with no shadow", () => {
-      expect(
-        resolveForkOverride("~/lib/utils", importer, withFiles(inSrc("lib/utils.ts"))),
-      ).toBe(inSrc("lib/utils.ts"));
+      expect(resolveForkOverride("~/lib/utils", importer, withFiles(inSrc("lib/utils.ts")))).toBe(
+        inSrc("lib/utils.ts"),
+      );
     });
 
     it("resolves a helper co-located in the shadow tree", () => {

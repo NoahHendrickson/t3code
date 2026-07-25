@@ -13,12 +13,12 @@ Resolution is implemented by the `fork:overrides` Vite plugin (`apps/web/fork/`)
 
 ## Which directory do I want?
 
-| | `src/overrides/` | `src/custom/` |
-| --- | --- | --- |
-| Purpose | Replace an upstream module | Add something upstream doesn't have |
-| Path meaning | **Must** mirror an existing upstream path | Free-form |
-| Merge cost | Zero — upstream never sees this path | Zero |
-| Upstream improvements to the original | **Lost** — you own the file now | N/A |
+|                                       | `src/overrides/`                          | `src/custom/`                       |
+| ------------------------------------- | ----------------------------------------- | ----------------------------------- |
+| Purpose                               | Replace an upstream module                | Add something upstream doesn't have |
+| Path meaning                          | **Must** mirror an existing upstream path | Free-form                           |
+| Merge cost                            | Zero — upstream never sees this path      | Zero                                |
+| Upstream improvements to the original | **Lost** — you own the file now           | N/A                                 |
 
 A file in `src/overrides/` whose path matches no upstream module is dead code: nothing imports it,
 nothing errors, and your change silently never appears. The `shadow tree integrity` test in
@@ -63,15 +63,15 @@ internals and own only the part you actually changed.
 
 Measured upstream churn over 60 days (see `.fork/README.md` §1):
 
-| Target | Commits/60d | Verdict |
-| --- | --- | --- |
-| `components/ui/*.tsx` | low, stable `cva` tables | **Best target.** Restyling a primitive propagates to every consumer. |
-| `components/chat/ChatComposer.tsx` | 15 | Viable if you intend to own the composer. |
-| `components/SidebarV2.tsx` | 21 | Costly. Prefer wrapping. |
-| `components/ChatView.tsx` | 24, +6,633 lines | Avoid. You would inherit a file that doubled in two months. |
+| Target                             | Commits/60d              | Verdict                                                              |
+| ---------------------------------- | ------------------------ | -------------------------------------------------------------------- |
+| `components/ui/*.tsx`              | low, stable `cva` tables | **Best target.** Restyling a primitive propagates to every consumer. |
+| `components/chat/ChatComposer.tsx` | 15                       | Viable if you intend to own the composer.                            |
+| `components/SidebarV2.tsx`         | 21                       | Costly. Prefer wrapping.                                             |
+| `components/ChatView.tsx`          | 24, +6,633 lines         | Avoid. You would inherit a file that doubled in two months.          |
 
 Shadow the smallest thing that achieves the change. Before shadowing a large component, check
-whether shadowing its *parent* and re-arranging the children gets you there instead.
+whether shadowing its _parent_ and re-arranging the children gets you there instead.
 
 ## Known gap: type parity on relative imports
 
