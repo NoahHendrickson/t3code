@@ -35,7 +35,11 @@ import { Command, Flag } from "effect/unstable/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
-const DESKTOP_APP_ID = "com.t3tools.t3code";
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// Distinct bundle id so macOS treats a fork build as a different application
+// from an installed upstream release rather than a replacement for it.
+const DESKTOP_APP_ID = "com.t3tools.t3code.fork";
+// fork:end fork-app-identity
 const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/u;
 
 const BuildPlatform = Schema.Literals(["mac", "linux", "win"]);
@@ -1367,9 +1371,13 @@ export function resolvePackageManagerUserAgent(packageManager: string): string {
 }
 
 export function resolveDesktopProductName(version: string): string {
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  // Names the .app bundle. Upstream's "T3 Code (Alpha)" would land on exactly
+  // the installed release's path in /Applications and offer to replace it.
   return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "T3 Code (Nightly)"
-    : (desktopPackageJson.productName ?? "T3 Code");
+    ? "T3 Code Fork (Nightly)"
+    : "T3 Code Fork";
+  // fork:end fork-app-identity
 }
 
 export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
