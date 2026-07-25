@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off
 /**
  * Vite plugin wiring for the fork override tree — see `.fork/README.md` §3.
  *

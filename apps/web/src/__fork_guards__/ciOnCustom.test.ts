@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off
 /**
  * Fork guard — see `.fork/customizations.yaml#ci-on-custom`.
  *

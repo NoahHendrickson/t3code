@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off
 /**
  * Fork guard — manifest integrity, see `.fork/README.md` §4a and §7.
  *

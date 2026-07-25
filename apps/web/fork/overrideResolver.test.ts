@@ -1,7 +1,8 @@
+// @effect-diagnostics nodeBuiltinImport:off
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { resolveForkOverride, SHADOW_DIR, toSrcRelativePath } from "./overrideResolver";
 
