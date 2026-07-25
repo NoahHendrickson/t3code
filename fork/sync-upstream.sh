@@ -23,7 +23,10 @@ fi
 
 START_BRANCH="$(git branch --show-current)"
 echo "==> Fetching upstream"
-git fetch upstream --prune
+# remote.upstream.fetch is pinned to main in this clone. Upstream carries ~745
+# agent/feature branches and fetching them all is pure noise.
+git fetch upstream --prune --quiet
+echo "    upstream/main @ $(git rev-parse --short upstream/main)"
 
 PREV="$(git rev-parse main)"
 NEW="$(git rev-parse upstream/main)"
