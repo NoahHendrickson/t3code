@@ -130,7 +130,7 @@ import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 import {
   SidebarV2StatusDot,
   SidebarV2WokeMark,
-  SidebarV2WorkingDither,
+  SidebarV2WorkingRain,
   type SidebarV2StatusTone,
 } from "./SidebarV2StatusIndicator";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
@@ -451,17 +451,17 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   // mobile Live Activity/widgets (amber approval, indigo input, sky working)
   // so a thread reads the same color everywhere it surfaces.
   // Only two of these were drawn (working, approval); the rest are extended
-  // from the same vocabulary. `dither` = the agent is moving, `dot` = it
+  // from the same vocabulary. `rain` = the agent is moving, `dot` = it
   // stopped and the row is waiting on something, `woke` keeps its own glyph.
   // Labels are no longer painted — they survive only as the accessible name,
   // since the mark itself is aria-hidden.
   const topStatus: {
     label: string;
     tone: SidebarV2StatusTone;
-    mark: "dither" | "dot" | "woke";
+    mark: "rain" | "dot" | "woke";
   } | null =
     status === "working"
-      ? { label: "Working", tone: "working", mark: "dither" }
+      ? { label: "Working", tone: "working", mark: "rain" }
       : status === "approval"
         ? { label: "Needs approval", tone: "approval", mark: "dot" }
         : status === "input"
@@ -836,7 +836,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   return (
     <li
       data-thread-item
-      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_74px]"
+      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_76px]"
     >
       <Tooltip>
         <TooltipTrigger
@@ -858,9 +858,12 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               line beside the branch. The favicon is gone — at 282px it cost a
               slot to repeat what the project name already says. */}
           <div className="relative z-10 flex flex-col gap-2 px-[11px] py-[15px]">
-            <div className="flex h-4 min-w-0 items-center gap-2">
+            {/* 18px, not the 16px the metadata line uses: that is the exact
+                height of the working rain's 4x5 grid, and cropping it would
+                clip the bottom row of drops. */}
+            <div className="flex h-[18px] min-w-0 items-center gap-2">
               {title}
-              <span className="relative flex h-4 shrink-0 items-center justify-end">
+              <span className="relative flex h-[18px] shrink-0 items-center justify-end">
                 <span
                   className={cn(
                     "flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
@@ -875,8 +878,8 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       <span role="status" className="sr-only">
                         {topStatus.label}
                       </span>
-                      {topStatus.mark === "dither" ? (
-                        <SidebarV2WorkingDither />
+                      {topStatus.mark === "rain" ? (
+                        <SidebarV2WorkingRain seed={threadKey} />
                       ) : topStatus.mark === "woke" ? (
                         <SidebarV2WokeMark />
                       ) : (
