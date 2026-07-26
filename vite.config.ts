@@ -11,6 +11,9 @@ export default defineConfig({
   test: {
     environment: "node",
     exclude: [
+      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+      "**/.t3/**",
+      /* fork:end fork-app-identity */
       "**/.repos/**",
       "**/node_modules/**",
       "**/dist/**",
@@ -27,6 +30,9 @@ export default defineConfig({
   fmt: {
     ignorePatterns: [
       ".reference",
+      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+      ".t3/**",
+      /* fork:end fork-app-identity */
       ".repos/**",
       ".plans",
       ".alchemy",
@@ -55,6 +61,10 @@ export default defineConfig({
   },
   lint: {
     ignorePatterns: [
+      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+      ".t3",
+      ".t3/**",
+      /* fork:end fork-app-identity */
       ".repos",
       ".repos/**",
       "dist",

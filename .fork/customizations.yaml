@@ -145,9 +145,21 @@
     left the server child writing the real ~/.t3/userdata — see
     .fork/notes/FORK-DATA-ISOLATION-HANDOFF.md. Moving the base keeps both halves on
     upstream's own leaf derivations and isolates all three shared directories
-    at once, with no fork hunks in apps/server. Development paths are
-    deliberately untouched: `vp dev` in this repo is already the fork, dev
-    keeps ~/.t3/dev, and renaming it would strand existing dev state. The URL
+    at once, with no fork hunks in apps/server. Development paths carry no
+    fork rename — `vp dev` in this repo is already the fork — but upstream
+    a17cbc3b4 changed where they point, so the older claim that dev simply
+    keeps ~/.t3/dev is no longer true inside a linked git worktree. There,
+    dev state is the worktree's own gitignored .t3, and because dev-runner
+    exports that as T3CODE_HOME the server reads the base dir as explicit and
+    derives the userdata leaf rather than the dev leaf: <worktree>/.t3/userdata,
+    not ~/.t3/dev. Existing worktree dev state is stranded rather than
+    migrated, and no single --home-dir value reaches the old location — the
+    one flag that gets close, --home-dir ~/.t3, resolves to the live
+    ~/.t3/userdata this customization exists to keep the fork out of. Because
+    baseDir also carries caches/ and worktrees/, a worktree's session
+    checkouts now land inside the repo tree, which is why .t3 is excluded from
+    the test, fmt and lint discovery lists in vite.config.ts the way .repos
+    already was. The URL
     scheme is also deliberately left shared — t3code:// is the app's own
     internal origin, not just a deep-link handler, so changing only the
     registration would be incoherent; two installed apps contend for the
@@ -183,8 +195,12 @@
     - apps/web/src/branding.ts
     - apps/web/src/branding.test.ts
     - apps/web/src/components/sidebar/SidebarChrome.tsx
+    - packages/shared/src/devHome.ts
+    - packages/shared/src/hostProcess.ts
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
+    - scripts/dev-runner.ts
+    - vite.config.ts
   verify:
     - apps/web/src/__fork_guards__/forkAppIdentity.test.ts
 
