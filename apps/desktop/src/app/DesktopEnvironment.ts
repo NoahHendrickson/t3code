@@ -77,7 +77,7 @@ export class DesktopEnvironment extends Context.Service<
 >()("@t3tools/desktop/app/DesktopEnvironment") {}
 
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-const APP_BASE_NAME = "T3 Code Fork";
+const APP_BASE_NAME = "N3 Code";
 // fork:end fork-app-identity
 
 function resolveDesktopAppStageLabel(input: {
@@ -150,7 +150,21 @@ const make = Effect.fn("desktop.environment.make")(function* (
         ? path.join(homeDirectory, "Library", "Application Support")
         : Option.getOrElse(config.xdgConfigHome, () => path.join(homeDirectory, ".config"));
   const configuredBaseDir = config.t3Home;
-  const baseDir = Option.getOrElse(configuredBaseDir, () => path.join(homeDirectory, ".t3"));
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  // A packaged fork build must not share ~/.t3 with an installed upstream
+  // release. The base directory is the one input both halves of the app derive
+  // shared state from: the desktop resolves stateDir from it below, and hands
+  // it to the bundled server child as bootstrap t3Home
+  // (DesktopBackendConfiguration), which derives its own stateDir plus caches/
+  // and worktrees/ from it. Forking the base — rather than renaming the
+  // "userdata" leaf, which the server re-derives independently and would not
+  // pick up — keeps both derivations upstream's and isolates all three shared
+  // directories at once. T3CODE_HOME still wins, so `vp dev` and explicit
+  // overrides behave exactly as upstream.
+  const baseDir = Option.getOrElse(configuredBaseDir, () =>
+    path.join(homeDirectory, isDevelopment ? ".t3" : ".t3-fork"),
+  );
+  // fork:end fork-app-identity
   const rootDir = path.resolve(input.dirname, "../../..");
   const appRoot = input.isPackaged ? input.appPath : rootDir;
   const branding = resolveDesktopAppBranding({
@@ -158,22 +172,17 @@ const make = Effect.fn("desktop.environment.make")(function* (
     appVersion: input.appVersion,
   });
   const displayName = branding.displayName;
-  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-  // Every packaged-build path that upstream points at shared "t3code" names is
-  // redirected to a fork-owned name. Upstream's release and this fork's build
-  // are both non-development builds carrying the same bundle id, so without
-  // this they resolve to the same state directory and the same Electron user
-  // data directory, and the fork adopts the installed app's live database.
-  // Development paths are left alone: `vp dev` in this repo is already the
-  // fork, and moving them would strand the dev state that exists today.
   const stateDir = path.join(
     baseDir,
-    isDevelopment && Option.isNone(configuredBaseDir) ? "dev" : "userdata-fork",
+    isDevelopment && Option.isNone(configuredBaseDir) ? "dev" : "userdata",
   );
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  // Electron-side identity stays forked: both builds are non-development, so
+  // without these overrides they share the same Electron user data directory —
+  // and the legacy directory upstream migrates from, which is why
+  // legacyUserDataDirName is redirected too rather than left pointing at
+  // upstream's "T3 Code (Alpha)".
   const userDataDirName = isDevelopment ? "t3code-dev" : "t3code-fork";
-  // Upstream migrates from a legacy directory when one exists. Pointing that at
-  // upstream's own "T3 Code (Alpha)" would hand the fork the real app's data
-  // through the back door even with the names above separated.
   const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Fork)";
   // fork:end fork-app-identity
   const resourcesPath = input.resourcesPath;

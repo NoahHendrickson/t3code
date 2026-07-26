@@ -11,11 +11,11 @@ import desktopPackageJson from "../apps/desktop/package.json" with { type: "json
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
 import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
-import {
-  BRAND_ASSET_PATHS,
-  resolveWebAssetBrandForChannel,
-  type WebAssetBrand,
-} from "./lib/brand-assets.ts";
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// BRAND_ASSET_PATHS is no longer imported: the fork's desktop icons come from
+// FORK_DESKTOP_ICON_ASSETS below instead of upstream's per-channel art.
+// fork:end fork-app-identity
+import { resolveWebAssetBrandForChannel, type WebAssetBrand } from "./lib/brand-assets.ts";
 import { getDefaultBuildArch } from "./lib/build-target-arch.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
 import { resolveCatalogDependencies } from "./lib/resolve-catalog.ts";
@@ -39,6 +39,13 @@ const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
 // Distinct bundle id so macOS treats a fork build as a different application
 // from an installed upstream release rather than a replacement for it.
 const DESKTOP_APP_ID = "com.t3tools.t3code.fork";
+// Fork-owned placeholder art (an "N" lettermark) generated into assets/fork,
+// consumed by resolveDesktopBuildIconAssets below.
+const FORK_DESKTOP_ICON_ASSETS = {
+  macIconPng: "assets/fork/n3-macos-1024.png",
+  linuxIconPng: "assets/fork/n3-universal-1024.png",
+  windowsIconIco: "assets/fork/n3-windows.ico",
+} as const;
 // fork:end fork-app-identity
 const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/u;
 
@@ -1338,19 +1345,25 @@ export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
 }
 
 export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIconAssets {
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  // Placeholder fork art: an "N" lettermark, so a fork build is visually
+  // distinct from upstream in the Dock and /Applications. The same art is
+  // used for both channels for now. Upstream's per-channel art stays in
+  // assets/prod and assets/nightly, untouched, for clean upstream merges.
   if (resolveDesktopUpdateChannel(version) === "nightly") {
     return {
-      macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
+      macIconPng: FORK_DESKTOP_ICON_ASSETS.macIconPng,
+      linuxIconPng: FORK_DESKTOP_ICON_ASSETS.linuxIconPng,
+      windowsIconIco: FORK_DESKTOP_ICON_ASSETS.windowsIconIco,
     };
   }
 
   return {
-    macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
-    linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
-    windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
+    macIconPng: FORK_DESKTOP_ICON_ASSETS.macIconPng,
+    linuxIconPng: FORK_DESKTOP_ICON_ASSETS.linuxIconPng,
+    windowsIconIco: FORK_DESKTOP_ICON_ASSETS.windowsIconIco,
   };
+  // fork:end fork-app-identity
 }
 
 export function resolveMockUpdateServerUrl(mockUpdateServerPort: number | undefined): string {
@@ -1374,9 +1387,7 @@ export function resolveDesktopProductName(version: string): string {
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
   // Names the .app bundle. Upstream's "T3 Code (Alpha)" would land on exactly
   // the installed release's path in /Applications and offer to replace it.
-  return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "T3 Code Fork (Nightly)"
-    : "T3 Code Fork";
+  return resolveDesktopUpdateChannel(version) === "nightly" ? "N3 Code (Nightly)" : "N3 Code";
   // fork:end fork-app-identity
 }
 
@@ -1397,7 +1408,11 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
-    artifactName: "T3-Code-${version}-${arch}.${ext}",
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    // Downloaded artifacts should be tell-apart-able from upstream's at a
+    // glance too, not just the installed bundle.
+    artifactName: "N3-Code-${version}-${arch}.${ext}",
+    // fork:end fork-app-identity
     directories: {
       buildResources: "apps/desktop/resources",
     },

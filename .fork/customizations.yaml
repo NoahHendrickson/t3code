@@ -116,25 +116,45 @@
     this fork's build are both non-development builds, so every identity
     upstream derives from "is this a dev build" collapses onto the same value
     for both: the same bundle id, the same "T3 Code (Alpha).app" path in
-    /Applications, the same ~/.t3/userdata state directory holding
-    state.sqlite and secrets, and the same Electron user data directory.
-    Installing a fork build therefore offered to replace the real app, and
-    running one would have adopted its live database — including the legacy
-    directory upstream migrates from, which is why legacyUserDataDirName is
-    redirected too rather than left pointing at "T3 Code (Alpha)". Fork builds
-    use the bundle id com.t3tools.t3code.fork, install as "T3 Code Fork.app",
-    and keep state in userdata-fork. Development paths are deliberately
-    untouched: `vp dev` in this repo is already the fork, and renaming them
-    would strand existing dev state. The URL scheme is also deliberately left
-    shared — t3code:// is the app's own internal origin, not just a deep-link
-    handler, so changing only the registration would be incoherent; two
-    installed apps contend for the scheme, which is untidy but not
-    destructive.
+    /Applications, the same ~/.t3 state tree holding state.sqlite and secrets,
+    and the same Electron user data directory. Installing a fork build
+    therefore offered to replace the real app, and running one would have
+    adopted its live database — including the legacy directory upstream
+    migrates from, which is why legacyUserDataDirName is redirected too rather
+    than left pointing at "T3 Code (Alpha)". The fork presents as "N3 Code":
+    bundle id com.t3tools.t3code.fork (unchanged across renames — it is the
+    stable identity macOS keys on), installs as "N3 Code.app", ships
+    N3-Code-* artifacts, packages placeholder "N" lettermark art from
+    assets/fork on all three platforms, and keeps all filesystem state under
+    the fork-owned base directory ~/.t3-fork (also stable across renames, so
+    display renames never orphan state).
+    Isolation is forked at the base directory, not the "userdata" leaf,
+    because the packaged app is two processes: the desktop resolves its own
+    state directory and hands only baseDir (as bootstrap t3Home) to the
+    bundled server child, which independently derives its stateDir, caches/
+    and worktrees/ from it. A desktop-side leaf rename shipped in v0.1.1 and
+    left the server child writing the real ~/.t3/userdata — see
+    FORK-DATA-ISOLATION-HANDOFF.md. Moving the base keeps both halves on
+    upstream's own leaf derivations and isolates all three shared directories
+    at once, with no fork hunks in apps/server. Development paths are
+    deliberately untouched: `vp dev` in this repo is already the fork, dev
+    keeps ~/.t3/dev, and renaming it would strand existing dev state. The URL
+    scheme is also deliberately left shared — t3code:// is the app's own
+    internal origin, not just a deep-link handler, so changing only the
+    registration would be incoherent; two installed apps contend for the
+    scheme, which is untidy but not destructive. Known carve-out: the WSL
+    backend bootstrap deliberately omits t3Home, so WSL-side state is not
+    isolated by this customization.
   tier: 4
-  files: []
+  files:
+    - assets/fork/n3-macos-1024.png
+    - assets/fork/n3-universal-1024.png
+    - assets/fork/n3-windows.ico
   shadows: []
   watch:
     - apps/desktop/src/app/DesktopEnvironment.ts
+    - apps/desktop/src/backend/DesktopBackendConfiguration.ts
+    - apps/server/src/config.ts
     - scripts/build-desktop-artifact.ts
   verify:
     - apps/web/src/__fork_guards__/forkAppIdentity.test.ts

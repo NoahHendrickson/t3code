@@ -38,7 +38,6 @@ import {
   stageLinuxIconSize,
   STAGE_INSTALL_ARGS,
 } from "./build-desktop-artifact.ts";
-import { BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 
 function mockProcess(exitCode: number) {
@@ -86,23 +85,25 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-    assert.equal(resolveDesktopProductName("0.0.17"), "T3 Code Fork");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "T3 Code Fork (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "N3 Code");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "N3 Code (Nightly)");
     // fork:end fork-app-identity
   });
 
-  it("switches desktop packaging icons to the nightly artwork for nightly versions", () => {
+  it("uses the fork's placeholder artwork for both channels", () => {
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
     assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17"), {
-      macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
+      macIconPng: "assets/fork/n3-macos-1024.png",
+      linuxIconPng: "assets/fork/n3-universal-1024.png",
+      windowsIconIco: "assets/fork/n3-windows.ico",
     });
 
     assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42"), {
-      macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
+      macIconPng: "assets/fork/n3-macos-1024.png",
+      linuxIconPng: "assets/fork/n3-universal-1024.png",
+      windowsIconIco: "assets/fork/n3-windows.ico",
     });
+    // fork:end fork-app-identity
   });
 
   it("switches the bundled splash and favicon branding for nightly versions", () => {
