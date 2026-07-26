@@ -243,28 +243,33 @@
 
 - id: fork-clerk-launch-resilience
   intent: >
-    A fork build must start even when the Clerk bridge cannot. Upstream
-    registers the renderer's t3code:// scheme privileges inside
-    @clerk/electron's createClerkBridge, called during Effect layer
-    construction — which races Electron's "ready" event, because
-    registerSchemesAsPrivileged throws once the app is ready. Fast machines
-    win that race; CI runners lose it deterministically, and a cold local
-    boot is the same dice roll (the v0.1.2 launch isolation gate caught it:
-    the app exited before its server ever started). The fork registers both
-    schemes' privileges synchronously at module load in main.ts — guaranteed
-    to precede "ready"; a later pre-ready registration by the winning bridge
-    replaces the list with identical content — and DesktopClerk degrades a
-    bridge initialization failure to a logged warning instead of refusing to
-    start. Fork builds have no cloud sign-in to lose: the bridge only carries
-    token persistence and OAuth transport for a feature the release notes
-    already declare unavailable. The singleton-lock behavior in
-    DesktopClerk.configure is bridge-independent and is preserved on the
-    degraded path.
+    A keyless fork build never races the Clerk bridge. Upstream registers the
+    renderer's t3code:// scheme privileges inside @clerk/electron's
+    createClerkBridge, called during Effect layer construction — which races
+    Electron's "ready" event, because registerSchemesAsPrivileged throws once
+    the app is ready. Fast machines win that race; CI runners lose it
+    deterministically, and a cold local boot is the same dice roll (the
+    v0.1.2 launch isolation gate caught it: the app exited before its server
+    ever started). Fork builds bake no Clerk publishable key, so the bridge
+    is guaranteed dead weight — DesktopClerk skips it outright when
+    desktopClerkFrontendApiHostname is undefined, logging a warning, and
+    main.ts registers both schemes' privileges synchronously at module load
+    (guaranteed to precede "ready"; the sole registrar on the skip path;
+    observed against the bundled Electron 41 that pre-ready re-registration
+    by a keyed build's bridge replaces the list harmlessly). Keyed builds
+    keep upstream's behavior exactly: bridge created, initialization and
+    cleanup failures both loud — the cleanup path's Effect.orDie is
+    deliberately untouched, because a real Clerk defect in a keyed build
+    must not hide behind a warning. The singleton-lock behavior in
+    DesktopClerk.configure is bridge-independent and preserved on both
+    paths.
   tier: 4
-  files: []
+  files:
+    - apps/desktop/src/app/DesktopClerkForkSkip.test.ts
   shadows: []
   watch:
     - apps/desktop/src/main.ts
     - apps/desktop/src/app/DesktopClerk.ts
+    - apps/desktop/src/app/DesktopClerk.test.ts
   verify:
     - apps/web/src/__fork_guards__/forkClerkLaunchResilience.test.ts

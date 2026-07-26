@@ -1,6 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as Cause from "effect/Cause";
-import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { beforeEach, vi } from "vite-plus/test";
@@ -14,6 +13,17 @@ const { createClerkBridgeMock, storageAdapter, storageMock } = vi.hoisted(() => 
   },
   storageMock: vi.fn(),
 }));
+
+// fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
+// The fork skips the Clerk bridge when no publishable key is baked into the
+// build. These are upstream's bridge tests, so bake one in before the module
+// under test is imported (hoisted runs first); the keyless path is covered by
+// DesktopClerkForkSkip.test.ts.
+vi.hoisted(() => {
+  (globalThis as Record<string, unknown>).__T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__ =
+    `pk_test_${btoa("clerk.t3.codes$")}`;
+});
+// fork:end fork-clerk-launch-resilience
 
 vi.mock("@clerk/electron", () => ({
   createClerkBridge: createClerkBridgeMock,
@@ -77,11 +87,7 @@ describe("DesktopClerk", () => {
     });
   });
 
-  // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
-  // Upstream propagates bridge initialization failures out of the layer; the
-  // fork degrades instead — a lost registerSchemesAsPrivileged race must not
-  // crash a build with no cloud sign-in to lose.
-  it.effect("degrades to a warning when bridge initialization fails", () => {
+  it.effect("preserves bridge initialization failures", () => {
     const cause = new Error("bridge initialization failed");
     storageMock.mockReturnValue(storageAdapter);
     createClerkBridgeMock.mockImplementationOnce(() => {
@@ -89,14 +95,18 @@ describe("DesktopClerk", () => {
     });
 
     return Effect.gen(function* () {
-      const context = yield* Effect.scoped(Layer.build(makeDesktopClerkLayer()));
+      const error = yield* Effect.scoped(Layer.build(makeDesktopClerkLayer())).pipe(Effect.flip);
 
-      // The layer builds successfully and still provides the service.
-      const service = Context.get(context, DesktopClerk.DesktopClerk);
-      assert.isDefined(service.configure);
+      assert.instanceOf(error, DesktopClerk.DesktopClerkBridgeInitializationError);
+      assert.equal(error.stateDir, "/tmp/t3-state");
+      assert.equal(error.isDevelopment, true);
+      assert.strictEqual(error.cause, cause);
+      assert.equal(
+        error.message,
+        'Failed to initialize the desktop Clerk bridge for state directory "/tmp/t3-state" (development: true).',
+      );
     });
   });
-  // fork:end fork-clerk-launch-resilience
 
   it.effect("preserves bridge cleanup failures", () => {
     const cause = new Error("bridge cleanup failed");

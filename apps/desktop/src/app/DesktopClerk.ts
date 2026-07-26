@@ -85,41 +85,46 @@ export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolea
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
-  // createClerkBridge calls protocol.registerSchemesAsPrivileged, which
-  // throws once Electron is "ready" — and layer construction races that
-  // event, losing on slow machines (observed deterministically on CI
-  // runners). The renderer's scheme privileges are pre-registered
-  // synchronously in main.ts, so a lost race costs only the Clerk bridge
-  // itself — and fork builds have no cloud sign-in to lose. Degrade with a
-  // warning instead of refusing to start. The singleton-lock behavior in
-  // configure below is bridge-independent and keeps working.
-  yield* Effect.acquireRelease(
-    Effect.try({
-      try: () => createDesktopClerkBridge(environment.stateDir, environment.isDevelopment),
-      catch: (cause) =>
-        new DesktopClerkBridgeInitializationError({
-          stateDir: environment.stateDir,
-          isDevelopment: environment.isDevelopment,
-          cause,
-        }),
-    }),
-    (bridge) =>
+  // A build with no baked Clerk publishable key cannot sign in, so the
+  // bridge is guaranteed dead weight — and a live hazard: createClerkBridge
+  // calls protocol.registerSchemesAsPrivileged, which throws once Electron
+  // is "ready", and layer construction races that event (CI runners lose
+  // deterministically; a cold local boot rolls the same dice). Skip the
+  // bridge outright when there is no key: deterministic, and the renderer's
+  // scheme privileges come from main.ts's synchronous registration, which is
+  // the sole registrar on this path. Keyed builds keep upstream's behavior
+  // exactly — including loud initialization AND cleanup failures, which must
+  // stay fatal there rather than hide behind a warning. The singleton-lock
+  // behavior in configure below is bridge-independent either way.
+  if (desktopClerkFrontendApiHostname === undefined) {
+    yield* Effect.logWarning(
+      "No Clerk publishable key in this build; skipping the Clerk bridge (cloud sign-in unavailable).",
+    );
+  } else {
+    // fork:end fork-clerk-launch-resilience
+    yield* Effect.acquireRelease(
       Effect.try({
-        try: () => bridge.cleanup(),
+        try: () => createDesktopClerkBridge(environment.stateDir, environment.isDevelopment),
         catch: (cause) =>
-          new DesktopClerkBridgeCleanupError({
+          new DesktopClerkBridgeInitializationError({
             stateDir: environment.stateDir,
             isDevelopment: environment.isDevelopment,
             cause,
           }),
-      }).pipe(Effect.orDie),
-  ).pipe(
-    Effect.catchTag("DesktopClerkBridgeInitializationError", (error) =>
-      Effect.logWarning(
-        "Desktop Clerk bridge initialization failed; continuing without cloud sign-in.",
-      ).pipe(Effect.annotateLogs({ cause: String(error.cause) })),
-    ),
-  );
+      }),
+      (bridge) =>
+        Effect.try({
+          try: () => bridge.cleanup(),
+          catch: (cause) =>
+            new DesktopClerkBridgeCleanupError({
+              stateDir: environment.stateDir,
+              isDevelopment: environment.isDevelopment,
+              cause,
+            }),
+        }).pipe(Effect.orDie),
+    );
+    // fork:begin fork-clerk-launch-resilience — close the keyless-skip branch
+  }
   // fork:end fork-clerk-launch-resilience
 
   return DesktopClerk.of({

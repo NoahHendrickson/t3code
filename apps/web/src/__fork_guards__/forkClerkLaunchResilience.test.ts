@@ -6,14 +6,12 @@
  * @clerk/electron's createClerkBridge during Effect layer construction, which
  * races Electron's "ready" event; registerSchemesAsPrivileged throws once the
  * app is ready. CI runners lose that race deterministically — the v0.1.2
- * launch isolation gate caught the app exiting before its server started —
- * and a cold local boot rolls the same dice. Two hunks close it: main.ts
- * registers the scheme privileges synchronously at module load (guaranteed
- * pre-ready), and DesktopClerk degrades a bridge initialization failure to a
- * warning instead of crashing a build that has no cloud sign-in to lose.
- *
- * An upstream rework of either file could drop these hunks in a clean merge;
- * each assertion pins an executable line, not prose.
+ * launch isolation gate caught the app exiting before its server started.
+ * Two hunks close it: main.ts registers the scheme privileges synchronously
+ * at module load (the sole registrar for keyless builds), and DesktopClerk
+ * skips the bridge entirely when no publishable key is baked in, so keyless
+ * builds never enter the race and keyed builds keep upstream's loud
+ * failures.
  */
 
 import * as NodeFS from "node:fs";
@@ -32,30 +30,60 @@ const read = (relativePath: string): string =>
 const MAIN = "apps/desktop/src/main.ts";
 const DESKTOP_CLERK = "apps/desktop/src/app/DesktopClerk.ts";
 
+/** The fenced fork hunk in main.ts, so assertions cannot match prose. */
+const readMainHunk = (): string => {
+  const main = read(MAIN);
+  const start = main.indexOf("// fork:begin fork-clerk-launch-resilience");
+  const end = main.indexOf("// fork:end fork-clerk-launch-resilience");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("fork-clerk-launch-resilience hunk not found in main.ts");
+  }
+  return main.slice(start, end);
+};
+
 describe("fork guard: fork-clerk-launch-resilience", () => {
-  it("registers scheme privileges synchronously at module load", () => {
+  it("registers scheme privileges at module load, before any layer or ready hook", () => {
     const main = read(MAIN);
-    expect(main).toContain("Electron.protocol.registerSchemesAsPrivileged(");
-    // Both schemes, no env sniffing — the winning bridge's own pre-ready
-    // registration replaces the list with identical content for the active
-    // scheme.
-    expect(main).toContain(
+    const hunk = readMainHunk();
+    expect(hunk).toContain("Electron.protocol.registerSchemesAsPrivileged(");
+    // Both schemes, no env sniffing.
+    expect(hunk).toContain(
       "[ElectronProtocol.getDesktopScheme(false), ElectronProtocol.getDesktopScheme(true)]",
     );
-    // The registration must precede the runtime bootstrap that builds the
-    // Clerk layer.
-    expect(main.indexOf("registerSchemesAsPrivileged")).toBeLessThan(
-      main.indexOf("NodeRuntime.runMain"),
-    );
-    // The privilege set mirrors @clerk/electron's — losing supportFetchAPI
-    // or standard would break the renderer only on the degraded path, the
-    // hardest place to notice.
-    expect(main).toContain("supportFetchAPI: true");
-    expect(main).toContain("standard: true");
+    // Execution position, approximated hard: the registration precedes the
+    // first layer definition, any whenReady mention, and the runtime
+    // bootstrap. A copy of this code inside a ready callback or an uncalled
+    // function would sit after these anchors.
+    const registrationAt = main.indexOf("registerSchemesAsPrivileged");
+    for (const anchor of ["Layer.unwrap", "NodeRuntime.runMain"]) {
+      const anchorAt = main.indexOf(anchor);
+      expect(anchorAt).toBeGreaterThan(-1);
+      expect(registrationAt).toBeLessThan(anchorAt);
+    }
+    // The full privilege set @clerk/electron registers — losing any of these
+    // breaks the renderer only on the keyless path, the hardest place to
+    // notice. Asserted against the hunk, not the file, so comments can't
+    // satisfy them.
+    for (const privilege of [
+      "standard: true",
+      "secure: true",
+      "supportFetchAPI: true",
+      "corsEnabled: true",
+      "stream: true",
+    ]) {
+      expect(hunk).toContain(privilege);
+    }
+    // The registration itself is guarded: before the Effect runtime exists, a
+    // throw here would be a silent exit.
+    expect(hunk).toContain("} catch (error) {");
   });
 
-  it("degrades a failed Clerk bridge instead of refusing to start", () => {
+  it("skips the Clerk bridge when no publishable key is baked in", () => {
     const clerk = read(DESKTOP_CLERK);
-    expect(clerk).toContain('Effect.catchTag("DesktopClerkBridgeInitializationError"');
+    expect(clerk).toContain("desktopClerkFrontendApiHostname === undefined");
+    expect(clerk).toContain("skipping the Clerk bridge");
+    // Keyed builds keep upstream's loud failures — no catch may swallow the
+    // bridge's initialization error.
+    expect(clerk).not.toContain('catchTag("DesktopClerkBridgeInitializationError"');
   });
 });
