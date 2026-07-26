@@ -101,6 +101,54 @@ jobs:
             --build-version "${{ steps.meta.outputs.version }}" \
             --verbose
 
+      - name: Launch isolation check
+        shell: bash
+        run: |
+          set -euo pipefail
+          # v0.1.1 passed every static check while its server child opened the
+          # real ~/.t3/userdata database read-write — only launching the
+          # packaged app proves isolation. Run the built bundle against a
+          # scratch HOME and assert everything it creates is fork-owned:
+          # ~/.t3-fork must appear (the server child owns state.sqlite, so its
+          # arrival proves the child derived the fork base too), and ~/.t3
+          # must not exist at all.
+          app=$(find release -maxdepth 3 -name "*.app" -type d | head -1)
+          if [ -z "$app" ]; then
+            echo "No .app bundle found under release/" >&2
+            exit 1
+          fi
+          binary="$app/Contents/MacOS/N3 Code"
+          if [ ! -x "$binary" ]; then
+            echo "Expected executable missing: $binary" >&2
+            ls "$app/Contents/MacOS" >&2
+            exit 1
+          fi
+          scratch=$(mktemp -d)
+          env -u T3CODE_HOME HOME="$scratch" "$binary" >/dev/null 2>&1 &
+          pid=$!
+          deadline=$((SECONDS + 180))
+          until [ -e "$scratch/.t3-fork/userdata/state.sqlite" ]; do
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "App exited before creating fork state" >&2
+              exit 1
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "Server never created $scratch/.t3-fork/userdata/state.sqlite within 180s" >&2
+              kill "$pid" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 2
+          done
+          kill "$pid" 2>/dev/null || true
+          wait "$pid" 2>/dev/null || true
+          if [ -e "$scratch/.t3" ]; then
+            echo "ISOLATION VIOLATED: the packaged build created ~/.t3:" >&2
+            find "$scratch/.t3" >&2
+            exit 1
+          fi
+          echo "Isolation verified: all state under ~/.t3-fork."
+          find "$scratch/.t3-fork" -maxdepth 2
+
       - name: Collect release assets
         shell: bash
         run: |
