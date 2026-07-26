@@ -271,6 +271,7 @@
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
     - apps/web/src/custom/SidebarV2ThreadCardMeta.tsx
+    - apps/web/src/custom/sidebarV2RowPolicy.ts
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
@@ -375,6 +376,7 @@
   tier: 4
   files:
     - apps/web/src/custom/SidebarHeaderBackdrop.tsx
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/custom/SidebarStageDitherArt.tsx
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
     - apps/web/src/custom/assets/sidebar-stage-dither.png

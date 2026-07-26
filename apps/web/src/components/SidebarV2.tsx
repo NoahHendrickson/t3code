@@ -136,6 +136,12 @@ import {
   type SidebarV2DotTone,
 } from "~/custom/SidebarV2StatusIndicator";
 import { SidebarV2ThreadCardMeta } from "~/custom/SidebarV2ThreadCardMeta";
+import { SidebarV2ProjectScopeRow, SidebarV2SearchRow } from "~/custom/SidebarV2ChromeRows";
+import {
+  threadCardTitleClassName,
+  threadCardTitleRecedes,
+  threadRowSurfaceClassName,
+} from "~/custom/sidebarV2RowPolicy";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import { deriveProviderInstanceEntries, type ProviderInstanceEntry } from "../providerInstances";
 import { primaryServerProvidersAtom } from "../state/server";
@@ -649,26 +655,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     [openPrLink, pr],
   );
 
-  // All Sidebar V2 rows share one surface model, and surface encodes exactly
-  // one thing: interaction. A row is filled when you are pointing at it or when
-  // it is the one you are on — never because of its status. Working rows used
-  // to carry a resting fill on the theory that a live agent should look alive,
-  // but with five or six threads running the panel turned into a field of lit
-  // rectangles and the hover cue stopped meaning anything. The trailing mark
-  // already says a thread is working, in a fixed column, without spending the
-  // background to say it.
-  const rowSurfaceClassName = cn(
-    // rounded-md, not rounded-lg: --radius is 10px here, and the design's 8px
-    // is --radius-md.
-    "group/v2-row relative w-full cursor-pointer overflow-hidden rounded-md text-left outline-none select-none",
-    props.isActive
-      ? "bg-sidebar-row-active text-sidebar-foreground"
-      : isSelected
-        ? "bg-sidebar-row-selected text-sidebar-foreground"
-        : shouldRecede
-          ? "text-sidebar-muted-foreground/75 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-          : "bg-transparent text-sidebar-foreground hover:bg-sidebar-row-hover",
-  );
+  const rowSurfaceClassName = threadRowSurfaceClassName({
+    isActive: props.isActive,
+    isSelected,
+    recedes: shouldRecede,
+  });
 
   const title = isRenaming ? (
     <input
@@ -690,21 +681,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
         variant === "card" ? "text-xs" : "text-sm",
         shouldRecede && variant === "slim" ? "font-normal" : "font-medium",
         variant === "card"
-          ? cn(
-              // Working and Idle recede; every other status stays at full
-              // strength. The rule the component set encodes is "is there
-              // anything here for you to act on" — a running agent and a read,
-              // settled thread are the two rows where the answer is no, and they
-              // yield the reading order to everything that is waiting on you.
-              //
-              // Hover restores it, which is what keeps this reading as depth
-              // rather than as a disabled row: the moment you point at one it
-              // becomes as legible as any other. Route-active and multi-select
-              // hold it bright for the same reason.
-              "truncate",
-              (status === "working" || topStatus === null) && !props.isActive && !isSelected
-                ? "text-muted-foreground group-hover/v2-row:text-foreground"
-                : "text-foreground",
+          ? threadCardTitleClassName(
+              threadCardTitleRecedes({
+                isWorking: status === "working",
+                isIdle: topStatus === null,
+                isActive: props.isActive,
+                isSelected,
+              }),
             )
           : cn(
               "truncate group-hover/v2-row:text-foreground",
@@ -2219,153 +2202,26 @@ export default function SidebarV2() {
       <SidebarChromeHeader isElectron={isElectron} />
       <SidebarContent className="gap-0">
         {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-            Both control rows are 36px and 12px now, down from 32/14, so they
-            read as chrome rather than as two more list items above the list.
-            The group keeps px-2 so a hover fill lands on the same 8px inset the
-            thread cards use; the extra px-2 on each control brings the content
-            to the design's 16px. */}
-        <SidebarGroup className="px-2 py-0">
-          <div className="flex h-9 items-center gap-1">
-            <div className="min-w-0 flex-1">
-              <CommandDialogTrigger
-                render={
-                  <SidebarMenuButton
-                    size="sm"
-                    type="button"
-                    aria-label="Search threads and commands"
-                    className="h-8 gap-1 rounded-md border-0 bg-transparent px-2 py-1.5 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                    data-testid="command-palette-trigger"
-                  />
-                }
-              >
-                <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-                <div className="flex-1 truncate text-left">Search</div>
-                {commandPaletteShortcutLabel ? (
-                  <Kbd className="h-4 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-0">
-                    {commandPaletteShortcutLabel}
-                  </Kbd>
-                ) : null}
-              </CommandDialogTrigger>
-            </div>
-            <div className="shrink-0">
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <SidebarMenuButton
-                      size="sm"
-                      type="button"
-                      className="relative size-8 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                      onClick={handleNewThreadClick}
-                      disabled={projects.length === 0}
-                      aria-label="New thread"
-                    />
-                  }
-                >
-                  <PlusCircleIcon className="size-5 shrink-0 text-sidebar-muted-foreground/80" />
-                  <span
-                    className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
-                    aria-hidden="true"
-                  />
-                </TooltipTrigger>
-                <TooltipPopup side="right">
-                  {newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
-                </TooltipPopup>
-              </Tooltip>
-            </div>
-          </div>
-        </SidebarGroup>
-        {projectGroups.length > 0 ? (
-          <SidebarGroup className="px-2 py-0">
-            <div className="flex h-9 items-center gap-1">
-              <Menu open={projectScopeMenuOpen} onOpenChange={setProjectScopeMenuOpen}>
-                <MenuTrigger
-                  aria-label="Filter threads by project"
-                  className="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-md px-2 text-left text-xs font-normal text-sidebar-muted-foreground outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                >
-                  {/* Leading caret, no trailing chevron and no favicon: the
-                      design puts the affordance where the eye enters the row,
-                      and the label already names the project the favicon used to
-                      repeat. */}
-                  <ChevronsUpDownIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-                  <span className="min-w-0 flex-1 truncate">
-                    {scopedProjectGroup?.displayName ?? "All projects"}
-                  </span>
-                </MenuTrigger>
-                <MenuPopup align="start" className="w-(--anchor-width)">
-                  <MenuRadioGroup
-                    value={projectScopeKey ?? "all"}
-                    onValueChange={(value) =>
-                      setProjectScopeKey(value === "all" ? null : (value as string))
-                    }
-                  >
-                    <MenuRadioItem
-                      value="all"
-                      closeOnClick
-                      className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
-                    >
-                      <FolderIcon className="size-4 shrink-0" />
-                      <span className="min-w-0 truncate text-sm">All projects</span>
-                    </MenuRadioItem>
-                    {projectGroups.map((project) => {
-                      const scopeKey = project.projectKey;
-                      return (
-                        <MenuRadioItem
-                          key={scopeKey}
-                          value={scopeKey}
-                          closeOnClick
-                          className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
-                        >
-                          <ProjectFavicon
-                            environmentId={project.environmentId}
-                            cwd={project.workspaceRoot}
-                            className="size-4 shrink-0"
-                          />
-                          <span className="min-w-0 truncate text-sm">{project.displayName}</span>
-                          <button
-                            type="button"
-                            aria-label={`Project actions for ${project.displayName}`}
-                            title={`Project actions for ${project.displayName}`}
-                            className="ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/55 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => {
-                              void handleProjectActions(event, project);
-                            }}
-                          >
-                            <EllipsisIcon className="size-3.5" />
-                          </button>
-                        </MenuRadioItem>
-                      );
-                    })}
-                  </MenuRadioGroup>
-                </MenuPopup>
-              </Menu>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <SidebarMenuButton
-                      size="sm"
-                      className="relative size-8 shrink-0 justify-center rounded-md bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                      onClick={openAddProjectCommandPalette}
-                      type="button"
-                      aria-label="New project"
-                    />
-                  }
-                >
-                  {/* FolderOpen rather than FolderPlus, per the design. The
-                      action is unchanged — it opens the palette to pick a folder
-                      to add — and "open a folder" is the more literal reading of
-                      what the click does anyway. */}
-                  <FolderOpenIcon className="size-5 shrink-0 text-sidebar-muted-foreground/80" />
-                  <span
-                    className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
-                    aria-hidden="true"
-                  />
-                </TooltipTrigger>
-                <TooltipPopup side="right">New project</TooltipPopup>
-              </Tooltip>
-            </div>
-          </SidebarGroup>
-        ) : null}
+            Both control rows are fork-owned; only these call sites live here.
+            See custom/SidebarV2ChromeRows.tsx. */}
+        <SidebarV2SearchRow
+          commandPaletteShortcutLabel={commandPaletteShortcutLabel}
+          newThreadShortcutLabel={newThreadShortcutLabel}
+          newThreadDisabled={projects.length === 0}
+          onNewThread={handleNewThreadClick}
+        />
+        <SidebarV2ProjectScopeRow
+          projectGroups={projectGroups}
+          scopedProjectGroup={scopedProjectGroup}
+          projectScopeKey={projectScopeKey}
+          onProjectScopeChange={setProjectScopeKey}
+          menuOpen={projectScopeMenuOpen}
+          onMenuOpenChange={setProjectScopeMenuOpen}
+          onProjectActions={(event, project) => {
+            void handleProjectActions(event, project);
+          }}
+          onAddProject={openAddProjectCommandPalette}
+        />
         {/* fork:end fork-sidebar-chrome */}
         <SidebarGroup className="min-h-0 flex-1 overflow-y-auto px-2 py-1 [scrollbar-gutter:stable]">
           <TooltipProvider

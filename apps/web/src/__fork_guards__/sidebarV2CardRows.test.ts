@@ -19,6 +19,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
+import { threadCardTitleRecedes } from "../custom/sidebarV2RowPolicy";
 import { SidebarV2ThreadCardMeta } from "../custom/SidebarV2ThreadCardMeta";
 
 function readSibling(relativePath: string): string {
@@ -42,6 +43,35 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     for (const prop of ["prSlot=", "insertions=", "deletions=", "modelLabel=", "isRemote="]) {
       expect(sidebarV2).toContain(prop);
     }
+  });
+
+  it("recedes exactly the two statuses with nothing to act on", () => {
+    // The component set mutes Working and Idle at rest and nothing else, and
+    // restores both on hover or selection. Asserted as behaviour rather than as
+    // a class string so the rule is pinned even if the classes change.
+    const at = (over: Partial<Parameters<typeof threadCardTitleRecedes>[0]>) =>
+      threadCardTitleRecedes({
+        isWorking: false,
+        isIdle: false,
+        isActive: false,
+        isSelected: false,
+        ...over,
+      });
+    expect(at({ isWorking: true })).toBe(true);
+    expect(at({ isIdle: true })).toBe(true);
+    // Approval / Input / Done / Failed all carry a mark and are not working.
+    expect(at({})).toBe(false);
+    // Pointing at a row always restores it — dimming there would read as
+    // disabled rather than quiet.
+    expect(at({ isWorking: true, isActive: true })).toBe(false);
+    expect(at({ isIdle: true, isSelected: true })).toBe(false);
+  });
+
+  it("keeps row presentation policy out of the megacomponent", () => {
+    // The policy is pure and fork-owned, so SidebarV2 carries call sites rather
+    // than the rules. Inlining it back is the regression this catches.
+    expect(sidebarV2).toContain("threadRowSurfaceClassName({");
+    expect(sidebarV2).toContain("threadCardTitleRecedes({");
   });
 
   it("never paints a row surface from its status", () => {

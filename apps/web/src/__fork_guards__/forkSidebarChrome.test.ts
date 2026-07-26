@@ -146,6 +146,16 @@ describe("fork guard: fork-sidebar-chrome", () => {
     );
   });
 
+  it("keeps the search and project rows fork-owned", () => {
+    // ~150 lines of pure presentation. Fenced in place it left SidebarV2
+    // carrying the whole rewrite; here the fence is two call sites.
+    const sidebarV2 = readSibling("../components/SidebarV2.tsx");
+    expect(sidebarV2).toContain("<SidebarV2SearchRow");
+    expect(sidebarV2).toContain("<SidebarV2ProjectScopeRow");
+    expect(sidebarV2).not.toContain('aria-label="Filter threads by project"');
+    expect(sidebarV2).not.toContain('data-testid="command-palette-trigger"');
+  });
+
   it("puts the brand on the header's trailing edge", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
