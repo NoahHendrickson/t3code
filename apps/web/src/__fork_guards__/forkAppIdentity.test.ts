@@ -42,6 +42,7 @@ const DESKTOP_ENVIRONMENT = "apps/desktop/src/app/DesktopEnvironment.ts";
 const DESKTOP_BACKEND_CONFIGURATION = "apps/desktop/src/backend/DesktopBackendConfiguration.ts";
 const SERVER_CONFIG = "apps/server/src/config.ts";
 const BUILD_SCRIPT = "scripts/build-desktop-artifact.ts";
+const FORK_RELEASE_WORKFLOW = ".github/workflows/fork-release.yml";
 
 describe("fork guard: fork-app-identity", () => {
   it("packages under a fork-owned bundle id", () => {
@@ -58,6 +59,20 @@ describe("fork guard: fork-app-identity", () => {
     // Upstream reads productName from the desktop package.json ("T3 Code
     // (Alpha)") — the exact name of the installed release's bundle.
     expect(script).not.toContain("desktopPackageJson.productName");
+  });
+
+  it("keeps the release workflow on the fork's install name", () => {
+    // fork-release.yml is fork-owned (see fork-desktop-release), so upstream
+    // drift-watching can never catch it going stale against this
+    // customization's naming — and it did go stale: v0.1.1's release notes
+    // told users to de-quarantine "T3 Code (Alpha).app", a bundle the fork
+    // never installs as. Pin the strings that must track the product name.
+    const workflow = read(FORK_RELEASE_WORKFLOW);
+    expect(workflow).toContain('"/Applications/N3 Code.app"');
+    expect(workflow).toContain("name: N3 Code");
+    // The install-path shape specifically: a "T3 Code Fork.app" mention
+    // survives legitimately in the v0.1.1 cleanup instructions.
+    expect(workflow).not.toContain("/Applications/T3 Code");
   });
 
   it("packages with the fork's own artwork", () => {
