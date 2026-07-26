@@ -24,6 +24,11 @@ on:
         required: false
         default: true
         type: boolean
+      dry_run:
+        description: "Build and run the launch isolation gate without publishing"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -115,31 +120,57 @@ jobs:
           # fork's t3code-fork, not upstream's t3code.
           # release/ holds only the distributables: the build script copies
           # files out of its temp stage directory and skips directories, so the
-          # unpacked .app never lands here. Unpack the shipped zip instead —
-          # which is the stronger check anyway, since it exercises exactly the
-          # bundle a user downloads rather than a build-tree intermediate.
-          zip=$(find release -maxdepth 1 -name "*.zip" -type f | head -1)
-          if [ -z "$zip" ]; then
-            echo "No .zip artifact found under release/" >&2
+          # unpacked .app never lands here. Launch from the DMG — the headline
+          # artifact users drag to /Applications — and hold the zip (what
+          # electron-updater downloads) to the same executable, so verifying
+          # one verifies both. Every discovery below asserts exactly-one
+          # rather than picking with head -1: a gate that can verify a
+          # different artifact than the one published is not a gate, and a
+          # SIGPIPE under pipefail dies with no message at all.
+          # (The zip's existence depends on the build script expanding
+          # `--target dmg` into [dmg, zip]; the fork guard pins the flag.)
+          mapfile -t dmgs < <(find release -maxdepth 1 -name "*.dmg" -type f 2>/dev/null)
+          if [ "${#dmgs[@]}" -ne 1 ]; then
+            echo "Expected exactly one .dmg under release/, found ${#dmgs[@]}" >&2
             ls -l release >&2 || true
             exit 1
           fi
-          unpacked=$(mktemp -d)
-          # ditto, not unzip: it preserves the bundle's symlinks, extended
-          # attributes, and code signature, so what gets launched is the
-          # bundle the zip actually ships.
-          ditto -x -k "$zip" "$unpacked"
-          app=$(find "$unpacked" -maxdepth 2 -name "*.app" -type d | head -1)
-          if [ -z "$app" ]; then
-            echo "No .app bundle inside $zip" >&2
-            find "$unpacked" -maxdepth 2 >&2 || true
+          dmg="${dmgs[0]}"
+          mapfile -t zips < <(find release -maxdepth 1 -name "*.zip" -type f 2>/dev/null)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected exactly one .zip under release/, found ${#zips[@]}" >&2
+            ls -l release >&2 || true
             exit 1
           fi
+          zip="${zips[0]}"
+          mount=$(mktemp -d)
+          unpacked=$(mktemp -d)
+          scratch=$(mktemp -d)
+          # Every exit path — including the early ones — must sweep the
+          # process tree (the server child can outlive the Electron main:
+          # that IS the v0.1.1 bug), unmount the DMG, and drop the temp
+          # trees.
+          cleanup() {
+            if [ -n "${app:-}" ]; then
+              pkill -9 -f "$app/Contents" 2>/dev/null || true
+            fi
+            hdiutil detach "$mount" -force >/dev/null 2>&1 || true
+            rm -rf "$unpacked" "$scratch" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount" >/dev/null
+          mapfile -t apps < <(find "$mount" -maxdepth 1 -name "*.app" -type d 2>/dev/null)
+          if [ "${#apps[@]}" -ne 1 ]; then
+            echo "Expected exactly one .app in the DMG, found ${#apps[@]}" >&2
+            ls "$mount" >&2 || true
+            exit 1
+          fi
+          app="${apps[0]}"
           # Derive the executable from the bundle rather than hardcoding the
           # product name — nightly-shaped versions get a different name, and
           # every hardcoded copy is one more string a rename must find.
-          # $app is absolute (mktemp -d is), which is what `defaults read`
-          # needs to treat it as a path instead of a domain name.
+          # $app is absolute (the mountpoint is), which is what `defaults
+          # read` needs to treat it as a path instead of a domain name.
           executable=$(defaults read "$app/Contents/Info" CFBundleExecutable)
           binary="$app/Contents/MacOS/$executable"
           if [ ! -x "$binary" ]; then
@@ -147,11 +178,27 @@ jobs:
             ls "$app/Contents/MacOS" >&2
             exit 1
           fi
-          scratch=$(mktemp -d)
+          # ditto, not unzip: unzip flattens the framework symlinks
+          # (Versions/Current), producing a bundle that cannot launch — which
+          # would fail this gate for a reason unrelated to isolation. ditto
+          # also preserves xattrs, and the code signature once signing lands
+          # (codesign --verify belongs here at that point).
+          ditto -x -k "$zip" "$unpacked"
+          mapfile -t zipapps < <(find "$unpacked" -maxdepth 2 -name "*.app" -type d 2>/dev/null)
+          if [ "${#zipapps[@]}" -ne 1 ]; then
+            echo "Expected exactly one .app inside the zip, found ${#zipapps[@]}" >&2
+            find "$unpacked" -maxdepth 2 >&2 || true
+            exit 1
+          fi
+          zipbinary="${zipapps[0]}/Contents/MacOS/$executable"
+          if ! cmp -s "$binary" "$zipbinary"; then
+            echo "The DMG and zip ship different executables:" >&2
+            shasum "$binary" "$zipbinary" >&2 || true
+            exit 1
+          fi
           violated() {
             echo "ISOLATION VIOLATED: $1" >&2
             find "$2" >&2 || true
-            pkill -9 -f "$app/Contents" 2>/dev/null || true
             exit 1
           }
           env -u T3CODE_HOME HOME="$scratch" "$binary" >/dev/null 2>&1 &
@@ -169,7 +216,6 @@ jobs:
             fi
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "Server never created $scratch/.t3-fork/userdata/state.sqlite within 180s" >&2
-              pkill -9 -f "$app/Contents" 2>/dev/null || true
               exit 1
             fi
             sleep 2
@@ -200,6 +246,10 @@ jobs:
           find "$scratch/.t3-fork" -maxdepth 2
 
       - name: Collect release assets
+        # A dry run exercises the build and the launch isolation gate without
+        # publishing anything — the gate can only be tested by running it, and
+        # iterating on it must not cost a version number per attempt.
+        if: ${{ !inputs.dry_run }}
         shell: bash
         run: |
           set -euo pipefail
@@ -220,6 +270,7 @@ jobs:
           ls -lh release-publish
 
       - name: Publish GitHub Release
+        if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}

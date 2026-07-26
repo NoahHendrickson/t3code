@@ -60,8 +60,35 @@ describe("fork guard: fork-desktop-release", () => {
   it("builds the artifact the release advertises", () => {
     // The release body promises a macOS arm64 build; if the build step is
     // retargeted without updating that text, users download the wrong thing.
+    // `--target dmg` is additionally load-bearing for the launch isolation
+    // gate: the build script expands dmg into [dmg, zip], and the gate
+    // launches the DMG's bundle and compares the zip's executable against
+    // it. Retargeting silently breaks artifact discovery — the failure mode
+    // that cost the first v0.1.2 release run.
     const workflow = readForkRelease();
     expect(workflow).toContain("--platform mac");
     expect(workflow).toContain("--arch arm64");
+    expect(workflow).toContain("--target dmg");
+  });
+
+  it("keeps the launch isolation gate and its negative assertions", () => {
+    // The gate is the only executable proof of the fork's data isolation —
+    // v0.1.1 passed every static check while its server child opened the
+    // real ~/.t3/userdata database. Weakening or deleting this step must not
+    // pass silently. Pin its presence, both halves of the positive assertion
+    // (the fork base appears; the fork Electron dir appears), and the
+    // violation branch that makes the negative assertions real.
+    const workflow = readForkRelease();
+    expect(workflow).toContain("Launch isolation check");
+    expect(workflow).toContain(".t3-fork/userdata/state.sqlite");
+    expect(workflow).toContain("ISOLATION VIOLATED");
+    expect(workflow).toContain('"$support/t3code"');
+    expect(workflow).toContain('"$support/t3code-fork"');
+    // Publishing must be conditional on the gate: the gate step precedes the
+    // collect step, and a dry run skips publishing but never the gate.
+    expect(workflow.indexOf("Launch isolation check")).toBeLessThan(
+      workflow.indexOf("Collect release assets"),
+    );
+    expect(workflow).toContain("dry_run");
   });
 });
