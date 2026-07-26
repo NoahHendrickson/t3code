@@ -386,18 +386,48 @@ export function TerminalViewport({
     const localApi = readLocalApi();
 
     const fitAddon = new FitAddon();
+    /* fork:begin geist-typography — see .fork/customizations.yaml#geist-typography */
+    // xterm reads its font from this option only — no CSS inheritance — so the
+    // fork's --font-mono has to be resolved by hand. The literal fallback
+    // covers an unmarked build where the variable is somehow unset, and names
+    // system faces only — no bundled family, since none is guaranteed loaded.
+    const terminalFontFamily =
+      getComputedStyle(mount).getPropertyValue("--font-mono").trim() ||
+      '"SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace';
+    /* fork:end geist-typography */
     const terminal = new Terminal({
       cursorBlink: true,
       lineHeight: 1,
       fontSize: 12,
       scrollback: 5_000,
-      fontFamily:
-        '"SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace',
+      fontFamily: terminalFontFamily,
       theme: terminalThemeFromApp(mount),
     });
     terminal.loadAddon(fitAddon);
     terminal.open(mount);
     fitTerminalSafely(fitAddon);
+    /* fork:begin geist-typography — see .fork/customizations.yaml#geist-typography */
+    // Geist Mono is a webfont; xterm sizes its cell grid at open(). If the face
+    // is still in flight we just measured the fallback, so re-measure once it
+    // lands. fonts.load() forces the fetch to start — open() mounting DOM with
+    // the family should have started it already, but that leans on xterm's
+    // char-measure element being a real DOM node, an internal worth not
+    // depending on. fonts.ready then awaits everything pending, including the
+    // other unicode-range subsets an already-painted glyph may have triggered.
+    // Reassigning fontFamily is what triggers the re-measure, bounced through a
+    // throwaway value so it registers as a change regardless of how xterm's
+    // options setter treats equal writes; both writes are in one task, so
+    // nothing paints in between.
+    void document.fonts.load('12px "Geist Mono Variable"');
+    void document.fonts.ready.then(() => {
+      // Cleanup nulls the ref before terminal.dispose(), so this can never
+      // touch a disposed terminal.
+      if (terminalRef.current !== terminal) return;
+      terminal.options.fontFamily = "monospace";
+      terminal.options.fontFamily = terminalFontFamily;
+      fitTerminalSafely(fitAddon);
+    });
+    /* fork:end geist-typography */
 
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;

@@ -273,3 +273,41 @@
     - apps/desktop/src/app/DesktopClerk.test.ts
   verify:
     - apps/web/src/__fork_guards__/forkClerkLaunchResilience.test.ts
+
+- id: geist-typography
+  intent: >
+    The app's typefaces are Geist (UI) and Geist Mono (code), bundled as
+    Fontsource variable faces and imported from the fork's own theme layer —
+    web and Electron renderer only; mobile and marketing still ship DM Sans.
+    The stacks live in theme.custom.css as --fork-font-sans / --fork-font-mono
+    and index.css's @theme block reads them through
+    var(--fork-font-sans, <upstream stack>); that indirection is load-bearing,
+    not ceremony. The block is @theme inline, so Tailwind bakes font values
+    literally into .font-sans / .font-mono and their variants, and a compiled
+    utility cannot see a variable overridden in a later stylesheet — the same
+    constraint that forces the sidebar-v2 palette registrations to live in
+    index.css. Routing through --fork-font-* keeps the values scoped under the
+    fork marker while the fallbacks leave an unmarked build on DM Sans.
+    Two further decisions are non-obvious. Geist Mono is listed AHEAD of SF Mono:
+    upstream puts SF Mono first, which means on macOS its bundled mono webfont
+    never renders at all, so preserving upstream's order would make shipping
+    Geist Mono pointless. And body / pre, code are re-declared under the fork
+    marker because upstream hardcodes the literal stacks on those selectors
+    (index.css:964, index.css:1022) instead of reading its own @theme tokens,
+    so overriding --font-sans / --font-mono alone does not reach them. The
+    terminal resolves --font-mono by hand at mount, since xterm reads its font
+    from an option rather than the cascade, and re-measures its cell grid on
+    document.fonts.ready — xterm sizes columns at open(), and unlike the
+    always-resident SF Mono a webfont can land after that, leaving the grid
+    measured against the fallback. DM Sans / JetBrains Mono deps and their
+    main.tsx imports are deliberately left in place: an unreferenced family is
+    never fetched, so removing them would be an upstream edit for no gain.
+  tier: 4
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/index.css
+    - apps/web/src/components/ThreadTerminalDrawer.tsx
+  verify:
+    - apps/web/src/__fork_guards__/geistTypography.test.ts
