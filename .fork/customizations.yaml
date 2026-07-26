@@ -104,6 +104,7 @@
   tier: 1
   files:
     - .github/workflows/fork-release.yml
+    - .github/scripts/launch-isolation-check.sh
   shadows: []
   watch: []
   verify:
