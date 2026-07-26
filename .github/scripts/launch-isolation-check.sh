@@ -107,6 +107,9 @@ dump_diagnostics() {
   find "$scratch" -maxdepth 3 >&2 2>/dev/null || true
   echo "--- newest crash reports (real home) ---" >&2
   # The macOS crash reporter writes to the real user home, not $HOME.
+  # ls -t is deliberate: newest-first ordering is the point, and the
+  # filenames are crash-reporter-generated, not hostile.
+  # shellcheck disable=SC2012
   ls -t "$HOME/Library/Logs/DiagnosticReports" 2>/dev/null | head -5 >&2 || true
 }
 

@@ -95,8 +95,12 @@ describe("fork guard: fork-desktop-release", () => {
     const workflow = readForkRelease();
     const gate = readStepBlock(workflow, "Launch isolation check");
     expect(gate).toContain("bash .github/scripts/launch-isolation-check.sh release");
-    expect(gate).toContain("shellcheck .github/scripts/launch-isolation-check.sh");
     expect(gate).not.toMatch(/^\s+if:/mu);
+    // The lint lives in CI (release_smoke), where a defect in the script
+    // costs a PR check, not a release build. The first dry run burned a full
+    // build discovering the gate step itself couldn't run.
+    const ci = NodeFS.readFileSync(NodePath.join(repoRoot, ".github/workflows/ci.yml"), "utf8");
+    expect(ci).toContain("shellcheck .github/scripts/launch-isolation-check.sh");
     const collect = readStepBlock(workflow, "Collect release assets");
     const publish = readStepBlock(workflow, "Publish GitHub Release");
     expect(collect).toContain("${{ !inputs.dry_run }}");
