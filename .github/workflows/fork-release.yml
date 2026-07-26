@@ -126,7 +126,7 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: T3 Code (fork) ${{ steps.meta.outputs.tag }}
+          name: N3 Code ${{ steps.meta.outputs.tag }}
           generate_release_notes: true
           prerelease: ${{ inputs.prerelease }}
           # `inputs.prerelease` is already a boolean for a typed dispatch
@@ -146,10 +146,19 @@ jobs:
             signed by an identified developer. To open it:
 
             ```
-            xattr -dr com.apple.quarantine "/Applications/T3 Code (Alpha).app"
+            xattr -dr com.apple.quarantine "/Applications/N3 Code.app"
             ```
 
             Or right-click the app and choose Open, then confirm.
+
+            N3 Code keeps all state in its own `~/.t3-fork` and never touches
+            the real T3 Code app's `~/.t3`. First launch therefore starts from
+            an empty environment — no projects, no sign-in.
+
+            If you installed v0.1.1 ("T3 Code Fork.app"): delete that app and
+            do not launch it again — it shared the real app's `~/.t3/userdata`
+            database and left an orphaned `~/.t3/userdata-fork` directory you
+            can also delete. Details: `.fork/notes/FORK-DATA-ISOLATION-HANDOFF.md`.
 
             Cloud features (T3 Connect remote access and sign-in) are not
             configured in fork builds and will be unavailable. Everything local

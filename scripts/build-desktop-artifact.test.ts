@@ -90,19 +90,18 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     // fork:end fork-app-identity
   });
 
-  it("uses the fork's placeholder artwork for both channels", () => {
+  it("uses the fork's placeholder artwork for every channel", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-    assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17"), {
+    const forkIconAssets = {
       macIconPng: "assets/fork/n3-macos-1024.png",
       linuxIconPng: "assets/fork/n3-universal-1024.png",
       windowsIconIco: "assets/fork/n3-windows.ico",
-    });
-
-    assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42"), {
-      macIconPng: "assets/fork/n3-macos-1024.png",
-      linuxIconPng: "assets/fork/n3-universal-1024.png",
-      windowsIconIco: "assets/fork/n3-windows.ico",
-    });
+    };
+    assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17"), forkIconAssets);
+    assert.deepStrictEqual(
+      resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42"),
+      forkIconAssets,
+    );
     // fork:end fork-app-identity
   });
 
@@ -482,9 +481,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // fork:end fork-app-identity
       assert.equal(mac.entitlements, "/tmp/entitlements.mac.plist");
       assert.equal(mac.provisioningProfile, "/tmp/t3code.provisionprofile");
+      // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
       assert.deepStrictEqual(mac.protocols, [
-        { name: "T3 Code", schemes: ["t3code", "t3code-dev"] },
+        { name: "N3 Code", schemes: ["t3code", "t3code-dev"] },
       ]);
+      // fork:end fork-app-identity
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 

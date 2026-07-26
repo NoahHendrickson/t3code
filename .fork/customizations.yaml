@@ -142,9 +142,15 @@
     scheme is also deliberately left shared — t3code:// is the app's own
     internal origin, not just a deep-link handler, so changing only the
     registration would be incoherent; two installed apps contend for the
-    scheme, which is untidy but not destructive. Known carve-out: the WSL
-    backend bootstrap deliberately omits t3Home, so WSL-side state is not
-    isolated by this customization.
+    scheme, which is untidy but not destructive. The in-app web UI (splash,
+    favicon, resolveDesktopWebAssetBrand) deliberately keeps upstream's T3
+    branding for now — the rebrand covers OS-facing identity (bundle, Dock,
+    handler picker, /Applications, artifacts), not the rendered app. An
+    explicit T3CODE_HOME still overrides the fork base on both halves, with
+    one refused value: upstream's own ~/.t3, which a non-development build
+    rejects at startup rather than opening the real app's database. Known
+    carve-out: the WSL backend bootstrap deliberately omits t3Home, so
+    WSL-side state is not isolated by this customization.
   tier: 4
   files:
     - assets/fork/n3-macos-1024.png
@@ -152,6 +158,7 @@
     - assets/fork/n3-windows.ico
   shadows: []
   watch:
+    - apps/desktop/src/app/DesktopApp.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
     - apps/server/src/config.ts
