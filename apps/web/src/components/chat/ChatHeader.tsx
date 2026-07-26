@@ -17,7 +17,6 @@ import ProjectScriptsControl, {
 import { OpenInPicker } from "./OpenInPicker";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useT3ProjectFileScripts } from "~/hooks/useT3ProjectFileScripts";
-import { ProjectFavicon } from "../ProjectFavicon";
 import { cn } from "~/lib/utils";
 
 interface ChatHeaderProps {
@@ -87,22 +86,23 @@ export const ChatHeader = memo(function ChatHeader({
   return (
     <div className="@container/header-actions flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
-        {/* The project always leads the header: knowing which project a
-            thread lives in is priority zero, and the thread title alone
-            doesn't answer it. */}
+        {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+            The project still leads — knowing which project a thread lives in is
+            priority zero, and the title alone doesn't answer it — but the weight
+            is inverted from upstream's. The project is the fixed, repeating
+            half, so it takes semibold and becomes the landmark you navigate to;
+            the title is long, unique prose and reads better at regular weight
+            than as a second bold run competing with it.
+
+            The favicon is gone with it: it sat immediately left of a name that
+            already says the same thing, in a header whose whole left half is
+            fighting for width against three action pills. */}
         {activeProjectName ? (
-          <span className="inline-flex shrink-0 items-center gap-2">
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <ProjectFavicon
-                environmentId={activeThreadEnvironmentId}
-                cwd={activeProjectCwd ?? ""}
-                className="size-3.5"
-              />
-              <span className="max-w-40 truncate text-sm font-medium text-muted-foreground">
-                {activeProjectName}
-              </span>
+          <span className="inline-flex shrink-0 items-center gap-1">
+            <span className="max-w-40 truncate text-sm font-semibold text-muted-foreground">
+              {activeProjectName}
             </span>
-            <span aria-hidden className="text-muted-foreground/40">
+            <span aria-hidden className="text-sm font-semibold text-muted-foreground">
               /
             </span>
           </span>
@@ -112,7 +112,7 @@ export const ChatHeader = memo(function ChatHeader({
             render={
               <h2
                 aria-label={activeThreadTitle}
-                className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+                className="min-w-0 flex-1 truncate text-sm font-normal text-foreground"
               >
                 {activeThreadTitle}
               </h2>
@@ -120,6 +120,7 @@ export const ChatHeader = memo(function ChatHeader({
           />
           <TooltipPopup side="top">{activeThreadTitle}</TooltipPopup>
         </Tooltip>
+        {/* fork:end fork-workspace-header */}
       </div>
       <div
         data-chat-header-actions

@@ -329,7 +329,13 @@ export default function ProjectScriptsControl({
   return (
     <>
       {primaryScript ? (
-        <Group aria-label="Project scripts">
+        /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+           `data-fork-pill` is the only hook the fork adds here: it marks this
+           control as one of the workspace header's split pills, and
+           theme.custom.css does the rest. Both branches carry it — the split
+           Group when a primary script exists, and the lone "Add action" button
+           when one does not. fork:end fork-workspace-header */
+        <Group aria-label="Project scripts" data-fork-pill>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -409,7 +415,11 @@ export default function ProjectScriptsControl({
         </Group>
       ) : importableScripts.length > 0 ? (
         <Menu highlightItemOnHover={false}>
-          <MenuTrigger render={<Button size="xs" variant="outline" aria-label="Project actions" />}>
+          <MenuTrigger
+            render={
+              <Button size="xs" variant="outline" aria-label="Project actions" data-fork-pill />
+            }
+          >
             <PlusIcon className="size-3.5" />
             <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
               Add action

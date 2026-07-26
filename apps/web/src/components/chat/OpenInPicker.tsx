@@ -257,7 +257,10 @@ export const OpenInPicker = memo(function OpenInPicker({
   ]);
 
   return (
-    <Group aria-label="Open in editor">
+    // fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+    // `data-fork-pill` marks this as a workspace-header split pill; the styling
+    // itself lives in theme.custom.css. fork:end fork-workspace-header
+    <Group aria-label="Open in editor" data-fork-pill>
       <Button
         aria-label={compact ? "Open file in preferred editor" : undefined}
         size="xs"

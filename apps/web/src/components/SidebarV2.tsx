@@ -21,15 +21,11 @@ import {
   CircleAlertIcon,
   ClockIcon,
   CopyIcon,
-  FolderIcon,
-  FolderPlusIcon,
   GitBranchIcon,
   EllipsisIcon,
   MessageSquareIcon,
   PlusIcon,
-  SearchIcon,
   ServerIcon,
-  SquarePenIcon,
   Trash2Icon,
   Undo2Icon,
 } from "lucide-react";
@@ -128,11 +124,19 @@ import {
 import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 import {
+  SidebarV2IdleMark,
   SidebarV2StatusDot,
   SidebarV2WokeMark,
   SidebarV2WorkingRain,
   type SidebarV2DotTone,
 } from "~/custom/SidebarV2StatusIndicator";
+import { SidebarV2ThreadCardMeta } from "~/custom/SidebarV2ThreadCardMeta";
+import { SidebarV2ProjectScopeRow, SidebarV2SearchRow } from "~/custom/SidebarV2ChromeRows";
+import {
+  threadCardTitleClassName,
+  threadCardTitleRecedes,
+  threadRowSurfaceClassName,
+} from "~/custom/sidebarV2RowPolicy";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import { deriveProviderInstanceEntries, type ProviderInstanceEntry } from "../providerInstances";
 import { primaryServerProvidersAtom } from "../state/server";
@@ -646,29 +650,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     [openPrLink, pr],
   );
 
-  // All Sidebar V2 rows share one surface model. Live threads used to look
-  // like elevated cards while settled threads were plain rows, leaving neither
-  // a useful hierarchy nor a reliable hover cue. Status now lives in the row
-  // content; surface is reserved for interaction (hover, multi-select, route).
-  // Working rows carry a resting fill (the design's rgba(255,255,255,0.08))
-  // rather than the blanket opacity fade the whole in-flight group used to
-  // get: a running agent is the one thing on screen that is alive, and a lit
-  // surface says that without dimming the text you still need to read. Because
-  // that fill lands on the same value as the hover fill, working rows hover up
-  // to the active fill so the affordance survives.
-  const isWorkingSurface = status === "working" && !props.isActive && !isSelected;
-  const rowSurfaceClassName = cn(
-    "group/v2-row relative w-full cursor-pointer overflow-hidden rounded-2xl text-left outline-none select-none",
-    props.isActive
-      ? "bg-sidebar-row-active text-sidebar-foreground"
-      : isSelected
-        ? "bg-sidebar-row-selected text-sidebar-foreground"
-        : isWorkingSurface
-          ? "bg-sidebar-row-working text-sidebar-foreground hover:bg-sidebar-row-active"
-          : shouldRecede
-            ? "text-sidebar-muted-foreground/75 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-            : "bg-transparent text-sidebar-foreground hover:bg-sidebar-row-hover",
-  );
+  const rowSurfaceClassName = threadRowSurfaceClassName({
+    isActive: props.isActive,
+    isSelected,
+    recedes: shouldRecede,
+  });
 
   const title = isRenaming ? (
     <input
@@ -690,12 +676,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
         variant === "card" ? "text-xs" : "text-sm",
         shouldRecede && variant === "slim" ? "font-normal" : "font-medium",
         variant === "card"
-          ? cn(
-              // Both drawn specimens keep a full-strength title — working dims
-              // its metadata, never its subject line. Only a settled, already
-              // read thread lets the title itself fall back.
-              "truncate",
-              status === "ready" && shouldRecede ? "text-muted-foreground" : "text-foreground",
+          ? threadCardTitleClassName(
+              threadCardTitleRecedes({
+                isWorking: status === "working",
+                isIdle: topStatus === null,
+                isActive: props.isActive,
+                isSelected,
+              }),
             )
           : cn(
               "truncate group-hover/v2-row:text-foreground",
@@ -843,7 +830,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   return (
     <li
       data-thread-item
-      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_76px]"
+      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_86px]"
     >
       <Tooltip>
         <TooltipTrigger
@@ -860,20 +847,35 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
             />
           }
         >
-          {/* Two rows, not three: the title leads (it is the only thing you
-              actually scan for) and the project name drops into the metadata
-              line beside the branch. The favicon is gone — at 282px it cost a
-              slot to repeat what the project name already says. */}
-          <div className="relative z-10 flex flex-col gap-2 px-[11px] py-[15px]">
-            {/* 18px, not the 16px the metadata line uses: that is the exact
-                height of the working rain's 4x5 grid, and cropping it would
+          {/* Three rows: title, repo, meta. The middle line used to carry the
+              project, branch, PR and diff all at once, which meant the two
+              halves you compare across rows — what it is and how big it is —
+              had to be found at a different x each time. Splitting them gives
+              the PR/diff pair and the model/runtime pair fixed corners. The
+              favicon stays gone: at 284px it cost a slot to repeat what the
+              project name already says.
+
+              The design draws this at gap-8/p-12 over 16/15/15px rows. The gap
+              here is 7px because the title row is 18px rather than 16 (see
+              below): 24 padding + 48 rows + 2x7 lands on the drawn 86px. */}
+          <div className="relative z-10 flex flex-col gap-[7px] p-3">
+            {/* 18px, not the 16px the metadata lines use: that is the exact
+                height of the working rain's 3x5 grid, and cropping it would
                 clip the bottom row of drops. */}
             <div className="flex h-[18px] min-w-0 items-center gap-2">
               {title}
-              <span className="relative flex h-[18px] shrink-0 items-center justify-end">
+              {/* One grid cell holding both the status and the hover actions,
+                  stacked and right-aligned, rather than the actions floating
+                  absolutely over the row. Absolute positioning meant the slot
+                  measured only as wide as the status: on a settled row that is
+                  a 16px mark, while the actions are 54px, so they reached 30px
+                  back across the title and sat on top of its last word. In one
+                  cell the column is as wide as whichever child is showing, so
+                  the title's truncation always accounts for it. */}
+              <span className="grid h-[18px] shrink-0 grid-cols-1 justify-items-end">
                 <span
                   className={cn(
-                    "flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
+                    "col-start-1 row-start-1 flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
                     snoozeMenuOpen && "opacity-0",
                   )}
                 >
@@ -899,16 +901,31 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       ) : null}
                     </>
                   ) : (
-                    <span className="text-xs text-muted-foreground/65 tabular-nums">
-                      {threadTimeLabel(thread)}
-                    </span>
+                    <>
+                      {/* Idle. This slot used to fall back to a relative-time
+                          label, which made the trailing column alternate between
+                          a 16px mark and a variable-width string — so nothing
+                          below it could line up. The hollow ring holds the
+                          column; the timestamp survives in the tooltip. */}
+                      {/* Deliberately not role="status": idle is a resting
+                          state, not an event, and a live region per settled row
+                          means a long list mounts dozens of them and announces
+                          on every settle. The label exists to name the
+                          aria-hidden ring, which a plain sr-only span does. */}
+                      <span className="sr-only">Idle</span>
+                      <SidebarV2IdleMark />
+                    </>
                   )}
                 </span>
                 {props.settlementSupported || showSnoozeButton ? (
                   <span
                     className={cn(
-                      "absolute inset-y-0 right-0 flex items-stretch gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/v2-row:opacity-100",
-                      snoozeMenuOpen && "opacity-100",
+                      // Zero-width at rest so a settled row's title still runs
+                      // the full width of the card when nothing is pointing at
+                      // it; the column only widens once the actions are
+                      // actually showing, and the title re-truncates to match.
+                      "col-start-1 row-start-1 flex w-0 items-stretch gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                      snoozeMenuOpen && "w-auto opacity-100",
                     )}
                   >
                     {showSnoozeButton ? (
@@ -935,52 +952,15 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                 ) : null}
               </span>
             </div>
-            {/* 65% for rows that want you, 45% for rows that are merely busy —
-                the one hierarchy the two drawn specimens differ on. */}
-            <div
-              className={cn(
-                "flex h-4 min-w-0 items-center gap-2 text-[11px]",
-                shouldRecede ? "text-muted-foreground/70" : "text-muted-foreground",
-              )}
-            >
-              {props.projectTitle ? (
-                <span className="max-w-[45%] shrink-0 truncate">{props.projectTitle}</span>
-              ) : null}
-              {thread.branch ? (
-                <span className="flex min-w-0 flex-1 items-center gap-0.5">
-                  <GitBranchIcon aria-hidden className="size-3 shrink-0" />
-                  <span className="truncate whitespace-nowrap">{thread.branch}</span>
-                </span>
-              ) : (
-                <span className="flex-1" />
-              )}
-              {prBadge}
-              {diff ? (
-                <span className="shrink-0 font-mono">
-                  <span className="text-emerald-600 dark:text-emerald-400">+{diff.insertions}</span>{" "}
-                  <span className="text-red-600 dark:text-red-400">−{diff.deletions}</span>
-                </span>
-              ) : null}
-              <span
-                aria-hidden
-                className="pointer-events-none inline-flex shrink-0 items-center gap-0.5"
-              >
-                {isRemote ? (
-                  <span className="inline-flex shrink-0 items-center text-sidebar-muted-foreground/70">
-                    <ServerIcon aria-hidden className="size-4" />
-                  </span>
-                ) : null}
-                {driverKind ? (
-                  <span className="inline-flex shrink-0 items-center opacity-60">
-                    <ProviderInstanceIcon
-                      driverKind={driverKind}
-                      displayName={thread.session?.providerName ?? modelInstanceId}
-                      iconClassName="size-4"
-                    />
-                  </span>
-                ) : null}
-              </span>
-            </div>
+            <SidebarV2ThreadCardMeta
+              projectTitle={props.projectTitle}
+              branch={thread.branch}
+              prSlot={prBadge}
+              insertions={diff?.insertions ?? null}
+              deletions={diff?.deletions ?? null}
+              modelLabel={modelLabel}
+              isRemote={isRemote}
+            />
           </div>
           {props.jumpLabel ? <JumpHintBadge label={props.jumpLabel} /> : null}
         </TooltipTrigger>
@@ -2219,149 +2199,28 @@ export default function SidebarV2() {
     <>
       <SidebarChromeHeader isElectron={isElectron} />
       <SidebarContent className="gap-0">
-        <SidebarGroup className="px-2 pb-2 pt-3">
-          <div className="flex items-center gap-1">
-            <div className="min-w-0 flex-1">
-              <CommandDialogTrigger
-                render={
-                  <SidebarMenuButton
-                    size="sm"
-                    type="button"
-                    aria-label="Search threads and commands"
-                    className="h-8 gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-sm font-medium text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                    data-testid="command-palette-trigger"
-                  />
-                }
-              >
-                <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-                <div className="flex-1 truncate text-left">Search</div>
-                {commandPaletteShortcutLabel ? (
-                  <Kbd className="h-4 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-1 ring-sidebar-border">
-                    {commandPaletteShortcutLabel}
-                  </Kbd>
-                ) : null}
-              </CommandDialogTrigger>
-            </div>
-            <div className="shrink-0">
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <SidebarMenuButton
-                      size="sm"
-                      type="button"
-                      className="relative size-8 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                      onClick={handleNewThreadClick}
-                      disabled={projects.length === 0}
-                      aria-label="New thread"
-                    />
-                  }
-                >
-                  <SquarePenIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-                  <span
-                    className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
-                    aria-hidden="true"
-                  />
-                </TooltipTrigger>
-                <TooltipPopup side="right">
-                  {newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
-                </TooltipPopup>
-              </Tooltip>
-            </div>
-          </div>
-        </SidebarGroup>
-        {projectGroups.length > 0 ? (
-          <SidebarGroup className="px-2 pb-2 pt-0">
-            <div className="flex items-center gap-1">
-              <Menu open={projectScopeMenuOpen} onOpenChange={setProjectScopeMenuOpen}>
-                <MenuTrigger
-                  aria-label="Filter threads by project"
-                  className="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left text-sm font-medium text-sidebar-muted-foreground outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                >
-                  {scopedProjectGroup ? (
-                    <ProjectFavicon
-                      environmentId={scopedProjectGroup.environmentId}
-                      cwd={scopedProjectGroup.workspaceRoot}
-                      className="size-4 shrink-0"
-                    />
-                  ) : (
-                    <FolderIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-                  )}
-                  <span className="min-w-0 flex-1 truncate">
-                    {scopedProjectGroup?.displayName ?? "All projects"}
-                  </span>
-                  <ChevronDownIcon className="size-4 shrink-0 text-sidebar-muted-foreground/70" />
-                </MenuTrigger>
-                <MenuPopup align="start" className="w-(--anchor-width)">
-                  <MenuRadioGroup
-                    value={projectScopeKey ?? "all"}
-                    onValueChange={(value) =>
-                      setProjectScopeKey(value === "all" ? null : (value as string))
-                    }
-                  >
-                    <MenuRadioItem
-                      value="all"
-                      closeOnClick
-                      className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
-                    >
-                      <FolderIcon className="size-4 shrink-0" />
-                      <span className="min-w-0 truncate text-sm">All projects</span>
-                    </MenuRadioItem>
-                    {projectGroups.map((project) => {
-                      const scopeKey = project.projectKey;
-                      return (
-                        <MenuRadioItem
-                          key={scopeKey}
-                          value={scopeKey}
-                          closeOnClick
-                          className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
-                        >
-                          <ProjectFavicon
-                            environmentId={project.environmentId}
-                            cwd={project.workspaceRoot}
-                            className="size-4 shrink-0"
-                          />
-                          <span className="min-w-0 truncate text-sm">{project.displayName}</span>
-                          <button
-                            type="button"
-                            aria-label={`Project actions for ${project.displayName}`}
-                            title={`Project actions for ${project.displayName}`}
-                            className="ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/55 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => {
-                              void handleProjectActions(event, project);
-                            }}
-                          >
-                            <EllipsisIcon className="size-3.5" />
-                          </button>
-                        </MenuRadioItem>
-                      );
-                    })}
-                  </MenuRadioGroup>
-                </MenuPopup>
-              </Menu>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <SidebarMenuButton
-                      size="sm"
-                      className="relative size-8 shrink-0 justify-center rounded-md bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
-                      onClick={openAddProjectCommandPalette}
-                      type="button"
-                      aria-label="New project"
-                    />
-                  }
-                >
-                  <FolderPlusIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-                  <span
-                    className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
-                    aria-hidden="true"
-                  />
-                </TooltipTrigger>
-                <TooltipPopup side="right">New project</TooltipPopup>
-              </Tooltip>
-            </div>
-          </SidebarGroup>
-        ) : null}
+        {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+            Both control rows are fork-owned; only these call sites live here.
+            See custom/SidebarV2ChromeRows.tsx. */}
+        <SidebarV2SearchRow
+          commandPaletteShortcutLabel={commandPaletteShortcutLabel}
+          newThreadShortcutLabel={newThreadShortcutLabel}
+          newThreadDisabled={projects.length === 0}
+          onNewThread={handleNewThreadClick}
+        />
+        <SidebarV2ProjectScopeRow
+          projectGroups={projectGroups}
+          scopedProjectGroup={scopedProjectGroup}
+          projectScopeKey={projectScopeKey}
+          onProjectScopeChange={setProjectScopeKey}
+          menuOpen={projectScopeMenuOpen}
+          onMenuOpenChange={setProjectScopeMenuOpen}
+          onProjectActions={(event, project) => {
+            void handleProjectActions(event, project);
+          }}
+          onAddProject={openAddProjectCommandPalette}
+        />
+        {/* fork:end fork-sidebar-chrome */}
         <SidebarGroup className="min-h-0 flex-1 overflow-y-auto px-2 py-1 [scrollbar-gutter:stable]">
           <TooltipProvider
             key="sidebar-thread-tooltips-150"

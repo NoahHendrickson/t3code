@@ -255,7 +255,7 @@ DesktopApp.program.pipe(
     Effect.sync(() => {
       const message = String(Cause.squash(cause));
       if (message.includes("Refusing to start")) {
-        Electron.dialog.showErrorBox("N3 Code cannot start", message);
+        Electron.dialog.showErrorBox("no3y Code cannot start", message);
       }
     }),
   ),

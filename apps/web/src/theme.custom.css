@@ -67,6 +67,176 @@
   font-family: var(--font-mono);
 }
 
+/* ---------------------------------------------------------------------------
+   Surface palette (dark only) — see `.fork/customizations.yaml#fork-surface-palette`.
+
+   The shell moves off pure black. The workspace stage is #212121 and the
+   sidebar panel is #1e1e1e, so the panel sits *below* the stage rather than
+   lifting off it — the inverse of upstream's "surfaces lift from the base"
+   model, and deliberate: the panel is chrome, the stage is the work.
+
+   Two blocks, not one, and the second is not redundant. Upstream re-declares
+   --background / --card / --border and the whole --sidebar-* family *on the
+   panel element itself* (index.css, `.dark [data-sidebar-version=…]`). A custom
+   property set only at :root never reaches an element that declares its own, so
+   the panel needs its own mirrored rule. Same reason the status palette below
+   uses the doubled selector.
+
+   Every value is flat opaque sRGB rather than an alpha over the panel. Alpha
+   compounds — a fill inside a hovered row inside a selected row lands on a
+   colour nobody specified — and these are only correct against #1e1e1e anyway,
+   so freezing them is honest about that. Light mode is untouched: it keeps
+   upstream's zinc hierarchy.
+
+   NOTE: only the v2 panel is repainted. v1 keeps upstream's black panel so the
+   beta toggle stays a real A/B, which does mean a v1 sidebar sits against the
+   new #212121 stage. The stage is global chrome and has no sidebar-version
+   attribute to key off. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --background: #212121;
+  --border: #2d2e2e;
+  /* Upstream lays a 0.035-opacity white noise over every chrome surface
+     (`@utility surface-grain`, applied to the sidebar shell and the workspace
+     inset). It was calibrated against a #000 shell, where a mean lift of ~+2.8
+     is invisible. On these surfaces it is not: measured, it carries the sidebar
+     panel from #1e1e1e to ~#212121 — which is the stage's colour. The workspace
+     keeps its drawn value only because the chat content paints over the grain
+     opaquely, so the net effect is that the panel climbs to meet the stage and
+     the three-level separation this whole palette is built on disappears.
+
+     Dropped rather than dialled down: the opacity that would keep the panel
+     within a level of spec is ~0.008, at which point there is no texture left
+     to preserve, only an unspecified amount of drift on every surface. Light
+     mode keeps upstream's grain — its surfaces are unchanged, so the original
+     calibration still holds. */
+  --surface-grain: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark [data-sidebar-version="v2"] {
+  --background: #1e1e1e;
+  --card: #1e1e1e;
+  --sidebar: #1e1e1e;
+  --border: #2d2e2e;
+  --sidebar-border: #2d2e2e;
+  /* The stage-channel header art ramps to this, and seams against anything
+     that is not the panel's own surface (upstream makes the same point about
+     its own --card). */
+  --sidebar-stage-fade: #1e1e1e;
+  /* Upstream's panel values are #0a0a0a muted and #191a1d accent — both were
+     lifts off black, and both land *below* a #1e1e1e panel, which would carve
+     controls into the surface instead of raising them. */
+  --muted: #262626;
+  --accent: #262626;
+  /* The ⌘K chip: rgba(255,255,255,0.08) over the panel in the design. */
+  --sidebar-control-surface: #303030;
+  --sidebar-row-hover: #262626;
+  --sidebar-row-active: #2a2a2a;
+  --sidebar-row-selected: #2a2a2a;
+}
+
+/* The band is a solid header-height slab with a hard bottom edge, per the
+   mockup. Upstream draws it 80px tall and dissolves it into the panel with a
+   mask plus a gradient ::after, which suits art that is meant to bleed away;
+   this one is meant to end. Keyed on :has() so only the fork's own art is
+   affected and the Nightly sky keeps its dissolve. */
+:root[data-fork="noahhendrickson-t3code"] .sidebar-stage-backdrop:has(.stage-dither) {
+  height: var(--workspace-topbar-height);
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"] .sidebar-stage-backdrop:has(.stage-dither)::after {
+  background: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Workspace header split pills — see
+   `.fork/customizations.yaml#fork-workspace-header`.
+
+   The three header controls (Add action / Open / PR) are already built from the
+   right primitives: a `Group` wrapping an outline `Button size="xs"`, a
+   separator, and a caret `Button size="icon-xs"`. `Group` flattens the inner
+   corners so the pair paints as one control, and `size="xs"` is already 24px
+   and 12px at >=sm — which is exactly the design's spec. So nothing structural
+   changes; the only fork edit in those three files is a `data-fork-pill`
+   attribute, and everything visual happens here.
+
+   What is left to say: fully round the outer corners, drop the raised
+   treatment (border tint, popover fill, inset highlight) that reads as a button
+   floating above a page, and open the padding out to the drawn 10px/7px.
+
+   Selected as `button`, not `[data-slot="button"]`: Base UI's `render` prop
+   merges the trigger's own props over the rendered element's, so a `Button`
+   handed to a `TooltipTrigger` or `MenuTrigger` ends up in the DOM carrying
+   `data-slot="tooltip-trigger"` / `"menu-trigger"`. Two of the three pills are
+   built that way, so a slot-based selector silently matches nothing. */
+:root[data-fork="noahhendrickson-t3code"] :is(button[data-fork-pill], [data-fork-pill] > button) {
+  border-color: var(--fork-pill-border);
+  background: transparent;
+  color: var(--fork-pill-fg);
+  box-shadow: none;
+  gap: 6px;
+}
+
+/* The `::before` overlay carries the variant's inset highlight and its own
+   radius. With the fill gone it has nothing left to draw, and leaving it would
+   trace a rounded-md ghost inside a pill. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button)::before {
+  box-shadow: none;
+  border-radius: inherit;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button):is(:hover, [data-pressed]) {
+  background: var(--fork-pill-hover);
+}
+
+/* Start and end corners are set independently so a lone button (the "Add
+   action" fallback, which has no split half) rounds on both — it matches
+   :first-child and :last-child at once — while a real pair keeps the flat inner
+   seam `Group` gives it. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button:first-child) {
+  border-start-start-radius: var(--fork-pill-radius);
+  border-end-start-radius: var(--fork-pill-radius);
+  /* 10px in the design, less the 1px border the box already spends. */
+  padding-inline: 9px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button:last-child) {
+  border-start-end-radius: var(--fork-pill-radius);
+  border-end-end-radius: var(--fork-pill-radius);
+}
+
+/* The caret half: 7px each side of a 14px glyph, so 28px wide rather than the
+   square 24px `size="icon-xs"` gives it. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button:last-child:not(:first-child) {
+  width: auto;
+  padding-inline: 7px;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > [data-slot="separator"] {
+  background: var(--fork-pill-border);
+}
+
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-pill-radius: 999px;
+  --fork-pill-border: var(--border);
+  --fork-pill-fg: var(--foreground);
+  --fork-pill-hover: var(--accent);
+}
+
+/* The drawn values. Scoped to dark because the design is dark-only: in light
+   mode the pills keep resolving to upstream's border/foreground/accent, which
+   is what the fallbacks above are for. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-pill-border: #333333;
+  --fork-pill-fg: #e6e6e6;
+  --fork-pill-hover: #2d2e2e;
+}
+
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
    falls back to upstream's variables. The design's hues are tuned for a black
    panel; on the light panel the same values are near-invisible at 8px, so each
@@ -88,7 +258,6 @@
    copy its dot would resolve to a transparent color. */
 :root[data-fork="noahhendrickson-t3code"],
 :root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
-  --sidebar-row-working: color-mix(in srgb, var(--foreground) 5%, transparent);
   --sidebar-v2-status-working: var(--color-emerald-600);
   --sidebar-v2-status-done: var(--color-emerald-600);
   --sidebar-v2-status-approval: var(--color-amber-500);
@@ -101,10 +270,6 @@
    rather than a descendant one. */
 :root[data-fork="noahhendrickson-t3code"].dark,
 :root[data-fork="noahhendrickson-t3code"].dark [data-sidebar-version="v2"] {
-  /* Matches the rgba(255,255,255,0.08) fill on the working specimen. It lands
-     on the same value as --sidebar-row-hover, so working rows hover to
-     --sidebar-row-active instead — see rowSurfaceClassName in SidebarV2. */
-  --sidebar-row-working: color-mix(in srgb, var(--foreground) 8%, transparent);
   --sidebar-v2-status-working: #24fe8a;
   --sidebar-v2-status-done: #24fe8a;
   --sidebar-v2-status-approval: #ffcd59;
@@ -114,7 +279,7 @@
 
 /* Pixel rain: the "working" indicator ported from the phanttom Ghostty fork
    (macos/Sources/Features/Terminal/Sidebar/SidebarView.swift, PixelSparkleView).
-   Four columns of drops fall through a 5-row grid, each column with its own
+   Three columns of drops fall through a 5-row grid, each column with its own
    speed and phase; the drop head is bright with an exponential trail above
    it and a sharp falloff below.
 

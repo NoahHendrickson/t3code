@@ -125,13 +125,18 @@
     therefore offered to replace the real app, and running one would have
     adopted its live database — including the legacy directory upstream
     migrates from, which is why legacyUserDataDirName is redirected too rather
-    than left pointing at "T3 Code (Alpha)". The fork presents as "N3 Code":
+    than left pointing at "T3 Code (Alpha)". The fork presents as "no3y Code":
     bundle id com.t3tools.t3code.fork (unchanged across renames — it is the
-    stable identity macOS keys on), installs as "N3 Code.app", ships
-    N3-Code-* artifacts, packages placeholder "N" lettermark art from
+    stable identity macOS keys on), installs as "no3y Code.app", ships
+    no3y-Code-* artifacts, packages placeholder "N" lettermark art from
     assets/fork on all three platforms, and keeps all filesystem state under
     the fork-owned base directory ~/.t3-fork (also stable across renames, so
-    display renames never orphan state).
+    display renames never orphan state). The name was "N3 Code" until it was
+    renamed wholesale; renaming display strings is safe by construction here,
+    precisely because the bundle id and the base directory are both held stable
+    across renames. The one consequence worth stating: an installed
+    "N3 Code.app" is not replaced by a build that installs as "no3y Code.app",
+    so an upgrader keeps both bundles until the old one is deleted by hand.
     Isolation is forked at the base directory, not the "userdata" leaf,
     because the packaged app is two processes: the desktop resolves its own
     state directory and hands only baseDir (as bootstrap t3Home) to the
@@ -146,10 +151,15 @@
     scheme is also deliberately left shared — t3code:// is the app's own
     internal origin, not just a deep-link handler, so changing only the
     registration would be incoherent; two installed apps contend for the
-    scheme, which is untidy but not destructive. The in-app web UI (splash,
-    favicon, resolveDesktopWebAssetBrand) deliberately keeps upstream's T3
-    branding for now — the rebrand covers OS-facing identity (bundle, Dock,
-    handler picker, /Applications, artifacts), not the rendered app. An
+    scheme, which is untidy but not destructive. The rendered app now carries
+    the name too: the sidebar brand reads APP_BASE_NAME, and branding.ts's
+    bridge-less fallback points at the fork's own constant instead of upstream's
+    "T3 Code", which had left dev and hosted sessions branded as upstream while
+    the packaged app was not — the exact ambiguity the rename exists to remove.
+    The sidebar lockup drops the T3 wordmark rather than pairing a borrowed
+    glyph with a different name. Splash, favicon and resolveDesktopWebAssetBrand
+    still carry upstream's T3 art: those are images rather than strings, and
+    replacing them is separate work. An
     explicit T3CODE_HOME still overrides the fork base on both halves, with
     one refused value: upstream's own ~/.t3, which a non-development build
     rejects at startup rather than opening the real app's database. Known
@@ -157,6 +167,7 @@
     WSL-side state is not isolated by this customization.
   tier: 4
   files:
+    - apps/web/src/custom/forkBranding.ts
     - assets/fork/n3-macos-1024.png
     - assets/fork/n3-universal-1024.png
     - assets/fork/n3-windows.ico
@@ -169,6 +180,9 @@
     - apps/desktop/src/app/DesktopEnvironment.test.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
     - apps/server/src/config.ts
+    - apps/web/src/branding.ts
+    - apps/web/src/branding.test.ts
+    - apps/web/src/components/sidebar/SidebarChrome.tsx
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
   verify:
@@ -217,22 +231,47 @@
 
 - id: sidebar-v2-card-rows
   intent: >
-    Sidebar V2 thread rows are restyled as two-line cards: title first, an
-    11px metadata line under it, 16px radius instead of 6px, and the status
-    text labels ("Working", "Approval") replaced by a single 16px mark in a
-    fixed trailing slot. The mark's form carries the state — falling pixels
-    while the agent runs, a static dot once it stops, a clock for woke — and
-    the hue only reinforces it, which is the vocabulary the phanttom Ghostty
-    sidebar uses. Working takes emerald from that design rather than the sky
-    the mobile Live Activity still uses; the divergence is deliberate and
-    mobile has not been migrated. The status palette and the rain keyframes
-    live in the Tier 1 stylesheet; only the six --color-sidebar-v2-* utility
-    registrations sit inline in index.css, fenced as
-    fork:sidebar-v2-status-palette, because Tailwind reads utility names from
-    the @theme block alone and will not see them anywhere else.
+    Sidebar V2 thread rows are three-line cards at 8px radius: a title line, a
+    repo line (project plus branch), and a meta line whose two halves sit in
+    fixed corners — PR number and diff counts on the left, model label and
+    runtime glyph on the right. Splitting repo from meta is the point: the two
+    things you compare across rows, what a thread is and how big it got, are
+    then always at the same x.
+
+    Surface encodes interaction and nothing else. A row is filled on hover and
+    when selected or routed to; it is never filled because of its status. An
+    earlier revision gave working rows a resting fill on the theory that a live
+    agent should look alive, and with several threads running the panel became
+    a field of lit rectangles in which the hover cue meant nothing. Working
+    instead recedes: it is the one status whose title drops to muted, because a
+    running agent is the row you can least act on.
+
+    Status text labels ("Working", "Approval") are replaced by a single 16px
+    mark in a fixed trailing slot, and the slot is never empty — idle draws a
+    hollow ring rather than falling back to a relative-time string, which used
+    to make the trailing column alternate between a mark and a variable-width
+    label so nothing below it could align. The mark's form carries the state —
+    falling pixels while the agent runs, a static dot once it stops, a clock
+    for woke, a ring for idle — and the hue only reinforces it, which is the
+    vocabulary the phanttom Ghostty sidebar uses. Working takes emerald from
+    that design rather than the sky the mobile Live Activity still uses; the
+    divergence is deliberate and mobile has not been migrated.
+
+    Diff counts bind to --success-foreground / --destructive-foreground rather
+    than emerald/red literals, so they hold up in light mode. They render only
+    once latestTurnDiff() returns data: it is an upstream stub returning null
+    today, and the slot is built to light up when the shell projection grows
+    checkpoint summaries.
+
+    The status palette and the rain keyframes live in the Tier 1 stylesheet;
+    only the five --color-sidebar-v2-status-* utility registrations sit inline
+    in index.css, because Tailwind reads utility names from the @theme block
+    alone and will not see them anywhere else.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
+    - apps/web/src/custom/SidebarV2ThreadCardMeta.tsx
+    - apps/web/src/custom/sidebarV2RowPolicy.ts
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
@@ -240,6 +279,161 @@
     - apps/web/src/index.css
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
+    - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
+
+- id: fork-surface-palette
+  intent: >
+    The dark shell is not black. The workspace stage is #212121 and the sidebar
+    v2 panel is #1e1e1e, so the panel sits below the stage rather than lifting
+    off it — the inverse of upstream's "surfaces lift from the base" model, and
+    deliberate: the panel is chrome, the stage is the work. Borders are #2d2e2e,
+    row hover #262626, row selected and route-active #2a2a2a.
+
+    Every value is flat opaque sRGB, not an alpha over the panel. Alpha
+    compounds — a fill inside a hovered row inside a selected row lands on a
+    colour nobody specified — and these are only correct against #1e1e1e
+    anyway, so freezing them is honest about that.
+
+    Two blocks are required and the second is not redundant: upstream
+    re-declares --background, --card, --border and the whole --sidebar-* family
+    on the panel element itself, and a custom property set only at :root never
+    reaches an element that declares its own.
+
+    Light mode is untouched and keeps upstream's zinc hierarchy. Only the v2
+    panel is repainted; v1 keeps upstream's black so the beta toggle stays a
+    real A/B, which does mean a v1 sidebar sits against the new stage — the
+    stage is global chrome and carries no sidebar-version attribute to key off.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/forkSurfacePalette.test.ts
+
+- id: fork-sidebar-chrome
+  intent: >
+    The sidebar's collapse toggle lives inside the sidebar header, beside the
+    macOS traffic lights, so it reads as belonging to the panel it collapses
+    rather than as chrome floating over the workspace. It therefore leaves with
+    the panel, so AppSidebarLayout's fixed SidebarControl still exists and still
+    floats — but only while the sidebar is shut, which is exactly the case
+    COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS already reserves space for in every
+    workspace header.
+
+    The sidebar.toggle keybinding stays mounted unconditionally in
+    AppSidebarLayout. Hanging it off the button would unmount it with the
+    sidebar and leave a collapsed panel with no way back but the rail.
+
+    The brand moves to the header's trailing edge, where it stops competing
+    with the toggle for the corner the eye starts at. The search and project
+    rows are 36px and 12px rather than 32px and 14px so they read as chrome
+    rather than as two more list items; the project row takes a leading
+    caret-up-down with no trailing chevron and no favicon, and its trailing
+    action is folder-open.
+
+    The Dev channel's header art is the designer's own green dither PNG instead
+    of upstream's blue blueprint. Nightly keeps its night sky, so the two
+    channels still read apart at a glance. It is painted as a covering
+    background rather than a repeating tile: the artwork ramps diagonally from
+    dark at the bottom-left to light at the top-right, so any repeat butts a
+    light edge against a dark one and draws a seam. Covering crops the extremes
+    of that ramp on a short band and keeps the gradient continuous instead.
+    An earlier revision regenerated the pattern as an 8x8 Bayer dither in SVG,
+    which scaled to any width and re-themed from two variables, but could only
+    approximate the reference — a horizontal ramp cannot survive tiling, so the
+    diagonal had to be flattened to a vertical one. The raster is the artwork as
+    drawn; the tradeoff is that it cannot re-theme and is a screenshot-quality
+    source (~30% of its pixels are the two flat greens, the rest resampling), so
+    a higher-resolution export would be a straight swap of the file.
+    Unlike upstream's art the band does not dissolve: it is a solid slab the
+    height of the topbar with a hard bottom edge, so the mask and gradient
+    ::after that upstream uses to fade its own art are switched off for this
+    variant alone, keyed on :has().
+
+    Upstream treats header art as a channel indicator — Dev and Nightly only,
+    nothing on a release build. The fork splits that in two. The sidebar header
+    always carries artwork, because here it is brand chrome rather than a build
+    cue, and a release build gets the green dither where upstream gave it
+    nothing. The two other surfaces upstream paints with the same art, the
+    composer send button and the standalone auth screen, keep upstream's
+    behaviour untouched and still light up on Dev alone — so the channel cue
+    survives, just not in the sidebar. Those two need no fork code: they already
+    gate on resolveSidebarStageBackdropVariant, which is null on a release
+    build.
+
+    There are two artworks, not one: green for a release build and orange for a
+    dev build, sharing a ramp direction and cell rhythm so they read as one
+    family with only the hue separating them. That is what replaces the channel
+    cue the sidebar gave up by always carrying art.
+
+    Nightly stays on upstream's night sky. The fork has never cut a Nightly
+    build — that label needs a -nightly.YYYYMMDD.N version and the release
+    workflow takes a hand-entered 0.1.2-shaped one — so the branch is
+    unreachable in practice; leaving it costs nothing and stays correct if that
+    changes or if upstream reworks that art.
+  tier: 4
+  files:
+    - apps/web/src/custom/SidebarHeaderBackdrop.tsx
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/custom/SidebarStageDitherArt.tsx
+    - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
+    - apps/web/src/custom/assets/sidebar-stage-dither.png
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/components/AppSidebarLayout.tsx
+    - apps/web/src/components/SidebarStageBackdrop.tsx
+    - apps/web/src/components/SidebarStageBackdrop.test.tsx
+    - apps/web/src/components/SidebarV2.tsx
+    - apps/web/src/components/sidebar/SidebarChrome.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkSidebarChrome.test.ts
+
+- id: fork-workspace-header
+  intent: >
+    The workspace topbar is 56px. One token drives both it and the sidebar
+    header; the design draws them at 56 and 52, but they sit side by side
+    across a 1px divider, so a 4px split would misalign the seam. Read as
+    unintentional and kept equal. The .wco rule re-derives the token from
+    env(titlebar-area-height), so on Windows with Controls Overlay the OS still
+    dictates the height and only the fallback moves.
+
+    Project and title swap weight: the project is the fixed, repeating half, so
+    it takes semibold and becomes the landmark you navigate to, while the title
+    is long unique prose that reads better at regular weight than as a second
+    bold run competing with it. The project favicon is gone — it sat left of a
+    name that already said the same thing, in a header whose left half is
+    fighting three action pills for width.
+
+    Those three controls (Add action / Open / PR) become fully-rounded split
+    pills. They were already built from the right primitives — a Group wrapping
+    an outline Button size="xs", a separator, and a caret Button size="icon-xs",
+    where Group flattens the inner corners and size="xs" is already 24px and
+    12px at >=sm — so nothing structural changes. The only edit in those three
+    files is a data-fork-pill attribute; the styling is all in the Tier 1
+    stylesheet, which rounds the outer corners, drops the raised treatment that
+    reads as a button floating above a page, and opens padding to 10px/7px.
+
+    The two panel toggles render at 16px, and their glyphs become SquareHalf and
+    SquareHalfBottom via the Phosphor shim rather than at the call site — see
+    phosphor-duotone-icons. Upstream's framed-panel glyphs were hard to tell
+    apart from the sidebar toggle three controls to the left; a filled half
+    reads as "this edge" at a glance.
+  tier: 4
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/components/GitActionsControl.tsx
+    - apps/web/src/components/ProjectScriptsControl.tsx
+    - apps/web/src/components/chat/ChatHeader.tsx
+    - apps/web/src/components/chat/OpenInPicker.tsx
+    - apps/web/src/components/chat/PanelLayoutControls.tsx
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/forkWorkspaceHeader.test.ts
 
 - id: fork-clerk-launch-resilience
   intent: >

@@ -1376,7 +1376,7 @@ export function resolveDesktopProductName(version: string): string {
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
   // Names the .app bundle. Upstream's "T3 Code (Alpha)" would land on exactly
   // the installed release's path in /Applications and offer to replace it.
-  return resolveDesktopUpdateChannel(version) === "nightly" ? "N3 Code (Nightly)" : "N3 Code";
+  return resolveDesktopUpdateChannel(version) === "nightly" ? "no3y Code (Nightly)" : "no3y Code";
   // fork:end fork-app-identity
 }
 
@@ -1400,7 +1400,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
     // Downloaded artifacts should be tell-apart-able from upstream's at a
     // glance too, not just the installed bundle.
-    artifactName: "N3-Code-${version}-${arch}.${ext}",
+    artifactName: "no3y-Code-${version}-${arch}.${ext}",
     // fork:end fork-app-identity
     directories: {
       buildResources: "apps/desktop/resources",
@@ -1445,7 +1445,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
           // internal origin), so macOS shows two handlers for them — the one
           // place a user is forced to tell the apps apart. The display name
           // must therefore be the fork's, not upstream's.
-          name: "N3 Code",
+          name: "no3y Code",
           // fork:end fork-app-identity
           schemes: ["t3code", "t3code-dev"],
         },
@@ -1790,7 +1790,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     t3codeCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
-    description: "N3 Code desktop build (fork of T3 Code)",
+    description: "no3y Code desktop build (fork of T3 Code)",
     author: "T3 Tools",
     // fork:end fork-app-identity
     main: "apps/desktop/dist-electron/main.cjs",
