@@ -14,6 +14,17 @@ const { createClerkBridgeMock, storageAdapter, storageMock } = vi.hoisted(() => 
   storageMock: vi.fn(),
 }));
 
+// fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
+// The fork skips the Clerk bridge when no publishable key is baked into the
+// build. These are upstream's bridge tests, so bake one in before the module
+// under test is imported (hoisted runs first); the keyless path is covered by
+// DesktopClerkForkSkip.test.ts.
+vi.hoisted(() => {
+  (globalThis as Record<string, unknown>).__T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__ =
+    `pk_test_${btoa("clerk.t3.codes$")}`;
+});
+// fork:end fork-clerk-launch-resilience
+
 vi.mock("@clerk/electron", () => ({
   createClerkBridge: createClerkBridgeMock,
 }));

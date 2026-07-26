@@ -160,7 +160,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-sidebar-row-hover: var(--sidebar-row-hover);
   --color-sidebar-row-active: var(--sidebar-row-active);
   --color-sidebar-row-selected: var(--sidebar-row-selected);
-  /* fork:begin sidebar-v2-status-palette — see .fork/customizations.yaml#sidebar-v2-card-rows
+  /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
      Utility names only. Tailwind reads `@theme` to decide which `bg-*`/`fill-*`
      classes exist, so these six registrations cannot live in the fork's own
      stylesheet. The values they resolve to do — see `theme.custom.css`. */
@@ -170,7 +170,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-sidebar-v2-status-approval: var(--sidebar-v2-status-approval);
   --color-sidebar-v2-status-input: var(--sidebar-v2-status-input);
   --color-sidebar-v2-status-failed: var(--sidebar-v2-status-failed);
-  /* fork:end sidebar-v2-status-palette */
+  /* fork:end sidebar-v2-card-rows */
   --color-sidebar-border: var(--sidebar-border);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

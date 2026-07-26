@@ -60,6 +60,45 @@ import * as DesktopWindow from "./window/DesktopWindow.ts";
 import * as DesktopWslBackend from "./wsl/DesktopWslBackend.ts";
 import * as DesktopWslEnvironment from "./wsl/DesktopWslEnvironment.ts";
 
+// fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
+// The renderer's scheme privileges are otherwise registered only by the
+// Clerk bridge — which keyless fork builds skip entirely (DesktopClerk), so
+// this synchronous module-load registration is the sole registrar on the
+// fork's own builds, and it is guaranteed to precede Electron's "ready"
+// event (module evaluation completes before the event loop can emit it).
+// For keyed builds the bridge still registers the active scheme pre-ready;
+// observed against the bundled Electron 41 framework binary that pre-ready
+// re-registration replaces the scheme list rather than throwing (the binary
+// carries only the post-ready error string, and browser_init's registration
+// overwrites the linked binding's globals), so the overlap is harmless.
+// Both schemes are registered so no env sniffing is needed; the privilege
+// set mirrors @clerk/electron's. try/catch because this runs before the
+// Effect runtime and any observability: a throw here would otherwise be a
+// silent exit, the exact failure shape this customization exists to remove —
+// a broken renderer with a logged reason beats that.
+try {
+  Electron.protocol.registerSchemesAsPrivileged(
+    [ElectronProtocol.getDesktopScheme(false), ElectronProtocol.getDesktopScheme(true)].map(
+      (scheme) => ({
+        scheme,
+        privileges: {
+          standard: true,
+          secure: true,
+          supportFetchAPI: true,
+          corsEnabled: true,
+          stream: true,
+        },
+      }),
+    ),
+  );
+} catch (error) {
+  // Pre-runtime, so no Effect logger exists yet; stderr is all there is.
+  process.stderr.write(
+    `Failed to register renderer scheme privileges at module load: ${String(error)}\n`,
+  );
+}
+// fork:end fork-clerk-launch-resilience
+
 const desktopEnvironmentLayer = Layer.unwrap(
   Effect.gen(function* () {
     const metadata = yield* Effect.service(ElectronApp.ElectronApp).pipe(
