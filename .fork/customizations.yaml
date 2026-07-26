@@ -134,7 +134,7 @@
     bundled server child, which independently derives its stateDir, caches/
     and worktrees/ from it. A desktop-side leaf rename shipped in v0.1.1 and
     left the server child writing the real ~/.t3/userdata — see
-    FORK-DATA-ISOLATION-HANDOFF.md. Moving the base keeps both halves on
+    .fork/notes/FORK-DATA-ISOLATION-HANDOFF.md. Moving the base keeps both halves on
     upstream's own leaf derivations and isolates all three shared directories
     at once, with no fork hunks in apps/server. Development paths are
     deliberately untouched: `vp dev` in this repo is already the fork, dev

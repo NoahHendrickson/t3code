@@ -294,6 +294,16 @@ in the v0.1.2 release notes.
 
 ## 7. Open question for the implementer
 
+> **Resolved by the implementation (PR #7).** The shipped answer is layered
+> rather than a single in-process invariant test: (a) the text guard below,
+> pinning the server's `baseDir` derivations and the desktop's `t3Home`
+> handoff; (b) functional tests in `DesktopEnvironment.test.ts` covering the
+> fork base, the `T3CODE_HOME=~/.t3` refusal, and packaged-dev containment;
+> and (c) a packaged-launch isolation check in `fork-release.yml` that runs
+> the built bundle against a scratch `HOME` — the only check in the set that
+> exercises both real processes. The paragraph below is kept as the original
+> analysis.
+
 The invariant test in step 2 needs both values in one process. `apps/desktop` depends only
 on `@t3tools/contracts` — **not** on `apps/server` — and `apps/server` is package `t3` with
 no `exports` field, so `deriveServerPaths` is not importable from the desktop workspace as
@@ -337,6 +347,13 @@ test as a follow-up.
 ---
 
 ## 9. Current machine state
+
+> **Point-in-time snapshot (2026-07-26, pre-fix).** Cleanup owed on this
+> machine once a fixed build is verified: delete `/Applications/T3 Code
+Fork.app` (v0.1.1), delete the orphaned `~/.t3/userdata-fork`, and note that
+> `~/.t3/caches/*.json` were rewritten and one `auth_sessions` row was
+> inserted per §2.2 (both inert). The backup can be removed once v0.1.2 is
+> verified by launch.
 
 - `/Applications/T3 Code Fork.app` is **still installed** and will repeat §2.2 on every
   launch. Do not run it until §4 lands.

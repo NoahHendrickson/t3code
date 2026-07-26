@@ -20,7 +20,7 @@
  * the bootstrap t3Home. A leaf rename in the desktop alone shipped in v0.1.1
  * and passed every static check here while the server child opened the real
  * ~/.t3/userdata/state.sqlite read-write — see
- * FORK-DATA-ISOLATION-HANDOFF.md. The guards below therefore pin the whole
+ * .fork/notes/FORK-DATA-ISOLATION-HANDOFF.md. The guards below therefore pin the whole
  * chain: the fork's base directory, the t3Home handoff, and both halves
  * appending upstream's own leaves to that one input.
  */
