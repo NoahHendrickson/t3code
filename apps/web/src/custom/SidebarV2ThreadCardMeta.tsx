@@ -79,8 +79,14 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
           ) : null}
         </span>
         {/* 3px of trailing padding so the runtime glyph's optical edge lines up
-            with the status mark above it, which sits inside a 16px box. */}
-        <span className={`flex shrink-0 items-center gap-1 pr-[3px] ${MUTED}`}>
+            with the status mark above it, which sits inside a 16px box.
+
+            `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
+            `truncate` can never fire, so a long model name would push the PR and
+            diff counts — the half that *can* shrink — off the row instead of
+            clipping itself. Capped at half the line so neither side can starve
+            the other. */}
+        <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
           {props.modelLabel ? <span className="truncate">{props.modelLabel}</span> : null}
           {props.isRemote ? (
             <CloudIcon aria-hidden className="size-3 shrink-0" />

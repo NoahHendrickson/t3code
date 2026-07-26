@@ -35,7 +35,13 @@ export function useSidebarStageBackdropVariant(): SidebarStageBackdropVariant | 
   );
 }
 
-/** Stage-channel header art; palettes mirror the per-channel app icons in `assets/`. */
+/** Stage-channel header art; palettes mirror the per-channel app icons in `assets/`.
+ *
+ * fork: no production call site — the sidebar header renders
+ * `custom/SidebarHeaderBackdrop` instead, which wraps the same art in the same
+ * class so it can show on release builds too. Kept rather than deleted because
+ * it is upstream's own export and its test still covers it; do not "clean this
+ * up" during a sync. See .fork/customizations.yaml#fork-sidebar-chrome. */
 export function SidebarStageBackdrop({ variant }: { variant: SidebarStageBackdropVariant }) {
   return (
     <div

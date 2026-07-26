@@ -62,7 +62,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
       <div className="relative z-10 flex items-center pl-[var(--workspace-controls-left)]">
         <SidebarTrigger
           aria-label="Toggle main sidebar"
-          className="[:hover,[data-pressed]]:bg-white/15 focus-visible:ring-white/90 focus-visible:ring-offset-blue-700 [&_svg]:text-white! [&_svg]:opacity-100!"
+          className="[:hover,[data-pressed]]:bg-white/15 focus-visible:ring-white/90 focus-visible:ring-offset-transparent [&_svg]:text-white! [&_svg]:opacity-100!"
         />
       </div>
       <SidebarBrand />

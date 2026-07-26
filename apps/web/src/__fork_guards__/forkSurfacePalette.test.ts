@@ -21,6 +21,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
+import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -110,9 +111,23 @@ describe("fork guard: fork-surface-palette", () => {
   it("leaves light mode on upstream's palette", () => {
     // The design is dark-only. A fork surface value that escaped its `.dark`
     // scope would paint a #1e1e1e panel into the light theme.
-    for (const hex of ["#212121", "#1e1e1e", "#2d2e2e", "#2a2a2a", "#262626"]) {
-      const unscoped = new RegExp(`${MARKER.replace(/[[\]$]/gu, "\\$&")}\\s*\\{[^}]*${hex}`, "u");
-      expect(theme, `${hex} must not be declared outside a .dark scope`).not.toMatch(unscoped);
+    //
+    // Every marker-rooted block is checked, not only the one whose selector is
+    // exactly the bare marker: a hex leaked into
+    // `:root[marker] .some-descendant { }` is just as wrong and the narrower
+    // form missed it.
+    const surfaceHexes = ["#212121", "#1e1e1e", "#2d2e2e", "#2a2a2a", "#262626"];
+    const lightRules = cssRules(theme).filter(
+      (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
+    );
+    expect(lightRules.length).toBeGreaterThan(0);
+    for (const rule of lightRules) {
+      for (const hex of surfaceHexes) {
+        expect(
+          rule.body,
+          `${hex} declared outside a .dark scope in: ${rule.selector}`,
+        ).not.toContain(hex);
+      }
     }
   });
 });

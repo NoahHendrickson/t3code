@@ -15,6 +15,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
+import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -40,15 +41,17 @@ describe("fork guard: fork-workspace-header", () => {
   });
 
   it("styles the pills only under the fork marker", () => {
-    // An unmarked, pure-upstream build must render upstream's buttons. Every
-    // `data-fork-pill` rule therefore has to be scoped.
-    const rules = theme.split("\n").filter((line) => line.includes("[data-fork-pill]"));
-    expect(rules.length).toBeGreaterThan(0);
-    for (const rule of rules) {
-      const selectorStart = theme.lastIndexOf(MARKER, theme.indexOf(rule));
-      expect(selectorStart, `unscoped data-fork-pill rule: ${rule.trim()}`).toBeGreaterThanOrEqual(
-        0,
-      );
+    // An unmarked, pure-upstream build must render upstream's buttons, so every
+    // `data-fork-pill` rule has to be scoped.
+    //
+    // This reads each rule's *own* selector. The earlier version asked only
+    // whether a marker appeared somewhere earlier in the file, which passed for
+    // any rule below the first marker block, scoped or not — a tripwire dressed
+    // up as a proof.
+    const pillRules = cssRules(theme).filter((rule) => rule.selector.includes("[data-fork-pill]"));
+    expect(pillRules.length).toBeGreaterThan(0);
+    for (const rule of pillRules) {
+      expect(rule.selector, `unscoped data-fork-pill rule: ${rule.selector}`).toContain(MARKER);
     }
   });
 

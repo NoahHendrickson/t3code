@@ -18,18 +18,13 @@ import {
   AlarmClockOffIcon,
   CheckIcon,
   ChevronDownIcon,
-  ChevronsUpDownIcon,
   CircleAlertIcon,
   ClockIcon,
   CopyIcon,
-  FolderIcon,
-  FolderOpenIcon,
   GitBranchIcon,
   EllipsisIcon,
   MessageSquareIcon,
-  PlusCircleIcon,
   PlusIcon,
-  SearchIcon,
   ServerIcon,
   Trash2Icon,
   Undo2Icon,
@@ -912,9 +907,12 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                           a 16px mark and a variable-width string — so nothing
                           below it could line up. The hollow ring holds the
                           column; the timestamp survives in the tooltip. */}
-                      <span role="status" className="sr-only">
-                        Idle
-                      </span>
+                      {/* Deliberately not role="status": idle is a resting
+                          state, not an event, and a live region per settled row
+                          means a long list mounts dozens of them and announces
+                          on every settle. The label exists to name the
+                          aria-hidden ring, which a plain sr-only span does. */}
+                      <span className="sr-only">Idle</span>
                       <SidebarV2IdleMark />
                     </>
                   )}
