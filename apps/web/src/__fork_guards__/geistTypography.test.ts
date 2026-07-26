@@ -43,6 +43,15 @@ function markerBlock(css: string): string {
   return css.slice(start, end);
 }
 
+/** A CSS font stack as a comparable list — quoting and spacing are noise. */
+function fontFamilies(stack: string): string[] {
+  return stack
+    .replace(/\/\*[\s\S]*?\*\//gu, "")
+    .split(",")
+    .map((family) => family.trim().replace(/^["']|["']$/gu, ""))
+    .filter((family) => family.length > 0);
+}
+
 interface TerminalProbe {
   readonly target: ForkTerminalFontTarget;
   /** Every value written to `options.fontFamily`, in order. */
@@ -148,14 +157,19 @@ describe("fork guard: geist-typography", () => {
 
   it("keeps the module's fallback stack identical to the CSS mono stack", () => {
     // FORK_TERMINAL_FONT_FALLBACK backs up the `--font-mono` read, so it has to
-    // stay the stack the cascade would have produced. Nothing else pins the two
-    // together: edit one, forget the other, and the safety net quietly stops
-    // matching what it backs up while every other guard here stays green.
-    // Collapsed on both sides — `vp fmt` decides where the CSS value wraps.
-    const collapse = (stack: string) => stack.replace(/\s+/gu, " ").trim();
-    const declared = readSibling("../theme.custom.css").match(/--fork-font-mono:([^;]*);/u);
+    // stay the stack the cascade produces in a marked build. Nothing else pins
+    // the two together: edit one, forget the other, and the safety net quietly
+    // stops matching what it backs up while every other guard here stays green.
+    const css = readSibling("../theme.custom.css");
+    // Exactly one declaration: a second — a `.dark` variant, a media query, a
+    // stale copy quoted in a comment — would win the cascade in some state
+    // while this guard went on checking whichever came first in the file.
+    expect(css.match(/--fork-font-mono:/gu)).toHaveLength(1);
+    // Compared as family lists, not text: `vp fmt` decides where the value
+    // wraps, and `Consolas` and `"Consolas"` are the same family to CSS.
+    const declared = markerBlock(css).match(/--fork-font-mono:([^;]*);/u);
     expect(declared).not.toBeNull();
-    expect(collapse(declared?.[1] ?? "")).toBe(collapse(FORK_TERMINAL_FONT_FALLBACK));
+    expect(fontFamilies(declared?.[1] ?? "")).toEqual(fontFamilies(FORK_TERMINAL_FONT_FALLBACK));
   });
 
   it("keeps the terminal wired to the fork-owned font module", () => {
