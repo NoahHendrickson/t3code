@@ -1,6 +1,8 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
@@ -53,16 +55,16 @@ describe("DesktopEnvironment", () => {
       assert.equal(environment.isDevelopment, true);
       assert.equal(environment.appDataDirectory, "/Users/alice/Library/Application Support");
       assert.equal(environment.baseDir, "/tmp/t3");
-      assert.equal(environment.stateDir, "/tmp/t3/userdata-fork");
-      assert.equal(environment.desktopSettingsPath, "/tmp/t3/userdata-fork/desktop-settings.json");
-      assert.equal(environment.clientSettingsPath, "/tmp/t3/userdata-fork/client-settings.json");
+      assert.equal(environment.stateDir, "/tmp/t3/userdata");
+      assert.equal(environment.desktopSettingsPath, "/tmp/t3/userdata/desktop-settings.json");
+      assert.equal(environment.clientSettingsPath, "/tmp/t3/userdata/client-settings.json");
       assert.equal(
         environment.savedEnvironmentRegistryPath,
-        "/tmp/t3/userdata-fork/saved-environments.json",
+        "/tmp/t3/userdata/saved-environments.json",
       );
-      assert.equal(environment.serverSettingsPath, "/tmp/t3/userdata-fork/settings.json");
-      assert.equal(environment.logDir, "/tmp/t3/userdata-fork/logs");
-      assert.equal(environment.browserArtifactsDir, "/tmp/t3/userdata-fork/browser-artifacts");
+      assert.equal(environment.serverSettingsPath, "/tmp/t3/userdata/settings.json");
+      assert.equal(environment.logDir, "/tmp/t3/userdata/logs");
+      assert.equal(environment.browserArtifactsDir, "/tmp/t3/userdata/browser-artifacts");
       assert.equal(environment.rootDir, "/repo");
       assert.equal(environment.appRoot, "/repo");
       assert.equal(environment.backendEntryPath, "/repo/apps/server/dist/bin.mjs");
@@ -91,10 +93,10 @@ describe("DesktopEnvironment", () => {
       );
 
       assert.equal(environment.isDevelopment, false);
-      assert.equal(environment.stateDir, "/tmp/t3/userdata-fork");
-      assert.equal(environment.logDir, "/tmp/t3/userdata-fork/logs");
-      assert.equal(environment.browserArtifactsDir, "/tmp/t3/userdata-fork/browser-artifacts");
-      assert.equal(environment.serverSettingsPath, "/tmp/t3/userdata-fork/settings.json");
+      assert.equal(environment.stateDir, "/tmp/t3/userdata");
+      assert.equal(environment.logDir, "/tmp/t3/userdata/logs");
+      assert.equal(environment.browserArtifactsDir, "/tmp/t3/userdata/browser-artifacts");
+      assert.equal(environment.serverSettingsPath, "/tmp/t3/userdata/settings.json");
     }),
   );
 
@@ -107,9 +109,94 @@ describe("DesktopEnvironment", () => {
       const production = yield* makeEnvironment();
 
       assert.equal(development.stateDir, "/Users/alice/.t3/dev");
-      assert.equal(production.stateDir, "/Users/alice/.t3/userdata-fork");
+      assert.equal(production.baseDir, "/Users/alice/.t3-fork");
+      assert.equal(production.stateDir, "/Users/alice/.t3-fork/userdata");
     }),
   );
+
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  const assertRefused = (exit: Exit.Exit<unknown, unknown>) => {
+    assert.isTrue(Exit.isFailure(exit));
+    // Assert the intended refusal, not just any defect — a broken refusal
+    // (e.g. calling a nonexistent API) would also surface as a failure.
+    if (Exit.isFailure(exit)) {
+      assert.include(String(Cause.squash(exit.cause)), "Refusing to start");
+    }
+  };
+
+  it.effect("refuses upstream's ~/.t3 as an explicit home for non-development builds", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.t3" }));
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("refuses a literal, unexpanded ~/.t3", () =>
+    Effect.gen(function* () {
+      // The server child expands a leading "~" when it resolves T3CODE_HOME
+      // itself, so a literal value must be judged by the server's semantics —
+      // treating it as a cwd-relative path would skip the refusal while the
+      // child opened the real database.
+      const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "~/.t3" }));
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("refuses case variants of upstream's base on case-insensitive platforms", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.T3" }));
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("refuses paths inside upstream's base, not just its root", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.t3/userdata" }),
+      );
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("refuses upstream's ~/.t3 for packaged builds even in development", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        makeEnvironment(
+          { isPackaged: true },
+          { T3CODE_HOME: "/Users/alice/.t3", VITE_DEV_SERVER_URL: "http://localhost:5173" },
+        ),
+      );
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("still honors a custom explicit home that is not upstream's", () =>
+    Effect.gen(function* () {
+      const environment = yield* makeEnvironment({}, { T3CODE_HOME: "/tmp/elsewhere" });
+      assert.equal(environment.baseDir, "/tmp/elsewhere");
+      assert.equal(environment.stateDir, "/tmp/elsewhere/userdata");
+    }),
+  );
+
+  it.effect("expands a leading tilde in a custom home like the server does", () =>
+    Effect.gen(function* () {
+      const environment = yield* makeEnvironment({}, { T3CODE_HOME: "~/custom-t3" });
+      assert.equal(environment.baseDir, "/Users/alice/custom-t3");
+      assert.equal(environment.stateDir, "/Users/alice/custom-t3/userdata");
+    }),
+  );
+
+  it.effect("keeps a packaged build fork-owned even when a dev server URL is set", () =>
+    Effect.gen(function* () {
+      const environment = yield* makeEnvironment(
+        { isPackaged: true },
+        { VITE_DEV_SERVER_URL: "http://localhost:5173" },
+      );
+      assert.equal(environment.baseDir, "/Users/alice/.t3-fork");
+      assert.equal(environment.stateDir, "/Users/alice/.t3-fork/dev");
+    }),
+  );
+  // fork:end fork-app-identity
 
   it.effect("uses a configured app user model id override", () =>
     Effect.gen(function* () {

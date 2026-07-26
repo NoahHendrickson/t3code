@@ -101,6 +101,85 @@ jobs:
             --build-version "${{ steps.meta.outputs.version }}" \
             --verbose
 
+      - name: Launch isolation check
+        shell: bash
+        run: |
+          set -euo pipefail
+          # v0.1.1 passed every static check while its server child opened the
+          # real ~/.t3/userdata database read-write — only launching the
+          # packaged app proves isolation. Run the built bundle against a
+          # scratch HOME and assert everything it creates is fork-owned:
+          # ~/.t3-fork must appear (the server child owns state.sqlite, so its
+          # arrival proves the child derived the fork base too), ~/.t3 must
+          # never exist, and the Electron user-data directory must be the
+          # fork's t3code-fork, not upstream's t3code.
+          app=$(find release -maxdepth 3 -name "*.app" -type d | head -1)
+          if [ -z "$app" ]; then
+            echo "No .app bundle found under release/" >&2
+            exit 1
+          fi
+          # Derive the executable from the bundle rather than hardcoding the
+          # product name — nightly-shaped versions get a different name, and
+          # every hardcoded copy is one more string a rename must find.
+          executable=$(defaults read "$PWD/$app/Contents/Info" CFBundleExecutable)
+          binary="$app/Contents/MacOS/$executable"
+          if [ ! -x "$binary" ]; then
+            echo "Expected executable missing: $binary" >&2
+            ls "$app/Contents/MacOS" >&2
+            exit 1
+          fi
+          scratch=$(mktemp -d)
+          violated() {
+            echo "ISOLATION VIOLATED: $1" >&2
+            find "$2" >&2 || true
+            pkill -9 -f "$app/Contents" 2>/dev/null || true
+            exit 1
+          }
+          env -u T3CODE_HOME HOME="$scratch" "$binary" >/dev/null 2>&1 &
+          pid=$!
+          deadline=$((SECONDS + 180))
+          while :; do
+            # A server-side regression creates ~/.t3 within seconds — fail
+            # immediately and with the right message instead of burning the
+            # full timeout waiting on a fork path that will never appear.
+            [ -e "$scratch/.t3" ] && violated "the build created ~/.t3" "$scratch/.t3"
+            [ -e "$scratch/.t3-fork/userdata/state.sqlite" ] && break
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "App exited before creating fork state" >&2
+              exit 1
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "Server never created $scratch/.t3-fork/userdata/state.sqlite within 180s" >&2
+              pkill -9 -f "$app/Contents" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 2
+          done
+          # Tear down the whole bundle's process tree and wait until it is
+          # actually dead before the negative assertions — the server child
+          # can outlive the Electron main, and a lazy write after teardown
+          # must still fail the check.
+          pkill -TERM -f "$app/Contents" 2>/dev/null || true
+          shutdown_deadline=$((SECONDS + 30))
+          while pgrep -f "$app/Contents" >/dev/null 2>&1; do
+            if [ "$SECONDS" -ge "$shutdown_deadline" ]; then
+              pkill -9 -f "$app/Contents" 2>/dev/null || true
+              sleep 2
+              break
+            fi
+            sleep 1
+          done
+          [ -e "$scratch/.t3" ] && violated "~/.t3 appeared during or after teardown" "$scratch/.t3"
+          support="$scratch/Library/Application Support"
+          [ -e "$support/t3code" ] && violated "upstream Electron user-data directory created" "$support/t3code"
+          if [ ! -d "$support/t3code-fork" ]; then
+            echo "Expected Electron user-data directory missing: t3code-fork" >&2
+            ls "$support" >&2 || true
+            exit 1
+          fi
+          echo "Isolation verified: state under ~/.t3-fork and t3code-fork only."
+          find "$scratch/.t3-fork" -maxdepth 2
+
       - name: Collect release assets
         shell: bash
         run: |
@@ -126,7 +205,7 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: T3 Code (fork) ${{ steps.meta.outputs.tag }}
+          name: N3 Code ${{ steps.meta.outputs.tag }}
           generate_release_notes: true
           prerelease: ${{ inputs.prerelease }}
           # `inputs.prerelease` is already a boolean for a typed dispatch
@@ -146,10 +225,19 @@ jobs:
             signed by an identified developer. To open it:
 
             ```
-            xattr -dr com.apple.quarantine "/Applications/T3 Code (Alpha).app"
+            xattr -dr com.apple.quarantine "/Applications/N3 Code.app"
             ```
 
             Or right-click the app and choose Open, then confirm.
+
+            N3 Code keeps all state in its own `~/.t3-fork` and never touches
+            the real T3 Code app's `~/.t3`. First launch therefore starts from
+            an empty environment — no projects, no sign-in.
+
+            If you installed v0.1.1 ("T3 Code Fork.app"): delete that app and
+            do not launch it again — it shared the real app's `~/.t3/userdata`
+            database and left an orphaned `~/.t3/userdata-fork` directory you
+            can also delete. Details: `.fork/notes/FORK-DATA-ISOLATION-HANDOFF.md`.
 
             Cloud features (T3 Connect remote access and sign-in) are not
             configured in fork builds and will be unavailable. Everything local

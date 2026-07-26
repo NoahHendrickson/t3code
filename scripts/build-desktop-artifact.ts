@@ -11,11 +11,11 @@ import desktopPackageJson from "../apps/desktop/package.json" with { type: "json
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
 import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
-import {
-  BRAND_ASSET_PATHS,
-  resolveWebAssetBrandForChannel,
-  type WebAssetBrand,
-} from "./lib/brand-assets.ts";
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// BRAND_ASSET_PATHS is no longer imported: the fork's desktop icons come from
+// FORK_DESKTOP_ICON_ASSETS below instead of upstream's per-channel art.
+// fork:end fork-app-identity
+import { resolveWebAssetBrandForChannel, type WebAssetBrand } from "./lib/brand-assets.ts";
 import { getDefaultBuildArch } from "./lib/build-target-arch.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
 import { resolveCatalogDependencies } from "./lib/resolve-catalog.ts";
@@ -39,6 +39,13 @@ const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
 // Distinct bundle id so macOS treats a fork build as a different application
 // from an installed upstream release rather than a replacement for it.
 const DESKTOP_APP_ID = "com.t3tools.t3code.fork";
+// Fork-owned placeholder art (an "N" lettermark) generated into assets/fork,
+// consumed by resolveDesktopBuildIconAssets below.
+const FORK_DESKTOP_ICON_ASSETS = {
+  macIconPng: "assets/fork/n3-macos-1024.png",
+  linuxIconPng: "assets/fork/n3-universal-1024.png",
+  windowsIconIco: "assets/fork/n3-windows.ico",
+} as const;
 // fork:end fork-app-identity
 const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/u;
 
@@ -1337,21 +1344,16 @@ export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
   return resolveWebAssetBrandForChannel(resolveDesktopUpdateChannel(version));
 }
 
-export function resolveDesktopBuildIconAssets(version: string): DesktopBuildIconAssets {
-  if (resolveDesktopUpdateChannel(version) === "nightly") {
-    return {
-      macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
-    };
-  }
-
-  return {
-    macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
-    linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
-    windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
-  };
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// Placeholder fork art: an "N" lettermark on every channel for now, so a fork
+// build is visually distinct from upstream in the Dock and /Applications.
+// Upstream's per-channel art stays untouched in assets/prod and assets/nightly
+// for clean merges; the version argument keeps upstream's call shape and goes
+// unused until the fork ships channel-specific art.
+export function resolveDesktopBuildIconAssets(_version: string): DesktopBuildIconAssets {
+  return FORK_DESKTOP_ICON_ASSETS;
 }
+// fork:end fork-app-identity
 
 export function resolveMockUpdateServerUrl(mockUpdateServerPort: number | undefined): string {
   return `http://localhost:${mockUpdateServerPort ?? 3000}`;
@@ -1374,9 +1376,7 @@ export function resolveDesktopProductName(version: string): string {
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
   // Names the .app bundle. Upstream's "T3 Code (Alpha)" would land on exactly
   // the installed release's path in /Applications and offer to replace it.
-  return resolveDesktopUpdateChannel(version) === "nightly"
-    ? "T3 Code Fork (Nightly)"
-    : "T3 Code Fork";
+  return resolveDesktopUpdateChannel(version) === "nightly" ? "N3 Code (Nightly)" : "N3 Code";
   // fork:end fork-app-identity
 }
 
@@ -1397,7 +1397,11 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
-    artifactName: "T3-Code-${version}-${arch}.${ext}",
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    // Downloaded artifacts should be tell-apart-able from upstream's at a
+    // glance too, not just the installed bundle.
+    artifactName: "N3-Code-${version}-${arch}.${ext}",
+    // fork:end fork-app-identity
     directories: {
       buildResources: "apps/desktop/resources",
     },
@@ -1436,7 +1440,13 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       category: "public.app-category.developer-tools",
       protocols: [
         {
-          name: "T3 Code",
+          // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+          // The schemes stay deliberately shared (t3code:// is the app's own
+          // internal origin), so macOS shows two handlers for them — the one
+          // place a user is forced to tell the apps apart. The display name
+          // must therefore be the fork's, not upstream's.
+          name: "N3 Code",
+          // fork:end fork-app-identity
           schemes: ["t3code", "t3code-dev"],
         },
       ],
@@ -1452,14 +1462,20 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   if (platform === "linux") {
     buildConfig.linux = {
       target: [target],
-      executableName: "t3code",
+      // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+      // Upstream's executableName would install /usr/bin/t3code over the real
+      // app's binary from a fork .deb/AppImage. StartupWMClass must match the
+      // runtime `class` switch (DesktopEnvironment.linuxWmClass, "t3code-fork"
+      // for packaged builds) or window grouping breaks.
+      executableName: "n3code",
       icon: "icons",
       category: "Development",
       desktop: {
         entry: {
-          StartupWMClass: "t3code",
+          StartupWMClass: "t3code-fork",
         },
       },
+      // fork:end fork-app-identity
     };
   }
 
@@ -1762,14 +1778,21 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     stageDependencies,
   );
   const stagePackageJson: StagePackageJson = {
-    name: "t3code",
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    // This package.json ships inside the app. Its `name` is also Electron's
+    // fallback app name, i.e. the default userData directory before the
+    // runtime override lands — upstream's "t3code" is exactly the shared
+    // Application Support directory the override exists to avoid, so even the
+    // pre-override default must be fork-owned.
+    name: "n3code",
     version: appVersion,
     buildVersion: appVersion,
     t3codeCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
-    description: "T3 Code desktop build",
+    description: "N3 Code desktop build (fork of T3 Code)",
     author: "T3 Tools",
+    // fork:end fork-app-identity
     main: "apps/desktop/dist-electron/main.cjs",
     build: yield* createBuildConfig(
       options.platform,

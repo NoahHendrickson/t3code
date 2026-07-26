@@ -192,8 +192,10 @@ describe("DesktopAppIdentity", () => {
         const identity = yield* DesktopAppIdentity.DesktopAppIdentity;
         yield* identity.configure;
 
-        assert.deepEqual(calls.setName, ["T3 Code Fork (Alpha)"]);
-        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, "T3 Code Fork (Alpha)");
+        // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+        assert.deepEqual(calls.setName, ["N3 Code (Alpha)"]);
+        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, "N3 Code (Alpha)");
+        // fork:end fork-app-identity
         assert.equal(calls.setAboutPanelOptions[0]?.applicationVersion, "1.2.3");
         assert.equal(calls.setAboutPanelOptions[0]?.version, "0123456789ab");
         assert.deepEqual(calls.setDockIcon, ["/icon.png"]);

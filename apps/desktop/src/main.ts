@@ -8,6 +8,7 @@ import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as NodeOS from "node:os";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -203,4 +204,22 @@ const desktopRuntimeLayer = desktopClerkLayer.pipe(
   ),
 );
 
-DesktopApp.program.pipe(Effect.provide(desktopRuntimeLayer), NodeRuntime.runMain);
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// The ~/.t3 refusal (DesktopEnvironment) fires during layer construction,
+// before any of DesktopApp's fatal-startup dialog handlers exist. Without
+// this tap a GUI launch with T3CODE_HOME pointed at upstream's base bounces
+// in the Dock and quits, with the actionable message lost to a discarded
+// stderr. dialog.showErrorBox is safe before app "ready".
+DesktopApp.program.pipe(
+  Effect.provide(desktopRuntimeLayer),
+  Effect.tapCause((cause) =>
+    Effect.sync(() => {
+      const message = String(Cause.squash(cause));
+      if (message.includes("Refusing to start")) {
+        Electron.dialog.showErrorBox("N3 Code cannot start", message);
+      }
+    }),
+  ),
+  NodeRuntime.runMain,
+);
+// fork:end fork-app-identity

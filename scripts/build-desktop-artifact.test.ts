@@ -38,7 +38,6 @@ import {
   stageLinuxIconSize,
   STAGE_INSTALL_ARGS,
 } from "./build-desktop-artifact.ts";
-import { BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 
 function mockProcess(exitCode: number) {
@@ -86,23 +85,24 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-    assert.equal(resolveDesktopProductName("0.0.17"), "T3 Code Fork");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "T3 Code Fork (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "N3 Code");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "N3 Code (Nightly)");
     // fork:end fork-app-identity
   });
 
-  it("switches desktop packaging icons to the nightly artwork for nightly versions", () => {
-    assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17"), {
-      macIconPng: BRAND_ASSET_PATHS.productionMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.productionLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.productionWindowsIconIco,
-    });
-
-    assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42"), {
-      macIconPng: BRAND_ASSET_PATHS.nightlyMacIconPng,
-      linuxIconPng: BRAND_ASSET_PATHS.nightlyLinuxIconPng,
-      windowsIconIco: BRAND_ASSET_PATHS.nightlyWindowsIconIco,
-    });
+  it("uses the fork's placeholder artwork for every channel", () => {
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    const forkIconAssets = {
+      macIconPng: "assets/fork/n3-macos-1024.png",
+      linuxIconPng: "assets/fork/n3-universal-1024.png",
+      windowsIconIco: "assets/fork/n3-windows.ico",
+    };
+    assert.deepStrictEqual(resolveDesktopBuildIconAssets("0.0.17"), forkIconAssets);
+    assert.deepStrictEqual(
+      resolveDesktopBuildIconAssets("0.0.17-nightly.20260413.42"),
+      forkIconAssets,
+    );
+    // fork:end fork-app-identity
   });
 
   it("switches the bundled splash and favicon branding for nightly versions", () => {
@@ -481,9 +481,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // fork:end fork-app-identity
       assert.equal(mac.entitlements, "/tmp/entitlements.mac.plist");
       assert.equal(mac.provisioningProfile, "/tmp/t3code.provisionprofile");
+      // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
       assert.deepStrictEqual(mac.protocols, [
-        { name: "T3 Code", schemes: ["t3code", "t3code-dev"] },
+        { name: "N3 Code", schemes: ["t3code", "t3code-dev"] },
       ]);
+      // fork:end fork-app-identity
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 
