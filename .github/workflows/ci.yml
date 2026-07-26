@@ -110,3 +110,13 @@ jobs:
 
       - name: Exercise release-only workflow steps
         run: node scripts/release-smoke.ts
+
+      # fork:begin fork-desktop-release — see .fork/customizations.yaml#fork-desktop-release
+      # The launch isolation gate script only otherwise executes inside a
+      # release dispatch, after a ~30-minute build — a lint defect there costs
+      # a full build to discover (it happened: the first dry run died on the
+      # gate step before launching anything). Lint it here instead, where
+      # shellcheck is preinstalled and every PR pays seconds, not a build.
+      - name: Lint release scripts
+        run: shellcheck .github/scripts/launch-isolation-check.sh
+      # fork:end fork-desktop-release

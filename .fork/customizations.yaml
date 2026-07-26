@@ -106,7 +106,10 @@
     - .github/workflows/fork-release.yml
     - .github/scripts/launch-isolation-check.sh
   shadows: []
-  watch: []
+  watch:
+    # ci.yml carries a fenced fork hunk: release_smoke lints the isolation
+    # gate script on every PR, so a defect there costs a check, not a build.
+    - .github/workflows/ci.yml
   verify:
     - apps/web/src/__fork_guards__/forkDesktopRelease.test.ts
 

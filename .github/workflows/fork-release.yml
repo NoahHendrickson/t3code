@@ -114,10 +114,12 @@ jobs:
         # launches the DMG's bundle against a scratch HOME and refuses to let
         # the release publish unless everything the app creates is fork-owned.
         # Never skipped — dry runs exist to exercise exactly this step.
+        # The script is shellcheck'd by CI's release_smoke job on every PR —
+        # linting a static, already-committed file behind a 30-minute build
+        # (on the one runner tier without shellcheck preinstalled) is how a
+        # two-character oversight burned a full dry run.
         shell: bash
-        run: |
-          shellcheck .github/scripts/launch-isolation-check.sh
-          bash .github/scripts/launch-isolation-check.sh release
+        run: bash .github/scripts/launch-isolation-check.sh release
 
       - name: Collect release assets
         # A dry run exercises the build and the launch isolation gate without
