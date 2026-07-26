@@ -78,7 +78,7 @@ export class DesktopEnvironment extends Context.Service<
 >()("@t3tools/desktop/app/DesktopEnvironment") {}
 
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-const APP_BASE_NAME = "N3 Code";
+const APP_BASE_NAME = "no3y Code";
 // fork:end fork-app-identity
 
 function resolveDesktopAppStageLabel(input: {

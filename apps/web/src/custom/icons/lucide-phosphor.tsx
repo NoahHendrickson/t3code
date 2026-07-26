@@ -102,7 +102,7 @@ import {
   HardDrives as PhHardDrives,
   Info as PhInfo,
   Keyboard as PhKeyboard,
-  Layout as PhLayout,
+  Laptop as PhLaptop,
   Lightning as PhLightning,
   Link as PhLink,
   LinkSimple as PhLinkSimple,
@@ -120,12 +120,15 @@ import {
   Play as PhPlay,
   PlugsConnected as PhPlugsConnected,
   Plus as PhPlus,
+  PlusCircle as PhPlusCircle,
   QrCode as PhQrCode,
   Robot as PhRobot,
   Rows as PhRows,
   Selection as PhSelection,
   ShippingContainer as PhShippingContainer,
   Sidebar as PhSidebar,
+  SquareHalf as PhSquareHalf,
+  SquareHalfBottom as PhSquareHalfBottom,
   SidebarSimple as PhSidebarSimple,
   SignIn as PhSignIn,
   Sparkle as PhSparkle,
@@ -219,6 +222,10 @@ export const CheckIcon = icon("check", PhCheck, "bold");
 export const CircleCheckIcon = icon("circle-check", PhCheckCircle, "duotone");
 export const CheckCircle2Icon = icon("check-circle-2", PhCheckCircle, "duotone");
 export const PlusIcon = icon("plus", PhPlus, "bold");
+// lucide renamed PlusCircle -> CirclePlus; both names still resolve there, so
+// both are exported here.
+export const CirclePlusIcon = icon("circle-plus", PhPlusCircle, "duotone");
+export const PlusCircleIcon = icon("plus-circle", PhPlusCircle, "duotone");
 export const Plus = icon("plus", PhPlus, "bold");
 export const MinusIcon = icon("minus", PhMinus, "bold");
 export const Minus = icon("minus", PhMinus, "bold");
@@ -292,6 +299,7 @@ export const RadioTower = icon("radio-tower", PhBroadcast, "duotone");
 export const QrCodeIcon = icon("qr-code", PhQrCode, "duotone");
 export const KeyboardIcon = icon("keyboard", PhKeyboard, "duotone");
 export const MonitorIcon = icon("monitor", PhMonitor, "duotone");
+export const LaptopIcon = icon("laptop", PhLaptop, "duotone");
 export const SmartphoneIcon = icon("smartphone", PhDeviceMobile, "duotone");
 export const BotIcon = icon("bot", PhRobot, "duotone");
 export const SparklesIcon = icon("sparkles", PhSparkle, "duotone");
@@ -337,8 +345,14 @@ export const Maximize2Icon = icon("maximize-2", PhArrowsOutSimple, "bold");
 export const Minimize2Icon = icon("minimize-2", PhArrowsInSimple, "bold");
 export const PanelLeftIcon = icon("panel-left", PhSidebar, "duotone");
 export const PanelLeftCloseIcon = icon("panel-left-close", PhSidebarSimple, "duotone");
-export const PanelRightIcon = icon("panel-right", PhSidebar, "duotone");
-export const PanelBottomIcon = icon("panel-bottom", PhLayout, "duotone");
+// The two workspace panel toggles. Phosphor's Sidebar and Layout, which these
+// used to map to, both draw a *framed* panel with an internal rule — at 16px
+// hard to tell apart from the sidebar toggle three controls to the left, or
+// from each other. SquareHalf fills the half it
+// controls instead, so the pair reads as "this edge" / "that edge" at a glance —
+// and it is what the design specifies.
+export const PanelRightIcon = icon("panel-right", PhSquareHalf, "duotone");
+export const PanelBottomIcon = icon("panel-bottom", PhSquareHalfBottom, "duotone");
 export const Columns2Icon = icon("columns-2", PhColumns, "duotone");
 export const Rows3Icon = icon("rows-3", PhRows, "duotone");
 export const SquareSplitHorizontal = icon(

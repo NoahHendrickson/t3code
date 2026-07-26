@@ -1683,7 +1683,10 @@ export default function GitActionsControl({
           </span>
         </Button>
       ) : (
-        <Group aria-label="Git actions" className="shrink-0">
+        /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+           `data-fork-pill` marks this as a workspace-header split pill; the
+           styling itself lives in theme.custom.css. fork:end fork-workspace-header */
+        <Group aria-label="Git actions" className="shrink-0" data-fork-pill>
           {quickActionDisabledReason ? (
             <Popover>
               <PopoverTrigger

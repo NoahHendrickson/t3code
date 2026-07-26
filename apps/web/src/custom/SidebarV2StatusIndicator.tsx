@@ -38,25 +38,36 @@ const TONE_COLOR_CLASS: Record<SidebarV2DotTone, string> = {
   failed: "bg-sidebar-v2-status-failed",
 };
 
-// Geometry transcribed from PixelSparkleView: a 4x5 grid on a 3.8px pitch with
-// 2.85px cells rounded at 28% of their size. That lands the box at 14.25x18.05,
-// which is why the card's first line is 18px rather than the 16px the rest of
-// the row uses.
+// Geometry from PixelSparkleView: a 3x5 grid on a 3.8px pitch with 2.85px cells
+// rounded at 28% of their size. That lands the box at 10.45x18.05 — the height
+// is what makes the card's first line 18px rather than the 16px the rest of the
+// row uses, and it is unaffected by the column count.
+//
+// The native view runs four columns; this is three. At 16px the fourth column
+// read as density rather than as a separate falling stream, and the mark is
+// competing for width with the elapsed time beside it.
 const ROWS = 5;
-const COLS = 4;
 const PITCH = 3.8;
 const CELL = 2.85;
 
 /** Per-column clock, straight off the Swift constants: `speed` and `phase` come
     from its `frac(sin(n) * 43758.5453)` hash, one fall takes `(rows + 3) / speed`
-    seconds, and `phase` becomes a negative delay. This is what keeps the four
-    columns permanently out of step with each other. */
+    seconds, and `phase` becomes a negative delay. This is what keeps the columns
+    permanently out of step with each other.
+
+    These are the hash's first three outputs (n = 0, 1, 2). Dropping the *last*
+    entry rather than one from the middle is what keeps them the values that
+    hash actually produces, so the table can still be checked against the Swift
+    source. */
 const COLUMNS: ReadonlyArray<{ speed: number; phase: number }> = [
   { speed: 2.5, phase: 0 },
   { speed: 4.504345, phase: 1.961008 },
   { speed: 3.80266, phase: 2.768793 },
-  { speed: 4.367242, phase: 4.657913 },
 ];
+
+/** Derived, not declared: a hand-kept count that disagreed with the table would
+    silently crop or pad the box while every drop kept rendering. */
+const COLS = COLUMNS.length;
 
 export const RAIN_SPAN = ROWS + 3;
 const SPAN = RAIN_SPAN;
@@ -199,6 +210,21 @@ export function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
   return (
     <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
       <span className={cn("size-2 rounded-full", TONE_COLOR_CLASS[tone])} />
+    </span>
+  );
+}
+
+/** Idle — a thread with nothing pending. Drawn as a hollow ring rather than a
+    filled dot, which is the one shape variation the note at the top of this file
+    reserves for exactly this case: it keeps the all-circles vocabulary while
+    reading as "nothing here" without needing a hue at all. The card used to fall
+    back to a relative-time label in this slot; the design replaced it so the
+    trailing column holds a mark in every state instead of switching between a
+    mark and a string. */
+export function SidebarV2IdleMark() {
+  return (
+    <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
+      <span className="size-2 rounded-full border border-muted-foreground/70" />
     </span>
   );
 }

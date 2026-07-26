@@ -6,12 +6,11 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { isElectron } from "../env";
 import { getLocalStorageItem } from "../hooks/useLocalStorage";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
-import { cn, isMacPlatform } from "../lib/utils";
+import { isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { useClientSettings } from "../hooks/useSettings";
 import ThreadSidebar from "./Sidebar";
 import ThreadSidebarV2 from "./SidebarV2";
-import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
 import {
   resolveInitialThreadSidebarWidth,
   resolveThreadSidebarMaximumWidth,
@@ -43,11 +42,22 @@ function readInitialThreadSidebarWidth(): number {
   }
 }
 
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+   The toggle is drawn inside the sidebar header now (SidebarChrome.tsx), beside
+   the traffic lights, so it reads as part of the panel it controls rather than
+   as chrome floating over the workspace. It therefore leaves with the panel —
+   which is why this component still exists, and still floats, but only while
+   the sidebar is collapsed. That is exactly the case
+   COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS already reserves space for in every
+   workspace header, so the inset keeps meaning what its name says.
+
+   The keyboard binding stays here unconditionally. Hanging it off the button
+   would unmount it with the sidebar and leave a collapsed panel with no way
+   back other than the rail. */
 function SidebarControl() {
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { toggleSidebar } = useSidebar();
   const isSidebarVisible = useSidebarVisibility();
-  const stageBackdropVariant = useSidebarStageBackdropVariant();
   const shortcutLabel = shortcutLabelForCommand(keybindings, "sidebar.toggle");
 
   useEffect(() => {
@@ -71,6 +81,8 @@ function SidebarControl() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [keybindings, toggleSidebar]);
 
+  if (isSidebarVisible) return null;
+
   return (
     <div
       className="pointer-events-none fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 flex h-[var(--workspace-topbar-height)] items-center"
@@ -79,15 +91,7 @@ function SidebarControl() {
       <Tooltip>
         <TooltipTrigger
           render={
-            <SidebarTrigger
-              className={cn(
-                "pointer-events-auto",
-                isSidebarVisible &&
-                  stageBackdropVariant &&
-                  "[:hover,[data-pressed]]:bg-white/15 focus-visible:ring-white/90 focus-visible:ring-offset-blue-700 [&_svg]:stroke-white/90! [&_svg]:opacity-100! [&_svg]:hover:stroke-white!",
-              )}
-              aria-label="Toggle main sidebar"
-            />
+            <SidebarTrigger className="pointer-events-auto" aria-label="Toggle main sidebar" />
           }
         />
         <TooltipPopup side="bottom">
@@ -97,6 +101,7 @@ function SidebarControl() {
     </div>
   );
 }
+/* fork:end fork-sidebar-chrome */
 
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();

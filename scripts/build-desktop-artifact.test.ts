@@ -85,8 +85,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-    assert.equal(resolveDesktopProductName("0.0.17"), "N3 Code");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "N3 Code (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "no3y Code");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "no3y Code (Nightly)");
     // fork:end fork-app-identity
   });
 
@@ -483,7 +483,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.equal(mac.provisioningProfile, "/tmp/t3code.provisionprofile");
       // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
       assert.deepStrictEqual(mac.protocols, [
-        { name: "N3 Code", schemes: ["t3code", "t3code-dev"] },
+        { name: "no3y Code", schemes: ["t3code", "t3code-dev"] },
       ]);
       // fork:end fork-app-identity
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),

@@ -3,6 +3,12 @@ import {
   resolveServerBackedAppDisplayName,
   resolveServerBackedAppStageLabel,
 } from "./branding.logic";
+/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+   These cases pin the bridge-less display name, which the fork renamed from
+   upstream's "T3 Code". Asserted through the constant rather than a literal so
+   a future rename moves this file with it instead of breaking it. */
+import { FORK_APP_BASE_NAME } from "~/custom/forkBranding";
+/* fork:end fork-app-identity */
 
 const originalWindow = globalThis.window;
 
@@ -36,6 +42,8 @@ describe("branding", () => {
 
     expect(branding.APP_BASE_NAME).toBe("T3 Code");
     expect(branding.APP_STAGE_LABEL).toBe("Nightly");
+    // Untouched by the fork: this case injects a bridge, and the fork only
+    // changed the fallback used when there is no bridge to inject one.
     expect(branding.APP_DISPLAY_NAME).toBe("T3 Code (Nightly)");
   });
 
@@ -47,7 +55,9 @@ describe("branding", () => {
     expect(branding.HOSTED_APP_CHANNEL).toBe("nightly");
     expect(branding.HOSTED_APP_CHANNEL_LABEL).toBe("Nightly");
     expect(branding.APP_STAGE_LABEL).toBe("Nightly");
-    expect(branding.APP_DISPLAY_NAME).toBe("T3 Code (Nightly)");
+    /* fork:begin fork-app-identity */
+    expect(branding.APP_DISPLAY_NAME).toBe(`${FORK_APP_BASE_NAME} (Nightly)`);
+    /* fork:end fork-app-identity */
   });
 
   it("does not label the latest hosted app channel", async () => {
@@ -58,7 +68,9 @@ describe("branding", () => {
     expect(branding.HOSTED_APP_CHANNEL).toBe("latest");
     expect(branding.HOSTED_APP_CHANNEL_LABEL).toBe("Latest");
     expect(branding.APP_STAGE_LABEL).toBe("Latest");
-    expect(branding.APP_DISPLAY_NAME).toBe("T3 Code");
+    /* fork:begin fork-app-identity */
+    expect(branding.APP_DISPLAY_NAME).toBe(FORK_APP_BASE_NAME);
+    /* fork:end fork-app-identity */
   });
 
   it("ignores unknown hosted app channels", async () => {

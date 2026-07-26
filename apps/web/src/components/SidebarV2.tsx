@@ -18,18 +18,19 @@ import {
   AlarmClockOffIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronsUpDownIcon,
   CircleAlertIcon,
   ClockIcon,
   CopyIcon,
   FolderIcon,
-  FolderPlusIcon,
+  FolderOpenIcon,
   GitBranchIcon,
   EllipsisIcon,
   MessageSquareIcon,
+  PlusCircleIcon,
   PlusIcon,
   SearchIcon,
   ServerIcon,
-  SquarePenIcon,
   Trash2Icon,
   Undo2Icon,
 } from "lucide-react";
@@ -128,11 +129,13 @@ import {
 import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 import {
+  SidebarV2IdleMark,
   SidebarV2StatusDot,
   SidebarV2WokeMark,
   SidebarV2WorkingRain,
   type SidebarV2DotTone,
 } from "~/custom/SidebarV2StatusIndicator";
+import { SidebarV2ThreadCardMeta } from "~/custom/SidebarV2ThreadCardMeta";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import { deriveProviderInstanceEntries, type ProviderInstanceEntry } from "../providerInstances";
 import { primaryServerProvidersAtom } from "../state/server";
@@ -646,28 +649,25 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     [openPrLink, pr],
   );
 
-  // All Sidebar V2 rows share one surface model. Live threads used to look
-  // like elevated cards while settled threads were plain rows, leaving neither
-  // a useful hierarchy nor a reliable hover cue. Status now lives in the row
-  // content; surface is reserved for interaction (hover, multi-select, route).
-  // Working rows carry a resting fill (the design's rgba(255,255,255,0.08))
-  // rather than the blanket opacity fade the whole in-flight group used to
-  // get: a running agent is the one thing on screen that is alive, and a lit
-  // surface says that without dimming the text you still need to read. Because
-  // that fill lands on the same value as the hover fill, working rows hover up
-  // to the active fill so the affordance survives.
-  const isWorkingSurface = status === "working" && !props.isActive && !isSelected;
+  // All Sidebar V2 rows share one surface model, and surface encodes exactly
+  // one thing: interaction. A row is filled when you are pointing at it or when
+  // it is the one you are on — never because of its status. Working rows used
+  // to carry a resting fill on the theory that a live agent should look alive,
+  // but with five or six threads running the panel turned into a field of lit
+  // rectangles and the hover cue stopped meaning anything. The trailing mark
+  // already says a thread is working, in a fixed column, without spending the
+  // background to say it.
   const rowSurfaceClassName = cn(
-    "group/v2-row relative w-full cursor-pointer overflow-hidden rounded-2xl text-left outline-none select-none",
+    // rounded-md, not rounded-lg: --radius is 10px here, and the design's 8px
+    // is --radius-md.
+    "group/v2-row relative w-full cursor-pointer overflow-hidden rounded-md text-left outline-none select-none",
     props.isActive
       ? "bg-sidebar-row-active text-sidebar-foreground"
       : isSelected
         ? "bg-sidebar-row-selected text-sidebar-foreground"
-        : isWorkingSurface
-          ? "bg-sidebar-row-working text-sidebar-foreground hover:bg-sidebar-row-active"
-          : shouldRecede
-            ? "text-sidebar-muted-foreground/75 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-            : "bg-transparent text-sidebar-foreground hover:bg-sidebar-row-hover",
+        : shouldRecede
+          ? "text-sidebar-muted-foreground/75 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+          : "bg-transparent text-sidebar-foreground hover:bg-sidebar-row-hover",
   );
 
   const title = isRenaming ? (
@@ -691,11 +691,20 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
         shouldRecede && variant === "slim" ? "font-normal" : "font-medium",
         variant === "card"
           ? cn(
-              // Both drawn specimens keep a full-strength title — working dims
-              // its metadata, never its subject line. Only a settled, already
-              // read thread lets the title itself fall back.
+              // Working and Idle recede; every other status stays at full
+              // strength. The rule the component set encodes is "is there
+              // anything here for you to act on" — a running agent and a read,
+              // settled thread are the two rows where the answer is no, and they
+              // yield the reading order to everything that is waiting on you.
+              //
+              // Hover restores it, which is what keeps this reading as depth
+              // rather than as a disabled row: the moment you point at one it
+              // becomes as legible as any other. Route-active and multi-select
+              // hold it bright for the same reason.
               "truncate",
-              status === "ready" && shouldRecede ? "text-muted-foreground" : "text-foreground",
+              (status === "working" || topStatus === null) && !props.isActive && !isSelected
+                ? "text-muted-foreground group-hover/v2-row:text-foreground"
+                : "text-foreground",
             )
           : cn(
               "truncate group-hover/v2-row:text-foreground",
@@ -843,7 +852,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   return (
     <li
       data-thread-item
-      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_76px]"
+      className="list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_86px]"
     >
       <Tooltip>
         <TooltipTrigger
@@ -860,20 +869,35 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
             />
           }
         >
-          {/* Two rows, not three: the title leads (it is the only thing you
-              actually scan for) and the project name drops into the metadata
-              line beside the branch. The favicon is gone — at 282px it cost a
-              slot to repeat what the project name already says. */}
-          <div className="relative z-10 flex flex-col gap-2 px-[11px] py-[15px]">
-            {/* 18px, not the 16px the metadata line uses: that is the exact
-                height of the working rain's 4x5 grid, and cropping it would
+          {/* Three rows: title, repo, meta. The middle line used to carry the
+              project, branch, PR and diff all at once, which meant the two
+              halves you compare across rows — what it is and how big it is —
+              had to be found at a different x each time. Splitting them gives
+              the PR/diff pair and the model/runtime pair fixed corners. The
+              favicon stays gone: at 284px it cost a slot to repeat what the
+              project name already says.
+
+              The design draws this at gap-8/p-12 over 16/15/15px rows. The gap
+              here is 7px because the title row is 18px rather than 16 (see
+              below): 24 padding + 48 rows + 2x7 lands on the drawn 86px. */}
+          <div className="relative z-10 flex flex-col gap-[7px] p-3">
+            {/* 18px, not the 16px the metadata lines use: that is the exact
+                height of the working rain's 3x5 grid, and cropping it would
                 clip the bottom row of drops. */}
             <div className="flex h-[18px] min-w-0 items-center gap-2">
               {title}
-              <span className="relative flex h-[18px] shrink-0 items-center justify-end">
+              {/* One grid cell holding both the status and the hover actions,
+                  stacked and right-aligned, rather than the actions floating
+                  absolutely over the row. Absolute positioning meant the slot
+                  measured only as wide as the status: on a settled row that is
+                  a 16px mark, while the actions are 54px, so they reached 30px
+                  back across the title and sat on top of its last word. In one
+                  cell the column is as wide as whichever child is showing, so
+                  the title's truncation always accounts for it. */}
+              <span className="grid h-[18px] shrink-0 grid-cols-1 justify-items-end">
                 <span
                   className={cn(
-                    "flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
+                    "col-start-1 row-start-1 flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
                     snoozeMenuOpen && "opacity-0",
                   )}
                 >
@@ -899,16 +923,28 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       ) : null}
                     </>
                   ) : (
-                    <span className="text-xs text-muted-foreground/65 tabular-nums">
-                      {threadTimeLabel(thread)}
-                    </span>
+                    <>
+                      {/* Idle. This slot used to fall back to a relative-time
+                          label, which made the trailing column alternate between
+                          a 16px mark and a variable-width string — so nothing
+                          below it could line up. The hollow ring holds the
+                          column; the timestamp survives in the tooltip. */}
+                      <span role="status" className="sr-only">
+                        Idle
+                      </span>
+                      <SidebarV2IdleMark />
+                    </>
                   )}
                 </span>
                 {props.settlementSupported || showSnoozeButton ? (
                   <span
                     className={cn(
-                      "absolute inset-y-0 right-0 flex items-stretch gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/v2-row:opacity-100",
-                      snoozeMenuOpen && "opacity-100",
+                      // Zero-width at rest so a settled row's title still runs
+                      // the full width of the card when nothing is pointing at
+                      // it; the column only widens once the actions are
+                      // actually showing, and the title re-truncates to match.
+                      "col-start-1 row-start-1 flex w-0 items-stretch gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                      snoozeMenuOpen && "w-auto opacity-100",
                     )}
                   >
                     {showSnoozeButton ? (
@@ -935,52 +971,15 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                 ) : null}
               </span>
             </div>
-            {/* 65% for rows that want you, 45% for rows that are merely busy —
-                the one hierarchy the two drawn specimens differ on. */}
-            <div
-              className={cn(
-                "flex h-4 min-w-0 items-center gap-2 text-[11px]",
-                shouldRecede ? "text-muted-foreground/70" : "text-muted-foreground",
-              )}
-            >
-              {props.projectTitle ? (
-                <span className="max-w-[45%] shrink-0 truncate">{props.projectTitle}</span>
-              ) : null}
-              {thread.branch ? (
-                <span className="flex min-w-0 flex-1 items-center gap-0.5">
-                  <GitBranchIcon aria-hidden className="size-3 shrink-0" />
-                  <span className="truncate whitespace-nowrap">{thread.branch}</span>
-                </span>
-              ) : (
-                <span className="flex-1" />
-              )}
-              {prBadge}
-              {diff ? (
-                <span className="shrink-0 font-mono">
-                  <span className="text-emerald-600 dark:text-emerald-400">+{diff.insertions}</span>{" "}
-                  <span className="text-red-600 dark:text-red-400">−{diff.deletions}</span>
-                </span>
-              ) : null}
-              <span
-                aria-hidden
-                className="pointer-events-none inline-flex shrink-0 items-center gap-0.5"
-              >
-                {isRemote ? (
-                  <span className="inline-flex shrink-0 items-center text-sidebar-muted-foreground/70">
-                    <ServerIcon aria-hidden className="size-4" />
-                  </span>
-                ) : null}
-                {driverKind ? (
-                  <span className="inline-flex shrink-0 items-center opacity-60">
-                    <ProviderInstanceIcon
-                      driverKind={driverKind}
-                      displayName={thread.session?.providerName ?? modelInstanceId}
-                      iconClassName="size-4"
-                    />
-                  </span>
-                ) : null}
-              </span>
-            </div>
+            <SidebarV2ThreadCardMeta
+              projectTitle={props.projectTitle}
+              branch={thread.branch}
+              prSlot={prBadge}
+              insertions={diff?.insertions ?? null}
+              deletions={diff?.deletions ?? null}
+              modelLabel={modelLabel}
+              isRemote={isRemote}
+            />
           </div>
           {props.jumpLabel ? <JumpHintBadge label={props.jumpLabel} /> : null}
         </TooltipTrigger>
@@ -2219,8 +2218,14 @@ export default function SidebarV2() {
     <>
       <SidebarChromeHeader isElectron={isElectron} />
       <SidebarContent className="gap-0">
-        <SidebarGroup className="px-2 pb-2 pt-3">
-          <div className="flex items-center gap-1">
+        {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+            Both control rows are 36px and 12px now, down from 32/14, so they
+            read as chrome rather than as two more list items above the list.
+            The group keeps px-2 so a hover fill lands on the same 8px inset the
+            thread cards use; the extra px-2 on each control brings the content
+            to the design's 16px. */}
+        <SidebarGroup className="px-2 py-0">
+          <div className="flex h-9 items-center gap-1">
             <div className="min-w-0 flex-1">
               <CommandDialogTrigger
                 render={
@@ -2228,7 +2233,7 @@ export default function SidebarV2() {
                     size="sm"
                     type="button"
                     aria-label="Search threads and commands"
-                    className="h-8 gap-2 rounded-md border-0 bg-transparent px-2 py-1.5 text-sm font-medium text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+                    className="h-8 gap-1 rounded-md border-0 bg-transparent px-2 py-1.5 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
                     data-testid="command-palette-trigger"
                   />
                 }
@@ -2236,7 +2241,7 @@ export default function SidebarV2() {
                 <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
                 <div className="flex-1 truncate text-left">Search</div>
                 {commandPaletteShortcutLabel ? (
-                  <Kbd className="h-4 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-1 ring-sidebar-border">
+                  <Kbd className="h-4 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-0">
                     {commandPaletteShortcutLabel}
                   </Kbd>
                 ) : null}
@@ -2256,7 +2261,7 @@ export default function SidebarV2() {
                     />
                   }
                 >
-                  <SquarePenIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
+                  <PlusCircleIcon className="size-5 shrink-0 text-sidebar-muted-foreground/80" />
                   <span
                     className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
                     aria-hidden="true"
@@ -2270,26 +2275,21 @@ export default function SidebarV2() {
           </div>
         </SidebarGroup>
         {projectGroups.length > 0 ? (
-          <SidebarGroup className="px-2 pb-2 pt-0">
-            <div className="flex items-center gap-1">
+          <SidebarGroup className="px-2 py-0">
+            <div className="flex h-9 items-center gap-1">
               <Menu open={projectScopeMenuOpen} onOpenChange={setProjectScopeMenuOpen}>
                 <MenuTrigger
                   aria-label="Filter threads by project"
-                  className="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-left text-sm font-medium text-sidebar-muted-foreground outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+                  className="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-md px-2 text-left text-xs font-normal text-sidebar-muted-foreground outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
                 >
-                  {scopedProjectGroup ? (
-                    <ProjectFavicon
-                      environmentId={scopedProjectGroup.environmentId}
-                      cwd={scopedProjectGroup.workspaceRoot}
-                      className="size-4 shrink-0"
-                    />
-                  ) : (
-                    <FolderIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-                  )}
+                  {/* Leading caret, no trailing chevron and no favicon: the
+                      design puts the affordance where the eye enters the row,
+                      and the label already names the project the favicon used to
+                      repeat. */}
+                  <ChevronsUpDownIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
                   <span className="min-w-0 flex-1 truncate">
                     {scopedProjectGroup?.displayName ?? "All projects"}
                   </span>
-                  <ChevronDownIcon className="size-4 shrink-0 text-sidebar-muted-foreground/70" />
                 </MenuTrigger>
                 <MenuPopup align="start" className="w-(--anchor-width)">
                   <MenuRadioGroup
@@ -2351,7 +2351,11 @@ export default function SidebarV2() {
                     />
                   }
                 >
-                  <FolderPlusIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
+                  {/* FolderOpen rather than FolderPlus, per the design. The
+                      action is unchanged — it opens the palette to pick a folder
+                      to add — and "open a folder" is the more literal reading of
+                      what the click does anyway. */}
+                  <FolderOpenIcon className="size-5 shrink-0 text-sidebar-muted-foreground/80" />
                   <span
                     className="pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden"
                     aria-hidden="true"
@@ -2362,6 +2366,7 @@ export default function SidebarV2() {
             </div>
           </SidebarGroup>
         ) : null}
+        {/* fork:end fork-sidebar-chrome */}
         <SidebarGroup className="min-h-0 flex-1 overflow-y-auto px-2 py-1 [scrollbar-gutter:stable]">
           <TooltipProvider
             key="sidebar-thread-tooltips-150"

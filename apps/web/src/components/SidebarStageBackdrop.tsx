@@ -4,6 +4,9 @@ import { useId } from "react";
 import { APP_STAGE_LABEL } from "../branding";
 import { resolveServerBackedAppStageLabel } from "../branding.logic";
 import { primaryServerConfigAtom } from "../state/server";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+import { SidebarStageDitherArt } from "~/custom/SidebarStageDitherArt";
+/* fork:end fork-sidebar-chrome */
 
 export type SidebarStageBackdropVariant = "nightly" | "dev";
 
@@ -181,150 +184,14 @@ function NightlySkyArt({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+   The Dev channel's blueprint art is replaced by the fork's green ordered
+   dither. Upstream's dispatch and the Nightly sky are untouched, so the two
+   channels still read apart. The name is kept so the two call sites above stay
+   upstream's; the blueprint body it used to hold is gone rather than left
+   unreachable, so an upstream change to that art conflicts here visibly
+   instead of merging into dead code. */
 function DevBlueprintArt({ compact = false }: { compact?: boolean }) {
-  const idPrefix = useId().replaceAll(":", "");
-  const paperId = `${idPrefix}-stage-bp-paper`;
-  const glowId = `${idPrefix}-stage-bp-glow`;
-  const celesteGlowId = `${idPrefix}-stage-bp-glow-celeste`;
-  const violetGlowId = `${idPrefix}-stage-bp-glow-violet`;
-  const minorGridId = `${idPrefix}-stage-bp-grid-minor`;
-  const majorGridId = `${idPrefix}-stage-bp-grid-major`;
-  const rulerId = `${idPrefix}-stage-bp-ruler`;
-  const glowsId = `${idPrefix}-stage-bp-glows`;
-  const annotationsId = `${idPrefix}-stage-bp-annotations`;
-
-  return (
-    <svg
-      className="stage-blueprint h-full w-full"
-      fill="none"
-      preserveAspectRatio="xMinYMin slice"
-      viewBox={compact ? "64 0 8192 96" : STAGE_BACKDROP_VIEW_BOX}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient
-          id={paperId}
-          x1="60"
-          y1="0"
-          x2="220"
-          y2="96"
-          gradientUnits="userSpaceOnUse"
-          spreadMethod="reflect"
-        >
-          <stop style={{ stopColor: "var(--stage-bp-bottom)" }} />
-          <stop offset="0.5" style={{ stopColor: "var(--stage-bp-mid)" }} />
-          <stop offset="1" style={{ stopColor: "var(--stage-bp-top)" }} />
-        </linearGradient>
-        <radialGradient
-          id={glowId}
-          cx="0"
-          cy="0"
-          r="1"
-          gradientTransform="translate(216 14) rotate(137) scale(120 84)"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#D4F6FF" stopOpacity="0.4" />
-          <stop offset="0.52" stopColor="#65C8FF" stopOpacity="0.16" />
-          <stop offset="1" stopColor="#276AF1" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient
-          id={celesteGlowId}
-          cx="0"
-          cy="0"
-          r="1"
-          gradientTransform="translate(474 44) rotate(166) scale(156 92)"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#D2FFFF" stopOpacity="0.34" />
-          <stop offset="0.5" stopColor="#48DCF5" stopOpacity="0.18" />
-          <stop offset="1" stopColor="#277EF1" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient
-          id={violetGlowId}
-          cx="0"
-          cy="0"
-          r="1"
-          gradientTransform="translate(704 18) rotate(145) scale(132 88)"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop stopColor="#D9D8FF" stopOpacity="0.3" />
-          <stop offset="0.52" stopColor="#7C8BFF" stopOpacity="0.14" />
-          <stop offset="1" stopColor="#3155DF" stopOpacity="0" />
-        </radialGradient>
-        <pattern id={minorGridId} width="8" height="8" patternUnits="userSpaceOnUse">
-          <path d="M8 0H0V8" stroke="#EAF6FF" strokeOpacity="0.14" strokeWidth="0.5" />
-        </pattern>
-        <pattern id={majorGridId} width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M32 0H0V32" stroke="#EAF6FF" strokeOpacity="0.26" strokeWidth="0.6" />
-        </pattern>
-        <pattern id={rulerId} width="32" height="6" patternUnits="userSpaceOnUse">
-          <path
-            d="M4 0V2.5M12 0V2.5M20 0V4M28 0V2.5"
-            stroke="#DDF7FF"
-            strokeOpacity="0.5"
-            strokeWidth="0.5"
-          />
-        </pattern>
-        <pattern id={glowsId} width="768" height="96" patternUnits="userSpaceOnUse">
-          <rect width="768" height="96" fill={`url(#${glowId})`} />
-          <rect width="768" height="96" fill={`url(#${celesteGlowId})`} />
-          <rect width="768" height="96" fill={`url(#${violetGlowId})`} />
-        </pattern>
-        <pattern id={annotationsId} width="768" height="96" patternUnits="userSpaceOnUse">
-          <g stroke="#DDF7FF" strokeLinecap="round" strokeOpacity="0.6" strokeWidth="0.7">
-            <path d="M180 64H264" strokeDasharray="5 4" />
-            <path d="M180 61V67M264 61V67" />
-            <path d="M276 10V44" strokeDasharray="4 4" strokeOpacity="0.5" />
-            <path d="M273 10H279M273 44H279" strokeOpacity="0.5" />
-            <path d="M348 30H428" strokeDasharray="3.5 5" strokeOpacity="0.5" />
-            <path d="M348 27V33M428 27V33" strokeOpacity="0.5" />
-            <path d="M512 48V80" strokeDasharray="5 3" strokeOpacity="0.45" />
-            <path d="M509 48H515M509 80H515" strokeOpacity="0.45" />
-            <path d="M590 70H724" strokeDasharray="7 4" strokeOpacity="0.55" />
-            <path d="M590 67V73M724 67V73" strokeOpacity="0.55" />
-          </g>
-
-          <g stroke="#DDF7FF" strokeLinecap="round" strokeOpacity="0.55" strokeWidth="0.6">
-            <g>
-              <path d="M34 60L38 64M38 60L34 64" />
-            </g>
-            <g>
-              <path d="M228 26H234M231 23V29" />
-            </g>
-            <g>
-              <path d="M143 51H149M146 48V54" />
-            </g>
-            <g>
-              <path d="M316 16L322 22M322 16L316 22" />
-            </g>
-            <g>
-              <path d="M468 70H476M472 66V74" />
-            </g>
-            <g>
-              <path d="M558 28L564 34M564 28L558 34" />
-            </g>
-            <g>
-              <path d="M742 44H750M746 40V48" />
-            </g>
-          </g>
-
-          <g stroke="#DDF7FF" strokeOpacity="0.35" strokeWidth="0.6">
-            <circle cx="196" cy="38" r="13" strokeDasharray="3.5 4" />
-            <path d="M196 33V43M191 38H201" strokeOpacity="0.6" strokeWidth="0.4" />
-            <circle cx="414" cy="64" r="10" strokeDasharray="2.5 3.5" />
-            <path d="M414 60V68M410 64H418" strokeOpacity="0.6" strokeWidth="0.4" />
-            <circle cx="648" cy="32" r="15" strokeDasharray="4 5" />
-            <path d="M648 26V38M642 32H654" strokeOpacity="0.6" strokeWidth="0.4" />
-          </g>
-        </pattern>
-      </defs>
-
-      <rect width="100%" height="96" fill={`url(#${paperId})`} />
-      <rect width="100%" height="96" fill={`url(#${glowsId})`} />
-      <rect width="100%" height="96" fill={`url(#${minorGridId})`} />
-      <rect width="100%" height="96" fill={`url(#${majorGridId})`} />
-      <rect width="100%" height="6" fill={`url(#${rulerId})`} />
-      <rect width="100%" height="96" fill={`url(#${annotationsId})`} />
-    </svg>
-  );
+  return <SidebarStageDitherArt compact={compact} />;
 }
+/* fork:end fork-sidebar-chrome */

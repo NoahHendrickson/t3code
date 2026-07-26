@@ -81,7 +81,17 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --glass-opacity: 80%;
   --glass-saturation: 1.14;
   --desktop-window-right-resize-inset: 0px;
-  --workspace-topbar-height: 52px;
+  /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+     56px, up from 52px. One token drives both the workspace header and the
+     sidebar header; the design draws them at 56 and 52 respectively, but they
+     sit side by side across a 1px divider, so a 4px split would misalign the
+     seam every user sees. Read as unintentional and kept equal.
+
+     `.wco` below re-derives this from env(titlebar-area-height), so on Windows
+     with Controls Overlay the OS still dictates the height and only the
+     fallback moves. */
+  --workspace-topbar-height: 56px;
+  /* fork:end fork-workspace-header */
   --workspace-controls-top: 0px;
   --workspace-controls-left: calc(env(safe-area-inset-left) + 0.75rem);
   --workspace-controls-right: calc(env(safe-area-inset-right) + 0.75rem);
@@ -103,7 +113,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 .wco {
-  --workspace-topbar-height: env(titlebar-area-height, 52px);
+  /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */
+  --workspace-topbar-height: env(titlebar-area-height, 56px);
+  /* fork:end fork-workspace-header */
   --workspace-controls-top: env(titlebar-area-y, 0px);
   --workspace-controls-left: calc(env(titlebar-area-x, 0px) + 0.75rem);
   --workspace-controls-right: calc(
@@ -187,9 +199,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-sidebar-row-selected: var(--sidebar-row-selected);
   /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
      Utility names only. Tailwind reads `@theme` to decide which `bg-*`/`fill-*`
-     classes exist, so these six registrations cannot live in the fork's own
+     classes exist, so these five registrations cannot live in the fork's own
      stylesheet. The values they resolve to do — see `theme.custom.css`. */
-  --color-sidebar-row-working: var(--sidebar-row-working);
   --color-sidebar-v2-status-working: var(--sidebar-v2-status-working);
   --color-sidebar-v2-status-done: var(--sidebar-v2-status-done);
   --color-sidebar-v2-status-approval: var(--sidebar-v2-status-approval);

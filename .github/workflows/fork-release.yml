@@ -151,7 +151,7 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: N3 Code ${{ steps.meta.outputs.tag }}
+          name: no3y Code ${{ steps.meta.outputs.tag }}
           generate_release_notes: true
           prerelease: ${{ inputs.prerelease }}
           # `inputs.prerelease` is already a boolean for a typed dispatch
@@ -171,12 +171,12 @@ jobs:
             signed by an identified developer. To open it:
 
             ```
-            xattr -dr com.apple.quarantine "/Applications/N3 Code.app"
+            xattr -dr com.apple.quarantine "/Applications/no3y Code.app"
             ```
 
             Or right-click the app and choose Open, then confirm.
 
-            N3 Code keeps all state in its own `~/.t3-fork` and never touches
+            no3y Code keeps all state in its own `~/.t3-fork` and never touches
             the real T3 Code app's `~/.t3`. First launch therefore starts from
             an empty environment — no projects, no sign-in.
 

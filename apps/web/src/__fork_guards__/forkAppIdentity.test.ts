@@ -30,6 +30,8 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+import { FORK_APP_BASE_NAME } from "../custom/forkBranding";
+
 const repoRoot = NodePath.resolve(
   NodeURL.fileURLToPath(new URL(".", import.meta.url)),
   "../../../..",
@@ -55,10 +57,29 @@ describe("fork guard: fork-app-identity", () => {
 
   it("installs under a fork-owned app name", () => {
     const script = read(BUILD_SCRIPT);
-    expect(script).toContain('"N3 Code"');
+    expect(script).toContain('"no3y Code"');
     // Upstream reads productName from the desktop package.json ("T3 Code
     // (Alpha)") — the exact name of the installed release's bundle.
     expect(script).not.toContain("desktopPackageJson.productName");
+  });
+
+  it("brands the rendered app as the fork, not upstream", () => {
+    // The packaged build gets its name over the desktop bridge, so this
+    // fallback is the only thing a dev or hosted session has. Upstream's is
+    // "T3 Code" — leaving it meant every dev session ran under upstream's name
+    // while the installed app ran under the fork's, which is precisely the
+    // confusion the rename was asked for.
+    expect(FORK_APP_BASE_NAME).toBe("no3y Code");
+    const branding = read("apps/web/src/branding.ts");
+    expect(branding).toContain("?? FORK_APP_BASE_NAME");
+    expect(branding).not.toContain('?? "T3 Code"');
+  });
+
+  it("shows that name in the sidebar rather than upstream's wordmark", () => {
+    const chrome = read("apps/web/src/components/sidebar/SidebarChrome.tsx");
+    expect(chrome).toContain("{APP_BASE_NAME}");
+    // The borrowed T3 glyph, which read as a mismatch beside a different name.
+    expect(chrome).not.toContain("T3Wordmark");
   });
 
   it("keeps the release workflow on the fork's install name", () => {
@@ -68,8 +89,8 @@ describe("fork guard: fork-app-identity", () => {
     // told users to de-quarantine "T3 Code (Alpha).app", a bundle the fork
     // never installs as. Pin the strings that must track the product name.
     const workflow = read(FORK_RELEASE_WORKFLOW);
-    expect(workflow).toContain('"/Applications/N3 Code.app"');
-    expect(workflow).toContain("name: N3 Code");
+    expect(workflow).toContain('"/Applications/no3y Code.app"');
+    expect(workflow).toContain("name: no3y Code");
     // The install-path shape specifically: a "T3 Code Fork.app" mention
     // survives legitimately in the v0.1.1 cleanup instructions.
     expect(workflow).not.toContain("/Applications/T3 Code");
