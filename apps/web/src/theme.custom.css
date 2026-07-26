@@ -10,12 +10,62 @@
  * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-rain-*`
  * so the names cannot collide with upstream's.
  *
+ * `@font-face` is the second exception, for the same reason: a face
+ * *registration* is global — there is no selector to hang it off. What matters
+ * is that nothing *uses* it outside the marker, and the `--font-*` overrides
+ * below are scoped, so an unmarked build registers the families and then never
+ * references them (so the browser never fetches a byte).
+ *
  * The Tailwind-facing half of the Sidebar V2 palette — the six
  * `--color-sidebar-v2-*` registrations — necessarily stays in `index.css`'s
  * `@theme` block, since that is the only place Tailwind reads utility names
  * from. It is fenced there as `fork:sidebar-v2-status-palette`. Everything the
  * cascade can carry lives here instead.
  */
+
+/* Geist ships as two variable faces: `Geist Variable` (100..900) and
+   `Geist Mono Variable` (100..900). Both are pulled in here rather than from
+   `main.tsx` so the fork owns its own font loading and upstream's import block
+   stays untouched — upstream's DM Sans / JetBrains Mono imports are left in
+   place for the same reason, and cost nothing on the wire once the overrides
+   below stop referencing those families. */
+@import "@fontsource-variable/geist/index.css";
+@import "@fontsource-variable/geist-mono/index.css";
+
+/* The stacks themselves. `index.css` reads these through
+   `--font-sans: var(--fork-font-sans, <upstream stack>)` inside its
+   `@theme inline` block, fenced as `fork:geist-typography` — the indirection is
+   what lets a scoped declaration reach Tailwind's compiled `.font-sans` /
+   `.font-mono` utilities, which bake their value in literally and would
+   otherwise ignore anything declared here. An unmarked build never sets these,
+   so it falls through to upstream's fallbacks.
+
+   Geist Mono is listed AHEAD of SF Mono, inverting upstream's order. Upstream
+   puts SF Mono first, so on macOS its bundled mono webfont never actually
+   renders — keeping that order would make shipping Geist Mono pointless. */
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-font-sans:
+    "Geist Variable", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  /* "JetBrains Mono" is kept from upstream's stack: it is the only *bundled*
+     mono fallback, so dropping it would leave a Linux user with no SF Mono and
+     no Consolas on Liberation Mono or generic monospace if the Geist Mono fetch
+     fails, where upstream had a guaranteed face. */
+  --fork-font-mono:
+    "Geist Mono Variable", "Geist Mono", "SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas,
+    "Liberation Mono", Menlo, monospace;
+}
+
+/* Upstream repeats the literal stacks on `body` (index.css:964) and `pre, code`
+   (index.css:1022) instead of reading its own `@theme` tokens, so overriding the
+   variables alone does not reach them. `:root[data-fork=…]` (0,2,x) outranks
+   both bare selectors. */
+:root[data-fork="noahhendrickson-t3code"] body {
+  font-family: var(--font-sans);
+}
+
+:root[data-fork="noahhendrickson-t3code"] :is(pre, code) {
+  font-family: var(--font-mono);
+}
 
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
    falls back to upstream's variables. The design's hues are tuned for a black

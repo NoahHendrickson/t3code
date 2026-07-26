@@ -273,3 +273,74 @@
     - apps/desktop/src/app/DesktopClerk.test.ts
   verify:
     - apps/web/src/__fork_guards__/forkClerkLaunchResilience.test.ts
+
+- id: geist-typography
+  intent: >
+    The app's typefaces are Geist (UI) and Geist Mono (code), bundled as
+    Fontsource variable faces and imported from the fork's own theme layer —
+    web and Electron renderer only; mobile and marketing still ship DM Sans.
+    The stacks live in theme.custom.css as --fork-font-sans / --fork-font-mono
+    and index.css's @theme block reads them through
+    var(--fork-font-sans, <upstream stack>); that indirection is load-bearing,
+    not ceremony. The block is @theme inline, so Tailwind bakes font values
+    literally into .font-sans / .font-mono and their variants, and a compiled
+    utility cannot see a variable overridden in a later stylesheet — the same
+    constraint that forces the sidebar-v2 palette registrations to live in
+    index.css. Routing through --fork-font-* keeps the values scoped under the
+    fork marker while the fallbacks leave an unmarked build on DM Sans.
+    The terminal's font logic lives in custom/terminalFont.ts rather than in
+    the drawer: xterm takes its font from a constructor option instead of the
+    cascade, so --font-mono has to be resolved by hand and the cell grid
+    re-measured once the webfont lands — xterm sizes columns at open(), and
+    unlike the always-resident SF Mono a webfont can land after that, leaving
+    the grid measured against the fallback. That is fork feature logic with no
+    business in a 1.5k-line upstream mount effect. The drawer keeps two
+    one-line call sites, and the font-load probe is derived from the resolved
+    stack rather than hardcoded, so it cannot go stale on a face swap and an
+    unmarked build names a local system face and fetches nothing. The re-fit
+    also propagates to the PTY, because nothing in the drawer subscribes to
+    onResize — every upstream fit site calls resizeTerminal by hand, and a
+    re-fit that corrects only xterm's local grid leaves the PTY wrapping to the
+    stale, fallback-measured width.
+    Two further decisions are non-obvious. Geist Mono is listed AHEAD of SF Mono:
+    upstream puts SF Mono first, which means on macOS its bundled mono webfont
+    never renders at all, so preserving upstream's order would make shipping
+    Geist Mono pointless. And body / pre, code are re-declared under the fork
+    marker because upstream hardcodes the literal stacks on those selectors
+    (index.css:964, index.css:1022) instead of reading its own @theme tokens,
+    so overriding --font-sans / --font-mono alone does not reach them.
+    DM Sans / JetBrains Mono deps and their main.tsx imports are deliberately
+    left in place, but not because removing them would gain nothing, and the
+    two are not the same case. Nothing references DM Sans in a marked build, so
+    it costs nothing on the wire — but main.tsx still imports its Fontsource
+    CSS, so Vite emits the woff2 files into dist and into the Electron package
+    (roughly 60KB DM Sans, 96KB JetBrains Mono). For DM Sans the tradeoff is
+    therefore installer size, not request count, and it is the one worth
+    revisiting if package size matters; it is left as-is only to keep main.tsx
+    conflict-free. JetBrains Mono is NOT a size question: the fork's own mono
+    stack still names it, deliberately, as upstream's only bundled mono face —
+    the fallback for a Linux user with no SF Mono and no Consolas when the
+    Geist Mono fetch fails, which is exactly when it gets fetched. Dropping
+    that dependency on size grounds would silently strip the face out from
+    under a stack that still names it, and no guard would catch it: the guards
+    assert the family is listed, not that a bundled face backs it.
+  tier: 4
+  files:
+    - apps/web/src/theme.custom.css
+    - apps/web/src/custom/terminalFont.ts
+  shadows: []
+  watch:
+    - apps/web/src/index.css
+    - apps/web/src/components/ThreadTerminalDrawer.tsx
+    # No fence, but load-bearing: readPreviewAnnotationTheme reads --font-sans /
+    # --font-mono off documentElement and ships the resolved families into the
+    # previewed page, so the fork's stacks travel through here. Inert today (the
+    # previewed page has no Geist loaded, so it falls through to the same system
+    # faces as before), but it is the dynamic seam Annotation.css is not.
+    - apps/web/src/browser/annotationTheme.ts
+    # detect-drift only greps fences in ts/css/yaml/sh, so it cannot see a
+    # dependency change. This is the first customization to add npm deps; the
+    # guard asserts both are present, and this entry makes the file drift-watched.
+    - apps/web/package.json
+  verify:
+    - apps/web/src/__fork_guards__/geistTypography.test.ts

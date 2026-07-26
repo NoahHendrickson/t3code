@@ -122,11 +122,36 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --animate-status-pulse: status-pulse 2s infinite;
   --animate-status-ping: status-ping 2s infinite;
   --animate-sidebar-working-text: sidebar-working-text 3.4s infinite;
-  --font-sans:
-    "DM Sans Variable", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-    sans-serif;
-  --font-mono:
-    "SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  /* fork:begin geist-typography — see .fork/customizations.yaml#geist-typography
+     Indirection only; the fork's actual stacks live in `theme.custom.css`. This
+     block is `@theme inline`, so Tailwind bakes these values *literally* into
+     `.font-sans`, `.font-mono` and every variant of them (`[&_input]:font-sans`
+     and friends) — a scoped override of `--font-sans` in the fork stylesheet
+     cannot reach a compiled utility, the same constraint that keeps the sidebar
+     palette registrations below in this file. Routing through --fork-font-*
+     keeps the fork's values scoped under its marker attribute, and the
+     fallbacks leave an unmarked, pure-upstream build on upstream's stacks. */
+  --font-sans: var(
+    --fork-font-sans,
+    "DM Sans Variable",
+    "DM Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    system-ui,
+    sans-serif
+  );
+  --font-mono: var(
+    --fork-font-mono,
+    "SF Mono",
+    "SFMono-Regular",
+    "JetBrains Mono",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace
+  );
+  /* fork:end geist-typography */
   --color-warning-foreground: var(--warning-foreground);
   --color-warning: var(--warning);
   --color-success-foreground: var(--success-foreground);

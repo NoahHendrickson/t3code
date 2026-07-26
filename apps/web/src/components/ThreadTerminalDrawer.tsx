@@ -34,6 +34,9 @@ import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import { cn } from "~/lib/utils";
 import { type TerminalContextSelection } from "~/lib/terminalContext";
+/* fork:begin geist-typography — see .fork/customizations.yaml#geist-typography */
+import { refitTerminalWhenFontsReady, resolveTerminalFontFamily } from "../custom/terminalFont";
+/* fork:end geist-typography */
 import { useOpenInPreferredEditor } from "../editorPreferences";
 import {
   collectWrappedTerminalLinkLine,
@@ -391,13 +394,24 @@ export function TerminalViewport({
       lineHeight: 1,
       fontSize: 12,
       scrollback: 5_000,
-      fontFamily:
-        '"SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace',
+      /* fork:begin geist-typography — see .fork/customizations.yaml#geist-typography */
+      fontFamily: resolveTerminalFontFamily(mount),
+      /* fork:end geist-typography */
       theme: terminalThemeFromApp(mount),
     });
     terminal.loadAddon(fitAddon);
     terminal.open(mount);
     fitTerminalSafely(fitAddon);
+    /* fork:begin geist-typography — see .fork/customizations.yaml#geist-typography */
+    void refitTerminalWhenFontsReady({
+      terminal,
+      // Cleanup nulls the ref before terminal.dispose(), so a late resolve can
+      // never touch a disposed terminal.
+      isCurrent: () => terminalRef.current === terminal,
+      fit: () => fitTerminalSafely(fitAddon),
+      resize: resizeTerminal,
+    });
+    /* fork:end geist-typography */
 
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
