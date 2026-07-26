@@ -74,10 +74,22 @@ describe("fork guard: fork-app-identity", () => {
 
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {
     const environment = read(DESKTOP_ENVIRONMENT);
-    expect(environment).toContain('isDevelopment ? ".t3" : ".t3-fork"');
+    expect(environment).toContain('isDevelopment && !input.isPackaged ? ".t3" : ".t3-fork"');
     // The exact upstream default, which resolves a packaged fork build to the
     // installed release's ~/.t3 — the directory holding its live database.
-    expect(environment).not.toContain('path.join(homeDirectory, ".t3")');
+    expect(environment).not.toContain('() => path.join(homeDirectory, ".t3"))');
+  });
+
+  it("fails loudly when T3CODE_HOME points at upstream's ~/.t3", () => {
+    // An explicit T3CODE_HOME wins over the fork default on both halves of
+    // the app, so ~/.t3 in the environment would put the fork back on the
+    // real app's live database — the one remaining path to the v0.1.1
+    // incident. The environment must refuse it rather than silently share a
+    // SQLite file with another running application. The behavioral assertions
+    // live in DesktopEnvironment.test.ts; this pins the refusal's existence
+    // against an upstream merge dropping the hunk.
+    const environment = read(DESKTOP_ENVIRONMENT);
+    expect(environment).toContain("Refusing to start");
   });
 
   it("derives desktop and server state from the same base directory", () => {

@@ -1,6 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
@@ -109,6 +110,44 @@ describe("DesktopEnvironment", () => {
       assert.equal(development.stateDir, "/Users/alice/.t3/dev");
       assert.equal(production.baseDir, "/Users/alice/.t3-fork");
       assert.equal(production.stateDir, "/Users/alice/.t3-fork/userdata");
+    }),
+  );
+
+  it.effect("refuses upstream's ~/.t3 as an explicit home for non-development builds", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.t3" }));
+      assert.isTrue(Exit.isFailure(exit));
+    }),
+  );
+
+  it.effect("refuses upstream's ~/.t3 for packaged builds even in development", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        makeEnvironment(
+          { isPackaged: true },
+          { T3CODE_HOME: "/Users/alice/.t3", VITE_DEV_SERVER_URL: "http://localhost:5173" },
+        ),
+      );
+      assert.isTrue(Exit.isFailure(exit));
+    }),
+  );
+
+  it.effect("still honors a custom explicit home that is not upstream's", () =>
+    Effect.gen(function* () {
+      const environment = yield* makeEnvironment({}, { T3CODE_HOME: "/tmp/elsewhere" });
+      assert.equal(environment.baseDir, "/tmp/elsewhere");
+      assert.equal(environment.stateDir, "/tmp/elsewhere/userdata");
+    }),
+  );
+
+  it.effect("keeps a packaged build fork-owned even when a dev server URL is set", () =>
+    Effect.gen(function* () {
+      const environment = yield* makeEnvironment(
+        { isPackaged: true },
+        { VITE_DEV_SERVER_URL: "http://localhost:5173" },
+      );
+      assert.equal(environment.baseDir, "/Users/alice/.t3-fork");
+      assert.equal(environment.stateDir, "/Users/alice/.t3-fork/dev");
     }),
   );
 

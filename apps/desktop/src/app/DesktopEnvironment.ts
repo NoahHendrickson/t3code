@@ -151,19 +151,39 @@ const make = Effect.fn("desktop.environment.make")(function* (
         : Option.getOrElse(config.xdgConfigHome, () => path.join(homeDirectory, ".config"));
   const configuredBaseDir = config.t3Home;
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-  // A packaged fork build must not share ~/.t3 with an installed upstream
-  // release. The base directory is the one input both halves of the app derive
-  // shared state from: the desktop resolves stateDir from it below, and hands
-  // it to the bundled server child as bootstrap t3Home
+  // A fork build must not share ~/.t3 with an installed upstream release. The
+  // base directory is the one input both halves of the app derive shared
+  // state from: the desktop resolves stateDir from it below, and hands it to
+  // the bundled server child as bootstrap t3Home
   // (DesktopBackendConfiguration), which derives its own stateDir plus caches/
   // and worktrees/ from it. Forking the base — rather than renaming the
   // "userdata" leaf, which the server re-derives independently and would not
   // pick up — keeps both derivations upstream's and isolates all three shared
-  // directories at once. T3CODE_HOME still wins, so `vp dev` and explicit
-  // overrides behave exactly as upstream.
+  // directories at once. Only an unpackaged development run (`vp dev` — this
+  // repo is already the fork) keeps upstream's ~/.t3; a packaged build stays
+  // fork-owned even when a dev server URL is set.
   const baseDir = Option.getOrElse(configuredBaseDir, () =>
-    path.join(homeDirectory, isDevelopment ? ".t3" : ".t3-fork"),
+    path.join(homeDirectory, isDevelopment && !input.isPackaged ? ".t3" : ".t3-fork"),
   );
+  // A custom T3CODE_HOME still wins — an explicit override is a deliberate,
+  // self-consistent choice (the server child resolves the same variable) —
+  // with one exception: upstream's own default. With T3CODE_HOME=~/.t3 this
+  // process AND the server child (which reads the variable itself, with
+  // precedence over the bootstrap t3Home) would both land on the real app's
+  // live state.sqlite. That is the exact incident this customization exists
+  // to prevent, and it must fail loudly instead of silently sharing a
+  // database with another running application.
+  if (
+    (input.isPackaged || !isDevelopment) &&
+    path.resolve(baseDir) === path.join(homeDirectory, ".t3")
+  ) {
+    return yield* Effect.dieMessage(
+      `Refusing to start: the configured T3 home directory (${baseDir}) is upstream ` +
+        "T3 Code's own state directory, and a fork build must never open the real " +
+        "app's database. Unset T3CODE_HOME or point it at a fork-owned directory " +
+        "such as ~/.t3-fork.",
+    );
+  }
   // fork:end fork-app-identity
   const rootDir = path.resolve(input.dirname, "../../..");
   const appRoot = input.isPackaged ? input.appPath : rootDir;
@@ -183,6 +203,11 @@ const make = Effect.fn("desktop.environment.make")(function* (
   // legacyUserDataDirName is redirected too rather than left pointing at
   // upstream's "T3 Code (Alpha)".
   const userDataDirName = isDevelopment ? "t3code-dev" : "t3code-fork";
+  // "T3 Code (Fork)" is a deliberate sentinel: it has never named a real
+  // directory and must never start to. resolveUserDataPath prefers the legacy
+  // directory whenever one exists, so its only job is to never match anything
+  // — in particular, do NOT "fix" it to upstream's "T3 Code (Alpha)" (hands
+  // the fork the real app's data) or to a name a fork build once shipped.
   const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Fork)";
   // fork:end fork-app-identity
   const resourcesPath = input.resourcesPath;
