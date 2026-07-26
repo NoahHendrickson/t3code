@@ -158,11 +158,15 @@
     - assets/fork/n3-windows.ico
   shadows: []
   watch:
+    - apps/desktop/src/main.ts
     - apps/desktop/src/app/DesktopApp.ts
+    - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
+    - apps/desktop/src/app/DesktopEnvironment.test.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
     - apps/server/src/config.ts
     - scripts/build-desktop-artifact.ts
+    - scripts/build-desktop-artifact.test.ts
   verify:
     - apps/web/src/__fork_guards__/forkAppIdentity.test.ts
 

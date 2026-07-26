@@ -232,8 +232,11 @@ const startup = Effect.gen(function* () {
   // fork-owned one (observed at runtime: a GPU helper argv carrying the
   // default --user-data-dir while the main process used t3code-fork).
   // Upstream runs installIntoProcess first, which shells out and can be slow;
-  // apply the override before any slow work so the race window is only the
-  // in-memory service resolutions above.
+  // apply the override before any slow work. A window remains — the service
+  // resolutions above plus resolveUserDataPath's one legacy-directory
+  // existence stat — but the packaged default is the fork-owned "n3code"
+  // (staged package.json name), so even a helper that wins the race lands in
+  // a fork-owned directory.
   const userDataPath = yield* appIdentity.resolveUserDataPath;
   yield* electronApp.setPath("userData", userDataPath);
   // fork:end fork-app-identity
