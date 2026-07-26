@@ -226,9 +226,18 @@ const startup = Effect.gen(function* () {
   const updates = yield* DesktopUpdates.DesktopUpdates;
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
 
-  yield* shellEnvironment.installIntoProcess;
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  // The userData override must land before Chromium spawns helper processes,
+  // or an early helper captures the default directory instead of the
+  // fork-owned one (observed at runtime: a GPU helper argv carrying the
+  // default --user-data-dir while the main process used t3code-fork).
+  // Upstream runs installIntoProcess first, which shells out and can be slow;
+  // apply the override before any slow work so the race window is only the
+  // in-memory service resolutions above.
   const userDataPath = yield* appIdentity.resolveUserDataPath;
   yield* electronApp.setPath("userData", userDataPath);
+  // fork:end fork-app-identity
+  yield* shellEnvironment.installIntoProcess;
   yield* logStartupInfo("runtime logging configured", { logDir: environment.logDir });
   yield* desktopSettings.load;
 
