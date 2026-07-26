@@ -46,9 +46,13 @@
 :root[data-fork="noahhendrickson-t3code"] {
   --fork-font-sans:
     "Geist Variable", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  /* "JetBrains Mono" is kept from upstream's stack: it is the only *bundled*
+     mono fallback, so dropping it would leave a Linux user with no SF Mono and
+     no Consolas on Liberation Mono or generic monospace if the Geist Mono fetch
+     fails, where upstream had a guaranteed face. */
   --fork-font-mono:
-    "Geist Mono Variable", "Geist Mono", "SF Mono", "SFMono-Regular", Consolas, "Liberation Mono",
-    Menlo, monospace;
+    "Geist Mono Variable", "Geist Mono", "SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas,
+    "Liberation Mono", Menlo, monospace;
 }
 
 /* Upstream repeats the literal stacks on `body` (index.css:964) and `pre, code`

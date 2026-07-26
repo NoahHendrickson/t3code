@@ -288,6 +288,15 @@
     constraint that forces the sidebar-v2 palette registrations to live in
     index.css. Routing through --fork-font-* keeps the values scoped under the
     fork marker while the fallbacks leave an unmarked build on DM Sans.
+    The terminal's font logic lives in custom/terminalFont.ts rather than in
+    the drawer: xterm takes its font from a constructor option instead of the
+    cascade, so --font-mono has to be resolved by hand and re-applied once the
+    webfont lands, and that is fork feature logic with no business in a 1.5k-line
+    upstream mount effect. The drawer keeps two one-line call sites. The re-fit
+    also propagates to the PTY, because nothing in the drawer subscribes to
+    onResize — every upstream fit site calls resizeTerminal by hand, and a
+    re-fit that corrects only xterm's local grid leaves the PTY wrapping to the
+    stale, fallback-measured width.
     Two further decisions are non-obvious. Geist Mono is listed AHEAD of SF Mono:
     upstream puts SF Mono first, which means on macOS its bundled mono webfont
     never renders at all, so preserving upstream's order would make shipping
@@ -305,9 +314,20 @@
   tier: 4
   files:
     - apps/web/src/theme.custom.css
+    - apps/web/src/custom/terminalFont.ts
   shadows: []
   watch:
     - apps/web/src/index.css
     - apps/web/src/components/ThreadTerminalDrawer.tsx
+    # No fence, but load-bearing: readPreviewAnnotationTheme reads --font-sans /
+    # --font-mono off documentElement and ships the resolved families into the
+    # previewed page, so the fork's stacks travel through here. Inert today (the
+    # previewed page has no Geist loaded, so it falls through to the same system
+    # faces as before), but it is the dynamic seam Annotation.css is not.
+    - apps/web/src/browser/annotationTheme.ts
+    # detect-drift only greps fences in ts/css/yaml/sh, so it cannot see a
+    # dependency change. This is the first customization to add npm deps; the
+    # guard asserts both are present, and this entry makes the file drift-watched.
+    - apps/web/package.json
   verify:
     - apps/web/src/__fork_guards__/geistTypography.test.ts
