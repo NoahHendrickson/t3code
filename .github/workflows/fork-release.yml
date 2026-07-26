@@ -116,6 +116,10 @@ jobs:
         # Never skipped — dry runs exist to exercise exactly this step.
         shell: bash
         run: |
+          # macos-latest images no longer preinstall shellcheck; the bottle
+          # installs in seconds and linting the gate before running it is
+          # worth that.
+          command -v shellcheck >/dev/null || brew install --quiet shellcheck
           shellcheck .github/scripts/launch-isolation-check.sh
           bash .github/scripts/launch-isolation-check.sh release
 
