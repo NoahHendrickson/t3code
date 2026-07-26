@@ -1,5 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
@@ -117,6 +118,11 @@ describe("DesktopEnvironment", () => {
     Effect.gen(function* () {
       const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.t3" }));
       assert.isTrue(Exit.isFailure(exit));
+      // Assert the intended refusal, not just any defect — a broken refusal
+      // (e.g. calling a nonexistent API) would also surface as a failure.
+      if (Exit.isFailure(exit)) {
+        assert.include(String(Cause.squash(exit.cause)), "Refusing to start");
+      }
     }),
   );
 
@@ -129,6 +135,9 @@ describe("DesktopEnvironment", () => {
         ),
       );
       assert.isTrue(Exit.isFailure(exit));
+      if (Exit.isFailure(exit)) {
+        assert.include(String(Cause.squash(exit.cause)), "Refusing to start");
+      }
     }),
   );
 

@@ -177,11 +177,13 @@ const make = Effect.fn("desktop.environment.make")(function* (
     (input.isPackaged || !isDevelopment) &&
     path.resolve(baseDir) === path.join(homeDirectory, ".t3")
   ) {
-    return yield* Effect.dieMessage(
-      `Refusing to start: the configured T3 home directory (${baseDir}) is upstream ` +
-        "T3 Code's own state directory, and a fork build must never open the real " +
-        "app's database. Unset T3CODE_HOME or point it at a fork-owned directory " +
-        "such as ~/.t3-fork.",
+    return yield* Effect.die(
+      new Error(
+        `Refusing to start: the configured T3 home directory (${baseDir}) is upstream ` +
+          "T3 Code's own state directory, and a fork build must never open the real " +
+          "app's database. Unset T3CODE_HOME or point it at a fork-owned directory " +
+          "such as ~/.t3-fork.",
+      ),
     );
   }
   // fork:end fork-app-identity
