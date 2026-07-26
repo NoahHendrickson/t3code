@@ -290,9 +290,14 @@
     fork marker while the fallbacks leave an unmarked build on DM Sans.
     The terminal's font logic lives in custom/terminalFont.ts rather than in
     the drawer: xterm takes its font from a constructor option instead of the
-    cascade, so --font-mono has to be resolved by hand and re-applied once the
-    webfont lands, and that is fork feature logic with no business in a 1.5k-line
-    upstream mount effect. The drawer keeps two one-line call sites. The re-fit
+    cascade, so --font-mono has to be resolved by hand and the cell grid
+    re-measured once the webfont lands — xterm sizes columns at open(), and
+    unlike the always-resident SF Mono a webfont can land after that, leaving
+    the grid measured against the fallback. That is fork feature logic with no
+    business in a 1.5k-line upstream mount effect. The drawer keeps two
+    one-line call sites, and the font-load probe is derived from the resolved
+    stack rather than hardcoded, so it cannot go stale on a face swap and an
+    unmarked build names a local system face and fetches nothing. The re-fit
     also propagates to the PTY, because nothing in the drawer subscribes to
     onResize — every upstream fit site calls resizeTerminal by hand, and a
     re-fit that corrects only xterm's local grid leaves the PTY wrapping to the
@@ -303,14 +308,14 @@
     Geist Mono pointless. And body / pre, code are re-declared under the fork
     marker because upstream hardcodes the literal stacks on those selectors
     (index.css:964, index.css:1022) instead of reading its own @theme tokens,
-    so overriding --font-sans / --font-mono alone does not reach them. The
-    terminal resolves --font-mono by hand at mount, since xterm reads its font
-    from an option rather than the cascade, and re-measures its cell grid on
-    document.fonts.ready — xterm sizes columns at open(), and unlike the
-    always-resident SF Mono a webfont can land after that, leaving the grid
-    measured against the fallback. DM Sans / JetBrains Mono deps and their
-    main.tsx imports are deliberately left in place: an unreferenced family is
-    never fetched, so removing them would be an upstream edit for no gain.
+    so overriding --font-sans / --font-mono alone does not reach them.
+    DM Sans / JetBrains Mono deps and their main.tsx imports are deliberately
+    left in place, but not because removing them would gain nothing. Nothing
+    references those families in a marked build, so they already cost nothing
+    on the wire — however main.tsx still imports their Fontsource CSS, so Vite
+    emits their woff2 files into dist and into the Electron package. The
+    tradeoff for removing them is installer size, not request count. Left as-is
+    to keep main.tsx conflict-free; worth revisiting if package size matters.
   tier: 4
   files:
     - apps/web/src/theme.custom.css
