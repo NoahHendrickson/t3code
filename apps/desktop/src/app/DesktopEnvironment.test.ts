@@ -114,15 +114,47 @@ describe("DesktopEnvironment", () => {
     }),
   );
 
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  const assertRefused = (exit: Exit.Exit<unknown, unknown>) => {
+    assert.isTrue(Exit.isFailure(exit));
+    // Assert the intended refusal, not just any defect — a broken refusal
+    // (e.g. calling a nonexistent API) would also surface as a failure.
+    if (Exit.isFailure(exit)) {
+      assert.include(String(Cause.squash(exit.cause)), "Refusing to start");
+    }
+  };
+
   it.effect("refuses upstream's ~/.t3 as an explicit home for non-development builds", () =>
     Effect.gen(function* () {
       const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.t3" }));
-      assert.isTrue(Exit.isFailure(exit));
-      // Assert the intended refusal, not just any defect — a broken refusal
-      // (e.g. calling a nonexistent API) would also surface as a failure.
-      if (Exit.isFailure(exit)) {
-        assert.include(String(Cause.squash(exit.cause)), "Refusing to start");
-      }
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("refuses a literal, unexpanded ~/.t3", () =>
+    Effect.gen(function* () {
+      // The server child expands a leading "~" when it resolves T3CODE_HOME
+      // itself, so a literal value must be judged by the server's semantics —
+      // treating it as a cwd-relative path would skip the refusal while the
+      // child opened the real database.
+      const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "~/.t3" }));
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("refuses case variants of upstream's base on case-insensitive platforms", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.T3" }));
+      assertRefused(exit);
+    }),
+  );
+
+  it.effect("refuses paths inside upstream's base, not just its root", () =>
+    Effect.gen(function* () {
+      const exit = yield* Effect.exit(
+        makeEnvironment({}, { T3CODE_HOME: "/Users/alice/.t3/userdata" }),
+      );
+      assertRefused(exit);
     }),
   );
 
@@ -134,10 +166,7 @@ describe("DesktopEnvironment", () => {
           { T3CODE_HOME: "/Users/alice/.t3", VITE_DEV_SERVER_URL: "http://localhost:5173" },
         ),
       );
-      assert.isTrue(Exit.isFailure(exit));
-      if (Exit.isFailure(exit)) {
-        assert.include(String(Cause.squash(exit.cause)), "Refusing to start");
-      }
+      assertRefused(exit);
     }),
   );
 
@@ -146,6 +175,14 @@ describe("DesktopEnvironment", () => {
       const environment = yield* makeEnvironment({}, { T3CODE_HOME: "/tmp/elsewhere" });
       assert.equal(environment.baseDir, "/tmp/elsewhere");
       assert.equal(environment.stateDir, "/tmp/elsewhere/userdata");
+    }),
+  );
+
+  it.effect("expands a leading tilde in a custom home like the server does", () =>
+    Effect.gen(function* () {
+      const environment = yield* makeEnvironment({}, { T3CODE_HOME: "~/custom-t3" });
+      assert.equal(environment.baseDir, "/Users/alice/custom-t3");
+      assert.equal(environment.stateDir, "/Users/alice/custom-t3/userdata");
     }),
   );
 
@@ -159,6 +196,7 @@ describe("DesktopEnvironment", () => {
       assert.equal(environment.stateDir, "/Users/alice/.t3-fork/dev");
     }),
   );
+  // fork:end fork-app-identity
 
   it.effect("uses a configured app user model id override", () =>
     Effect.gen(function* () {

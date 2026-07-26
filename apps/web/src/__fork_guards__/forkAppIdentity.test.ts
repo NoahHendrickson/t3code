@@ -89,7 +89,15 @@ describe("fork guard: fork-app-identity", () => {
 
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {
     const environment = read(DESKTOP_ENVIRONMENT);
-    expect(environment).toContain('isDevelopment && !input.isPackaged ? ".t3" : ".t3-fork"');
+    // The condition and the refusal below share these two named inputs; the
+    // complement relationship between them is load-bearing, so pin the names
+    // rather than hand-maintained boolean algebra.
+    expect(environment).toContain(
+      "const isUnpackagedDevelopment = isDevelopment && !input.isPackaged",
+    );
+    expect(environment).toContain(
+      'isUnpackagedDevelopment ? upstreamBaseDir : path.join(homeDirectory, ".t3-fork")',
+    );
     // The exact upstream default, which resolves a packaged fork build to the
     // installed release's ~/.t3 — the directory holding its live database.
     expect(environment).not.toContain('() => path.join(homeDirectory, ".t3"))');

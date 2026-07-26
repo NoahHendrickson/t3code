@@ -7,6 +7,7 @@ import type {
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
@@ -135,7 +136,11 @@ function resolveDesktopRuntimeInfo(input: {
 
 const make = Effect.fn("desktop.environment.make")(function* (
   input: MakeDesktopEnvironmentInput,
-): Effect.fn.Return<DesktopEnvironment["Service"], Config.ConfigError, Path.Path> {
+): Effect.fn.Return<
+  DesktopEnvironment["Service"],
+  Config.ConfigError,
+  Path.Path | FileSystem.FileSystem
+> {
   const path = yield* Path.Path;
   const config = yield* DesktopConfig.DesktopConfig;
   const homeDirectory = input.homeDirectory;
@@ -162,27 +167,52 @@ const make = Effect.fn("desktop.environment.make")(function* (
   // directories at once. Only an unpackaged development run (`vp dev` — this
   // repo is already the fork) keeps upstream's ~/.t3; a packaged build stays
   // fork-owned even when a dev server URL is set.
-  const baseDir = Option.getOrElse(configuredBaseDir, () =>
-    path.join(homeDirectory, isDevelopment && !input.isPackaged ? ".t3" : ".t3-fork"),
+  const upstreamBaseDir = path.join(homeDirectory, ".t3");
+  const isUnpackagedDevelopment = isDevelopment && !input.isPackaged;
+  // The server child resolves T3CODE_HOME itself and expands a leading "~"
+  // (apps/server/src/os-jank.ts expandHomePath); upstream's desktop does not,
+  // so a literal "~/.t3" would send the two halves to different directories —
+  // the child onto upstream's live database. Mirror the server's expansion so
+  // one variable means one directory in both processes.
+  const expandedBaseDir = Option.map(configuredBaseDir, (value) =>
+    value === "~"
+      ? homeDirectory
+      : value.startsWith("~/") || value.startsWith("~\\")
+        ? path.join(homeDirectory, value.slice(2))
+        : value,
+  );
+  const baseDir = Option.getOrElse(expandedBaseDir, () =>
+    isUnpackagedDevelopment ? upstreamBaseDir : path.join(homeDirectory, ".t3-fork"),
   );
   // A custom T3CODE_HOME still wins — an explicit override is a deliberate,
   // self-consistent choice (the server child resolves the same variable) —
-  // with one exception: upstream's own default. With T3CODE_HOME=~/.t3 this
-  // process AND the server child (which reads the variable itself, with
-  // precedence over the bootstrap t3Home) would both land on the real app's
-  // live state.sqlite. That is the exact incident this customization exists
-  // to prevent, and it must fail loudly instead of silently sharing a
-  // database with another running application.
+  // with one exception: upstream's own base. With T3CODE_HOME=~/.t3 this
+  // process AND the server child (whose env read has precedence over the
+  // bootstrap t3Home) would both land on the real app's live state.sqlite.
+  // That is the exact incident this customization exists to prevent, and it
+  // must fail loudly instead of silently sharing a database with another
+  // running application. The comparison canonicalizes both sides — realpath
+  // where the paths exist, case-folded off Linux (macOS's default filesystem
+  // is case-insensitive) — and refuses anything inside upstream's base, not
+  // just its exact spelling.
+  const fileSystem = yield* FileSystem.FileSystem;
+  const canonicalize = (value: string) =>
+    Effect.map(fileSystem.realPath(value).pipe(Effect.orElseSucceed(() => value)), (resolved) =>
+      input.platform === "linux" ? resolved : resolved.toLowerCase(),
+    );
+  const canonicalBaseDir = yield* canonicalize(path.resolve(baseDir));
+  const canonicalUpstreamBaseDir = yield* canonicalize(upstreamBaseDir);
   if (
-    (input.isPackaged || !isDevelopment) &&
-    path.resolve(baseDir) === path.join(homeDirectory, ".t3")
+    !isUnpackagedDevelopment &&
+    (canonicalBaseDir === canonicalUpstreamBaseDir ||
+      canonicalBaseDir.startsWith(canonicalUpstreamBaseDir + path.sep))
   ) {
     return yield* Effect.die(
       new Error(
-        `Refusing to start: the configured T3 home directory (${baseDir}) is upstream ` +
-          "T3 Code's own state directory, and a fork build must never open the real " +
-          "app's database. Unset T3CODE_HOME or point it at a fork-owned directory " +
-          "such as ~/.t3-fork.",
+        `Refusing to start: the configured T3 home directory (${baseDir}) resolves ` +
+          "into upstream T3 Code's own state directory, and a fork build must never " +
+          "open the real app's database. Unset T3CODE_HOME or point it at a " +
+          "fork-owned directory such as ~/.t3-fork.",
       ),
     );
   }
