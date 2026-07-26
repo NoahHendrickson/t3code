@@ -84,6 +84,15 @@ export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolea
 
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
+  // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
+  // createClerkBridge calls protocol.registerSchemesAsPrivileged, which
+  // throws once Electron is "ready" — and layer construction races that
+  // event, losing on slow machines (observed deterministically on CI
+  // runners). The renderer's scheme privileges are pre-registered
+  // synchronously in main.ts, so a lost race costs only the Clerk bridge
+  // itself — and fork builds have no cloud sign-in to lose. Degrade with a
+  // warning instead of refusing to start. The singleton-lock behavior in
+  // configure below is bridge-independent and keeps working.
   yield* Effect.acquireRelease(
     Effect.try({
       try: () => createDesktopClerkBridge(environment.stateDir, environment.isDevelopment),
@@ -104,7 +113,14 @@ export const make = Effect.gen(function* () {
             cause,
           }),
       }).pipe(Effect.orDie),
+  ).pipe(
+    Effect.catchTag("DesktopClerkBridgeInitializationError", (error) =>
+      Effect.logWarning(
+        "Desktop Clerk bridge initialization failed; continuing without cloud sign-in.",
+      ).pipe(Effect.annotateLogs({ cause: String(error.cause) })),
+    ),
   );
+  // fork:end fork-clerk-launch-resilience
 
   return DesktopClerk.of({
     configure: Effect.gen(function* () {

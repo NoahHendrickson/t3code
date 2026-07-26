@@ -60,6 +60,33 @@ import * as DesktopWindow from "./window/DesktopWindow.ts";
 import * as DesktopWslBackend from "./wsl/DesktopWslBackend.ts";
 import * as DesktopWslEnvironment from "./wsl/DesktopWslEnvironment.ts";
 
+// fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
+// The renderer's scheme privileges are otherwise registered by the Clerk
+// bridge during Effect layer construction, which races Electron's "ready"
+// event — registerSchemesAsPrivileged throws after ready, and on slow
+// machines the layers lose (observed deterministically on CI runners; a cold
+// local boot is the same race). Registering synchronously at module load is
+// guaranteed to precede "ready". Both schemes are registered so no env
+// sniffing is needed: if the Clerk bridge wins its race, its pre-ready
+// registration of the active scheme replaces this list harmlessly; if it
+// loses, the renderer keeps working and DesktopClerk degrades instead of
+// crashing. The privilege set mirrors @clerk/electron's.
+Electron.protocol.registerSchemesAsPrivileged(
+  [ElectronProtocol.getDesktopScheme(false), ElectronProtocol.getDesktopScheme(true)].map(
+    (scheme) => ({
+      scheme,
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: true,
+        stream: true,
+      },
+    }),
+  ),
+);
+// fork:end fork-clerk-launch-resilience
+
 const desktopEnvironmentLayer = Layer.unwrap(
   Effect.gen(function* () {
     const metadata = yield* Effect.service(ElectronApp.ElectronApp).pipe(
