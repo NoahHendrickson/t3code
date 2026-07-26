@@ -146,6 +146,18 @@ describe("fork guard: geist-typography", () => {
     expect(FORK_TERMINAL_FONT_FALLBACK).toContain('"JetBrains Mono"');
   });
 
+  it("keeps the module's fallback stack identical to the CSS mono stack", () => {
+    // FORK_TERMINAL_FONT_FALLBACK backs up the `--font-mono` read, so it has to
+    // stay the stack the cascade would have produced. Nothing else pins the two
+    // together: edit one, forget the other, and the safety net quietly stops
+    // matching what it backs up while every other guard here stays green.
+    // Collapsed on both sides — `vp fmt` decides where the CSS value wraps.
+    const collapse = (stack: string) => stack.replace(/\s+/gu, " ").trim();
+    const declared = readSibling("../theme.custom.css").match(/--fork-font-mono:([^;]*);/u);
+    expect(declared).not.toBeNull();
+    expect(collapse(declared?.[1] ?? "")).toBe(collapse(FORK_TERMINAL_FONT_FALLBACK));
+  });
+
   it("keeps the terminal wired to the fork-owned font module", () => {
     const drawer = readSibling("../components/ThreadTerminalDrawer.tsx");
     expect(drawer).toContain("fontFamily: resolveTerminalFontFamily(mount)");
