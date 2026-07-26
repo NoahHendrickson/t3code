@@ -113,15 +113,34 @@ jobs:
           # arrival proves the child derived the fork base too), ~/.t3 must
           # never exist, and the Electron user-data directory must be the
           # fork's t3code-fork, not upstream's t3code.
-          app=$(find release -maxdepth 3 -name "*.app" -type d | head -1)
+          # release/ holds only the distributables: the build script copies
+          # files out of its temp stage directory and skips directories, so the
+          # unpacked .app never lands here. Unpack the shipped zip instead —
+          # which is the stronger check anyway, since it exercises exactly the
+          # bundle a user downloads rather than a build-tree intermediate.
+          zip=$(find release -maxdepth 1 -name "*.zip" -type f | head -1)
+          if [ -z "$zip" ]; then
+            echo "No .zip artifact found under release/" >&2
+            ls -l release >&2 || true
+            exit 1
+          fi
+          unpacked=$(mktemp -d)
+          # ditto, not unzip: it preserves the bundle's symlinks, extended
+          # attributes, and code signature, so what gets launched is the
+          # bundle the zip actually ships.
+          ditto -x -k "$zip" "$unpacked"
+          app=$(find "$unpacked" -maxdepth 2 -name "*.app" -type d | head -1)
           if [ -z "$app" ]; then
-            echo "No .app bundle found under release/" >&2
+            echo "No .app bundle inside $zip" >&2
+            find "$unpacked" -maxdepth 2 >&2 || true
             exit 1
           fi
           # Derive the executable from the bundle rather than hardcoding the
           # product name — nightly-shaped versions get a different name, and
           # every hardcoded copy is one more string a rename must find.
-          executable=$(defaults read "$PWD/$app/Contents/Info" CFBundleExecutable)
+          # $app is absolute (mktemp -d is), which is what `defaults read`
+          # needs to treat it as a path instead of a domain name.
+          executable=$(defaults read "$app/Contents/Info" CFBundleExecutable)
           binary="$app/Contents/MacOS/$executable"
           if [ ! -x "$binary" ]; then
             echo "Expected executable missing: $binary" >&2
