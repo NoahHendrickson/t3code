@@ -82,7 +82,11 @@ describe("fork guard: fork-composer-shell", () => {
   it("draws both radii and moves focus onto the border", () => {
     expect(theme).toMatch(/--fork-composer-radius:\s*20px/u);
     expect(theme).toMatch(
-      /\[data-fork-composer-density="slim"\][\s\S]{0,160}--fork-composer-radius:\s*12px/u,
+      /\[data-fork-composer-density="slim"\][\s\S]{0,200}--fork-composer-radius:\s*12px/u,
+    );
+    // Both short shells take it; `collapsed` stopped reporting itself as slim.
+    expect(theme).toMatch(
+      /\[data-fork-composer-density="collapsed"\][\s\S]{0,200}--fork-composer-radius:\s*12px/u,
     );
     // Inset shadow rather than a border, so the stroke does not add 2px to a
     // box the designs measure at 96 including it.
@@ -187,6 +191,23 @@ describe("fork guard: fork-composer-shell", () => {
     expect(resolveComposerDensity({ ...base, hasComposerHeader: true })).toBe("tall");
   });
 
+  it("gives the collapsed mobile composer its own density, not a flavour of slim", () => {
+    // Returning "slim" here put `data-fork-composer-density="slim"` on a
+    // composer the slim layout was never applied to, so every call site had to
+    // re-exclude the collapsed case by hand and two things named "slim"
+    // disagreed. It outranks every other input.
+    expect(
+      resolveComposerDensity({
+        isDraftHero: true,
+        isPromptWrapped: true,
+        hasComposerHeader: true,
+        isCollapsedMobile: true,
+      }),
+    ).toBe("collapsed");
+    // ...which is what lets the call sites read as plain equality.
+    expect(chatComposer).toContain('const isComposerSlim = composerDensity === "slim"');
+  });
+
   it("latches the wrap so the two shell widths cannot oscillate", () => {
     // The tall shell is ~736px where slim is ~460px, so a prompt between those
     // widths un-wraps the moment the flip lands. Deriving density straight from
@@ -209,9 +230,25 @@ describe("fork guard: fork-composer-shell", () => {
   it("releases the latch on an emptied prompt without waiting for a resize", () => {
     // Clearing a one-line prompt in the tall shell changes no height, so the
     // ResizeObserver never fires and the effect is the only thing that resets.
-    expect(chatComposer).toMatch(
+    const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
+    expect(latchHook).toMatch(
       /prompt\.trim\(\)\.length === 0\s*\)\s*\{\s*setIsPromptWrapped\(false\)/u,
     );
+  });
+
+  it("keeps the wrap observer in fork-owned code, not in the hot upstream file", () => {
+    // The pure half of the density rule was always fork-owned; leaving the
+    // observer and the latch state inline in a 2.9k-line upstream file split
+    // one rule across two places and added fences to the file least able to
+    // absorb them.
+    const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
+    expect(latchHook).toContain("ResizeObserver");
+    expect(chatComposer).toContain("useComposerPromptWrapLatch(prompt)");
+    // Named helpers rather than "ResizeObserver": ChatComposer legitimately
+    // runs three observers of its own, for footer compactness and menu
+    // positioning, so the broad check cannot tell the fork's from upstream's.
+    expect(chatComposer).not.toContain("nextWrapLatch");
+    expect(chatComposer).not.toContain("isPromptHeightWrapped");
   });
 
   it("does not flap densities on sub-pixel line-box rounding", () => {

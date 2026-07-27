@@ -5895,19 +5895,13 @@ function ChatViewContent(props: ChatViewProps) {
                           />
                         </div>
                       </div>
-                      <div className="min-h-0">
-                        <div
-                          data-terminal-open={terminalUiState.terminalOpen ? "true" : undefined}
-                          className="relative z-0"
-                        >
-                          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-                          {/* BranchToolbar moved into ChatComposer's control row,
-                              which is where the designs put the worktree/branch
-                              pair. It is passed as the composer's contextStrip
-                              prop at the call site above. */}
-                          {/* fork:end fork-composer-shell */}
-                        </div>
-                      </div>
+                      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+                      {/* Upstream renders the BranchToolbar strip here, wrapped in
+                          a min-h-0 / data-terminal-open pair. The strip is now the
+                          composer's contextStrip prop, and the wrapper went with
+                          it — nothing read data-terminal-open, so keeping the
+                          shell would have left two empty divs in the tree. */}
+                      {/* fork:end fork-composer-shell */}
                     </div>
                     <div
                       aria-hidden

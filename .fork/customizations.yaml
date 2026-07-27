@@ -706,6 +706,18 @@
     The line box stays 16px regardless of the type size, because the drawn box
     heights are derived from it (96 tall, 48 slim). Scaling leading with the
     font would push the tall box off its drawn height.
+    Density has three values, not two. `collapsed` is upstream's mobile tap
+    target, which the fork restyles but does not lay out, and it is deliberately
+    not a flavour of `slim`: folding it in put
+    data-fork-composer-density="slim" on a composer the slim layout was never
+    applied to, forced every call site to re-exclude the collapsed case by hand,
+    and left two things named "slim" disagreeing about what they meant.
+    Both short shells still take the 12px radius, which is why the CSS lists
+    them together rather than relying on one standing in for the other.
+    The wrap observer and its latch state live in custom/, beside the pure rule
+    they drive, rather than inline in ChatComposer. The split version put half a
+    rule in the file least able to absorb fences and made the latch reachable
+    only through a regex over the source.
     States the designs do not draw resolve to tall, because the slim shell is a
     single 24px line with nowhere to put a second row of controls: an approval
     request, a pending user-input question, and the plan follow-up banner all
@@ -728,6 +740,7 @@
   files:
     - apps/web/src/custom/ComposerControlRow.tsx
     - apps/web/src/custom/composerDensity.ts
+    - apps/web/src/custom/useComposerPromptWrapLatch.ts
     - apps/web/src/theme.custom.css
   shadows: []
   watch:

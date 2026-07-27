@@ -1,18 +1,25 @@
 /**
- * Composer density — which of the two composer shells in the fork's design the
- * chat composer wears.
+ * Composer density — which shell the chat composer wears.
  *
- * `tall`  stacks the prompt over its own control row, inside a 20px-radius box.
- * `slim`  runs the prompt inline with the model pills and the send button, in a
- *         12px-radius box half the height.
+ * `tall`      stacks the prompt over its own control row, in a 20px-radius box.
+ * `slim`      runs the prompt inline with the model pills and the send button,
+ *             in a 12px-radius box half the height.
+ * `collapsed` is upstream's mobile tap target, which the fork restyles but does
+ *             not lay out.
  *
  * The new-chat screen is always tall; a started thread starts slim and grows
  * into tall the moment the prompt no longer fits on one line. Everything else
  * here is a state the designs do not draw, resolved to tall because the slim
  * shell is a single 24px row with nowhere to put approval actions or a pending
  * question's Next/Submit pair.
+ *
+ * `collapsed` is a distinct value rather than a flavour of `slim` on purpose.
+ * Folding it into `slim` meant the DOM advertised
+ * `data-fork-composer-density="slim"` on a composer the slim layout was not
+ * applied to, so every call site had to re-exclude the collapsed case by hand
+ * and two things named "slim" disagreed about what they meant.
  */
-export type ComposerDensity = "slim" | "tall";
+export type ComposerDensity = "slim" | "tall" | "collapsed";
 
 export interface ComposerDensityInput {
   /** The new-chat hero: a local draft with no messages yet. Always tall. */
@@ -35,7 +42,7 @@ export interface ComposerDensityInput {
 
 export function resolveComposerDensity(input: ComposerDensityInput): ComposerDensity {
   if (input.isCollapsedMobile) {
-    return "slim";
+    return "collapsed";
   }
   if (input.isDraftHero || input.hasComposerHeader || input.isPromptWrapped) {
     return "tall";

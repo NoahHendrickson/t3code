@@ -286,7 +286,12 @@
   background: none;
 }
 
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-density="slim"] {
+/* Both short shells take the tighter radius. `collapsed` is listed explicitly
+   rather than folded into `slim`: it is upstream's mobile tap target, which the
+   fork restyles but does not lay out, and conflating the two is what previously
+   had the DOM reporting a slim composer that the slim layout never touched. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is([data-fork-composer-density="slim"], [data-fork-composer-density="collapsed"]) {
   --fork-composer-radius: 12px;
 }
 

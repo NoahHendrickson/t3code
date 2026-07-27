@@ -73,11 +73,8 @@ import {
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import { ComposerControlRow } from "../../custom/ComposerControlRow";
-import {
-  isPromptHeightWrapped,
-  nextWrapLatch,
-  resolveComposerDensity,
-} from "../../custom/composerDensity";
+import { resolveComposerDensity } from "../../custom/composerDensity";
+import { useComposerPromptWrapLatch } from "../../custom/useComposerPromptWrapLatch";
 /* fork:end fork-composer-shell */
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
@@ -1001,50 +998,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const isComposerCollapsedMobile =
     isMobileViewport && !forceExpandedOnMobile && !isComposerFocused;
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  const [isPromptWrapped, setIsPromptWrapped] = useState(false);
-  const [composerPromptElement, setComposerPromptElement] = useState<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const editable = composerPromptElement?.querySelector<HTMLElement>(
-      '[data-testid="composer-editor"]',
-    );
-    if (!editable) {
-      setIsPromptWrapped(false);
-      return;
-    }
-    const measure = (heightPx: number) => {
-      const lineHeight = Number.parseFloat(window.getComputedStyle(editable).lineHeight);
-      const measuredWrapped = isPromptHeightWrapped(heightPx, lineHeight);
-      // Latched, never derived — the tall shell is wider than the slim one, so
-      // an unlatched flip un-wraps the text that caused it and oscillates.
-      setIsPromptWrapped((latched) =>
-        nextWrapLatch({
-          latched,
-          measuredWrapped,
-          isPromptEmpty: editable.textContent?.trim().length === 0,
-        }),
-      );
-    };
-    // Lexical reflows the prompt without a React render, so the wrap that flips
-    // the slim shell into the tall one has to be observed rather than derived.
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
-      measure(entry.contentRect.height);
-    });
-    observer.observe(editable);
-    measure(editable.clientHeight);
-    return () => {
-      observer.disconnect();
-    };
-  }, [composerPromptElement]);
-  // Releasing the latch cannot be left to the observer alone: clearing a
-  // one-line prompt in the tall shell changes no height, so no resize fires and
-  // the composer would stay tall for the rest of the thread.
-  useEffect(() => {
-    if (prompt.trim().length === 0) {
-      setIsPromptWrapped(false);
-    }
-  }, [prompt]);
+  const { isPromptWrapped, attachPromptElement } = useComposerPromptWrapLatch(prompt);
   /* fork:end fork-composer-shell */
 
   // ------------------------------------------------------------------
@@ -1213,7 +1167,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     hasComposerHeader,
     isCollapsedMobile: isComposerCollapsedMobile,
   });
-  const isComposerSlim = composerDensity === "slim" && !isComposerCollapsedMobile;
+  const isComposerSlim = composerDensity === "slim";
   /* fork:end fork-composer-shell */
 
   const composerFooterHasWideActions = showPlanFollowUpPrompt || activePendingProgress !== null;
@@ -2768,7 +2722,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
             {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
             <div className={cn("flex min-w-0", isComposerSlim ? "items-center gap-6" : "flex-col")}>
-              <div ref={setComposerPromptElement} className="relative min-w-0 flex-1">
+              <div ref={attachPromptElement} className="relative min-w-0 flex-1">
                 {/* fork:end fork-composer-shell */}
                 <ComposerPromptEditor
                   editorRef={composerEditorRef}
@@ -2862,7 +2816,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               here would lose to the base "flex" that follows it anyway. An
               approval always resolves to the tall shell, so that branch is
               still reachable. */}
-          {isComposerCollapsedMobile || isComposerSlim ? null : activePendingApproval ? (
+          {composerDensity !== "tall" ? null : activePendingApproval ? (
             /* fork:end fork-composer-shell */
             <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
               <ComposerPendingApprovalActions
@@ -2900,7 +2854,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       {/* The control row: run controls and the worktree/branch pair on one line
           under the box, replacing both the in-box mode controls and the
           separately-stitched context strip. */}
-      {isComposerCollapsedMobile ? null : (
+      {composerDensity === "collapsed" ? null : (
         <ComposerControlRow
           left={composerRunControls}
           {...(contextStrip ? { right: contextStrip } : {})}
