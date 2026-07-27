@@ -325,6 +325,20 @@
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
 }
 
+/* The drag-over state, restored. Upstream paints it with `bg-accent/45 ring-1
+   ring-primary/70` on this element; both are swallowed here, because this
+   stylesheet is unlayered and Tailwind v4 utilities sit in `@layer utilities`,
+   which loses to unlayered rules whatever their specificity — and the ring is
+   a box-shadow, i.e. the exact property the hairline occupies. Repainting it
+   here keeps the drop target legible and keeps the hairline in the same
+   shadow, so the box does not gain a second one. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-drag-over] {
+  background: var(--accent);
+  box-shadow:
+    inset 0 0 0 1px var(--fork-composer-border-focus),
+    0 0 0 1px var(--ring);
+}
+
 /* Focus recolours that same hairline rather than adding a ring, so the box
    keeps its 1px weight in both states and nothing reflows when the caret
    lands. */
@@ -365,16 +379,22 @@
    12px medium type, a 12px glyph, and a full pill. The designs draw this type at
    10px; 12px is the fork's own call, and it matches the prompt beside it.
 
-   Send and stop are excluded by name rather than out-specified by a later rule.
-   `:is()` takes the highest specificity among its arguments, so this selector
-   lands at (0,4,0) and a plain `[data-fork-composer-action]` rule at (0,3,0)
-   would quietly lose its 6px radius back to the pill. */
+   Scoped to `[data-fork-composer-pills]` rather than to the footer and the
+   inline-actions row wholesale. Those containers also hold the primary action
+   slot, and `ComposerPrimaryActions` renders real CTAs into it: the h-9
+   Implement/Refine split button and the pending-question Previous / Next /
+   Submit answers buttons. Because this stylesheet is unlayered it beat their
+   Tailwind utilities outright — the split button came apart into two 24px pills
+   with a broken seam, the CTAs collapsed to 24px, and the `.dark` colour rule
+   below painted their labels #a6a6a6 on a filled primary background. Both
+   states are ordinary, not edge cases.
+
+   Send and stop are still excluded by name rather than out-specified by a later
+   rule. `:is()` takes the highest specificity among its arguments, so this
+   selector lands at (0,4,0) and a plain `[data-fork-composer-action]` rule at
+   (0,3,0) would quietly lose its 6px radius back to the pill. */
 :root[data-fork="noahhendrickson-t3code"]
-  :is(
-    [data-chat-composer-inline-actions],
-    [data-chat-composer-footer],
-    [data-fork-composer-control-row]
-  )
+  :is([data-fork-composer-pills], [data-fork-composer-control-row])
   :is(button, [data-slot="button"]):not([data-fork-composer-action]) {
   height: 24px;
   min-height: 24px;
@@ -386,11 +406,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  :is(
-    [data-chat-composer-inline-actions],
-    [data-chat-composer-footer],
-    [data-fork-composer-control-row]
-  )
+  :is([data-fork-composer-pills], [data-fork-composer-control-row])
   :is(button, [data-slot="button"]):not([data-fork-composer-action])
   svg {
   width: 12px;
@@ -398,11 +414,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-chat-composer-inline-actions],
-    [data-chat-composer-footer],
-    [data-fork-composer-control-row]
-  )
+  :is([data-fork-composer-pills], [data-fork-composer-control-row])
   :is(button, [data-slot="button"]):not([data-fork-composer-action]) {
   color: #a6a6a6;
 }
@@ -446,8 +458,15 @@
    their keep when they trailed the model picker inside the box and needed to be
    told apart from it. On the control row they are the first thing in the line,
    so the leading rule divides the controls from nothing at all. The designs
-   separate these with spacing alone. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-control-row] [data-slot="separator"] {
+   separate these with spacing alone.
+
+   Scoped to the left slot, which is the only place that reasoning holds.
+   BranchToolbar sits in the right slot and draws its own separator between the
+   environment picker and the env-mode/branch pair on multi-environment
+   projects; hiding that one merged two groups the design keeps apart. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-control-row-slot="left"]
+  [data-slot="separator"] {
   display: none;
 }
 

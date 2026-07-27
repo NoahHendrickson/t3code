@@ -38,13 +38,27 @@ export interface ComposerDensityInput {
   hasComposerHeader: boolean;
   /** The composer is collapsed to a single tap target on mobile. */
   isCollapsedMobile: boolean;
+  /**
+   * A phone-width viewport. The slim shell is desktop-only: at 375px the model
+   * pill and the send button leave the flex-1 editor about 90-150px, and the
+   * placeholder — an absolutely positioned overlay outside the editor's scroll
+   * box — wraps to several lines and paints straight through the 48px box with
+   * nothing to clip it. Worse, it is stable: the overlay never changes the
+   * observed editor height, so the wrap latch cannot rescue it.
+   */
+  isNarrowViewport: boolean;
 }
 
 export function resolveComposerDensity(input: ComposerDensityInput): ComposerDensity {
   if (input.isCollapsedMobile) {
     return "collapsed";
   }
-  if (input.isDraftHero || input.hasComposerHeader || input.isPromptWrapped) {
+  if (
+    input.isNarrowViewport ||
+    input.isDraftHero ||
+    input.hasComposerHeader ||
+    input.isPromptWrapped
+  ) {
     return "tall";
   }
   return "slim";

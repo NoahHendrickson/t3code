@@ -220,6 +220,7 @@ describe("fork guard: fork-composer-shell", () => {
       isPromptWrapped: false,
       hasComposerHeader: false,
       isCollapsedMobile: false,
+      isNarrowViewport: false,
     };
     expect(resolveComposerDensity({ ...base, isDraftHero: true })).toBe("tall");
     expect(resolveComposerDensity(base)).toBe("slim");
@@ -231,6 +232,7 @@ describe("fork guard: fork-composer-shell", () => {
       isPromptWrapped: false,
       hasComposerHeader: false,
       isCollapsedMobile: false,
+      isNarrowViewport: false,
     };
     expect(resolveComposerDensity({ ...base, isPromptWrapped: true })).toBe("tall");
     // A panel that owns the box's internals — approval, pending question, plan
@@ -249,6 +251,7 @@ describe("fork guard: fork-composer-shell", () => {
         isPromptWrapped: true,
         hasComposerHeader: true,
         isCollapsedMobile: true,
+        isNarrowViewport: true,
       }),
     ).toBe("collapsed");
     // ...which is what lets the call sites read as plain equality.
@@ -281,6 +284,77 @@ describe("fork guard: fork-composer-shell", () => {
     expect(latchHook).toMatch(
       /prompt\.trim\(\)\.length === 0\s*\)\s*\{\s*setIsPromptWrapped\(false\)/u,
     );
+  });
+
+  it("never uses the slim shell on a phone", () => {
+    // At 375px the model pill and send button leave the flex-1 editor ~90-150px,
+    // and the placeholder — an absolute overlay outside the editor's scroll box
+    // — wraps to several lines and paints straight through the 48px box. It is
+    // also stable: the overlay never changes the observed editor height, so the
+    // wrap latch cannot rescue it.
+    expect(
+      resolveComposerDensity({
+        isDraftHero: false,
+        isPromptWrapped: false,
+        hasComposerHeader: false,
+        isCollapsedMobile: false,
+        isNarrowViewport: true,
+      }),
+    ).toBe("tall");
+  });
+
+  it("keeps the branch controls reachable while collapsed, and gates modes on approval", () => {
+    // Two upstream behaviours the control row has to preserve. Upstream showed
+    // BranchToolbar while collapsed (gated on showComposerContextStrip alone),
+    // so env mode and branch were switchable without raising the keyboard; and
+    // it unmounted the whole footer during an approval, so the mode toggles
+    // could not be flipped for a run whose approval was unresolved.
+    expect(chatComposer, "the control row must render in every density").not.toMatch(
+      /composerDensity === "collapsed" \? null : \(\s*<ComposerControlRow/u,
+    );
+    expect(chatComposer).toMatch(/left=\{activePendingApproval \? null : composerRunControls\}/u);
+  });
+
+  it("keeps the pill restyle off the primary CTAs", () => {
+    // ComposerPrimaryActions renders real buttons into the same containers:
+    // the h-9 Implement/Refine split button and the pending-question
+    // Previous/Next/Submit set. This stylesheet is unlayered, so it beat their
+    // Tailwind utilities outright — squashing them to 24px pills and, in dark,
+    // painting their labels #a6a6a6 on a filled primary background.
+    expect(chatComposer).toContain('data-fork-composer-pills="true"');
+    const pillRules = cssRules(theme).filter(
+      (rule) => /height:\s*24px/u.test(rule.body) && rule.selector.includes("button"),
+    );
+    expect(pillRules.length).toBeGreaterThan(0);
+    for (const rule of pillRules) {
+      expect(rule.selector, `pill rule reaches the whole footer: ${rule.selector}`).not.toMatch(
+        /\[data-chat-composer-(footer|inline-actions)\]/u,
+      );
+    }
+  });
+
+  it("repaints the drag-over state the surface rule would otherwise swallow", () => {
+    // Upstream signals it with bg-accent/45 + ring-1 on this element. Tailwind
+    // v4 utilities live in @layer utilities and this stylesheet is unlayered,
+    // so both the tint and the ring — itself a box-shadow — lost to the pinned
+    // background and hairline, leaving a drag with no feedback at all.
+    expect(chatComposer).toContain("data-fork-composer-drag-over=");
+    expect(theme).toMatch(/\[data-fork-composer-drag-over\]/u);
+  });
+
+  it("hides only the left slot's separators, not BranchToolbar's own", () => {
+    // BranchToolbar draws a separator between the environment picker and the
+    // env-mode/branch pair on multi-environment projects. A row-wide rule hid
+    // it and merged two groups the design keeps apart.
+    const separatorRules = cssRules(theme).filter(
+      (rule) =>
+        rule.selector.includes('[data-slot="separator"]') &&
+        rule.selector.includes("fork-composer-control-row"),
+    );
+    expect(separatorRules.length).toBeGreaterThan(0);
+    for (const rule of separatorRules) {
+      expect(rule.selector).toContain('[data-fork-composer-control-row-slot="left"]');
+    }
   });
 
   it("clears the latch when the draft changes, not just when the prompt empties", () => {

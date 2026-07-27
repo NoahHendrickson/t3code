@@ -66,17 +66,14 @@ export function useComposerPromptWrapLatch(
       if (!entry) return;
       measure(entry.contentRect.height);
     });
+    // No priming read. `observe()` delivers an initial observation for a
+    // rendered element, so a manual call was always redundant — and it was the
+    // only path using a padding-box metric (`clientHeight`) against a threshold
+    // calibrated for the observer's content-box `contentRect`. The editor picks
+    // up `max-sm:pb-11` in the mobile pending-answer state, where those 44px
+    // would have latched the wrap on an empty prompt, and a latched value can
+    // never be lowered by the observer's correct readings afterwards.
     observer.observe(editable);
-    // contentRect semantics for the priming read too. `clientHeight` is the
-    // padding box, so the two agree only while the editor has no vertical
-    // padding — and it gains `max-sm:pb-11` on the mobile pending-answer path,
-    // where a padding-box read would latch instantly on an empty prompt.
-    const { paddingTop, paddingBottom } = window.getComputedStyle(editable);
-    measure(
-      editable.clientHeight -
-        (Number.parseFloat(paddingTop) || 0) -
-        (Number.parseFloat(paddingBottom) || 0),
-    );
     return () => {
       observer.disconnect();
     };

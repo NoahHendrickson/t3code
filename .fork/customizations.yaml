@@ -746,6 +746,36 @@
     affordance saying so. The mode controls may scroll — they have a compact
     menu fallback — but the meter is a readout people watch to decide when to
     compact, and silently hiding it is a different failure from crowding it.
+    The slim shell is desktop-only. At phone widths the model pill and the send
+    button leave the flex-1 editor 90-150px, and the placeholder — an absolutely
+    positioned overlay outside the editor's scroll box — wraps to several lines
+    and paints straight through the 48px box with nothing to clip it. It is also
+    stable rather than transient: the overlay never changes the observed editor
+    height, so the wrap latch cannot rescue it. A narrow viewport therefore
+    resolves tall regardless of everything else.
+    The control row renders in every density, including collapsed; only its left
+    half is conditional. Upstream showed BranchToolbar while the composer was
+    collapsed, gated on showComposerContextStrip alone and with its own mobile
+    selector, so env mode and branch were switchable without focusing the
+    composer and raising the keyboard. It also unmounted the whole footer during
+    a pending approval, which is why the run controls are gated on that here —
+    they moved out of the box, so they would otherwise stay live and let the
+    user flip modes for a run whose approval is unresolved. BranchToolbar is
+    deliberately not gated on approval; upstream showed it too.
+    Three rules had to be narrowed after they were found reaching further than
+    intended, and the common cause is worth stating once: this stylesheet is
+    unlayered while Tailwind v4 utilities sit in @layer utilities, so a fork
+    rule beats them regardless of specificity. The pill restyle is scoped to
+    data-fork-composer-pills rather than the footer wholesale, because the
+    footer also holds ComposerPrimaryActions' real CTAs — the Implement/Refine
+    split button and the pending-question Previous/Next/Submit set — which it
+    was squashing to 24px pills and, in dark, painting #a6a6a6 on a filled
+    primary background. The separator rule is scoped to the left slot, because
+    BranchToolbar draws its own separator in the right one. And the drag-over
+    state is repainted explicitly, because upstream signals it with
+    bg-accent/45 plus a ring on the very element whose background and
+    box-shadow this file pins — the ring being a box-shadow too, so a drag over
+    the composer had no feedback at all.
     States the designs do not draw resolve to tall, because the slim shell is a
     single 24px line with nowhere to put a second row of controls: an approval
     request, a pending user-input question, and the plan follow-up banner all

@@ -407,8 +407,6 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
 
 const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(props: {
   compact: boolean;
-  activeContextWindow: ReturnType<typeof deriveLatestContextWindowSnapshot>;
-  activeThreadProviderDisplayName: string | null;
   isPreparingWorktree: boolean;
   pendingAction: {
     questionIndex: number;
@@ -428,33 +426,18 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   onPreviousPendingQuestion: () => void;
   onInterrupt: () => void;
   onImplementPlanInNewThread: () => void;
-  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  /**
-   * The context meter and the worktree status line. The fork renders them on
-   * the composer's control row instead, leaving the box holding only the send
-   * button, so it turns them off here rather than dropping them.
-   */
-  showStatusAdornments?: boolean;
-  /* fork:end fork-composer-shell */
 }) {
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  const showStatusAdornments = props.showStatusAdornments ?? true;
+  /* The context meter and the "Preparing worktree..." line used to render here,
+     behind a showStatusAdornments flag the fork added and then always passed
+     false. This component is module-private with one call site, so the flag had
+     no reachable true branch — machinery justified by a caller that cannot
+     exist. Both now render once, on the control row, where the designs put
+     them. Deleted rather than kept, because the duplicate had already drifted:
+     only one copy had grown shrink-0. */
   /* fork:end fork-composer-shell */
   return (
     <>
-      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-      {showStatusAdornments && props.activeContextWindow ? (
-        /* fork:end fork-composer-shell */
-        <ContextWindowMeter
-          usage={props.activeContextWindow}
-          providerDisplayName={props.activeThreadProviderDisplayName}
-        />
-      ) : null}
-      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-      {showStatusAdornments && props.isPreparingWorktree ? (
-        /* fork:end fork-composer-shell */
-        <span className="text-muted-foreground/70 text-xs">Preparing worktree...</span>
-      ) : null}
       <ComposerPrimaryActions
         compact={props.compact}
         pendingAction={props.pendingAction}
@@ -1176,6 +1159,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isPromptWrapped,
     hasComposerHeader,
     isCollapsedMobile: isComposerCollapsedMobile,
+    isNarrowViewport: isMobileViewport,
   });
   const isComposerSlim = composerDensity === "slim";
   /* fork:end fork-composer-shell */
@@ -2351,9 +2335,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     >
       <ComposerFooterPrimaryActions
         compact={isComposerPrimaryActionsCompact}
-        activeContextWindow={activeContextWindow}
-        activeThreadProviderDisplayName={activeThreadProviderDisplayName}
-        showStatusAdornments={false}
         pendingAction={pendingPrimaryAction}
         isRunning={phase === "running"}
         showPlanFollowUpPrompt={pendingUserInputs.length === 0 && showPlanFollowUpPrompt}
@@ -2405,6 +2386,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           ref={composerSurfaceRef}
           /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
           data-fork-composer-surface="true"
+          // The drag state needs an attribute of its own. Upstream signals it
+          // with `bg-accent/45 ring-1 ring-primary/70` on this element, but the
+          // fork pins `background` and `box-shadow` here from an unlayered
+          // stylesheet — and Tailwind v4 utilities live in `@layer utilities`,
+          // which loses to unlayered rules regardless of specificity. Both the
+          // tint and the ring (also box-shadow) were being swallowed, leaving a
+          // drag over the composer with no feedback at all.
+          data-fork-composer-drag-over={isDragOverComposer ? "true" : undefined}
           /* fork:end fork-composer-shell */
           data-chat-composer-mobile-collapsed={isComposerCollapsedMobile ? "true" : "false"}
           className={cn(
@@ -2823,7 +2812,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   data-chat-composer-inline-actions="true"
                   className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
                 >
-                  <div className="flex min-w-0 items-center">{composerModelControls}</div>
+                  <div data-fork-composer-pills="true" className="flex min-w-0 items-center">
+                    {composerModelControls}
+                  </div>
                   {composerPrimaryActionSlot}
                 </div>
               ) : null}
@@ -2863,7 +2854,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               )}
             >
               {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-              <div className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div
+                data-fork-composer-pills="true"
+                className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {composerModelControls}
               </div>
 
@@ -2877,13 +2871,28 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
       {/* The control row: run controls and the worktree/branch pair on one line
           under the box, replacing both the in-box mode controls and the
-          separately-stitched context strip. */}
-      {composerDensity === "collapsed" ? null : (
-        <ComposerControlRow
-          left={composerRunControls}
-          {...(contextStrip ? { right: contextStrip } : {})}
-        />
-      )}
+          separately-stitched context strip.
+
+          The row renders in every state, including collapsed — only its left
+          half is conditional. Two upstream behaviours depend on that:
+
+          Collapsed on mobile, upstream still rendered BranchToolbar (gated on
+          showComposerContextStrip alone, with its own MobileRunContextSelector
+          branch), so env mode and branch were switchable without focusing the
+          composer and raising the keyboard. Dropping the whole row took that
+          away. The mode controls stay hidden, which is what upstream did — its
+          footer was unmounted while collapsed.
+
+          During a pending approval, upstream replaced the entire footer with
+          ComposerPendingApprovalActions, unmounting the runtime-mode, Build/Plan
+          and plan-sidebar toggles. The in-box footer still swaps, but these
+          moved out here, so they need the same gate — otherwise the user can
+          flip modes for a run whose approval is still unresolved. BranchToolbar
+          is deliberately not gated on approval; upstream showed it too. */}
+      <ComposerControlRow
+        left={activePendingApproval ? null : composerRunControls}
+        {...(contextStrip ? { right: contextStrip } : {})}
+      />
       {/* fork:end fork-composer-shell */}
     </form>
   );
