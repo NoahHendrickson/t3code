@@ -182,8 +182,17 @@ describe("fork guard: fork-composer-shell", () => {
     expect(theme).toMatch(/\[data-testid="composer-editor"\][\s\S]{0,160}min-height:\s*0/u);
   });
 
-  it("squares the send and stop buttons and reddens stop", () => {
+  it("squares the send and stop buttons, flattens release send, and reddens stop", () => {
     expect(theme).toMatch(/\[data-fork-composer-action\]\s*\{[\s\S]{0,200}border-radius:\s*6px/u);
+    // Release (tone=flat) is pure white / black icon — not upstream primary.
+    // Dev/Nightly keep tone=channel and the stage art; do not collapse them.
+    expect(primaryActions).toContain('data-fork-composer-send-tone={stageBackdropVariant ? "channel" : "flat"}');
+    expect(theme).toMatch(
+      /\[data-fork-composer-action="send"\]\[data-fork-composer-send-tone="flat"\][\s\S]{0,200}background:\s*#ffffff/u,
+    );
+    expect(theme).toMatch(
+      /\[data-fork-composer-action="send"\]\[data-fork-composer-send-tone="flat"\][\s\S]{0,200}color:\s*#000000/u,
+    );
     expect(theme).toMatch(
       /\[data-fork-composer-action="stop"\][\s\S]{0,120}background:\s*#ea3150/u,
     );
