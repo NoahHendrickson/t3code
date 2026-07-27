@@ -37,7 +37,10 @@ A linked git worktree no longer shares `~/.t3/dev`. Its dev state is the worktre
 explicit and derives the `userdata` leaf — so it is `<worktree>/.t3/userdata`, not
 `<worktree>/.t3/dev`. On the first `vp run dev` after this sync, an existing worktree looks like it
 lost every project, session, saved environment and pairing token. Nothing was deleted; the old
-state is still at `~/.t3/dev`. To bring it over — **stop the dev server first**, because
+state is still at `~/.t3/dev`. Check that path exists before doing anything — if you had never run
+a worktree dev server without an explicit `T3CODE_HOME`, there is no `~/.t3/dev` and nothing to
+migrate; the empty state is simply a fresh start. To bring it over — **stop the dev server
+first**, because
 `state.sqlite` and its `-wal`/`-shm` siblings are being written live and copying them mid-write
 snapshots an inconsistent database:
 
