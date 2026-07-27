@@ -156,6 +156,20 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).not.toContain('data-testid="command-palette-trigger"');
   });
 
+  it("insets the chrome rows by the thread list's scrollbar", () => {
+    // The rows and the list sit in sibling containers with identical padding,
+    // but the list is a scroll container and its scrollbar takes real layout
+    // width — so without this the trailing button overhangs every thread card
+    // by exactly the scrollbar. Read from the token, never written as 6px, so
+    // the alignment survives upstream retuning the scrollbar.
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    expect(rows).toContain("pe-[var(--app-scrollbar-width)]");
+    const upstreamCss = readSibling("../index.css");
+    expect(upstreamCss, "the token the inset reads from is gone").toMatch(
+      /--app-scrollbar-width:\s*\d/u,
+    );
+  });
+
   it("puts the brand on the header's trailing edge", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");

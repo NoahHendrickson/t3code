@@ -48,7 +48,19 @@ export interface SidebarV2ChromeProjectGroup {
   readonly workspaceRoot: string;
 }
 
-const CONTROL_ROW = "flex h-9 items-center gap-1";
+/** The trailing inset is the thread list's scrollbar, borrowed.
+ *
+ *  These rows and the thread list below them sit in sibling containers with
+ *  identical 8px padding, so by rights their content edges agree. They do not:
+ *  the list is a scroll container, its scrollbar takes real layout width, and
+ *  every card ends up 6px short of where these rows end. The trailing button
+ *  then overhangs the cards by exactly that much.
+ *
+ *  Read from `--app-scrollbar-width` rather than written as 6px, so the two
+ *  stay aligned if upstream ever retunes the scrollbar. Padding rather than a
+ *  narrower width so the row's own background, if it ever gains one, still
+ *  spans the full column. */
+const CONTROL_ROW = "flex h-9 items-center gap-1 pe-[var(--app-scrollbar-width)]";
 const TRAILING_BUTTON =
   "relative size-8 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 /** Coarse-pointer hit expansion — upstream's trick, kept: the visual button is

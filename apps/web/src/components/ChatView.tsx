@@ -5796,6 +5796,40 @@ function ChatViewContent(props: ChatViewProps) {
                             isLocalDraftThread={isLocalDraftThread}
                             forceExpandedOnMobile={forceExpandedMobileComposer && isDraftHeroState}
                             projectSelectionRequired={isLocalDraftThread && activeProject === null}
+                            /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                            isDraftHero={isDraftHeroState}
+                            {...(showComposerContextStrip
+                              ? {
+                                  contextStrip: (
+                                    <BranchToolbar
+                                      environmentId={activeThread.environmentId}
+                                      threadId={activeThread.id}
+                                      {...(routeKind === "draft" && draftId ? { draftId } : {})}
+                                      onEnvModeChange={onEnvModeChange}
+                                      startFromOrigin={startFromOrigin}
+                                      onStartFromOriginChange={onStartFromOriginChange}
+                                      {...(canOverrideServerThreadEnvMode
+                                        ? { effectiveEnvModeOverride: envMode }
+                                        : {})}
+                                      {...(canOverrideServerThreadEnvMode
+                                        ? {
+                                            activeThreadBranchOverride: activeThreadBranch,
+                                            onActiveThreadBranchOverrideChange:
+                                              setPendingServerThreadBranch,
+                                          }
+                                        : {})}
+                                      envLocked={envLocked}
+                                      onComposerFocusRequest={scheduleComposerFocus}
+                                      {...(canCheckoutPullRequestIntoThread
+                                        ? { onCheckoutPullRequestRequest: openPullRequestDialog }
+                                        : {})}
+                                      {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
+                                      availableEnvironments={logicalProjectEnvironments}
+                                    />
+                                  ),
+                                }
+                              : {})}
+                            /* fork:end fork-composer-shell */
                             phase={phase}
                             isConnecting={isConnecting}
                             isSendBusy={isSendBusy}
@@ -5866,35 +5900,12 @@ function ChatViewContent(props: ChatViewProps) {
                           data-terminal-open={terminalUiState.terminalOpen ? "true" : undefined}
                           className="relative z-0"
                         >
-                          {showComposerContextStrip && (
-                            <div className="pointer-events-auto">
-                              <BranchToolbar
-                                environmentId={activeThread.environmentId}
-                                threadId={activeThread.id}
-                                {...(routeKind === "draft" && draftId ? { draftId } : {})}
-                                onEnvModeChange={onEnvModeChange}
-                                startFromOrigin={startFromOrigin}
-                                onStartFromOriginChange={onStartFromOriginChange}
-                                {...(canOverrideServerThreadEnvMode
-                                  ? { effectiveEnvModeOverride: envMode }
-                                  : {})}
-                                {...(canOverrideServerThreadEnvMode
-                                  ? {
-                                      activeThreadBranchOverride: activeThreadBranch,
-                                      onActiveThreadBranchOverrideChange:
-                                        setPendingServerThreadBranch,
-                                    }
-                                  : {})}
-                                envLocked={envLocked}
-                                onComposerFocusRequest={scheduleComposerFocus}
-                                {...(canCheckoutPullRequestIntoThread
-                                  ? { onCheckoutPullRequestRequest: openPullRequestDialog }
-                                  : {})}
-                                {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
-                                availableEnvironments={logicalProjectEnvironments}
-                              />
-                            </div>
-                          )}
+                          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+                          {/* BranchToolbar moved into ChatComposer's control row,
+                              which is where the designs put the worktree/branch
+                              pair. It is passed as the composer's contextStrip
+                              prop at the call site above. */}
+                          {/* fork:end fork-composer-shell */}
                         </div>
                       </div>
                     </div>
