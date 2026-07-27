@@ -31,9 +31,16 @@ import { CloudIcon, GitBranchIcon, LaptopIcon } from "./icons/lucide-phosphor";
 
 export interface SidebarV2ThreadCardMetaProps {
   readonly projectTitle: string | null;
+  /** Under a project header the name is already on screen one row up, so the
+      card stops drawing it — but keeps it for assistive tech, which has no
+      "one row up" and would otherwise hear a card with no project at all. */
+  readonly projectTitleHidden?: boolean;
   readonly branch: string | null;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
+  /** The row's VCS query has not answered yet, so `prSlot` being null means
+      "not known", not "no PR" — see `threadCardShowsMetaRow`. */
+  readonly prUnknown?: boolean;
   readonly insertions: number | null;
   readonly deletions: number | null;
   readonly modelLabel: string | null;
@@ -54,20 +61,32 @@ const MUTED = "text-muted-foreground/70";
  * there is nothing on it: the model and runtime move up beside the branch and
  * the card closes at the design's two-line height. The caller needs the same
  * answer for its `contain-intrinsic-size` hint, so it lives here rather than
- * being derived twice from the same three props.
+ * being derived twice from the same props.
+ *
+ * `prUnknown` is why this takes four inputs rather than three. Whether a thread
+ * has a PR is the answer to a per-row VCS query, and on first paint it has not
+ * come back yet. Collapsing on "no PR *yet*" would draw every card at two lines
+ * and then grow the ones that turn out to have a PR, reflowing the list under
+ * the pointer as each query lands — worse than the blank strip the collapse
+ * exists to remove. So an unresolved query holds the row open, and the card
+ * collapses only where the answer is known, or where no query was ever issued
+ * (a thread with no branch and no worktree, which is the case the design is
+ * actually about and which never shifts).
  */
 export function threadCardShowsMetaRow(props: {
   readonly hasPr: boolean;
+  readonly prUnknown: boolean;
   readonly insertions: number | null;
   readonly deletions: number | null;
 }): boolean {
-  return props.hasPr || props.insertions !== null || props.deletions !== null;
+  return props.hasPr || props.prUnknown || props.insertions !== null || props.deletions !== null;
 }
 
 export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
   const hasDiff = props.insertions !== null || props.deletions !== null;
   const showsMetaRow = threadCardShowsMetaRow({
     hasPr: props.prSlot != null,
+    prUnknown: props.prUnknown === true,
     insertions: props.insertions,
     deletions: props.deletions,
   });
@@ -98,7 +117,11 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
             // Capped rather than flexible: the branch is the more distinguishing
             // half of this line — two threads on one project differ by branch,
             // not by project — so the project yields space first.
-            <span className="max-w-[45%] shrink-0 truncate">{props.projectTitle}</span>
+            <span
+              className={props.projectTitleHidden ? "sr-only" : "max-w-[45%] shrink-0 truncate"}
+            >
+              {props.projectTitle}
+            </span>
           ) : null}
           {props.branch ? (
             <span className="flex min-w-0 flex-1 items-center gap-0.5">

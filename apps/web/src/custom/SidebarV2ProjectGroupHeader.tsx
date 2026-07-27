@@ -15,18 +15,32 @@
  * space above carry the separation instead.
  * The first group drops the top margin: it butts against the chrome rows, which
  * carry their own spacing.
+ *
+ * It is a heading rather than a bare span, and its `li` drops the list
+ * semantics it would otherwise inherit from upstream's thread `ul`: a screen
+ * reader should hear a labelled break in the list, not an N+G-item list in
+ * which G entries are orphan text. The cards keep naming their project too —
+ * visually hidden, since the header carries it for sighted users — so grouped
+ * mode never carries less information than flat mode.
  */
 import { FolderIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 
+/** The unresolved-project section: a just-deleted project, or an environment
+    whose projects have not loaded yet. Named rather than left blank so the run
+    of cards under it does not read as belonging to the project above. */
+const UNGROUPED_PROJECT_LABEL = "Unknown project";
+
 export function SidebarV2ProjectGroupHeader(props: {
-  readonly label: string;
+  readonly label: string | null;
   readonly isFirst: boolean;
 }) {
   return (
-    <li data-thread-selection-safe className="list-none">
+    <li role="presentation" className="list-none">
       <div
+        role="heading"
+        aria-level={3}
         data-testid="sidebar-v2-project-group-header"
         className={cn(
           "mb-1 flex w-full items-center gap-2 px-2.5 text-left",
@@ -37,7 +51,7 @@ export function SidebarV2ProjectGroupHeader(props: {
             and its menu entry read as the same object. */}
         <FolderIcon aria-hidden className="size-4 shrink-0 text-muted-foreground/70" />
         <span className="min-w-0 truncate text-xs font-medium text-muted-foreground/70">
-          {props.label}
+          {props.label ?? UNGROUPED_PROJECT_LABEL}
         </span>
       </div>
     </li>

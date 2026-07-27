@@ -51,6 +51,19 @@ Related deep-dives that predate this file and stay where they are:
 
 ## sidebar-v2-project-grouping
 
+- The first cut modelled the two modes as `groups | null`, with `null` meaning flat, and re-tested
+  that sentinel at three sites: the ordered-thread memo, the `projectTitle` prop, and the render.
+  Review called it correctly — three coordinated special cases that have to agree by convention,
+  in a file already past 2.5k lines. The section model replaces it: flat is one headerless
+  section, so there is one sequence, the render maps it and the keyboard order flattens it, and
+  "these two derivations disagree" stops being representable. Worth remembering when the next
+  variant lands: the fix for a mode flag is usually a shape both modes fit.
+- The same first cut collapsed the card on `prBadge !== null`, which is false both for "no PR" and
+  for "the VCS query has not answered yet". Every PR-carrying card would have rendered at two
+  lines and grown to three as its query landed, reflowing the list under the pointer — worse than
+  the blank strip the collapse removes, and it would have got worse still once `latestTurnDiff()`
+  starts returning data, since that is async too. Hence the explicit `prUnknown` input: collapse
+  only where the answer is known, or where no query was ever issued.
 - Grouping and the project scope filter answer different questions — "everything, arranged by
   repo" versus "only this repo" — which is why grouping is a switch inside the scope menu rather
   than another entry in its radio list. It is also why grouping is skipped while a scope is set:
@@ -68,6 +81,14 @@ Related deep-dives that predate this file and stay where they are:
   recur every few rows and a rule at that cadence stripes the panel against the card edges. The
   folder mark and the space above it carry the separation instead, and the mark is the scope
   menu's own so a header and its menu entry read as the same object.
+- Grouped cards hide their project name rather than dropping it. Dropping it was the first
+  implementation and it made grouped mode strictly worse than flat mode for a screen reader: the
+  header is a visual adjacency, so a non-visual user lost the project association entirely. The
+  header is now a heading in a presentational `li` and the name stays on the card as `sr-only`.
+- Post-settle landing changes under grouping, and it is intended. `planForwardNavigation` reads
+  the ordered list positionally, so settling the last active card in one project now lands on the
+  next project's first card rather than on the next most-recently-active thread. "Forward" should
+  mean the next visible row; that is what it now means in both modes.
 
 ## fork-sidebar-chrome
 

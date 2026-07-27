@@ -139,7 +139,8 @@ import {
 /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
 import { SidebarV2ProjectGroupHeader } from "~/custom/SidebarV2ProjectGroupHeader";
 import {
-  groupThreadsByProject,
+  buildActiveThreadSections,
+  createProjectRefIndex,
   useSidebarV2GroupByProject,
 } from "~/custom/sidebarV2ProjectGrouping";
 /* fork:end sidebar-v2-project-grouping */
@@ -385,6 +386,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   environmentLabel: string | null;
   projectCwd: string | null;
   projectTitle: string | null;
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  projectTitleHidden?: boolean;
+  /* fork:end sidebar-v2-project-grouping */
   providerEntryByInstanceId: ReadonlyMap<string, ProviderInstanceEntry>;
   onThreadClick: (event: ReactMouseEvent, threadRef: ScopedThreadRef) => void;
   onThreadActivate: (threadRef: ScopedThreadRef) => void;
@@ -829,10 +833,19 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   }
 
   const diff = latestTurnDiff(thread);
-  // A card is three lines only when it has a PR or a diff to put on the third;
-  // the hint has to follow, or the scrollbar lies about every skipped row.
+  // "Has this thread a PR" is unknown only until the status query first
+  // answers — not on every later refresh. The query re-enters `waiting` each
+  // time it polls, and reading that alone would flip the card between two and
+  // three lines on every poll, which is the reflow this exists to avoid, on a
+  // loop. Once data has landed the height is settled either way.
+  const prUnknown = gitStatus.data === null && gitStatus.isPending;
+  // A card is three lines only when it has a PR or a diff to put on the third,
+  // or does not yet know whether it has a PR; the hint has to follow, or the
+  // scrollbar lies about every skipped row. Both values are the drawn card plus
+  // this li's own py-0.5.
   const showsMetaRow = threadCardShowsMetaRow({
     hasPr: prBadge !== null,
+    prUnknown,
     insertions: diff?.insertions ?? null,
     deletions: diff?.deletions ?? null,
   });
@@ -842,7 +855,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
       data-thread-item
       className={cn(
         "list-none py-0.5 [content-visibility:auto]",
-        showsMetaRow ? "[contain-intrinsic-size:auto_86px]" : "[contain-intrinsic-size:auto_64px]",
+        showsMetaRow ? "[contain-intrinsic-size:auto_90px]" : "[contain-intrinsic-size:auto_68px]",
       )}
     >
       <Tooltip>
@@ -967,8 +980,12 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
             </div>
             <SidebarV2ThreadCardMeta
               projectTitle={props.projectTitle}
+              /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+              projectTitleHidden={props.projectTitleHidden === true}
+              /* fork:end sidebar-v2-project-grouping */
               branch={thread.branch}
               prSlot={prBadge}
+              prUnknown={prUnknown}
               insertions={diff?.insertions ?? null}
               deletions={diff?.deletions ?? null}
               modelLabel={modelLabel}
@@ -1107,6 +1124,13 @@ export default function SidebarV2() {
     () => sortLogicalProjectsForSidebar(unsortedProjectGroups, threads, sidebarProjectSortOrder),
     [sidebarProjectSortOrder, threads, unsortedProjectGroups],
   );
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  // Keyed on the project list alone. The active-thread list churns on inputs
+  // grouping does not care about — the quantized clock, capability
+  // descriptors, PR states arriving one per row — and rebuilding this index on
+  // each of those is work per project for an answer that has not changed.
+  const projectRefIndex = useMemo(() => createProjectRefIndex(projectGroups), [projectGroups]);
+  /* fork:end sidebar-v2-project-grouping */
   const serverProviders = useAtomValue(primaryServerProvidersAtom);
   const providerEntryByInstanceId = useMemo(
     () =>
@@ -1505,25 +1529,34 @@ export default function SidebarV2() {
   }, [routeThreadKey, snoozedShelfExpanded, snoozedThreads]);
 
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
-  // Null means "render flat", which is both the default and what a scoped
-  // sidebar gets: scoping already reduces the list to one project, so grouping
-  // it would only repeat the scope row's own label as a header.
-  const activeThreadProjectGroups = useMemo(
+  // One section when flat, one per project when grouped: the list below renders
+  // this sequence and the keyboard order flattens it, so the two cannot
+  // disagree about what order the rows are in.
+  //
+  // Grouping needs somewhere to lead the eye that the alternatives do not
+  // already cover: a scoped sidebar is one project, and so is a sidebar with
+  // one project in it, and in both a header would only repeat a label already
+  // on screen.
+  const activeSections = useMemo(
     () =>
-      groupByProject && projectScopeKey === null
-        ? groupThreadsByProject(activeThreads, projectGroups)
-        : null,
-    [activeThreads, groupByProject, projectGroups, projectScopeKey],
+      buildActiveThreadSections({
+        threads: activeThreads,
+        projectGroups,
+        projectRefIndex,
+        grouped: groupByProject && projectScopeKey === null && projectGroups.length > 1,
+      }),
+    [activeThreads, groupByProject, projectGroups, projectRefIndex, projectScopeKey],
   );
-  // Grouping reorders the cards, and this list is what the ⌘-jump labels,
-  // arrow navigation and shift-range selection read. It has to be the order
-  // the rows are actually painted in, or a jump hint points at another row.
+  // Positional consumers read this: resolveAdjacentThreadId (arrow nav),
+  // rangeSelectTo (shift-select) and planForwardNavigation (where you land
+  // after settling or snoozing the thread you are viewing). It has to be the
+  // order the rows are painted in, or all three address the wrong row. The jump
+  // labels are keyed by thread rather than by index, so they cannot
+  // misaddress — but they are numbered from this list, so a stale order shows
+  // them out of sequence down the screen.
   const orderedActiveThreads = useMemo(
-    () =>
-      activeThreadProjectGroups === null
-        ? activeThreads
-        : activeThreadProjectGroups.flatMap((group) => [...group.threads]),
-    [activeThreadProjectGroups, activeThreads],
+    () => activeSections.flatMap((section) => section.threads),
+    [activeSections],
   );
   /* fork:end sidebar-v2-project-grouping */
   const orderedThreads = useMemo(
@@ -2259,6 +2292,16 @@ export default function SidebarV2() {
           onAddProject={openAddProjectCommandPalette}
           groupByProject={groupByProject}
           onGroupByProjectChange={setGroupByProject}
+          // A switch that visibly does nothing teaches nothing. Where headers
+          // are suppressed — one project on screen, by scope or by having only
+          // one — it says so instead of quietly ignoring the click.
+          groupByProjectUnavailableReason={
+            projectScopeKey !== null
+              ? "Grouping applies when the sidebar shows more than one project"
+              : projectGroups.length <= 1
+                ? "Grouping applies once you have more than one project"
+                : null
+          }
         />
         {/* fork:end fork-sidebar-chrome */}
         <SidebarGroup className="min-h-0 flex-1 overflow-y-auto px-2 py-1 [scrollbar-gutter:stable]">
@@ -2273,6 +2316,11 @@ export default function SidebarV2() {
                 const renderThreadRow = (
                   thread: EnvironmentThreadShell,
                   section: "active" | "snoozed" | "settled",
+                  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+                  // Set by the one caller painting under a header; every other
+                  // caller is in a headerless section and leaves it alone.
+                  underProjectHeader = false,
+                  /* fork:end sidebar-v2-project-grouping */
                 ) => {
                   const threadKey = scopedThreadKey(
                     scopeThreadRef(thread.environmentId, thread.id),
@@ -2329,18 +2377,18 @@ export default function SidebarV2() {
                       projectCwd={
                         projectCwdByKey.get(`${thread.environmentId}:${thread.projectId}`) ?? null
                       }
+                      projectTitle={
+                        projectDisplayNameByKey.get(
+                          `${thread.environmentId}:${thread.projectId}`,
+                        ) ?? null
+                      }
                       /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
                       // Under a project header the card's repo line would only
-                      // repeat the header two rows up, once per card. The
-                      // branch, which is what actually tells two threads on one
-                      // project apart, takes the whole line instead.
-                      projectTitle={
-                        activeThreadProjectGroups !== null && section === "active"
-                          ? null
-                          : (projectDisplayNameByKey.get(
-                              `${thread.environmentId}:${thread.projectId}`,
-                            ) ?? null)
-                      }
+                      // repeat the header two rows up, once per card, so the
+                      // branch — what actually tells two threads on one project
+                      // apart — takes the whole line. Hidden rather than
+                      // dropped: assistive tech has no "two rows up".
+                      projectTitleHidden={underProjectHeader}
                       /* fork:end sidebar-v2-project-grouping */
                       providerEntryByInstanceId={providerEntryByInstanceId}
                       onThreadClick={handleThreadClick}
@@ -2361,19 +2409,25 @@ export default function SidebarV2() {
                   );
                 };
                 /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
-                // Only the active cards group. The two shelves below are
+                // Only the active cards sectionize. The two shelves below are
                 // time-ordered tails whose value is that they stay short.
-                const items: ReactNode[] =
-                  activeThreadProjectGroups === null
-                    ? activeThreads.map((thread) => renderThreadRow(thread, "active"))
-                    : activeThreadProjectGroups.flatMap((group, groupIndex) => [
+                // Flat is the one-headerless-section case, so this is the only
+                // path either way — and it is the same sequence
+                // orderedActiveThreads flattens.
+                const items: ReactNode[] = activeSections.flatMap((section, sectionIndex) => [
+                  ...(section.header
+                    ? [
                         <SidebarV2ProjectGroupHeader
-                          key={`project-group-header:${group.projectKey}`}
-                          label={group.displayName}
-                          isFirst={groupIndex === 0}
+                          key={`project-group-header:${section.header.projectKey}`}
+                          label={section.header.displayName}
+                          isFirst={sectionIndex === 0}
                         />,
-                        ...group.threads.map((thread) => renderThreadRow(thread, "active")),
-                      ]);
+                      ]
+                    : []),
+                  ...section.threads.map((thread) =>
+                    renderThreadRow(thread, "active", section.header !== null),
+                  ),
+                ]);
                 /* fork:end sidebar-v2-project-grouping */
                 // Snoozed shelf: between the inbox and Settled — out of the
                 // way, never gone. The header always renders while anything

@@ -46,13 +46,30 @@ describe("SidebarV2ThreadCardMeta", () => {
     expect(markup).toContain("+0");
   });
 
+  it("holds the second row open while the PR is still unknown", () => {
+    // Collapsing on "no PR yet" and growing when the query lands would reflow
+    // the list under the pointer, once per PR-carrying card.
+    const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} prUnknown />);
+
+    expect(countRows(markup)).toBe(2);
+  });
+
   it("omits the project when the caller has none to give", () => {
-    // What a grouped card passes: the project header above it already names the
-    // project, so the branch takes the line.
     const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} projectTitle={null} />);
 
     expect(markup).not.toContain("alpha-service");
     expect(markup).toContain("main");
     expect(countRows(markup)).toBe(1);
+  });
+
+  it("keeps a grouped card's project name for assistive tech only", () => {
+    // What a card under a project header passes. The header names the project
+    // on screen; a screen reader has no "two rows up", so the name stays in the
+    // markup, out of the layout.
+    const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} projectTitleHidden />);
+
+    expect(markup).toContain("alpha-service");
+    expect(markup).toContain("sr-only");
+    expect(markup).not.toContain('class="max-w-[45%] shrink-0 truncate"');
   });
 });

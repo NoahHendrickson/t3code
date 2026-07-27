@@ -147,6 +147,8 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   readonly onAddProject: () => void;
   readonly groupByProject: boolean;
   readonly onGroupByProjectChange: (groupByProject: boolean) => void;
+  /** Non-null disables the switch and says why — see the call site. */
+  readonly groupByProjectUnavailableReason: string | null;
 }) {
   if (props.projectGroups.length === 0) return null;
 
@@ -170,13 +172,25 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
             {/* Above the scope list, not below it: with enough projects the
                 list scrolls, and a preference that decides how the whole
                 sidebar reads should not be the thing you have to scroll to.
-                It stays put while scoped — the sidebar simply has nothing to
-                group until the scope is cleared. */}
+
+                Disabled rather than inert when the sidebar is down to one
+                project — by scope, or by there being only one — because
+                grouping draws no header there. The reason rides on the
+                accessible name and the native tooltip, so it reaches both the
+                pointer and the screen reader rather than leaving either to
+                infer it from a switch that does nothing. */}
             <MenuCheckboxItem
               variant="switch"
               closeOnClick={false}
               checked={props.groupByProject}
               onCheckedChange={props.onGroupByProjectChange}
+              disabled={props.groupByProjectUnavailableReason !== null}
+              aria-label={
+                props.groupByProjectUnavailableReason === null
+                  ? undefined
+                  : `Group by project — ${props.groupByProjectUnavailableReason}`
+              }
+              title={props.groupByProjectUnavailableReason ?? undefined}
               className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
               data-testid="sidebar-v2-group-by-project-toggle"
             >
