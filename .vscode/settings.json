@@ -7,12 +7,14 @@
   "oxc.unusedDisableDirectives": "warn",
   "js/ts.tsdk.path": "node_modules/typescript/lib",
   "typescript.native-preview.tsdk": "node_modules/@typescript/native-preview",
-  "typescript.preferences.autoImportFileExcludePatterns": [".repos/**"],
-  "javascript.preferences.autoImportFileExcludePatterns": [".repos/**"],
+  "typescript.preferences.autoImportFileExcludePatterns": [".repos/**", ".t3/**"],
+  "javascript.preferences.autoImportFileExcludePatterns": [".repos/**", ".t3/**"],
   "files.watcherExclude": {
-    ".repos/**": true
+    ".repos/**": true,
+    ".t3/**": true
   },
   "search.exclude": {
-    ".repos/**": true
+    ".repos/**": true,
+    ".t3/**": true
   }
 }

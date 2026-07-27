@@ -30,6 +30,38 @@ Base every working branch on `custom`. If a task description says "the default b
    `/* fork:begin <id> — see .fork/customizations.yaml#<id> */` … `/* fork:end <id> */`, and add
    the file under `watch:` in the manifest.
 
+## Dev state in a worktree moved (upstream a17cbc3b4)
+
+A linked git worktree no longer shares `~/.t3/dev`. Its dev state is the worktree's own gitignored
+`.t3`, and because `dev-runner` exports that as `T3CODE_HOME` the server treats the base dir as
+explicit and derives the `userdata` leaf — so it is `<worktree>/.t3/userdata`, not
+`<worktree>/.t3/dev`. On the first `vp run dev` after this sync, an existing worktree looks like it
+lost every project, session, saved environment and pairing token. Nothing was deleted; the old
+state is still at `~/.t3/dev`. Check that path exists before doing anything — if you had never run
+a worktree dev server without an explicit `T3CODE_HOME`, there is no `~/.t3/dev` and nothing to
+migrate; the empty state is simply a fresh start. To bring it over — **stop the dev server
+first**, because
+`state.sqlite` and its `-wal`/`-shm` siblings are being written live and copying them mid-write
+snapshots an inconsistent database:
+
+```bash
+# with no dev server running
+mkdir -p "$(git rev-parse --show-toplevel)/.t3/userdata"
+cp -R ~/.t3/dev/. "$(git rev-parse --show-toplevel)/.t3/userdata/"
+```
+
+Do not reach for `--home-dir ~/.t3` instead. That resolves to `~/.t3/userdata` — the installed
+app's live database, which is the exact value a packaged fork build refuses at startup
+(`DesktopEnvironment.ts`). `--home-dir ~/.t3/dev` does not work either; it nests to
+`~/.t3/dev/userdata`, a new empty directory.
+
+Because `baseDir` also carries `caches/` and `worktrees/`, session worktrees now land at
+`<worktree>/.t3/worktrees/<repo>/<branch>` — full checkouts inside the source tree. `.t3` is
+gitignored, but test/fmt/lint discovery globs the filesystem rather than reading `.gitignore`, so
+`.t3` is excluded in `vite.config.ts` — and in the four `.repos` exclusions in
+`.vscode/settings.json`, so the editor does not watch, index, or offer auto-imports from a nested
+checkout of this same repo — the way `.repos` already was. Keep those fences intact.
+
 ## Every customization requires
 
 - An entry in `.fork/customizations.yaml` — `id`, `intent` (what must stay true, in plain words),
