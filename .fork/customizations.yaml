@@ -178,8 +178,7 @@
     isolated by this customization.
     History — the v0.1.1 leaf-rename incident, the N3→no3y rename, and the
     pre-a17cbc3b4 dev-state claim — is in
-    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md and
-    .fork/notes/FORK-DATA-ISOLATION-HANDOFF.md.
+    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 4
   files:
     - apps/web/src/custom/forkBranding.ts
@@ -511,9 +510,9 @@
     propagate to the PTY via resizeTerminal — nothing in the drawer subscribes
     to onResize, and a re-fit that corrects only xterm's local grid leaves the
     PTY wrapping to the stale, fallback-measured width.
-    Two further decisions are non-obvious. Geist Mono is listed AHEAD of SF
-    Mono: upstream puts SF Mono first, which means on macOS its bundled mono
-    webfont never renders at all. And body / pre, code are re-declared under
+    Geist Mono is listed AHEAD of SF Mono: upstream puts SF Mono first, which
+    means on macOS its bundled mono webfont never renders at all. body / pre,
+    code are re-declared under
     the fork marker because upstream hardcodes the literal stacks on those
     selectors (index.css:964, index.css:1022) instead of reading its own
     @theme tokens, so overriding --font-sans / --font-mono alone does not
@@ -585,8 +584,7 @@
     quietly — a gate pointed at the wrong paths still exits 0 — and it checks
     selection by walking the tree independently, not by spot-checks.
     The motivating incident (nine dead imports surviving three PRs in
-    SidebarV2.tsx) is in .fork/notes/FORK-LINT-GUARD-HANDOFF.md and
-    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+    SidebarV2.tsx) is in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 1
   files:
     - .fork/lint-owned.mjs
