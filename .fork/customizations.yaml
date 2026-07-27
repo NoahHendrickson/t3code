@@ -583,19 +583,43 @@
     anything. Scoped, upstream can add as many warnings as it likes and this
     stays green because it never looks there. The twelve upstream warnings
     present when this landed are deliberately untouched.
-    Scope is the three fork-owned directories plus every lintable files: entry
-    in this manifest, deduplicated — most of those entries already sit under
-    one of the directories — and filtered to .ts/.tsx, because files: also
-    lists images, CSS, YAML and shell. The gate compares oxlint's
-    number_of_files against the count it passed in, which is what keeps it
-    honest: an explicitly-passed path matching lint.ignorePatterns is skipped
-    silently, so without that comparison a fork path landing in an ignore list
-    would produce a green run that inspected nothing.
+    Scope has three parts, filtered to .ts/.tsx/.mjs because files: also lists
+    images, CSS, YAML and shell. First, the fork-owned directories, which now
+    include .fork and apps/web/fork — the fork's own tooling and override
+    machinery, both missed in the first cut. Second, every lintable files:
+    entry in this manifest. Third, and least obvious, an explicit list of
+    upstream-path files the fork has edited enough to own their lint output.
+    That third part is the one that matters. The fork's largest authored
+    surface is hunks inside files at upstream paths, and a file-level scope
+    cannot express "the fork owns these lines but not this file". The nine dead
+    imports that motivated this gate were in SidebarV2.tsx, which appears in
+    this manifest only under watch: — a key the selector does not read — so a
+    directories-only scope would have printed "no warnings" while all nine were
+    live. Review of the implementing PR caught exactly that.
+    Adoption is not free: an upstream-authored warning in an adopted file turns
+    the build red, which is the ratchet this entry otherwise argues against. It
+    is accepted only for files the fork already maintains hunks in and would
+    have to act on anyway. ThreadTerminalDrawer.tsx is deliberately excluded
+    despite carrying fork fences, because its one warning is an unused
+    eslint-disable on upstream's line, under upstream's rule config, surfaced
+    by upstream's own lint flag — no fork change can clear it. Fenced hunks in
+    any other upstream file remain uncovered until adopted by name; that gap is
+    real and stated rather than papered over.
+    The gate compares oxlint's number_of_files against the count it passed in,
+    which is what keeps it honest: an explicitly-passed path matching
+    lint.ignorePatterns is skipped silently, so without that comparison a fork
+    path landing in an ignore list would produce a green run that inspected
+    nothing. It also passes --report-unused-disable-directives, matching the
+    repo's own lint script, so the gate is never weaker than the lint it claims
+    to enforce.
     The guard test deliberately does not run the lint. It asserts the path
     selection and the CI wiring, because selection is the half that fails
     quietly — a gate pointed at the wrong paths still exits 0 — while the lint
     itself is a multi-second subprocess that belongs in CI rather than in a
-    unit suite that finishes 1600 tests in ten seconds.
+    unit suite that finishes 1600 tests in ten seconds. Selection is checked by
+    walking the tree independently and demanding the selection match, not by
+    spot-checks: the scope list is hand-maintained, and three fork-owned
+    surfaces were missing from it on day one.
   tier: 1
   files:
     - .fork/lint-owned.mjs

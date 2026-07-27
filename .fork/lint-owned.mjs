@@ -30,9 +30,37 @@ const REPO_ROOT = NodePath.resolve(FORK_DIR, "..");
  * so all of it is in scope regardless of whether the manifest names each file.
  */
 export const FORK_OWNED_DIRECTORIES = [
+  ".fork",
+  "apps/web/fork",
   "apps/web/src/custom",
   "apps/web/src/overrides",
   "apps/web/src/__fork_guards__",
+];
+
+/**
+ * Upstream-path files the fork has edited enough to own their lint output.
+ *
+ * The fork's largest authored surface is not the directories above — it is
+ * hunks inside files at upstream paths, and a file-level scope cannot say "the
+ * fork owns these lines but not this file". The nine dead imports that
+ * motivated this gate lived here, in SidebarV2.tsx, in unfenced lines the
+ * sidebar extraction stranded. A gate that skipped this list would have
+ * printed "no warnings" while all nine were live.
+ *
+ * Adoption means accepting that an upstream-authored warning in one of these
+ * turns the build red. That is the ratchet risk §3 of the handoff argues
+ * against for the repo at large, and it is acceptable here only because the
+ * fork already maintains hunks in each of these and would have to act anyway.
+ *
+ * ThreadTerminalDrawer.tsx is deliberately absent despite carrying fork
+ * fences: its one warning is an unused eslint-disable that is upstream's line,
+ * under upstream's rule config, surfaced by upstream's own lint flag. Adopting
+ * it would mean going red for something no fork change can fix.
+ */
+export const FORK_ADOPTED_FILES = [
+  "apps/web/src/components/AppSidebarLayout.tsx",
+  "apps/web/src/components/SidebarV2.tsx",
+  "apps/web/src/components/sidebar/SidebarChrome.tsx",
 ];
 
 /**
@@ -66,7 +94,11 @@ const parseReport = (stdout) => {
 const walk = (absoluteDir) => {
   const out = [];
   if (!NodeFS.existsSync(absoluteDir)) {
-    return out;
+    // Not a silent empty list. A fork-owned directory that has moved or been
+    // deleted must not quietly shrink the gate's scope — that is precisely the
+    // "nothing noticed" failure this exists to prevent, relocated into the
+    // gate's own configuration.
+    throw new Error(`fork-owned directory is missing: ${absoluteDir}`);
   }
   for (const entry of NodeFS.readdirSync(absoluteDir, { withFileTypes: true })) {
     const absolute = NodePath.join(absoluteDir, entry.name);
@@ -99,7 +131,15 @@ export const collectForkOwnedFiles = (manifestText, repoRoot = REPO_ROOT) => {
     .map((relative) => NodePath.join(repoRoot, relative))
     .filter((absolute) => NodeFS.existsSync(absolute));
 
-  const relative = [...fromDirectories, ...fromManifest].map((absolute) =>
+  const fromAdopted = FORK_ADOPTED_FILES.map((relative) => {
+    const absolute = NodePath.join(repoRoot, relative);
+    if (!NodeFS.existsSync(absolute)) {
+      throw new Error(`adopted file is missing: ${relative}`);
+    }
+    return absolute;
+  });
+
+  const relative = [...fromDirectories, ...fromManifest, ...fromAdopted].map((absolute) =>
     NodePath.relative(repoRoot, absolute),
   );
   return [...new Set(relative)].sort();
@@ -116,7 +156,11 @@ function main() {
 
   const result = NodeChildProcess.spawnSync(
     "vp",
-    ["lint", ...files, "--format", "json", "--max-warnings", "0"],
+    // --report-unused-disable-directives matches the repo's own `lint` script.
+    // Without it the gate is strictly weaker than the lint it claims to
+    // enforce: a stale suppression in fork-owned code would pass here and be
+    // reported by `vp run lint`.
+    ["lint", ...files, "--report-unused-disable-directives", "--format", "json"],
     {
       cwd: REPO_ROOT,
       encoding: "utf8",
@@ -160,6 +204,21 @@ function main() {
   }
 
   const diagnostics = report.diagnostics ?? [];
+
+  // The verdict comes from the parsed report, which is precise about what and
+  // where. But a non-zero exit with nothing to show for it means oxlint failed
+  // in a way this script cannot see, and treating that as "no warnings" is the
+  // exact shape that produces a false green. No such case has been reproduced;
+  // this is a backstop, not a fix for an observed bug.
+  if (result.status !== 0 && diagnostics.length === 0) {
+    console.error(
+      `fork-lint: vp lint exited ${result.status} but reported no diagnostics. ` +
+        `Refusing to call that clean. Raw output follows.\n`,
+    );
+    console.error(result.stdout || result.stderr);
+    process.exit(2);
+  }
+
   if (diagnostics.length > 0) {
     console.error(
       `fork-lint: ${diagnostics.length} warning(s) in fork-owned code. The fork owns these ` +
