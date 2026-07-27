@@ -151,14 +151,14 @@
     keeps ~/.t3/dev is no longer true inside a linked git worktree. There,
     dev state is the worktree's own gitignored .t3, and because dev-runner
     exports that as T3CODE_HOME the server reads the base dir as explicit and
-    derives the userdata leaf rather than the dev leaf: <worktree>/.t3/userdata,
-    not ~/.t3/dev. Existing worktree dev state is stranded rather than
-    migrated, and no single --home-dir value reaches the old location — the
-    one flag that gets close, --home-dir ~/.t3, resolves to the live
-    ~/.t3/userdata this customization exists to keep the fork out of. Because
-    baseDir also carries caches/ and worktrees/, a worktree's session
-    checkouts now land inside the repo tree, which is why .t3 is excluded from
-    the test, fmt and lint discovery lists in vite.config.ts the way .repos
+    derives the userdata leaf rather than the dev leaf. What must stay true is
+    that no fork surface resolves to upstream's live ~/.t3/userdata; the
+    mechanics of migrating state left behind at ~/.t3/dev are operational and
+    live in .fork/AGENTS.md, not here, since they go stale once everyone has
+    moved. Because baseDir also carries caches/ and worktrees/, a worktree's
+    session checkouts now land inside the repo tree, which is why .t3 is
+    excluded from the test, fmt and lint discovery lists in vite.config.ts and
+    from the four .repos exclusions in .vscode/settings.json, the way .repos
     already was. The URL
     scheme is also deliberately left shared — t3code:// is the app's own
     internal origin, not just a deep-link handler, so changing only the
@@ -201,6 +201,7 @@
     - scripts/build-desktop-artifact.test.ts
     - scripts/dev-runner.ts
     - vite.config.ts
+    - .vscode/settings.json
   verify:
     - apps/web/src/__fork_guards__/forkAppIdentity.test.ts
 
