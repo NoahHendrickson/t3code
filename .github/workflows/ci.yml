@@ -33,6 +33,16 @@ jobs:
       - name: Check
         run: vp check
 
+      # fork:begin fork-lint-cleanliness — see .fork/customizations.yaml#fork-lint-cleanliness
+      # `vp check` lints the whole repo but exits 0 on warnings, and no
+      # --max-warnings is set anywhere, so fork-authored dead code accumulates
+      # silently — it took three PRs to remove nine dead imports because
+      # noticing was the hard part. This fails on a single warning in
+      # fork-owned code only, so upstream's warnings can never turn it red.
+      - name: Lint fork-owned code
+        run: node .fork/lint-owned.mjs
+      # fork:end fork-lint-cleanliness
+
       - name: Typecheck
         run: vpr typecheck
 
