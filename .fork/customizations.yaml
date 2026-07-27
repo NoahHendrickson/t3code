@@ -56,12 +56,24 @@
     Fork Workflow section pointing to .fork/AGENTS.md, which defines the
     branch model (work from custom, never touch main) and the placement
     ladder for fork changes.
+    CLAUDE.md is a Tier-4 inline edit the fork owns outright, and it
+    deliberately diverges from the blob upstream ships. Upstream's committed
+    symlink target carries a trailing newline, so it names a file that cannot
+    exist and CLAUDE.md resolves to nothing — upstream fixed that in 5e13f5357
+    and reintroduced it in 6891c77d3, so it recurs. The fork's blob is the
+    9-byte target with no newline. Resolve any sync conflict on CLAUDE.md by
+    keeping the fork's side; taking upstream's restores the bug and silently
+    strips the rules from every Claude agent. It is the one Tier-4 edit that
+    cannot carry the usual begin/end fence comments: a symlink's blob is its
+    target verbatim, so a comment marker inside it would break the very link
+    the marker exists to describe. The watch entry is the whole fence.
   tier: 4
   files:
     - .fork/AGENTS.md
   shadows: []
   watch:
     - AGENTS.md
+    - CLAUDE.md
   verify:
     - apps/web/src/__fork_guards__/forkWorkflowDocs.test.ts
 
