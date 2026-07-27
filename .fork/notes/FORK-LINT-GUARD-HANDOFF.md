@@ -203,9 +203,17 @@ true` is untested there.
 
 **Should the guard test shell out to `vp lint`, or should CI carry it alone?**
 
-Every existing guard in `apps/web/src/__fork_guards__/` is a text-assertion test: it reads a
-source file and asserts on its contents. None spawns a subprocess. A lint guard is different
-in kind — the thing it asserts cannot be established by reading one file.
+Almost every guard in `apps/web/src/__fork_guards__/` is a text-assertion test: it reads a
+source file and asserts on its contents. A lint guard is different in kind — the thing it
+asserts cannot be established by reading one file.
+
+Correction since this was written: "none spawns a subprocess" was wrong when written.
+`customizationsManifest.test.ts` already shells out to `git ls-files` to enumerate tracked
+files, and `forkWorkflowDocs.test.ts` shells out to `git ls-tree` / `git cat-file` (#18) because
+its subject is a git object and reading the working tree only measures a proxy for it. So the
+question below is about cost, not about breaking a precedent — the precedent is that a guard
+shells out when the property it asserts genuinely does not live in a file's text. `vp lint` is
+a much more expensive subprocess than `git ls-files`, so the trade still stands.
 
 Options, none of which I tried:
 
@@ -242,5 +250,39 @@ cat: CLAUDE.md: No such file or directory
 ```
 
 Same blob in `origin/main`, so it is upstream's. Every agent instructed to read `CLAUDE.md`
-silently gets nothing. Surfaced by the #16 review; unrelated to this guard; **nothing is being
-filed upstream** — recorded here only so the finding survives.
+silently gets nothing. Surfaced by the #16 review; unrelated to this guard.
+
+**Fixed in #18** — the fork now owns a 9-byte `CLAUDE.md` blob with no trailing newline, watches
+the path in the manifest, and asserts mode and target on the committed object. Upstream is still
+not being filed against; upstream shipped this newline in `6891c77d3`, having fixed it itself in
+`5e13f5357`, so treat it as recurring and expect the guard to catch it again after a sync.
+
+---
+
+## 10. The class behind §9, and the check that would find the rest of it
+
+The `CLAUDE.md` symlink was not the interesting half of #18. Its guard was:
+
+```js
+expect(NodeFS.readlinkSync(...).trim()).toBe("AGENTS.md");
+```
+
+`.trim()` strips exactly the byte that was the bug, so the assertion held identically while the
+link was broken, while upstream fixed it, and while upstream re-broke it. It never changed value
+and could not have. That is the same vacuity `FORK-DATA-ISOLATION-HANDOFF.md` diagnoses for
+`forkAppIdentity`: _"it tests that a rename happened, not that the rename is sufficient."_
+
+A guard that cannot fail is worse than a missing guard, because it consumes the attention a
+missing guard would have left free. Two known instances across 17 guard files, both found by a
+human reading closely, which does not scale. It does not grep out either: `trim()` / `replace()`
+elsewhere in `__fork_guards__` is all legitimate parsing (`cssRules.ts`, `phosphorIcons.test.ts`).
+
+The check that does find it is mutation: for each guard, break the property it claims to protect
+and confirm the guard goes red. #18 did this by hand for its own three assertions — broken link
+in the working tree, broken link committed, and a `core.symlinks=false` checkout — and that run
+was the most valuable artifact in the PR. It is also the part that is not captured anywhere.
+
+This is a companion to the lint guard proposed above rather than a competitor: same failure mode
+— something in the fork layer that silently never goes red — one level up. Whoever implements
+§5 is the right person to decide whether the guard directory should carry a mutation pass of its
+own, or whether it stays a review-time discipline.
