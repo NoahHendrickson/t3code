@@ -674,14 +674,13 @@
     absolutely positioned overlay outside the editor's scroll box — wraps and
     paints straight through the 48px box, and stably so (the overlay never
     changes the observed editor height, so the latch cannot rescue it). A
-    narrow viewport resolves tall regardless. On desktop slim the same overlay
-    still outruns a short editor column: the placeholder truncates with an
-    ellipsis (nowrap on the Lexical sibling, overflow-hidden on the prompt
-    column) rather than wrapping under the inline pills. States the designs do
-    not draw also resolve tall: an approval request, a pending user-input
-    question, and the plan follow-up banner all own the box's internals and
-    carry their own action rows. Attachments deliberately do not force tall —
-    attachment cards render as a full-width band above the inline row.
+    narrow viewport resolves tall regardless. On desktop slim the default
+    empty-state hint is a shorter string that still names @, $, and /; tall
+    keeps the long form. States the designs do not draw also resolve tall: an
+    approval request, a pending user-input question, and the plan follow-up
+    banner all own the box's internals and carry their own action rows.
+    Attachments deliberately do not force tall — attachment cards render as a
+    full-width band above the inline row.
     The control row renders in every density, including collapsed; only its
     left half is conditional. The run controls are gated on a pending approval
     — they moved out of the box, which upstream unmounted wholesale during

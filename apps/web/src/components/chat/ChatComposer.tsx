@@ -2732,13 +2732,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
             {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
             <div className={cn("flex min-w-0", isComposerSlim ? "items-center gap-6" : "flex-col")}>
-              {/* overflow-hidden on slim: the absolute placeholder can still paint
-                  past the editor column into the inline pills if something misses
-                  the ellipsis rule; clip at the column edge. */}
-              <div
-                ref={attachPromptElement}
-                className={cn("relative min-w-0 flex-1", isComposerSlim && "overflow-hidden")}
-              >
+              <div ref={attachPromptElement} className="relative min-w-0 flex-1">
                 {/* fork:end fork-composer-shell */}
                 <ComposerPromptEditor
                   editorRef={composerEditorRef}
@@ -2775,7 +2769,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                               ? "Enable a provider in Settings to send a message"
                               : phase === "disconnected"
                                 ? "Ask for follow-up changes or attach images"
-                                : "Ask anything, @tag files/folders, $use skills, or / for commands"
+                                : /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                                  // Absolute placeholder is invisible to the wrap latch. Slim shortens
+                                  // the hint so @/$/ stay discoverable instead of truncating them away.
+                                  isComposerSlim
+                                  ? "Ask anything, @tag, $skills, / commands"
+                                  : /* fork:end fork-composer-shell */
+                                    "Ask anything, @tag files/folders, $use skills, or / for commands"
                   }
                   disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
                 />

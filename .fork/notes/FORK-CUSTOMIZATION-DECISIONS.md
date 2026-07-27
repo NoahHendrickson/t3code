@@ -103,6 +103,11 @@ Related deep-dives that predate this file and stay where they are:
   beats them regardless of specificity.
 - Attachments forcing the tall shell was considered and declined; attachment cards render as a
   full-width band above the inline row instead.
+- Absolutely-positioned content in the prompt column is invisible to the wrap latch by
+  construction: it never changes the observed editor height. Phone widths already force tall for
+  that reason; on desktop slim the 64-character default hint wraps under the inline pills. Truncating
+  it would eat `$use skills` / `/ commands`, which have no other discovery surface — so slim uses a
+  shorter hint that still names `@`, `$`, and `/`, and tall keeps the long form.
 - A general weakness worth remembering for future guards: the composer-shell guards assert on the
   text of the stylesheet rather than on what it matches, so a selector that stops matching (for
   example, upstream adding a second child inside the frame) keeps every guard green. Selecting
