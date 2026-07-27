@@ -209,7 +209,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
         "relative isolate flex h-9 w-9 items-center justify-center overflow-hidden rounded-full transition-all duration-150 enabled:cursor-pointer hover:scale-105 disabled:pointer-events-none disabled:opacity-30 disabled:hover:scale-100 sm:h-8 sm:w-8",
         stageBackdropVariant
           ? "bg-transparent text-primary-foreground shadow-xs enabled:inset-shadow-[0_1px_--theme(--color-white/16%)] enabled:shadow-black/24 enabled:hover:brightness-110 active:inset-shadow-[0_1px_--theme(--color-black/8%)] active:shadow-none disabled:shadow-none"
-          : "bg-white text-black shadow-none hover:bg-white active:shadow-none",
+          : "shadow-none",
       )}
       {...pointerFocusProps}
       disabled={isSendBusy || isConnecting || isEnvironmentUnavailable || !hasSendableContent}

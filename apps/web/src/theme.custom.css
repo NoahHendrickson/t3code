@@ -437,18 +437,13 @@
 /* Release send: flat pure white with a black icon. Dev/Nightly keep the
    stage-channel fill (tone="channel"); the attribute is set from
    ComposerPrimaryActions so a missing art wrapper cannot silently leave the
-   release button on upstream's primary purple. */
+   release button on upstream's primary purple. Unlayered, so this beats any
+   leftover Tailwind fill utilities without a hover twin. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
   background: #ffffff;
   color: #000000;
   box-shadow: none;
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:hover:enabled {
-  background: #ffffff;
-  color: #000000;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-action="stop"] {
