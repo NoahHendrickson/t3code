@@ -2732,7 +2732,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
             {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
             <div className={cn("flex min-w-0", isComposerSlim ? "items-center gap-6" : "flex-col")}>
-              <div ref={attachPromptElement} className="relative min-w-0 flex-1">
+              {/* overflow-hidden on slim: the absolute placeholder can still paint
+                  past the editor column into the inline pills if something misses
+                  the ellipsis rule; clip at the column edge. */}
+              <div
+                ref={attachPromptElement}
+                className={cn("relative min-w-0 flex-1", isComposerSlim && "overflow-hidden")}
+              >
                 {/* fork:end fork-composer-shell */}
                 <ComposerPromptEditor
                   editorRef={composerEditorRef}

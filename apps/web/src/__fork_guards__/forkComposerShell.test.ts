@@ -303,6 +303,19 @@ describe("fork guard: fork-composer-shell", () => {
     ).toBe("tall");
   });
 
+  it("truncates the slim-shell placeholder instead of letting it wrap under the pills", () => {
+    // Same absolute-overlay failure mode as the phone case, just on a desktop
+    // slim row whose editor column is still narrower than the long empty-state
+    // hint. Truncate on one line; do not apply nowrap to the editor itself.
+    expect(theme).toMatch(
+      /\[data-fork-composer-density="slim"\][\s\S]{0,200}\[data-testid="composer-editor"\]\s*~\s*div[\s\S]{0,160}text-overflow:\s*ellipsis/u,
+    );
+    expect(theme).toMatch(
+      /\[data-fork-composer-density="slim"\][\s\S]{0,200}\[data-testid="composer-editor"\]\s*~\s*div[\s\S]{0,160}white-space:\s*nowrap/u,
+    );
+    expect(chatComposer).toMatch(/isComposerSlim && "overflow-hidden"/u);
+  });
+
   it("keeps the branch controls reachable while collapsed, and gates modes on approval", () => {
     // Two upstream behaviours the control row has to preserve. Upstream showed
     // BranchToolbar while collapsed (gated on showComposerContextStrip alone),

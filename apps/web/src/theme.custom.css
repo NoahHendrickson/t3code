@@ -381,6 +381,21 @@
   }
 }
 
+/* Slim shell: the empty-state hint is an absolute overlay outside the editor's
+   scroll box. Wrapping never grows the observed editor height, so the wrap latch
+   cannot flip the shell to tall — and the second line paints straight through the
+   inline model pill and send button. Truncate on one line instead. The spacer
+   sibling is empty, so nowrap is a no-op there. Tall keeps wrapping: the prompt
+   owns the full width and the box has room. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-density="slim"]
+  [data-testid="composer-editor"]
+  ~ div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The in-box pills and the control row below it share one 24px ghost treatment:
    12px medium type, a 12px glyph, and a full pill. The designs draw this type at
    10px; 12px is the fork's own call, and it matches the prompt beside it.
