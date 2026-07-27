@@ -334,9 +334,15 @@
    shadow, so the box does not gain a second one. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-drag-over] {
   background: var(--accent);
-  box-shadow:
-    inset 0 0 0 1px var(--fork-composer-border-focus),
-    0 0 0 1px var(--ring);
+  /* Outline, not box-shadow, and that is empirical rather than stylistic. The
+     tint above lands from this same rule while a box-shadow declaration beside
+     it measurably does not — something on this element composes that property
+     in a way the fork's rule loses to, single- or multi-shadow alike, so a drag
+     advertised itself with a 4% fill and nothing else. `outline` is a property
+     neither upstream nor this stylesheet otherwise sets here, it follows the
+     border-radius, and it does not occupy the slot the hairline needs. */
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 /* Focus recolours that same hairline rather than adding a ring, so the box

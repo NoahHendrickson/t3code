@@ -339,7 +339,16 @@ describe("fork guard: fork-composer-shell", () => {
     // so both the tint and the ring — itself a box-shadow — lost to the pinned
     // background and hairline, leaving a drag with no feedback at all.
     expect(chatComposer).toContain("data-fork-composer-drag-over=");
-    expect(theme).toMatch(/\[data-fork-composer-drag-over\]/u);
+    // Outline, asserted by name. A box-shadow declaration on this element was
+    // measured in the browser not to land — the tint from the same rule did —
+    // so reverting to one would silently return the composer to a drag state
+    // advertised by a 4% fill and nothing else.
+    const dragRule = cssRules(theme).find((rule) =>
+      rule.selector.includes("[data-fork-composer-drag-over]"),
+    );
+    expect(dragRule, "no drag-over rule").toBeDefined();
+    expect(dragRule!.body).toMatch(/outline:\s*2px solid/u);
+    expect(dragRule!.body).toMatch(/background:/u);
   });
 
   it("hides only the left slot's separators, not BranchToolbar's own", () => {
