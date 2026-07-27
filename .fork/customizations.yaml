@@ -19,6 +19,10 @@
 #   shadows: upstream modules replaced via src/overrides/ — drift-watched
 #   watch:   upstream files carrying Tier-4 inline edits — drift-watched
 #   verify:  guard tests that fail if the customization is silently lost
+#
+# Keep `intent` to the invariants a sync must preserve. Design history,
+# rejected alternatives, and incident write-ups live in
+# .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md — narrative there, contract here.
 
 - id: ci-on-custom
   intent: >
@@ -128,67 +132,54 @@
 - id: fork-app-identity
   intent: >
     A packaged fork build is a different application from an installed
-    upstream release, and the two never share state. Upstream's release and
-    this fork's build are both non-development builds, so every identity
-    upstream derives from "is this a dev build" collapses onto the same value
-    for both: the same bundle id, the same "T3 Code (Alpha).app" path in
-    /Applications, the same ~/.t3 state tree holding state.sqlite and secrets,
-    and the same Electron user data directory. Installing a fork build
-    therefore offered to replace the real app, and running one would have
-    adopted its live database — including the legacy directory upstream
-    migrates from, which is why legacyUserDataDirName is redirected too rather
-    than left pointing at "T3 Code (Alpha)". The fork presents as "no3y Code":
-    bundle id com.t3tools.t3code.fork (unchanged across renames — it is the
-    stable identity macOS keys on), installs as "no3y Code.app", ships
-    no3y-Code-* artifacts, packages placeholder "N" lettermark art from
-    assets/fork on all three platforms, and keeps all filesystem state under
-    the fork-owned base directory ~/.t3-fork (also stable across renames, so
-    display renames never orphan state). The name was "N3 Code" until it was
-    renamed wholesale; renaming display strings is safe by construction here,
-    precisely because the bundle id and the base directory are both held stable
-    across renames. The one consequence worth stating: an installed
-    "N3 Code.app" is not replaced by a build that installs as "no3y Code.app",
-    so an upgrader keeps both bundles until the old one is deleted by hand.
+    upstream release, and the two never share state. Both are non-development
+    builds, so every identity upstream derives from "is this a dev build"
+    collapses onto the same value for both — bundle id, /Applications path,
+    the ~/.t3 state tree, and the Electron user data directory — and a fork
+    build would otherwise offer to replace the real app and adopt its live
+    database. legacyUserDataDirName is redirected too, so a fork build never
+    adopts the legacy directory upstream migrates from.
+    The fork presents as "no3y Code": bundle id com.t3tools.t3code.fork,
+    installs as "no3y Code.app", ships no3y-Code-* artifacts, packages
+    placeholder "N" lettermark art from assets/fork on all three platforms,
+    and keeps all filesystem state under ~/.t3-fork. The bundle id and the
+    base directory are the stable identities and must never change across
+    display renames; display strings are safe to rename precisely because
+    those two are held stable.
     Isolation is forked at the base directory, not the "userdata" leaf,
     because the packaged app is two processes: the desktop resolves its own
     state directory and hands only baseDir (as bootstrap t3Home) to the
     bundled server child, which independently derives its stateDir, caches/
-    and worktrees/ from it. A desktop-side leaf rename shipped in v0.1.1 and
-    left the server child writing the real ~/.t3/userdata — see
-    .fork/notes/FORK-DATA-ISOLATION-HANDOFF.md. Moving the base keeps both halves on
-    upstream's own leaf derivations and isolates all three shared directories
-    at once, with no fork hunks in apps/server. Development paths carry no
-    fork rename — `vp dev` in this repo is already the fork — but upstream
-    a17cbc3b4 changed where they point, so the older claim that dev simply
-    keeps ~/.t3/dev is no longer true inside a linked git worktree. There,
-    dev state is the worktree's own gitignored .t3, and because dev-runner
-    exports that as T3CODE_HOME the server reads the base dir as explicit and
-    derives the userdata leaf rather than the dev leaf. What must stay true is
-    that no fork surface resolves to upstream's live ~/.t3/userdata; the
-    mechanics of migrating state left behind at ~/.t3/dev are operational and
-    live in .fork/AGENTS.md, not here, since they go stale once everyone has
-    moved. Because baseDir also carries caches/ and worktrees/, a worktree's
-    session checkouts now land inside the repo tree, which is why .t3 is
-    excluded from the test, fmt and lint discovery lists in vite.config.ts and
-    from the four .repos exclusions in .vscode/settings.json, the way .repos
-    already was. The URL
-    scheme is also deliberately left shared — t3code:// is the app's own
-    internal origin, not just a deep-link handler, so changing only the
-    registration would be incoherent; two installed apps contend for the
-    scheme, which is untidy but not destructive. The rendered app now carries
-    the name too: the sidebar brand reads APP_BASE_NAME, and branding.ts's
-    bridge-less fallback points at the fork's own constant instead of upstream's
-    "T3 Code", which had left dev and hosted sessions branded as upstream while
-    the packaged app was not — the exact ambiguity the rename exists to remove.
-    The sidebar lockup drops the T3 wordmark rather than pairing a borrowed
-    glyph with a different name. Splash, favicon and resolveDesktopWebAssetBrand
-    still carry upstream's T3 art: those are images rather than strings, and
-    replacing them is separate work. An
-    explicit T3CODE_HOME still overrides the fork base on both halves, with
-    one refused value: upstream's own ~/.t3, which a non-development build
-    rejects at startup rather than opening the real app's database. Known
-    carve-out: the WSL backend bootstrap deliberately omits t3Home, so
-    WSL-side state is not isolated by this customization.
+    and worktrees/ from it. Moving the base keeps both halves on upstream's
+    own leaf derivations and isolates all three shared directories at once,
+    with no fork hunks in apps/server. What must stay true is that no fork
+    surface resolves to upstream's live ~/.t3/userdata. An explicit
+    T3CODE_HOME still overrides the fork base on both halves, with one refused
+    value: upstream's own ~/.t3, which a non-development build rejects at
+    startup rather than opening the real app's database.
+    Development paths carry no fork rename — `vp dev` in this repo is already
+    the fork — but since upstream a17cbc3b4, dev state in a linked git
+    worktree is the worktree's own gitignored .t3 with a userdata leaf
+    (dev-runner exports it as T3CODE_HOME, so the server reads the base as
+    explicit). Because baseDir also carries caches/ and worktrees/, a
+    worktree's session checkouts land inside the repo tree, which is why .t3
+    is excluded from the test, fmt and lint discovery lists in vite.config.ts
+    and from the four .repos exclusions in .vscode/settings.json, the way
+    .repos already was.
+    The rendered app carries the name too: the sidebar brand reads
+    APP_BASE_NAME and drops the T3 wordmark, and branding.ts's bridge-less
+    fallback points at the fork's own constant instead of upstream's
+    "T3 Code". Deliberately shared or deferred: the t3code:// URL scheme stays
+    shared (it is the app's own internal origin, not just a deep-link
+    handler — two installed apps contend for it, untidy but not destructive);
+    splash, favicon and resolveDesktopWebAssetBrand still carry upstream's T3
+    art (images rather than strings; separate work). Known carve-out: the WSL
+    backend bootstrap deliberately omits t3Home, so WSL-side state is not
+    isolated by this customization.
+    History — the v0.1.1 leaf-rename incident, the N3→no3y rename, and the
+    pre-a17cbc3b4 dev-state claim — is in
+    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md and
+    .fork/notes/FORK-DATA-ISOLATION-HANDOFF.md.
   tier: 4
   files:
     - apps/web/src/custom/forkBranding.ts
@@ -268,23 +259,18 @@
     then always at the same x.
 
     Surface encodes interaction and nothing else. A row is filled on hover and
-    when selected or routed to; it is never filled because of its status. An
-    earlier revision gave working rows a resting fill on the theory that a live
-    agent should look alive, and with several threads running the panel became
-    a field of lit rectangles in which the hover cue meant nothing. Working
-    instead recedes: it is the one status whose title drops to muted, because a
-    running agent is the row you can least act on.
+    when selected or routed to; it is never filled because of its status.
+    Working recedes rather than lights up: it is the one status whose title
+    drops to muted, because a running agent is the row you can least act on.
 
     Status text labels ("Working", "Approval") are replaced by a single 16px
     mark in a fixed trailing slot, and the slot is never empty — idle draws a
-    hollow ring rather than falling back to a relative-time string, which used
-    to make the trailing column alternate between a mark and a variable-width
-    label so nothing below it could align. The mark's form carries the state —
-    falling pixels while the agent runs, a static dot once it stops, a clock
-    for woke, a ring for idle — and the hue only reinforces it, which is the
-    vocabulary the phanttom Ghostty sidebar uses. Working takes emerald from
-    that design rather than the sky the mobile Live Activity still uses; the
-    divergence is deliberate and mobile has not been migrated.
+    hollow ring rather than falling back to a variable-width relative-time
+    string, so everything below the column can align. The mark's form carries
+    the state — falling pixels while the agent runs, a static dot once it
+    stops, a clock for woke, a ring for idle — and the hue only reinforces it.
+    Working is emerald, deliberately diverging from the sky the mobile Live
+    Activity still uses; mobile has not been migrated.
 
     Diff counts bind to --success-foreground / --destructive-foreground rather
     than emerald/red literals, so they hold up in light mode. They render only
@@ -379,46 +365,28 @@
     caret-up-down with no trailing chevron and no favicon, and its trailing
     action is folder-open.
 
-    The Dev channel's header art is the designer's own green dither PNG instead
-    of upstream's blue blueprint. Nightly keeps its night sky, so the two
-    channels still read apart at a glance. It is painted as a covering
-    background rather than a repeating tile: the artwork ramps diagonally from
-    dark at the bottom-left to light at the top-right, so any repeat butts a
-    light edge against a dark one and draws a seam. Covering crops the extremes
-    of that ramp on a short band and keeps the gradient continuous instead.
-    An earlier revision regenerated the pattern as an 8x8 Bayer dither in SVG,
-    which scaled to any width and re-themed from two variables, but could only
-    approximate the reference — a horizontal ramp cannot survive tiling, so the
-    diagonal had to be flattened to a vertical one. The raster is the artwork as
-    drawn; the tradeoff is that it cannot re-theme and is a screenshot-quality
-    source (~30% of its pixels are the two flat greens, the rest resampling), so
-    a higher-resolution export would be a straight swap of the file.
-    Unlike upstream's art the band does not dissolve: it is a solid slab the
-    height of the topbar with a hard bottom edge, so the mask and gradient
+    The Dev channel's header art is the designer's own dither PNG instead of
+    upstream's blue blueprint, painted as a covering background rather than a
+    repeating tile (the diagonal ramp cannot survive tiling without drawing a
+    seam). Unlike upstream's art the band does not dissolve: it is a solid slab
+    the height of the topbar with a hard bottom edge, so the mask and gradient
     ::after that upstream uses to fade its own art are switched off for this
     variant alone, keyed on :has().
 
     Upstream treats header art as a channel indicator — Dev and Nightly only,
     nothing on a release build. The fork splits that in two. The sidebar header
     always carries artwork, because here it is brand chrome rather than a build
-    cue, and a release build gets the green dither where upstream gave it
-    nothing. The two other surfaces upstream paints with the same art, the
-    composer send button and the standalone auth screen, keep upstream's
-    behaviour untouched and still light up on Dev alone — so the channel cue
-    survives, just not in the sidebar. Those two need no fork code: they already
+    cue: a release build gets the green dither where upstream gave it nothing,
+    and a dev build gets the orange variant of the same family — hue is what
+    replaces the channel cue the sidebar gave up by always carrying art. The
+    two other surfaces upstream paints with the same art, the composer send
+    button and the standalone auth screen, keep upstream's behaviour untouched
+    and still light up on Dev alone. Those two need no fork code: they already
     gate on resolveSidebarStageBackdropVariant, which is null on a release
-    build.
+    build. Nightly stays on upstream's night sky.
 
-    There are two artworks, not one: green for a release build and orange for a
-    dev build, sharing a ramp direction and cell rhythm so they read as one
-    family with only the hue separating them. That is what replaces the channel
-    cue the sidebar gave up by always carrying art.
-
-    Nightly stays on upstream's night sky. The fork has never cut a Nightly
-    build — that label needs a -nightly.YYYYMMDD.N version and the release
-    workflow takes a hand-entered 0.1.2-shaped one — so the branch is
-    unreachable in practice; leaving it costs nothing and stays correct if that
-    changes or if upstream reworks that art.
+    The raster-vs-SVG history and the reason Nightly is unreachable in practice
+    are in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 4
   files:
     - apps/web/src/custom/SidebarHeaderBackdrop.tsx
@@ -535,39 +503,31 @@
     The terminal's font logic lives in custom/terminalFont.ts rather than in
     the drawer: xterm takes its font from a constructor option instead of the
     cascade, so --font-mono has to be resolved by hand and the cell grid
-    re-measured once the webfont lands — xterm sizes columns at open(), and
-    unlike the always-resident SF Mono a webfont can land after that, leaving
-    the grid measured against the fallback. That is fork feature logic with no
-    business in a 1.5k-line upstream mount effect. The drawer keeps two
-    one-line call sites, and the font-load probe is derived from the resolved
-    stack rather than hardcoded, so it cannot go stale on a face swap and an
-    unmarked build names a local system face and fetches nothing. The re-fit
-    also propagates to the PTY, because nothing in the drawer subscribes to
-    onResize — every upstream fit site calls resizeTerminal by hand, and a
-    re-fit that corrects only xterm's local grid leaves the PTY wrapping to the
-    stale, fallback-measured width.
-    Two further decisions are non-obvious. Geist Mono is listed AHEAD of SF Mono:
-    upstream puts SF Mono first, which means on macOS its bundled mono webfont
-    never renders at all, so preserving upstream's order would make shipping
-    Geist Mono pointless. And body / pre, code are re-declared under the fork
-    marker because upstream hardcodes the literal stacks on those selectors
-    (index.css:964, index.css:1022) instead of reading its own @theme tokens,
-    so overriding --font-sans / --font-mono alone does not reach them.
-    DM Sans / JetBrains Mono deps and their main.tsx imports are deliberately
-    left in place, but not because removing them would gain nothing, and the
-    two are not the same case. Nothing references DM Sans in a marked build, so
-    it costs nothing on the wire — but main.tsx still imports its Fontsource
-    CSS, so Vite emits the woff2 files into dist and into the Electron package
-    (roughly 60KB DM Sans, 96KB JetBrains Mono). For DM Sans the tradeoff is
-    therefore installer size, not request count, and it is the one worth
-    revisiting if package size matters; it is left as-is only to keep main.tsx
-    conflict-free. JetBrains Mono is NOT a size question: the fork's own mono
-    stack still names it, deliberately, as upstream's only bundled mono face —
-    the fallback for a Linux user with no SF Mono and no Consolas when the
-    Geist Mono fetch fails, which is exactly when it gets fetched. Dropping
-    that dependency on size grounds would silently strip the face out from
-    under a stack that still names it, and no guard would catch it: the guards
-    assert the family is listed, not that a bundled face backs it.
+    re-measured once the webfont lands — xterm sizes columns at open(), and a
+    webfont can land after that. The drawer keeps two one-line call sites, and
+    the font-load probe is derived from the resolved stack rather than
+    hardcoded, so it cannot go stale on a face swap and an unmarked build
+    names a local system face and fetches nothing. The re-fit must also
+    propagate to the PTY via resizeTerminal — nothing in the drawer subscribes
+    to onResize, and a re-fit that corrects only xterm's local grid leaves the
+    PTY wrapping to the stale, fallback-measured width.
+    Two further decisions are non-obvious. Geist Mono is listed AHEAD of SF
+    Mono: upstream puts SF Mono first, which means on macOS its bundled mono
+    webfont never renders at all. And body / pre, code are re-declared under
+    the fork marker because upstream hardcodes the literal stacks on those
+    selectors (index.css:964, index.css:1022) instead of reading its own
+    @theme tokens, so overriding --font-sans / --font-mono alone does not
+    reach them.
+    DM Sans / JetBrains Mono deps and their main.tsx imports stay, and the two
+    are not the same case. JetBrains Mono is load-bearing: the fork's own mono
+    stack still names it as the fallback for a Linux user with no SF Mono and
+    no Consolas when the Geist Mono fetch fails, and no guard would catch
+    dropping the face out from under a stack that still names it — the guards
+    assert the family is listed, not that a bundled face backs it. DM Sans is
+    inert in a marked build and costs only installer size (~60KB, plus 96KB
+    JetBrains Mono, emitted because main.tsx still imports the Fontsource
+    CSS); it is left as-is to keep main.tsx conflict-free and is the one to
+    revisit if package size matters.
   tier: 4
   files:
     - apps/web/src/theme.custom.css
@@ -576,15 +536,11 @@
   watch:
     - apps/web/src/index.css
     - apps/web/src/components/ThreadTerminalDrawer.tsx
-    # No fence, but load-bearing: readPreviewAnnotationTheme reads --font-sans /
-    # --font-mono off documentElement and ships the resolved families into the
-    # previewed page, so the fork's stacks travel through here. Inert today (the
-    # previewed page has no Geist loaded, so it falls through to the same system
-    # faces as before), but it is the dynamic seam Annotation.css is not.
+    # No fence, but load-bearing: ships the resolved --font-sans / --font-mono
+    # into the previewed page — see FORK-CUSTOMIZATION-DECISIONS.md.
     - apps/web/src/browser/annotationTheme.ts
-    # detect-drift only greps fences in ts/css/yaml/sh, so it cannot see a
-    # dependency change. This is the first customization to add npm deps; the
-    # guard asserts both are present, and this entry makes the file drift-watched.
+    # Carries the Fontsource deps, which fences can't drift-watch — see
+    # FORK-CUSTOMIZATION-DECISIONS.md.
     - apps/web/package.json
   verify:
     - apps/web/src/__fork_guards__/geistTypography.test.ts
@@ -594,56 +550,43 @@
     Fork-owned code carries zero lint warnings, and CI fails on the first one.
     Nothing in this repository otherwise gates on a warning: vp check lints
     everything but exits 0, and no --max-warnings is set anywhere, so warnings
-    in fork-authored files accumulate in silence. Nine dead imports survived
-    three pull requests that way — removing them was never the difficulty,
-    noticing was. The guard apparatus exists to catch "the fork drifted and
-    nothing noticed", and this is that failure one level up, in the one place
-    the apparatus did not look.
+    in fork-authored files accumulate in silence.
     The gate is scoped to fork-owned paths on purpose rather than being a
     repo-wide --max-warnings count. A repo-wide count ratchets against
-    upstream: the first sync that lands an upstream warning turns the build red
-    for code this fork does not own and cannot fix, and the only available
-    response is to raise the number, which is how a ratchet stops meaning
-    anything. Scoped, upstream can add as many warnings as it likes and this
-    stays green because it never looks there. The twelve upstream warnings
+    upstream: the first sync that lands an upstream warning turns the build
+    red for code this fork cannot fix, and the only available response is to
+    raise the number. Scoped, upstream can add as many warnings as it likes
+    and this stays green because it never looks there; the upstream warnings
     present when this landed are deliberately untouched.
     Scope has three parts, filtered to .ts/.tsx/.mjs because files: also lists
-    images, CSS, YAML and shell. First, the fork-owned directories, which now
-    include .fork and apps/web/fork — the fork's own tooling and override
-    machinery, both missed in the first cut. Second, every lintable files:
-    entry in this manifest. Third, and least obvious, an explicit list of
-    upstream-path files the fork has edited enough to own their lint output.
-    That third part is the one that matters. The fork's largest authored
-    surface is hunks inside files at upstream paths, and a file-level scope
-    cannot express "the fork owns these lines but not this file". The nine dead
-    imports that motivated this gate were in SidebarV2.tsx, which appears in
-    this manifest only under watch: — a key the selector does not read — so a
-    directories-only scope would have printed "no warnings" while all nine were
-    live. Review of the implementing PR caught exactly that.
-    Adoption is not free: an upstream-authored warning in an adopted file turns
-    the build red, which is the ratchet this entry otherwise argues against. It
-    is accepted only for files the fork already maintains hunks in and would
-    have to act on anyway. ThreadTerminalDrawer.tsx is deliberately excluded
-    despite carrying fork fences, because its one warning is an unused
-    eslint-disable on upstream's line, under upstream's rule config, surfaced
-    by upstream's own lint flag — no fork change can clear it. Fenced hunks in
-    any other upstream file remain uncovered until adopted by name; that gap is
-    real and stated rather than papered over.
+    images, CSS, YAML and shell. First, the fork-owned directories, including
+    .fork and apps/web/fork. Second, every lintable files: entry in this
+    manifest. Third, an explicit list of upstream-path files the fork has
+    edited enough to own their lint output — the part that matters most,
+    because the fork's largest authored surface is hunks inside files at
+    upstream paths, and a file-level scope cannot express "the fork owns these
+    lines but not this file". Adoption is not free: an upstream-authored
+    warning in an adopted file turns the build red, accepted only for files
+    the fork already maintains hunks in and would have to act on anyway.
+    ThreadTerminalDrawer.tsx is deliberately excluded despite carrying fork
+    fences, because its one warning is an unused eslint-disable on upstream's
+    line, under upstream's rule config — no fork change can clear it. Fenced
+    hunks in any other upstream file remain uncovered until adopted by name;
+    that gap is real and stated rather than papered over.
     The gate compares oxlint's number_of_files against the count it passed in,
     which is what keeps it honest: an explicitly-passed path matching
     lint.ignorePatterns is skipped silently, so without that comparison a fork
     path landing in an ignore list would produce a green run that inspected
     nothing. It also passes --report-unused-disable-directives, matching the
-    repo's own lint script, so the gate is never weaker than the lint it claims
-    to enforce.
+    repo's own lint script, so the gate is never weaker than the lint it
+    claims to enforce.
     The guard test deliberately does not run the lint. It asserts the path
     selection and the CI wiring, because selection is the half that fails
-    quietly — a gate pointed at the wrong paths still exits 0 — while the lint
-    itself is a multi-second subprocess that belongs in CI rather than in a
-    unit suite that finishes 1600 tests in ten seconds. Selection is checked by
-    walking the tree independently and demanding the selection match, not by
-    spot-checks: the scope list is hand-maintained, and three fork-owned
-    surfaces were missing from it on day one.
+    quietly — a gate pointed at the wrong paths still exits 0 — and it checks
+    selection by walking the tree independently, not by spot-checks.
+    The motivating incident (nine dead imports surviving three PRs in
+    SidebarV2.tsx) is in .fork/notes/FORK-LINT-GUARD-HANDOFF.md and
+    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 1
   files:
     - .fork/lint-owned.mjs
@@ -662,138 +605,99 @@
 - id: fork-composer-shell
   intent: >
     The chat composer is a discrete bordered box with its run controls floating
-    on a line underneath it, and it comes in two sizes. The new-chat screen gets
-    the tall shell: the prompt on its own line above a row carrying the model
-    and effort pills on the left and send on the right, in a 20px box. A started
-    thread gets the slim shell: one 48px line, prompt inline with those same
-    pills and send, in a 12px box. Slim grows into tall the moment the prompt
-    wraps past its first line, and never shrinks back within a turn the user is
-    still typing — the wrap is observed on the editor element, because Lexical
-    reflows without a React render.
-    Which controls sit where is the whole point, so it is worth stating plainly.
-    Inside the box: the model pill and the effort pill, and the send/stop
-    button. Everything else is on the control row below it — runtime mode
-    ("Auto"), interaction mode ("Build"), the plan-sidebar toggle, the context
-    meter, the preparing-worktree line, the no-provider badge, and, at the
-    row's right end, the worktree/branch pair. Upstream splits that last pair
-    off into BranchToolbar rendered as a sibling of the composer; here it is
-    passed into ChatComposer as contextStrip and rendered as the control row's
-    right-hand group, which is why ChatView no longer renders it directly.
-    The largest thing this replaces is not a layout but a paint. Upstream draws
-    composer and branch strip as one continuous "glass shell": a single frosted
-    ::before and a single 1px ::after, clipped by a shape() path that joins the
-    two through a notch, so they read as one vessel. The designs draw them
-    apart. Both pseudo-elements are switched off under the fork marker and the
-    box paints its own fill and border instead. The backdrop blur moves with it
-    rather than being dropped — the drawn fill is 80% opaque and only works over
-    a blurred backdrop. Focus is drawn by recolouring that border rather than
-    adding a ring, so the box keeps its 1px weight in both states and nothing
+    on a line underneath it, and it comes in two sizes. The new-chat screen
+    gets the tall shell: the prompt on its own line above a row carrying the
+    model and effort pills on the left and send on the right, in a 20px box. A
+    started thread gets the slim shell: one 48px line, prompt inline with those
+    same pills and send, in a 12px box. Slim grows into tall the moment the
+    prompt wraps past its first line and never shrinks back within a composing
+    session. The wrap is observed on the editor element (Lexical reflows
+    without a React render) and latched; the latch clears on an empty prompt
+    and on a draft change — ChatComposer carries no key in ChatView, so it and
+    the latch survive thread switches, and "only an empty prompt turns it off"
+    is a rule about one composing session, not the component's lifetime.
+    Which controls sit where is the whole point. Inside the box: the model
+    pill, the effort pill, and the send/stop button. Everything else is on the
+    control row below it — runtime mode ("Auto"), interaction mode ("Build"),
+    the plan-sidebar toggle, the context meter, the preparing-worktree line,
+    the no-provider badge, and, at the row's right end, the worktree/branch
+    pair. Upstream renders that last pair as BranchToolbar, a sibling of the
+    composer; here it is passed into ChatComposer as contextStrip, which is
+    why ChatView no longer renders it directly. contextStrip is a memoised
+    element and onStartFromOriginChange a useCallback, and that is correctness
+    rather than tuning: ChatComposer is memo'd, every other prop is a stable
+    reference or primitive, and an inline element at the call site defeats the
+    memo on a ~2900-line component that re-renders throughout a streaming turn.
+    Upstream's continuous "glass shell" paint — one frosted ::before and one
+    1px ::after joining composer and branch strip through a shape() notch — is
+    switched off under the fork marker; the box paints its own fill and border.
+    The backdrop blur moves with it rather than being dropped, because the
+    drawn fill is 80% opaque and only works over a blurred backdrop. Focus is
+    drawn by recolouring that border rather than adding a ring, so nothing
     reflows when the caret lands.
-    Upstream's min-h-17.5 on the prompt editor is removed for the same reason:
-    it holds the editor open at roughly three lines, which makes the slim shell
-    geometrically impossible and leaves the tall one hollow. The prompt is
-    14px/16px at >=sm; below sm it stays 16px, because anything smaller makes
-    iOS zoom the viewport on focus. The designs draw the prompt at 12px — 14 is
-    the fork's call, matching the pills' own bump away from the drawn 10px.
-    The prompt and its placeholder are set by one rule and must stay that way.
-    They are two separate elements stacked exactly on top of each other, so any
-    disagreement about size or leading shows up as a caret sitting beside the
-    text it is supposed to be inside, and as text that changes size on the first
-    keystroke. The selector uses a general sibling combinator: Lexical renders
-    the placeholder as the editor's third child with an empty spacer between
-    them, so `+ div` silently misses it — which is exactly how that bug got in
-    the first time.
-    The line box stays 16px regardless of the type size, because the drawn box
-    heights are derived from it (96 tall, 48 slim). Scaling leading with the
-    font would push the tall box off its drawn height.
-    Density has three values, not two. `collapsed` is upstream's mobile tap
-    target, which the fork restyles but does not lay out, and it is deliberately
-    not a flavour of `slim`: folding it in put
-    data-fork-composer-density="slim" on a composer the slim layout was never
-    applied to, forced every call site to re-exclude the collapsed case by hand,
-    and left two things named "slim" disagreeing about what they meant.
-    Both short shells still take the 12px radius, which is why the CSS lists
-    them together rather than relying on one standing in for the other.
-    The wrap observer and its latch state live in custom/, beside the pure rule
-    they drive, rather than inline in ChatComposer. The split version put half a
-    rule in the file least able to absorb fences and made the latch reachable
-    only through a regex over the source.
-    The latch clears on a draft change as well as on an empty prompt.
-    ChatComposer carries no key in ChatView, so it survives thread switches and
-    so does the latch; without the draft reset, leaving a thread whose prompt
-    had wrapped and arriving at one with a short saved draft rendered the new
-    thread tall and stranded it there, because the prompt was non-empty and the
-    observer only ever latches on. "Only an empty prompt turns it off" is a rule
-    about one composing session, not about the component's whole lifetime.
-    contextStrip is passed as a memoised element, and that is correctness
-    rather than tuning. ChatComposer is memo'd and every other prop it takes is
-    a stable reference or a primitive, so an inline <BranchToolbar/> at the call
-    site is the single new object identity per render and defeats the memo
-    outright — on a ~2900-line component that re-renders throughout a streaming
-    turn. onStartFromOriginChange became a useCallback for the same reason: it
-    feeds that memo and was a bare arrow.
-    The box's fill and hairline are selected through data-fork-composer-surface,
-    not through `[data-fork-composer-box] > div`. The positional form held only
-    because the frame has exactly one child today; upstream adding a drop
-    overlay or a banner inside it would paint a second frosted card with its own
-    hairline, and every guard here would stay green, because they assert on the
-    text of the stylesheet rather than on what it matches. That gap is the
-    general weakness of this guard style and is worth remembering for the next
-    one.
+    Upstream's min-h-17.5 on the prompt editor is removed: it holds the editor
+    open at roughly three lines, which makes the slim shell geometrically
+    impossible and leaves the tall one hollow. The prompt is 14px/16px at
+    >=sm; below sm it stays 16px, because anything smaller makes iOS zoom on
+    focus. 14 is a deliberate divergence from the drawn 12, and the pills are
+    12px where the designs draw 10 — the guard pins both so a later
+    reconciliation against Figma does not quietly "correct" them back.
+    The prompt and its placeholder are set by one rule and must stay that way:
+    they are two elements stacked exactly on top of each other, and any
+    disagreement about size or leading puts the caret beside the text it
+    belongs inside. The selector uses a general sibling combinator, because
+    Lexical renders the placeholder as the editor's third child with an empty
+    spacer between them, so `+ div` silently misses it. The line box stays
+    16px regardless of type size, because the drawn box heights (96 tall, 48
+    slim) are derived from it.
+    Density has three values, not two: `collapsed` is upstream's mobile tap
+    target, which the fork restyles but does not lay out, and it is
+    deliberately not a flavour of `slim`. Both short shells take the 12px
+    radius, which is why the CSS lists them together. The wrap observer and
+    its latch live in custom/, beside the pure rule they drive.
+    The box's fill and hairline are selected through
+    data-fork-composer-surface, not a positional child selector — the
+    positional form held only because the frame has exactly one child today.
+    Three rules are deliberately narrow, and the common cause matters for any
+    future rule: this stylesheet is unlayered while Tailwind v4 utilities sit
+    in @layer utilities, so a fork rule beats them regardless of specificity.
+    The pill restyle is scoped to data-fork-composer-pills (the footer also
+    holds ComposerPrimaryActions' real CTAs), the separator rule to the left
+    slot (BranchToolbar draws its own in the right one), and the drag-over
+    state is repainted explicitly (upstream signals it with a background and a
+    ring — a box-shadow — on the very element whose background and box-shadow
+    this file pins).
     The context meter and the worktree status line are pinned shrink-0 on the
-    control row. That row's left slot is overflow-x-auto with its scrollbar
-    hidden, so anything allowed to be squeezed out of it vanishes with no
-    affordance saying so. The mode controls may scroll — they have a compact
-    menu fallback — but the meter is a readout people watch to decide when to
-    compact, and silently hiding it is a different failure from crowding it.
-    The slim shell is desktop-only. At phone widths the model pill and the send
-    button leave the flex-1 editor 90-150px, and the placeholder — an absolutely
-    positioned overlay outside the editor's scroll box — wraps to several lines
-    and paints straight through the 48px box with nothing to clip it. It is also
-    stable rather than transient: the overlay never changes the observed editor
-    height, so the wrap latch cannot rescue it. A narrow viewport therefore
-    resolves tall regardless of everything else.
-    The control row renders in every density, including collapsed; only its left
-    half is conditional. Upstream showed BranchToolbar while the composer was
-    collapsed, gated on showComposerContextStrip alone and with its own mobile
-    selector, so env mode and branch were switchable without focusing the
-    composer and raising the keyboard. It also unmounted the whole footer during
-    a pending approval, which is why the run controls are gated on that here —
-    they moved out of the box, so they would otherwise stay live and let the
-    user flip modes for a run whose approval is unresolved. BranchToolbar is
-    deliberately not gated on approval; upstream showed it too.
-    Three rules had to be narrowed after they were found reaching further than
-    intended, and the common cause is worth stating once: this stylesheet is
-    unlayered while Tailwind v4 utilities sit in @layer utilities, so a fork
-    rule beats them regardless of specificity. The pill restyle is scoped to
-    data-fork-composer-pills rather than the footer wholesale, because the
-    footer also holds ComposerPrimaryActions' real CTAs — the Implement/Refine
-    split button and the pending-question Previous/Next/Submit set — which it
-    was squashing to 24px pills and, in dark, painting #a6a6a6 on a filled
-    primary background. The separator rule is scoped to the left slot, because
-    BranchToolbar draws its own separator in the right one. And the drag-over
-    state is repainted explicitly, because upstream signals it with
-    bg-accent/45 plus a ring on the very element whose background and
-    box-shadow this file pins — the ring being a box-shadow too, so a drag over
-    the composer had no feedback at all.
-    States the designs do not draw resolve to tall, because the slim shell is a
-    single 24px line with nowhere to put a second row of controls: an approval
-    request, a pending user-input question, and the plan follow-up banner all
-    own the box's internals and carry their own action rows. Attachments
-    deliberately do not force tall — that was considered and declined — so
-    image, annotation, review-comment and element-context cards render as a
-    full-width band above the inline row rather than as flex items inside it.
-    The pills are 12px, where the designs draw them at 10px. That is a
-    deliberate divergence, not a transcription slip: 10px reads as fine print
-    against a 12px prompt sitting an inch away, and these are controls the user
-    is meant to read at a glance. The guard pins 12px so a later reconciliation
-    against Figma does not quietly "correct" it back.
-    ComposerFooterPrimaryActions keeps rendering the context meter and the
-    worktree status line for any caller that wants them; the fork passes
-    showStatusAdornments={false} and renders both on the control row instead, so
-    the behaviour is relocated rather than dropped. At compact widths the effort
-    pill folds into CompactComposerControlsMenu exactly as upstream does, which
-    leaves the box carrying the model pill alone — intended, not a gap.
+    control row: its left slot is overflow-x-auto with the scrollbar hidden,
+    the mode controls may scroll because they have a compact menu fallback,
+    but the meter is a readout people watch to decide when to compact and must
+    not vanish silently.
+    The slim shell is desktop-only: at phone widths the placeholder — an
+    absolutely positioned overlay outside the editor's scroll box — wraps and
+    paints straight through the 48px box, and stably so (the overlay never
+    changes the observed editor height, so the latch cannot rescue it). A
+    narrow viewport resolves tall regardless. States the designs do not draw
+    also resolve tall: an approval request, a pending user-input question, and
+    the plan follow-up banner all own the box's internals and carry their own
+    action rows. Attachments deliberately do not force tall — attachment cards
+    render as a full-width band above the inline row.
+    The control row renders in every density, including collapsed; only its
+    left half is conditional. The run controls are gated on a pending approval
+    — they moved out of the box, which upstream unmounted wholesale during
+    approval, so they would otherwise stay live for a run whose approval is
+    unresolved. BranchToolbar is deliberately not gated on approval; upstream
+    showed it too, including while collapsed, so env mode and branch stay
+    switchable without raising the keyboard.
+    ComposerFooterPrimaryActions keeps rendering the meter and worktree status
+    for any caller that wants them; the fork passes showStatusAdornments=false
+    and renders both on the control row, so the behaviour is relocated rather
+    than dropped. At compact widths the effort pill folds into
+    CompactComposerControlsMenu exactly as upstream does, leaving the box with
+    the model pill alone — intended, not a gap.
+    Design history — the latch extraction, the collapsed/slim naming, the
+    `+ div` placeholder bug, the rule-narrowing incidents, and the known
+    weakness of text-of-stylesheet guards — is in
+    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 4
   files:
     - apps/web/src/custom/ComposerControlRow.tsx
