@@ -70,10 +70,9 @@
 /* ---------------------------------------------------------------------------
    Surface palette (dark only) — see `.fork/customizations.yaml#fork-surface-palette`.
 
-   The shell moves off pure black. The workspace stage is #212121 and the
-   sidebar panel is #1e1e1e, so the panel sits *below* the stage rather than
-   lifting off it — the inverse of upstream's "surfaces lift from the base"
-   model, and deliberate: the panel is chrome, the stage is the work.
+   The shell moves off pure black. The workspace stage is #191919 and the
+   sidebar panel is #1e1e1e, so the panel sits slightly *above* the stage —
+   deliberate: the panel is chrome, the stage is the work.
 
    Two blocks, not one, and the second is not redundant. Upstream re-declares
    --background / --card / --border and the whole --sidebar-* family *on the
@@ -90,18 +89,18 @@
 
    NOTE: only the v2 panel is repainted. v1 keeps upstream's black panel so the
    beta toggle stays a real A/B, which does mean a v1 sidebar sits against the
-   new #212121 stage. The stage is global chrome and has no sidebar-version
+   new #191919 stage. The stage is global chrome and has no sidebar-version
    attribute to key off. */
 :root[data-fork="noahhendrickson-t3code"].dark {
-  --background: #212121;
+  --background: #191919;
   --border: #2d2e2e;
   /* Upstream lays a 0.035-opacity white noise over every chrome surface
      (`@utility surface-grain`, applied to the sidebar shell and the workspace
      inset). It was calibrated against a #000 shell, where a mean lift of ~+2.8
      is invisible. On these surfaces it is not: measured, it carries the sidebar
-     panel from #1e1e1e to ~#212121 — which is the stage's colour. The workspace
+     panel from #1e1e1e to ~#212121 — above the #191919 stage. The workspace
      keeps its drawn value only because the chat content paints over the grain
-     opaquely, so the net effect is that the panel climbs to meet the stage and
+     opaquely, so the net effect is that the panel climbs past the stage and
      the three-level separation this whole palette is built on disappears.
 
      Dropped rather than dialled down: the opacity that would keep the panel

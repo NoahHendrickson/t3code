@@ -53,10 +53,10 @@ const PANEL = [`${MARKER}.dark`, '[data-sidebar-version="v2"]'];
 
 describe("fork guard: fork-surface-palette", () => {
   it("repaints the workspace stage off black", () => {
-    // Upstream's dark base is neutral-950. If this block goes, the sidebar
-    // stays #1e1e1e against a near-black stage and the panel reads as a hole
-    // rather than as chrome.
-    expect(blockFor(theme, STAGE)).toContain("--background: #212121");
+    // Upstream's dark base is neutral-950. If this block goes, the stage falls
+    // back near black and the #1e1e1e panel reads as a lift off the base
+    // rather than as chrome against #191919.
+    expect(blockFor(theme, STAGE)).toContain("--background: #191919");
   });
 
   it("repaints the sidebar v2 panel through its own selector, not just :root", () => {
@@ -101,10 +101,10 @@ describe("fork guard: fork-surface-palette", () => {
 
   it("clears the grain that would erase the panel/stage separation", () => {
     // Measured, not assumed: upstream's 0.035 noise lifts the sidebar panel
-    // from #1e1e1e to ~#212121 — the stage's colour — because the chat content
-    // paints over the workspace copy of the grain but nothing paints over the
-    // sidebar's. Losing this line silently collapses the three-level separation
-    // every other value in this block is built around.
+    // from #1e1e1e to ~#212121 — past the #191919 stage — because the chat
+    // content paints over the workspace copy of the grain but nothing paints
+    // over the sidebar's. Losing this line silently collapses the three-level
+    // separation every other value in this block is built around.
     expect(blockFor(theme, STAGE)).toContain("--surface-grain: none");
   });
 
@@ -116,7 +116,7 @@ describe("fork guard: fork-surface-palette", () => {
     // exactly the bare marker: a hex leaked into
     // `:root[marker] .some-descendant { }` is just as wrong and the narrower
     // form missed it.
-    const surfaceHexes = ["#212121", "#1e1e1e", "#2d2e2e", "#2a2a2a", "#262626"];
+    const surfaceHexes = ["#191919", "#1e1e1e", "#2d2e2e", "#2a2a2a", "#262626"];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
     );

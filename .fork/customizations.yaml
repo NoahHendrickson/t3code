@@ -297,9 +297,8 @@
 
 - id: fork-surface-palette
   intent: >
-    The dark shell is not black. The workspace stage is #212121 and the sidebar
-    v2 panel is #1e1e1e, so the panel sits below the stage rather than lifting
-    off it — the inverse of upstream's "surfaces lift from the base" model, and
+    The dark shell is not black. The workspace stage is #191919 and the sidebar
+    v2 panel is #1e1e1e, so the panel sits slightly above the stage —
     deliberate: the panel is chrome, the stage is the work. Borders are #2d2e2e,
     row hover #262626, row selected and route-active #2a2a2a.
 
