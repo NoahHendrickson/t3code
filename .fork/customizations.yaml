@@ -343,6 +343,15 @@
     AppSidebarLayout. Hanging it off the button would unmount it with the
     sidebar and leave a collapsed panel with no way back but the rail.
 
+    Moving the chrome out took its imports with it, so SidebarV2.tsx's import
+    header is deliberately shorter than upstream's: the ./ui/command, ./ui/kbd
+    and ./ui/menu statements are gone entirely, along with EllipsisIcon, and
+    upstream still imports and uses all of them. That header is the highest
+    traffic conflict region in this file during a sync, and the divergence is
+    intentional rather than a botched resolution — a sync must not restore
+    those imports to make a conflict go away, because nothing in the fork's
+    copy references them any more.
+
     The brand moves to the header's trailing edge, where it stops competing
     with the toggle for the corner the eye starts at. The search and project
     rows are 36px and 12px rather than 32px and 14px so they read as chrome
