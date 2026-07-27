@@ -564,3 +564,49 @@
     - apps/web/package.json
   verify:
     - apps/web/src/__fork_guards__/geistTypography.test.ts
+
+- id: fork-lint-cleanliness
+  intent: >
+    Fork-owned code carries zero lint warnings, and CI fails on the first one.
+    Nothing in this repository otherwise gates on a warning: vp check lints
+    everything but exits 0, and no --max-warnings is set anywhere, so warnings
+    in fork-authored files accumulate in silence. Nine dead imports survived
+    three pull requests that way — removing them was never the difficulty,
+    noticing was. The guard apparatus exists to catch "the fork drifted and
+    nothing noticed", and this is that failure one level up, in the one place
+    the apparatus did not look.
+    The gate is scoped to fork-owned paths on purpose rather than being a
+    repo-wide --max-warnings count. A repo-wide count ratchets against
+    upstream: the first sync that lands an upstream warning turns the build red
+    for code this fork does not own and cannot fix, and the only available
+    response is to raise the number, which is how a ratchet stops meaning
+    anything. Scoped, upstream can add as many warnings as it likes and this
+    stays green because it never looks there. The twelve upstream warnings
+    present when this landed are deliberately untouched.
+    Scope is the three fork-owned directories plus every lintable files: entry
+    in this manifest, deduplicated — most of those entries already sit under
+    one of the directories — and filtered to .ts/.tsx, because files: also
+    lists images, CSS, YAML and shell. The gate compares oxlint's
+    number_of_files against the count it passed in, which is what keeps it
+    honest: an explicitly-passed path matching lint.ignorePatterns is skipped
+    silently, so without that comparison a fork path landing in an ignore list
+    would produce a green run that inspected nothing.
+    The guard test deliberately does not run the lint. It asserts the path
+    selection and the CI wiring, because selection is the half that fails
+    quietly — a gate pointed at the wrong paths still exits 0 — while the lint
+    itself is a multi-second subprocess that belongs in CI rather than in a
+    unit suite that finishes 1600 tests in ten seconds.
+  tier: 1
+  files:
+    - .fork/lint-owned.mjs
+  shadows: []
+  watch:
+    # Carries the fenced step that runs the gate.
+    - .github/workflows/ci.yml
+    # lint.ignorePatterns lives here. An upstream addition that happens to
+    # match a fork-owned path would silently narrow the gate; the file-count
+    # check turns that into a failure, and this entry makes the change visible
+    # to the drift detector in the first place.
+    - vite.config.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkLintCleanliness.test.ts
