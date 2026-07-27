@@ -51,7 +51,7 @@ export function resolveComposerDensity(input: ComposerDensityInput): ComposerDen
 }
 
 /**
- * The prompt editor's line box at the fork's desktop composer type (12px/16px).
+ * The prompt editor's line box at the fork's desktop composer type (14px/16px).
  * Only a fallback: the prompt is 16px on mobile to keep iOS from zooming on
  * focus, so the live check reads the element's own computed line-height.
  */

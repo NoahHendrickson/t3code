@@ -72,6 +72,7 @@ import {
 } from "../composerFooterLayout";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { ComposerControlRow } from "../../custom/ComposerControlRow";
 import { resolveComposerDensity } from "../../custom/composerDensity";
 import { useComposerPromptWrapLatch } from "../../custom/useComposerPromptWrapLatch";
@@ -998,7 +999,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const isComposerCollapsedMobile =
     isMobileViewport && !forceExpandedOnMobile && !isComposerFocused;
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  const { isPromptWrapped, attachPromptElement } = useComposerPromptWrapLatch(prompt);
+  const { isPromptWrapped, attachPromptElement } = useComposerPromptWrapLatch(
+    prompt,
+    // ChatComposer is not keyed by thread, so the latch has to be told when the
+    // draft underneath it changed. Same discrimination composerDraftStore's own
+    // private composerTargetKey uses: a DraftId is already a string, a real
+    // thread needs its environment folded in.
+    typeof composerDraftTarget === "string"
+      ? composerDraftTarget
+      : scopedThreadKey(composerDraftTarget),
+  );
   /* fork:end fork-composer-shell */
 
   // ------------------------------------------------------------------
@@ -2309,11 +2319,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           onTogglePlanSidebar={togglePlanSidebar}
         />
       )}
+      {/* Both are pinned shrink-0. The control row's left slot is
+          overflow-x-auto with its scrollbar hidden, so anything allowed to be
+          squeezed out of it disappears with no affordance saying so. The mode
+          controls can scroll — they have a compact menu fallback and the user
+          knows they asked for them. The context meter is a status readout
+          people watch to decide when to compact; it must not silently vanish. */}
       {activeContextWindow ? (
-        <ContextWindowMeter
-          usage={activeContextWindow}
-          providerDisplayName={activeThreadProviderDisplayName}
-        />
+        <div className="shrink-0">
+          <ContextWindowMeter
+            usage={activeContextWindow}
+            providerDisplayName={activeThreadProviderDisplayName}
+          />
+        </div>
       ) : null}
       {isPreparingWorktree ? (
         <span className="shrink-0 whitespace-nowrap text-muted-foreground/70 text-xs">
@@ -2385,6 +2403,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       >
         <div
           ref={composerSurfaceRef}
+          /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+          data-fork-composer-surface="true"
+          /* fork:end fork-composer-shell */
           data-chat-composer-mobile-collapsed={isComposerCollapsedMobile ? "true" : "false"}
           className={cn(
             "rounded-[20px] transition-[background-color] duration-200",
@@ -2794,7 +2815,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
               {/* Slim shell: the pills and the send button ride inline with the
                   prompt rather than sitting on their own row beneath it. */}
-              {isComposerSlim && !activePendingApproval ? (
+              {/* No `&& !activePendingApproval` here: an approval sets
+                  hasComposerHeader, which resolves density to tall, so the
+                  right conjunct can never be false when the left is true. */}
+              {isComposerSlim ? (
                 <div
                   data-chat-composer-inline-actions="true"
                   className="flex shrink-0 flex-nowrap items-center justify-end gap-2"

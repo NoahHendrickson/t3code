@@ -28,7 +28,19 @@ export interface ComposerPromptWrapLatch {
  * a prompt between them un-wraps the instant the flip lands, re-wraps when it
  * flips back, and oscillates until it pins the main thread.
  */
-export function useComposerPromptWrapLatch(prompt: string): ComposerPromptWrapLatch {
+export function useComposerPromptWrapLatch(
+  prompt: string,
+  /**
+   * The draft the prompt belongs to. ChatComposer is not keyed by thread, so it
+   * persists across thread and draft switches and so does this latch — and the
+   * latch only ever clears on an *empty* prompt. Without this, leaving a thread
+   * whose prompt had wrapped and arriving at one with a short saved draft would
+   * render the new thread in the tall shell and strand it there until the user
+   * emptied the field. "Only an empty prompt turns it off" is a rule about a
+   * single composing session; a different thread is a different session.
+   */
+  draftKey: string,
+): ComposerPromptWrapLatch {
   const [isPromptWrapped, setIsPromptWrapped] = useState(false);
   const [promptElement, setPromptElement] = useState<HTMLDivElement | null>(null);
 
@@ -55,7 +67,16 @@ export function useComposerPromptWrapLatch(prompt: string): ComposerPromptWrapLa
       measure(entry.contentRect.height);
     });
     observer.observe(editable);
-    measure(editable.clientHeight);
+    // contentRect semantics for the priming read too. `clientHeight` is the
+    // padding box, so the two agree only while the editor has no vertical
+    // padding — and it gains `max-sm:pb-11` on the mobile pending-answer path,
+    // where a padding-box read would latch instantly on an empty prompt.
+    const { paddingTop, paddingBottom } = window.getComputedStyle(editable);
+    measure(
+      editable.clientHeight -
+        (Number.parseFloat(paddingTop) || 0) -
+        (Number.parseFloat(paddingBottom) || 0),
+    );
     return () => {
       observer.disconnect();
     };
@@ -69,6 +90,12 @@ export function useComposerPromptWrapLatch(prompt: string): ComposerPromptWrapLa
       setIsPromptWrapped(false);
     }
   }, [prompt]);
+
+  // A new draft is a new composing session, so the latch starts clean whether
+  // or not the incoming prompt happens to be empty.
+  useEffect(() => {
+    setIsPromptWrapped(false);
+  }, [draftKey]);
 
   return { isPromptWrapped, attachPromptElement: setPromptElement };
 }

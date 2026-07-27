@@ -718,6 +718,34 @@
     they drive, rather than inline in ChatComposer. The split version put half a
     rule in the file least able to absorb fences and made the latch reachable
     only through a regex over the source.
+    The latch clears on a draft change as well as on an empty prompt.
+    ChatComposer carries no key in ChatView, so it survives thread switches and
+    so does the latch; without the draft reset, leaving a thread whose prompt
+    had wrapped and arriving at one with a short saved draft rendered the new
+    thread tall and stranded it there, because the prompt was non-empty and the
+    observer only ever latches on. "Only an empty prompt turns it off" is a rule
+    about one composing session, not about the component's whole lifetime.
+    contextStrip is passed as a memoised element, and that is correctness
+    rather than tuning. ChatComposer is memo'd and every other prop it takes is
+    a stable reference or a primitive, so an inline <BranchToolbar/> at the call
+    site is the single new object identity per render and defeats the memo
+    outright — on a ~2900-line component that re-renders throughout a streaming
+    turn. onStartFromOriginChange became a useCallback for the same reason: it
+    feeds that memo and was a bare arrow.
+    The box's fill and hairline are selected through data-fork-composer-surface,
+    not through `[data-fork-composer-box] > div`. The positional form held only
+    because the frame has exactly one child today; upstream adding a drop
+    overlay or a banner inside it would paint a second frosted card with its own
+    hairline, and every guard here would stay green, because they assert on the
+    text of the stylesheet rather than on what it matches. That gap is the
+    general weakness of this guard style and is worth remembering for the next
+    one.
+    The context meter and the worktree status line are pinned shrink-0 on the
+    control row. That row's left slot is overflow-x-auto with its scrollbar
+    hidden, so anything allowed to be squeezed out of it vanishes with no
+    affordance saying so. The mode controls may scroll — they have a compact
+    menu fallback — but the meter is a readout people watch to decide when to
+    compact, and silently hiding it is a different failure from crowding it.
     States the designs do not draw resolve to tall, because the slim shell is a
     single 24px line with nowhere to put a second row of controls: an approval
     request, a pending user-input question, and the plan follow-up banner all

@@ -295,30 +295,44 @@
   --fork-composer-radius: 12px;
 }
 
-/* The hairline is an inset shadow, not a border, and that is a geometry
+/* Selected by name, not by position. This used to be `[data-fork-composer-box]
+   > div`, which worked only because the frame happens to have exactly one child
+   today. A Tier-4 rule whose whole job is surviving upstream syncs cannot be
+   coupled to a child count: upstream adding a drop overlay or a banner inside
+   the frame would give it a second frosted card with its own hairline, and
+   every guard here would stay green, because they assert on the text of this
+   stylesheet rather than on what it matches.
+
+   The hairline is an inset shadow, not a border, and that is a geometry
    decision rather than a stylistic one. Figma draws the stroke inside the
    frame, so the tall box measures 96px *including* it; a real border sits
    outside the padding box and would push the same content to 98. An inset
    shadow paints in the same place without joining the layout. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box] > div {
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-surface] {
   border-radius: inherit;
   background: var(--fork-composer-bg);
   box-shadow: inset 0 0 0 1px var(--fork-composer-border);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
   transition:
     box-shadow 200ms,
     border-radius 200ms;
 }
 
+/* The blur is dark-only, matching the fill it exists for. In light mode
+   --fork-composer-bg resolves to an opaque --card, so the filter would allocate
+   a compositing layer to blur something nothing can see through. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-surface] {
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+}
+
 /* Focus recolours that same hairline rather than adding a ring, so the box
    keeps its 1px weight in both states and nothing reflows when the caret
    lands. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box] > div:focus-within {
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-surface]:focus-within {
   box-shadow: inset 0 0 0 1px var(--fork-composer-border-focus);
 }
 
-/* The prompt sits on a 16px line box at 12px type. Upstream's min-height holds
+/* The prompt sits on a 16px line box at 14px type. Upstream's min-height holds
    the editor open at ~3 lines, which would make the slim shell impossible and
    leave the tall one hollow; one line is the drawn height and it grows from
    there. 16px is kept below sm so iOS does not zoom the viewport on focus. */

@@ -105,11 +105,46 @@ describe("fork guard: fork-composer-shell", () => {
     expect(theme).toMatch(/--fork-composer-border:\s*var\(--border\)/u);
   });
 
-  it("sets the pills at 12px, not the 10px the designs draw", () => {
-    // A deliberate divergence from Figma, so it needs pinning: someone
-    // reconciling this file against the design would otherwise "correct" it
-    // back to 10px and think they were fixing a typo.
-    expect(theme).toMatch(/font-size:\s*12px;\s*\n\s*font-weight:\s*500/u);
+  it("pins both divergences from Figma, on the rules that carry them", () => {
+    // Two deliberate divergences, and both need pinning: someone reconciling
+    // this stylesheet against the design would otherwise "correct" either one
+    // and think they were fixing a typo.
+    //
+    // Routed through cssRules rather than a bare toMatch. The previous version
+    // asserted /font-size:\s*12px;\s*\n\s*font-weight:\s*500/ against the whole
+    // file, which was satisfied by any such pair anywhere in ~1000 lines and
+    // depended on where `vp fmt` happened to break the line. Anchoring to the
+    // selector is what makes it a guard rather than a coincidence detector.
+    const rules = cssRules(theme);
+
+    const pillRule = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-control-row]") &&
+        rule.body.includes("font-size"),
+    );
+    expect(pillRule, "no rule sets the pill type").toBeDefined();
+    expect(pillRule!.body, "pills are drawn at 10px; the fork uses 12px").toMatch(
+      /font-size:\s*12px/u,
+    );
+
+    // The prompt was previously unpinned entirely — the placeholder test checks
+    // the combinator, not the size the combinator exists to deliver, so a
+    // revert to Figma's 12px passed every assertion in this file.
+    const promptRule = rules.find(
+      (rule) =>
+        rule.selector.includes('[data-testid="composer-editor"]') &&
+        rule.body.includes("font-size"),
+    );
+    expect(promptRule, "no rule sets the prompt type").toBeDefined();
+    expect(promptRule!.body, "prompt is drawn at 12px; the fork uses 14px").toMatch(
+      /font-size:\s*14px/u,
+    );
+    // The more consequential half: the manifest states outright that the 96/48
+    // box heights are derived from this line box, so it does not scale with the
+    // font.
+    expect(promptRule!.body, "the 96/48 heights are derived from this").toMatch(
+      /line-height:\s*16px/u,
+    );
   });
 
   it("drops the provider icon from the model pill, in the composer only", () => {
@@ -158,8 +193,20 @@ describe("fork guard: fork-composer-shell", () => {
     // The worktree/branch pair is the control row's right-hand group. If a sync
     // restores BranchToolbar as a sibling of the composer, the row loses its
     // right half and the strip reappears underneath, stitched or not.
-    expect(chatView, "ChatView stopped passing contextStrip").toContain("contextStrip: (");
+    expect(chatView, "ChatView stopped passing contextStrip").toContain(
+      "contextStrip: composerContextStrip",
+    );
     expect(chatView).toContain("<BranchToolbar");
+    // Memoised, and that is correctness rather than tuning: ChatComposer is
+    // memo'd and every other prop it takes is a stable reference or a
+    // primitive, so an inline element here is the one new object identity per
+    // render and defeats the memo outright on a ~2900-line component that
+    // re-renders throughout a streaming turn.
+    expect(chatView, "the contextStrip element must stay memoised").toMatch(
+      /const composerContextStrip = useMemo\(/u,
+    );
+    // The memo is only as stable as its inputs; this one was a bare arrow.
+    expect(chatView).toMatch(/const onStartFromOriginChange = useCallback\(/u);
     expect(chatComposer).toContain("<ComposerControlRow");
     // ...and the wrapper that hung it off the composer's underside is flattened.
     expect(theme).toMatch(
@@ -236,6 +283,30 @@ describe("fork guard: fork-composer-shell", () => {
     );
   });
 
+  it("clears the latch when the draft changes, not just when the prompt empties", () => {
+    // ChatComposer is not keyed by thread, so it survives thread switches and
+    // so does the latch. Leaving a wrapped prompt and arriving at a thread whose
+    // saved draft is a short one-liner would otherwise render the new thread in
+    // the tall shell and strand it there — the prompt is non-empty, so the
+    // release effect never fires, and the observer only ever latches on.
+    const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
+    expect(latchHook).toMatch(/setIsPromptWrapped\(false\);\s*\n\s*\}, \[draftKey\]\)/u);
+    expect(chatComposer).toContain("useComposerPromptWrapLatch(");
+    expect(chatComposer).toContain("scopedThreadKey(composerDraftTarget)");
+  });
+
+  it("paints the surface by name, so an added sibling cannot inherit the box", () => {
+    // This was `[data-fork-composer-box] > div`, which held only because the
+    // frame has exactly one child today. Upstream adding a drop overlay or a
+    // banner inside it would paint a second frosted card with its own hairline,
+    // and every text-matching assertion here would stay green.
+    expect(chatComposer).toContain('data-fork-composer-surface="true"');
+    const positional = cssRules(theme).filter((rule) =>
+      /\[data-fork-composer-box\]\s*>\s*div/u.test(rule.selector),
+    );
+    expect(positional, "composer paint is coupled to child position").toHaveLength(0);
+  });
+
   it("keeps the wrap observer in fork-owned code, not in the hot upstream file", () => {
     // The pure half of the density rule was always fork-owned; leaving the
     // observer and the latch state inline in a 2.9k-line upstream file split
@@ -243,7 +314,7 @@ describe("fork guard: fork-composer-shell", () => {
     // absorb them.
     const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
     expect(latchHook).toContain("ResizeObserver");
-    expect(chatComposer).toContain("useComposerPromptWrapLatch(prompt)");
+    expect(chatComposer).toMatch(/useComposerPromptWrapLatch\(\s*\n?\s*prompt,/u);
     // Named helpers rather than "ResizeObserver": ChatComposer legitimately
     // runs three observers of its own, for footer compactness and menu
     // positioning, so the broad check cannot tell the fork's from upstream's.
