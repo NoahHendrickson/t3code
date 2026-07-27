@@ -82,6 +82,22 @@ Related deep-dives that predate this file and stay where they are:
   of the implementing PR caught it. That is why the guard test checks selection by walking the
   tree independently and demanding the selection match, rather than by spot-checks.
 
+## fork-surface-palette
+
+- Stage `#191919` is a judgement call (not a Figma node): darken the work
+  surface under the `#1e1e1e` panel so chrome sits slightly in front of the
+  work. That inverts the earlier "panel below stage" hierarchy; the invariant
+  is now panel-above-stage, not the old inversion of upstream's lift-from-base
+  model.
+- A side effect of the darker stage is closing the seam with upstream's
+  `#161616` pre-paint / overscroll colour in `apps/web/index.html` (theme-color
+  metas, `DARK_BACKGROUND`, and `html.dark body`). The guard pins that
+  proximity so a later stage tweak cannot reopen the flash without noticing.
+- `--surface-grain: none` stays for the flat-opaque reason alone. Against
+  `#191919`, upstream's 0.035 noise would _increase_ panel/stage ΔL\* rather
+  than collapse it, so the old "grain erases the separation" argument no longer
+  holds and must not be restated.
+
 ## fork-composer-shell
 
 - The wrap observer and its latch originally lived half-inline in `ChatComposer.tsx`, with the
