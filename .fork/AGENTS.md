@@ -15,6 +15,19 @@ frontend customizations while continuously absorbing upstream. Full rationale an
 Base every working branch on `custom`. If a task description says "the default branch", that is
 `custom`, not `main`.
 
+Every pull request targets `NoahHendrickson/t3code` with base `custom`. GitHub's "New pull
+request" UI on a fork defaults the base repository to `pingdotgg/t3code` — check it on every PR
+you open, from the UI or the API. A PR against upstream publishes fork code to a repository this
+fork only ever reads from; there is no valid reason to open one.
+
+### One-time repository settings (not enforceable from files in this repo)
+
+- Default branch: `custom` — GitHub only runs `schedule` workflows from the default branch, so
+  the hourly mirror depends on it.
+- Branch ruleset on `main`: block direct pushes and force pushes for everyone except the
+  `fork-sync-mirror` workflow's token, so the mirror invariant is enforced server-side rather
+  than only detected after the fact by the workflow's fast-forward check.
+
 ## Where a change goes — in order of preference
 
 1. **New component / module / route** → `apps/web/src/custom/**`. Free-form paths; upstream can
@@ -72,6 +85,9 @@ checkout of this same repo — the way `.repos` already was. Keep those fences i
 ## Never
 
 - Commit to `main`, or "fix" the mirror workflow's fast-forward failure by force-pushing it.
+- Open a pull request whose base repository is `pingdotgg/t3code`. This fork only pulls from
+  upstream, never pushes to it — and GitHub's fork UI defaults new PRs to the upstream base, so
+  the mistake is one unchecked dropdown away.
 - Remove `fork:begin`/`fork:end` fences, `@effect-diagnostics` directives in fork files, or
   manifest entries — even if the surrounding code moved. Port them.
 - Resolve a sync conflict by keeping upstream's version of a customized file without porting the
