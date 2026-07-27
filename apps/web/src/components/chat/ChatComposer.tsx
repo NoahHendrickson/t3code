@@ -71,6 +71,12 @@ import {
   shouldUseCompactComposerFooter,
 } from "../composerFooterLayout";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
+import { ComposerControlRow } from "../../custom/ComposerControlRow";
+import { resolveComposerDensity } from "../../custom/composerDensity";
+import { useComposerPromptWrapLatch } from "../../custom/useComposerPromptWrapLatch";
+/* fork:end fork-composer-shell */
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
@@ -401,8 +407,6 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
 
 const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(props: {
   compact: boolean;
-  activeContextWindow: ReturnType<typeof deriveLatestContextWindowSnapshot>;
-  activeThreadProviderDisplayName: string | null;
   isPreparingWorktree: boolean;
   pendingAction: {
     questionIndex: number;
@@ -423,17 +427,17 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   onInterrupt: () => void;
   onImplementPlanInNewThread: () => void;
 }) {
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /* The context meter and the "Preparing worktree..." line used to render here,
+     behind a showStatusAdornments flag the fork added and then always passed
+     false. This component is module-private with one call site, so the flag had
+     no reachable true branch — machinery justified by a caller that cannot
+     exist. Both now render once, on the control row, where the designs put
+     them. Deleted rather than kept, because the duplicate had already drifted:
+     only one copy had grown shrink-0. */
+  /* fork:end fork-composer-shell */
   return (
     <>
-      {props.activeContextWindow ? (
-        <ContextWindowMeter
-          usage={props.activeContextWindow}
-          providerDisplayName={props.activeThreadProviderDisplayName}
-        />
-      ) : null}
-      {props.isPreparingWorktree ? (
-        <span className="text-muted-foreground/70 text-xs">Preparing worktree...</span>
-      ) : null}
       <ComposerPrimaryActions
         compact={props.compact}
         pendingAction={props.pendingAction}
@@ -516,6 +520,15 @@ export interface ChatComposerProps {
   isLocalDraftThread: boolean;
   forceExpandedOnMobile: boolean;
   projectSelectionRequired: boolean;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /** The new-chat hero. Pins the composer to the tall shell. */
+  isDraftHero?: boolean;
+  /**
+   * Worktree/branch controls, rendered into the composer's own control row
+   * instead of as a separate strip below it.
+   */
+  contextStrip?: ReactNode;
+  /* fork:end fork-composer-shell */
 
   // Session phase
   phase: SessionPhase;
@@ -629,6 +642,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isLocalDraftThread: _isLocalDraftThread,
     forceExpandedOnMobile,
     projectSelectionRequired,
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    isDraftHero = false,
+    contextStrip,
+    /* fork:end fork-composer-shell */
     phase,
     isConnecting,
     isSendBusy,
@@ -964,6 +981,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const isMobileViewport = useMediaQuery("max-sm");
   const isComposerCollapsedMobile =
     isMobileViewport && !forceExpandedOnMobile && !isComposerFocused;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  const { isPromptWrapped, attachPromptElement } = useComposerPromptWrapLatch(
+    prompt,
+    // ChatComposer is not keyed by thread, so the latch has to be told when the
+    // draft underneath it changed. Same discrimination composerDraftStore's own
+    // private composerTargetKey uses: a DraftId is already a string, a real
+    // thread needs its environment folded in.
+    typeof composerDraftTarget === "string"
+      ? composerDraftTarget
+      : scopedThreadKey(composerDraftTarget),
+  );
+  /* fork:end fork-composer-shell */
 
   // ------------------------------------------------------------------
   // Refs
@@ -1124,6 +1153,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     (showPlanFollowUpPrompt && activeProposedPlan !== null);
   const showCollapsedMobilePromptRow =
     isComposerCollapsedMobile && !isComposerApprovalState && pendingUserInputs.length === 0;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  const composerDensity = resolveComposerDensity({
+    isDraftHero,
+    isPromptWrapped,
+    hasComposerHeader,
+    isCollapsedMobile: isComposerCollapsedMobile,
+    isNarrowViewport: isMobileViewport,
+  });
+  const isComposerSlim = composerDensity === "slim";
+  /* fork:end fork-composer-shell */
 
   const composerFooterHasWideActions = showPlanFollowUpPrompt || activePendingProgress !== null;
   const showPlanSidebarToggle = Boolean(activePlan || sidebarProposedPlan || planSidebarOpen);
@@ -2191,6 +2230,131 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ],
   );
 
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  // The footer's three clusters, split by where the designs put them: the model
+  // and effort pills live inside the box beside the send button, everything
+  // else moves to the control row underneath it.
+  const composerModelControls = noProviderAvailable ? null : (
+    <>
+      <ProviderModelPicker
+        compact={isComposerFooterCompact}
+        activeInstanceId={selectedInstanceId}
+        model={selectedModelForPickerWithCustomFallback}
+        lockedProvider={lockedProvider}
+        lockedContinuationGroupKey={lockedContinuationGroupKey}
+        instanceEntries={providerInstanceEntries}
+        keybindings={keybindings}
+        modelOptionsByInstance={modelOptionsByInstance}
+        terminalOpen={terminalOpen}
+        open={isComposerModelPickerOpen}
+        {...(composerProviderState.modelPickerIconClassName
+          ? { activeProviderIconClassName: composerProviderState.modelPickerIconClassName }
+          : {})}
+        onOpenChange={(open) => {
+          setIsComposerModelPickerOpen(open);
+        }}
+        getModelDisabledReason={getModelDisabledReason}
+        onInstanceModelChange={onProviderModelSelect}
+      />
+      {/* At compact widths the traits fold into CompactComposerControlsMenu on
+          the control row, so the box carries the model pill alone. */}
+      {!isComposerFooterCompact && providerTraitsPicker ? providerTraitsPicker : null}
+    </>
+  );
+
+  const composerRunControls = (
+    <>
+      {noProviderAvailable ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled
+          data-chat-provider-unavailable="true"
+          className="shrink-0 gap-2 px-2 text-muted-foreground/70 sm:px-3"
+        >
+          <CircleAlertIcon className="size-4" />
+          No provider available
+        </Button>
+      ) : null}
+      {isComposerFooterCompact ? (
+        <CompactComposerControlsMenu
+          activePlan={showPlanSidebarToggle}
+          interactionMode={interactionMode}
+          planSidebarLabel={planSidebarLabel}
+          planSidebarOpen={planSidebarOpen}
+          runtimeMode={runtimeMode}
+          showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
+          traitsMenuContent={providerTraitsMenuContent}
+          onToggleInteractionMode={toggleInteractionMode}
+          onTogglePlanSidebar={togglePlanSidebar}
+          onRuntimeModeChange={handleRuntimeModeChange}
+        />
+      ) : (
+        <ComposerFooterModeControls
+          showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
+          interactionMode={interactionMode}
+          runtimeMode={runtimeMode}
+          showPlanToggle={showPlanSidebarToggle}
+          planSidebarLabel={planSidebarLabel}
+          planSidebarOpen={planSidebarOpen}
+          onToggleInteractionMode={toggleInteractionMode}
+          onRuntimeModeChange={handleRuntimeModeChange}
+          onTogglePlanSidebar={togglePlanSidebar}
+        />
+      )}
+      {/* Both are pinned shrink-0. The control row's left slot is
+          overflow-x-auto with its scrollbar hidden, so anything allowed to be
+          squeezed out of it disappears with no affordance saying so. The mode
+          controls can scroll — they have a compact menu fallback and the user
+          knows they asked for them. The context meter is a status readout
+          people watch to decide when to compact; it must not silently vanish. */}
+      {activeContextWindow ? (
+        <div className="shrink-0">
+          <ContextWindowMeter
+            usage={activeContextWindow}
+            providerDisplayName={activeThreadProviderDisplayName}
+          />
+        </div>
+      ) : null}
+      {isPreparingWorktree ? (
+        <span className="shrink-0 whitespace-nowrap text-muted-foreground/70 text-xs">
+          Preparing worktree...
+        </span>
+      ) : null}
+    </>
+  );
+
+  const composerPrimaryActionSlot = (
+    <div
+      data-chat-composer-actions="right"
+      data-chat-composer-primary-actions-compact={
+        isComposerPrimaryActionsCompact ? "true" : "false"
+      }
+      className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
+    >
+      <ComposerFooterPrimaryActions
+        compact={isComposerPrimaryActionsCompact}
+        pendingAction={pendingPrimaryAction}
+        isRunning={phase === "running"}
+        showPlanFollowUpPrompt={pendingUserInputs.length === 0 && showPlanFollowUpPrompt}
+        promptHasText={prompt.trim().length > 0}
+        isSendBusy={isSendBusy}
+        isConnecting={isConnecting}
+        isEnvironmentUnavailable={
+          environmentUnavailable !== null || noProviderAvailable || projectSelectionRequired
+        }
+        isPreparingWorktree={isPreparingWorktree}
+        hasSendableContent={composerSendState.hasSendableContent}
+        preserveComposerFocusOnPointerDown={isMobileViewport}
+        onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
+        onInterrupt={handleInterruptPrimaryAction}
+        onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}
+      />
+    </div>
+  );
+  /* fork:end fork-composer-shell */
+
   // Render
   // ------------------------------------------------------------------
   return (
@@ -2201,6 +2365,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       data-chat-composer-form="true"
     >
       <div
+        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+        data-fork-composer-box="true"
+        data-fork-composer-density={composerDensity}
+        /* fork:end fork-composer-shell */
         className={cn(
           "group rounded-[22px] p-px transition-colors duration-200",
           composerProviderState.composerFrameClassName,
@@ -2216,6 +2384,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       >
         <div
           ref={composerSurfaceRef}
+          /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+          data-fork-composer-surface="true"
+          // The drag state needs an attribute of its own. Upstream signals it
+          // with `bg-accent/45 ring-1 ring-primary/70` on this element, but the
+          // fork pins `background` and `box-shadow` here from an unlayered
+          // stylesheet — and Tailwind v4 utilities live in `@layer utilities`,
+          // which loses to unlayered rules regardless of specificity. Both the
+          // tint and the ring (also box-shadow) were being swallowed, leaving a
+          // drag over the composer with no feedback at all.
+          data-fork-composer-drag-over={isDragOverComposer ? "true" : undefined}
+          /* fork:end fork-composer-shell */
           data-chat-composer-mobile-collapsed={isComposerCollapsedMobile ? "true" : "false"}
           className={cn(
             "rounded-[20px] transition-[background-color] duration-200",
@@ -2397,8 +2576,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           <div
             ref={setComposerMenuAnchor}
             className={cn(
-              "relative px-3 pb-2 sm:px-4",
-              hasComposerHeader ? "pt-2.5 sm:pt-3" : "pt-3.5 sm:pt-4",
+              /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+              // The box owns a flat 16px inset in both shells; the slim shell
+              // trims it to 12px vertically to land the row at 48px. In the
+              // tall shell this element's bottom padding *is* the 24px gap
+              // between the prompt and the control row under it, which is why
+              // it is 6 and not 4.
+              "relative px-4",
+              isComposerSlim ? "py-3" : "pb-6",
+              isComposerSlim ? null : hasComposerHeader ? "pt-3" : "pt-4",
+              /* fork:end fork-composer-shell */
               isComposerCollapsedMobile && "hidden",
             )}
           >
@@ -2543,77 +2730,109 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 </div>
               )}
 
-            <div className="relative">
-              <ComposerPromptEditor
-                editorRef={composerEditorRef}
-                value={
-                  isComposerApprovalState
-                    ? ""
-                    : activePendingProgress
-                      ? activePendingProgress.customAnswer
-                      : prompt
-                }
-                cursor={composerCursor}
-                terminalContexts={
-                  !isComposerApprovalState && pendingUserInputs.length === 0
-                    ? composerTerminalContexts
-                    : []
-                }
-                skills={selectedProviderStatus?.skills ?? []}
-                {...(showMobilePendingAnswerActions ? { className: "max-sm:pb-11" } : {})}
-                onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
-                onChange={onPromptChange}
-                onCommandKeyDown={onComposerCommandKey}
-                onPaste={onComposerPaste}
-                placeholder={
-                  isComposerApprovalState
-                    ? (activePendingApproval?.detail ?? "Resolve this approval request to continue")
-                    : activePendingProgress
-                      ? "Type your own answer, or leave this blank to use the selected option"
-                      : showPlanFollowUpPrompt && activeProposedPlan
-                        ? "Add feedback to refine the plan, or leave this blank to implement it"
-                        : projectSelectionRequired
-                          ? "Choose a project above to start a thread"
-                          : noProviderAvailable
-                            ? "Enable a provider in Settings to send a message"
-                            : phase === "disconnected"
-                              ? "Ask for follow-up changes or attach images"
-                              : "Ask anything, @tag files/folders, $use skills, or / for commands"
-                }
-                disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
-              />
-              {showMobilePendingAnswerActions ? (
+            {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+            <div className={cn("flex min-w-0", isComposerSlim ? "items-center gap-6" : "flex-col")}>
+              <div ref={attachPromptElement} className="relative min-w-0 flex-1">
+                {/* fork:end fork-composer-shell */}
+                <ComposerPromptEditor
+                  editorRef={composerEditorRef}
+                  value={
+                    isComposerApprovalState
+                      ? ""
+                      : activePendingProgress
+                        ? activePendingProgress.customAnswer
+                        : prompt
+                  }
+                  cursor={composerCursor}
+                  terminalContexts={
+                    !isComposerApprovalState && pendingUserInputs.length === 0
+                      ? composerTerminalContexts
+                      : []
+                  }
+                  skills={selectedProviderStatus?.skills ?? []}
+                  {...(showMobilePendingAnswerActions ? { className: "max-sm:pb-11" } : {})}
+                  onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
+                  onChange={onPromptChange}
+                  onCommandKeyDown={onComposerCommandKey}
+                  onPaste={onComposerPaste}
+                  placeholder={
+                    isComposerApprovalState
+                      ? (activePendingApproval?.detail ??
+                        "Resolve this approval request to continue")
+                      : activePendingProgress
+                        ? "Type your own answer, or leave this blank to use the selected option"
+                        : showPlanFollowUpPrompt && activeProposedPlan
+                          ? "Add feedback to refine the plan, or leave this blank to implement it"
+                          : projectSelectionRequired
+                            ? "Choose a project above to start a thread"
+                            : noProviderAvailable
+                              ? "Enable a provider in Settings to send a message"
+                              : phase === "disconnected"
+                                ? "Ask for follow-up changes or attach images"
+                                : "Ask anything, @tag files/folders, $use skills, or / for commands"
+                  }
+                  disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
+                />
+                {showMobilePendingAnswerActions ? (
+                  <div
+                    data-chat-composer-mobile-pending-actions="true"
+                    className="absolute bottom-0 right-0 flex justify-end"
+                  >
+                    <ComposerPrimaryActions
+                      compact
+                      pendingAction={pendingPrimaryAction}
+                      isRunning={false}
+                      showPlanFollowUpPrompt={false}
+                      promptHasText={false}
+                      isSendBusy={isSendBusy}
+                      isConnecting={isConnecting}
+                      isEnvironmentUnavailable={
+                        environmentUnavailable !== null ||
+                        noProviderAvailable ||
+                        projectSelectionRequired
+                      }
+                      isPreparingWorktree={false}
+                      hasSendableContent={false}
+                      preserveComposerFocusOnPointerDown
+                      onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
+                      onInterrupt={handleInterruptPrimaryAction}
+                      onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+              {/* Slim shell: the pills and the send button ride inline with the
+                  prompt rather than sitting on their own row beneath it. */}
+              {/* No `&& !activePendingApproval` here: an approval sets
+                  hasComposerHeader, which resolves density to tall, so the
+                  right conjunct can never be false when the left is true. */}
+              {isComposerSlim ? (
                 <div
-                  data-chat-composer-mobile-pending-actions="true"
-                  className="absolute bottom-0 right-0 flex justify-end"
+                  data-chat-composer-inline-actions="true"
+                  className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
                 >
-                  <ComposerPrimaryActions
-                    compact
-                    pendingAction={pendingPrimaryAction}
-                    isRunning={false}
-                    showPlanFollowUpPrompt={false}
-                    promptHasText={false}
-                    isSendBusy={isSendBusy}
-                    isConnecting={isConnecting}
-                    isEnvironmentUnavailable={
-                      environmentUnavailable !== null ||
-                      noProviderAvailable ||
-                      projectSelectionRequired
-                    }
-                    isPreparingWorktree={false}
-                    hasSendableContent={false}
-                    preserveComposerFocusOnPointerDown
-                    onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
-                    onInterrupt={handleInterruptPrimaryAction}
-                    onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}
-                  />
+                  <div data-fork-composer-pills="true" className="flex min-w-0 items-center">
+                    {composerModelControls}
+                  </div>
+                  {composerPrimaryActionSlot}
                 </div>
               ) : null}
             </div>
+            {/* fork:end fork-composer-shell */}
           </div>
 
           {/* Bottom toolbar */}
-          {isComposerCollapsedMobile ? null : activePendingApproval ? (
+          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+          {/* The slim shell already rendered the pills and the send button
+              inline with the prompt. Skipping the row outright rather than
+              hiding it keeps a second data-chat-composer-actions="right" out of
+              the DOM — and `cn()` is tailwind-merge, so a conditional "hidden"
+              here would lose to the base "flex" that follows it anyway. An
+              approval always resolves to the tall shell, so that branch is
+              still reachable. */}
+          {composerDensity !== "tall" ? null : activePendingApproval ? (
+            /* fork:end fork-composer-shell */
             <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
               <ComposerPendingApprovalActions
                 requestId={activePendingApproval.requestId}
@@ -2626,122 +2845,55 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               data-chat-composer-footer="true"
               data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
               className={cn(
-                "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-2.5 pb-2.5 sm:px-3 sm:pb-3",
+                /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-4 pb-4",
+                /* fork:end fork-composer-shell */
                 pendingUserInputs.length > 0 && "pt-2",
                 isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
                 showMobilePendingAnswerActions && "hidden sm:flex",
               )}
             >
-              <div className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {noProviderAvailable ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled
-                    data-chat-provider-unavailable="true"
-                    className="shrink-0 gap-2 px-2 text-muted-foreground/70 sm:px-3"
-                  >
-                    <CircleAlertIcon className="size-4" />
-                    No provider available
-                  </Button>
-                ) : (
-                  <ProviderModelPicker
-                    compact={isComposerFooterCompact}
-                    activeInstanceId={selectedInstanceId}
-                    model={selectedModelForPickerWithCustomFallback}
-                    lockedProvider={lockedProvider}
-                    lockedContinuationGroupKey={lockedContinuationGroupKey}
-                    instanceEntries={providerInstanceEntries}
-                    keybindings={keybindings}
-                    modelOptionsByInstance={modelOptionsByInstance}
-                    terminalOpen={terminalOpen}
-                    open={isComposerModelPickerOpen}
-                    {...(composerProviderState.modelPickerIconClassName
-                      ? {
-                          activeProviderIconClassName:
-                            composerProviderState.modelPickerIconClassName,
-                        }
-                      : {})}
-                    onOpenChange={(open) => {
-                      setIsComposerModelPickerOpen(open);
-                    }}
-                    getModelDisabledReason={getModelDisabledReason}
-                    onInstanceModelChange={onProviderModelSelect}
-                  />
-                )}
-
-                {isComposerFooterCompact ? (
-                  <CompactComposerControlsMenu
-                    activePlan={showPlanSidebarToggle}
-                    interactionMode={interactionMode}
-                    planSidebarLabel={planSidebarLabel}
-                    planSidebarOpen={planSidebarOpen}
-                    runtimeMode={runtimeMode}
-                    showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
-                    traitsMenuContent={providerTraitsMenuContent}
-                    onToggleInteractionMode={toggleInteractionMode}
-                    onTogglePlanSidebar={togglePlanSidebar}
-                    onRuntimeModeChange={handleRuntimeModeChange}
-                  />
-                ) : (
-                  <>
-                    {providerTraitsPicker ? (
-                      <>
-                        <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
-                        {providerTraitsPicker}
-                      </>
-                    ) : null}
-                    <ComposerFooterModeControls
-                      showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
-                      interactionMode={interactionMode}
-                      runtimeMode={runtimeMode}
-                      showPlanToggle={showPlanSidebarToggle}
-                      planSidebarLabel={planSidebarLabel}
-                      planSidebarOpen={planSidebarOpen}
-                      onToggleInteractionMode={toggleInteractionMode}
-                      onRuntimeModeChange={handleRuntimeModeChange}
-                      onTogglePlanSidebar={togglePlanSidebar}
-                    />
-                  </>
-                )}
+              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+              <div
+                data-fork-composer-pills="true"
+                className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {composerModelControls}
               </div>
 
               {/* Right side: send / stop button */}
-              <div
-                data-chat-composer-actions="right"
-                data-chat-composer-primary-actions-compact={
-                  isComposerPrimaryActionsCompact ? "true" : "false"
-                }
-                className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
-              >
-                <ComposerFooterPrimaryActions
-                  compact={isComposerPrimaryActionsCompact}
-                  activeContextWindow={activeContextWindow}
-                  activeThreadProviderDisplayName={activeThreadProviderDisplayName}
-                  pendingAction={pendingPrimaryAction}
-                  isRunning={phase === "running"}
-                  showPlanFollowUpPrompt={pendingUserInputs.length === 0 && showPlanFollowUpPrompt}
-                  promptHasText={prompt.trim().length > 0}
-                  isSendBusy={isSendBusy}
-                  isConnecting={isConnecting}
-                  isEnvironmentUnavailable={
-                    environmentUnavailable !== null ||
-                    noProviderAvailable ||
-                    projectSelectionRequired
-                  }
-                  isPreparingWorktree={isPreparingWorktree}
-                  hasSendableContent={composerSendState.hasSendableContent}
-                  preserveComposerFocusOnPointerDown={isMobileViewport}
-                  onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
-                  onInterrupt={handleInterruptPrimaryAction}
-                  onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}
-                />
-              </div>
+              {composerPrimaryActionSlot}
+              {/* fork:end fork-composer-shell */}
             </div>
           )}
         </div>
       </div>
+      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      {/* The control row: run controls and the worktree/branch pair on one line
+          under the box, replacing both the in-box mode controls and the
+          separately-stitched context strip.
+
+          The row renders in every state, including collapsed — only its left
+          half is conditional. Two upstream behaviours depend on that:
+
+          Collapsed on mobile, upstream still rendered BranchToolbar (gated on
+          showComposerContextStrip alone, with its own MobileRunContextSelector
+          branch), so env mode and branch were switchable without focusing the
+          composer and raising the keyboard. Dropping the whole row took that
+          away. The mode controls stay hidden, which is what upstream did — its
+          footer was unmounted while collapsed.
+
+          During a pending approval, upstream replaced the entire footer with
+          ComposerPendingApprovalActions, unmounting the runtime-mode, Build/Plan
+          and plan-sidebar toggles. The in-box footer still swaps, but these
+          moved out here, so they need the same gate — otherwise the user can
+          flip modes for a run whose approval is still unresolved. BranchToolbar
+          is deliberately not gated on approval; upstream showed it too. */}
+      <ComposerControlRow
+        left={activePendingApproval ? null : composerRunControls}
+        {...(contextStrip ? { right: contextStrip } : {})}
+      />
+      {/* fork:end fork-composer-shell */}
     </form>
   );
 });

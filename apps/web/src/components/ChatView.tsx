@@ -5460,21 +5460,38 @@ function ChatViewContent(props: ChatViewProps) {
     ],
   );
 
-  const onStartFromOriginChange = (nextStartFromOrigin: boolean) => {
-    if (canOverrideServerThreadEnvMode && activeThread) {
-      setPendingServerThreadStartFromOriginByThreadId((current) =>
-        current[activeThread.id] === nextStartFromOrigin
-          ? current
-          : { ...current, [activeThread.id]: nextStartFromOrigin },
-      );
-      return;
-    }
-    if (isLocalDraftThread) {
-      setDraftThreadContext(composerDraftTarget, {
-        startFromOrigin: nextStartFromOrigin,
-      });
-    }
-  };
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  // useCallback, where upstream had a bare arrow. This feeds the memoised
+  // contextStrip element below, and a fresh identity here would invalidate that
+  // memo on every render — which is the whole thing it exists to prevent.
+  const onStartFromOriginChange = useCallback(
+    (nextStartFromOrigin: boolean) => {
+      /* fork:end fork-composer-shell */
+      if (canOverrideServerThreadEnvMode && activeThread) {
+        setPendingServerThreadStartFromOriginByThreadId((current) =>
+          current[activeThread.id] === nextStartFromOrigin
+            ? current
+            : { ...current, [activeThread.id]: nextStartFromOrigin },
+        );
+        return;
+      }
+      if (isLocalDraftThread) {
+        setDraftThreadContext(composerDraftTarget, {
+          startFromOrigin: nextStartFromOrigin,
+        });
+      }
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    },
+    [
+      canOverrideServerThreadEnvMode,
+      activeThread,
+      isLocalDraftThread,
+      composerDraftTarget,
+      setPendingServerThreadStartFromOriginByThreadId,
+      setDraftThreadContext,
+    ],
+  );
+  /* fork:end fork-composer-shell */
 
   const onExpandTimelineImage = useCallback((preview: ExpandedImagePreview) => {
     setExpandedImage(preview);
@@ -5604,6 +5621,65 @@ function ChatViewContent(props: ChatViewProps) {
       </Suspense>
     ) : null
   ) : null;
+
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /**
+   * The worktree/branch strip, as an element rather than a render site.
+   *
+   * This is memoised because it has to be, not as a micro-optimisation.
+   * `ChatComposer` is `memo`'d, and every other prop it receives is a stable
+   * reference or a primitive — so an inline `<BranchToolbar/>` here would be the
+   * single new object identity per render, defeating that memo entirely on a
+   * ~2900-line component that re-renders throughout a streaming turn.
+   */
+  const composerContextStrip = useMemo(
+    () =>
+      showComposerContextStrip && activeThread ? (
+        <BranchToolbar
+          environmentId={activeThread.environmentId}
+          threadId={activeThread.id}
+          {...(routeKind === "draft" && draftId ? { draftId } : {})}
+          onEnvModeChange={onEnvModeChange}
+          startFromOrigin={startFromOrigin}
+          onStartFromOriginChange={onStartFromOriginChange}
+          {...(canOverrideServerThreadEnvMode ? { effectiveEnvModeOverride: envMode } : {})}
+          {...(canOverrideServerThreadEnvMode
+            ? {
+                activeThreadBranchOverride: activeThreadBranch,
+                onActiveThreadBranchOverrideChange: setPendingServerThreadBranch,
+              }
+            : {})}
+          envLocked={envLocked}
+          onComposerFocusRequest={scheduleComposerFocus}
+          {...(canCheckoutPullRequestIntoThread
+            ? { onCheckoutPullRequestRequest: openPullRequestDialog }
+            : {})}
+          {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
+          availableEnvironments={logicalProjectEnvironments}
+        />
+      ) : null,
+    [
+      showComposerContextStrip,
+      activeThread,
+      routeKind,
+      draftId,
+      onEnvModeChange,
+      startFromOrigin,
+      onStartFromOriginChange,
+      canOverrideServerThreadEnvMode,
+      envMode,
+      activeThreadBranch,
+      setPendingServerThreadBranch,
+      envLocked,
+      scheduleComposerFocus,
+      canCheckoutPullRequestIntoThread,
+      openPullRequestDialog,
+      hasMultipleEnvironments,
+      onEnvironmentChange,
+      logicalProjectEnvironments,
+    ],
+  );
+  /* fork:end fork-composer-shell */
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
@@ -5796,6 +5872,12 @@ function ChatViewContent(props: ChatViewProps) {
                             isLocalDraftThread={isLocalDraftThread}
                             forceExpandedOnMobile={forceExpandedMobileComposer && isDraftHeroState}
                             projectSelectionRequired={isLocalDraftThread && activeProject === null}
+                            /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                            isDraftHero={isDraftHeroState}
+                            {...(composerContextStrip
+                              ? { contextStrip: composerContextStrip }
+                              : {})}
+                            /* fork:end fork-composer-shell */
                             phase={phase}
                             isConnecting={isConnecting}
                             isSendBusy={isSendBusy}
@@ -5861,42 +5943,13 @@ function ChatViewContent(props: ChatViewProps) {
                           />
                         </div>
                       </div>
-                      <div className="min-h-0">
-                        <div
-                          data-terminal-open={terminalUiState.terminalOpen ? "true" : undefined}
-                          className="relative z-0"
-                        >
-                          {showComposerContextStrip && (
-                            <div className="pointer-events-auto">
-                              <BranchToolbar
-                                environmentId={activeThread.environmentId}
-                                threadId={activeThread.id}
-                                {...(routeKind === "draft" && draftId ? { draftId } : {})}
-                                onEnvModeChange={onEnvModeChange}
-                                startFromOrigin={startFromOrigin}
-                                onStartFromOriginChange={onStartFromOriginChange}
-                                {...(canOverrideServerThreadEnvMode
-                                  ? { effectiveEnvModeOverride: envMode }
-                                  : {})}
-                                {...(canOverrideServerThreadEnvMode
-                                  ? {
-                                      activeThreadBranchOverride: activeThreadBranch,
-                                      onActiveThreadBranchOverrideChange:
-                                        setPendingServerThreadBranch,
-                                    }
-                                  : {})}
-                                envLocked={envLocked}
-                                onComposerFocusRequest={scheduleComposerFocus}
-                                {...(canCheckoutPullRequestIntoThread
-                                  ? { onCheckoutPullRequestRequest: openPullRequestDialog }
-                                  : {})}
-                                {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
-                                availableEnvironments={logicalProjectEnvironments}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+                      {/* Upstream renders the BranchToolbar strip here, wrapped in
+                          a min-h-0 / data-terminal-open pair. The strip is now the
+                          composer's contextStrip prop, and the wrapper went with
+                          it — nothing read data-terminal-open, so keeping the
+                          shell would have left two empty divs in the tree. */}
+                      {/* fork:end fork-composer-shell */}
                     </div>
                     <div
                       aria-hidden
