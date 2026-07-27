@@ -271,6 +271,13 @@
     Working is emerald, deliberately diverging from the sky the mobile Live
     Activity still uses; mobile has not been migrated.
 
+    A card is three lines only when it has a PR or a diff for the third; with
+    neither, the model and runtime move up beside the branch and the card closes
+    at the design's two-line 64px. Nothing else varies the height: an absent
+    branch or model leaves its half of a row empty rather than closing the row
+    up. The li's contain-intrinsic-size is chosen by the same predicate the
+    component renders from, so it can never claim a height the row does not have.
+
     Diff counts bind to --success-foreground / --destructive-foreground rather
     than emerald/red literals, so they hold up in light mode. They render only
     once latestTurnDiff() returns data: it is an upstream stub returning null
@@ -294,6 +301,44 @@
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
     - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
+
+- id: sidebar-v2-project-grouping
+  intent: >
+    Sidebar V2's active cards can be grouped under project headers, from a
+    switch at the top of the fork's project scope row. Upstream's flat list
+    stays the default, and the preference is device-local (localStorage) rather
+    than a field in packages/contracts.
+
+    Only the active cards group. The snoozed and settled shelves stay flat, and
+    grouping is skipped entirely while a project scope is set.
+
+    Group order is projectGroups' own order and thread order inside a group is
+    the order it arrives in, so grouping introduces no second notion of sorting
+    and cannot disagree with the user's project sort order.
+
+    orderedThreads is rebuilt from the grouped order. It backs the number-key
+    jump labels, arrow navigation and shift-range selection, so a flat ordered
+    list under a grouped DOM misaddresses all three.
+
+    A thread whose project resolves to no group collects under a trailing
+    "Other" header. It is never dropped, and never trails headerless under the
+    previous project.
+
+    A grouped card is passed no projectTitle, because the header above it
+    carries the name; rows in the ungrouped sections still name their project.
+
+    The header is static text rather than a collapsible button, and carries a
+    16px folder mark and no trailing hairline.
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2ProjectGrouping.ts
+    - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
 
 - id: fork-surface-palette
   intent: >

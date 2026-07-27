@@ -43,6 +43,31 @@ Related deep-dives that predate this file and stay where they are:
 - The status-mark vocabulary (form carries the state, hue reinforces it) is taken from the
   phanttom Ghostty sidebar design. Working takes emerald from that design rather than the sky the
   mobile Live Activity uses; the divergence is deliberate and mobile has not been migrated.
+- The two-line card is the design's own variant, not a space saving invented here. The third line
+  exists to carry the PR badge and the diff counts; with neither it is a blank 15px strip under
+  every card. Worth knowing while reading it: `latestTurnDiff()` is an upstream stub returning
+  null today, so until shells carry checkpoint summaries the three-line form only appears on
+  threads with a PR.
+
+## sidebar-v2-project-grouping
+
+- Grouping and the project scope filter answer different questions — "everything, arranged by
+  repo" versus "only this repo" — which is why grouping is a switch inside the scope menu rather
+  than another entry in its radio list. It is also why grouping is skipped while a scope is set:
+  the list is already one project, so the header would only repeat the scope row's own label one
+  line lower.
+- The shelves stay flat because both are time-ordered tails whose value is being short. Slicing a
+  tail by project turns one header into a dozen sub-headers over one or two rows each.
+- The preference is device-local because a client setting would mean a fork-shaped key in
+  `packages/contracts` — a schema upstream owns and every sync has to carry — for a view
+  preference that is per-window anyway.
+- The header is not collapsible. Upstream's two shelf headers collapse because each hides a tail;
+  a project header sits over the inbox, where nothing wants hiding, and the scope menu one row
+  above already does what collapsing would. It drops the shelf headers' trailing hairline for the
+  same reason: a shelf rule is one divider closing off the list above it, while project headers
+  recur every few rows and a rule at that cadence stripes the panel against the card edges. The
+  folder mark and the space above it carry the separation instead, and the mark is the scope
+  menu's own so a header and its menu entry read as the same object.
 
 ## fork-sidebar-chrome
 

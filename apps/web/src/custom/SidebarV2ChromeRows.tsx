@@ -32,7 +32,15 @@ import {
 } from "lucide-react";
 import { CommandDialogTrigger } from "~/components/ui/command";
 import { Kbd } from "~/components/ui/kbd";
-import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "~/components/ui/menu";
+import {
+  Menu,
+  MenuCheckboxItem,
+  MenuPopup,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "~/components/ui/menu";
 import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon } from "~/components/ProjectFavicon";
@@ -137,6 +145,8 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   readonly onMenuOpenChange: (open: boolean) => void;
   readonly onProjectActions: (event: ReactMouseEvent<HTMLButtonElement>, project: TProject) => void;
   readonly onAddProject: () => void;
+  readonly groupByProject: boolean;
+  readonly onGroupByProjectChange: (groupByProject: boolean) => void;
 }) {
   if (props.projectGroups.length === 0) return null;
 
@@ -157,6 +167,22 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
             </span>
           </MenuTrigger>
           <MenuPopup align="start" className="w-(--anchor-width)">
+            {/* Above the scope list, not below it: with enough projects the
+                list scrolls, and a preference that decides how the whole
+                sidebar reads should not be the thing you have to scroll to.
+                It stays put while scoped — the sidebar simply has nothing to
+                group until the scope is cleared. */}
+            <MenuCheckboxItem
+              variant="switch"
+              closeOnClick={false}
+              checked={props.groupByProject}
+              onCheckedChange={props.onGroupByProjectChange}
+              className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
+              data-testid="sidebar-v2-group-by-project-toggle"
+            >
+              Group by project
+            </MenuCheckboxItem>
+            <MenuSeparator />
             <MenuRadioGroup
               value={props.projectScopeKey ?? "all"}
               onValueChange={(value) =>

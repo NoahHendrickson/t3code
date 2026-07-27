@@ -20,7 +20,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
 import { threadCardTitleRecedes } from "../custom/sidebarV2RowPolicy";
-import { SidebarV2ThreadCardMeta } from "../custom/SidebarV2ThreadCardMeta";
+import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "../custom/SidebarV2ThreadCardMeta";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -92,11 +92,29 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(sidebarV2).toContain("<SidebarV2IdleMark />");
   });
 
-  it("reserves the card's drawn height for offscreen rows", () => {
+  it("collapses to two lines only when there is no PR and no diff", () => {
+    // The third line exists to carry the PR badge and the diff counts. With
+    // neither, drawing it leaves a blank 15px strip under every card.
+    const show = threadCardShowsMetaRow;
+    expect(show({ hasPr: false, insertions: null, deletions: null })).toBe(false);
+    expect(show({ hasPr: true, insertions: null, deletions: null })).toBe(true);
+    expect(show({ hasPr: false, insertions: 3, deletions: null })).toBe(true);
+    expect(show({ hasPr: false, insertions: null, deletions: 3 })).toBe(true);
+    // Zero is a real count — "+0 −0" is a turn that touched nothing, not a
+    // thread with no diff at all.
+    expect(show({ hasPr: false, insertions: 0, deletions: 0 })).toBe(true);
+  });
+
+  it("reserves each card's drawn height for offscreen rows", () => {
     // content-visibility skips offscreen rows; the intrinsic size is what keeps
     // the scrollbar honest while they are skipped. A stale value here makes the
-    // list jump as you scroll — three lines are 86px, not the old two-line 76.
+    // list jump as you scroll, so both heights are pinned: three lines are 86px
+    // (24 padding + 18 + 15 + 15 rows + 2x7 gaps), two are 64.
     expect(sidebarV2).toContain("[contain-intrinsic-size:auto_86px]");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_64px]");
+    // And the choice is made from the same predicate the component renders
+    // from, so the hint cannot drift from the row count it describes.
+    expect(sidebarV2).toContain("threadCardShowsMetaRow({");
   });
 
   it("binds diff counts to semantic tokens rather than palette literals", () => {
