@@ -1,0 +1,177 @@
+# Register of every intentional deviation from upstream — see .fork/README.md §4a.
+#
+# This file is read by two consumers:
+#   - .fork/detect-drift.mjs (Layer 1 CI) — flags upstream commits touching
+#     watched files
+#   - the daily sync routine — reads `intent` before resolving any conflict,
+#     so it preserves the intent rather than the literal old lines
+#
+# Format constraints (the parser is dependency-free and line-based — keep it
+# simple):
+#   - each entry starts with `- id: <slug>` at column 0
+#   - list keys (files/shadows/watch/verify) are two-space indented, one
+#     `- <path>` per line beneath them; use `[]` for an empty list
+#   - `intent:` is `>`-folded free text; don't start intent lines with `-`
+#
+# Keys:
+#   files:   fork-owned files implementing the customization (Tier 1/2 paths;
+#            upstream never touches these)
+#   shadows: upstream modules replaced via src/overrides/ — drift-watched
+#   watch:   upstream files carrying Tier-4 inline edits — drift-watched
+#   verify:  guard tests that fail if the customization is silently lost
+
+- id: ci-on-custom
+  intent: >
+    Direct pushes to the custom branch run the full CI suite. Upstream's CI
+    triggers on pull_request and pushes to main only; custom is this fork's
+    working branch, so a push to it (like a merged sync) must be validated
+    the same way main is upstream.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - .github/workflows/ci.yml
+  verify:
+    - apps/web/src/__fork_guards__/ciOnCustom.test.ts
+
+- id: ci-runners
+  intent: >
+    CI jobs run on GitHub-hosted runners (ubuntu-latest / macos-latest) with
+    30-minute timeouts. Upstream targets Blacksmith runners, whose GitHub app
+    is installed on pingdotgg but not on this fork, so upstream's labels queue
+    forever here. If Blacksmith is ever installed on the fork, this
+    customization can be retired wholesale.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - .github/workflows/ci.yml
+  verify:
+    - apps/web/src/__fork_guards__/ciRunners.test.ts
+
+- id: fork-workflow-docs
+  intent: >
+    Every coding agent that opens this repo learns the fork rules before
+    changing anything: AGENTS.md (and its CLAUDE.md symlink) carries a fenced
+    Fork Workflow section pointing to .fork/AGENTS.md, which defines the
+    branch model (work from custom, never touch main) and the placement
+    ladder for fork changes.
+  tier: 4
+  files:
+    - .fork/AGENTS.md
+  shadows: []
+  watch:
+    - AGENTS.md
+  verify:
+    - apps/web/src/__fork_guards__/forkWorkflowDocs.test.ts
+
+- id: release-upstream-only
+  intent: >
+    The Release workflow never runs on this fork. Upstream releases on a
+    3-hourly cron and on version tags, publishing the CLI to npm and cutting
+    GitHub Releases; neither is this fork's job, and the fork has no npm or
+    release credentials. Both entry-point jobs (check_changes, preflight) are
+    gated on the repository being upstream, and every downstream job already
+    requires preflight to have succeeded, so the gate cascades to the whole
+    workflow. Until this gate existed the runs did not publish only because
+    they hung forever on Blacksmith runners the fork cannot schedule (see
+    ci-runners) — an accident, not a safeguard. Keep the gate independent of
+    the runner labels so retiring ci-runners can never start publishing from
+    the fork.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - .github/workflows/release.yml
+  verify:
+    - apps/web/src/__fork_guards__/releaseUpstreamOnly.test.ts
+
+- id: fork-desktop-release
+  intent: >
+    The fork can cut its own downloadable desktop build without borrowing any
+    part of upstream's release identity. Upstream's Release workflow deploys
+    the production Cloudflare relay, publishes the CLI to npm, signs with
+    upstream's Apple and Azure certificates and announces to upstream's
+    Discord; release-upstream-only gates all of that off here, so the fork
+    needs a path of its own. fork-release.yml builds macOS arm64 unsigned and
+    publishes to this repository's Releases, using only the automatic
+    GITHUB_TOKEN. Two properties matter more than the build itself: it runs on
+    workflow_dispatch alone, so no sync, tag or cron can ever publish from the
+    fork by surprise; and it must never grow a package-registry publish step,
+    because the fork builds under upstream's package names. Signing is absent
+    on purpose, not by oversight — the build script already degrades when the
+    Apple secrets are missing, so adding them later is a change to one step.
+  tier: 1
+  files:
+    - .github/workflows/fork-release.yml
+  shadows: []
+  watch: []
+  verify:
+    - apps/web/src/__fork_guards__/forkDesktopRelease.test.ts
+
+- id: fork-marker
+  intent: >
+    The running app is identifiable as this fork: the document root carries
+    data-fork="noahhendrickson-t3code", and the fork-owned theme layer
+    (theme.custom.css) loads after upstream's index.css so fork styling wins
+    ties. Seed customization proving the Tier-1 + Tier-4 pattern end to end;
+    all fork CSS must stay scoped under the marker attribute.
+  tier: 1
+  files:
+    - apps/web/src/custom/forkMarker.ts
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/main.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkMarker.test.ts
+
+- id: phosphor-duotone-icons
+  intent: >
+    The app's iconography is Phosphor at the duotone weight, not lucide.
+    Rather than rewriting ~89 import sites across the hottest upstream files
+    (ChatView, SidebarV2, ChatComposer), "lucide-react" is aliased to a
+    fork-owned shim that re-exports Phosphor under lucide's export names. Call
+    sites keep importing "lucide-react" verbatim, so upstream can add, move, or
+    delete icon usage freely and this fork inherits it. Glyphs with no enclosed
+    area (carets, checks, arrows, spinners) are pinned to the bold weight,
+    since duotone is indistinguishable there and reads too light against
+    lucide's 2px stroke. The shim also reproduces lucide's `lucide lucide-<name>`
+    SVG classes, because upstream tests assert them to identify which icon
+    rendered — honouring the contract keeps those tests passing unmodified
+    instead of forcing Tier 4 edits into upstream test files.
+  tier: 1
+  files:
+    - apps/web/src/custom/icons/lucide-phosphor.tsx
+  shadows: []
+  watch:
+    - apps/web/vite.config.ts
+    - apps/web/tsconfig.json
+  verify:
+    - apps/web/src/__fork_guards__/phosphorIcons.test.ts
+
+- id: sidebar-v2-card-rows
+  intent: >
+    Sidebar V2 thread rows are restyled as two-line cards: title first, an
+    11px metadata line under it, 16px radius instead of 6px, and the status
+    text labels ("Working", "Approval") replaced by a single 16px mark in a
+    fixed trailing slot. The mark's form carries the state — falling pixels
+    while the agent runs, a static dot once it stops, a clock for woke — and
+    the hue only reinforces it, which is the vocabulary the phanttom Ghostty
+    sidebar uses. Working takes emerald from that design rather than the sky
+    the mobile Live Activity still uses; the divergence is deliberate and
+    mobile has not been migrated. The status palette and the rain keyframes
+    live in the Tier 1 stylesheet; only the six --color-sidebar-v2-* utility
+    registrations sit inline in index.css, fenced as
+    fork:sidebar-v2-status-palette, because Tailwind reads utility names from
+    the @theme block alone and will not see them anywhere else.
+  tier: 4
+  files:
+    - apps/web/src/custom/SidebarV2StatusIndicator.tsx
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
