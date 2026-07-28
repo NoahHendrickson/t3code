@@ -37,14 +37,16 @@ const controlRow = readSibling("../custom/ComposerControlRow.tsx");
 
 describe("fork guard: fork-composer-shell", () => {
   it("keeps the box, send and stop hooks the stylesheet hangs off", () => {
-    // Every visual decision below is keyed to one of these four attributes. Lose
-    // one in a rebase and the CSS still compiles, still ships, and matches
-    // nothing.
+    // Every visual decision below is keyed to one of these attributes. Lose one
+    // in a rebase and the CSS still compiles, still ships, and matches nothing.
     expect(chatComposer, "ChatComposer lost data-fork-composer-box").toContain(
       'data-fork-composer-box="true"',
     );
     expect(chatComposer, "ChatComposer lost the density attribute").toContain(
       "data-fork-composer-density={composerDensity}",
+    );
+    expect(chatComposer, "ChatComposer lost the prompt scrollport hook").toContain(
+      'data-fork-composer-prompt="true"',
     );
     expect(primaryActions, "send button lost its fork hook").toContain(
       'data-fork-composer-action="send"',
