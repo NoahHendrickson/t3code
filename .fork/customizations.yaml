@@ -466,7 +466,11 @@
     All five share SIDEBAR_V2_ICON_BUTTON_CLASS, which is the point: they appear
     in two row variants, three branches of one ternary and a project header, and
     the previous drift between them is exactly what a per-call-site class string
-    produces.
+    produces. The three slim-row branches share one placement constant on top of
+    it — they are one control, and three copies is how the set came apart the
+    first time. Every offset below is derived in custom/sidebarV2TrailingColumn
+    with the arithmetic that produced it; call sites name the one meant for them
+    rather than spelling a value out.
 
     24px is the visual box; on a coarse pointer an invisible child grows it to
     44px, the trick ui/button and the chrome rows' trailing buttons already use.
@@ -518,9 +522,10 @@
     # Owned by fork-sidebar-chrome, which sets these rows' metrics; this entry
     # owns only the trailing inset's 4px alignment term and the icon sizes.
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
-    # Owned by sidebar-v2-card-rows; this entry owns only
-    # SIDEBAR_V2_ICON_BUTTON_CLASS, the box all five icon-only controls share.
-    - apps/web/src/custom/sidebarV2RowPolicy.ts
+    # The box all five icon-only controls share, and the offsets that put every
+    # trailing glyph on one axis. Split out of sidebarV2RowPolicy, whose subject
+    # is title-recede and row surface.
+    - apps/web/src/custom/sidebarV2TrailingColumn.ts
     # Owned by sidebar-v2-project-grouping; this entry owns only its plus
     # button's box and the 2px that puts it on the trailing column's axis.
     - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
