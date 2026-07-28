@@ -33,6 +33,7 @@ interface ChatHeaderProps {
   availableEditors: ReadonlyArray<EditorId>;
   rightPanelOpen: boolean;
   gitCwd: string | null;
+  onNewThreadInProject: () => void;
   onRunProjectScript: (script: ProjectScript) => void;
   onAddProjectScript: (input: NewProjectScriptInput) => Promise<ProjectScriptActionResult>;
   onUpdateProjectScript: (
@@ -68,6 +69,7 @@ export const ChatHeader = memo(function ChatHeader({
   availableEditors,
   rightPanelOpen,
   gitCwd,
+  onNewThreadInProject,
   onRunProjectScript,
   onAddProjectScript,
   onUpdateProjectScript,
@@ -96,12 +98,28 @@ export const ChatHeader = memo(function ChatHeader({
 
             The favicon is gone with it: it sat immediately left of a name that
             already says the same thing, in a header whose whole left half is
-            fighting for width against three action pills. */}
+            fighting for width against three action pills.
+
+            Upstream made this breadcrumb a new-thread button (#4638); the
+            behavior is kept — click and tooltip — under the fork's
+            presentation: no favicon, semibold name. */}
         {activeProjectName ? (
           <span className="inline-flex shrink-0 items-center gap-1">
-            <span className="max-w-40 truncate text-sm font-semibold text-muted-foreground">
-              {activeProjectName}
-            </span>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={`New thread in ${activeProjectName}`}
+                    onClick={onNewThreadInProject}
+                    className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                }
+              >
+                <span className="max-w-40 truncate text-sm font-semibold">{activeProjectName}</span>
+              </TooltipTrigger>
+              <TooltipPopup side="top">New thread in {activeProjectName}</TooltipPopup>
+            </Tooltip>
             <span aria-hidden className="text-sm font-semibold text-muted-foreground">
               /
             </span>
