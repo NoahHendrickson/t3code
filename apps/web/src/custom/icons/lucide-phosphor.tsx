@@ -50,6 +50,7 @@ import {
   ArrowsInSimple as PhArrowsInSimple,
   ArrowsOutSimple as PhArrowsOutSimple,
   BellSlash as PhBellSlash,
+  BookmarkSimple as PhBookmarkSimple,
   BoxArrowUp as PhBoxArrowUp,
   Broadcast as PhBroadcast,
   Bug as PhBug,
@@ -117,6 +118,7 @@ import {
   Paragraph as PhParagraph,
   PencilRuler as PhPencilRuler,
   PencilSimpleLine as PhPencilSimpleLine,
+  PictureInPicture as PhPictureInPicture,
   Play as PhPlay,
   PlugsConnected as PhPlugsConnected,
   Plus as PhPlus,
@@ -305,6 +307,7 @@ export const BotIcon = icon("bot", PhRobot, "duotone");
 export const SparklesIcon = icon("sparkles", PhSparkle, "duotone");
 export const ZapIcon = icon("zap", PhLightning, "duotone");
 export const StarIcon = icon("star", PhStar, "duotone");
+export const BookmarkIcon = icon("bookmark", PhBookmarkSimple, "duotone");
 export const LockIcon = icon("lock", PhLock, "duotone");
 export const LockOpenIcon = icon("lock-open", PhLockOpen, "duotone");
 export const LogInIcon = icon("log-in", PhSignIn, "duotone");
@@ -353,6 +356,7 @@ export const PanelLeftCloseIcon = icon("panel-left-close", PhSidebarSimple, "duo
 // and it is what the design specifies.
 export const PanelRightIcon = icon("panel-right", PhSquareHalf, "duotone");
 export const PanelBottomIcon = icon("panel-bottom", PhSquareHalfBottom, "duotone");
+export const PictureInPicture2 = icon("picture-in-picture-2", PhPictureInPicture, "duotone");
 export const Columns2Icon = icon("columns-2", PhColumns, "duotone");
 export const Rows3Icon = icon("rows-3", PhRows, "duotone");
 export const SquareSplitHorizontal = icon(
