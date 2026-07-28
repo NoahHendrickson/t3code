@@ -167,9 +167,17 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).toMatch(/pe-\[calc\(0\.5rem-var\(--app-scrollbar-width\)\)\]/u);
     expect(sidebarV2).toContain("[scrollbar-gutter:stable]");
     const upstreamCss = readSibling("../index.css");
-    expect(upstreamCss, "the token the compensation reads from is gone").toMatch(
-      /--app-scrollbar-width:\s*\d/u,
-    );
+    const scrollbarWidth = /--app-scrollbar-width:\s*(\d+(?:\.\d+)?)px/u.exec(upstreamCss)?.[1];
+    expect(scrollbarWidth, "the token the compensation reads from is gone").toBeDefined();
+    // The subtraction only "follows the token" over [0px, 8px]. Padding cannot
+    // go negative, so calc() clamps at used-value time: past 8px the end
+    // padding is silently 0 while the gutter keeps growing, leaving 8 left and
+    // more than 8 right — worse than the asymmetry this was written to remove,
+    // and invisible to a guard that only checks the literal is present. The
+    // chrome rows' pe-1 is downstream of the same assumption, so the whole
+    // trailing column skews with it. Retuning the scrollbar past the padding
+    // it is subtracted from has to fail here rather than on someone's screen.
+    expect(Number(scrollbarWidth)).toBeLessThanOrEqual(8);
   });
 
   it("puts the brand on the header's trailing edge", () => {

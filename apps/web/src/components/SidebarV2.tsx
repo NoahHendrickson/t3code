@@ -68,6 +68,9 @@ import {
   selectProjectGroupingSettings,
 } from "../logicalProject";
 import {
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  buildSidebarProjectPickerEntries,
+  /* fork:end sidebar-v2-project-grouping */
   buildSidebarProjectSnapshots,
   type SidebarProjectGroupMember,
   type SidebarProjectSnapshot,
@@ -77,7 +80,7 @@ import { useThreadSelectionStore } from "../threadSelectionStore";
 import { useThreadActions } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { openCommandPalette } from "../commandPaletteBus";
-import { startNewThreadFromContext } from "../lib/chatThreadActions";
+import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
 import { useClientSettings, useUpdateClientSettings } from "../hooks/useSettings";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useNowMinute } from "../hooks/useNowMinute";
@@ -937,7 +940,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               {/* h-6, not the line's h-[18px]: the hover actions share this cell
                   and a 24px target cannot fit in an 18px one. The cell is
                   centred in the 18px line, so it overhangs 3px into the card's
-                  py-2 above and its gap-[7px] below — neither of which carries
+                  py-2.5 above and its gap-[7px] below — neither of which carries
                   anything to collide with — and the status mark, centred in the
                   same cell, does not move. */}
               <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
@@ -1018,8 +1021,19 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       // kind of misalignment you feel before you can name it.
                       // The button overhangs 4px into the card's 12px padding,
                       // which holds nothing.
+                      //
+                      // `relative` is the other half of the pointer-events-none
+                      // on the status span. That clears the hit path, but not
+                      // the paint order: the status span at opacity-0 is a
+                      // stacking context, so through the 150ms crossfade it
+                      // still renders over these in-flow icons. Positioned, the
+                      // actions join it in the same layer at z-index auto and
+                      // DOM order decides — which is structurally why the slim
+                      // rows, whose action is absolute, were never affected at
+                      // all. Both variants then behave the same way for the
+                      // same reason rather than for two different ones.
                       // fork:end sidebar-v2-row-action-hit-area
-                      "col-start-1 row-start-1 -me-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                      "relative col-start-1 row-start-1 -me-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
                       snoozeMenuOpen && "w-auto opacity-100",
                     )}
                   >
@@ -2341,17 +2355,34 @@ export default function SidebarV2() {
   // grouped header has already answered it: the run of cards under it IS the
   // project, so the button starts there and skips the picker.
   //
-  // The group's own (environmentId, id) is the target, not a member scan. A
-  // logical project can span environments, and buildSidebarProjectPickerEntries
-  // resolves the same ambiguity the same way — the canonical project first,
-  // members only as a fallback — so the plus and the palette cannot land a
-  // thread in different environments for the same name on screen.
+  // Which environment it lands in is buildSidebarProjectPickerEntries' answer,
+  // reached by calling it rather than by restating it. A logical project can
+  // span environments, and that function prefers the member matching the thread
+  // you are looking at, falling back to the group's canonical ref. An earlier
+  // revision took the canonical ref directly and claimed in a comment that this
+  // agreed with the palette; it does not. Reading a remote thread of a project
+  // that also has a local member, the palette starts remote and the shortcut
+  // would have started local — the same name on screen, two environments. Two
+  // ways to open the same door must not disagree about which room they enter,
+  // and a shared derivation is the only version of that which cannot rot.
   const handleNewThreadInProject = useCallback(
     (projectKey: string) => {
       const group = projectGroups.find((candidate) => candidate.projectKey === projectKey);
       if (!group) return;
+      const [entry] = buildSidebarProjectPickerEntries({
+        groups: [group],
+        preferredProjectRef: resolveThreadActionProjectRef({
+          activeDraftThread: newThreadContext.activeDraftThread,
+          activeThread: newThreadContext.activeThread ?? undefined,
+          defaultProjectRef: newThreadContext.defaultProjectRef,
+          handleNewThread: newThreadContext.handleNewThread,
+        }),
+      });
+      if (!entry) return;
       if (isMobile) setOpenMobile(false);
-      void newThreadContext.handleNewThread(scopeProjectRef(group.environmentId, group.id));
+      void newThreadContext.handleNewThread(
+        scopeProjectRef(entry.targetProject.environmentId, entry.targetProject.id),
+      );
     },
     [isMobile, newThreadContext, projectGroups, setOpenMobile],
   );

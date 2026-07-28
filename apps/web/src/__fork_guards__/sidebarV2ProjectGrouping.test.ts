@@ -74,12 +74,20 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
 
   it("starts a thread in the header's own project, and only where there is one", () => {
     // The chrome row's plus has to ask which project when there are several;
-    // a grouped header has already answered it. The target is the group's
-    // canonical (environmentId, id) — a logical project can span environments,
-    // and picking a member here would let the plus and the palette land the
-    // same on-screen name in different ones.
+    // a grouped header has already answered it.
+    //
+    // Which environment it lands in is the palette's rule, shared rather than
+    // restated: buildSidebarProjectPickerEntries prefers the member matching
+    // the thread you are reading and falls back to the group's canonical ref.
+    // An earlier revision took that canonical ref directly, which is a
+    // different rule — reading a remote thread of a project that also has a
+    // local member, the palette starts remote and the shortcut started local.
+    // Calling the function is what makes the two agree; asserting the call is
+    // what keeps them agreeing.
+    expect(sidebar).toContain("buildSidebarProjectPickerEntries({");
+    expect(sidebar).toContain("preferredProjectRef: resolveThreadActionProjectRef({");
     expect(sidebar).toContain(
-      "void newThreadContext.handleNewThread(scopeProjectRef(group.environmentId, group.id))",
+      "scopeProjectRef(entry.targetProject.environmentId, entry.targetProject.id)",
     );
     // The unresolved-project section names no project to start in, and is the
     // one header that must render without the button.

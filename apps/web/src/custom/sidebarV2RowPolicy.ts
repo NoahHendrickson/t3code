@@ -41,12 +41,27 @@ import { cn } from "~/lib/utils";
  * the one value that stays a step brighter than the row under it in dark and a
  * step darker in light.
  *
+ * 24px is the *visual* box. On a coarse pointer an invisible child grows the
+ * tappable area to 44px without moving anything — upstream's trick, carried by
+ * `ui/button` and by the chrome rows' trailing buttons, and this box is the one
+ * place it can be spent once for every icon-only control in the list. The row
+ * actions are hover-gated and so never reach a touch device at all; the project
+ * header's plus is always rendered, and its own handler closes the mobile
+ * drawer, which is the code conceding it is reachable there. 24px is exactly
+ * the WCAG 2.5.8 floor, with no margin, and a shared box whose whole argument
+ * is "these were too small to hit" cannot ship the one always-on control at it.
+ *
+ * `focus-visible` for the same reason the hover fill exists: on a transparent
+ * button you cannot see where the target ends, and that is as true of keyboard
+ * focus as of the pointer. Ring offset against the sidebar, matching
+ * TRAILING_BUTTON, because that is the surface these sit on.
+ *
  * A constant rather than a component, because the call sites need to be five
  * different elements — a plain button, a popover trigger's render prop, an
  * absolutely positioned overlay — and only the box is common to them. Each site
  * adds its own placement; see the manifest entry for the axis they share. */
 export const SIDEBAR_V2_ICON_BUTTON_CLASS =
-  "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground";
+  "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11";
 
 /** Does a card's *title* step back?
  *

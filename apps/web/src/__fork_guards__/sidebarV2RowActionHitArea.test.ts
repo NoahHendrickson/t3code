@@ -56,7 +56,7 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // Fork-owned, in custom/, so the upstream file carries the call sites and
     // not the rule — and so the project header's plus can share the exact box
     // rather than a copy of it.
-    const declaration = /export const SIDEBAR_V2_ICON_BUTTON_CLASS =\s*([\s\S]{0,400}?);/u.exec(
+    const declaration = /export const SIDEBAR_V2_ICON_BUTTON_CLASS =\s*"([^"]*)"/u.exec(
       rowPolicy,
     )?.[1];
     expect(declaration).toBeDefined();
@@ -64,6 +64,16 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // without it the box is bigger but still guesswork.
     expect(declaration).toContain("size-6");
     expect(declaration).toContain("hover:bg-foreground/10");
+    // 24px is the WCAG 2.5.8 floor exactly. The row actions are hover-gated so
+    // never meet a coarse pointer, but the project header's plus is always
+    // rendered — hence the 44px expansion ui/button and the chrome rows'
+    // trailing buttons already carry, spent here once for all five.
+    expect(declaration).toContain("pointer-coarse:after:min-h-11");
+    expect(declaration).toContain("pointer-coarse:after:min-w-11");
+    // The expansion is an ::after, so the box has to be a containing block.
+    expect(declaration).toMatch(/(?:^|\s)relative(?:\s|$)/u);
+    // Keyboard focus needs the edge the hover fill draws, for the same reason.
+    expect(declaration).toContain("focus-visible:ring-2");
   });
 
   it("renders every row action from the shared class", () => {
@@ -108,19 +118,35 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // padded px-2.5 against px-3), and the chrome rows' inset covers the rest
     // — see the CONTROL_ROW note in custom/SidebarV2ChromeRows.tsx. Drop any
     // one of these and that row's icon steps out of the column on its own.
-    const cardActions = /"col-start-1 row-start-1 ([^"]*)"/u.exec(sidebarV2)?.[1];
-    expect(cardActions).toContain("-me-1");
+    const cardActions = /"([^"]*col-start-1 row-start-1 -me-1[^"]*)"/u.exec(sidebarV2)?.[1];
+    expect(cardActions).toBeDefined();
+    // Positioned, so the actions share a paint layer with the status span the
+    // crossfade turns into a stacking context — see the note at the call site.
+    expect(cardActions).toContain("relative");
     const slimNudges = [...sidebarV2.matchAll(/"absolute inset-y-0 right-0 ([^"]*)"/gu)];
     expect(slimNudges.length).toBe(3);
     for (const nudge of slimNudges) expect(nudge[1]).toContain("-me-0.5");
     // The chrome rows' share of the same axis: 4px, and only 4px — the list
     // pays for its own scroll gutter now (fork-sidebar-chrome guards that), so
     // a scrollbar term reappearing here would double-count it.
-    expect(chromeRows).toContain("pe-1");
-    expect(chromeRows).not.toContain("pe-[calc(var(--app-scrollbar-width)");
-    // 16px icons, matching the marks they line up with. At size-5 they were
-    // the only 20px glyphs in the column.
-    expect(chromeRows).not.toMatch(/<(?:PlusCircle|FolderOpen)Icon className="size-5/u);
+    //
+    // Matched against the token rather than against one spelling of it. The
+    // realistic sync outcome is a conflict resolved by keeping both terms —
+    // `gap-1 pe-1 pe-[var(--app-scrollbar-width)]` — which is the exact
+    // double-count this exists to catch and which a needle written as
+    // `pe-[calc(var(--app-scrollbar-width)` sails through, that spelling having
+    // never appeared in any revision of the file. Likewise `pe-1` as a
+    // substring also accepts `pe-1.5` and `pe-10`, so it is bounded.
+    expect(chromeRows).toMatch(/\bpe-1\b(?!\.)/u);
+    expect(chromeRows).not.toMatch(/pe-\[[^\]]*--app-scrollbar-width/u);
+    // 16px icons, matching the marks they line up with. Asserted positively:
+    // a negative on `size-5` is anchored to class order and walks straight
+    // through `className="shrink-0 size-5"`.
+    for (const name of ["PlusCircleIcon", "FolderOpenIcon"]) {
+      const tag = new RegExp(`<${name} className="([^"]*)"`, "u").exec(chromeRows)?.[1];
+      expect(tag, `${name} is not rendered in the chrome rows`).toBeDefined();
+      expect(tag).toMatch(/\bsize-4\b/u);
+    }
     // The shelf headers' chevrons, 4px the other way: their row is px-2.5,
     // so a flush 12px glyph centres 6px in where a card's mark takes 8.
     const chevrons = [...sidebarV2.matchAll(/"me-1 size-3 ([^"]*)"/gu)];
