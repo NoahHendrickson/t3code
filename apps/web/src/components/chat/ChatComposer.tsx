@@ -2769,7 +2769,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                               ? "Enable a provider in Settings to send a message"
                               : phase === "disconnected"
                                 ? "Ask for follow-up changes or attach images"
-                                : "Ask anything, @tag files/folders, $use skills, or / for commands"
+                                : /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                                  // Absolute placeholder is invisible to the wrap latch. Slim shortens
+                                  // the hint so @/$/ stay discoverable instead of truncating them away.
+                                  isComposerSlim
+                                  ? "Ask anything, @tag, $skills, / commands"
+                                  : /* fork:end fork-composer-shell */
+                                    "Ask anything, @tag files/folders, $use skills, or / for commands"
                   }
                   disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
                 />

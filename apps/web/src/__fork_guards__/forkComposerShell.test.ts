@@ -303,6 +303,30 @@ describe("fork guard: fork-composer-shell", () => {
     ).toBe("tall");
   });
 
+  it("shortens the empty-state hint in the slim shell instead of truncating it", () => {
+    // The absolute placeholder is invisible to the wrap latch (empty prompt ⇒
+    // latch false; placeholder only exists when empty). Truncating the 64-char
+    // default hint would eat `$use skills` / `/ commands`, which have no other
+    // discovery surface — so slim uses a shorter string that still names all
+    // three affordances, and tall keeps the long one.
+    expect(chatComposer).toMatch(
+      /isComposerSlim\s*\?\s*"Ask anything, @tag, \$skills, \/ commands"/u,
+    );
+    expect(chatComposer).toContain(
+      "Ask anything, @tag files/folders, $use skills, or / for commands",
+    );
+    // Truncation was considered and declined: no ellipsis rule on the
+    // placeholder sibling, so a sync that reintroduces one is a regression.
+    const rules = cssRules(theme);
+    const placeholderTruncate = rules.find(
+      (rule) =>
+        rule.selector.includes('[data-testid="composer-editor"]') &&
+        rule.selector.includes("~") &&
+        (rule.body.includes("text-overflow") || rule.body.includes("ellipsis")),
+    );
+    expect(placeholderTruncate, "slim placeholder must not truncate").toBeUndefined();
+  });
+
   it("keeps the branch controls reachable while collapsed, and gates modes on approval", () => {
     // Two upstream behaviours the control row has to preserve. Upstream showed
     // BranchToolbar while collapsed (gated on showComposerContextStrip alone),
