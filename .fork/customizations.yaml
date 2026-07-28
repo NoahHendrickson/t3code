@@ -26,10 +26,14 @@
 
 - id: ci-on-custom
   intent: >
-    Direct pushes to the custom branch run the full CI suite. Upstream's CI
-    triggers on pull_request and pushes to main only; custom is this fork's
-    working branch, so a push to it (like a merged sync) must be validated
-    the same way main is upstream.
+    CI runs on pushes to custom and does not run on pushes to main. Custom is
+    this fork's working branch, so a push to it (like a merged sync) must be
+    validated the way main is upstream. Main is the opposite: a pure upstream
+    mirror whose every commit upstream CI already validated, so running the
+    fork's CI there is pure spend — and since the mirror push authenticates
+    with a deploy key (see fork-sync-mirror.yml), which unlike GITHUB_TOKEN
+    does trigger push workflows, main must stay out of the push trigger list
+    or every hourly mirror advance schedules a full CI run.
   tier: 4
   files: []
   shadows: []
@@ -101,6 +105,27 @@
     - .github/workflows/release.yml
   verify:
     - apps/web/src/__fork_guards__/releaseUpstreamOnly.test.ts
+
+- id: relay-upstream-only
+  intent: >
+    The relay production deploy never runs from this fork. deploy-relay.yml
+    fires on every push to main and deploys with live Cloudflare, PlanetScale,
+    Clerk and APNs credentials; on the fork a push to main is the hourly
+    mirror advancing over unreviewed upstream code, authenticated by a deploy
+    key that — unlike GITHUB_TOKEN — does trigger push workflows. Before this
+    gate existed the runs were stopped only by the same two accidents
+    release-upstream-only records: Blacksmith runner labels the fork cannot
+    schedule, and token loop-prevention the deploy key retired. Gate the job
+    on the repository being upstream, independent of runner labels, so
+    installing Blacksmith here can never start deploying production from the
+    fork.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - .github/workflows/deploy-relay.yml
+  verify:
+    - apps/web/src/__fork_guards__/relayUpstreamOnly.test.ts
 
 - id: fork-desktop-release
   intent: >

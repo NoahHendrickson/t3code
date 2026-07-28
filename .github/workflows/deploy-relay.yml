@@ -17,6 +17,9 @@ concurrency:
 jobs:
   deploy_relay:
     name: Deploy production relay
+    # fork:begin relay-upstream-only — see .fork/customizations.yaml#relay-upstream-only
+    if: github.repository == 'pingdotgg/t3code'
+    # fork:end relay-upstream-only
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 15
     environment:

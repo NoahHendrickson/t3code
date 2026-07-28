@@ -4,8 +4,11 @@ on:
   pull_request:
   push:
     branches:
-      - main
       # fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom
+      # `main` is deliberately absent on the fork: it is a pure upstream
+      # mirror whose commits upstream CI has already validated, and mirror
+      # pushes authenticate with a deploy key, which — unlike GITHUB_TOKEN —
+      # triggers `push` workflows.
       - custom
       # fork:end ci-on-custom
 
