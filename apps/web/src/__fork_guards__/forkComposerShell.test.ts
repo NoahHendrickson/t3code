@@ -190,14 +190,38 @@ describe("fork guard: fork-composer-shell", () => {
     // phantom thumb. The wrapper owns the cap; the editor clips ink and stays
     // unclamped. Scoped to the same >=40rem media as the line box — below that
     // upstream's editor scroll behaviour is correct and must stay alone.
+    //
+    // Routed through cssRules (with atRules) rather than a bare @media…[\s\S]
+    // regex: theme.custom.css has one media query today, so a prefix match was
+    // satisfied by any placement within ~1200 chars of it — including after the
+    // block's closing brace. Hoisting these rules out of the media stayed green.
     expect(chatComposer).toContain('data-fork-composer-prompt="true"');
-    expect(theme).toMatch(
-      /@media\s*\(\s*width\s*>=\s*40rem\s*\)[\s\S]{0,1200}\[data-fork-composer-prompt\]\s*\{[\s\S]{0,120}max-height:\s*12\.5rem[\s\S]{0,80}overflow-y:\s*auto/u,
+    const rules = cssRules(theme);
+    const inDesktopLineBoxMedia = (rule: (typeof rules)[number]) =>
+      rule.atRules.some((at) => /@media\s*\(\s*width\s*>=\s*40rem\s*\)/u.test(at));
+
+    const scrollport = rules.find(
+      (rule) =>
+        inDesktopLineBoxMedia(rule) &&
+        rule.selector.includes("[data-fork-composer-prompt]") &&
+        !rule.selector.includes('[data-testid="composer-editor"]'),
     );
-    expect(theme).toMatch(
-      /@media\s*\(\s*width\s*>=\s*40rem\s*\)[\s\S]{0,1600}\[data-fork-composer-prompt\][\s\S]{0,120}\[data-testid="composer-editor"\]\s*\{[\s\S]{0,120}max-height:\s*none[\s\S]{0,80}overflow-y:\s*hidden/u,
+    expect(scrollport, "desktop prompt scrollport rule missing or unscoped").toBeDefined();
+    expect(scrollport!.body).toMatch(/max-height:\s*12\.5rem/u);
+    expect(scrollport!.body).toMatch(/overflow-y:\s*auto/u);
+
+    const editor = rules.find(
+      (rule) =>
+        inDesktopLineBoxMedia(rule) &&
+        rule.selector.includes("[data-fork-composer-prompt]") &&
+        rule.selector.includes('[data-testid="composer-editor"]'),
     );
-    // An imperative attribute toggle is the failure mode this replaces.
+    expect(editor, "desktop editor unclamp rule missing or unscoped").toBeDefined();
+    expect(editor!.body).toMatch(/max-height:\s*none/u);
+    expect(editor!.body).toMatch(/overflow-y:\s*hidden/u);
+
+    // An imperative attribute toggle is the failure mode this replaces — see
+    // .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md#fork-composer-shell.
     expect(theme).not.toContain("data-composer-prompt-scrollable");
     expect(chatComposer).not.toContain("data-composer-prompt-scrollable");
   });
