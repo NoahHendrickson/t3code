@@ -220,6 +220,19 @@ describe("fork guard: fork-composer-shell", () => {
     expect(editor!.body).toMatch(/max-height:\s*none/u);
     expect(editor!.body).toMatch(/overflow-y:\s*hidden/u);
 
+    // The editor's clip does not cover its siblings: the placeholder's line
+    // box overhangs its inset-0 box by a pixel at 14/16, and abspos overflow
+    // propagates to the wrapper's scrollable overflow — a thumb that appears
+    // only while the prompt is empty. The siblings clip like the editor does.
+    const siblings = rules.find(
+      (rule) =>
+        inDesktopLineBoxMedia(rule) &&
+        rule.selector.includes("[data-fork-composer-prompt]") &&
+        /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector),
+    );
+    expect(siblings, "desktop placeholder clip rule missing or unscoped").toBeDefined();
+    expect(siblings!.body).toMatch(/overflow-y:\s*hidden/u);
+
     // An imperative attribute toggle is the failure mode this replaces — see
     // .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md#fork-composer-shell.
     expect(theme).not.toContain("data-composer-prompt-scrollable");

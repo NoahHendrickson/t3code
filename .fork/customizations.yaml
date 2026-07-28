@@ -938,8 +938,12 @@
     inflate scrollHeight on the editor, so upstream's max-h + overflow-y:auto
     there painted a phantom thumb on a single line. The wrapper owns the
     12.5rem cap (upstream max-h-50); the editor stays unclamped and clips its
-    ink. Scoped to the same >=40rem media as the line box — below that the
-    prompt stays on leading-relaxed and upstream's editor scroll is left alone.
+    ink. The editor's siblings — Lexical's placeholder and spacer — clip the
+    same way, because the placeholder's overhanging line box otherwise reaches
+    the wrapper's scrollable overflow through its abspos box and paints the
+    thumb on an empty prompt only. Scoped to the same >=40rem media as the
+    line box — below that the prompt stays on leading-relaxed and upstream's
+    editor scroll is left alone.
     The prompt and its placeholder are set by one rule and must stay that way:
     they are two elements stacked exactly on top of each other, and any
     disagreement about size or leading puts the caret beside the text it
