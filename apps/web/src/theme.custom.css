@@ -70,10 +70,13 @@
 /* ---------------------------------------------------------------------------
    Surface palette (dark only) — see `.fork/customizations.yaml#fork-surface-palette`.
 
-   The shell moves off pure black. The workspace stage is #212121 and the
-   sidebar panel is #1e1e1e, so the panel sits *below* the stage rather than
-   lifting off it — the inverse of upstream's "surfaces lift from the base"
-   model, and deliberate: the panel is chrome, the stage is the work.
+   The shell moves off pure black. The workspace stage is #191919 and the
+   sidebar panel is #1e1e1e — chrome sits slightly in front of the work
+   surface (panel above stage). Stage #191919 is a judgement call that also
+   closes the seam with upstream's #161616 pre-paint / overscroll colour in
+   `apps/web/index.html`. Stage-scoped `--border: #2d2e2e` was kept: on the
+   darker stage it reads a touch stronger than against the old #212121, which
+   is fine for a hairline.
 
    Two blocks, not one, and the second is not redundant. Upstream re-declares
    --background / --card / --border and the whole --sidebar-* family *on the
@@ -89,26 +92,21 @@
    upstream's zinc hierarchy.
 
    NOTE: only the v2 panel is repainted. v1 keeps upstream's black panel so the
-   beta toggle stays a real A/B, which does mean a v1 sidebar sits against the
-   new #212121 stage. The stage is global chrome and has no sidebar-version
-   attribute to key off. */
+   beta toggle stays a real A/B. Darkening the stage toward that black panel
+   narrows the v1 edge — accepted cost of sitting near the #161616 pre-paint.
+   The stage is global chrome and has no sidebar-version attribute to key off. */
 :root[data-fork="noahhendrickson-t3code"].dark {
-  --background: #212121;
+  --background: #191919;
   --border: #2d2e2e;
   /* Upstream lays a 0.035-opacity white noise over every chrome surface
      (`@utility surface-grain`, applied to the sidebar shell and the workspace
-     inset). It was calibrated against a #000 shell, where a mean lift of ~+2.8
-     is invisible. On these surfaces it is not: measured, it carries the sidebar
-     panel from #1e1e1e to ~#212121 — which is the stage's colour. The workspace
-     keeps its drawn value only because the chat content paints over the grain
-     opaquely, so the net effect is that the panel climbs to meet the stage and
-     the three-level separation this whole palette is built on disappears.
-
-     Dropped rather than dialled down: the opacity that would keep the panel
-     within a level of spec is ~0.008, at which point there is no texture left
-     to preserve, only an unspecified amount of drift on every surface. Light
-     mode keeps upstream's grain — its surfaces are unchanged, so the original
-     calibration still holds. */
+     inset). It was calibrated against a #000 shell. On these surfaces any
+     useful grain opacity compounds unspecified drift into fills this palette
+     freezes as flat opaque sRGB — the opacity that would keep drift within a
+     level of the panel is ~0.008, at which point there is no texture left to
+     preserve. Dropped rather than dialled down. Light mode keeps upstream's
+     grain — its surfaces are unchanged, so the original calibration still
+     holds. */
   --surface-grain: none;
 }
 

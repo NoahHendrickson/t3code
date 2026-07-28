@@ -297,16 +297,21 @@
 
 - id: fork-surface-palette
   intent: >
-    The dark shell is not black. The workspace stage is #212121 and the sidebar
-    v2 panel is #1e1e1e, so the panel sits below the stage rather than lifting
-    off it — the inverse of upstream's "surfaces lift from the base" model, and
-    deliberate: the panel is chrome, the stage is the work. Borders are #2d2e2e,
-    row hover #262626, row selected and route-active #2a2a2a.
+    The dark shell is not black. The workspace stage is #191919 and the sidebar
+    v2 panel is #1e1e1e — the panel sits slightly above the stage so chrome
+    reads in front of the work surface. Borders are #2d2e2e, row hover #262626,
+    row selected and route-active #2a2a2a.
+
+    The stage stays near upstream's pre-paint / overscroll colour (#161616 in
+    apps/web/index.html) so the load flash and rubber-band band do not seam
+    against the hydrated stage.
 
     Every value is flat opaque sRGB, not an alpha over the panel. Alpha
     compounds — a fill inside a hovered row inside a selected row lands on a
     colour nobody specified — and these are only correct against #1e1e1e
-    anyway, so freezing them is honest about that.
+    anyway, so freezing them is honest about that. Dark mode therefore clears
+    surface grain: upstream's noise would compound unspecified drift onto every
+    chrome surface this palette freezes.
 
     Two blocks are required and the second is not redundant: upstream
     re-declares --background, --card, --border and the whole --sidebar-* family
@@ -323,6 +328,7 @@
   shadows: []
   watch:
     - apps/web/src/index.css
+    - apps/web/index.html
   verify:
     - apps/web/src/__fork_guards__/forkSurfacePalette.test.ts
 

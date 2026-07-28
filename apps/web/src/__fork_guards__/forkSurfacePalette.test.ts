@@ -8,12 +8,14 @@
  * evaporates with a green checkmark. These tests turn that into a red one.
  *
  * The load-bearing invariant here is not "the hexes are these hexes" — it is
- * that the override reaches the sidebar panel at all. Upstream re-declares
- * `--background` / `--card` / `--border` and the whole `--sidebar-*` family on
- * the panel element itself, so a fork rule written only against `:root` is
- * inert on exactly the surface the design is about, and inert in a way that
- * looks fine in a diff. Most of what follows is therefore about the doubled
- * selector.
+ * that the override reaches the sidebar panel at all, and that the panel/stage
+ * relationship the intent names stays true. Upstream re-declares `--background`
+ * / `--card` / `--border` and the whole `--sidebar-*` family on the panel
+ * element itself, so a fork rule written only against `:root` is inert on
+ * exactly the surface the design is about, and inert in a way that looks fine
+ * in a diff. Most of what follows is therefore about the doubled selector —
+ * plus a derived ordering check so a value tweak that silently inverts the
+ * hierarchy cannot keep CI green.
  */
 
 import * as NodeFS from "node:fs";
@@ -46,17 +48,79 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
+function declarationHex(block: string, prop: string): string {
+  const pattern = new RegExp(`${escapeRegExp(prop)}:\\s*(#[0-9a-f]{6})`, "iu");
+  const match = pattern.exec(block);
+  expect(match, `no ${prop} hex in block`).not.toBeNull();
+  return (match?.[1] ?? "").toLowerCase();
+}
+
+function parseHex(hex: string): readonly [number, number, number] {
+  const match = /^#([0-9a-f]{6})$/iu.exec(hex.trim());
+  expect(match, `expected #rrggbb, got ${hex}`).not.toBeNull();
+  const n = Number.parseInt(match?.[1] ?? "0", 16);
+  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
+}
+
+function srgbToLinear(channel: number): number {
+  const c = channel / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = parseHex(hex);
+  return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
+}
+
+/** CIE L* from relative luminance (D65 / sRGB). */
+function lStar(hex: string): number {
+  const y = relativeLuminance(hex);
+  return y > 0.008856 ? 116 * y ** (1 / 3) - 16 : 903.3 * y;
+}
+
+function hexesIn(...blocks: readonly string[]): string[] {
+  const found = new Set<string>();
+  for (const block of blocks) {
+    for (const match of block.matchAll(/#[0-9a-f]{6}/giu)) {
+      found.add(match[0].toLowerCase());
+    }
+  }
+  return [...found];
+}
+
 const theme = readSibling("../theme.custom.css");
+const indexHtml = readSibling("../../index.html");
 
 const STAGE = [`${MARKER}.dark`];
 const PANEL = [`${MARKER}.dark`, '[data-sidebar-version="v2"]'];
 
 describe("fork guard: fork-surface-palette", () => {
   it("repaints the workspace stage off black", () => {
-    // Upstream's dark base is neutral-950. If this block goes, the sidebar
-    // stays #1e1e1e against a near-black stage and the panel reads as a hole
-    // rather than as chrome.
-    expect(blockFor(theme, STAGE)).toContain("--background: #212121");
+    // Upstream's dark base is near-black / #161616 pre-paint. Losing this
+    // block drops the stage onto that base and leaves the #1e1e1e panel as the
+    // only lifted surface — chrome without a distinct work plane under it.
+    expect(blockFor(theme, STAGE)).toContain("--background: #191919");
+  });
+
+  it("keeps the panel above the stage, as the intent names", () => {
+    // Intent: fork-surface-palette. Assert the ordering, not only the
+    // constants — a value tweak is fine, silently inverting the hierarchy is
+    // not. ΔL* > 2 is "perceptible on a large flat field" for this chrome.
+    const stage = declarationHex(blockFor(theme, STAGE), "--background");
+    const panel = declarationHex(blockFor(theme, PANEL), "--background");
+    expect(relativeLuminance(panel)).toBeGreaterThan(relativeLuminance(stage));
+    expect(Math.abs(lStar(panel) - lStar(stage))).toBeGreaterThan(2);
+  });
+
+  it("keeps the stage near upstream's pre-paint colour", () => {
+    // apps/web/index.html hardcodes #161616 for dark theme-color / body /
+    // DARK_BACKGROUND. The stage must stay close enough that the load flash
+    // and overscroll band do not seam against the hydrated shell.
+    const prePaint = "#161616";
+    expect(indexHtml).toContain(prePaint);
+    expect(indexHtml).toMatch(/DARK_BACKGROUND\s*=\s*"#161616"/u);
+    const stage = declarationHex(blockFor(theme, STAGE), "--background");
+    expect(Math.abs(lStar(stage) - lStar(prePaint))).toBeLessThan(3);
   });
 
   it("repaints the sidebar v2 panel through its own selector, not just :root", () => {
@@ -99,12 +163,10 @@ describe("fork guard: fork-surface-palette", () => {
     expect(panel).toContain("--sidebar-control-surface: #303030");
   });
 
-  it("clears the grain that would erase the panel/stage separation", () => {
-    // Measured, not assumed: upstream's 0.035 noise lifts the sidebar panel
-    // from #1e1e1e to ~#212121 — the stage's colour — because the chat content
-    // paints over the workspace copy of the grain but nothing paints over the
-    // sidebar's. Losing this line silently collapses the three-level separation
-    // every other value in this block is built around.
+  it("clears the grain that would compound drift onto flat surfaces", () => {
+    // Kept for the flat-opaque reason alone. Upstream's 0.035 noise was
+    // calibrated against #000; on these surfaces any useful opacity leaves
+    // unspecified drift on every chrome fill this palette freezes.
     expect(blockFor(theme, STAGE)).toContain("--surface-grain: none");
   });
 
@@ -112,11 +174,11 @@ describe("fork guard: fork-surface-palette", () => {
     // The design is dark-only. A fork surface value that escaped its `.dark`
     // scope would paint a #1e1e1e panel into the light theme.
     //
-    // Every marker-rooted block is checked, not only the one whose selector is
-    // exactly the bare marker: a hex leaked into
-    // `:root[marker] .some-descendant { }` is just as wrong and the narrower
-    // form missed it.
-    const surfaceHexes = ["#212121", "#1e1e1e", "#2d2e2e", "#2a2a2a", "#262626"];
+    // Hexes are collected from the stage and panel blocks rather than
+    // hand-listed: editing one and forgetting the other left the safety net
+    // silently backing up a palette it no longer matched.
+    const surfaceHexes = hexesIn(blockFor(theme, STAGE), blockFor(theme, PANEL));
+    expect(surfaceHexes.length).toBeGreaterThan(0);
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
     );
