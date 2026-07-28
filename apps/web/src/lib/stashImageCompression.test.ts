@@ -117,15 +117,26 @@ describe("compressImageForStash", () => {
     expect(close).toHaveBeenCalled();
   });
 
-  it("reports too-large when even the smallest encoding overflows the budget", async () => {
-    const { close } = stubCanvasPipeline(() => 8_000_000);
+  // fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+  // The give-up path runs all 15 encodes (3 dimension passes x 5 quality
+  // steps) with the stub returning 8 MB each, pushing ~120 MB through chunked
+  // base64 before concluding "too large". That deterministic work sits at the
+  // margin of the default 15 s on GitHub-hosted runners, which are slower
+  // than the Blacksmith runners upstream tunes against.
+  it(
+    "reports too-large when even the smallest encoding overflows the budget",
+    { timeout: 60_000 },
+    async () => {
+      const { close } = stubCanvasPipeline(() => 8_000_000);
 
-    const result = await compressImageForStash(makeFile(9_000_000));
+      const result = await compressImageForStash(makeFile(9_000_000));
 
-    expect(result).toEqual({ ok: false, reason: "too-large" });
-    // The bitmap must still be released on the give-up path.
-    expect(close).toHaveBeenCalled();
-  });
+      expect(result).toEqual({ ok: false, reason: "too-large" });
+      // The bitmap must still be released on the give-up path.
+      expect(close).toHaveBeenCalled();
+    },
+  );
+  // fork:end ci-runners
 
   it("reports too-large for an oversized image when the browser cannot re-encode", async () => {
     vi.stubGlobal("createImageBitmap", undefined);

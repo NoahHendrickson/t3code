@@ -49,11 +49,21 @@
     is installed on pingdotgg but not on this fork, so upstream's labels queue
     forever here. If Blacksmith is ever installed on the fork, this
     customization can be retired wholesale.
+
+    Upstream tests tuned to Blacksmith's speed can sit close enough to their
+    timeout to fail deterministically on the slower hosted runners; those get
+    a fenced per-test timeout raise rather than a product change, because the
+    underlying cost is upstream's to fix and diverging in hot upstream logic
+    buys a conflict on every sync. Current carrier:
+    stashImageCompression.test.ts's give-up path (~15 encodes of an 8 MB stub
+    through chunked base64 — deterministic work, not flake). No guard asserts
+    these hunks; losing one turns CI red by itself, which is the enforcement.
   tier: 4
   files: []
   shadows: []
   watch:
     - .github/workflows/ci.yml
+    - apps/web/src/lib/stashImageCompression.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
@@ -535,6 +545,13 @@
     bold run competing with it. The project favicon is gone — it sat left of a
     name that already said the same thing, in a header whose left half is
     fighting three action pills for width.
+
+    The project breadcrumb is upstream's new-thread button (#4638): click,
+    aria-label and tooltip are upstream behaviour that must track upstream
+    through syncs. The fork owns only its presentation — no favicon, semibold
+    name, muted colour on the trigger. Those behaviour lines sit inside the
+    fork fence, so a sync will not re-apply upstream changes to them
+    automatically; port upstream's intent by hand when that hunk drifts.
 
     Those three controls (Add action / Open / PR) become fully-rounded split
     pills. They were already built from the right primitives — a Group wrapping
