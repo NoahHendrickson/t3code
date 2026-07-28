@@ -615,10 +615,12 @@
     the latch survive thread switches, and "only an empty prompt turns it off"
     is a rule about one composing session, not the component's lifetime.
     Which controls sit where is the whole point. Inside the box: the model
-    pill, the effort pill, and the send/stop button. On a release build the send
-    button is flat pure white with a black icon
+    pill, the effort pill, and the send/stop button. In dark mode a send
+    button without stage-channel art — any stage label that is not Dev/Nightly
+    — is flat pure white with a black icon
     (data-fork-composer-send-tone="flat"); Dev and Nightly keep the
-    stage-channel fill. Everything else is on the
+    stage-channel fill, and light builds keep upstream's fill. Everything else
+    is on the
     control row below it — runtime mode ("Auto"), interaction mode ("Build"),
     the plan-sidebar toggle, the context meter, the preparing-worktree line,
     the no-provider badge, and, at the row's right end, the worktree/branch
@@ -714,8 +716,9 @@
     # sibling of the composer.
     - apps/web/src/components/ChatView.tsx
     # data-fork-composer-action on the send and stop buttons; the whole 24px
-    # square restyle hangs off it. Release send also carries
-    # data-fork-composer-send-tone="flat" for the white/black fill.
+    # square restyle hangs off it. Send also carries
+    # data-fork-composer-send-tone ("channel" with stage art, "flat"
+    # otherwise) for the dark-mode white/black fill.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
     # The glass-shell pseudo-elements and .chat-composer-context-strip this
     # customization switches off. An upstream rework of that paint would leave

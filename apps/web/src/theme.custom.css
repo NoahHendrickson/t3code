@@ -434,12 +434,13 @@
   border-radius: 6px;
 }
 
-/* Release send: flat pure white with a black icon. Dev/Nightly keep the
-   stage-channel fill (tone="channel"); the attribute is set from
-   ComposerPrimaryActions so a missing art wrapper cannot silently leave the
-   release button on upstream's primary purple. Unlayered, so this beats any
-   leftover Tailwind fill utilities without a hover twin. */
-:root[data-fork="noahhendrickson-t3code"]
+/* Flat send (tone="flat"): in dark mode, a send button without stage-channel
+   art — any stage label that is not Dev/Nightly — is flat pure white with a
+   black icon. Dev/Nightly keep the stage-channel fill (tone="channel").
+   Unlayered, so this beats upstream's Tailwind fill; the fenced attribute
+   survives upstream className rewrites. Unmarked or light builds never match
+   and fall through to upstream's primary fill. */
+:root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
   background: #ffffff;
   color: #000000;
