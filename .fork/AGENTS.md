@@ -97,6 +97,15 @@ checkout of this same repo — the way `.repos` already was. Keep those fences i
 - Resolve a sync conflict by keeping upstream's version of a customized file without porting the
   intent recorded in the manifest.
 
+## Auditing fences with grep
+
+`apps/web/src/components/chat/ChatComposer.tsx` — the fork's densest fenced file — contains raw
+NUL bytes (upstream's stash snapshot keys use `\0` delimiters inside template literals), so plain
+`grep` classifies it as binary and reports **zero matches with exit 0**. Every ad-hoc fence audit
+must use `grep -a` (or `rg`, or read the file) or it will silently skip the file that matters
+most. The automated checks (`detect-drift.mjs`, `lint-owned.mjs`, the guards) read files directly
+and are unaffected.
+
 ## Verify before pushing
 
 Run the guard suite plus focused tests for what you touched (per the root `AGENTS.md` policy —

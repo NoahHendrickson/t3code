@@ -84,9 +84,30 @@ describe("fork guard: fork-workspace-header", () => {
   it("inverts the project/title weight and drops the favicon", () => {
     // The project is the landmark; the title is prose. Reverting either half
     // gives two competing bold runs, which is what upstream had.
-    expect(chatHeader).toMatch(/font-semibold text-muted-foreground/u);
+    //
+    // The semibold must be anchored to the project name itself. A loose
+    // class-pair match also hits the `/` separator, which keeps the test green
+    // after the name reverts to upstream's font-medium — the exact
+    // tripwire-dressed-as-proof failure the pill-scoping test above was
+    // rewritten to eliminate.
+    expect(chatHeader).toMatch(/text-sm font-semibold">\{activeProjectName\}/u);
+    // The muted colour lives on the breadcrumb trigger and cascades to the
+    // name; hover restores foreground, which is upstream's affordance.
+    expect(chatHeader).toMatch(
+      /aria-label=\{`New thread in \$\{activeProjectName\}`\}[\s\S]{0,400}text-muted-foreground/u,
+    );
     expect(chatHeader).toMatch(/truncate text-sm font-normal text-foreground/u);
     expect(chatHeader).not.toContain("ProjectFavicon");
+  });
+
+  it("keeps upstream's new-thread breadcrumb behaviour under the fork presentation", () => {
+    // #4638 made the breadcrumb a new-thread button, and the resolution kept
+    // the behaviour inside the fork fence — so a future sync treats these
+    // lines as fork-owned and will not re-apply them from upstream. Without
+    // this check, dropping the click silently loses an upstream feature with
+    // CI green.
+    expect(chatHeader).toContain("onClick={onNewThreadInProject}");
+    expect(chatHeader).toMatch(/TooltipPopup side="top">New thread in \{activeProjectName\}/u);
   });
 
   it("maps the panel toggles to the design's half-square glyphs", () => {
