@@ -37,10 +37,15 @@ jobs:
       old: ${{ steps.sync.outputs.old }}
       new: ${{ steps.sync.outputs.new }}
     steps:
+      # The default GITHUB_TOKEN can never hold the `workflows` permission, so a
+      # fast-forward range that touches .github/workflows/* is rejected at push
+      # time. The FORK_SYNC_PUSH_KEY deploy key (read-write, repo-scoped) pushes
+      # over SSH, which is exempt from that token restriction.
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
+          ssh-key: ${{ secrets.FORK_SYNC_PUSH_KEY }}
 
       - name: Fast-forward main from upstream
         id: sync
