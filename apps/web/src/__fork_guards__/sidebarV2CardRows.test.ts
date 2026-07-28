@@ -53,6 +53,12 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // git cwd and env mode come from, or the mark and the row disagree.
     expect(sidebarV2).toContain("hasWorktree={thread.worktreePath !== null}");
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    // The slot's own gate, not just the ternary inside it. An earlier revision
+    // nested the whole slot under `props.branch ?`, and this guard passed
+    // throughout — the prop and the ternary were both present, and a substring
+    // never says where the ternary sits. A worktree with no branch drew
+    // nothing. Pinning the outer condition is what makes that regression fail.
+    expect(meta).toContain("props.hasWorktree || props.branch ?");
     expect(meta).toContain("props.hasWorktree ?");
     expect(meta).toContain("<WorktreeIcon");
     // Decorative marks carry nothing to a screen reader, so the distinction
