@@ -22,8 +22,11 @@ on:
     - cron: "23 * * * *"
   workflow_dispatch:
 
+# `contents` stays read-only on purpose: the mirror pushes with the
+# FORK_SYNC_PUSH_KEY deploy key, not the token, so a missing key fails the
+# preflight below unambiguously instead of half-working on token auth.
 permissions:
-  contents: write
+  contents: read
   issues: write
 
 concurrency:
@@ -31,16 +34,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # SECURITY INVARIANT: this job's workspace is unreviewed upstream code and
+  # its checkout holds a read-write deploy key. It must never run anything
+  # from the checked-out tree — git plumbing only. Steps that execute repo
+  # content (node, npm ci, vp, scripts) belong in `drift`, which checks out
+  # `custom` and carries no key.
   mirror:
     runs-on: ubuntu-latest
     outputs:
       old: ${{ steps.sync.outputs.old }}
       new: ${{ steps.sync.outputs.new }}
     steps:
+      # If the key is unset, checkout would silently fall back to token auth
+      # and the push would fail later with the same opaque workflow-permission
+      # error this key exists to avoid. Fail here, with the real cause.
+      - name: Require the push key
+        run: |
+          if [ -z "${{ secrets.FORK_SYNC_PUSH_KEY }}" ]; then
+            echo "::error::FORK_SYNC_PUSH_KEY is unset — the mirror push would be rejected on any range touching .github/workflows/*. Restore the deploy-key secret (see .fork/README.md §5)."
+            exit 1
+          fi
+
+      # The default GITHUB_TOKEN can never hold the `workflows` permission, so a
+      # fast-forward range that touches .github/workflows/* is rejected at push
+      # time. The FORK_SYNC_PUSH_KEY deploy key (read-write, repo-scoped) pushes
+      # over SSH, which is exempt from that token restriction.
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
+          ssh-key: ${{ secrets.FORK_SYNC_PUSH_KEY }}
 
       - name: Fast-forward main from upstream
         id: sync
@@ -62,6 +85,44 @@ jobs:
           fi
           git push origin "$new:refs/heads/main"
           echo "Mirrored $(git rev-list --count "$old..$new") upstream commit(s)."
+
+      # A broken mirror is silent from the outside — main just goes stale
+      # (that cost a day in the a148e08197 incident). Surface failures where
+      # the drift signal already lives: a single find-or-create issue.
+      - name: Report failure on the tracking issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "[fork-sync] fork-sync-mirror is failing";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `The hourly mirror job failed — \`main\` is no longer tracking upstream: ${runUrl}`,
+              "",
+              "Until this is fixed, `main` stays stale and drift detection is blind to new upstream changes. See `.fork/README.md` §5.",
+            ].join("\n");
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
 
   drift:
     needs: mirror
