@@ -611,8 +611,9 @@
     it shares with these rows spends 8px of air on the left and 8+6 on the
     right: every card sits visibly off-centre in its own column, and the chrome
     rows above end 6px past where the cards do. The list's end padding gives
-    that 6px back — reading --app-scrollbar-width rather than restating 6px, so
-    the symmetry follows upstream if the scrollbar is ever retuned. The gutter
+    that 6px back — subtracting the measured --sidebar-list-gutter rather than
+    restating 6px, so the symmetry follows whatever gutter the browser actually
+    reserves if the scrollbar is ever retuned. The gutter
     itself stays: the scrollbar keeps its lane, the cards are 8px from both
     edges, and the compensation is meaningless without the gutter that causes
     it, so the two must move together.
@@ -682,9 +683,10 @@
     - apps/web/src/components/SidebarStageBackdrop.test.tsx
     - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
-    # Defines --app-scrollbar-width, which the thread list's end padding reads
-    # to cancel its own scroll gutter. Retiring or renaming that token silently
-    # returns the list to 8px of air on one side and 14px on the other.
+    # Sizes ::-webkit-scrollbar from --app-scrollbar-width, which sets the
+    # gutter useScrollGutterWidth measures for the thread list's end padding.
+    # Retuning the token moves the measured giveback in step; that is the
+    # coupling to re-check when this file's scrollbar styling changes.
     - apps/web/src/index.css
   verify:
     - apps/web/src/__fork_guards__/forkSidebarChrome.test.ts
@@ -1021,8 +1023,9 @@
     # customization switches off. An upstream rework of that paint would leave
     # the fork disabling rules that no longer exist.
     - apps/web/src/index.css
-    # min-h-17.5 on the prompt editor, and the placeholder that has to track the
-    # prompt's type ramp.
+    # min-h-17.5 on the prompt editor, the placeholder that has to track the
+    # prompt's type ramp, and the max-h-50 / overflow-y-auto editor scrollport
+    # that the fork moves onto the prompt wrapper at >=40rem.
     - apps/web/src/components/ComposerPromptEditor.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts

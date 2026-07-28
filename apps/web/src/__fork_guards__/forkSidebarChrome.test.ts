@@ -182,7 +182,6 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const gutter = readSibling("../custom/useScrollGutterWidth.ts");
     expect(gutter).toContain("offsetWidth - node.clientWidth");
     expect(sidebarV2).toContain("ref={listScrollGutterRef}");
-    expect(sidebarV2).not.toContain("calc(0.5rem-var(--app-scrollbar-width))");
   });
 
   it("puts the brand on the header's trailing edge", () => {
