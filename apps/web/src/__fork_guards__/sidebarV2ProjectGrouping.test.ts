@@ -90,8 +90,10 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
       "scopeProjectRef(entry.targetProject.environmentId, entry.targetProject.id)",
     );
     // The unresolved-project section names no project to start in, and is the
-    // one header that must render without the button.
-    expect(sidebar).toContain("header.displayName === null");
+    // one header that must render without the button. Gated on the bucket's own
+    // key rather than on its label being null: the label correlates today, and
+    // one signal carrying two meanings is how it stops correlating later.
+    expect(sidebar).toContain("header.projectKey === UNGROUPED_PROJECT_KEY");
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
     expect(header).toContain("props.onNewThread ?");
     expect(header).toContain("aria-label={`New thread in ${");

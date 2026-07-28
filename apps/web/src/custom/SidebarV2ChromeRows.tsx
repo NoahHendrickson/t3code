@@ -44,6 +44,8 @@ import {
 import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon } from "~/components/ProjectFavicon";
+import { cn } from "~/lib/utils";
+import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
 
 /** Structural on purpose: the four fields these rows read, no more. The row is
     generic over anything satisfying it, so the callbacks hand back upstream's
@@ -73,7 +75,7 @@ export interface SidebarV2ChromeProjectGroup {
  *  own end padding, so both columns end at the same place and only the 4px is
  *  left. Padding rather than a narrower width, so the row's own background, if
  *  it ever gains one, still spans the full column. */
-const CONTROL_ROW = "flex h-9 items-center gap-1 pe-1";
+const CONTROL_ROW = cn("flex h-9 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
 const TRAILING_BUTTON =
   "relative size-8 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 /** Coarse-pointer hit expansion — upstream's trick, kept: the visual button is

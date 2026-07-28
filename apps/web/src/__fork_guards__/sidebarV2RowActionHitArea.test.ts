@@ -26,7 +26,7 @@ function readSibling(relativePath: string): string {
 
 const sidebarV2 = readSibling("../components/SidebarV2.tsx");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
-const rowPolicy = readSibling("../custom/sidebarV2RowPolicy.ts");
+const trailingColumn = readSibling("../custom/sidebarV2TrailingColumn.ts");
 const groupHeader = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
 
 /** Every row action, and how many times each is rendered: "Settle thread" twice
@@ -53,11 +53,12 @@ function openingTags(label: string): string[] {
 
 describe("fork guard: sidebar-v2-row-action-hit-area", () => {
   it("sizes the shared action box at 24px with a visible hover surface", () => {
-    // Fork-owned, in custom/, so the upstream file carries the call sites and
-    // not the rule — and so the project header's plus can share the exact box
+    // Fork-owned, and in a module of its own rather than in sidebarV2RowPolicy,
+    // whose subject is title-recede and row surface. The upstream file carries
+    // call sites, not rules, and the project header's plus shares the exact box
     // rather than a copy of it.
     const declaration = /export const SIDEBAR_V2_ICON_BUTTON_CLASS =\s*"([^"]*)"/u.exec(
-      rowPolicy,
+      trailingColumn,
     )?.[1];
     expect(declaration).toBeDefined();
     // size-6 is the target; the fill is what makes the target legible, and
@@ -77,9 +78,16 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
   });
 
   it("renders every row action from the shared class", () => {
+    // Card-variant sites name the box directly; the three slim-row actions are
+    // one control in three branches of a ternary and read a single shared
+    // placement constant, which is what stopped them being three copies.
     const offenders = ROW_ACTIONS.flatMap(([label]) =>
       openingTags(label)
-        .filter((tag) => !tag.includes("SIDEBAR_V2_ICON_BUTTON_CLASS"))
+        .filter(
+          (tag) =>
+            !tag.includes("SIDEBAR_V2_ICON_BUTTON_CLASS") &&
+            !tag.includes("SIDEBAR_V2_SLIM_ROW_ACTION_CLASS"),
+        )
         .map(() => label),
     );
     expect(offenders).toEqual([]);
@@ -118,14 +126,31 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // padded px-2.5 against px-3), and the chrome rows' inset covers the rest
     // — see the CONTROL_ROW note in custom/SidebarV2ChromeRows.tsx. Drop any
     // one of these and that row's icon steps out of the column on its own.
-    const cardActions = /"([^"]*col-start-1 row-start-1 -me-1[^"]*)"/u.exec(sidebarV2)?.[1];
+    // Every offset is derived in one module now, so this asserts the values
+    // there and that each row reaches for the one meant for it. A row reading
+    // another row's offset is the drift this replaced inline strings to stop.
+    const offsets = /SIDEBAR_V2_TRAILING_OFFSET = \{([\s\S]*?)\} as const;/u.exec(
+      trailingColumn,
+    )?.[1];
+    expect(offsets).toBeDefined();
+    expect(offsets).toMatch(/cardActions:\s*"-me-1"/u);
+    expect(offsets).toMatch(/slimActions:\s*"-me-0\.5"/u);
+    expect(offsets).toMatch(/headerPlus:\s*"-me-0\.5"/u);
+    expect(offsets).toMatch(/shelfChevron:\s*"me-1"/u);
+    expect(offsets).toMatch(/chromeRow:\s*"pe-1"/u);
+    expect(sidebarV2).toContain("SIDEBAR_V2_TRAILING_OFFSET.cardActions");
+    expect(trailingColumn).toContain("SIDEBAR_V2_TRAILING_OFFSET.slimActions");
+    expect(groupHeader).toContain("SIDEBAR_V2_TRAILING_OFFSET.headerPlus");
+    expect(chromeRows).toContain("SIDEBAR_V2_TRAILING_OFFSET.chromeRow");
+    const shelfChevrons = [...sidebarV2.matchAll(/SIDEBAR_V2_TRAILING_OFFSET\.shelfChevron/gu)];
+    expect(shelfChevrons.length).toBe(2);
+    // Positioned, so the card's actions share a paint layer with the status
+    // span the crossfade turns into a stacking context — see the call site.
+    // Matched on w-0, which is the actions wrapper's own collapse and not
+    // something the status span it shares the cell with ever carries.
+    const cardActions = /"([^"]*col-start-1 row-start-1[^"]*\bw-0\b[^"]*)"/u.exec(sidebarV2)?.[1];
     expect(cardActions).toBeDefined();
-    // Positioned, so the actions share a paint layer with the status span the
-    // crossfade turns into a stacking context — see the note at the call site.
     expect(cardActions).toContain("relative");
-    const slimNudges = [...sidebarV2.matchAll(/"absolute inset-y-0 right-0 ([^"]*)"/gu)];
-    expect(slimNudges.length).toBe(3);
-    for (const nudge of slimNudges) expect(nudge[1]).toContain("-me-0.5");
     // The chrome rows' share of the same axis: 4px, and only 4px — the list
     // pays for its own scroll gutter now (fork-sidebar-chrome guards that), so
     // a scrollbar term reappearing here would double-count it.
@@ -137,7 +162,6 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // `pe-[calc(var(--app-scrollbar-width)` sails through, that spelling having
     // never appeared in any revision of the file. Likewise `pe-1` as a
     // substring also accepts `pe-1.5` and `pe-10`, so it is bounded.
-    expect(chromeRows).toMatch(/\bpe-1\b(?!\.)/u);
     expect(chromeRows).not.toMatch(/pe-\[[^\]]*--app-scrollbar-width/u);
     // 16px icons, matching the marks they line up with. Asserted positively:
     // a negative on `size-5` is anchored to class order and walks straight
@@ -149,9 +173,8 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     }
     // The shelf headers' chevrons, 4px the other way: their row is px-2.5,
     // so a flush 12px glyph centres 6px in where a card's mark takes 8.
-    const chevrons = [...sidebarV2.matchAll(/"me-1 size-3 ([^"]*)"/gu)];
+    const chevrons = [...sidebarV2.matchAll(/"size-3 ([^"]*transition-transform[^"]*)"/gu)];
     expect(chevrons.length).toBe(2);
-    for (const chevron of chevrons) expect(chevron[1]).toContain("transition-transform");
   });
 
   it("keeps the status mark out of the hit path it shares a cell with", () => {

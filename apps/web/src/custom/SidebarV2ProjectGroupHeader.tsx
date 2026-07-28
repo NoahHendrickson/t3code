@@ -26,7 +26,10 @@
 import { FolderIcon, PlusIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
-import { SIDEBAR_V2_ICON_BUTTON_CLASS } from "./sidebarV2RowPolicy";
+import {
+  SIDEBAR_V2_ICON_BUTTON_CLASS,
+  SIDEBAR_V2_TRAILING_OFFSET,
+} from "./sidebarV2TrailingColumn";
 
 /** The unresolved-project section: a just-deleted project, or an environment
     whose projects have not loaded yet. Named rather than left blank so the run
@@ -76,9 +79,8 @@ export function SidebarV2ProjectGroupHeader(props: {
               SIDEBAR_V2_ICON_BUTTON_CLASS,
               // ms-auto rather than a spacer: the label truncates, so anything
               // that pushed from the left would have to be told not to shrink.
-              // -me-0.5 is the trailing column's axis from a px-2.5 row, the
-              // same 2px the slim rows' actions take.
-              "-me-0.5 ms-auto",
+              "ms-auto",
+              SIDEBAR_V2_TRAILING_OFFSET.headerPlus,
             )}
           >
             <PlusIcon aria-hidden className="size-4" />
