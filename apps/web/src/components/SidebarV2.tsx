@@ -1053,6 +1053,12 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               projectTitleHidden={props.projectTitleHidden === true}
               /* fork:end sidebar-v2-project-grouping */
               branch={thread.branch}
+              // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+              // The same predicate the row already uses to pick its git cwd and
+              // env mode above, so the mark cannot claim a worktree the rest of
+              // the row is not treating as one.
+              // fork:end sidebar-v2-card-rows
+              hasWorktree={thread.worktreePath !== null}
               prSlot={prBadge}
               prUnknown={prUnknown}
               insertions={diff?.insertions ?? null}

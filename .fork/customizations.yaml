@@ -316,6 +316,25 @@
     padding and both hints move with it, or the scrollbar misreports every
     skipped row by the difference.
 
+    A thread that runs in a worktree of its own draws a worktree mark where the
+    branch mark otherwise goes — replacing it, not joining it. That slot already
+    answers "which code is this on", and the two facts are not independent: a
+    thread on a worktree is on that worktree's branch, so a second glyph would
+    spend ~16px of a line whose branch name is already capped and truncating to
+    restate what the first implies. The predicate is the one the row's own git
+    cwd and env mode come from, so the mark cannot claim a worktree the rest of
+    the row is not treating as one, and the worktree case carries a `sr-only`
+    label because both marks are decorative to a screen reader.
+
+    The mark is fork-drawn (Figma t3-fork, node 86:6226), not Phosphor: nothing
+    in that set says "this thread has a checkout of its own", and the nearest
+    candidates are folders, which on this line read as the project. It is a 32
+    viewBox at stroke 2 with its two outer nodes at 20% — Phosphor's 256-at-16
+    ratio and duotone convention — so it matches the weight of the set around it
+    at any size. Retune the viewBox without the stroke and it stops. The Figma
+    export's #1E1E1E artboard and clip path are dropped and every paint is
+    currentColor; shipping either literal gives a dark square in light mode.
+
     Diff counts bind to --success-foreground / --destructive-foreground rather
     than emerald/red literals, so they hold up in light mode. They render only
     once latestTurnDiff() returns data: it is an upstream stub returning null
@@ -330,6 +349,7 @@
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
     - apps/web/src/custom/SidebarV2ThreadCardMeta.tsx
+    - apps/web/src/custom/icons/WorktreeIcon.tsx
     - apps/web/src/custom/sidebarV2RowPolicy.ts
     - apps/web/src/theme.custom.css
   shadows: []

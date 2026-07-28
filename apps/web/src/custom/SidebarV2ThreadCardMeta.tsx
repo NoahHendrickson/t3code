@@ -28,6 +28,7 @@ import type { ReactNode } from "react";
 // Imported through the shim's own path rather than the `lucide-react` alias —
 // this file is fork-owned, so there is no upstream import site to preserve.
 import { CloudIcon, GitBranchIcon, LaptopIcon } from "./icons/lucide-phosphor";
+import { WorktreeIcon } from "./icons/WorktreeIcon";
 
 export interface SidebarV2ThreadCardMetaProps {
   readonly projectTitle: string | null;
@@ -36,6 +37,10 @@ export interface SidebarV2ThreadCardMetaProps {
       "one row up" and would otherwise hear a card with no project at all. */
   readonly projectTitleHidden?: boolean;
   readonly branch: string | null;
+  /** True when the thread runs in a worktree of its own rather than in the
+      project's checkout. Swaps the branch mark for the worktree one — see the
+      render site for why it replaces rather than joins. */
+  readonly hasWorktree?: boolean;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
   /** The row's VCS query has not answered yet, so `prSlot` being null means
@@ -133,7 +138,25 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
           ) : null}
           {props.branch ? (
             <span className="flex min-w-0 flex-1 items-center gap-0.5">
-              <GitBranchIcon aria-hidden className="size-3 shrink-0" />
+              {/* The worktree mark replaces the branch mark rather than joining
+                  it. This slot already answers "which code is this on", and the
+                  two facts are not independent: a thread on a worktree is on
+                  that worktree's branch, so a second glyph would spend ~16px of
+                  a line whose branch name is already capped and truncating to
+                  restate what the first one implies. The branch name stays put,
+                  labelled by position.
+
+                  The distinction is invisible to a screen reader either way —
+                  both marks are decorative — so the worktree case carries it in
+                  text instead. */}
+              {props.hasWorktree ? (
+                <>
+                  <span className="sr-only">Worktree</span>
+                  <WorktreeIcon aria-hidden className="size-3 shrink-0" />
+                </>
+              ) : (
+                <GitBranchIcon aria-hidden className="size-3 shrink-0" />
+              )}
               <span className="truncate whitespace-nowrap">{props.branch}</span>
             </span>
           ) : null}
