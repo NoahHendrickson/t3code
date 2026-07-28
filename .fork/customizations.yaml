@@ -376,9 +376,13 @@
     while the port scanner attributes a listening server to that thread, so
     the row whose checkout the running server is actually serving can be
     picked out of the sidebar at a glance. The row's tooltip names what the
-    mark can only signal — `localhost:<port>` plus a `(+n)` overflow, the same
-    copy as v1's Globe affordance — so the pulse is never the only way to
-    learn the port.
+    mark can only signal — `localhost:<port>` for local threads, `port <n>`
+    for remote ones, plus a `(+n)` overflow — so the pulse is never the only
+    way to learn the port. The host split is load-bearing: a remote thread's
+    listener is on the remote host, and unlike v1's Globe (a button routed
+    through openDiscoveredPort to the right environment, where "localhost" is
+    loose phrasing around a correct action) this label is inert text, so it
+    must not name a machine the port is not on.
 
     Attribution is the port scanner's existing terminal→thread mapping and
     nothing more: a listener counts for a row only when the scanner's
@@ -411,16 +415,19 @@
 
     Cost: a card row subscribes to its thread's environment discovered-servers
     stream, which retains the server-side port scanner (3s lsof poll,
-    reference-counted) while subscribed. This is the same standing cost
-    upstream's v1 row already pays — Sidebar.tsx calls the identical hook per
-    row, unconditionally — so v2 gaining it restores parity, it does not add a
-    new class of cost. What is per-list rather than per-row: subscriptions key
-    on thread.environmentId, so a sidebar listing threads across M
-    environments holds M streams and every one of those hosts runs the 3s poll
-    for the session — v1's multiplier too, but worth naming because it leaves
-    the machine. Slim (settled/snoozed) rows never draw the card meta, so they
-    pass null and skip the subscription entirely rather than retaining the
-    scanner for rows that cannot pulse.
+    reference-counted) while subscribed. Stated precisely, because v2 is an
+    opt-in replacement for v1, not a neighbour: enabling v2 adds this standing
+    cost outright for its users — a v2 session with the sidebar open runs the
+    lsof poll for the whole session even if the preview pane is never opened,
+    where before this change nothing retained the scanner. It is the same
+    cost every v1 user already pays (Sidebar.tsx calls the identical hook per
+    row, unconditionally), which is the precedent for accepting it — not
+    evidence that nothing changed. Subscriptions key on thread.environmentId,
+    so a sidebar listing threads across M environments holds M streams and
+    every one of those hosts runs the 3s poll for the session — worth naming
+    because it leaves the machine. Slim (settled/snoozed) rows never draw the
+    card meta, so they pass null and skip the subscription entirely rather
+    than retaining the scanner for rows that cannot pulse.
 
     Green is `--sidebar-v2-status-working` — one hue for "alive" across the
     card — and the far pole is `--foreground`, not literal white, so light

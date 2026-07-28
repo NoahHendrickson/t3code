@@ -599,13 +599,17 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     threadId: variant === "card" ? thread.id : null,
   });
   const devServerPort = devServerPorts[0]?.port ?? null;
-  // The tooltip names what the mark can only signal. Same copy as v1's Globe
-  // affordance: the port and nothing more — the scanner keeps every listening
-  // TCP socket, so claiming "dev server" here would overclaim.
+  // The tooltip names what the mark can only signal, and only what is true
+  // from where the user sits. The port is the whole claim — the scanner keeps
+  // every listening TCP socket, so "dev server" would overclaim — and for a
+  // remote thread the listener is on the remote host, so "localhost" would
+  // name the wrong machine. v1 says localhost loosely because its Globe is a
+  // button routed through openDiscoveredPort to the right environment; this
+  // label is inert text and carries no such correction.
   const devServerLabel =
     devServerPort === null
       ? null
-      : `localhost:${devServerPort}${
+      : `${isRemote ? `port ${devServerPort}` : `localhost:${devServerPort}`}${
           devServerPorts.length > 1 ? ` (+${devServerPorts.length - 1})` : ""
         }`;
   /* fork:end sidebar-v2-dev-server-pulse */

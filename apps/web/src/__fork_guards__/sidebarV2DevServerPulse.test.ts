@@ -96,8 +96,11 @@ describe("fork guard: sidebar-v2-dev-server-pulse", () => {
     expect(hunk).toContain("const devServerPort = devServerPorts[0]?.port ?? null;");
     expect(hunk).toContain("devServerPort={devServerPort}");
     // The tooltip names what the mark can only signal — port plus overflow
-    // count — and receives it through the same fenced seam.
-    expect(hunk).toContain("`localhost:${devServerPort}${");
+    // count — and receives it through the same fenced seam. Both host
+    // branches are pinned: a remote thread's listener is on the remote host,
+    // so "localhost" there would name the wrong machine (round-2 review #1),
+    // while a local thread keeps the copy-pasteable form.
+    expect(hunk).toContain("isRemote ? `port ${devServerPort}` : `localhost:${devServerPort}`");
     expect(hunk).toContain("devServerLabel={devServerLabel}");
     expect(hunk).toContain("{devServerLabel ? (");
   });
