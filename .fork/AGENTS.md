@@ -25,8 +25,12 @@ fork only ever reads from; there is no valid reason to open one.
 - Default branch: `custom` — GitHub only runs `schedule` workflows from the default branch, so
   the hourly mirror depends on it.
 - Branch ruleset on `main`: block direct pushes and force pushes for everyone except the
-  `fork-sync-mirror` workflow's token, so the mirror invariant is enforced server-side rather
-  than only detected after the fact by the workflow's fast-forward check.
+  mirror's push credential, so the mirror invariant is enforced server-side rather than only
+  detected after the fact by the workflow's fast-forward check. The mirror pushes with the
+  `fork-sync-mirror push key` deploy key (secret `FORK_SYNC_PUSH_KEY`), not its workflow token —
+  `GITHUB_TOKEN` can never hold the `workflows` permission, so token pushes are rejected whenever
+  upstream touches `.github/workflows/*`. Any ruleset on `main` must put deploy keys (or that key
+  specifically) on its bypass list, or the hourly mirror stops dead.
 
 ## Where a change goes — in order of preference
 
