@@ -28,6 +28,7 @@ import type { ReactNode } from "react";
 // Imported through the shim's own path rather than the `lucide-react` alias —
 // this file is fork-owned, so there is no upstream import site to preserve.
 import { CloudIcon, GitBranchIcon, LaptopIcon } from "./icons/lucide-phosphor";
+import { WorktreeIcon } from "./icons/WorktreeIcon";
 
 export interface SidebarV2ThreadCardMetaProps {
   readonly projectTitle: string | null;
@@ -36,6 +37,10 @@ export interface SidebarV2ThreadCardMetaProps {
       "one row up" and would otherwise hear a card with no project at all. */
   readonly projectTitleHidden?: boolean;
   readonly branch: string | null;
+  /** True when the thread runs in a worktree of its own rather than in the
+      project's checkout. Swaps the branch mark for the worktree one — see the
+      render site for why it replaces rather than joins. */
+  readonly hasWorktree?: boolean;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
   /** The row's VCS query has not answered yet, so `prSlot` being null means
@@ -91,15 +96,23 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
     deletions: props.deletions,
   });
 
-  /* 3px of trailing padding so the runtime glyph's optical edge lines up with
-     the status mark above it, which sits inside a 16px box.
+  /* 2px of trailing padding: (16 - 12) / 2, the inset a 12px glyph needs to
+     centre where the status mark above it does. That mark is 8px of ink in a
+     16px box flush with the card's content edge, so the trailing column's axis
+     is 8px in from that edge — the same axis the row actions and the two chrome
+     icons are nudged onto (see sidebar-v2-row-action-hit-area). This was 3px,
+     matching the mark's optical right EDGE instead, which left the glyph a
+     pixel light of the axis: enough to see in a column, and the one mark in it
+     still out of line after everything else was squared up. Derive the number,
+     don't tune it — an eyeballed value here is invisible until it is the only
+     thing left wrong.
 
      `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
      `truncate` can never fire, so a long model name would push whatever shares
      its row — the half that *can* shrink — off the row instead of clipping
      itself. Capped at half the line so neither side can starve the other. */
   const runtime = (
-    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
+    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[2px] ${MUTED}`}>
       {props.modelLabel ? <span className="truncate">{props.modelLabel}</span> : null}
       {props.isRemote ? (
         <CloudIcon aria-hidden className="size-3 shrink-0" />
@@ -123,10 +136,37 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
               {props.projectTitle}
             </span>
           ) : null}
-          {props.branch ? (
+          {/* The worktree mark replaces the branch mark rather than joining it.
+              This slot already answers "which code is this on", and the two
+              facts are not independent: a thread on a worktree is on that
+              worktree's branch, so a second glyph would spend ~16px of a line
+              whose branch name is already capped and truncating to restate what
+              the first one implies. The branch name stays put, labelled by
+              position.
+
+              The mark's condition is the worktree, not the branch. They are
+              independent fields on the shell and the row's own git predicate
+              treats them as such (`branch != null || worktreePath !== null`),
+              so gating the whole slot on the branch would draw a thread that
+              has a checkout of its own but no branch as if it ran in the
+              project's — the exact confusion the mark exists to prevent. With
+              no branch to name, the mark stands alone.
+
+              The distinction is invisible to a screen reader either way — both
+              marks are decorative — so the worktree case carries it in text. */}
+          {props.hasWorktree || props.branch ? (
             <span className="flex min-w-0 flex-1 items-center gap-0.5">
-              <GitBranchIcon aria-hidden className="size-3 shrink-0" />
-              <span className="truncate whitespace-nowrap">{props.branch}</span>
+              {props.hasWorktree ? (
+                <>
+                  <span className="sr-only">Worktree</span>
+                  <WorktreeIcon aria-hidden className="size-3 shrink-0" />
+                </>
+              ) : (
+                <GitBranchIcon aria-hidden className="size-3 shrink-0" />
+              )}
+              {props.branch ? (
+                <span className="truncate whitespace-nowrap">{props.branch}</span>
+              ) : null}
             </span>
           ) : null}
         </span>

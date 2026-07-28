@@ -25,6 +25,10 @@
  */
 import { cn } from "~/lib/utils";
 
+// SIDEBAR_V2_ICON_BUTTON_CLASS moved to custom/sidebarV2TrailingColumn.ts:
+// this module is title-recede and surface policy, and the trailing column is
+// its own concern with its own derivation to carry.
+
 /** Does a card's *title* step back?
  *
  * The component set mutes exactly two statuses at rest — Working and Idle — and

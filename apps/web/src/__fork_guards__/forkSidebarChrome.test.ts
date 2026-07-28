@@ -156,18 +156,33 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).not.toContain('data-testid="command-palette-trigger"');
   });
 
-  it("insets the chrome rows by the thread list's scrollbar", () => {
-    // The rows and the list sit in sibling containers with identical padding,
-    // but the list is a scroll container and its scrollbar takes real layout
-    // width — so without this the trailing button overhangs every thread card
-    // by exactly the scrollbar. Read from the token, never written as 6px, so
-    // the alignment survives upstream retuning the scrollbar.
-    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
-    expect(rows).toContain("pe-[var(--app-scrollbar-width)]");
-    const upstreamCss = readSibling("../index.css");
-    expect(upstreamCss, "the token the inset reads from is gone").toMatch(
-      /--app-scrollbar-width:\s*\d/u,
+  it("pays for the thread list's scroll gutter out of its own end padding", () => {
+    // scrollbar-gutter:stable reserves the scrollbar inside the list's padding
+    // box, so a symmetric px-2 is 8px of air on the left and 8 plus the
+    // scrollbar on the right, and every card sits off-centre in its column.
+    // The end padding gives that width back, and the gutter has to stay: the
+    // compensation is meaningless without the thing it compensates for, so the
+    // two only make sense together.
+    const sidebarV2 = readSibling("../components/SidebarV2.tsx");
+    expect(sidebarV2).toContain("[scrollbar-gutter:stable]");
+    // One source for the 8. Spelling it once as a variable and reading it from
+    // both sides is what stops a retune of the start padding leaving the end
+    // subtracting from a stale base — three independent spellings of the same
+    // number is how that drifts silently.
+    expect(sidebarV2).toContain("[--sidebar-list-pad:--spacing(2)]");
+    expect(sidebarV2).toContain("ps-(--sidebar-list-pad)");
+    expect(sidebarV2).toContain(
+      "pe-[calc(var(--sidebar-list-pad)-var(--sidebar-list-gutter,0px))]",
     );
+    // And the width subtracted is measured, not assumed. --app-scrollbar-width
+    // is only true where ::-webkit-scrollbar applies; on Firefox the reserved
+    // gutter is the native width, or nothing at all under overlay scrollbars,
+    // and a token-matching guard cannot see either. Reading the token here
+    // again would reintroduce exactly that.
+    const gutter = readSibling("../custom/useScrollGutterWidth.ts");
+    expect(gutter).toContain("offsetWidth - node.clientWidth");
+    expect(sidebarV2).toContain("ref={listScrollGutterRef}");
+    expect(sidebarV2).not.toContain("calc(0.5rem-var(--app-scrollbar-width))");
   });
 
   it("puts the brand on the header's trailing edge", () => {

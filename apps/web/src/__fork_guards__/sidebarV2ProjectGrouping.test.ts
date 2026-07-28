@@ -63,10 +63,40 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // and it would leave a flat-looking sidebar over a grouped ordered list.
     const start = sidebar.indexOf("const items: ReactNode[] = activeSections.flatMap(");
     expect(start).toBeGreaterThanOrEqual(0);
-    const render = sidebar.slice(start, sidebar.indexOf("};", start));
+    const render = sidebar.slice(start, sidebar.indexOf("});", start));
     expect(render).toContain("<SidebarV2ProjectGroupHeader");
-    expect(render).toContain("section.header");
-    expect(render).toContain('renderThreadRow(thread, "active", section.header !== null)');
+    // One binding for both halves, taken from the section being rendered: the
+    // header is drawn from it and the cards' under-a-header flag is read off
+    // the same value, so they cannot come to disagree.
+    expect(render).toContain("const header = section.header;");
+    expect(render).toContain('renderThreadRow(thread, "active", header !== null)');
+  });
+
+  it("starts a thread in the header's own project, and only where there is one", () => {
+    // The chrome row's plus has to ask which project when there are several;
+    // a grouped header has already answered it.
+    //
+    // Which environment it lands in is the palette's rule, shared rather than
+    // restated: buildSidebarProjectPickerEntries prefers the member matching
+    // the thread you are reading and falls back to the group's canonical ref.
+    // An earlier revision took that canonical ref directly, which is a
+    // different rule — reading a remote thread of a project that also has a
+    // local member, the palette starts remote and the shortcut started local.
+    // Calling the function is what makes the two agree; asserting the call is
+    // what keeps them agreeing.
+    expect(sidebar).toContain("buildSidebarProjectPickerEntries({");
+    expect(sidebar).toContain("preferredProjectRef: resolveThreadActionProjectRef({");
+    expect(sidebar).toContain(
+      "scopeProjectRef(entry.targetProject.environmentId, entry.targetProject.id)",
+    );
+    // The unresolved-project section names no project to start in, and is the
+    // one header that must render without the button. Gated on the bucket's own
+    // key rather than on its label being null: the label correlates today, and
+    // one signal carrying two meanings is how it stops correlating later.
+    expect(sidebar).toContain("header.projectKey === UNGROUPED_PROJECT_KEY");
+    const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
+    expect(header).toContain("props.onNewThread ?");
+    expect(header).toContain("aria-label={`New thread in ${");
   });
 
   it("groups the active cards only, and only where a header would say something new", () => {
@@ -91,8 +121,20 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
   it("gives the header heading semantics inside upstream's thread list", () => {
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
     expect(header).toContain('role="presentation"');
-    expect(header).toContain('role="heading"');
     expect(header).toContain("aria-level={3}");
+    // On the label span, not on the row. The row also holds the new-thread
+    // button, and a heading containing one takes the button's text into its own
+    // accessible name — "<project> New thread in <project>" for a landmark
+    // whose whole job is to say which project a run of cards belongs to. That
+    // was the role's position before the button existed, so a sync restoring it
+    // is the realistic regression, and asserting the role appears *somewhere*
+    // in the file cannot tell the two apart.
+    expect(header).toMatch(/<span\s+role="heading"/u);
+    const headerRow = /<div\s+data-testid="sidebar-v2-project-group-header"[\s\S]*?>/u.exec(
+      header,
+    )?.[0];
+    expect(headerRow).toBeDefined();
+    expect(headerRow).not.toContain('role="heading"');
   });
 
   it("rebuilds the project index only when the project list changes", () => {

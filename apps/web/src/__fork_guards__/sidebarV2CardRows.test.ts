@@ -45,6 +45,40 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     }
   });
 
+  it("marks a thread that runs in a worktree of its own", () => {
+    // The mark replaces the branch mark rather than joining it, so losing the
+    // prop does not empty a slot — it silently draws every worktree thread as
+    // if it were on the project's checkout, which is the one thing this line
+    // exists to disambiguate. The predicate has to stay the one the row's own
+    // git cwd and env mode come from, or the mark and the row disagree.
+    expect(sidebarV2).toContain("hasWorktree={thread.worktreePath !== null}");
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    // The slot's own gate, not just the ternary inside it. An earlier revision
+    // nested the whole slot under `props.branch ?`, and this guard passed
+    // throughout — the prop and the ternary were both present, and a substring
+    // never says where the ternary sits. A worktree with no branch drew
+    // nothing. Pinning the outer condition is what makes that regression fail.
+    expect(meta).toContain("props.hasWorktree || props.branch ?");
+    expect(meta).toContain("props.hasWorktree ?");
+    expect(meta).toContain("<WorktreeIcon");
+    // Decorative marks carry nothing to a screen reader, so the distinction
+    // rides on text; a `sr-only` here is the whole of it.
+    expect(meta).toMatch(/sr-only">Worktree</u);
+
+    const icon = readSibling("../custom/icons/WorktreeIcon.tsx");
+    // currentColor throughout: the Figma export paints white on a #1E1E1E
+    // artboard, and either literal shipped as-is is invisible or a dark square
+    // in the other theme.
+    // Attribute form, not bare substrings: the file's own comment names both
+    // literals to explain why neither is painted.
+    expect(icon).not.toMatch(/(?:fill|stroke)="(?:#1E1E1E|white)"/iu);
+    expect(icon).toContain("currentColor");
+    // 32 viewBox at stroke 2 is Phosphor's 256-at-16 ratio. Retune one without
+    // the other and this glyph stops matching the weight of the set it sits in.
+    expect(icon).toContain('viewBox="0 0 32 32"');
+    expect(icon).toContain('strokeWidth="2"');
+  });
+
   it("recedes exactly the two statuses with nothing to act on", () => {
     // The component set mutes Working and Idle at rest and nothing else, and
     // restores both on hover or selection. Asserted as behaviour rather than as
@@ -120,10 +154,13 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // content-visibility skips offscreen rows; the intrinsic size is what keeps
     // the scrollbar honest while they are skipped. A stale value here makes the
     // list jump as you scroll, so both heights are pinned. They measure the li,
-    // which is the drawn card plus its own py-0.5: three lines are 86 + 4, two
-    // are 64 + 4.
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_90px]");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_68px]");
+    // which is the drawn card plus its own py-0.5: at the card's py-2.5, three
+    // lines are 82 + 4 and two are 60 + 4. Change the card's vertical padding
+    // and these move with it or the scrollbar starts lying by the difference
+    // on every row it skips.
+    expect(sidebarV2).toContain("px-3 py-2.5");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_86px]");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_64px]");
     // And the choice is made from the same predicate the component renders
     // from, so the hint cannot drift from the row count it describes.
     expect(sidebarV2).toContain("threadCardShowsMetaRow({");

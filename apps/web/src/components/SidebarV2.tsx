@@ -68,6 +68,9 @@ import {
   selectProjectGroupingSettings,
 } from "../logicalProject";
 import {
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  buildSidebarProjectPickerEntries,
+  /* fork:end sidebar-v2-project-grouping */
   buildSidebarProjectSnapshots,
   type SidebarProjectGroupMember,
   type SidebarProjectSnapshot,
@@ -76,8 +79,16 @@ import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore"
 import { useThreadSelectionStore } from "../threadSelectionStore";
 import { useThreadActions } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+import { useScrollGutterWidth } from "~/custom/useScrollGutterWidth";
+/* fork:end fork-sidebar-chrome */
 import { openCommandPalette } from "../commandPaletteBus";
-import { startNewThreadFromContext } from "../lib/chatThreadActions";
+import {
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  resolveThreadActionProjectRef,
+  /* fork:end sidebar-v2-project-grouping */
+  startNewThreadFromContext,
+} from "../lib/chatThreadActions";
 import { useClientSettings, useUpdateClientSettings } from "../hooks/useSettings";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useNowMinute } from "../hooks/useNowMinute";
@@ -140,11 +151,19 @@ import {
   threadCardTitleRecedes,
   threadRowSurfaceClassName,
 } from "~/custom/sidebarV2RowPolicy";
+/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+import {
+  SIDEBAR_V2_ICON_BUTTON_CLASS,
+  SIDEBAR_V2_SLIM_ROW_ACTION_CLASS,
+  SIDEBAR_V2_TRAILING_OFFSET,
+} from "~/custom/sidebarV2TrailingColumn";
+/* fork:end sidebar-v2-row-action-hit-area */
 /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
 import { SidebarV2ProjectGroupHeader } from "~/custom/SidebarV2ProjectGroupHeader";
 import {
   buildActiveThreadSections,
   createProjectRefIndex,
+  UNGROUPED_PROJECT_KEY,
   useSidebarV2GroupByProject,
 } from "~/custom/sidebarV2ProjectGrouping";
 /* fork:end sidebar-v2-project-grouping */
@@ -336,7 +355,9 @@ function SnoozePopoverButton(props: {
             aria-label="Snooze thread"
             onClick={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
-            className="inline-flex h-full cursor-pointer items-center gap-0.5 rounded-md bg-transparent px-1.5 text-xs text-muted-foreground hover:text-foreground"
+            /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+            className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+            /* fork:end sidebar-v2-row-action-hit-area */
           />
         }
       >
@@ -799,7 +820,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                     type="button"
                     aria-label="Wake thread now"
                     onClick={handleUnsnoozeClick}
-                    className="absolute inset-y-0 right-0 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/v2-row:opacity-100"
+                    /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+                    className={SIDEBAR_V2_SLIM_ROW_ACTION_CLASS}
+                    /* fork:end sidebar-v2-row-action-hit-area */
                   >
                     <AlarmClockOffIcon className="size-3" />
                   </button>
@@ -809,7 +832,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   type="button"
                   aria-label="Un-settle thread"
                   onClick={handleUnsettleClick}
-                  className="absolute inset-y-0 right-0 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/v2-row:opacity-100"
+                  /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+                  className={SIDEBAR_V2_SLIM_ROW_ACTION_CLASS}
+                  /* fork:end sidebar-v2-row-action-hit-area */
                 >
                   <Undo2Icon className="size-3" />
                 </button>
@@ -818,7 +843,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   type="button"
                   aria-label="Settle thread"
                   onClick={handleSettleClick}
-                  className="absolute inset-y-0 right-0 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/v2-row:opacity-100"
+                  /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+                  className={SIDEBAR_V2_SLIM_ROW_ACTION_CLASS}
+                  /* fork:end sidebar-v2-row-action-hit-area */
                 >
                   <CheckIcon className="size-3" />
                 </button>
@@ -842,7 +869,8 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   // A card is three lines only when it has a PR or a diff to put on the third,
   // or does not yet know whether it has a PR; the hint has to follow, or the
   // scrollbar lies about every skipped row. Both values are the drawn card plus
-  // this li's own py-0.5.
+  // this li's own py-0.5: at py-2.5 a three-line card is
+  // 20 + 18 + 7 + 15 + 7 + 15 = 82, and a two-line one 20 + 18 + 7 + 15 = 60.
   const showsMetaRow = threadCardShowsMetaRow({
     hasPr: prBadge !== null,
     prUnknown,
@@ -855,7 +883,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
       data-thread-item
       className={cn(
         "list-none py-0.5 [content-visibility:auto]",
-        showsMetaRow ? "[contain-intrinsic-size:auto_90px]" : "[contain-intrinsic-size:auto_68px]",
+        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+        showsMetaRow ? "[contain-intrinsic-size:auto_86px]" : "[contain-intrinsic-size:auto_64px]",
+        /* fork:end sidebar-v2-card-rows */
       )}
     >
       <Tooltip>
@@ -884,7 +914,15 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               The design draws this at gap-8/p-12 over 16/15/15px rows. The gap
               here is 7px because the title row is 18px rather than 16 (see
               below): 24 padding + 48 rows + 2x7 lands on the drawn 86px. */}
-          <div className="relative z-10 flex flex-col gap-[7px] p-3">
+          {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+              py-2.5 against px-3: 10px top and bottom, 12px either side. The
+              horizontal 12 is load-bearing — it is the content edge every
+              trailing glyph aligns to — but the vertical 12 only bought air
+              above and below rows that already carry 4px of their own from the
+              li's py-0.5. Both drawn heights drop 4px with it, so the
+              contain-intrinsic-size hints below move too or the scrollbar
+              starts lying about the rows it is skipping. */}
+          <div className="relative z-10 flex flex-col gap-[7px] px-3 py-2.5">
             {/* 18px, not the 16px the metadata lines use: that is the exact
                 height of the working rain's 3x5 grid, and cropping it would
                 clip the bottom row of drops. */}
@@ -898,10 +936,31 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   back across the title and sat on top of its last word. In one
                   cell the column is as wide as whichever child is showing, so
                   the title's truncation always accounts for it. */}
-              <span className="grid h-[18px] shrink-0 grid-cols-1 justify-items-end">
+              {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */}
+              {/* h-6, not the line's h-[18px]: the hover actions share this cell
+                  and a 24px target cannot fit in an 18px one. The cell is
+                  centred in the 18px line, so it overhangs 3px into the card's
+                  py-2.5 above and its gap-[7px] below — neither of which carries
+                  anything to collide with — and the status mark, centred in the
+                  same cell, does not move. */}
+              <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
+                {/* fork:end sidebar-v2-row-action-hit-area */}
                 <span
                   className={cn(
-                    "col-start-1 row-start-1 flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
+                    // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                    // pointer-events-none, because this decoration was eating
+                    // the settle click. Status and actions share one grid cell,
+                    // and on hover this span goes to opacity-0 — which makes it
+                    // a stacking context, so it paints in the positioned layer,
+                    // ABOVE the in-flow actions rather than behind them. Faded
+                    // to nothing, it still hit-tested first across its own 16px:
+                    // exactly the right half of the settle button, and none of
+                    // snooze. Hence "settle only works if I aim left of the
+                    // checkmark". A status mark is never a target, so it should
+                    // never have been in the hit path at all; the row below it
+                    // still gets the hover and the click.
+                    // fork:end sidebar-v2-row-action-hit-area
+                    "pointer-events-none col-start-1 row-start-1 flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
                     snoozeMenuOpen && "opacity-0",
                   )}
                 >
@@ -950,7 +1009,27 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       // the full width of the card when nothing is pointing at
                       // it; the column only widens once the actions are
                       // actually showing, and the title re-truncates to match.
-                      "col-start-1 row-start-1 flex w-0 items-stretch gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                      // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                      // focus-within:overflow-visible, because the clip that
+                      // collapses this to zero width also cuts the focus ring:
+                      // it is a box-shadow 4px outside a button the wrapper
+                      // hugs exactly, so a keyboard user got no indicator at
+                      // all on the one control the ring was added for. Only
+                      // lifted while focus is inside, which is the same
+                      // condition that widens the wrapper.
+                      //
+                      // The offset is derived in custom/sidebarV2TrailingColumn
+                      // with the rest of the column's; `relative` is local, and
+                      // is the other half of the pointer-events-none on the
+                      // status span. That clears the hit path but not the paint
+                      // order — at opacity-0 the span is a stacking context, so
+                      // through the crossfade it still renders over these
+                      // in-flow icons. Positioned, they join it in one layer and
+                      // DOM order decides, which is structurally why slim rows,
+                      // whose action is absolute, were never affected.
+                      // fork:end sidebar-v2-row-action-hit-area
+                      SIDEBAR_V2_TRAILING_OFFSET.cardActions,
+                      "relative col-start-1 row-start-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
                       snoozeMenuOpen && "w-auto opacity-100",
                     )}
                   >
@@ -966,7 +1045,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         type="button"
                         aria-label="Settle thread"
                         onClick={handleSettleClick}
-                        className="inline-flex cursor-pointer items-center rounded-md bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground"
+                        /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+                        className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                        /* fork:end sidebar-v2-row-action-hit-area */
                       >
                         {/* Icon-only in v2: at 282px the "Settle" text pushed the
                             hover actions over the title, which now shares their
@@ -984,6 +1065,12 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               projectTitleHidden={props.projectTitleHidden === true}
               /* fork:end sidebar-v2-project-grouping */
               branch={thread.branch}
+              // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+              // The same predicate the row already uses to pick its git cwd and
+              // env mode above, so the mark cannot claim a worktree the rest of
+              // the row is not treating as one.
+              // fork:end sidebar-v2-card-rows
+              hasWorktree={thread.worktreePath !== null}
               prSlot={prBadge}
               prUnknown={prUnknown}
               insertions={diff?.insertions ?? null}
@@ -1058,6 +1145,9 @@ export default function SidebarV2() {
   );
   const [projectScopeMenuOpen, setProjectScopeMenuOpen] = useState(false);
   const newThreadContext = useHandleNewThread();
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+  const listScrollGutterRef = useScrollGutterWidth();
+  /* fork:end fork-sidebar-chrome */
   const openAddProjectCommandPalette = useCallback(
     () => openCommandPalette({ open: "add-project" }),
     [],
@@ -2266,6 +2356,45 @@ export default function SidebarV2() {
     openCommandPalette({ open: "new-thread-in" });
   }, [isMobile, newThreadContext, projectGroups.length, setOpenMobile]);
 
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  // The header's plus. The chrome row's "New thread" has to ask which project
+  // when there are several — that is the "new-thread-in" palette above. A
+  // grouped header has already answered it: the run of cards under it IS the
+  // project, so the button starts there and skips the picker.
+  //
+  // Which environment it lands in is buildSidebarProjectPickerEntries' answer,
+  // reached by calling it rather than by restating it. A logical project can
+  // span environments, and that function prefers the member matching the thread
+  // you are looking at, falling back to the group's canonical ref. An earlier
+  // revision took the canonical ref directly and claimed in a comment that this
+  // agreed with the palette; it does not. Reading a remote thread of a project
+  // that also has a local member, the palette starts remote and the shortcut
+  // would have started local — the same name on screen, two environments. Two
+  // ways to open the same door must not disagree about which room they enter,
+  // and a shared derivation is the only version of that which cannot rot.
+  const handleNewThreadInProject = useCallback(
+    (projectKey: string) => {
+      const group = projectGroups.find((candidate) => candidate.projectKey === projectKey);
+      if (!group) return;
+      const [entry] = buildSidebarProjectPickerEntries({
+        groups: [group],
+        preferredProjectRef: resolveThreadActionProjectRef({
+          activeDraftThread: newThreadContext.activeDraftThread,
+          activeThread: newThreadContext.activeThread ?? undefined,
+          defaultProjectRef: newThreadContext.defaultProjectRef,
+          handleNewThread: newThreadContext.handleNewThread,
+        }),
+      });
+      if (!entry) return;
+      if (isMobile) setOpenMobile(false);
+      void newThreadContext.handleNewThread(
+        scopeProjectRef(entry.targetProject.environmentId, entry.targetProject.id),
+      );
+    },
+    [isMobile, newThreadContext, projectGroups, setOpenMobile],
+  );
+  /* fork:end sidebar-v2-project-grouping */
+
   const commandPaletteShortcutLabel = shortcutLabelForCommand(keybindings, "commandPalette.toggle");
   // Same resolution as v1: prefer the local-thread binding, fall back to
   // chat.new, no platform gating — web users have working shortcuts too.
@@ -2310,7 +2439,25 @@ export default function SidebarV2() {
           }
         />
         {/* fork:end fork-sidebar-chrome */}
-        <SidebarGroup className="min-h-0 flex-1 overflow-y-auto px-2 py-1 [scrollbar-gutter:stable]">
+        {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+            The list's two sides are padded to look equal, not to measure
+            equal. scrollbar-gutter:stable reserves the scrollbar inside this
+            padding box, so a symmetric px-2 spends 8px on the left and 8 plus
+            the scrollbar on the right, and every card sits visibly off-centre
+            in its own column. The end padding gives that width back; the
+            gutter still holds, so the scrollbar keeps its lane and the cards
+            are 8px from both edges.
+
+            One source for the 8: both sides read --sidebar-list-pad, so
+            retuning the start padding cannot leave the end subtracting from a
+            stale base. The width subtracted is measured rather than taken from
+            --app-scrollbar-width, which is only true where ::-webkit-scrollbar
+            applies — see custom/useScrollGutterWidth. */}
+        <SidebarGroup
+          ref={listScrollGutterRef}
+          className="min-h-0 flex-1 overflow-y-auto py-1 [--sidebar-list-pad:--spacing(2)] ps-(--sidebar-list-pad) pe-[calc(var(--sidebar-list-pad)-var(--sidebar-list-gutter,0px))] [scrollbar-gutter:stable]"
+        >
+          {/* fork:end fork-sidebar-chrome */}
           <TooltipProvider
             key="sidebar-thread-tooltips-150"
             delay={150}
@@ -2420,20 +2567,39 @@ export default function SidebarV2() {
                 // Flat is the one-headerless-section case, so this is the only
                 // path either way — and it is the same sequence
                 // orderedActiveThreads flattens.
-                const items: ReactNode[] = activeSections.flatMap((section, sectionIndex) => [
-                  ...(section.header
-                    ? [
-                        <SidebarV2ProjectGroupHeader
-                          key={`project-group-header:${section.header.projectKey}`}
-                          label={section.header.displayName}
-                          isFirst={sectionIndex === 0}
-                        />,
-                      ]
-                    : []),
-                  ...section.threads.map((thread) =>
-                    renderThreadRow(thread, "active", section.header !== null),
-                  ),
-                ]);
+                const items: ReactNode[] = activeSections.flatMap((section, sectionIndex) => {
+                  // Bound here rather than read off `section.header` inside the
+                  // callback below: the narrowing does not survive into a
+                  // closure, and the key the plus starts a thread from must be
+                  // the one this header was drawn for.
+                  const header = section.header;
+                  return [
+                    ...(header
+                      ? [
+                          <SidebarV2ProjectGroupHeader
+                            key={`project-group-header:${header.projectKey}`}
+                            label={header.displayName}
+                            isFirst={sectionIndex === 0}
+                            // The unresolved-project section names no project,
+                            // so there is nowhere for its plus to start a
+                            // thread. Keyed off the bucket's own identity
+                            // rather than off its label being null: the label
+                            // is a rendering detail that happens to correlate
+                            // today, and one signal carrying two meanings is
+                            // how it stops correlating later.
+                            onNewThread={
+                              header.projectKey === UNGROUPED_PROJECT_KEY
+                                ? undefined
+                                : () => handleNewThreadInProject(header.projectKey)
+                            }
+                          />,
+                        ]
+                      : []),
+                    ...section.threads.map((thread) =>
+                      renderThreadRow(thread, "active", header !== null),
+                    ),
+                  ];
+                });
                 /* fork:end sidebar-v2-project-grouping */
                 // Snoozed shelf: between the inbox and Settled — out of the
                 // way, never gone. The header always renders while anything
@@ -2457,6 +2623,15 @@ export default function SidebarV2() {
                         <ChevronDownIcon
                           aria-hidden
                           className={cn(
+                            // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                            // me-1 puts this on the trailing column's axis. The
+                            // shelf header is padded px-2.5 where a card is
+                            // px-3, and a 12px chevron flush with that padding
+                            // centres 6px in against the 8px a card's status
+                            // mark takes — 4px out, the same stagger every
+                            // other mark in the column was carrying.
+                            // fork:end sidebar-v2-row-action-hit-area
+                            SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
                             "size-3 text-blue-600 transition-transform dark:text-blue-400",
                             snoozedShelfExpanded && "rotate-180",
                           )}
@@ -2485,6 +2660,10 @@ export default function SidebarV2() {
                         <ChevronDownIcon
                           aria-hidden
                           className={cn(
+                            // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                            // Same 4px as the snoozed shelf above.
+                            // fork:end sidebar-v2-row-action-hit-area
+                            SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
                             "size-3 text-muted-foreground/50 transition-transform",
                             settledShelfExpanded && "rotate-180",
                           )}
