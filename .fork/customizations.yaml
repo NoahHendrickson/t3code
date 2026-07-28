@@ -373,9 +373,12 @@
 - id: sidebar-v2-dev-server-pulse
   intent: >
     The thread card's branch/worktree mark pulses working-green to foreground
-    while a dev server attributed to that thread is listening, so the row whose
-    checkout the running server is actually serving can be picked out of the
-    sidebar at a glance.
+    while the port scanner attributes a listening server to that thread, so
+    the row whose checkout the running server is actually serving can be
+    picked out of the sidebar at a glance. The row's tooltip names what the
+    mark can only signal — `localhost:<port>` plus a `(+n)` overflow, the same
+    copy as v1's Globe affordance — so the pulse is never the only way to
+    learn the port.
 
     Attribution is the port scanner's existing terminal→thread mapping and
     nothing more: a listener counts for a row only when the scanner's
@@ -387,18 +390,37 @@
     thread.worktreePath) is deliberately out of scope: it needs an apps/server
     + contracts change, recorded here so a future pass knows the seam.
 
-    The pulse rides the existing branch/worktree mark rather than adding a
-    glyph: the mark already answers "which checkout is this row on", and the
-    pulse answers "…and it is the one being served". A thread with neither
-    branch nor worktree draws no slot and cannot pulse; it runs in the project
-    checkout, which is not the ambiguity the signal exists to resolve.
+    Second known limitation, broader than the first: when the scanner's
+    process probe fails (`lsof` absent, its 5s timeout blown, any
+    ProcessRunError), PortScanner falls back to probing COMMON_DEV_PORTS and
+    every entry it yields carries `pid: null, terminal: null` — attribution is
+    impossible in that mode, so no row can ever pulse, and nothing surfaces
+    the degradation; it is indistinguishable from "no servers running".
+    Relatedly, the lsof output is truncated at 1MiB, so on a host with very
+    many listeners a port can drop out of one snapshot and return the next,
+    which this mark would render as a flicker. Both are scanner behaviours,
+    not introduced here — recorded because this is the first UI that turns
+    them into peripheral-vision motion.
 
-    The row subscribes to the environment's discovered-servers stream, which
-    retains the server-side port scanner (3s lsof poll, reference-counted)
-    while sidebar rows are mounted — previously it ran only while the preview
-    panel was open. That standing cost is the accepted price of an ambient
-    indicator; the subscription atom is keyed per environment, so N rows share
-    one stream.
+    Naming is deliberately restrained for the same reason: the scanner keeps
+    every listening TCP socket — no port range, no process-name filter, no
+    HTTP probe — so a debugger port, an ssh tunnel, or a database all light
+    the mark. The accessible text therefore says "Server listening on port N"
+    (what is actually known), never "dev server running", matching upstream's
+    own restraint ("Open localhost:5173").
+
+    Cost: a card row subscribes to its thread's environment discovered-servers
+    stream, which retains the server-side port scanner (3s lsof poll,
+    reference-counted) while subscribed. This is the same standing cost
+    upstream's v1 row already pays — Sidebar.tsx calls the identical hook per
+    row, unconditionally — so v2 gaining it restores parity, it does not add a
+    new class of cost. What is per-list rather than per-row: subscriptions key
+    on thread.environmentId, so a sidebar listing threads across M
+    environments holds M streams and every one of those hosts runs the 3s poll
+    for the session — v1's multiplier too, but worth naming because it leaves
+    the machine. Slim (settled/snoozed) rows never draw the card meta, so they
+    pass null and skip the subscription entirely rather than retaining the
+    scanner for rows that cannot pulse.
 
     Green is `--sidebar-v2-status-working` — one hue for "alive" across the
     card — and the far pole is `--foreground`, not literal white, so light
@@ -406,8 +428,11 @@
     alternate): ambient status, not an alert — notification-shaped motion in
     this app means "blocked on you", which a healthy dev server is the
     opposite of. Both marks are currentColor, so animating `color` on the svg
-    is the entire mechanism. The state also rides in `sr-only` text ("Dev
-    server running") because the motion is invisible to a screen reader, and
+    is the entire mechanism; `color` does not composite, so each live row
+    repaints its 12px glyph every frame — accepted deliberately, same as the
+    pixel rain, with content-visibility sparing offscreen rows. The state also
+    rides in `sr-only` text after the branch name (identity before transient
+    state) because the motion is invisible to a screen reader, and
     `prefers-reduced-motion` drops the animation onto a static working-green
     mark rather than dropping the state.
   tier: 4

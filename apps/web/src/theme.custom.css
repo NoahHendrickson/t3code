@@ -583,7 +583,12 @@
    something blocked on you, and a healthy dev server is the opposite. Under
    `prefers-reduced-motion` the animation drops and the `color` declaration
    beneath it keeps the mark statically green, so the state survives without
-   the motion. */
+   the motion.
+
+   `color` does not composite, so each live row repaints its 12px glyph every
+   frame for as long as the listener runs — same deal the pixel rain already
+   accepts, and at this size a deliberate yes rather than an accident. Rows
+   offscreen pay nothing: `content-visibility: auto` on the li skips them. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-dev-server-live] > svg {
   color: var(--sidebar-v2-status-working);
   animation: sidebar-v2-dev-server-pulse 4s ease-in-out infinite alternate;
