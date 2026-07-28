@@ -175,3 +175,13 @@ Related deep-dives that predate this file and stay where they are:
   example, upstream adding a second child inside the frame) keeps every guard green. Selecting
   through `data-fork-composer-surface` rather than a positional child selector closes the known
   instance, not the class.
+- The phantom single-line scrollbar under the tight 14/16 desktop line box first got an imperative
+  fix: `overflow-y: hidden` on the contenteditable, flipped to `auto` via
+  `data-composer-prompt-scrollable` when `scrollHeight` cleared `max-h`. That needed a pure
+  predicate, a sync helper, and three effect sites on the wrap latch — and still stranded a
+  clamped→clamped draft switch with scrolling off (no resize, no second prompt effect). The
+  shipped answer deletes that machine: on `width >= 40rem` the existing
+  `data-fork-composer-prompt` wrapper owns `max-height: 12.5rem` + `overflow-y: auto`, and the
+  editor stays unclamped with `overflow-y: hidden` so Geist ink cannot inflate a scroll
+  container. The guard's `not.toContain("data-composer-prompt-scrollable")` is a regression fence
+  against bringing the toggle back, not an unexplained ban.

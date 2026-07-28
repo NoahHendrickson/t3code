@@ -365,7 +365,15 @@
    A general sibling combinator, not an adjacent one: Lexical renders the
    placeholder as the editor's *third* child, with an empty zero-height div
    between them, so `+ div` matches the spacer and never reaches the
-   placeholder. `~ div` catches both; the spacer has no text to resize. */
+   placeholder. `~ div` catches both; the spacer has no text to resize.
+
+   Desktop also moves the max-height scrollport off the contenteditable. The
+   14/16 line box lets Geist ink inflate scrollHeight on the editor itself, so
+   upstream's max-h + overflow-y:auto paints a phantom thumb on a single line.
+   The wrapper owns the cap; the editor stays unclamped and clips its ink so
+   the parent does not inherit the same false overflow. Below 40rem the prompt
+   stays on leading-relaxed and upstream's editor scroll behaviour is left
+   alone. 12.5rem matches upstream's max-h-50. */
 @media (width >= 40rem) {
   :root[data-fork="noahhendrickson-t3code"]
     [data-fork-composer-box]
@@ -376,6 +384,18 @@
        grow to match 14px type would push the tall box to 100. Tight for a
        wrapped prompt; the geometry is the thing being protected. */
     line-height: 16px;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+    max-height: 12.5rem;
+    overflow-y: auto;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-fork-composer-prompt]
+    [data-testid="composer-editor"] {
+    max-height: none;
+    overflow-y: hidden;
   }
 }
 

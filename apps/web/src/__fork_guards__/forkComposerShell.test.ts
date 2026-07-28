@@ -37,14 +37,16 @@ const controlRow = readSibling("../custom/ComposerControlRow.tsx");
 
 describe("fork guard: fork-composer-shell", () => {
   it("keeps the box, send and stop hooks the stylesheet hangs off", () => {
-    // Every visual decision below is keyed to one of these four attributes. Lose
-    // one in a rebase and the CSS still compiles, still ships, and matches
-    // nothing.
+    // Every visual decision below is keyed to one of these attributes. Lose one
+    // in a rebase and the CSS still compiles, still ships, and matches nothing.
     expect(chatComposer, "ChatComposer lost data-fork-composer-box").toContain(
       'data-fork-composer-box="true"',
     );
     expect(chatComposer, "ChatComposer lost the density attribute").toContain(
       "data-fork-composer-density={composerDensity}",
+    );
+    expect(chatComposer, "ChatComposer lost the prompt scrollport hook").toContain(
+      'data-fork-composer-prompt="true"',
     );
     expect(primaryActions, "send button lost its fork hook").toContain(
       'data-fork-composer-action="send"',
@@ -180,6 +182,48 @@ describe("fork guard: fork-composer-shell", () => {
     // Upstream holds the editor open at min-h-17.5. That makes the slim shell
     // geometrically impossible and leaves the tall one hollow.
     expect(theme).toMatch(/\[data-testid="composer-editor"\][\s\S]{0,160}min-height:\s*0/u);
+  });
+
+  it("moves the desktop prompt scrollport onto the wrapper, not the editor", () => {
+    // The 14/16 line box lets Geist ink inflate scrollHeight on the
+    // contenteditable, so upstream's max-h + overflow-y:auto there paints a
+    // phantom thumb. The wrapper owns the cap; the editor clips ink and stays
+    // unclamped. Scoped to the same >=40rem media as the line box — below that
+    // upstream's editor scroll behaviour is correct and must stay alone.
+    //
+    // Routed through cssRules (with atRules) rather than a bare @media…[\s\S]
+    // regex: theme.custom.css has one media query today, so a prefix match was
+    // satisfied by any placement within ~1200 chars of it — including after the
+    // block's closing brace. Hoisting these rules out of the media stayed green.
+    expect(chatComposer).toContain('data-fork-composer-prompt="true"');
+    const rules = cssRules(theme);
+    const inDesktopLineBoxMedia = (rule: (typeof rules)[number]) =>
+      rule.atRules.some((at) => /@media\s*\(\s*width\s*>=\s*40rem\s*\)/u.test(at));
+
+    const scrollport = rules.find(
+      (rule) =>
+        inDesktopLineBoxMedia(rule) &&
+        rule.selector.includes("[data-fork-composer-prompt]") &&
+        !rule.selector.includes('[data-testid="composer-editor"]'),
+    );
+    expect(scrollport, "desktop prompt scrollport rule missing or unscoped").toBeDefined();
+    expect(scrollport!.body).toMatch(/max-height:\s*12\.5rem/u);
+    expect(scrollport!.body).toMatch(/overflow-y:\s*auto/u);
+
+    const editor = rules.find(
+      (rule) =>
+        inDesktopLineBoxMedia(rule) &&
+        rule.selector.includes("[data-fork-composer-prompt]") &&
+        rule.selector.includes('[data-testid="composer-editor"]'),
+    );
+    expect(editor, "desktop editor unclamp rule missing or unscoped").toBeDefined();
+    expect(editor!.body).toMatch(/max-height:\s*none/u);
+    expect(editor!.body).toMatch(/overflow-y:\s*hidden/u);
+
+    // An imperative attribute toggle is the failure mode this replaces — see
+    // .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md#fork-composer-shell.
+    expect(theme).not.toContain("data-composer-prompt-scrollable");
+    expect(chatComposer).not.toContain("data-composer-prompt-scrollable");
   });
 
   it("squares the send and stop buttons, flattens release send, and reddens stop", () => {
