@@ -83,6 +83,9 @@ import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useScrollGutterWidth } from "~/custom/useScrollGutterWidth";
 /* fork:end fork-sidebar-chrome */
 import { openCommandPalette } from "../commandPaletteBus";
+/* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+import { useThreadDiscoveredPorts } from "../portDiscoveryState";
+/* fork:end sidebar-v2-dev-server-pulse */
 import {
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   resolveThreadActionProjectRef,
@@ -554,6 +557,19 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
 
   const isRemote =
     props.currentEnvironmentId !== null && thread.environmentId !== props.currentEnvironmentId;
+
+  /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+  // Attribution is the port scanner's existing terminal→thread mapping: a
+  // listener counts for this row only when it was spawned inside one of the
+  // thread's own T3 terminals. A dev server started in an external shell has
+  // `terminal: null` and lights up nothing — the scanner knows its pid but not
+  // its cwd, so claiming a row for it would be a guess.
+  const devServerPorts = useThreadDiscoveredPorts({
+    environmentId: thread.environmentId,
+    threadId: thread.id,
+  });
+  const devServerLive = devServerPorts.length > 0;
+  /* fork:end sidebar-v2-dev-server-pulse */
 
   const detailsTooltip = (
     <SidebarV2ThreadTooltip
@@ -1071,6 +1087,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               // the row is not treating as one.
               // fork:end sidebar-v2-card-rows
               hasWorktree={thread.worktreePath !== null}
+              /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+              devServerLive={devServerLive}
+              /* fork:end sidebar-v2-dev-server-pulse */
               prSlot={prBadge}
               prUnknown={prUnknown}
               insertions={diff?.insertions ?? null}

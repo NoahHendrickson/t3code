@@ -41,6 +41,11 @@ export interface SidebarV2ThreadCardMetaProps {
       project's checkout. Swaps the branch mark for the worktree one — see the
       render site for why it replaces rather than joins. */
   readonly hasWorktree?: boolean;
+  /** True while the port scanner sees a listener spawned inside one of this
+      thread's own T3 terminals — see `sidebar-v2-dev-server-pulse`. Pulses the
+      branch/worktree mark so the row whose checkout the running dev server is
+      actually serving can be picked out at a glance. */
+  readonly devServerLive?: boolean;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
   /** The row's VCS query has not answered yet, so `prSlot` being null means
@@ -154,8 +159,23 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
 
               The distinction is invisible to a screen reader either way — both
               marks are decorative — so the worktree case carries it in text. */}
+          {/* The dev-server pulse rides this same slot rather than adding a
+              glyph of its own: the question it answers — "which checkout is
+              the running dev server serving?" — is a property of the mark that
+              already names the checkout. The attribute lands on the slot and
+              the stylesheet animates the mark inside it, so the branch text
+              stays legible while the glyph carries the signal. A thread with
+              neither branch nor worktree never draws the slot and so cannot
+              pulse — such a thread runs in the project checkout, which is not
+              the ambiguity this exists to resolve. The animation is decorative
+              motion, so the state also rides in text for screen readers and
+              survives `prefers-reduced-motion` as a static working-green mark. */}
           {props.hasWorktree || props.branch ? (
-            <span className="flex min-w-0 flex-1 items-center gap-0.5">
+            <span
+              className="flex min-w-0 flex-1 items-center gap-0.5"
+              data-fork-dev-server-live={props.devServerLive ? "" : undefined}
+            >
+              {props.devServerLive ? <span className="sr-only">Dev server running</span> : null}
               {props.hasWorktree ? (
                 <>
                   <span className="sr-only">Worktree</span>

@@ -7,8 +7,9 @@
  * in this file can leak into an unmarked, pure-upstream build.
  *
  * `@keyframes` are the one exception: they are global by definition and cannot
- * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-rain-*`
- * so the names cannot collide with upstream's.
+ * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-`
+ * (`sidebar-v2-rain-*`, `sidebar-v2-dev-server-pulse`) so the names cannot
+ * collide with upstream's.
  *
  * `@font-face` is the second exception, for the same reason: a face
  * *registration* is global — there is no selector to hang it off. What matters
@@ -558,6 +559,49 @@
   --sidebar-v2-status-approval: #ffcd59;
   --sidebar-v2-status-input: #8b9cff;
   --sidebar-v2-status-failed: #ff6b60;
+}
+
+/* ---------------------------------------------------------------------------
+   Dev-server pulse — see `.fork/customizations.yaml#sidebar-v2-dev-server-pulse`.
+
+   The thread card's branch/worktree mark breathes from working-green to the
+   theme's foreground while the port scanner attributes a listening dev server
+   to one of the thread's own terminals. Green is the same
+   `--sidebar-v2-status-working` the trailing mark uses, so "alive" keeps one
+   hue across the card; the far pole is `--foreground` rather than literal
+   white so the light theme pulses toward ink instead of vanishing into the
+   panel.
+
+   The mark is `currentColor` throughout (both fork WorktreeIcon and Lucide's
+   GitBranchIcon), so animating `color` on the svg is the whole mechanism —
+   the duotone's 20% inner nodes ride along for free. `> svg` rather than a
+   bare descendant: the slot also carries text (`sr-only` labels, the branch
+   name) and only the glyph is the signal.
+
+   4s and `alternate`, so a full breath is 8s — slow enough to read as ambient
+   status rather than an alert; every notification-shaped pulse in this app is
+   something blocked on you, and a healthy dev server is the opposite. Under
+   `prefers-reduced-motion` the animation drops and the `color` declaration
+   beneath it keeps the mark statically green, so the state survives without
+   the motion. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-dev-server-live] > svg {
+  color: var(--sidebar-v2-status-working);
+  animation: sidebar-v2-dev-server-pulse 4s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-dev-server-live] > svg {
+    animation: none;
+  }
+}
+
+@keyframes sidebar-v2-dev-server-pulse {
+  from {
+    color: var(--sidebar-v2-status-working);
+  }
+  to {
+    color: var(--foreground);
+  }
 }
 
 /* Pixel rain: the "working" indicator ported from the phanttom Ghostty fork
