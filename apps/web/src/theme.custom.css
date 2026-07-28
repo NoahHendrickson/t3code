@@ -432,6 +432,19 @@
   border-radius: 6px;
 }
 
+/* Flat send (tone="flat"): in dark mode, a send button without stage-channel
+   art — any stage label that is not Dev/Nightly — is flat pure white with a
+   black icon. Dev/Nightly keep the stage-channel fill (tone="channel").
+   Unlayered, so this beats upstream's Tailwind fill; the fenced attribute
+   survives upstream className rewrites. Unmarked or light builds never match
+   and fall through to upstream's primary fill. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: none;
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-action="stop"] {
   background: #ea3150;
 }
