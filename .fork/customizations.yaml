@@ -271,6 +271,18 @@
     Working is emerald, deliberately diverging from the sky the mobile Live
     Activity still uses; mobile has not been migrated.
 
+    A card is three lines only when it has a PR or a diff for the third, or does
+    not yet know whether it has a PR; with a known-empty third line the model and
+    runtime move up beside the branch and the card closes at the design's
+    two-line 64px. The unknown case matters as much as the empty one: whether a
+    thread has a PR is the answer to a per-row VCS query, and collapsing before
+    it lands would grow every PR card 15px mid-scroll as the queries resolve.
+    Nothing else varies the height: an absent branch or model leaves its half of
+    a row empty rather than closing the row up. The li's contain-intrinsic-size
+    is chosen by the same predicate the component renders from, so it can never
+    claim a height the row does not have, and it measures the li — the drawn card
+    plus its own py-0.5, so 90 and 68 rather than 86 and 64.
+
     Diff counts bind to --success-foreground / --destructive-foreground rather
     than emerald/red literals, so they hold up in light mode. They render only
     once latestTurnDiff() returns data: it is an upstream stub returning null
@@ -294,6 +306,75 @@
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
     - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
+
+- id: sidebar-v2-project-grouping
+  intent: >
+    Sidebar V2's active cards can be grouped under project headers, from a
+    switch at the top of the fork's project scope row. Upstream's flat list
+    stays the default, and the preference is device-local (localStorage) rather
+    than a field in packages/contracts.
+
+    Both modes are one list shape. buildActiveThreadSections returns sections
+    for either, flat being the single headerless section, and the render and the
+    keyboard-order flattening both read that one sequence. They must never
+    become two derivations that agree by convention.
+
+    orderedThreads is the flattened section order. Three consumers are
+    positional and address the wrong row if it disagrees with paint order:
+    resolveAdjacentThreadId (arrow navigation), rangeSelectTo (shift-select) and
+    planForwardNavigation, which picks where you land after settling or snoozing
+    the thread you are viewing — under grouping that is the next card in the
+    grouped order, which may be the next project's first card. The number-key
+    jump labels are keyed by thread rather than by index, so they cannot
+    misaddress; they are numbered from this list, so a stale order only shows
+    them out of sequence down the screen.
+
+    Only the active cards group, and only where a header says something the
+    screen does not already: the snoozed and settled shelves stay flat, and
+    grouping is skipped whenever one project is on screen, whether by scope or
+    by the sidebar having a single project. The switch is disabled with a stated
+    reason in those states rather than accepting a click that does nothing.
+
+    Section order is projectGroups' own order and thread order inside a section
+    is the order it arrives in, so grouping introduces no second notion of
+    sorting and cannot disagree with the user's project sort order.
+
+    A thread whose project resolves to no group collects in a trailing section
+    whose header carries a null display name. It is never dropped, and never
+    trails headerless under the previous project. The label for that section is
+    the render site's, so the bucketing stays free of user-facing copy.
+
+    A grouped card hides its project name rather than dropping it: the header
+    carries it on screen, and the card keeps it for assistive tech, which has no
+    "two rows up". Grouped mode must never convey less than flat mode.
+
+    The header is a heading (role/aria-level) inside a presentational li, not a
+    collapsible button and not a bare span, and carries a 16px folder mark with
+    no trailing hairline.
+
+    The ref index is memoized on the project list alone; the thread list churns
+    on the clock, capability descriptors and per-row PR states, none of which
+    change which project a ref belongs to.
+
+    Four Tier-4 fences carry this in SidebarV2.tsx: the import, the row prop,
+    the section/order memos, and the render hunk. The render hunk is the one
+    that sits inside upstream's own list body and so the one most likely to be
+    lost in a sync; the guard test asserts it emits headers from the same
+    sections it renders threads from, because a silent loss leaves a flat
+    sidebar over a grouped ordered list.
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2ProjectGrouping.ts
+    - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+    # Shared with fork-sidebar-chrome, which owns the two rows themselves and
+    # their metrics; this entry owns only the grouping switch inside the scope
+    # row's menu.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
 
 - id: fork-surface-palette
   intent: >

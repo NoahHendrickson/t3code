@@ -9,6 +9,11 @@
  * callbacks cross this boundary, so an upstream refactor of the row's event
  * wiring cannot reach into this file.
  *
+ * Two lines or one, depending on whether the thread has a PR or a diff to
+ * report — see `threadCardShowsMetaRow`. Nothing else varies the card's height:
+ * an absent model or branch leaves its half of a row empty rather than closing
+ * the row up, so rows stay comparable across cards.
+ *
  * Both lines are the design's `caption` style — 11/15 Geist at
  * `--muted-foreground` 70% — with only the diff counts and nothing else taking
  * colour. That is a change from the two-specimen model this card used to
@@ -26,9 +31,16 @@ import { CloudIcon, GitBranchIcon, LaptopIcon } from "./icons/lucide-phosphor";
 
 export interface SidebarV2ThreadCardMetaProps {
   readonly projectTitle: string | null;
+  /** Under a project header the name is already on screen one row up, so the
+      card stops drawing it — but keeps it for assistive tech, which has no
+      "one row up" and would otherwise hear a card with no project at all. */
+  readonly projectTitleHidden?: boolean;
   readonly branch: string | null;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
+  /** The row's VCS query has not answered yet, so `prSlot` being null means
+      "not known", not "no PR" — see `threadCardShowsMetaRow`. */
+  readonly prUnknown?: boolean;
   readonly insertions: number | null;
   readonly deletions: number | null;
   readonly modelLabel: string | null;
@@ -37,64 +49,110 @@ export interface SidebarV2ThreadCardMetaProps {
   readonly isRemote: boolean;
 }
 
-/** 15px rows, matching the design. Both are fixed-height so a card keeps its
-    86px whether or not the optional halves render. */
+/** 15px rows, matching the design. Fixed-height so a card's drawn height is a
+    function of how many rows it has, not of which halves happen to be filled. */
 const ROW = "flex h-[15px] min-w-0 items-center text-[11px] leading-[15px]";
 const MUTED = "text-muted-foreground/70";
 
+/**
+ * Whether the card draws the PR/diff line at all — three lines rather than two.
+ *
+ * The row is what carries the PR badge and the diff counts, so with neither
+ * there is nothing on it: the model and runtime move up beside the branch and
+ * the card closes at the design's two-line height. The caller needs the same
+ * answer for its `contain-intrinsic-size` hint, so it lives here rather than
+ * being derived twice from the same props.
+ *
+ * `prUnknown` is why this takes four inputs rather than three. Whether a thread
+ * has a PR is the answer to a per-row VCS query, and on first paint it has not
+ * come back yet. Collapsing on "no PR *yet*" would draw every card at two lines
+ * and then grow the ones that turn out to have a PR, reflowing the list under
+ * the pointer as each query lands — worse than the blank strip the collapse
+ * exists to remove. So an unresolved query holds the row open, and the card
+ * collapses only where the answer is known, or where no query was ever issued
+ * (a thread with no branch and no worktree, which is the case the design is
+ * actually about and which never shifts).
+ */
+export function threadCardShowsMetaRow(props: {
+  readonly hasPr: boolean;
+  readonly prUnknown: boolean;
+  readonly insertions: number | null;
+  readonly deletions: number | null;
+}): boolean {
+  return props.hasPr || props.prUnknown || props.insertions !== null || props.deletions !== null;
+}
+
 export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
   const hasDiff = props.insertions !== null || props.deletions !== null;
+  const showsMetaRow = threadCardShowsMetaRow({
+    hasPr: props.prSlot != null,
+    prUnknown: props.prUnknown === true,
+    insertions: props.insertions,
+    deletions: props.deletions,
+  });
+
+  /* 3px of trailing padding so the runtime glyph's optical edge lines up with
+     the status mark above it, which sits inside a 16px box.
+
+     `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
+     `truncate` can never fire, so a long model name would push whatever shares
+     its row — the half that *can* shrink — off the row instead of clipping
+     itself. Capped at half the line so neither side can starve the other. */
+  const runtime = (
+    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
+      {props.modelLabel ? <span className="truncate">{props.modelLabel}</span> : null}
+      {props.isRemote ? (
+        <CloudIcon aria-hidden className="size-3 shrink-0" />
+      ) : (
+        <LaptopIcon aria-hidden className="size-3 shrink-0" />
+      )}
+    </span>
+  );
 
   return (
     <>
-      <div className={`${ROW} gap-2 ${MUTED}`}>
-        {props.projectTitle ? (
-          // Capped rather than flexible: the branch is the more distinguishing
-          // half of this line — two threads on one project differ by branch, not
-          // by project — so the project yields space first.
-          <span className="max-w-[45%] shrink-0 truncate">{props.projectTitle}</span>
-        ) : null}
-        {props.branch ? (
-          <span className="flex min-w-0 flex-1 items-center gap-0.5">
-            <GitBranchIcon aria-hidden className="size-3 shrink-0" />
-            <span className="truncate whitespace-nowrap">{props.branch}</span>
-          </span>
-        ) : null}
-      </div>
-      <div className={`${ROW} justify-between gap-2`}>
-        <span className={`flex min-w-0 items-center gap-2 ${MUTED}`}>
-          {props.prSlot}
-          {hasDiff ? (
-            // Semantic tokens, not emerald/red literals: they already resolve to
-            // the design's #00d492 / #ff6467 in dark and stay legible in light,
-            // where a 400-weight green on white would not.
-            <span className="flex shrink-0 items-center gap-1 font-mono">
-              {props.insertions !== null ? (
-                <span className="text-success-foreground">+{props.insertions}</span>
-              ) : null}
-              {props.deletions !== null ? (
-                <span className="text-destructive-foreground">−{props.deletions}</span>
-              ) : null}
+      <div className={`${ROW} justify-between gap-2 ${MUTED}`}>
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          {props.projectTitle ? (
+            // Capped rather than flexible: the branch is the more distinguishing
+            // half of this line — two threads on one project differ by branch,
+            // not by project — so the project yields space first.
+            <span
+              className={props.projectTitleHidden ? "sr-only" : "max-w-[45%] shrink-0 truncate"}
+            >
+              {props.projectTitle}
+            </span>
+          ) : null}
+          {props.branch ? (
+            <span className="flex min-w-0 flex-1 items-center gap-0.5">
+              <GitBranchIcon aria-hidden className="size-3 shrink-0" />
+              <span className="truncate whitespace-nowrap">{props.branch}</span>
             </span>
           ) : null}
         </span>
-        {/* 3px of trailing padding so the runtime glyph's optical edge lines up
-            with the status mark above it, which sits inside a 16px box.
-
-            `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
-            `truncate` can never fire, so a long model name would push the PR and
-            diff counts — the half that *can* shrink — off the row instead of
-            clipping itself. Capped at half the line so neither side can starve
-            the other. */}
-        <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
-          {props.modelLabel ? <span className="truncate">{props.modelLabel}</span> : null}
-          {props.isRemote ? (
-            <CloudIcon aria-hidden className="size-3 shrink-0" />
-          ) : (
-            <LaptopIcon aria-hidden className="size-3 shrink-0" />
-          )}
-        </span>
+        {showsMetaRow ? null : runtime}
       </div>
+      {showsMetaRow ? (
+        <div className={`${ROW} justify-between gap-2`}>
+          <span className={`flex min-w-0 items-center gap-2 ${MUTED}`}>
+            {props.prSlot}
+            {hasDiff ? (
+              // Semantic tokens, not emerald/red literals: they already resolve
+              // to the design's #00d492 / #ff6467 in dark and stay legible in
+              // light, where a 400-weight green on white would not.
+              <span className="flex shrink-0 items-center gap-1 font-mono">
+                {props.insertions !== null ? (
+                  <span className="text-success-foreground">+{props.insertions}</span>
+                ) : null}
+                {props.deletions !== null ? (
+                  <span className="text-destructive-foreground">−{props.deletions}</span>
+                ) : null}
+              </span>
+            ) : null}
+          </span>
+          {runtime}
+        </div>
+      ) : null}
     </>
   );
 }
