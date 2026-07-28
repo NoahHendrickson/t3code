@@ -25,6 +25,29 @@
  */
 import { cn } from "~/lib/utils";
 
+/** The shared box for every icon-only control in the thread list: the row hover
+ *  actions (snooze, settle, un-settle, wake) and the project header's new-thread
+ *  plus — see `.fork/customizations.yaml#sidebar-v2-row-action-hit-area`.
+ *
+ * These carry no label, so the button box IS the target. Sized from padding
+ * around a 12px glyph they came out 24x18 and 28x18, two different shapes both
+ * under the 24px minimum, on a row where the pointer is already travelling. A
+ * uniform 24px square fixes the aim, and the hover fill fixes the other half of
+ * the problem: on a transparent button you cannot see where the target ends, so
+ * a near miss looks identical to a hit.
+ *
+ * `bg-foreground/10` rather than `bg-accent`: this sits on top of the row's own
+ * hover fill (`--sidebar-row-hover` in both themes), and a foreground alpha is
+ * the one value that stays a step brighter than the row under it in dark and a
+ * step darker in light.
+ *
+ * A constant rather than a component, because the call sites need to be five
+ * different elements — a plain button, a popover trigger's render prop, an
+ * absolutely positioned overlay — and only the box is common to them. Each site
+ * adds its own placement; see the manifest entry for the axis they share. */
+export const SIDEBAR_V2_ICON_BUTTON_CLASS =
+  "inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground";
+
 /** Does a card's *title* step back?
  *
  * The component set mutes exactly two statuses at rest — Working and Idle — and

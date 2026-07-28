@@ -296,17 +296,25 @@
     Working is emerald, deliberately diverging from the sky the mobile Live
     Activity still uses; mobile has not been migrated.
 
+    The card is padded px-3 py-2.5 — 12px either side, 10px top and bottom. The
+    horizontal 12 is load-bearing: it is the content edge every trailing glyph
+    aligns to (see sidebar-v2-row-action-hit-area). The vertical 8 is not; at
+    the design's 12 it only added air above and below rows that already carry
+    4px of their own from the li's py-0.5.
+
     A card is three lines only when it has a PR or a diff for the third, or does
     not yet know whether it has a PR; with a known-empty third line the model and
-    runtime move up beside the branch and the card closes at the design's
-    two-line 64px. The unknown case matters as much as the empty one: whether a
-    thread has a PR is the answer to a per-row VCS query, and collapsing before
-    it lands would grow every PR card 15px mid-scroll as the queries resolve.
-    Nothing else varies the height: an absent branch or model leaves its half of
-    a row empty rather than closing the row up. The li's contain-intrinsic-size
-    is chosen by the same predicate the component renders from, so it can never
-    claim a height the row does not have, and it measures the li — the drawn card
-    plus its own py-0.5, so 90 and 68 rather than 86 and 64.
+    runtime move up beside the branch and the card closes at two lines. The
+    unknown case matters as much as the empty one: whether a thread has a PR is
+    the answer to a per-row VCS query, and collapsing before it lands would grow
+    every PR card 15px mid-scroll as the queries resolve. Nothing else varies the
+    height: an absent branch or model leaves its half of a row empty rather than
+    closing the row up. The li's contain-intrinsic-size is chosen by the same
+    predicate the component renders from, so it can never claim a height the row
+    does not have, and it measures the li — the drawn card plus its own py-0.5,
+    so 86 and 64 against drawn heights of 82 and 60. Retune the card's vertical
+    padding and both hints move with it, or the scrollbar misreports every
+    skipped row by the difference.
 
     Diff counts bind to --success-foreground / --destructive-foreground rather
     than emerald/red literals, so they hold up in light mode. They render only
@@ -373,9 +381,23 @@
     carries it on screen, and the card keeps it for assistive tech, which has no
     "two rows up". Grouped mode must never convey less than flat mode.
 
-    The header is a heading (role/aria-level) inside a presentational li, not a
-    collapsible button and not a bare span, and carries a 16px folder mark with
-    no trailing hairline.
+    The header carries a trailing plus that starts a thread in that project. The
+    chrome row's "New thread" must ask which project when there are several — it
+    opens the new-thread-in palette — and a grouped header has already answered
+    that question, so its plus skips the picker. The target is the group's own
+    canonical (environmentId, id), matching how buildSidebarProjectPickerEntries
+    resolves the same ambiguity: a logical project can span environments, and
+    picking a member here would let the plus and the palette land the same
+    on-screen name in different ones. The unresolved-project section names no
+    project and so renders no plus — the one header without one, keyed off the
+    same null its label is drawn from.
+
+    The heading role sits on the label span, not on the header row. The row now
+    also holds that button, and a heading containing one takes the button's text
+    into its own accessible name, so the landmark announcing which project a run
+    of cards belongs to would read "<project> New thread in <project>". The row
+    is a presentational li, the label is the heading, and neither is a
+    collapsible button; the folder mark stays 16px with no trailing hairline.
 
     The ref index is memoized on the project list alone; the thread list churns
     on the clock, capability descriptors and per-row PR states, none of which
@@ -400,6 +422,75 @@
     - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
+
+- id: sidebar-v2-row-action-hit-area
+  intent: >
+    This entry owns the size AND the placement of the Sidebar V2 row hover
+    actions; the id predates the alignment half.
+
+    Every Sidebar V2 row hover action — snooze, settle, un-settle, wake now — is
+    a 24px square with a hover fill. Upstream sizes them from padding around a
+    12px glyph, which lands at 24x18 on a card and 28x18 on a slim row: two
+    different shapes, both under the 24px minimum, on transparent buttons whose
+    edges you cannot see. On an icon-only control the box is the whole target,
+    so undersizing it and hiding it are the same bug twice.
+
+    All four share ROW_ACTION_BUTTON_CLASS, which is the point: they appear in
+    two row variants and three branches of one ternary, and the previous drift
+    between them is exactly what a per-call-site class string produces.
+
+    The fill is bg-foreground/10, not bg-accent. These sit on top of the row's
+    own hover fill (--sidebar-row-hover), and a foreground alpha is the one
+    value that stays a step brighter than the row beneath it in dark and a step
+    darker in light.
+
+    The card's trailing cell is h-6 rather than the title line's h-[18px] —
+    a 24px target cannot fit an 18px cell. It is centred in the 18px line, so it
+    overhangs 3px into the card's py-2 above and its gap-[7px] below, neither of
+    which carries anything to collide with, and the status mark shares the cell
+    centred, so it does not move and the card's height is unchanged.
+
+    The status span in that cell is pointer-events-none, and that is the half of
+    this a bigger button did not fix. On hover the span goes to opacity-0, which
+    makes it a stacking context, so it paints in the positioned layer — above
+    the in-flow actions rather than behind them. Faded to nothing it still
+    hit-tested first across its own 16px: the right half of the settle button
+    and none of snooze, so settle answered only left of the checkmark while
+    snooze felt fine. A status mark is never a target and must stay out of the
+    hit path; the row underneath still takes the hover and the click.
+
+    Placement: every trailing mark down the sidebar shares one vertical axis —
+    the two chrome icons, each card's status dot and runtime glyph, and the
+    action icons on both row variants. They do not get there by sharing a right
+    edge, because a 16px mark flush with a card's content edge centres 12px in
+    while an icon centred in a 24px button flush with that same edge centres
+    4px further left, and a 32px chrome button 8px in from its own edge lands
+    4px the other way. So the actions carry -me-1 on cards and -me-0.5 on slim
+    rows (2px less, their padding being px-2.5 against the card's px-3), the
+    snoozed and settled shelf headers' chevrons carry me-1 the other way, and
+    the chrome rows' trailing inset is 4px. Boxes give up their edges; glyphs
+    keep the axis, which is the thing anyone actually reads.
+
+    That inset is 4px and nothing else. It used to carry the thread list's
+    scroll gutter too; fork-sidebar-chrome now compensates for that gutter in
+    the list's own end padding, so a scrollbar term reappearing here would
+    double-count it and walk both icons back off the column.
+  tier: 4
+  files:
+    # Owned by fork-sidebar-chrome, which sets these rows' metrics; this entry
+    # owns only the trailing inset's 4px alignment term and the icon sizes.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    # Owned by sidebar-v2-card-rows; this entry owns only
+    # SIDEBAR_V2_ICON_BUTTON_CLASS, the box all five icon-only controls share.
+    - apps/web/src/custom/sidebarV2RowPolicy.ts
+    # Owned by sidebar-v2-project-grouping; this entry owns only its plus
+    # button's box and the 2px that puts it on the trailing column's axis.
+    - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2RowActionHitArea.test.ts
 
 - id: fork-surface-palette
   intent: >
@@ -461,13 +552,20 @@
     those imports to make a conflict go away, because nothing in the fork's
     copy references them any more.
 
-    Both rows carry a trailing inset of --app-scrollbar-width. They sit in a
-    container with the same 8px padding as the thread list below, so their
-    content edges ought to agree — but the list is a scroll container and its
-    scrollbar takes real layout width, leaving every card short by exactly that
-    much and the trailing button overhanging them. The inset reads the token
-    rather than restating 6px, so the alignment follows upstream if the
-    scrollbar is ever retuned.
+    The thread list pays for its own scroll gutter. scrollbar-gutter:stable
+    reserves the scrollbar inside the list's padding box, so the symmetric px-2
+    it shares with these rows spends 8px of air on the left and 8+6 on the
+    right: every card sits visibly off-centre in its own column, and the chrome
+    rows above end 6px past where the cards do. The list's end padding gives
+    that 6px back — reading --app-scrollbar-width rather than restating 6px, so
+    the symmetry follows upstream if the scrollbar is ever retuned. The gutter
+    itself stays: the scrollbar keeps its lane, the cards are 8px from both
+    edges, and the compensation is meaningless without the gutter that causes
+    it, so the two must move together.
+
+    These rows' own trailing inset is then 4px, and that 4px belongs to
+    sidebar-v2-row-action-hit-area, which owns the trailing glyph column's
+    single axis. It is not a scrollbar term and must not become one again.
 
     The brand moves to the header's trailing edge, where it stops competing
     with the toggle for the corner the eye starts at. The search and project
@@ -513,9 +611,9 @@
     - apps/web/src/components/SidebarStageBackdrop.test.tsx
     - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
-    # Defines --app-scrollbar-width, which the chrome rows' trailing inset reads
-    # to stay flush with the thread cards. Retiring or renaming that token
-    # silently un-aligns the two.
+    # Defines --app-scrollbar-width, which the thread list's end padding reads
+    # to cancel its own scroll gutter. Retiring or renaming that token silently
+    # returns the list to 8px of air on one side and 14px on the other.
     - apps/web/src/index.css
   verify:
     - apps/web/src/__fork_guards__/forkSidebarChrome.test.ts

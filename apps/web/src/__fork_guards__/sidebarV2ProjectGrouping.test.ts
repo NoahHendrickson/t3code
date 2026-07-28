@@ -63,10 +63,30 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // and it would leave a flat-looking sidebar over a grouped ordered list.
     const start = sidebar.indexOf("const items: ReactNode[] = activeSections.flatMap(");
     expect(start).toBeGreaterThanOrEqual(0);
-    const render = sidebar.slice(start, sidebar.indexOf("};", start));
+    const render = sidebar.slice(start, sidebar.indexOf("});", start));
     expect(render).toContain("<SidebarV2ProjectGroupHeader");
-    expect(render).toContain("section.header");
-    expect(render).toContain('renderThreadRow(thread, "active", section.header !== null)');
+    // One binding for both halves, taken from the section being rendered: the
+    // header is drawn from it and the cards' under-a-header flag is read off
+    // the same value, so they cannot come to disagree.
+    expect(render).toContain("const header = section.header;");
+    expect(render).toContain('renderThreadRow(thread, "active", header !== null)');
+  });
+
+  it("starts a thread in the header's own project, and only where there is one", () => {
+    // The chrome row's plus has to ask which project when there are several;
+    // a grouped header has already answered it. The target is the group's
+    // canonical (environmentId, id) — a logical project can span environments,
+    // and picking a member here would let the plus and the palette land the
+    // same on-screen name in different ones.
+    expect(sidebar).toContain(
+      "void newThreadContext.handleNewThread(scopeProjectRef(group.environmentId, group.id))",
+    );
+    // The unresolved-project section names no project to start in, and is the
+    // one header that must render without the button.
+    expect(sidebar).toContain("header.displayName === null");
+    const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
+    expect(header).toContain("props.onNewThread ?");
+    expect(header).toContain("aria-label={`New thread in ${");
   });
 
   it("groups the active cards only, and only where a header would say something new", () => {

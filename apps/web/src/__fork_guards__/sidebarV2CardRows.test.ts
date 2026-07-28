@@ -120,10 +120,13 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // content-visibility skips offscreen rows; the intrinsic size is what keeps
     // the scrollbar honest while they are skipped. A stale value here makes the
     // list jump as you scroll, so both heights are pinned. They measure the li,
-    // which is the drawn card plus its own py-0.5: three lines are 86 + 4, two
-    // are 64 + 4.
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_90px]");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_68px]");
+    // which is the drawn card plus its own py-0.5: at the card's py-2.5, three
+    // lines are 82 + 4 and two are 60 + 4. Change the card's vertical padding
+    // and these move with it or the scrollbar starts lying by the difference
+    // on every row it skips.
+    expect(sidebarV2).toContain("px-3 py-2.5");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_86px]");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_64px]");
     // And the choice is made from the same predicate the component renders
     // from, so the hint cannot drift from the row count it describes.
     expect(sidebarV2).toContain("threadCardShowsMetaRow({");

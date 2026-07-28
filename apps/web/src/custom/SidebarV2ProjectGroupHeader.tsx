@@ -23,9 +23,10 @@
  * visually hidden, since the header carries it for sighted users — so grouped
  * mode never carries less information than flat mode.
  */
-import { FolderIcon } from "lucide-react";
+import { FolderIcon, PlusIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
+import { SIDEBAR_V2_ICON_BUTTON_CLASS } from "./sidebarV2RowPolicy";
 
 /** The unresolved-project section: a just-deleted project, or an environment
     whose projects have not loaded yet. Named rather than left blank so the run
@@ -35,12 +36,13 @@ const UNGROUPED_PROJECT_LABEL = "Unknown project";
 export function SidebarV2ProjectGroupHeader(props: {
   readonly label: string | null;
   readonly isFirst: boolean;
+  /** Starts a thread in this header's project. Omitted for the
+      unresolved-project section, which names no project to start one in. */
+  readonly onNewThread?: (() => void) | undefined;
 }) {
   return (
     <li role="presentation" className="list-none">
       <div
-        role="heading"
-        aria-level={3}
         data-testid="sidebar-v2-project-group-header"
         className={cn(
           "mb-1 flex w-full items-center gap-2 px-2.5 text-left",
@@ -50,9 +52,38 @@ export function SidebarV2ProjectGroupHeader(props: {
         {/* The same folder mark the scope menu lists projects with, so a header
             and its menu entry read as the same object. */}
         <FolderIcon aria-hidden className="size-4 shrink-0 text-muted-foreground/70" />
-        <span className="min-w-0 truncate text-xs font-medium text-muted-foreground/70">
+        {/* The heading is the label, not the row: the row now also holds a
+            button, and a heading that contains one takes the button's text into
+            its own accessible name — "no3y-code New thread in no3y-code" for a
+            landmark whose whole job is to say which project this run of cards
+            belongs to. */}
+        <span
+          role="heading"
+          aria-level={3}
+          className="min-w-0 truncate text-xs font-medium text-muted-foreground/70"
+        >
           {props.label ?? UNGROUPED_PROJECT_LABEL}
         </span>
+        {props.onNewThread ? (
+          <button
+            type="button"
+            // Named for the project, not "New thread": a screen reader running
+            // the headings of a grouped sidebar would otherwise hear the same
+            // control repeated once per group with nothing to tell them apart.
+            aria-label={`New thread in ${props.label ?? UNGROUPED_PROJECT_LABEL}`}
+            onClick={props.onNewThread}
+            className={cn(
+              SIDEBAR_V2_ICON_BUTTON_CLASS,
+              // ms-auto rather than a spacer: the label truncates, so anything
+              // that pushed from the left would have to be told not to shrink.
+              // -me-0.5 is the trailing column's axis from a px-2.5 row, the
+              // same 2px the slim rows' actions take.
+              "-me-0.5 ms-auto",
+            )}
+          >
+            <PlusIcon aria-hidden className="size-4" />
+          </button>
+        ) : null}
       </div>
     </li>
   );

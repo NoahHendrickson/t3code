@@ -156,16 +156,18 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).not.toContain('data-testid="command-palette-trigger"');
   });
 
-  it("insets the chrome rows by the thread list's scrollbar", () => {
-    // The rows and the list sit in sibling containers with identical padding,
-    // but the list is a scroll container and its scrollbar takes real layout
-    // width — so without this the trailing button overhangs every thread card
-    // by exactly the scrollbar. Read from the token, never written as 6px, so
-    // the alignment survives upstream retuning the scrollbar.
-    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
-    expect(rows).toContain("pe-[var(--app-scrollbar-width)]");
+  it("pays for the thread list's scroll gutter out of its own end padding", () => {
+    // scrollbar-gutter:stable reserves the scrollbar inside the list's padding
+    // box, so a symmetric px-2 is 8px of air on the left and 8+6 on the right
+    // and every card sits off-centre in its column. The end padding gives that
+    // 6px back. Read from the token, never written as 6px, so the symmetry
+    // survives upstream retuning the scrollbar — and the compensation has to
+    // stay paired with the gutter that causes it.
+    const sidebarV2 = readSibling("../components/SidebarV2.tsx");
+    expect(sidebarV2).toMatch(/pe-\[calc\(0\.5rem-var\(--app-scrollbar-width\)\)\]/u);
+    expect(sidebarV2).toContain("[scrollbar-gutter:stable]");
     const upstreamCss = readSibling("../index.css");
-    expect(upstreamCss, "the token the inset reads from is gone").toMatch(
+    expect(upstreamCss, "the token the compensation reads from is gone").toMatch(
       /--app-scrollbar-width:\s*\d/u,
     );
   });

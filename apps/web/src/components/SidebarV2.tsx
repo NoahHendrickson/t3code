@@ -132,6 +132,9 @@ import {
 import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "~/custom/SidebarV2ThreadCardMeta";
 import { SidebarV2ProjectScopeRow, SidebarV2SearchRow } from "~/custom/SidebarV2ChromeRows";
 import {
+  /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+  SIDEBAR_V2_ICON_BUTTON_CLASS,
+  /* fork:end sidebar-v2-row-action-hit-area */
   threadCardTitleClassName,
   threadCardTitleRecedes,
   threadRowSurfaceClassName,
@@ -335,7 +338,7 @@ function SnoozePopoverButton(props: {
             aria-label="Snooze thread"
             onClick={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
-            className="inline-flex h-full cursor-pointer items-center gap-0.5 rounded-md bg-transparent px-1.5 text-xs text-muted-foreground hover:text-foreground"
+            className={SIDEBAR_V2_ICON_BUTTON_CLASS}
           />
         }
       >
@@ -799,7 +802,16 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                     type="button"
                     aria-label="Wake thread now"
                     onClick={handleUnsnoozeClick}
-                    className="absolute inset-y-0 right-0 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/v2-row:opacity-100"
+                    className={cn(
+                      SIDEBAR_V2_ICON_BUTTON_CLASS,
+                      // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                      // -me-0.5, where the card takes -me-1: same axis, 2px
+                      // less to travel, because a slim row is padded px-2.5
+                      // against the card's px-3.  Only the icon moves; the time
+                      // label it swaps with keeps the row's own content edge.
+                      // fork:end sidebar-v2-row-action-hit-area
+                      "absolute inset-y-0 right-0 -me-0.5 opacity-0 focus-visible:opacity-100 group-hover/v2-row:opacity-100",
+                    )}
                   >
                     <AlarmClockOffIcon className="size-3" />
                   </button>
@@ -809,7 +821,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   type="button"
                   aria-label="Un-settle thread"
                   onClick={handleUnsettleClick}
-                  className="absolute inset-y-0 right-0 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/v2-row:opacity-100"
+                  className={cn(
+                    SIDEBAR_V2_ICON_BUTTON_CLASS,
+                    // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                    // Same 2px nudge as the wake button above.
+                    // fork:end sidebar-v2-row-action-hit-area
+                    "absolute inset-y-0 right-0 -me-0.5 opacity-0 focus-visible:opacity-100 group-hover/v2-row:opacity-100",
+                  )}
                 >
                   <Undo2Icon className="size-3" />
                 </button>
@@ -818,7 +836,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   type="button"
                   aria-label="Settle thread"
                   onClick={handleSettleClick}
-                  className="absolute inset-y-0 right-0 inline-flex cursor-pointer items-center gap-1 rounded-md bg-transparent px-2 text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/v2-row:opacity-100"
+                  className={cn(
+                    SIDEBAR_V2_ICON_BUTTON_CLASS,
+                    // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                    // Same 2px nudge as the wake button above.
+                    // fork:end sidebar-v2-row-action-hit-area
+                    "absolute inset-y-0 right-0 -me-0.5 opacity-0 focus-visible:opacity-100 group-hover/v2-row:opacity-100",
+                  )}
                 >
                   <CheckIcon className="size-3" />
                 </button>
@@ -842,7 +866,8 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   // A card is three lines only when it has a PR or a diff to put on the third,
   // or does not yet know whether it has a PR; the hint has to follow, or the
   // scrollbar lies about every skipped row. Both values are the drawn card plus
-  // this li's own py-0.5.
+  // this li's own py-0.5: at py-2.5 a three-line card is
+  // 20 + 18 + 7 + 15 + 7 + 15 = 82, and a two-line one 20 + 18 + 7 + 15 = 60.
   const showsMetaRow = threadCardShowsMetaRow({
     hasPr: prBadge !== null,
     prUnknown,
@@ -855,7 +880,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
       data-thread-item
       className={cn(
         "list-none py-0.5 [content-visibility:auto]",
-        showsMetaRow ? "[contain-intrinsic-size:auto_90px]" : "[contain-intrinsic-size:auto_68px]",
+        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+        showsMetaRow ? "[contain-intrinsic-size:auto_86px]" : "[contain-intrinsic-size:auto_64px]",
+        /* fork:end sidebar-v2-card-rows */
       )}
     >
       <Tooltip>
@@ -884,7 +911,15 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               The design draws this at gap-8/p-12 over 16/15/15px rows. The gap
               here is 7px because the title row is 18px rather than 16 (see
               below): 24 padding + 48 rows + 2x7 lands on the drawn 86px. */}
-          <div className="relative z-10 flex flex-col gap-[7px] p-3">
+          {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+              py-2.5 against px-3: 10px top and bottom, 12px either side. The
+              horizontal 12 is load-bearing — it is the content edge every
+              trailing glyph aligns to — but the vertical 12 only bought air
+              above and below rows that already carry 4px of their own from the
+              li's py-0.5. Both drawn heights drop 4px with it, so the
+              contain-intrinsic-size hints below move too or the scrollbar
+              starts lying about the rows it is skipping. */}
+          <div className="relative z-10 flex flex-col gap-[7px] px-3 py-2.5">
             {/* 18px, not the 16px the metadata lines use: that is the exact
                 height of the working rain's 3x5 grid, and cropping it would
                 clip the bottom row of drops. */}
@@ -898,10 +933,31 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   back across the title and sat on top of its last word. In one
                   cell the column is as wide as whichever child is showing, so
                   the title's truncation always accounts for it. */}
-              <span className="grid h-[18px] shrink-0 grid-cols-1 justify-items-end">
+              {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */}
+              {/* h-6, not the line's h-[18px]: the hover actions share this cell
+                  and a 24px target cannot fit in an 18px one. The cell is
+                  centred in the 18px line, so it overhangs 3px into the card's
+                  py-2 above and its gap-[7px] below — neither of which carries
+                  anything to collide with — and the status mark, centred in the
+                  same cell, does not move. */}
+              <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
+                {/* fork:end sidebar-v2-row-action-hit-area */}
                 <span
                   className={cn(
-                    "col-start-1 row-start-1 flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
+                    // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                    // pointer-events-none, because this decoration was eating
+                    // the settle click. Status and actions share one grid cell,
+                    // and on hover this span goes to opacity-0 — which makes it
+                    // a stacking context, so it paints in the positioned layer,
+                    // ABOVE the in-flow actions rather than behind them. Faded
+                    // to nothing, it still hit-tested first across its own 16px:
+                    // exactly the right half of the settle button, and none of
+                    // snooze. Hence "settle only works if I aim left of the
+                    // checkmark". A status mark is never a target, so it should
+                    // never have been in the hit path at all; the row below it
+                    // still gets the hover and the click.
+                    // fork:end sidebar-v2-row-action-hit-area
+                    "pointer-events-none col-start-1 row-start-1 flex items-center gap-2 transition-opacity group-hover/v2-row:opacity-0",
                     snoozeMenuOpen && "opacity-0",
                   )}
                 >
@@ -950,7 +1006,20 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       // the full width of the card when nothing is pointing at
                       // it; the column only widens once the actions are
                       // actually showing, and the title re-truncates to match.
-                      "col-start-1 row-start-1 flex w-0 items-stretch gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                      // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                      // -me-1 puts the glyphs on the column's axis instead of
+                      // the cell's edge. The status mark is a 16px box flush
+                      // with the card's content edge, so its dot centres 12px
+                      // in; an action icon centres 12px in from a 24px button
+                      // flush with the same edge, which is 4px further left.
+                      // Every trailing mark down the sidebar — these, the dot,
+                      // the runtime glyph, the two chrome icons above — reads
+                      // as one column, and 4px of stagger in it is exactly the
+                      // kind of misalignment you feel before you can name it.
+                      // The button overhangs 4px into the card's 12px padding,
+                      // which holds nothing.
+                      // fork:end sidebar-v2-row-action-hit-area
+                      "col-start-1 row-start-1 -me-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
                       snoozeMenuOpen && "w-auto opacity-100",
                     )}
                   >
@@ -966,7 +1035,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         type="button"
                         aria-label="Settle thread"
                         onClick={handleSettleClick}
-                        className="inline-flex cursor-pointer items-center rounded-md bg-transparent px-2 text-xs text-muted-foreground hover:text-foreground"
+                        className={SIDEBAR_V2_ICON_BUTTON_CLASS}
                       >
                         {/* Icon-only in v2: at 282px the "Settle" text pushed the
                             hover actions over the title, which now shares their
@@ -2260,6 +2329,28 @@ export default function SidebarV2() {
     openCommandPalette({ open: "new-thread-in" });
   }, [isMobile, newThreadContext, projectGroups.length, setOpenMobile]);
 
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  // The header's plus. The chrome row's "New thread" has to ask which project
+  // when there are several — that is the "new-thread-in" palette above. A
+  // grouped header has already answered it: the run of cards under it IS the
+  // project, so the button starts there and skips the picker.
+  //
+  // The group's own (environmentId, id) is the target, not a member scan. A
+  // logical project can span environments, and buildSidebarProjectPickerEntries
+  // resolves the same ambiguity the same way — the canonical project first,
+  // members only as a fallback — so the plus and the palette cannot land a
+  // thread in different environments for the same name on screen.
+  const handleNewThreadInProject = useCallback(
+    (projectKey: string) => {
+      const group = projectGroups.find((candidate) => candidate.projectKey === projectKey);
+      if (!group) return;
+      if (isMobile) setOpenMobile(false);
+      void newThreadContext.handleNewThread(scopeProjectRef(group.environmentId, group.id));
+    },
+    [isMobile, newThreadContext, projectGroups, setOpenMobile],
+  );
+  /* fork:end sidebar-v2-project-grouping */
+
   const commandPaletteShortcutLabel = shortcutLabelForCommand(keybindings, "commandPalette.toggle");
   // Same resolution as v1: prefer the local-thread binding, fall back to
   // chat.new, no platform gating — web users have working shortcuts too.
@@ -2304,7 +2395,16 @@ export default function SidebarV2() {
           }
         />
         {/* fork:end fork-sidebar-chrome */}
-        <SidebarGroup className="min-h-0 flex-1 overflow-y-auto px-2 py-1 [scrollbar-gutter:stable]">
+        {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+            The list's two sides are padded to look equal, not to measure
+            equal. scrollbar-gutter:stable reserves the scrollbar inside this
+            padding box, so a symmetric px-2 spends 8px on the left and 8+6 on
+            the right, and every card sits visibly off-centre in its own
+            column. The end padding gives that 6px back; the gutter still
+            holds, so the scrollbar has its lane and the cards are 8px from
+            both edges. */}
+        <SidebarGroup className="min-h-0 flex-1 overflow-y-auto py-1 ps-2 pe-[calc(0.5rem-var(--app-scrollbar-width))] [scrollbar-gutter:stable]">
+          {/* fork:end fork-sidebar-chrome */}
           <TooltipProvider
             key="sidebar-thread-tooltips-150"
             delay={150}
@@ -2414,20 +2514,36 @@ export default function SidebarV2() {
                 // Flat is the one-headerless-section case, so this is the only
                 // path either way — and it is the same sequence
                 // orderedActiveThreads flattens.
-                const items: ReactNode[] = activeSections.flatMap((section, sectionIndex) => [
-                  ...(section.header
-                    ? [
-                        <SidebarV2ProjectGroupHeader
-                          key={`project-group-header:${section.header.projectKey}`}
-                          label={section.header.displayName}
-                          isFirst={sectionIndex === 0}
-                        />,
-                      ]
-                    : []),
-                  ...section.threads.map((thread) =>
-                    renderThreadRow(thread, "active", section.header !== null),
-                  ),
-                ]);
+                const items: ReactNode[] = activeSections.flatMap((section, sectionIndex) => {
+                  // Bound here rather than read off `section.header` inside the
+                  // callback below: the narrowing does not survive into a
+                  // closure, and the key the plus starts a thread from must be
+                  // the one this header was drawn for.
+                  const header = section.header;
+                  return [
+                    ...(header
+                      ? [
+                          <SidebarV2ProjectGroupHeader
+                            key={`project-group-header:${header.projectKey}`}
+                            label={header.displayName}
+                            isFirst={sectionIndex === 0}
+                            // The unresolved-project section names no project,
+                            // so there is nowhere for its plus to start a
+                            // thread. It is the one header without one, keyed
+                            // off the same null its label is drawn from.
+                            onNewThread={
+                              header.displayName === null
+                                ? undefined
+                                : () => handleNewThreadInProject(header.projectKey)
+                            }
+                          />,
+                        ]
+                      : []),
+                    ...section.threads.map((thread) =>
+                      renderThreadRow(thread, "active", header !== null),
+                    ),
+                  ];
+                });
                 /* fork:end sidebar-v2-project-grouping */
                 // Snoozed shelf: between the inbox and Settled — out of the
                 // way, never gone. The header always renders while anything
@@ -2451,7 +2567,15 @@ export default function SidebarV2() {
                         <ChevronDownIcon
                           aria-hidden
                           className={cn(
-                            "size-3 text-blue-600 transition-transform dark:text-blue-400",
+                            // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                            // me-1 puts this on the trailing column's axis. The
+                            // shelf header is padded px-2.5 where a card is
+                            // px-3, and a 12px chevron flush with that padding
+                            // centres 6px in against the 8px a card's status
+                            // mark takes — 4px out, the same stagger every
+                            // other mark in the column was carrying.
+                            // fork:end sidebar-v2-row-action-hit-area
+                            "me-1 size-3 text-blue-600 transition-transform dark:text-blue-400",
                             snoozedShelfExpanded && "rotate-180",
                           )}
                         />
@@ -2479,7 +2603,10 @@ export default function SidebarV2() {
                         <ChevronDownIcon
                           aria-hidden
                           className={cn(
-                            "size-3 text-muted-foreground/50 transition-transform",
+                            // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                            // Same 4px as the snoozed shelf above.
+                            // fork:end sidebar-v2-row-action-hit-area
+                            "me-1 size-3 text-muted-foreground/50 transition-transform",
                             settledShelfExpanded && "rotate-180",
                           )}
                         />

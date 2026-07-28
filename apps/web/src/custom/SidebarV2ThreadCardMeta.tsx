@@ -91,15 +91,23 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
     deletions: props.deletions,
   });
 
-  /* 3px of trailing padding so the runtime glyph's optical edge lines up with
-     the status mark above it, which sits inside a 16px box.
+  /* 2px of trailing padding: (16 - 12) / 2, the inset a 12px glyph needs to
+     centre where the status mark above it does. That mark is 8px of ink in a
+     16px box flush with the card's content edge, so the trailing column's axis
+     is 8px in from that edge — the same axis the row actions and the two chrome
+     icons are nudged onto (see sidebar-v2-row-action-hit-area). This was 3px,
+     matching the mark's optical right EDGE instead, which left the glyph a
+     pixel light of the axis: enough to see in a column, and the one mark in it
+     still out of line after everything else was squared up. Derive the number,
+     don't tune it — an eyeballed value here is invisible until it is the only
+     thing left wrong.
 
      `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
      `truncate` can never fire, so a long model name would push whatever shares
      its row — the half that *can* shrink — off the row instead of clipping
      itself. Capped at half the line so neither side can starve the other. */
   const runtime = (
-    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
+    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[2px] ${MUTED}`}>
       {props.modelLabel ? <span className="truncate">{props.modelLabel}</span> : null}
       {props.isRemote ? (
         <CloudIcon aria-hidden className="size-3 shrink-0" />
