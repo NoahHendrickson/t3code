@@ -417,8 +417,9 @@
     entry points into the same door must not disagree about which room they
     enter, and sharing the derivation is the only version of that which cannot
     drift back apart. The unresolved-project section names no project and so
-    renders no plus — the one header without one, keyed off the same null its
-    label is drawn from.
+    renders no plus — the one header without one, gated on that bucket's own
+    UNGROUPED_PROJECT_KEY. Not on its label being null: the label correlates
+    today, and one signal carrying two meanings is how it stops correlating.
 
     The heading role sits on the label span, not on the header row. The row now
     also holds that button, and a heading containing one takes the button's text
@@ -606,18 +607,21 @@
     edges, and the compensation is meaningless without the gutter that causes
     it, so the two must move together.
 
-    Two bounds on that, both real and neither self-enforcing. It follows the
-    token only over [0px, 8px]: padding cannot go negative, so calc() clamps and
-    a token past 8px silently leaves 0 on the right while the gutter grows —
-    worse than the asymmetry this removed. The guard fails on that rather than
-    letting it ship. And --app-scrollbar-width describes the true gutter only
-    where ::-webkit-scrollbar applies (index.css). Firefox sets no
-    scrollbar-width, so scrollbar-gutter: stable reserves the native ~15px and
-    the compensation under-corrects; the cards then sit off the axis the chrome
-    icons are pinned to. Upstream's symmetric padding was wrong there too, but
-    wrong on both sides at once, so it stayed self-consistent. Fixing it
-    properly means making the token true cross-browser (scrollbar-width: thin
-    plus scrollbar-color) rather than widening the compensation.
+    The width given back is measured, not assumed. --app-scrollbar-width is only
+    true where ::-webkit-scrollbar applies: Firefox sets no scrollbar-width, so
+    it reserves the native scrollbar (~15px) and a token-sized giveback
+    under-corrects, while with macOS overlay scrollbars it reserves nothing at
+    all and the giveback over-corrects — 8px left against 2px right, worse than
+    the symmetric padding this replaced, and invisible to any guard that only
+    matches the token. custom/useScrollGutterWidth publishes the browser's own
+    answer (offsetWidth - clientWidth) as --sidebar-list-gutter, so the rule
+    holds on every engine, including the case where a fat scrollbar leaves the
+    giveback clamped at zero and the card flush against it.
+
+    One source for the 8px: both sides read --sidebar-list-pad. Spelled twice —
+    once as a start padding and once as a base to subtract from — a retune of
+    one leaves the other subtracting from a stale number, and the cards drift
+    off the chrome icons' axis with nothing failing.
 
     These rows' own trailing inset is then 4px, and that 4px belongs to
     sidebar-v2-row-action-hit-area, which owns the trailing glyph column's
@@ -656,6 +660,7 @@
   files:
     - apps/web/src/custom/SidebarHeaderBackdrop.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/custom/useScrollGutterWidth.ts
     - apps/web/src/custom/SidebarStageDitherArt.tsx
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
     - apps/web/src/custom/assets/sidebar-stage-dither.png

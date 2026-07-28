@@ -105,9 +105,15 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // The exact regression: a sync restores `px-2`/`px-1.5` at a call site, the
     // shared class stays in the file, and one button silently goes back to
     // being a different shape from the other four.
+    //
+    // The lookahead is load-bearing: `\b` sits between `2` and `.`, so a bare
+    // `\bpx-2\b` also matches `px-2.5` — the slim rows' own documented padding,
+    // and one this file names twice. With a 400-char window spanning into
+    // sibling elements, that spelling drifting into any window would block CI
+    // on a correct change.
     const padded = ROW_ACTIONS.flatMap(([label]) =>
       openingTags(label)
-        .filter((tag) => /className=[\s\S]*?\bpx-(?:1\.5|2)\b/u.test(tag))
+        .filter((tag) => /className=[\s\S]*?\bpx-(?:1\.5|2)(?![\w.])/u.test(tag))
         .map(() => label),
     );
     expect(padded).toEqual([]);

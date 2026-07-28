@@ -121,8 +121,20 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
   it("gives the header heading semantics inside upstream's thread list", () => {
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
     expect(header).toContain('role="presentation"');
-    expect(header).toContain('role="heading"');
     expect(header).toContain("aria-level={3}");
+    // On the label span, not on the row. The row also holds the new-thread
+    // button, and a heading containing one takes the button's text into its own
+    // accessible name — "<project> New thread in <project>" for a landmark
+    // whose whole job is to say which project a run of cards belongs to. That
+    // was the role's position before the button existed, so a sync restoring it
+    // is the realistic regression, and asserting the role appears *somewhere*
+    // in the file cannot tell the two apart.
+    expect(header).toMatch(/<span\s+role="heading"/u);
+    const headerRow = /<div\s+data-testid="sidebar-v2-project-group-header"[\s\S]*?>/u.exec(
+      header,
+    )?.[0];
+    expect(headerRow).toBeDefined();
+    expect(headerRow).not.toContain('role="heading"');
   });
 
   it("rebuilds the project index only when the project list changes", () => {

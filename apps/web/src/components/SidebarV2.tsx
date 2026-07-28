@@ -79,8 +79,16 @@ import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore"
 import { useThreadSelectionStore } from "../threadSelectionStore";
 import { useThreadActions } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+import { useScrollGutterWidth } from "~/custom/useScrollGutterWidth";
+/* fork:end fork-sidebar-chrome */
 import { openCommandPalette } from "../commandPaletteBus";
-import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
+import {
+  /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+  resolveThreadActionProjectRef,
+  /* fork:end sidebar-v2-project-grouping */
+  startNewThreadFromContext,
+} from "../lib/chatThreadActions";
 import { useClientSettings, useUpdateClientSettings } from "../hooks/useSettings";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useNowMinute } from "../hooks/useNowMinute";
@@ -346,7 +354,9 @@ function SnoozePopoverButton(props: {
             aria-label="Snooze thread"
             onClick={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
+            /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
             className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+            /* fork:end sidebar-v2-row-action-hit-area */
           />
         }
       >
@@ -1000,6 +1010,14 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       // it; the column only widens once the actions are
                       // actually showing, and the title re-truncates to match.
                       // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                      // focus-within:overflow-visible, because the clip that
+                      // collapses this to zero width also cuts the focus ring:
+                      // it is a box-shadow 4px outside a button the wrapper
+                      // hugs exactly, so a keyboard user got no indicator at
+                      // all on the one control the ring was added for. Only
+                      // lifted while focus is inside, which is the same
+                      // condition that widens the wrapper.
+                      //
                       // The offset is derived in custom/sidebarV2TrailingColumn
                       // with the rest of the column's; `relative` is local, and
                       // is the other half of the pointer-events-none on the
@@ -1011,7 +1029,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       // whose action is absolute, were never affected.
                       // fork:end sidebar-v2-row-action-hit-area
                       SIDEBAR_V2_TRAILING_OFFSET.cardActions,
-                      "relative col-start-1 row-start-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                      "relative col-start-1 row-start-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
                       snoozeMenuOpen && "w-auto opacity-100",
                     )}
                   >
@@ -1027,7 +1045,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         type="button"
                         aria-label="Settle thread"
                         onClick={handleSettleClick}
+                        /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
                         className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                        /* fork:end sidebar-v2-row-action-hit-area */
                       >
                         {/* Icon-only in v2: at 282px the "Settle" text pushed the
                             hover actions over the title, which now shares their
@@ -1125,6 +1145,9 @@ export default function SidebarV2() {
   );
   const [projectScopeMenuOpen, setProjectScopeMenuOpen] = useState(false);
   const newThreadContext = useHandleNewThread();
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+  const listScrollGutterRef = useScrollGutterWidth();
+  /* fork:end fork-sidebar-chrome */
   const openAddProjectCommandPalette = useCallback(
     () => openCommandPalette({ open: "add-project" }),
     [],
@@ -2413,12 +2436,21 @@ export default function SidebarV2() {
         {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
             The list's two sides are padded to look equal, not to measure
             equal. scrollbar-gutter:stable reserves the scrollbar inside this
-            padding box, so a symmetric px-2 spends 8px on the left and 8+6 on
-            the right, and every card sits visibly off-centre in its own
-            column. The end padding gives that 6px back; the gutter still
-            holds, so the scrollbar has its lane and the cards are 8px from
-            both edges. */}
-        <SidebarGroup className="min-h-0 flex-1 overflow-y-auto py-1 ps-2 pe-[calc(0.5rem-var(--app-scrollbar-width))] [scrollbar-gutter:stable]">
+            padding box, so a symmetric px-2 spends 8px on the left and 8 plus
+            the scrollbar on the right, and every card sits visibly off-centre
+            in its own column. The end padding gives that width back; the
+            gutter still holds, so the scrollbar keeps its lane and the cards
+            are 8px from both edges.
+
+            One source for the 8: both sides read --sidebar-list-pad, so
+            retuning the start padding cannot leave the end subtracting from a
+            stale base. The width subtracted is measured rather than taken from
+            --app-scrollbar-width, which is only true where ::-webkit-scrollbar
+            applies — see custom/useScrollGutterWidth. */}
+        <SidebarGroup
+          ref={listScrollGutterRef}
+          className="min-h-0 flex-1 overflow-y-auto py-1 [--sidebar-list-pad:--spacing(2)] ps-(--sidebar-list-pad) pe-[calc(var(--sidebar-list-pad)-var(--sidebar-list-gutter,0px))] [scrollbar-gutter:stable]"
+        >
           {/* fork:end fork-sidebar-chrome */}
           <TooltipProvider
             key="sidebar-thread-tooltips-150"

@@ -136,19 +136,26 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
               {props.projectTitle}
             </span>
           ) : null}
-          {props.branch ? (
-            <span className="flex min-w-0 flex-1 items-center gap-0.5">
-              {/* The worktree mark replaces the branch mark rather than joining
-                  it. This slot already answers "which code is this on", and the
-                  two facts are not independent: a thread on a worktree is on
-                  that worktree's branch, so a second glyph would spend ~16px of
-                  a line whose branch name is already capped and truncating to
-                  restate what the first one implies. The branch name stays put,
-                  labelled by position.
+          {/* The worktree mark replaces the branch mark rather than joining it.
+              This slot already answers "which code is this on", and the two
+              facts are not independent: a thread on a worktree is on that
+              worktree's branch, so a second glyph would spend ~16px of a line
+              whose branch name is already capped and truncating to restate what
+              the first one implies. The branch name stays put, labelled by
+              position.
 
-                  The distinction is invisible to a screen reader either way —
-                  both marks are decorative — so the worktree case carries it in
-                  text instead. */}
+              The mark's condition is the worktree, not the branch. They are
+              independent fields on the shell and the row's own git predicate
+              treats them as such (`branch != null || worktreePath !== null`),
+              so gating the whole slot on the branch would draw a thread that
+              has a checkout of its own but no branch as if it ran in the
+              project's — the exact confusion the mark exists to prevent. With
+              no branch to name, the mark stands alone.
+
+              The distinction is invisible to a screen reader either way — both
+              marks are decorative — so the worktree case carries it in text. */}
+          {props.hasWorktree || props.branch ? (
+            <span className="flex min-w-0 flex-1 items-center gap-0.5">
               {props.hasWorktree ? (
                 <>
                   <span className="sr-only">Worktree</span>
@@ -157,7 +164,9 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
               ) : (
                 <GitBranchIcon aria-hidden className="size-3 shrink-0" />
               )}
-              <span className="truncate whitespace-nowrap">{props.branch}</span>
+              {props.branch ? (
+                <span className="truncate whitespace-nowrap">{props.branch}</span>
+              ) : null}
             </span>
           ) : null}
         </span>
