@@ -757,11 +757,13 @@
     focus. 14 is a deliberate divergence from the drawn 12, and the pills are
     12px where the designs draw 10 — the guard pins both so a later
     reconciliation against Figma does not quietly "correct" them back.
-    Overflow on the prompt stays hidden until content clears max-h: the tight
-    14/16 line box lets Geist ink inflate scrollHeight on a single line, so
-    upstream's overflow-y: auto painted a scrollbar with nothing to scroll.
-    data-composer-prompt-scrollable restores auto once scrollHeight clears
-    the capped max; the wrap latch owns that toggle.
+    Desktop moves the max-height scrollport onto data-fork-composer-prompt
+    rather than the contenteditable: the tight 14/16 line box lets Geist ink
+    inflate scrollHeight on the editor, so upstream's max-h + overflow-y:auto
+    there painted a phantom thumb on a single line. The wrapper owns the
+    12.5rem cap (upstream max-h-50); the editor stays unclamped and clips its
+    ink. Scoped to the same >=40rem media as the line box — below that the
+    prompt stays on leading-relaxed and upstream's editor scroll is left alone.
     The prompt and its placeholder are set by one rule and must stay that way:
     they are two elements stacked exactly on top of each other, and any
     disagreement about size or leading puts the caret beside the text it

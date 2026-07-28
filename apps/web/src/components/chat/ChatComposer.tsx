@@ -2732,7 +2732,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
             {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
             <div className={cn("flex min-w-0", isComposerSlim ? "items-center gap-6" : "flex-col")}>
-              <div ref={attachPromptElement} className="relative min-w-0 flex-1">
+              <div
+                ref={attachPromptElement}
+                data-fork-composer-prompt="true"
+                className="relative min-w-0 flex-1"
+              >
                 {/* fork:end fork-composer-shell */}
                 <ComposerPromptEditor
                   editorRef={composerEditorRef}

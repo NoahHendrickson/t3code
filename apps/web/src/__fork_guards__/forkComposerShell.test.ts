@@ -18,7 +18,6 @@ import { describe, expect, it } from "vite-plus/test";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import {
   resolveComposerDensity,
-  isComposerPromptScrollable,
   isPromptHeightWrapped,
   nextWrapLatch,
 } from "../custom/composerDensity";
@@ -183,20 +182,22 @@ describe("fork guard: fork-composer-shell", () => {
     expect(theme).toMatch(/\[data-testid="composer-editor"\][\s\S]{0,160}min-height:\s*0/u);
   });
 
-  it("keeps the prompt scrollbar off until content clears max-height", () => {
-    // The fork's 14/16 line box lets Geist ink overflow by a pixel or two, which
-    // made upstream's overflow-y: auto paint a thumb on a single unwrapped line.
-    // Hidden until data-composer-prompt-scrollable; the latch toggles that when
-    // scrollHeight clears the capped max.
+  it("moves the desktop prompt scrollport onto the wrapper, not the editor", () => {
+    // The 14/16 line box lets Geist ink inflate scrollHeight on the
+    // contenteditable, so upstream's max-h + overflow-y:auto there paints a
+    // phantom thumb. The wrapper owns the cap; the editor clips ink and stays
+    // unclamped. Scoped to the same >=40rem media as the line box — below that
+    // upstream's editor scroll behaviour is correct and must stay alone.
+    expect(chatComposer).toContain('data-fork-composer-prompt="true"');
     expect(theme).toMatch(
-      /\[data-testid="composer-editor"\]\s*\{[\s\S]{0,200}overflow-y:\s*hidden/u,
+      /@media\s*\(\s*width\s*>=\s*40rem\s*\)[\s\S]{0,1200}\[data-fork-composer-prompt\]\s*\{[\s\S]{0,120}max-height:\s*12\.5rem[\s\S]{0,80}overflow-y:\s*auto/u,
     );
     expect(theme).toMatch(
-      /\[data-testid="composer-editor"\]\[data-composer-prompt-scrollable\]\s*\{[\s\S]{0,80}overflow-y:\s*auto/u,
+      /@media\s*\(\s*width\s*>=\s*40rem\s*\)[\s\S]{0,1600}\[data-fork-composer-prompt\][\s\S]{0,120}\[data-testid="composer-editor"\]\s*\{[\s\S]{0,120}max-height:\s*none[\s\S]{0,80}overflow-y:\s*hidden/u,
     );
-    const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
-    expect(latchHook).toContain("COMPOSER_PROMPT_SCROLLABLE_ATTR");
-    expect(latchHook).toContain("isComposerPromptScrollable");
+    // An imperative attribute toggle is the failure mode this replaces.
+    expect(theme).not.toContain("data-composer-prompt-scrollable");
+    expect(chatComposer).not.toContain("data-composer-prompt-scrollable");
   });
 
   it("squares the send and stop buttons, flattens release send, and reddens stop", () => {
@@ -469,16 +470,5 @@ describe("fork guard: fork-composer-shell", () => {
     // line box rather than reporting every prompt as wrapped.
     expect(isPromptHeightWrapped(16, Number.NaN)).toBe(false);
     expect(isPromptHeightWrapped(64, Number.NaN)).toBe(true);
-  });
-
-  it("does not treat glyph ink overflow as a scrollable prompt", () => {
-    // A one-line prompt whose scrollHeight is a couple of pixels over its
-    // client height is noise from the tight line box, not content past max-h.
-    expect(isComposerPromptScrollable({ scrollHeightPx: 18, maxHeightPx: 200 })).toBe(false);
-    expect(isComposerPromptScrollable({ scrollHeightPx: 201, maxHeightPx: 200 })).toBe(false);
-    expect(isComposerPromptScrollable({ scrollHeightPx: 202, maxHeightPx: 200 })).toBe(true);
-    expect(isComposerPromptScrollable({ scrollHeightPx: 400, maxHeightPx: Number.NaN })).toBe(
-      false,
-    );
   });
 });

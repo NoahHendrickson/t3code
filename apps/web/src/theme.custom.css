@@ -353,22 +353,9 @@
 /* The prompt sits on a 16px line box at 14px type. Upstream's min-height holds
    the editor open at ~3 lines, which would make the slim shell impossible and
    leave the tall one hollow; one line is the drawn height and it grows from
-   there. 16px is kept below sm so iOS does not zoom the viewport on focus.
-
-   Overflow is hidden until the editor has actually hit max-h. Upstream's
-   overflow-y: auto is correct once content is capped, but Geist ink overflows
-   the tight 14/16 line box by a pixel or two and that alone made auto paint a
-   scrollbar on a single unwrapped line. useComposerPromptWrapLatch sets
-   data-composer-prompt-scrollable when scrollHeight clears the max. */
+   there. 16px is kept below sm so iOS does not zoom the viewport on focus. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box] [data-testid="composer-editor"] {
   min-height: 0;
-  overflow-y: hidden;
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-box]
-  [data-testid="composer-editor"][data-composer-prompt-scrollable] {
-  overflow-y: auto;
 }
 
 /* The placeholder has to move with the prompt, or the two disagree about both
@@ -378,7 +365,15 @@
    A general sibling combinator, not an adjacent one: Lexical renders the
    placeholder as the editor's *third* child, with an empty zero-height div
    between them, so `+ div` matches the spacer and never reaches the
-   placeholder. `~ div` catches both; the spacer has no text to resize. */
+   placeholder. `~ div` catches both; the spacer has no text to resize.
+
+   Desktop also moves the max-height scrollport off the contenteditable. The
+   14/16 line box lets Geist ink inflate scrollHeight on the editor itself, so
+   upstream's max-h + overflow-y:auto paints a phantom thumb on a single line.
+   The wrapper owns the cap; the editor stays unclamped and clips its ink so
+   the parent does not inherit the same false overflow. Below 40rem the prompt
+   stays on leading-relaxed and upstream's editor scroll behaviour is left
+   alone. 12.5rem matches upstream's max-h-50. */
 @media (width >= 40rem) {
   :root[data-fork="noahhendrickson-t3code"]
     [data-fork-composer-box]
@@ -389,6 +384,18 @@
        grow to match 14px type would push the tall box to 100. Tight for a
        wrapped prompt; the geometry is the thing being protected. */
     line-height: 16px;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+    max-height: 12.5rem;
+    overflow-y: auto;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-fork-composer-prompt]
+    [data-testid="composer-editor"] {
+    max-height: none;
+    overflow-y: hidden;
   }
 }
 

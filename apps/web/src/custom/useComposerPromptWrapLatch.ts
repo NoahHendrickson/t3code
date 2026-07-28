@@ -1,28 +1,12 @@
 import { useEffect, useState } from "react";
 
-import {
-  COMPOSER_PROMPT_SCROLLABLE_ATTR,
-  isComposerPromptScrollable,
-  isPromptHeightWrapped,
-  nextWrapLatch,
-} from "./composerDensity";
+import { isPromptHeightWrapped, nextWrapLatch } from "./composerDensity";
 
 export interface ComposerPromptWrapLatch {
   /** Latched: the prompt has wrapped and has not been cleared since. */
   isPromptWrapped: boolean;
   /** Ref callback for the element wrapping the prompt editor. */
   attachPromptElement: (element: HTMLDivElement | null) => void;
-}
-
-function syncComposerPromptScrollable(editable: HTMLElement): void {
-  const maxHeightPx = Number.parseFloat(window.getComputedStyle(editable).maxHeight);
-  editable.toggleAttribute(
-    COMPOSER_PROMPT_SCROLLABLE_ATTR,
-    isComposerPromptScrollable({
-      scrollHeightPx: editable.scrollHeight,
-      maxHeightPx,
-    }),
-  );
 }
 
 /**
@@ -76,9 +60,6 @@ export function useComposerPromptWrapLatch(
           isPromptEmpty: editable.textContent?.trim().length === 0,
         }),
       );
-      // Height can clamp at max-h while content keeps growing, so the wrap
-      // measurement alone would miss the transition into a scrollable prompt.
-      syncComposerPromptScrollable(editable);
     };
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -95,37 +76,23 @@ export function useComposerPromptWrapLatch(
     observer.observe(editable);
     return () => {
       observer.disconnect();
-      editable.removeAttribute(COMPOSER_PROMPT_SCROLLABLE_ATTR);
     };
   }, [promptElement]);
 
   // Releasing the latch cannot be left to the observer alone: clearing a
   // one-line prompt in the tall shell changes no height, so no resize fires and
   // the composer would stay tall for the rest of the thread.
-  //
-  // The same gap exists for scrollability: pasting past max-h does not change
-  // the clamped height, so ResizeObserver stays quiet while scrollHeight grows.
   useEffect(() => {
     if (prompt.trim().length === 0) {
       setIsPromptWrapped(false);
     }
-    const editable = promptElement?.querySelector<HTMLElement>('[data-testid="composer-editor"]');
-    if (editable) {
-      syncComposerPromptScrollable(editable);
-    }
-  }, [prompt, promptElement]);
+  }, [prompt]);
 
   // A new draft is a new composing session, so the latch starts clean whether
-  // or not the incoming prompt happens to be empty. Drop scrollability here
-  // rather than re-measuring: Lexical may still hold the previous draft's
-  // DOM when draftKey flips, and a sync against that would keep the scrollbar
-  // on a short incoming draft. The prompt effect re-applies it once content
-  // catches up.
+  // or not the incoming prompt happens to be empty.
   useEffect(() => {
     setIsPromptWrapped(false);
-    const editable = promptElement?.querySelector<HTMLElement>('[data-testid="composer-editor"]');
-    editable?.removeAttribute(COMPOSER_PROMPT_SCROLLABLE_ATTR);
-  }, [draftKey, promptElement]);
+  }, [draftKey]);
 
   return { isPromptWrapped, attachPromptElement: setPromptElement };
 }

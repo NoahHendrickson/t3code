@@ -88,37 +88,6 @@ export function isPromptHeightWrapped(
 }
 
 /**
- * Attribute toggled on the prompt editor when its content has actually hit
- * `max-height` and needs a scrollbar. See `isComposerPromptScrollable`.
- */
-export const COMPOSER_PROMPT_SCROLLABLE_ATTR = "data-composer-prompt-scrollable";
-
-/**
- * Whether the prompt editor should expose a vertical scrollbar.
- *
- * Upstream's `overflow-y: auto` is correct once the editor has hit `max-h-50`,
- * but the fork's 14px/16px line box lets Geist ink overflow the line box by a
- * pixel or two. That inflates `scrollHeight` above `clientHeight` on a single
- * unwrapped line, so `overflow-y: auto` paints a thumb with nothing to scroll.
- *
- * Compare against the capped max height, not against client height: glyph ink
- * on a short prompt is noise; content past the max is the real scroll case.
- */
-export function isComposerPromptScrollable(input: {
-  scrollHeightPx: number;
-  maxHeightPx: number;
-}): boolean {
-  if (!Number.isFinite(input.maxHeightPx) || input.maxHeightPx <= 0) {
-    return false;
-  }
-  if (!Number.isFinite(input.scrollHeightPx) || input.scrollHeightPx <= 0) {
-    return false;
-  }
-  // 1px of slack absorbs sub-pixel scrollHeight rounding at the max edge.
-  return input.scrollHeightPx > input.maxHeightPx + 1;
-}
-
-/**
  * The wrap latch, and the reason it has to exist.
  *
  * The two shells do not give the prompt the same width: slim shares its line
