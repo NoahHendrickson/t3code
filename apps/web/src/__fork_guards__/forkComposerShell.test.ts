@@ -223,7 +223,13 @@ describe("fork guard: fork-composer-shell", () => {
     // The editor's clip does not cover its siblings: the placeholder's line
     // box overhangs its inset-0 box by a pixel at 14/16, and abspos overflow
     // propagates to the wrapper's scrollable overflow — a thumb that appears
-    // only while the prompt is empty. The siblings clip like the editor does.
+    // only while the prompt is empty. Clip specifically, not hidden: hidden
+    // computes the other axis's visible to auto, and an unbreakable
+    // approval-detail placeholder would then hand the 16px line to a
+    // horizontal scrollbar. Both axes, because a visible x would propagate
+    // that same text sideways into the wrapper's auto overflow-x instead.
+    // (The editor tolerates hidden only because pre-wrap + wrap-break-word
+    // forecloses horizontal overflow.)
     const siblings = rules.find(
       (rule) =>
         inDesktopLineBoxMedia(rule) &&
@@ -231,7 +237,7 @@ describe("fork guard: fork-composer-shell", () => {
         /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector),
     );
     expect(siblings, "desktop placeholder clip rule missing or unscoped").toBeDefined();
-    expect(siblings!.body).toMatch(/overflow-y:\s*hidden/u);
+    expect(siblings!.body).toMatch(/overflow:\s*clip/u);
 
     // An imperative attribute toggle is the failure mode this replaces — see
     // .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md#fork-composer-shell.
