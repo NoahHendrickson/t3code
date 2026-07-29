@@ -13,7 +13,9 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+import { cn } from "../lib/utils";
 import { resolveForkSidebarHeaderArt } from "../custom/SidebarHeaderBackdrop";
+import { CHROME_ROW_ICON_TINT } from "../custom/SidebarV2ChromeRows";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -215,5 +217,31 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // would vanish into it; white-on-dark is the same rule the toggle follows.
     const pill = chrome.slice(chrome.indexOf("{pillLabel ? ("), chrome.indexOf("</Badge>"));
     expect(pill).toContain("text-white");
+  });
+
+  it("keeps the chrome-row icon tint displacing the menu button's base dim", () => {
+    // Upstream v0.0.30 gave sidebarMenuButtonVariants a parent-level icon pair
+    // (muted-foreground at opacity-60) that outweighs an icon's own class, so
+    // the fork rows counter it with a later same-slot pair that twMerge keeps.
+    // Asserting the merged outcome rather than the source string is the point:
+    // if upstream reshapes the selector ([&_svg], a data-slot rule, an !
+    // modifier) so the pair stops conflicting, the dim survives the merge and
+    // this reds while every source-string check stays green. The base is read
+    // out of the cva call because upstream does not export it, and importing
+    // the component just for its class string would drag the whole sidebar
+    // module graph into this test.
+    const sidebar = readSibling("../components/ui/sidebar.tsx");
+    const base = /const sidebarMenuButtonVariants = cva\(\s*"([^"]+)"/u.exec(sidebar)?.[1];
+    expect(base, "sidebarMenuButtonVariants base class not found").toBeTruthy();
+    const merged = cn(base, CHROME_ROW_ICON_TINT);
+    expect(merged).not.toMatch(/svg\]:opacity-60/u);
+    expect(merged).toMatch(/svg\]:text-sidebar-muted-foreground\/80/u);
+    expect(merged).toMatch(/svg\]:opacity-100/u);
+    // One spelling: both chrome-row buttons reference the shared const, and
+    // the literal exists only in its definition — a second paste is how the
+    // two drifted apart before it was hoisted.
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    expect(rows.split("[&>svg]:opacity-100").length - 1).toBe(1);
+    expect(rows.split("CHROME_ROW_ICON_TINT").length - 1).toBeGreaterThanOrEqual(3);
   });
 });

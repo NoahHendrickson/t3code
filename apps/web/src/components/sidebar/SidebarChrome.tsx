@@ -10,7 +10,9 @@ import {
   useEnvironmentStageLabel,
 } from "../SidebarStageBackdrop";
 import { Badge } from "../ui/badge";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
 import { ForkSidebarHeaderBackdrop } from "~/custom/SidebarHeaderBackdrop";
+/* fork:end fork-sidebar-chrome */
 import {
   SidebarFooter,
   SidebarHeader,
@@ -28,6 +30,11 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
 }: {
   isElectron: boolean;
 }) {
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+     Everything from here to the fence's end diverges from upstream: the
+     hooks (upstream resolves a backdrop variant here; the fork resolves only
+     the pill), the header's px-0 padding rewrite, the always-on backdrop,
+     the inline toggle, the pill, and the trailing brand. */
   const stageLabel = useEnvironmentStageLabel();
   const environmentIdentificationMode = useEnvironmentIdentificationMode();
   const pillLabel =
@@ -47,13 +54,12 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
     >
       {/* Always, not only on a non-prod build: in the fork this is brand
           chrome rather than a channel cue, so it also ignores the environment
-          identification setting upstream added for its own header art — that
-          setting still governs upstream's other two art surfaces (composer
-          send button, auth screen), which are untouched and keep signalling
-          Dev. */}
+          identification setting upstream added for its own header art. That
+          setting still governs the composer send button; the standalone auth
+          screen never read it — upstream gates that surface on the build
+          channel alone, and it stays untouched. */}
       <ForkSidebarHeaderBackdrop stageLabel={stageLabel} />
-      {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-          The toggle sits inline here rather than floating over the workspace, so
+      {/* The toggle sits inline here rather than floating over the workspace, so
           it reads as belonging to the panel it collapses. The mobile-only
           visibility class is gone with it: that existed because the desktop
           toggle lived in AppSidebarLayout's fixed SidebarControl, which now
@@ -78,10 +84,10 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
       {/* Upstream's pill mode, honored on top of the art rather than instead
           of it: the art is brand chrome and never leaves, but "Version pill"
           must still produce a pill or the setting lies. `none` produces
-          neither pill nor composer/auth art, and `artwork` gates those two
-          surfaces — every option stays distinguishable in the fork. White on
-          the art, not upstream's secondary-on-plain, for the same reason the
-          toggle is. */}
+          neither pill nor composer art, and `artwork` lights the composer —
+          every option stays distinguishable in the fork. White on the art,
+          not upstream's secondary-on-plain, for the same reason the toggle
+          is. */}
       {pillLabel ? (
         <Badge
           className="relative z-10 ml-1 rounded-full border-0 bg-white/15 px-1.5 text-white/90"

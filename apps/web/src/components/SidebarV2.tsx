@@ -354,9 +354,19 @@ function SidebarV2ThreadTooltip({
             </div>
           ) : null}
           {thread.session?.lastError ? (
-            <div className="flex min-w-0 items-center gap-2 text-red-600 dark:text-red-400">
-              <CircleAlertIcon className="size-3 shrink-0 stroke-current" />
-              <div className="min-w-0 truncate">Error occurred</div>
+            <div className="flex min-w-0 items-start gap-2 text-red-600 dark:text-red-400">
+              <CircleAlertIcon className="mt-0.5 size-3 shrink-0 stroke-current" />
+              {/* fork:begin sidebar-v2-error-tooltip — see .fork/customizations.yaml#sidebar-v2-error-tooltip
+                  Upstream's restyle flattened this to the literal "Error
+                  occurred", which removed the only place the sidebar surfaced
+                  what actually failed — diagnosing a dead session meant opening
+                  it. The message returns, wrapping rather than truncating: an
+                  error's tail (exit codes, file paths) is routinely the useful
+                  half, and this tooltip is already the row's overflow surface. */}
+              <div className="min-w-0 flex-1 wrap-break-word leading-5">
+                {thread.session.lastError}
+              </div>
+              {/* fork:end sidebar-v2-error-tooltip */}
             </div>
           ) : null}
         </div>

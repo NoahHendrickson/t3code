@@ -39,6 +39,23 @@ const manifestText = NodeFS.readFileSync(
 
 const entries = parseCustomizations(manifestText) as ManifestEntry[];
 
+// One candidate pass shared by the fence tests below: only files that carry a
+// marker at all (~40 of ~15k tracked — a full ls-files + readFileSync walk
+// here measured ~3.8s per run, most of it reading vendored .repos/). --text,
+// because ChatComposer.tsx contains raw NUL bytes and git grep would
+// otherwise classify the fork's densest fenced file as binary and skip it —
+// the same trap .fork/AGENTS.md documents for plain grep. Guard tests are
+// excluded everywhere: they quote fence markers as prose.
+const FENCE_MARKER = /fork:(begin|end) ([a-z0-9-]+)/gu;
+const fencedFiles = NodeChildProcess.execSync('git grep --text -lE "fork:(begin|end) [a-z0-9-]+"', {
+  cwd: repoRoot,
+  encoding: "utf8",
+  maxBuffer: 16 * 1024 * 1024,
+})
+  .split("\n")
+  .filter(Boolean)
+  .filter((path) => !path.includes("__fork_guards__"));
+
 describe("fork guard: customizations manifest", () => {
   it("parses at least one customization", () => {
     expect(entries.length).toBeGreaterThan(0);
@@ -74,20 +91,17 @@ describe("fork guard: customizations manifest", () => {
         new Set([...entry.files, ...entry.shadows, ...entry.watch, ...entry.verify]),
       ]),
     );
-    const tracked = NodeChildProcess.execSync("git ls-files", {
-      cwd: repoRoot,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-    })
-      .split("\n")
-      .filter((path) => /\.(?:ts|tsx|mts|cts|js|mjs|cjs|css|sh|ya?ml)$/u.test(path))
-      .filter((path) => !path.includes("__fork_guards__"));
-
     const violations: string[] = [];
-    for (const path of tracked) {
+    for (const path of fencedFiles) {
+      // The extension whitelist predates the shared candidate pass and is
+      // load-bearing: markdown and workflow fences (AGENTS.md's
+      // fork-workflow, fork-change-scope) deliberately use fence ids that
+      // are anchors into the manifest rather than manifest ids themselves.
+      if (!/\.(?:ts|tsx|mts|cts|js|mjs|cjs|css|sh|ya?ml)$/u.test(path)) continue;
       const content = NodeFS.readFileSync(NodePath.join(repoRoot, path), "utf8");
-      for (const match of content.matchAll(/fork:begin ([a-z0-9-]+)/gu)) {
-        const id = match[1] ?? "";
+      for (const match of content.matchAll(FENCE_MARKER)) {
+        if (match[1] !== "begin") continue;
+        const id = match[2] ?? "";
         if (!knownIds.has(id)) {
           violations.push(`${path}: fence references unknown customization "${id}"`);
         } else if (!claimed.get(id)?.has(path)) {
@@ -106,30 +120,17 @@ describe("fork guard: customizations manifest", () => {
     // syncs before it was noticed by hand. Balance is checked per file — a
     // begin in one file cannot be closed from another. `.fork/` is excluded
     // with the guards: both quote fence markers as prose, not as fences.
-    const tracked = NodeChildProcess.execSync("git ls-files", {
-      cwd: repoRoot,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-    })
-      .split("\n")
-      .filter(Boolean)
-      .filter((path) => !path.includes("__fork_guards__") && !path.startsWith(".fork/"));
-
     const violations: string[] = [];
-    for (const path of tracked) {
-      const absolute = NodePath.join(repoRoot, path);
-      if (!NodeFS.existsSync(absolute) || !NodeFS.statSync(absolute).isFile()) continue;
-      const content = NodeFS.readFileSync(absolute, "utf8");
-      const count = (kind: string) => {
-        const counts = new Map<string, number>();
-        for (const match of content.matchAll(new RegExp(`fork:${kind} ([a-z0-9-]+)`, "gu"))) {
-          const id = match[1] ?? "";
-          counts.set(id, (counts.get(id) ?? 0) + 1);
-        }
-        return counts;
-      };
-      const begins = count("begin");
-      const ends = count("end");
+    for (const path of fencedFiles) {
+      if (path.startsWith(".fork/")) continue;
+      const content = NodeFS.readFileSync(NodePath.join(repoRoot, path), "utf8");
+      const begins = new Map<string, number>();
+      const ends = new Map<string, number>();
+      for (const match of content.matchAll(FENCE_MARKER)) {
+        const counts = match[1] === "begin" ? begins : ends;
+        const id = match[2] ?? "";
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+      }
       for (const id of new Set([...begins.keys(), ...ends.keys()])) {
         const opened = begins.get(id) ?? 0;
         const closed = ends.get(id) ?? 0;

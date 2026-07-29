@@ -376,6 +376,25 @@
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
     - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
 
+- id: sidebar-v2-error-tooltip
+  intent: >
+    The thread tooltip shows the session's actual last error, not a literal.
+    Upstream's v0.0.30 tooltip restyle (dd5ea3248) flattened the line to the
+    string "Error occurred", which removed the only place the sidebar
+    surfaced what failed — diagnosing a dead session meant opening it, and
+    this fork's users drive many agents at once from that sidebar. The
+    message wraps rather than truncating: an error's tail (exit codes,
+    paths) is routinely the useful half, and the tooltip is already the
+    row's overflow surface. A sync that reintroduces the literal is a
+    regression even though it renders fine.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2ErrorTooltip.test.ts
+
 - id: sidebar-v2-dev-server-pulse
   intent: >
     The thread card's branch/worktree mark pulses working-green to foreground
@@ -776,8 +795,11 @@
     pill half is honored: "Version pill" renders upstream's badge in this
     header, white-on-art rather than secondary-on-plain, because upstream only
     ever drew the pill here and dropping it would make that option do nothing
-    anywhere. artwork/none keep governing the composer send button and auth
-    screen exactly as upstream wrote them. The same release also moved
+    anywhere. artwork/none keep governing the composer send button exactly as
+    upstream wrote it; the standalone auth screen never read the mode —
+    upstream gates that art on the build channel alone — so the setting's
+    only fork-visible effects are the composer button and this pill. The
+    same release also moved
     upstream's search/scope controls into SidebarContent's fixedHeader slot;
     the fork declines that mechanism — its own rows sit as siblings above the
     self-scrolling list group, which pins them identically — and a sync must

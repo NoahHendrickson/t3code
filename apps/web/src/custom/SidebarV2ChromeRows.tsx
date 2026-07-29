@@ -76,13 +76,18 @@ export interface SidebarV2ChromeProjectGroup {
  *  left. Padding rather than a narrower width, so the row's own background, if
  *  it ever gains one, still spans the full column. */
 const CONTROL_ROW = cn("flex h-9 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
-const TRAILING_BUTTON =
-  // The two [&>svg] entries displace sidebarMenuButtonVariants' base pair
-  // (muted-foreground at opacity-60, upstream v0.0.30): parent-level [&>svg]
-  // selectors outweigh the icon's own class, so without these the fork's /80
-  // tint on the glyph is dead and the icon dims to 60% on top of the duotone
-  // layer's own alpha. twMerge keeps this later same-slot pair.
-  "relative size-8 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar [&>svg]:text-sidebar-muted-foreground/80 [&>svg]:opacity-100";
+/** Displaces sidebarMenuButtonVariants' base icon pair (muted-foreground at
+    opacity-60, upstream v0.0.30): parent-level [&>svg] selectors outweigh the
+    icon's own class, so without this the fork's /80 tint on the glyph is dead
+    and the icon dims to 60% on top of the duotone layer's own alpha. twMerge
+    keeps this later same-slot pair. One spelling, shared by every chrome-row
+    button that renders an icon as a direct child; the guard asserts the merged
+    outcome, so a base-selector change that stops displacing shows up red. */
+export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-muted-foreground/80 [&>svg]:opacity-100";
+const TRAILING_BUTTON = cn(
+  "relative size-8 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+  CHROME_ROW_ICON_TINT,
+);
 /** Coarse-pointer hit expansion — upstream's trick, kept: the visual button is
     32px, which is below the 44px touch target, so an invisible child grows the
     tappable area without moving anything. */
@@ -105,8 +110,10 @@ export function SidebarV2SearchRow(props: {
                 size="sm"
                 type="button"
                 aria-label="Search threads and commands"
-                // The [&>svg] pair mirrors TRAILING_BUTTON's — see the note there.
-                className="h-8 gap-1 rounded-md border-0 bg-transparent px-2 py-1.5 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar [&>svg]:text-sidebar-muted-foreground/80 [&>svg]:opacity-100"
+                className={cn(
+                  "h-8 gap-1 rounded-md border-0 bg-transparent px-2 py-1.5 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+                  CHROME_ROW_ICON_TINT,
+                )}
                 data-testid="command-palette-trigger"
               />
             }
