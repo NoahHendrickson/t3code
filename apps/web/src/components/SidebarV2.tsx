@@ -21,6 +21,7 @@ import {
   CircleAlertIcon,
   ClockIcon,
   CopyIcon,
+  FolderIcon,
   GitBranchIcon,
   MessageSquareIcon,
   PlusIcon,
