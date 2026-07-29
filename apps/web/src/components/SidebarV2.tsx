@@ -1011,7 +1011,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
           {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
               Figma 113:3718: px-4 py-8 (4/8). List pad 8 puts the leading
               status at 12px — same axis as Search and the group folder icon.
-              Row gap is 6px (gap-1.5), not Figma's 4. */}
+              Row gap is 6px (gap-1.5), not Figma's 4 — retuned live with the
+              8px title gap below: once the prompt moved to the header label's
+              36px axis, the mock's literal 4px read cramped between two 16px
+              text rows. The drawn heights (54/75) and the guards pin this
+              retune, not the Figma literal. */}
           <div className="relative z-10 flex flex-col gap-1.5 px-1 py-2">
             {/* fork:end sidebar-v2-card-rows */}
             {/* 16px, same as the metadata lines — the card draws at 54
