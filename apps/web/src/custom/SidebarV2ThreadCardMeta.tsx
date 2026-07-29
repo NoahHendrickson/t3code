@@ -41,6 +41,16 @@ export interface SidebarV2ThreadCardMetaProps {
       project's checkout. Swaps the branch mark for the worktree one — see the
       render site for why it replaces rather than joins. */
   readonly hasWorktree?: boolean;
+  /** The first port the scanner attributes to one of this thread's own T3
+      terminals, or null — see `sidebar-v2-dev-server-pulse`. Non-null pulses
+      the branch/worktree mark so the row whose checkout the running server is
+      serving can be picked out at a glance. A port rather than a boolean
+      because the accessible text names it: the scanner keeps every listening
+      TCP socket — no port range, no process filter, no HTTP probe — so
+      "Server listening on port N" is what it actually knows, where "dev
+      server running" would overclaim (a debugger, an ssh tunnel, and a
+      database all count). */
+  readonly devServerPort?: number | null;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
   /** The row's VCS query has not answered yet, so `prSlot` being null means
@@ -154,8 +164,24 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
 
               The distinction is invisible to a screen reader either way — both
               marks are decorative — so the worktree case carries it in text. */}
+          {/* The dev-server pulse rides this same slot rather than adding a
+              glyph of its own: the question it answers — "which checkout is
+              the running server serving?" — is a property of the mark that
+              already names the checkout. The attribute lands on the slot and
+              the stylesheet animates the mark inside it (`> svg`, so the
+              branch text stays legible while the glyph carries the signal). A
+              thread with neither branch nor worktree never draws the slot and
+              so cannot pulse — such a thread runs in the project checkout,
+              which is not the ambiguity this exists to resolve. The animation
+              is decorative motion, so the state also rides in text for screen
+              readers — after the branch name, identity before transient state
+              — and survives `prefers-reduced-motion` as a static
+              working-green mark. */}
           {props.hasWorktree || props.branch ? (
-            <span className="flex min-w-0 flex-1 items-center gap-0.5">
+            <span
+              className="flex min-w-0 flex-1 items-center gap-0.5"
+              data-fork-dev-server-live={props.devServerPort != null ? "" : undefined}
+            >
               {props.hasWorktree ? (
                 <>
                   <span className="sr-only">Worktree</span>
@@ -166,6 +192,9 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
               )}
               {props.branch ? (
                 <span className="truncate whitespace-nowrap">{props.branch}</span>
+              ) : null}
+              {props.devServerPort != null ? (
+                <span className="sr-only">{`Server listening on port ${props.devServerPort}`}</span>
               ) : null}
             </span>
           ) : null}

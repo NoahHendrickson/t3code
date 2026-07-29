@@ -28,6 +28,12 @@ import {
   Trash2Icon,
   Undo2Icon,
 } from "lucide-react";
+/* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+// A statement of its own rather than a name in upstream's list: the phosphor
+// guard parses that list's braces, and a fence comment inside them reads as a
+// binding. Out here the fence survives and the parser stays honest.
+import { Globe2Icon } from "lucide-react";
+/* fork:end sidebar-v2-dev-server-pulse */
 import {
   memo,
   useCallback,
@@ -83,6 +89,9 @@ import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useScrollGutterWidth } from "~/custom/useScrollGutterWidth";
 /* fork:end fork-sidebar-chrome */
 import { openCommandPalette } from "../commandPaletteBus";
+/* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+import { useThreadDiscoveredPorts } from "../portDiscoveryState";
+/* fork:end sidebar-v2-dev-server-pulse */
 import {
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   resolveThreadActionProjectRef,
@@ -256,6 +265,9 @@ function SidebarV2ThreadTooltip({
   modelInstanceId,
   modelLabel,
   branchMismatch,
+  /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+  devServerLabel,
+  /* fork:end sidebar-v2-dev-server-pulse */
 }: {
   thread: SidebarThreadSummary;
   projectTitle: string | null;
@@ -268,6 +280,12 @@ function SidebarV2ThreadTooltip({
     threadBranch: string;
     currentBranch: string;
   } | null;
+  /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+  /** `localhost:<port>` (+n) while the scanner attributes a listener to this
+      thread's terminals, or null. Names what the card's pulsing mark can only
+      signal — the next reader should not assume the boolean was all we had. */
+  devServerLabel: string | null;
+  /* fork:end sidebar-v2-dev-server-pulse */
 }) {
   return (
     <TooltipPopup
@@ -302,6 +320,14 @@ function SidebarV2ThreadTooltip({
               <div className="min-w-0 wrap-break-word text-foreground/90">{thread.branch}</div>
             </div>
           ) : null}
+          {/* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */}
+          {devServerLabel ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <Globe2Icon className="size-4 shrink-0 stroke-muted-foreground" />
+              <div className="min-w-0 wrap-break-word text-foreground/90">{devServerLabel}</div>
+            </div>
+          ) : null}
+          {/* fork:end sidebar-v2-dev-server-pulse */}
           {branchMismatch ? (
             <div className="flex min-w-0 items-start gap-2 text-warning">
               <CircleAlertIcon aria-hidden className="mt-0.5 size-4 shrink-0 stroke-current" />
@@ -555,6 +581,39 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   const isRemote =
     props.currentEnvironmentId !== null && thread.environmentId !== props.currentEnvironmentId;
 
+  /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+  // Attribution is the port scanner's existing terminal→thread mapping — the
+  // same per-row subscription upstream's v1 row already makes (Sidebar.tsx).
+  // A listener counts for this row only when it was spawned inside one of the
+  // thread's own T3 terminals; a server started in an external shell has
+  // `terminal: null` (the scanner knows its pid but not its cwd) and lights
+  // nothing rather than a guessed row.
+  //
+  // Slim rows never draw the card meta, so they pass null and skip the
+  // subscription instead of retaining the scanner for a row that cannot
+  // pulse. Card rows subscribe per thread.environmentId — a list spanning M
+  // environments holds M discovered-servers streams, the multiplier v1's row
+  // already carries.
+  const devServerPorts = useThreadDiscoveredPorts({
+    environmentId: variant === "card" ? thread.environmentId : null,
+    threadId: variant === "card" ? thread.id : null,
+  });
+  const devServerPort = devServerPorts[0]?.port ?? null;
+  // The tooltip names what the mark can only signal, and only what is true
+  // from where the user sits. The port is the whole claim — the scanner keeps
+  // every listening TCP socket, so "dev server" would overclaim — and for a
+  // remote thread the listener is on the remote host, so "localhost" would
+  // name the wrong machine. v1 says localhost loosely because its Globe is a
+  // button routed through openDiscoveredPort to the right environment; this
+  // label is inert text and carries no such correction.
+  const devServerLabel =
+    devServerPort === null
+      ? null
+      : `${isRemote ? `port ${devServerPort}` : `localhost:${devServerPort}`}${
+          devServerPorts.length > 1 ? ` (+${devServerPorts.length - 1})` : ""
+        }`;
+  /* fork:end sidebar-v2-dev-server-pulse */
+
   const detailsTooltip = (
     <SidebarV2ThreadTooltip
       thread={thread}
@@ -565,6 +624,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
       modelInstanceId={modelInstanceId}
       modelLabel={modelLabel}
       branchMismatch={branchMismatch}
+      /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+      devServerLabel={devServerLabel}
+      /* fork:end sidebar-v2-dev-server-pulse */
     />
   );
 
@@ -1071,6 +1133,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               // the row is not treating as one.
               // fork:end sidebar-v2-card-rows
               hasWorktree={thread.worktreePath !== null}
+              /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+              devServerPort={devServerPort}
+              /* fork:end sidebar-v2-dev-server-pulse */
               prSlot={prBadge}
               prUnknown={prUnknown}
               insertions={diff?.insertions ?? null}
