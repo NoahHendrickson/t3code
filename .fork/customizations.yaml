@@ -300,10 +300,10 @@
 
     Surface encodes interaction and nothing else. A row is filled on hover and
     when selected or routed to; it is never filled because of its status.
-    Working and Idle both recede their title colour at rest (restored on hover
-    or selection). Idle alone also drops to regular weight — a quiet subject
-    line rather than a headline — while working and every status that wants
-    you stay medium.
+    Done and Idle recede their title colour at rest (restored on hover or
+    selection), per the component set — Working, Approval, Input and Failed
+    keep the foreground title. Every title is the design's Regular body/sm
+    weight; colour alone carries the receded/forward distinction.
 
     Status text labels ("Working", "Approval") are replaced by a single 16px
     mark in a fixed leading slot on the title line, and the slot is never empty
@@ -320,11 +320,17 @@
     cell. Status no longer shares that cell, so the opacity-crossfade hit-path
     bug that used to eat settle clicks cannot return.
 
-    Card metrics from Figma t3-fork node 113:3718: px-4 py-8 (4/8), gap-4
-    between rows, title gap-4, repo/meta indent 20px (16 status + 4 gap). List
-    pad 8 puts the leading status at 12px — the same axis as Search and the
-    group folder icon. contain-intrinsic-size is 58 / 77 (drawn 54 / 73 plus
-    the li's py-0.5). Branch and runtime glyphs are 16px.
+    Card metrics from Figma t3-fork node 113:3718: px-4 py-8 (4/8), all rows
+    16px tall (the working rain's 18px grid overflows the title line by 1px
+    into the card's padding rather than growing it). Title-to-status gap is
+    8px so the prompt lines up with the group header label (24px folder +
+    4px gap); repo/meta indent 24px (16 status + 8 gap). Row gap is 6px
+    (gap-1.5), not Figma's 4.
+    Cards sit 2px apart — the list ul's gap-0.5; the li itself carries no
+    padding. List pad 8 puts the leading status at 12px — the same axis as
+    Search and the group folder icon. contain-intrinsic-size is 54 / 75, the
+    drawn card exactly. Branch and runtime glyphs are 16px; the model label
+    is caption 11/15 on either line it lands on.
 
     A card is three lines only when it has a PR or a diff for the third, or does
     not yet know whether it has a PR; with a known-empty third line the model and
@@ -335,10 +341,10 @@
     height: an absent branch or model leaves its half of a row empty rather than
     closing the row up. The li's contain-intrinsic-size is chosen by the same
     predicate the component renders from, so it can never claim a height the row
-    does not have, and it measures the li — the drawn card plus its own py-0.5,
-    so 86 and 64 against drawn heights of 82 and 60. Retune the card's vertical
-    padding and both hints move with it, or the scrollbar misreports every
-    skipped row by the difference.
+    does not have, and it measures the li — which carries no padding of its own,
+    so the hints equal the drawn heights of 54 and 75. Retune the card's
+    vertical padding and both hints move with it, or the scrollbar misreports
+    every skipped row by the difference.
 
     A thread that runs in a worktree of its own draws a worktree mark where the
     branch mark otherwise goes — replacing it, not joining it. That slot already
@@ -556,8 +562,12 @@
 
     The header has no own horizontal pad — the list's 8px is the edge. The
     folder sits in a 24px box so its 16px glyph centres on the same 12px axis as
-    Search and each card's status; gap-1 to the label; mt-4 (16px) between
-    groups. The trailing plus takes the same -me-1 as card actions.
+    Search and each card's status; gap-1 to the label (FolderOpen at
+    icon tint, the label at foreground — Figma 113:3718 Frame 48); 2px to the
+    first card via the list ul's gap-0.5, and mt-3.5 plus that gap makes the
+    design's 16px between groups. The trailing plus takes no nudge: with no
+    row padding to compensate for, a flush 24px button already centres on the
+    trailing axis.
 
     The ref index is memoized on the project list alone; the thread list churns
     on the clock, capability descriptors and per-row PR states, none of which
@@ -618,31 +628,31 @@
     value that stays a step brighter than the row beneath it in dark and a step
     darker in light.
 
-    The card's trailing cell is h-6 rather than the title line's h-[18px] —
-    a 24px target cannot fit an 18px cell. It is centred in the 18px line, so it
-    overhangs 3px into the card's py-2.5 above and its gap-[7px] below, neither of
+    The card's trailing cell is h-6 rather than the title line's h-4 —
+    a 24px target cannot fit a 16px cell. It is centred in the 16px line, so it
+    overhangs 4px into the card's py-2 above and its gap-1.5 below, neither of
     which carries anything to collide with. Status no longer shares this cell —
     it leads the title line — so the opacity-crossfade hit-path bug that used to
     eat settle clicks (an opacity-0 status span stacking above the actions)
     cannot return; elapsed time is the only decoration that still fades here,
     and it is pointer-events-none.
 
-    Placement: every trailing mark down the sidebar shares one vertical axis —
-    the two chrome icons, each card's runtime glyph, and the action icons on
-    both row variants. They do not get there by sharing a right edge, because a
-    16px box flush with a card's content edge centres 8px in from that edge
-    while an icon centred in a 24px button flush with that same edge centres
-    4px further left, and a 32px chrome button 8px in from its own edge lands
-    4px the other way. So the actions carry -me-1 on cards and -me-0.5 on slim
-    rows (2px less, their padding being px-2.5 against the card's px-3), the
-    snoozed and settled shelf headers' chevrons carry me-1 the other way, and
-    the chrome rows' trailing inset is 4px. Boxes give up their edges; glyphs
-    keep the axis, which is the thing anyone actually reads.
+    Placement: every trailing mark down the sidebar shares one vertical axis,
+    24px in from the panel's content edge — the chrome rows' pe-3 plus half
+    their 24px button. The rows do not share a right edge: chrome ends 12px
+    in, the list rows 8. A card's own px-1 closes that gap, so its flush 24px
+    action cell and its runtime glyph are on the axis as drawn; the project
+    header and the slim rows' right-0 overlay sit on the bare 8px edge and
+    spend me-1 to get back; the shelf chevrons' px-2.5 centres their 12px
+    glyph on the axis by itself. Boxes give up their edges; glyphs keep the
+    axis, which is the thing anyone actually reads. (An earlier derivation
+    assumed the list and chrome columns end at the same place — 4px wrong at
+    the source, and every offset inherited it.)
 
-    That inset is 4px and nothing else. It used to carry the thread list's
-    scroll gutter too; fork-sidebar-chrome now compensates for that gutter in
-    the list's own end padding, so a scrollbar term reappearing here would
-    double-count it and walk both icons back off the column.
+    The chrome inset carries no scrollbar term. It used to carry the thread
+    list's scroll gutter too; fork-sidebar-chrome now compensates for that
+    gutter in the list's own end padding, so a scrollbar term reappearing here
+    would double-count it and walk both icons back off the column.
 
     Upstream v0.0.30 reworked its own card's status slot toward the same goal
     (an absolute actions overlay with focus-within:static and a min-w-8 slot)
@@ -759,7 +769,8 @@
     off the chrome icons' axis with nothing failing.
 
     Chrome rows use ps-2 pe-3 with an inner px-1 control so their leading icon
-    also sits at 12px — matching card status and the group folder glyph.
+    also sits at 12px — matching card status and the group folder glyph. Search
+    and All projects controls are 28px tall (h-7), not Figma's 24.
 
     These rows' own trailing inset is then 4px, and that 4px belongs to
     sidebar-v2-row-action-hit-area, which owns the trailing glyph column's

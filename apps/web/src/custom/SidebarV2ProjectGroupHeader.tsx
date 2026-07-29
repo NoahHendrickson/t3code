@@ -17,7 +17,8 @@
  * Spacing from Figma t3-fork node 113:3718: list pad supplies the 8px inset;
  * the folder sits in a 24px box (16px glyph centred) so its ink shares the
  * 12px axis with Search and each card's status; gap-1 (4px) to the label;
- * 2px to the first card (`mt` is 0 / `mt-4` between groups = 16px).
+ * 2px to the first card (the list ul's own gap-0.5). Between groups the
+ * design puts 16px: the ul's 2px gap plus `mt-3.5` here.
  *
  * It is a heading rather than a bare span, and its `li` drops the list
  * semantics it would otherwise inherit from upstream's thread `ul`: a screen
@@ -26,7 +27,7 @@
  * visually hidden, since the header carries it for sighted users — so grouped
  * mode never carries less information than flat mode.
  */
-import { FolderIcon, PlusIcon } from "lucide-react";
+import { FolderOpenIcon, PlusIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 import {
@@ -54,11 +55,13 @@ export function SidebarV2ProjectGroupHeader(props: {
           // No horizontal pad — the list's 8px is the content edge. Folder in a
           // 24px box centres its 16px glyph on the same 12px axis as card status.
           "flex w-full items-center gap-1 text-left",
-          props.isFirst ? "mt-0" : "mt-4",
+          props.isFirst ? "mt-0" : "mt-3.5",
         )}
       >
+        {/* FolderOpen, matching the chrome's New-project glyph — the design
+            (113:3718 Frame 48) draws the group mark open, not closed. */}
         <span className="flex size-6 shrink-0 items-center justify-center">
-          <FolderIcon aria-hidden className="size-4 text-sidebar-muted-foreground/80" />
+          <FolderOpenIcon aria-hidden className="size-4 text-sidebar-muted-foreground/80" />
         </span>
         {/* The heading is the label, not the row: the row now also holds a
             button, and a heading that contains one takes the button's text into
@@ -68,7 +71,9 @@ export function SidebarV2ProjectGroupHeader(props: {
         <span
           role="heading"
           aria-level={3}
-          className="min-w-0 truncate text-xs font-normal leading-4 text-sidebar-muted-foreground"
+          // Foreground, not muted: the design (113:4023) sets the label a step
+          // brighter than the folder beside it — the name is the landmark.
+          className="min-w-0 truncate text-xs font-normal leading-4 text-sidebar-foreground"
         >
           {props.label ?? UNGROUPED_PROJECT_LABEL}
         </span>

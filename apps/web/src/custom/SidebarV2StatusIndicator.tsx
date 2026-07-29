@@ -40,9 +40,10 @@ const TONE_COLOR_CLASS: Record<SidebarV2DotTone, string> = {
 };
 
 // Geometry from PixelSparkleView: a 3x5 grid on a 3.8px pitch with 2.85px cells
-// rounded at 28% of their size. That lands the box at 10.45x18.05 — the height
-// is what makes the card's first line 18px rather than the 16px the rest of the
-// row uses, and it is unaffected by the column count.
+// rounded at 28% of their size. That lands the box at 10.45x18.05 — 2px taller
+// than the card's 16px title line. The row is not grown for it: the SVG's
+// overflow-visible lets the grid spill 1px into the card's py-2 on each side,
+// which keeps the drawn card at the design's 52px. Unaffected by column count.
 //
 // The native view runs four columns; this is three. At 16px the fourth column
 // read as density rather than as a separate falling stream, and the mark is

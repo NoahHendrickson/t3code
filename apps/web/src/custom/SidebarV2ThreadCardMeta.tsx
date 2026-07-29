@@ -23,8 +23,8 @@
  * fixed column instead of as a brightness the eye has to compare against a
  * neighbouring row to read at all.
  *
- * Both lines indent `pl-5` (20px = the title row's 16px status + 4px gap) so
- * they align under the title text rather than under the mark — Figma 113:3718.
+ * Both lines indent `pl-6` (24px = the title row's 16px status + 8px gap) so
+ * they align under the title text rather than under the mark.
  */
 import type { ReactNode } from "react";
 
@@ -71,8 +71,8 @@ export interface SidebarV2ThreadCardMetaProps {
 const REPO_ROW = "flex h-4 min-w-0 items-center text-xs leading-4";
 const META_ROW = "flex h-[15px] min-w-0 items-center text-[11px] leading-[15px]";
 const MUTED = "text-muted-foreground/70";
-/** 20px = title's 16px leading status + 4px gap. Aligns under the prompt. */
-const CONTENT_INDENT = "pl-5";
+/** 24px = title's 16px leading status + 8px gap. Aligns under the prompt. */
+const CONTENT_INDENT = "pl-6";
 
 /**
  * Whether the card draws the PR/diff line at all — three lines rather than two.
@@ -111,14 +111,19 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
     deletions: props.deletions,
   });
 
-  /* Figma 113:3718 — runtime icon is 16px with pr-3 on its cluster.
+  /* Figma 113:3718 — runtime icon is 16px with pr-3 on its cluster, and the
+     model label is the caption style (11/15) even when the cluster sits on the
+     12px repo line, so it carries its own size rather than inheriting the
+     row's.
      `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
      `truncate` can never fire, so a long model name would push whatever shares
      its row — the half that *can* shrink — off the row instead of clipping
      itself. Capped at half the line so neither side can starve the other. */
   const runtime = (
     <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
-      {props.modelLabel ? <span className="truncate">{props.modelLabel}</span> : null}
+      {props.modelLabel ? (
+        <span className="truncate text-[11px] leading-[15px]">{props.modelLabel}</span>
+      ) : null}
       {props.isRemote ? (
         <CloudIcon aria-hidden className="size-4 shrink-0" />
       ) : (

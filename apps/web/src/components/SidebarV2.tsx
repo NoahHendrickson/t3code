@@ -784,12 +784,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
         variant === "card"
           ? threadCardTitleClassName({
               recedes: threadCardTitleRecedes({
-                isWorking: status === "working",
+                isDone: topStatus?.tone === "done" && topStatus.mark === "dot",
                 isIdle: topStatus === null,
                 isActive: props.isActive,
                 isSelected,
               }),
-              isIdle: topStatus === null,
             })
           : cn(
               shouldRecede ? "font-normal" : "font-medium",
@@ -948,9 +947,10 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   const prUnknown = gitStatus.data === null && gitStatus.isPending;
   // A card is three lines only when it has a PR or a diff to put on the third,
   // or does not yet know whether it has a PR; the hint has to follow, or the
-  // scrollbar lies about every skipped row. Both values are the drawn card plus
-  // this li's own py-0.5: at py-2.5 a three-line card is
-  // 20 + 18 + 7 + 15 + 7 + 15 = 82, and a two-line one 20 + 18 + 7 + 15 = 60.
+  // scrollbar lies about every skipped row. The li carries no padding of its
+  // own (the ul's gap-0.5 is the 2px between cards — Figma 113:3718), so both
+  // values are the drawn card exactly: two lines are 8 + 16 + 6 + 16 + 8 = 54,
+  // and three lines add the meta row's 6 + 15 for 75.
   const showsMetaRow = threadCardShowsMetaRow({
     hasPr: prBadge !== null,
     prUnknown,
@@ -962,9 +962,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     <li
       data-thread-item
       className={cn(
-        "list-none py-0.5 [content-visibility:auto]",
+        "list-none [content-visibility:auto]",
         /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
-        showsMetaRow ? "[contain-intrinsic-size:auto_77px]" : "[contain-intrinsic-size:auto_58px]",
+        showsMetaRow ? "[contain-intrinsic-size:auto_75px]" : "[contain-intrinsic-size:auto_54px]",
         /* fork:end sidebar-v2-card-rows */
       )}
     >
@@ -989,21 +989,27 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               and the hover actions — status no longer shares that cell, so the
               opacity crossfade hit-path bug cannot return.
 
-              The design draws this at gap-4 / px-4 py-8 over 16px rows
-              (Figma 113:3718 Thread card v2). Title gap is 4px; repo/meta
-              indent is 20px (16 status + 4 gap). Title row stays 18px for the
-              rain grid. Drawn heights: two-line 54, three-line 73; li py-0.5
-              adds 4, so contain-intrinsic-size is 58 / 77. */}
+              The design draws this at px-4 py-8 over 16px rows (Figma
+              113:3718 Thread card v2); row gap is 6px. Repo/meta indent is
+              24px (16 status + 8 gap). Drawn heights: two-line 54, three-line
+              75; the li adds nothing, so contain-intrinsic-size is those
+              exact values. */}
           {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-              Figma 113:3718: px-4 py-8 (4/8), gap-4 between rows. List pad 8
-              puts the leading status at 12px — same axis as Search and the
-              group folder icon. */}
-          <div className="relative z-10 flex flex-col gap-1 px-1 py-2">
+              Figma 113:3718: px-4 py-8 (4/8). List pad 8 puts the leading
+              status at 12px — same axis as Search and the group folder icon.
+              Row gap is 6px (gap-1.5), not Figma's 4. */}
+          <div className="relative z-10 flex flex-col gap-1.5 px-1 py-2">
             {/* fork:end sidebar-v2-card-rows */}
-            {/* 18px, not the 16px the metadata lines use: that is the exact
-                height of the working rain's 3x5 grid, and cropping it would
-                clip the bottom row of drops. */}
-            <div className="flex h-[18px] min-w-0 items-center gap-1">
+            {/* 16px, same as the metadata lines — the card draws at 54
+                (8 + 16 + 6 + 16 + 8). The working rain's 3x5 grid is 18px
+                tall; rather than growing the row for it, the SVG's
+                overflow-visible lets it spill 1px into the card's py-2 on
+                each side, where there is nothing to collide with. */}
+            {/* gap-2 (8px): status stays on the 12px axis; the prompt starts
+                at 36px — same as the group header label (24px folder box +
+                4px gap). Figma's title gap was 4px; that put the prompt 4px
+                left of the group name. */}
+            <div className="flex h-4 min-w-0 items-center gap-2">
               {/* Leading 16px status column. Always present (idle draws the
                   hollow ring) so the title text and the indented rows below
                   share one left edge. pointer-events-none: a mark is never a
@@ -1040,10 +1046,10 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   against whichever child is showing. Status used to live here
                   too; moving it left is what let the indent below line up. */}
               {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */}
-              {/* h-6, not the line's h-[18px]: the hover actions share this cell
-                  and a 24px target cannot fit in an 18px one. The cell is
-                  centred in the 18px line, so it overhangs 3px into the card's
-                  py-2.5 above and its gap-[7px] below — neither of which carries
+              {/* h-6, not the line's h-4: the hover actions share this cell
+                  and a 24px target cannot fit in a 16px one. The cell is
+                  centred in the 16px line, so it overhangs 4px into the card's
+                  py-2 above and its gap-1.5 below — neither of which carries
                   anything to collide with. */}
               {props.settlementSupported || showSnoozeButton || status === "working" ? (
                 <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
@@ -1055,7 +1061,10 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         snoozeMenuOpen && "opacity-0",
                       )}
                     >
-                      <span aria-hidden className="text-[11px] leading-[15px] text-foreground tabular-nums">
+                      <span
+                        aria-hidden
+                        className="text-[11px] leading-[15px] text-foreground tabular-nums"
+                      >
                         <WorkingDuration startedAt={resolveWorkingStartedAt(thread)} />
                       </span>
                     </span>
@@ -2511,7 +2520,7 @@ export default function SidebarV2() {
             applies — see custom/useScrollGutterWidth. */}
         <SidebarGroup
           ref={listScrollGutterRef}
-          className="min-h-0 flex-1 overflow-y-auto py-1 [--sidebar-list-pad:--spacing(2)] ps-(--sidebar-list-pad) pe-[calc(var(--sidebar-list-pad)-var(--sidebar-list-gutter,0px))] [scrollbar-gutter:stable]"
+          className="min-h-0 flex-1 overflow-y-auto pb-1 [--sidebar-list-pad:--spacing(2)] ps-(--sidebar-list-pad) pe-[calc(var(--sidebar-list-pad)-var(--sidebar-list-gutter,0px))] [scrollbar-gutter:stable]"
         >
           {/* fork:end fork-sidebar-chrome */}
           <TooltipProvider
@@ -2520,7 +2529,10 @@ export default function SidebarV2() {
             closeDelay={0}
             timeout={400}
           >
-            <ul ref={attachListAutoAnimateRef} role="list" className="flex flex-col gap-px">
+            {/* gap-0.5 is the design's 2px between cards and between a group
+                header and its first card (Figma 113:3718, Frame 50's own
+                gap-[2px]); the rows themselves carry no vertical padding. */}
+            <ul ref={attachListAutoAnimateRef} role="list" className="flex flex-col gap-0.5">
               {(() => {
                 const renderThreadRow = (
                   thread: EnvironmentThreadShell,
@@ -2680,12 +2692,11 @@ export default function SidebarV2() {
                           aria-hidden
                           className={cn(
                             // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
-                            // me-1 puts this on the trailing column's axis. The
-                            // shelf header is padded px-2.5 where a card is
-                            // px-3, and a 12px chevron flush with that padding
-                            // centres 6px in against the 8px a card's status
-                            // mark takes — 4px out, the same stagger every
-                            // other mark in the column was carrying.
+                            // On the trailing column's axis with nothing owed:
+                            // px-2.5 over the list's 8px inset is 18, and a
+                            // flush 12px chevron centres 6px further — the
+                            // column's 24. The offset constant carries the
+                            // derivation.
                             // fork:end sidebar-v2-row-action-hit-area
                             SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
                             "size-3 text-blue-600 transition-transform dark:text-blue-400",
@@ -2717,7 +2728,7 @@ export default function SidebarV2() {
                           aria-hidden
                           className={cn(
                             // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
-                            // Same 4px as the snoozed shelf above.
+                            // Same derivation as the snoozed shelf above.
                             // fork:end sidebar-v2-row-action-hit-area
                             SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
                             "size-3 text-muted-foreground/50 transition-transform",

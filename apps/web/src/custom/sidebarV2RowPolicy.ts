@@ -31,24 +31,27 @@ import { cn } from "~/lib/utils";
 
 /** Does a card's *title* step back?
  *
- * The component set mutes exactly two statuses at rest — Working and Idle — and
- * restores both on hover or selection. The rule underneath is "is there
- * anything here for you to act on": a running agent is the row you can least
- * act on, and an idle one has already been dealt with. Approval, Input, Done
- * and Failed all stay at full strength, because each is either blocked on you
- * or reporting an outcome you have not seen.
+ * The component set (Figma 113:724) mutes exactly two statuses at rest — Done
+ * and Idle — and restores both on hover or selection. The rule underneath is
+ * "is this row finished": a done thread is reporting an outcome you may merely
+ * acknowledge, and an idle one has already been dealt with. Working, Approval,
+ * Input and Failed all keep the foreground title, because each is either in
+ * motion or blocked on you. (An earlier revision muted Working instead; the
+ * component set draws Working titles at full strength — the rain is the
+ * quiet-vs-busy signal, not the title's tone.)
  *
  * Route-active and multi-selected rows never recede: you have just pointed at
  * them, so dimming would read as the row being disabled rather than quiet. */
 export function threadCardTitleRecedes(input: {
-  readonly isWorking: boolean;
+  /** The unread-done dot — an outcome reported but not yet opened. */
+  readonly isDone: boolean;
   /** No status mark at all — read, settled, nothing pending. */
   readonly isIdle: boolean;
   readonly isActive: boolean;
   readonly isSelected: boolean;
 }): boolean {
   if (input.isActive || input.isSelected) return false;
-  return input.isWorking || input.isIdle;
+  return input.isDone || input.isIdle;
 }
 
 /** The surface every Sidebar V2 row shares.
@@ -81,17 +84,13 @@ export function threadRowSurfaceClassName(input: {
   );
 }
 
-/** A card title's colour and weight. Hover restores a receded title, which is
-    what keeps the dimming reading as depth rather than as a disabled row.
-    Idle alone drops to regular weight — a quiet subject line, not a headline —
-    while working (and every status that wants you) stays medium. */
-export function threadCardTitleClassName(input: {
-  readonly recedes: boolean;
-  readonly isIdle: boolean;
-}): string {
+/** A card title's colour. Hover restores a receded title, which is what keeps
+    the dimming reading as depth rather than as a disabled row. Weight is the
+    design's body/sm — Regular for every status (Figma 113:724 draws no medium
+    titles); the colour alone carries the receded/forward distinction. */
+export function threadCardTitleClassName(input: { readonly recedes: boolean }): string {
   return cn(
-    "truncate",
-    input.isIdle ? "font-normal" : "font-medium",
+    "truncate font-normal",
     input.recedes ? "text-muted-foreground group-hover/v2-row:text-foreground" : "text-foreground",
   );
 }

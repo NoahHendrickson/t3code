@@ -8,25 +8,29 @@
  *
  * ## The axis
  *
- * Everything trailing centres on the card's content edge minus 8px: the two
- * chrome icons above the list, each card's runtime glyph, the hover actions on
- * both row variants, the shelf chevrons, and the project header's plus. (The
- * status mark used to sit in this column too; it now leads the title line, and
- * the lower card rows indent under the title text instead.)
+ * Everything trailing centres 24px in from the panel's content edge, and the
+ * chrome rows are what set that number: they end at pe-3 (12px), and a 24px
+ * button flush there centres its glyph 12px further — 24. Everything else in
+ * the column measures itself against that centre: each card's runtime glyph
+ * (card content edge 12px in, 16px box behind the design's own 3px cluster
+ * pad), the hover actions on both row variants, the shelf chevrons, and the
+ * project header's plus. (The status mark used to sit in this column too; it
+ * now leads the title line, and the lower card rows indent under the title
+ * text instead.)
  *
- * They do not get there by sharing a right edge, which is what makes this worth
- * writing down once. A 16px box flush with a card's content edge centres 8px
- * in from that edge; an icon centred in a 24px button flush with that same edge
- * centres 4px further left; a 16px icon centred in a 32px chrome button sits
- * 8px in from *its* own edge, 4px the other way. Align the boxes and the marks
- * land on three axes 4px apart — which is the kind of misalignment you feel
- * before you can name it. So each control gives up a few pixels of its own box,
- * and the column reads as one line.
+ * The rows do NOT share a right edge, which is what makes this worth writing
+ * down once. The list rows end 8px in where the chrome rows end 12; a card's
+ * own px-1 closes that gap, so a 24px box flush with the card's content edge
+ * is already on the axis — but a box flush with a row that has no such
+ * padding (the header, a slim row's right-0 overlay) sits 4px too far right
+ * and spends me-1 to get back. An earlier revision derived these against
+ * "both columns end at the same place", which was 4px wrong at the source,
+ * and every offset inherited the error — visibly, once the marks stacked.
  *
- * Each offset below is derived from the padding of the row it sits in. They are
- * not interchangeable and none of them is a taste value: change a row's padding
- * and its offset has to be re-derived, or that row's mark steps out of the
- * column on its own.
+ * Each offset below is derived from the inset of the edge its control is
+ * flush against. They are not interchangeable and none of them is a taste
+ * value: change a row's padding and its offset has to be re-derived, or that
+ * row's mark steps out of the column on its own.
  */
 import { cn } from "~/lib/utils";
 
@@ -71,24 +75,22 @@ export const SIDEBAR_V2_ICON_BUTTON_CLASS =
  * each is the arithmetic, and the numbers only hold against the padding named.
  */
 export const SIDEBAR_V2_TRAILING_OFFSET = {
-  /** Card hover actions. The card is `px-1` (Figma 113:3718); a 16px box flush
-   *  with a content edge 4px in centres 8px further; a 24px button flush centres
-   *  12px in. 4px right. */
-  cardActions: "-me-1",
-  /** Slim-row hover actions. Slim rows stay `px-2.5`; against the card's `px-1`
-   *  that is 6px further in, so 6px more nudge — but the shared axis is the
-   *  chrome/card trailing column, and slim still uses the historic 2px step
-   *  from the old card pad. Kept at -me-0.5 until slim is redrawn. */
-  slimActions: "-me-0.5",
-  /** The project header's plus. Header has no own horizontal pad (list supplies
-   *  8px); same 24px button as card actions, same 4px nudge. */
-  headerPlus: "-me-1",
-  /** Shelf header chevrons — 4px the *other* way. A 12px glyph flush with a
-   *  `px-2.5` row centres 6px in, where a card's trailing box takes 8. */
-  shelfChevron: "me-1",
-  /** The chrome rows' trailing inset. Figma ends these rows at pr-12; the 24px
-   *  plus box is already flush with that edge, so no extra pe. Kept at pe-0
-   *  relative to the control row — the outer `pe-3` on the group is the inset. */
+  /** Card hover actions. List pad 8 + card px-1 puts the card's content edge
+   *  12px in — the same inset as the chrome rows' pe-3 — so a flush 24px
+   *  button centres at 24 with nothing to correct. */
+  cardActions: "",
+  /** Slim-row hover actions. The overlay is `absolute right-0`, which lands on
+   *  the row's border box — the list's 8px inset, padding notwithstanding — so
+   *  a flush 24px button centres at 20. me-1 walks it the 4px back. */
+  slimActions: "me-1",
+  /** The project header's plus. The header has no own horizontal pad, so its
+   *  edge is the list's 8px inset: same 4px as the slim overlay. */
+  headerPlus: "me-1",
+  /** Shelf header chevrons. px-2.5 on the shelf button makes an 18px inset,
+   *  and a flush 12px glyph centres 6px further — 24 exactly. Nothing owed. */
+  shelfChevron: "",
+  /** The chrome rows' trailing inset — the pe-3 that defines the axis. The
+   *  24px button is flush with it, so nothing here either. */
   chromeRow: "",
 } as const;
 

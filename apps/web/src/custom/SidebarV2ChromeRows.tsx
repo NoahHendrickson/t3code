@@ -3,8 +3,9 @@
  * `.fork/customizations.yaml#fork-sidebar-chrome`.
  *
  * Metrics from Figma t3-fork node 113:3718: outer `ps-2 pe-3` (8/12), inner
- * control `px-1` + `gap-1` at 24px tall, so the leading icon sits at 12px —
- * the same axis as each card's status (list pad 8 + card `px-1`).
+ * control `px-1` + `gap-1`. Controls are 28px tall (h-7); the leading icon
+ * still sits at 12px — the same axis as each card's status (list pad 8 +
+ * card `px-1`).
  *
  * Fork-owned rather than fenced in place: this is ~150 lines of pure
  * presentation, and leaving it inline meant `SidebarV2.tsx` carried the whole
@@ -73,7 +74,7 @@ export interface SidebarV2ChromeProjectGroup {
  *  own end padding, so both columns end at the same place and only the 4px is
  *  left. Padding rather than a narrower width, so the row's own background, if
  *  it ever gains one, still spans the full column. */
-const CONTROL_ROW = cn("flex h-6 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
+const CONTROL_ROW = cn("flex h-7 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
 /** Displaces sidebarMenuButtonVariants' base icon pair (muted-foreground at
     opacity-60, upstream v0.0.30): parent-level [&>svg] selectors outweigh the
     icon's own class, so without this the fork's /80 tint on the glyph is dead
@@ -93,7 +94,7 @@ const TOUCH_TARGET =
   "pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden";
 
 const CHROME_CONTROL =
-  "h-6 gap-1 rounded-md border-0 bg-transparent px-1 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
+  "h-7 gap-1 rounded-md border-0 bg-transparent px-1 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 
 export function SidebarV2SearchRow(props: {
   readonly commandPaletteShortcutLabel: string | null;
@@ -187,7 +188,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                 puts the affordance where the eye enters the row, and the label
                 already names the project the favicon used to repeat. */}
             <ChevronsUpDownIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-            <span className="min-w-0 flex-1 truncate">
+            <span className="min-w-0 flex-1 truncate text-left">
               {props.scopedProjectGroup?.displayName ?? "All projects"}
             </span>
           </MenuTrigger>

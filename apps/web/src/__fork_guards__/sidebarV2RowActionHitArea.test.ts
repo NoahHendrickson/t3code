@@ -120,29 +120,29 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
   });
 
   it("gives the card's trailing cell room for a 24px target", () => {
-    // h-[18px] is the title line and the working rain's own height; the cell
+    // h-4 is the title line (the rain overflows it by design); the cell
     // holding the actions has to be 24 or the button is clipped back to 18.
     expect(sidebarV2).toContain("grid h-6 shrink-0 grid-cols-1 items-center justify-items-end");
   });
 
   it("nudges both row variants onto the trailing column's axis", () => {
-    // Glyph alignment, not box alignment: flush right edges put a card's
-    // runtime glyph, an action icon and a chrome icon on three axes 4px apart.
-    // The card's actions give up 4px of their cell, slim rows 2px (they are
-    // padded px-2.5 against px-3), and the chrome rows' inset covers the rest
-    // — see the CONTROL_ROW note in custom/SidebarV2ChromeRows.tsx. Drop any
-    // one of these and that row's icon steps out of the column on its own.
-    // Every offset is derived in one module now, so this asserts the values
-    // there and that each row reaches for the one meant for it. A row reading
-    // another row's offset is the drift this replaced inline strings to stop.
+    // Glyph alignment, not box alignment. The axis is 24px in from the panel's
+    // content edge — the chrome rows' pe-3 plus half their 24px button. A card
+    // reaches the same inset through list pad 8 + its own px-1, so its flush
+    // controls owe nothing; the header and the slim rows' right-0 overlay sit
+    // on the list's bare 8px edge and spend me-1; the shelf chevron's px-2.5
+    // lands its 12px glyph on the axis by itself. Every offset is derived in
+    // one module, so this asserts the values there and that each row reaches
+    // for the one meant for it. A row reading another row's offset is the
+    // drift this replaced inline strings to stop.
     const offsets = /SIDEBAR_V2_TRAILING_OFFSET = \{([\s\S]*?)\} as const;/u.exec(
       trailingColumn,
     )?.[1];
     expect(offsets).toBeDefined();
-    expect(offsets).toMatch(/cardActions:\s*"-me-1"/u);
-    expect(offsets).toMatch(/slimActions:\s*"-me-0\.5"/u);
-    expect(offsets).toMatch(/headerPlus:\s*"-me-1"/u);
-    expect(offsets).toMatch(/shelfChevron:\s*"me-1"/u);
+    expect(offsets).toMatch(/cardActions:\s*""/u);
+    expect(offsets).toMatch(/slimActions:\s*"me-1"/u);
+    expect(offsets).toMatch(/headerPlus:\s*"me-1"/u);
+    expect(offsets).toMatch(/shelfChevron:\s*""/u);
     expect(offsets).toMatch(/chromeRow:\s*""/u);
     expect(sidebarV2).toContain("SIDEBAR_V2_TRAILING_OFFSET.cardActions");
     expect(trailingColumn).toContain("SIDEBAR_V2_TRAILING_OFFSET.slimActions");
