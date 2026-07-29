@@ -397,6 +397,31 @@
     max-height: none;
     overflow-y: hidden;
   }
+
+  /* The placeholder (and Lexical's zero-height spacer) are the editor's
+     siblings, outside its clip. At 14/16 the placeholder's line box is a pixel
+     taller than its inset-0 box, and that pixel propagates through the
+     absolutely-positioned box into the wrapper's scrollable overflow — a
+     phantom thumb that shows only while the prompt is empty, because typing
+     unmounts the placeholder. Typed text already paints without that pixel.
+
+     `clip`, not `hidden`: setting an axis to hidden computes the other
+     axis's `visible` to `auto`, which turns this pure-paint element into a
+     scroll box — and the approval-state placeholder is server-supplied text
+     (paths, URLs, SHAs) with no break opportunity, so the reserved horizontal
+     scrollbar would eat the entire 16px line. And both axes, not just y: left
+     visible, that same unbreakable text propagates sideways overflow into the
+     wrapper — whose overflow-x computes to auto alongside its overflow-y —
+     and paints a 16px horizontal scrollbar there instead. clip contains the
+     element on both axes without creating a scroll container anywhere. The
+     editor above gets away with hidden only because pre-wrap +
+     wrap-break-word means it can never overflow horizontally. */
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-fork-composer-prompt]
+    [data-testid="composer-editor"]
+    ~ div {
+    overflow: clip;
+  }
 }
 
 /* The in-box pills and the control row below it share one 24px ghost treatment:
