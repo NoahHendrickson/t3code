@@ -13,8 +13,11 @@
  * it; project headers repeat every few rows, and a rule at that frequency
  * stripes the panel and competes with the card edges. The folder mark and the
  * space above carry the separation instead.
- * The first group drops the top margin: it butts against the chrome rows, which
- * carry their own spacing.
+ *
+ * Spacing from Figma t3-fork node 113:3718: list pad supplies the 8px inset;
+ * the folder sits in a 24px box (16px glyph centred) so its ink shares the
+ * 12px axis with Search and each card's status; gap-1 (4px) to the label;
+ * 2px to the first card (`mt` is 0 / `mt-4` between groups = 16px).
  *
  * It is a heading rather than a bare span, and its `li` drops the list
  * semantics it would otherwise inherit from upstream's thread `ul`: a screen
@@ -48,13 +51,15 @@ export function SidebarV2ProjectGroupHeader(props: {
       <div
         data-testid="sidebar-v2-project-group-header"
         className={cn(
-          "mb-1 flex w-full items-center gap-2 px-2.5 text-left",
-          props.isFirst ? "mt-1" : "mt-3",
+          // No horizontal pad — the list's 8px is the content edge. Folder in a
+          // 24px box centres its 16px glyph on the same 12px axis as card status.
+          "flex w-full items-center gap-1 text-left",
+          props.isFirst ? "mt-0" : "mt-4",
         )}
       >
-        {/* The same folder mark the scope menu lists projects with, so a header
-            and its menu entry read as the same object. */}
-        <FolderIcon aria-hidden className="size-4 shrink-0 text-muted-foreground/70" />
+        <span className="flex size-6 shrink-0 items-center justify-center">
+          <FolderIcon aria-hidden className="size-4 text-sidebar-muted-foreground/80" />
+        </span>
         {/* The heading is the label, not the row: the row now also holds a
             button, and a heading that contains one takes the button's text into
             its own accessible name — "no3y-code New thread in no3y-code" for a
@@ -63,7 +68,7 @@ export function SidebarV2ProjectGroupHeader(props: {
         <span
           role="heading"
           aria-level={3}
-          className="min-w-0 truncate text-xs font-medium text-muted-foreground/70"
+          className="min-w-0 truncate text-xs font-normal leading-4 text-sidebar-muted-foreground"
         >
           {props.label ?? UNGROUPED_PROJECT_LABEL}
         </span>

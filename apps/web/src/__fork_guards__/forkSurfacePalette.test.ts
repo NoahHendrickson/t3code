@@ -163,6 +163,17 @@ describe("fork guard: fork-surface-palette", () => {
     expect(panel).toContain("--sidebar-control-surface: #303030");
   });
 
+  it("keeps panel muted text brighter than upstream's #a3a3a3", () => {
+    // Chrome rows and project headers tint this further (/80, /70). Dropping
+    // back to upstream's mid-gray makes Search / All projects / headers soft
+    // again on the lifted #1e1e1e panel.
+    const panel = blockFor(theme, PANEL);
+    const muted = declarationHex(panel, "--muted-foreground");
+    const sidebarMuted = declarationHex(panel, "--sidebar-muted-foreground");
+    expect(muted).toBe(sidebarMuted);
+    expect(relativeLuminance(muted)).toBeGreaterThan(relativeLuminance("#a3a3a3"));
+  });
+
   it("clears the grain that would compound drift onto flat surfaces", () => {
     // Kept for the flat-opaque reason alone. Upstream's 0.035 noise was
     // calibrated against #000; on these surfaces any useful opacity leaves

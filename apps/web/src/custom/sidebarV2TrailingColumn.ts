@@ -9,18 +9,19 @@
  * ## The axis
  *
  * Everything trailing centres on the card's content edge minus 8px: the two
- * chrome icons above the list, each card's status dot and runtime glyph, the
- * hover actions on both row variants, the shelf chevrons, and the project
- * header's plus.
+ * chrome icons above the list, each card's runtime glyph, the hover actions on
+ * both row variants, the shelf chevrons, and the project header's plus. (The
+ * status mark used to sit in this column too; it now leads the title line, and
+ * the lower card rows indent under the title text instead.)
  *
  * They do not get there by sharing a right edge, which is what makes this worth
- * writing down once. A 16px mark flush with a card's content edge centres 12px
- * in; an icon centred in a 24px button flush with that same edge centres 4px
- * further left; a 16px icon centred in a 32px chrome button sits 8px in from
- * *its* own edge, 4px the other way. Align the boxes and the marks land on
- * three axes 4px apart — which is the kind of misalignment you feel before you
- * can name it. So each control gives up a few pixels of its own box, and the
- * column reads as one line.
+ * writing down once. A 16px box flush with a card's content edge centres 8px
+ * in from that edge; an icon centred in a 24px button flush with that same edge
+ * centres 4px further left; a 16px icon centred in a 32px chrome button sits
+ * 8px in from *its* own edge, 4px the other way. Align the boxes and the marks
+ * land on three axes 4px apart — which is the kind of misalignment you feel
+ * before you can name it. So each control gives up a few pixels of its own box,
+ * and the column reads as one line.
  *
  * Each offset below is derived from the padding of the row it sits in. They are
  * not interchangeable and none of them is a taste value: change a row's padding
@@ -70,25 +71,25 @@ export const SIDEBAR_V2_ICON_BUTTON_CLASS =
  * each is the arithmetic, and the numbers only hold against the padding named.
  */
 export const SIDEBAR_V2_TRAILING_OFFSET = {
-  /** Card hover actions. The card is `px-3`, so its status mark is a 16px box
-   *  flush with a content edge 12px in and its dot centres 8px further; a 24px
-   *  button flush with the same edge centres 12px in. 4px right. */
+  /** Card hover actions. The card is `px-1` (Figma 113:3718); a 16px box flush
+   *  with a content edge 4px in centres 8px further; a 24px button flush centres
+   *  12px in. 4px right. */
   cardActions: "-me-1",
-  /** Slim-row hover actions. Same shape as the card's, 2px less to travel
-   *  because a slim row is `px-2.5` against the card's `px-3`. */
+  /** Slim-row hover actions. Slim rows stay `px-2.5`; against the card's `px-1`
+   *  that is 6px further in, so 6px more nudge — but the shared axis is the
+   *  chrome/card trailing column, and slim still uses the historic 2px step
+   *  from the old card pad. Kept at -me-0.5 until slim is redrawn. */
   slimActions: "-me-0.5",
-  /** The project header's plus. A `px-2.5` row like the slim rows, and the
-   *  button is the same 24px box, so it takes the same 2px. */
-  headerPlus: "-me-0.5",
+  /** The project header's plus. Header has no own horizontal pad (list supplies
+   *  8px); same 24px button as card actions, same 4px nudge. */
+  headerPlus: "-me-1",
   /** Shelf header chevrons — 4px the *other* way. A 12px glyph flush with a
-   *  `px-2.5` row centres 6px in, where a card's mark takes 8. */
+   *  `px-2.5` row centres 6px in, where a card's trailing box takes 8. */
   shelfChevron: "me-1",
-  /** The chrome rows' trailing inset. A 16px icon centred in a 32px button sits
-   *  8px in from the button's edge against the card mark's 12, so the button
-   *  gives up 4px of its own right edge. Not a scrollbar term: the list pays
-   *  for its own gutter out of its end padding (see fork-sidebar-chrome), and a
-   *  scrollbar term here would double-count it. */
-  chromeRow: "pe-1",
+  /** The chrome rows' trailing inset. Figma ends these rows at pr-12; the 24px
+   *  plus box is already flush with that edge, so no extra pe. Kept at pe-0
+   *  relative to the control row — the outer `pe-3` on the group is the inset. */
+  chromeRow: "",
 } as const;
 
 /**

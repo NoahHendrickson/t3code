@@ -81,11 +81,17 @@ export function threadRowSurfaceClassName(input: {
   );
 }
 
-/** A card title's colour. Hover restores a receded title, which is what keeps
-    the dimming reading as depth rather than as a disabled row. */
-export function threadCardTitleClassName(recedes: boolean): string {
+/** A card title's colour and weight. Hover restores a receded title, which is
+    what keeps the dimming reading as depth rather than as a disabled row.
+    Idle alone drops to regular weight — a quiet subject line, not a headline —
+    while working (and every status that wants you) stays medium. */
+export function threadCardTitleClassName(input: {
+  readonly recedes: boolean;
+  readonly isIdle: boolean;
+}): string {
   return cn(
     "truncate",
-    recedes ? "text-muted-foreground group-hover/v2-row:text-foreground" : "text-foreground",
+    input.isIdle ? "font-normal" : "font-medium",
+    input.recedes ? "text-muted-foreground group-hover/v2-row:text-foreground" : "text-foreground",
   );
 }

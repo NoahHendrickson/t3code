@@ -5,15 +5,16 @@ import { AlarmClockIcon } from "./icons/lucide-phosphor";
 import type { CSSProperties } from "react";
 import { cn } from "~/lib/utils";
 
-/** The right-hand slot of a Sidebar V2 card row. Every status resolves to one
-    mark so the column stays optically aligned no matter which state a row is
-    in — the *form* carries the meaning (falling pixels mean the agent is
-    running; a static dot means it stopped and wants something), and the hue
-    only reinforces it. This is the same vocabulary the phanttom Ghostty fork
-    uses in its sidebar: rain while working, 8px dots otherwise. Text labels
-    ("Working", "Approval") are gone — at 282px wide the label crowded out the
-    branch name, and the row already says what it is through color plus the
-    duration readout.
+/** The right-hand slot of a Sidebar V2 card row's title line used to hold
+    status; the mark now leads that line and this module still owns every
+    status form. Every status resolves to one mark so the leading column stays
+    optically aligned no matter which state a row is in — the *form* carries
+    the meaning (falling pixels mean the agent is running; a static dot means
+    it stopped and wants something), and the hue only reinforces it. This is
+    the same vocabulary the phanttom Ghostty fork uses in its sidebar: rain
+    while working, 8px dots otherwise. Text labels ("Working", "Approval") are
+    gone — at 282px wide the label crowded out the branch name, and the row
+    already says what it is through color plus the duration readout.
 
     Known limit, accepted (WCAG 1.4.1): form only separates rain / dot / clock,
     so the four settled states — done, approval, input, failed — are one 8px dot

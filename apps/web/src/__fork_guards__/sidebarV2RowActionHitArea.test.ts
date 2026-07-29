@@ -127,7 +127,7 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
 
   it("nudges both row variants onto the trailing column's axis", () => {
     // Glyph alignment, not box alignment: flush right edges put a card's
-    // status dot, an action icon and a chrome icon on three axes 4px apart.
+    // runtime glyph, an action icon and a chrome icon on three axes 4px apart.
     // The card's actions give up 4px of their cell, slim rows 2px (they are
     // padded px-2.5 against px-3), and the chrome rows' inset covers the rest
     // — see the CONTROL_ROW note in custom/SidebarV2ChromeRows.tsx. Drop any
@@ -141,19 +141,19 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     expect(offsets).toBeDefined();
     expect(offsets).toMatch(/cardActions:\s*"-me-1"/u);
     expect(offsets).toMatch(/slimActions:\s*"-me-0\.5"/u);
-    expect(offsets).toMatch(/headerPlus:\s*"-me-0\.5"/u);
+    expect(offsets).toMatch(/headerPlus:\s*"-me-1"/u);
     expect(offsets).toMatch(/shelfChevron:\s*"me-1"/u);
-    expect(offsets).toMatch(/chromeRow:\s*"pe-1"/u);
+    expect(offsets).toMatch(/chromeRow:\s*""/u);
     expect(sidebarV2).toContain("SIDEBAR_V2_TRAILING_OFFSET.cardActions");
     expect(trailingColumn).toContain("SIDEBAR_V2_TRAILING_OFFSET.slimActions");
     expect(groupHeader).toContain("SIDEBAR_V2_TRAILING_OFFSET.headerPlus");
     expect(chromeRows).toContain("SIDEBAR_V2_TRAILING_OFFSET.chromeRow");
     const shelfChevrons = [...sidebarV2.matchAll(/SIDEBAR_V2_TRAILING_OFFSET\.shelfChevron/gu)];
     expect(shelfChevrons.length).toBe(2);
-    // Positioned, so the card's actions share a paint layer with the status
+    // Positioned, so the card's actions share a paint layer with the elapsed
     // span the crossfade turns into a stacking context — see the call site.
     // Matched on w-0, which is the actions wrapper's own collapse and not
-    // something the status span it shares the cell with ever carries.
+    // something the elapsed span it shares the cell with ever carries.
     const cardActions = /"([^"]*col-start-1 row-start-1[^"]*\bw-0\b[^"]*)"/u.exec(sidebarV2)?.[1];
     expect(cardActions).toBeDefined();
     expect(cardActions).toContain("relative");
@@ -178,23 +178,28 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
       expect(tag).toMatch(/\bsize-4\b/u);
     }
     // The shelf headers' chevrons, 4px the other way: their row is px-2.5,
-    // so a flush 12px glyph centres 6px in where a card's mark takes 8.
+    // so a flush 12px glyph centres 6px in where a card's trailing box takes 8.
     const chevrons = [...sidebarV2.matchAll(/"size-3 ([^"]*transition-transform[^"]*)"/gu)];
     expect(chevrons.length).toBe(2);
   });
 
-  it("keeps the status mark out of the hit path it shares a cell with", () => {
-    // The bug a bigger button did not fix. Status and actions occupy the same
-    // grid cell; on hover the status span goes to opacity-0, which makes it a
-    // stacking context and so paints ABOVE the in-flow actions. Invisible, it
-    // still hit-tested first across its own width — the right half of the
-    // settle button and none of snooze, which is why settle only responded
-    // left of the checkmark. Any future opacity/z change to that span
-    // reintroduces it unless the span stays out of the hit path entirely.
-    const statusSpanClass = /"([^"]*col-start-1 row-start-1 flex items-center gap-2[^"]*)"/u.exec(
-      sidebarV2,
-    )?.[1];
-    expect(statusSpanClass).toBeDefined();
-    expect(statusSpanClass).toContain("pointer-events-none");
+  it("keeps status out of the trailing actions cell", () => {
+    // Status used to share the trailing grid cell with the hover actions; on
+    // hover the status span went to opacity-0, became a stacking context, and
+    // hit-tested above settle. Moving the mark to the leading column is the
+    // structural fix — assert it stays there, and that the leading slot itself
+    // is never a target.
+    expect(sidebarV2).toContain(
+      "pointer-events-none flex size-4 shrink-0 items-center justify-center",
+    );
+    expect(sidebarV2).toContain("<SidebarV2IdleMark />");
+    // The trailing cell still fades elapsed on a working row; that decoration
+    // must stay out of the hit path for the same reason status used to.
+    const elapsedSpanClass =
+      /"([^"]*col-start-1 row-start-1 flex items-center[^"]*transition-opacity[^"]*)"/u.exec(
+        sidebarV2,
+      )?.[1];
+    expect(elapsedSpanClass).toBeDefined();
+    expect(elapsedSpanClass).toContain("pointer-events-none");
   });
 });

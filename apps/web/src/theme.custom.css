@@ -77,7 +77,8 @@
    closes the seam with upstream's #161616 pre-paint / overscroll colour in
    `apps/web/index.html`. Stage-scoped `--border: #2d2e2e` was kept: on the
    darker stage it reads a touch stronger than against the old #212121, which
-   is fine for a hairline.
+   is fine for a hairline. Panel muted text is #e0e0e0 rather than upstream's
+   #a3a3a3 so chrome labels stay readable on the lifted surface.
 
    Two blocks, not one, and the second is not redundant. Upstream re-declares
    --background / --card / --border and the whole --sidebar-* family *on the
@@ -126,6 +127,11 @@
      controls into the surface instead of raising them. */
   --muted: #262626;
   --accent: #262626;
+  /* Upstream's panel muted text is #a3a3a3. On #1e1e1e that reads too soft for
+     Search / All projects / project headers (and those rows further tint at
+     /80 and /70), so lift toward foreground (#f1f3f7) without matching it. */
+  --muted-foreground: #e0e0e0;
+  --sidebar-muted-foreground: #e0e0e0;
   /* The ⌘K chip: rgba(255,255,255,0.08) over the panel in the design. */
   --sidebar-control-surface: #303030;
   --sidebar-row-hover: #262626;

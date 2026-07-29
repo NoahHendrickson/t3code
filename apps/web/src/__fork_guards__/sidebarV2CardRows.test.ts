@@ -19,7 +19,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
-import { threadCardTitleRecedes } from "../custom/sidebarV2RowPolicy";
+import { threadCardTitleClassName, threadCardTitleRecedes } from "../custom/sidebarV2RowPolicy";
 import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "../custom/SidebarV2ThreadCardMeta";
 
 function readSibling(relativePath: string): string {
@@ -101,6 +101,16 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(at({ isIdle: true, isSelected: true })).toBe(false);
   });
 
+  it("sets idle card titles to regular weight, everything else medium", () => {
+    // Idle is the hollow-ring row: quiet subject line, not a headline. Working
+    // stays medium even when its colour recedes — the rain already says it is
+    // busy; the weight should not also soften.
+    expect(threadCardTitleClassName({ recedes: true, isIdle: true })).toContain("font-normal");
+    expect(threadCardTitleClassName({ recedes: true, isIdle: true })).not.toContain("font-medium");
+    expect(threadCardTitleClassName({ recedes: true, isIdle: false })).toContain("font-medium");
+    expect(threadCardTitleClassName({ recedes: false, isIdle: false })).toContain("font-medium");
+  });
+
   it("keeps row presentation policy out of the megacomponent", () => {
     // The policy is pure and fork-owned, so SidebarV2 carries call sites rather
     // than the rules. Inlining it back is the regression this catches.
@@ -118,12 +128,25 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(upstreamCss).not.toContain("--color-sidebar-row-working");
   });
 
-  it("keeps a mark in the trailing slot for every status, idle included", () => {
-    // Idle used to fall back to a relative-time string, so the trailing column
-    // alternated between a 16px mark and a variable-width label and nothing
-    // below it could align.
+  it("keeps a mark in the leading status slot for every status, idle included", () => {
+    // Idle used to fall back to a relative-time string on the trailing edge,
+    // so the column alternated between a 16px mark and a variable-width label.
+    // The mark now leads the title line and is never empty — the hollow ring
+    // holds the left column so the title text and the indented rows below
+    // share one edge.
     expect(typeof SidebarV2IdleMark).toBe("function");
     expect(sidebarV2).toContain("<SidebarV2IdleMark />");
+    expect(sidebarV2).toContain(
+      "pointer-events-none flex size-4 shrink-0 items-center justify-center",
+    );
+  });
+
+  it("indents the card's lower rows under the title text", () => {
+    // 24px = the leading 16px status + the title row's 8px gap. Dropping the
+    // indent puts the branch under the rain instead of under the prompt.
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).toContain('CONTENT_INDENT = "pl-5"');
+    expect(meta).toContain("${CONTENT_INDENT}");
   });
 
   it("collapses to two lines only when it knows there is no PR and no diff", () => {
@@ -158,9 +181,9 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // lines are 82 + 4 and two are 60 + 4. Change the card's vertical padding
     // and these move with it or the scrollbar starts lying by the difference
     // on every row it skips.
-    expect(sidebarV2).toContain("px-3 py-2.5");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_86px]");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_64px]");
+    expect(sidebarV2).toContain("gap-1 px-1 py-2");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_77px]");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_58px]");
     // And the choice is made from the same predicate the component renders
     // from, so the hint cannot drift from the row count it describes.
     expect(sidebarV2).toContain("threadCardShowsMetaRow({");
