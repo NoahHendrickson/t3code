@@ -61,7 +61,27 @@ describe("fork guard: t3-connect-official-config", () => {
     ) as Record<string, string | undefined>;
     // Exact key-set equality is the secret-creep fence: a CLERK_SECRET_KEY or
     // token added to a tracked env file would ship in the repository forever.
-    expect({ ...parsed }).toEqual(OFFICIAL_VALUES);
+    // Two known writers trip this legitimately — hand-added optional values
+    // that .env.example documents (mobile OTLP tracing), and the relay deploy
+    // script's reconcileRootEnv, which appends tracing tokens here. Both
+    // belong in .env.local; the message says so because "secret creep" alone
+    // sent people hunting for a leak they hadn't caused.
+    expect(
+      { ...parsed },
+      "the tracked .env carries ONLY the four official T3 Connect public values; " +
+        "move optional or machine-local values (OTLP tracing, relay deploy output) " +
+        "to .env.local, which is gitignored and takes precedence",
+    ).toEqual(OFFICIAL_VALUES);
+  });
+
+  it("keeps the fork note in .env.example that steers people off `cp .env.example .env`", () => {
+    // That note is the only thing standing between upstream's documented
+    // onboarding move and a commit that replaces the four live values with
+    // upstream's commented-out placeholders. watch: reports drift after the
+    // fact; this fails the build instead.
+    const example = NodeFS.readFileSync(NodePath.join(repoRoot, ".env.example"), "utf8");
+    expect(example).toContain("fork:begin t3-connect-official-config");
+    expect(example).toContain(".env.local");
   });
 
   it("resolves through the build loader for every client surface", () => {

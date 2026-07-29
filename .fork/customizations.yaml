@@ -1201,7 +1201,11 @@
     tracks them in a repository-root .env, which scripts/lib/public-config.ts
     already reads for every dev run and build — with the right precedence
     built in, since process env and .env.local both outrank it, so a personal
-    or self-hosted-relay override stays possible and stays gitignored. The
+    or self-hosted-relay override stays possible and stays gitignored. An
+    override REPLACES a value; it cannot blank one — the loader resolves
+    through firstNonEmpty, which treats empty as unset and falls through to
+    the tracked file. Building with T3 Connect off means temporarily
+    deleting the tracked .env in that checkout, never committing it. The
     file is force-added past .gitignore's .env* rule on purpose: tracked
     files are exempt from ignore rules, and upstream never ships a .env, so
     a sync can never conflict with it. The values are public identifiers,
@@ -1236,5 +1240,11 @@
     # "unconfigured clone" by not stubbing the variable, which stopped being
     # the ambient default once the tracked .env keyed every build.
     - apps/web/src/cloud/connectCliAuth.test.ts
+    # reconcileRootEnv writes relay public config — OTLP tracing tokens
+    # included — into the repo-root .env, which this customization made
+    # committable. Unfenced (the fork never runs relay deploys), but any
+    # upstream rework of where that write lands must be re-checked against
+    # the tracked file. See the decisions note.
+    - infra/relay/scripts/deploy.ts
   verify:
     - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts

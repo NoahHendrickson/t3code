@@ -226,7 +226,14 @@ Related deep-dives that predate this file and stay where they are:
   T3 Connect was previously compiled out; and with `T3CODE_HOSTED_APP_URL` unset the `t3 connect`
   CLI flow round-trips through upstream's hosted app, so the consent screen names upstream's
   application. Both are exactly what "parity with official releases" means, and both are
-  overridable per-checkout via `.env.local`.
+  overridable per-checkout via `.env.local` — with a real limit the second review caught:
+  `.env.local` can replace a value, never blank one. `firstNonEmpty` in the loader treats an empty
+  string as absent and falls through to the tracked `.env`, and the resolved projection is spread
+  last, so `T3CODE_CLERK_PUBLISHABLE_KEY=` in `.env.local` (or the process env) leaves the build
+  keyed. Turning T3 Connect off in a checkout means temporarily deleting the tracked `.env` — the
+  guard suite will complain locally until it is restored, which is the visible reminder not to
+  commit the deletion. A fenced loader opt-out was considered and declined: it would put a fork
+  hunk in upstream's build bootstrap to serve a local-experiment case that deletion already covers.
 - Keyed desktop launch path: baking a key moves packaged fork builds off
   fork-clerk-launch-resilience's skip path and onto upstream's bridge path — deliberately, since
   that is the path every official desktop release ships. main.ts's synchronous pre-ready privilege
@@ -237,3 +244,17 @@ Related deep-dives that predate this file and stay where they are:
   bakes a key in before import; the launch race itself is only observable in a packaged boot,
   which fork-release.yml's launch isolation gate exercises — run it with dry_run=true to prove a
   keyed build before tagging a release.
+- Second review's sharpest catch: `infra/relay/scripts/deploy.ts`'s `reconcileRootEnv` writes
+  relay public config — including `T3CODE_MOBILE_OTLP_TRACES_TOKEN` and
+  `T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN`, the latter `::add-mask::`-ed in upstream's own release
+  workflow — into the repo-root `.env`, which this customization made committable. In-repo
+  automation of the exact failure the key-set guard fences. Accepted un-fenced because this fork
+  never runs relay deploys (self-hosting was rejected above) and a fenced redirect to `.env.local`
+  would also have to carry fenced edits to upstream's `deploy.test.ts`, which asserts the `.env`
+  target. If the fork ever self-hosts, redirecting that write is the first change to make. The
+  guard's failure message now names both legitimate writers (deploy output, optional OTLP values)
+  and points them at `.env.local`, so tripping it reads as "wrong file", not "you leaked a secret".
+- The `.env.example` fork note is now asserted by the guard suite (`toContain` on the fence
+  marker), closing the fourth finding: `watch:` reports drift after a sync merges, but only a
+  failing test stops `cp .env.example .env` from shipping upstream's placeholders over the live
+  values via a routine `git commit -a`.
