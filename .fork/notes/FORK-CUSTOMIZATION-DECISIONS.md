@@ -185,3 +185,29 @@ Related deep-dives that predate this file and stay where they are:
   editor stays unclamped with `overflow-y: hidden` so Geist ink cannot inflate a scroll
   container. The guard's `not.toContain("data-composer-prompt-scrollable")` is a regression fence
   against bringing the toggle back, not an unexplained ban.
+
+## t3-connect-official-config
+
+- The goal was stated as "parity with official releases on top of the fork's changes", which ruled
+  out the two heavier options up front: self-hosting the relay (`infra/relay` — own Clerk app,
+  Cloudflare, PlanetScale; a second production system to operate for zero parity gain) and asking
+  every clone to hand-author an untracked `.env` (works once, silently absent in the next worktree
+  or clone, and this fork's contributions largely come from fresh agent worktrees).
+- The four values were extracted from the published npm CLI tarball (`t3@0.0.30`), where upstream's
+  release build inlines them (`VITE_CLERK_CLI_OAUTH_CLIENT_ID` etc. in the bundled web assets).
+  `app.t3.codes` would have shown the same values but is unreachable from the agent environment's
+  network policy. If upstream ever rotates them, the fix is re-extracting from the current release
+  and updating `.env` and the guard's `OFFICIAL_VALUES` together.
+- Committing a file that `.gitignore` matches is deliberate, not an oversight: ignore rules bind
+  only untracked files, so one `git add -f` makes it a normal tracked file forever, upstream can
+  never conflict with a path it has never shipped, and `.env.local` (still ignored, higher
+  precedence in `scripts/lib/public-config.ts`) remains the escape hatch for anyone pointing a
+  checkout at a staging or self-hosted relay. The alternative — carrying the values as code-level
+  fallbacks — would have meant a Tier-4 fence in an upstream loader that syncs would fight over.
+- No client code changes were needed, by construction: `fork-clerk-launch-resilience` only skips
+  the desktop Clerk bridge when the build is keyless, and `fork-app-identity` explicitly kept the
+  shared `t3code://` scheme, which is the redirect Clerk's desktop OAuth allowlist expects. The
+  packaged fork app signing in shares upstream's scheme contention caveat already recorded there.
+- What this does not grant: relay access is authorized by the signed-in user's Clerk account
+  (waitlist/allowlist on upstream's instance), not by the baked values. A fork build with these
+  values but no approved account gets exactly what an official build gets — the sign-in flow.

@@ -1181,3 +1181,43 @@
     - apps/web/src/components/ComposerPromptEditor.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
+
+- id: t3-connect-official-config
+  intent: >
+    Fork builds carry the same T3 Connect public configuration as official
+    releases, so the cloud UI, the `t3 connect` CLI group, and the managed
+    tunnel all work against upstream's hosted relay out of the box. Upstream
+    injects four public values at release time from CI variables this fork
+    does not have (release.yml's relay_public_config job); the fork instead
+    tracks them in a repository-root .env, which scripts/lib/public-config.ts
+    already reads for every dev run and build — with the right precedence
+    built in, since process env and .env.local both outrank it, so a personal
+    or self-hosted-relay override stays possible and stays gitignored. The
+    file is force-added past .gitignore's .env* rule on purpose: tracked
+    files are exempt from ignore rules, and upstream never ships a .env, so
+    a sync can never conflict with it. The values are public identifiers,
+    not secrets (docs/cloud/t3-connect-clerk.md) — the same ones baked into
+    every official artifact; they were read from the published npm CLI
+    (t3@0.0.30). The .env must never grow server-side secrets or tokens; the
+    guard pins its key set to exactly these four so secret creep fails CI.
+    Two neighbouring customizations make keyed fork builds safe rather than
+    accidental: fork-clerk-launch-resilience's keyless skip only engages
+    when no publishable key is baked and keyed builds keep upstream's Clerk
+    bridge behavior exactly, and fork-app-identity deliberately keeps the
+    shared t3code:// scheme, which is the desktop OAuth callback Clerk's
+    redirect allowlist expects. Relay access itself remains gated by the
+    user's own Clerk account, which is what authorizes use of the hosted
+    service.
+  tier: 1
+  files:
+    - .env
+  shadows: []
+  watch:
+    # Upstream's loader: the one place the repo-root .env is read and
+    # projected into VITE_*/EXPO_PUBLIC_* aliases. If upstream renames the
+    # canonical variables or stops reading .env, this customization dies
+    # silently — the guard exercises the loader against the real repo root
+    # so that failure turns CI red instead.
+    - scripts/lib/public-config.ts
+  verify:
+    - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts
