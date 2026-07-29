@@ -1,13 +1,18 @@
-import { useAtomValue } from "@effect/atom-react";
 import { SettingsIcon } from "lucide-react";
 import { memo, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { APP_BASE_NAME, APP_STAGE_LABEL } from "../../branding";
+import { APP_BASE_NAME } from "../../branding";
+import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
-import { primaryServerConfigAtom } from "../../state/server";
-import { resolveSidebarStageBadgeLabel } from "../Sidebar.logic";
+import {
+  resolveEnvironmentIdentificationPillLabel,
+  useEnvironmentStageLabel,
+} from "../SidebarStageBackdrop";
+import { Badge } from "../ui/badge";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
 import { ForkSidebarHeaderBackdrop } from "~/custom/SidebarHeaderBackdrop";
+/* fork:end fork-sidebar-chrome */
 import {
   SidebarFooter,
   SidebarHeader,
@@ -25,7 +30,17 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
 }: {
   isElectron: boolean;
 }) {
-  const stageLabel = useSidebarStageLabel();
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+     Everything from here to the fence's end diverges from upstream: the
+     hooks (upstream resolves a backdrop variant here; the fork resolves only
+     the pill), the header's px-0 padding rewrite, the always-on backdrop,
+     the inline toggle, the pill, and the trailing brand. */
+  const stageLabel = useEnvironmentStageLabel();
+  const environmentIdentificationMode = useEnvironmentIdentificationMode();
+  const pillLabel =
+    environmentIdentificationMode === "pill"
+      ? resolveEnvironmentIdentificationPillLabel(stageLabel)
+      : null;
 
   return (
     <SidebarHeader
@@ -38,12 +53,13 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
       )}
     >
       {/* Always, not only on a non-prod build: in the fork this is brand
-          chrome rather than a channel cue. Upstream's other two art surfaces
-          (composer send button, auth screen) still gate on the variant and are
-          untouched, so they keep signalling Dev. */}
+          chrome rather than a channel cue, so it also ignores the environment
+          identification setting upstream added for its own header art. That
+          setting still governs the composer send button; the standalone auth
+          screen never read it — upstream gates that surface on the build
+          channel alone, and it stays untouched. */}
       <ForkSidebarHeaderBackdrop stageLabel={stageLabel} />
-      {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-          The toggle sits inline here rather than floating over the workspace, so
+      {/* The toggle sits inline here rather than floating over the workspace, so
           it reads as belonging to the panel it collapses. The mobile-only
           visibility class is gone with it: that existed because the desktop
           toggle lived in AppSidebarLayout's fixed SidebarControl, which now
@@ -65,6 +81,23 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           className="[:hover,[data-pressed]]:bg-white/15 focus-visible:ring-white/90 focus-visible:ring-offset-transparent [&_svg]:text-white! [&_svg]:opacity-100!"
         />
       </div>
+      {/* Upstream's pill mode, honored on top of the art rather than instead
+          of it: the art is brand chrome and never leaves, but "Version pill"
+          must still produce a pill or the setting lies. `none` produces
+          neither pill nor composer art, and `artwork` lights the composer —
+          every option stays distinguishable in the fork. White on the art,
+          not upstream's secondary-on-plain, for the same reason the toggle
+          is. */}
+      {pillLabel ? (
+        <Badge
+          className="relative z-10 ml-1 rounded-full border-0 bg-white/15 px-1.5 text-white/90"
+          data-environment-identification="pill"
+          size="sm"
+          variant="secondary"
+        >
+          {pillLabel}
+        </Badge>
+      ) : null}
       <SidebarBrand />
       {/* fork:end fork-sidebar-chrome */}
     </SidebarHeader>
@@ -94,16 +127,6 @@ function SidebarBrand() {
   );
 }
 
-function useSidebarStageLabel() {
-  const primaryServerVersion =
-    useAtomValue(primaryServerConfigAtom)?.environment.serverVersion ?? null;
-
-  return resolveSidebarStageBadgeLabel({
-    primaryServerVersion,
-    fallbackStageLabel: APP_STAGE_LABEL,
-  });
-}
-
 export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
   const navigate = useNavigate();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -120,12 +143,8 @@ export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
       <SidebarUpdatePill />
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton
-            size="sm"
-            className="h-8 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-muted-foreground/80 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-            onClick={handleSettingsClick}
-          >
-            <SettingsIcon className="size-4.5 shrink-0" />
+          <SidebarMenuButton onClick={handleSettingsClick}>
+            <SettingsIcon />
             <span>Settings</span>
           </SidebarMenuButton>
         </SidebarMenuItem>

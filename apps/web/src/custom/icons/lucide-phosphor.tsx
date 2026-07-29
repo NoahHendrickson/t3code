@@ -115,6 +115,7 @@ import {
   Monitor as PhMonitor,
   NotePencil as PhNotePencil,
   PaintBrush as PhPaintBrush,
+  Palette as PhPalette,
   Paragraph as PhParagraph,
   PencilRuler as PhPencilRuler,
   PencilSimpleLine as PhPencilSimpleLine,
@@ -334,6 +335,7 @@ export const ListChecksIcon = icon("list-checks", PhListChecks, "duotone");
 export const ListTodoIcon = icon("list-todo", PhListChecks, "duotone");
 export const Camera = icon("camera", PhCamera, "duotone");
 export const PipetteIcon = icon("pipette", PhEyedropper, "duotone");
+export const PaletteIcon = icon("palette", PhPalette, "duotone");
 export const PaintbrushIcon = icon("paintbrush", PhPaintBrush, "duotone");
 export const Paintbrush = icon("paintbrush", PhPaintBrush, "duotone");
 export const PencilRulerIcon = icon("pencil-ruler", PhPencilRuler, "duotone");
