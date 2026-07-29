@@ -1,12 +1,10 @@
-import { useAtomValue } from "@effect/atom-react";
 import { SettingsIcon } from "lucide-react";
 import { memo, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { APP_BASE_NAME, APP_STAGE_LABEL } from "../../branding";
+import { APP_BASE_NAME } from "../../branding";
 import { cn } from "../../lib/utils";
-import { primaryServerConfigAtom } from "../../state/server";
-import { resolveSidebarStageBadgeLabel } from "../Sidebar.logic";
+import { useEnvironmentStageLabel } from "../SidebarStageBackdrop";
 import { ForkSidebarHeaderBackdrop } from "~/custom/SidebarHeaderBackdrop";
 import {
   SidebarFooter,
@@ -25,7 +23,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
 }: {
   isElectron: boolean;
 }) {
-  const stageLabel = useSidebarStageLabel();
+  const stageLabel = useEnvironmentStageLabel();
 
   return (
     <SidebarHeader
@@ -38,9 +36,11 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
       )}
     >
       {/* Always, not only on a non-prod build: in the fork this is brand
-          chrome rather than a channel cue. Upstream's other two art surfaces
-          (composer send button, auth screen) still gate on the variant and are
-          untouched, so they keep signalling Dev. */}
+          chrome rather than a channel cue, so it also ignores the environment
+          identification setting upstream added for its own header art — that
+          setting still governs upstream's other two art surfaces (composer
+          send button, auth screen), which are untouched and keep signalling
+          Dev. */}
       <ForkSidebarHeaderBackdrop stageLabel={stageLabel} />
       {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
           The toggle sits inline here rather than floating over the workspace, so
@@ -94,16 +94,6 @@ function SidebarBrand() {
   );
 }
 
-function useSidebarStageLabel() {
-  const primaryServerVersion =
-    useAtomValue(primaryServerConfigAtom)?.environment.serverVersion ?? null;
-
-  return resolveSidebarStageBadgeLabel({
-    primaryServerVersion,
-    fallbackStageLabel: APP_STAGE_LABEL,
-  });
-}
-
 export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
   const navigate = useNavigate();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -120,12 +110,8 @@ export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
       <SidebarUpdatePill />
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton
-            size="sm"
-            className="h-8 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-muted-foreground/80 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-            onClick={handleSettingsClick}
-          >
-            <SettingsIcon className="size-4.5 shrink-0" />
+          <SidebarMenuButton onClick={handleSettingsClick}>
+            <SettingsIcon />
             <span>Settings</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
