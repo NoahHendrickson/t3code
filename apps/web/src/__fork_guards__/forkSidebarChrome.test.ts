@@ -182,7 +182,16 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const gutter = readSibling("../custom/useScrollGutterWidth.ts");
     expect(gutter).toContain("offsetWidth - node.clientWidth");
     expect(sidebarV2).toContain("ref={listScrollGutterRef}");
-    expect(sidebarV2).not.toContain("calc(0.5rem-var(--app-scrollbar-width))");
+    // The token-based giveback is this file's own prior implementation —
+    // pe-[calc(0.5rem-var(--app-scrollbar-width))], replaced by the measured
+    // gutter in 56954bc8 — which makes it the likeliest thing a revert or a
+    // wrong-side conflict resolution puts back, including *alongside* the
+    // measured term, where the containment checks above stay green and the
+    // last pe-* wins. Bounded to a pe-* utility so prose about the token
+    // cannot trip it, and looser than the old exact literal so a re-spelling
+    // like pe-[calc(var(--sidebar-list-pad)-var(--app-scrollbar-width))]
+    // cannot sail past.
+    expect(sidebarV2).not.toMatch(/pe-\[[^\]]*--app-scrollbar-width/u);
   });
 
   it("puts the brand on the header's trailing edge", () => {

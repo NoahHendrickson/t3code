@@ -694,11 +694,9 @@
     it shares with these rows spends 8px of air on the left and 8+6 on the
     right: every card sits visibly off-centre in its own column, and the chrome
     rows above end 6px past where the cards do. The list's end padding gives
-    that 6px back — reading --app-scrollbar-width rather than restating 6px, so
-    the symmetry follows upstream if the scrollbar is ever retuned. The gutter
-    itself stays: the scrollbar keeps its lane, the cards are 8px from both
-    edges, and the compensation is meaningless without the gutter that causes
-    it, so the two must move together.
+    that 6px back. The gutter itself stays: the scrollbar keeps its lane, the
+    cards are 8px from both edges, and the compensation is meaningless without
+    the gutter that causes it, so the two must move together.
 
     The width given back is measured, not assumed. --app-scrollbar-width is only
     true where ::-webkit-scrollbar applies: Firefox sets no scrollbar-width, so
@@ -765,9 +763,12 @@
     - apps/web/src/components/SidebarStageBackdrop.test.tsx
     - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
-    # Defines --app-scrollbar-width, which the thread list's end padding reads
-    # to cancel its own scroll gutter. Retiring or renaming that token silently
-    # returns the list to 8px of air on one side and 14px on the other.
+    # Styles ::-webkit-scrollbar { width: var(--app-scrollbar-width) }, which
+    # is what makes the thread list's reserved lane a styled 6px at all — and
+    # what the intent's cross-engine argument is anchored to. A retune the
+    # measurement absorbs; the failure is this rule disappearing or gaining
+    # scrollbar-width/appearance handling, which hands the lane to the UA
+    # default width the drawn 6px gutter does not assume.
     - apps/web/src/index.css
   verify:
     - apps/web/src/__fork_guards__/forkSidebarChrome.test.ts
@@ -1021,8 +1022,16 @@
     inflate scrollHeight on the editor, so upstream's max-h + overflow-y:auto
     there painted a phantom thumb on a single line. The wrapper owns the
     12.5rem cap (upstream max-h-50); the editor stays unclamped and clips its
-    ink. Scoped to the same >=40rem media as the line box — below that the
-    prompt stays on leading-relaxed and upstream's editor scroll is left alone.
+    ink. The editor's siblings — Lexical's placeholder and spacer — carry
+    overflow clip on both axes (clip, not hidden, so the pure-paint
+    placeholder never becomes a scroll box; both axes, so an unbreakable
+    approval-detail placeholder can neither eat its own 16px line with a
+    horizontal scrollbar nor propagate one onto the wrapper), because the
+    placeholder's overhanging line box otherwise reaches the wrapper's
+    scrollable overflow through its abspos box and paints the thumb on an
+    empty prompt only. Scoped to the same >=40rem media as the
+    line box — below that the prompt stays on leading-relaxed and upstream's
+    editor scroll is left alone.
     The prompt and its placeholder are set by one rule and must stay that way:
     they are two elements stacked exactly on top of each other, and any
     disagreement about size or leading puts the caret beside the text it
@@ -1104,8 +1113,10 @@
     # customization switches off. An upstream rework of that paint would leave
     # the fork disabling rules that no longer exist.
     - apps/web/src/index.css
-    # min-h-17.5 on the prompt editor, and the placeholder that has to track the
-    # prompt's type ramp.
+    # min-h-17.5 on the prompt editor, the placeholder that has to track the
+    # prompt's type ramp, and the max-h-50 / overflow-y-auto cap the fork
+    # re-homes on the prompt wrapper at >=40rem by overriding — the classes
+    # themselves stay on the editor here.
     - apps/web/src/components/ComposerPromptEditor.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
