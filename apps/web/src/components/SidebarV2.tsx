@@ -511,12 +511,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   const lastVisitedDate = lastVisitedAt === undefined ? null : parseTimestampDate(lastVisitedAt);
   const wokeAtDate = props.wokeAt === null ? null : parseTimestampDate(props.wokeAt);
   const isWoke = wokeAtDate !== null && (lastVisitedDate === null || lastVisitedDate < wokeAtDate);
-  // Receding is now about who owns the next move, not about whether a session
-  // happens to be attached. Working and read-ready rows recede (inbox-zero:
-  // a running agent isn't your problem yet); approval and input no longer do,
-  // because they are blocked ON YOU. That split is the whole point of the two
-  // drawn specimens — the approval row carries brighter metadata (65%) than
-  // the working one (45%) despite both being "in flight".
+  // Upstream's slim-shelf recede rule: who owns the next move, folded with
+  // read/woke state. CARDS DO NOT READ THIS — the component set draws Working
+  // titles forward and Done/Idle receded, which is the opposite split, so a
+  // card's title AND surface both come from `cardRecedes` below. This
+  // predicate survives for the snoozed/settled slim rows, whose brightness
+  // still encodes unread-ness (the card delegates that to the status dot).
+  // See the "two recede rules" note in custom/sidebarV2RowPolicy.ts.
   const shouldRecede =
     (status === "ready" || status === "working") &&
     !isUnread &&
@@ -556,6 +557,20 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               : isUnread
                 ? { label: "Done", tone: "done", mark: "dot" }
                 : null;
+
+  /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+  // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
+  // the surface consumes it too: title and surface dim together, or a Working
+  // card would recede its surface while forcing its title forward. Bare
+  // `tone === "done"`: the done tone is produced by exactly one branch above,
+  // the unread dot, so a mark check would be a conjunct that can never fail.
+  const cardRecedes = threadCardTitleRecedes({
+    isDone: topStatus?.tone === "done",
+    isIdle: topStatus === null,
+    isActive: props.isActive,
+    isSelected,
+  });
+  /* fork:end sidebar-v2-card-rows */
 
   const gitCwd = thread.worktreePath ?? props.projectCwd;
   const gitStatus = useEnvironmentQuery(
@@ -760,7 +775,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   const rowSurfaceClassName = threadRowSurfaceClassName({
     isActive: props.isActive,
     isSelected,
-    recedes: shouldRecede,
+    /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+    // One definition of "receded" per row: the card's surface reads the same
+    // Done/Idle predicate as its title, or a Working card dims its inherited
+    // text while forcing its title forward — two opposite policies in one
+    // rectangle. Slim shelves keep upstream's rule.
+    recedes: variant === "card" ? cardRecedes : shouldRecede,
+    /* fork:end sidebar-v2-card-rows */
   });
 
   const title = isRenaming ? (
@@ -782,14 +803,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
         "min-w-0 flex-1",
         variant === "card" ? "text-xs" : "text-sm",
         variant === "card"
-          ? threadCardTitleClassName({
-              recedes: threadCardTitleRecedes({
-                isDone: topStatus?.tone === "done" && topStatus.mark === "dot",
-                isIdle: topStatus === null,
-                isActive: props.isActive,
-                isSelected,
-              }),
-            })
+          ? threadCardTitleClassName({ recedes: cardRecedes })
           : cn(
               shouldRecede ? "font-normal" : "font-medium",
               "truncate group-hover/v2-row:text-foreground",
@@ -828,7 +842,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     return (
       <li
         data-thread-item
-        className="list-none [content-visibility:auto] [contain-intrinsic-size:auto_34px]"
+        className="list-none [content-visibility:auto] [contain-intrinsic-size:auto_36px]"
       >
         <Tooltip>
           <TooltipTrigger
@@ -1057,7 +1071,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   {status === "working" ? (
                     <span
                       className={cn(
-                        "pointer-events-none col-start-1 row-start-1 flex items-center pr-1 transition-opacity group-hover/v2-row:opacity-0",
+                        "pointer-events-none col-start-1 row-start-1 flex items-center pr-1",
+                        // The fade exists to yield the cell to the hover
+                        // actions. When neither action is offered there is
+                        // nothing to yield to, and an unconditional fade
+                        // blanks the timer on hover with nothing in its place.
+                        (props.settlementSupported || showSnoozeButton) &&
+                          "transition-opacity group-hover/v2-row:opacity-0",
                         snoozeMenuOpen && "opacity-0",
                       )}
                     >

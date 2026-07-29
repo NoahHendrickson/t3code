@@ -303,7 +303,12 @@
     Done and Idle recede their title colour at rest (restored on hover or
     selection), per the component set — Working, Approval, Input and Failed
     keep the foreground title. Every title is the design's Regular body/sm
-    weight; colour alone carries the receded/forward distinction.
+    weight; colour alone carries the receded/forward distinction, which is
+    why the card's --muted-foreground must stay upstream's dim value (see
+    fork-surface-palette). A card's surface reads the same Done/Idle
+    predicate as its title (`cardRecedes`); upstream's shouldRecede survives
+    for the slim shelves only, where brightness still encodes unread-ness —
+    the card delegates unread to the Done dot.
 
     Status text labels ("Working", "Approval") are replaced by a single 16px
     mark in a fixed leading slot on the title line, and the slot is never empty
@@ -618,10 +623,16 @@
     44px, the trick ui/button and the chrome rows' trailing buttons already use.
     The row actions are hover-gated and never reach a touch device, but the
     project header's plus is always rendered and its handler closes the mobile
-    drawer, so it does — and 24px is the WCAG 2.5.8 floor exactly, with no
-    margin. The class also carries focus-visible, for the reason the hover fill
-    exists: on a transparent button you cannot see where the target ends, and
-    that is as true of keyboard focus as of the pointer.
+    drawer, so it does — and 24px is the WCAG 2.5.8 floor exactly. That floor
+    is a design-wide stance: the Figma chrome draws every icon-only control,
+    the always-on trailing buttons included, at the same 24px box. The class
+    also carries focus-visible, for the reason the hover fill exists: on a
+    transparent button you cannot see where the target ends, and that is as
+    true of keyboard focus as of the pointer. Its ring offset is 1, not the
+    chrome buttons' 2: these buttons sit inside the row surface's
+    overflow-hidden with their edge 4px from the clip boundary, and
+    ring-2 + offset-2 is exactly 4px of shadow — the ring rendered clipped.
+    offset-1 keeps the full ring with 1px to spare.
 
     The fill is bg-foreground/10, not bg-accent. These sit on top of the row's
     own hover fill (--sidebar-row-hover), and a foreground alpha is the one
@@ -691,8 +702,14 @@
     The dark shell is not black. The workspace stage is #191919 and the sidebar
     v2 panel is #1e1e1e — the panel sits slightly above the stage so chrome
     reads in front of the work surface. Borders are #2d2e2e, row hover #262626,
-    row selected and route-active #2a2a2a. Muted text on the panel is #e0e0e0
-    (not upstream's #a3a3a3) so Search / scope / project headers stay readable.
+    row selected and route-active #2a2a2a. Chrome muted text
+    (--sidebar-muted-foreground) is #e0e0e0 (not upstream's #a3a3a3) so
+    Search / scope / project headers stay readable — and ONLY that token: the
+    thread cards read --muted-foreground, which stays upstream's, because a
+    receded card title is text-muted-foreground against a text-foreground
+    forward one and lifting it to #e0e0e0 collapses that distinction to
+    ~1.19:1. The guard asserts the panel block does not override
+    --muted-foreground at all.
 
     The stage stays near upstream's pre-paint / overscroll colour (#161616 in
     apps/web/index.html) so the load flash and rubber-band band do not seam

@@ -13,12 +13,10 @@ const base = {
   isRemote: false,
 } as const;
 
-/** Rows are the only fixed-height elements in this markup: the repo line is
-    body/sm at h-4, the meta line caption at h-[15px] — Figma 113:3718. Both
-    spellings are anchored to their row's full class run so an icon-sized
-    `size-4` can never inflate the count. */
-const countRows = (markup: string) =>
-  markup.split("h-[15px]").length + markup.split("flex h-4 min-w-0").length - 2;
+/** Counted by the rows' own testid rather than by class-string sniffing: a
+    substring count over Tailwind spellings silently zeroed when `cn`
+    reordered a class run, and the test kept passing with the wrong number. */
+const countRows = (markup: string) => markup.split('data-testid="sidebar-v2-card-line"').length - 1;
 
 describe("SidebarV2ThreadCardMeta", () => {
   it("draws one row, carrying the model, when there is no PR and no diff", () => {

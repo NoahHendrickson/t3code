@@ -12,16 +12,20 @@
  * There are two distinct "this row is quiet" notions and they are not the same
  * rule, which is worth stating because they read like duplicates:
  *
- * - **`recedes` (upstream's, passed in)** describes a *slim* row in the settled
- *   shelf — history you have already dealt with. It dims the whole row,
- *   including its surface, and it folds in read/woke state.
- * - **`threadCardTitleRecedes` (here)** describes a *card* whose subject line
- *   has nothing waiting on you. It touches the title only, never the surface,
- *   and it ignores read state entirely.
+ * - **`shouldRecede` (upstream's, in SidebarV2)** describes a *slim* row in
+ *   the settled shelf — history you have already dealt with. It folds in
+ *   read/woke state, and slim rows keep it for brightness too: an unread
+ *   settled thread still reads brighter than a read one there.
+ * - **`threadCardTitleRecedes` (here)** describes a *card* with nothing left
+ *   in motion or blocked on you — Done or Idle, per the component set. A
+ *   card's title AND surface both read this one predicate (two definitions of
+ *   "receded" in one rectangle dim different parts in opposite directions),
+ *   and the card deliberately does not brighten for unread-ness the way slim
+ *   rows do: the unread signal is the Done dot, not the title's tone.
  *
- * They overlap on read-ready threads and diverge everywhere else, so collapsing
- * them into one predicate would silently change both. Naming them separately is
- * the fix; merging them is not.
+ * The two rules disagree on Working and on unread-Done by design, so
+ * collapsing them into one predicate would silently change both variants.
+ * Naming them separately is the fix; merging them is not.
  */
 import { cn } from "~/lib/utils";
 
@@ -69,7 +73,8 @@ export function threadCardTitleRecedes(input: {
 export function threadRowSurfaceClassName(input: {
   readonly isActive: boolean;
   readonly isSelected: boolean;
-  /** Upstream's slim-shelf rule — see the note at the top of this file. */
+  /** The variant's own recede rule — the card policy for cards, upstream's
+      slim-shelf rule for shelves. See the note at the top of this file. */
   readonly recedes: boolean;
 }): string {
   return cn(

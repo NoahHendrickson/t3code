@@ -134,7 +134,10 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
 
   return (
     <>
-      <div className={`${REPO_ROW} ${CONTENT_INDENT} justify-between gap-2 ${MUTED}`}>
+      <div
+        data-testid="sidebar-v2-card-line"
+        className={`${REPO_ROW} ${CONTENT_INDENT} justify-between gap-2 ${MUTED}`}
+      >
         <span className="flex min-w-0 flex-1 items-center gap-2">
           {props.projectTitle ? (
             // Capped rather than flexible: the branch is the more distinguishing
@@ -147,6 +150,39 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
             </span>
           ) : null}
           {props.hasWorktree || props.branch ? (
+            /* The worktree mark replaces the branch mark rather than joining
+               it. This slot already answers "which code is this on", and the
+               two facts are not independent: a thread on a worktree is on
+               that worktree's branch, so a second glyph would spend ~16px of
+               a line whose branch name is already capped and truncating to
+               restate what the first one implies. The branch name stays put,
+               labelled by position.
+
+               The mark's condition is the worktree, not the branch. They are
+               independent fields on the shell and the row's own git predicate
+               treats them as such (`branch != null || worktreePath !== null`),
+               so gating the whole slot on the branch would draw a thread that
+               has a checkout of its own but no branch as if it ran in the
+               project's — the exact confusion the mark exists to prevent.
+               With no branch to name, the mark stands alone.
+
+               The distinction is invisible to a screen reader either way —
+               both marks are decorative — so the worktree case carries it in
+               text.
+
+               The dev-server pulse rides this same slot rather than adding a
+               glyph of its own: the question it answers — "which checkout is
+               the running server serving?" — is a property of the mark that
+               already names the checkout. The attribute lands on the slot and
+               the stylesheet animates the mark inside it (`> svg`, so the
+               branch text stays legible while the glyph carries the signal).
+               A thread with neither branch nor worktree never draws the slot
+               and so cannot pulse — such a thread runs in the project
+               checkout, which is not the ambiguity this exists to resolve.
+               The animation is decorative motion, so the state also rides in
+               text for screen readers — after the branch name, identity
+               before transient state — and survives `prefers-reduced-motion`
+               as a static working-green mark. */
             <span
               className="flex min-w-0 flex-1 items-center gap-0.5"
               data-fork-dev-server-live={props.devServerPort != null ? "" : undefined}
@@ -171,10 +207,16 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
         {showsMetaRow ? null : runtime}
       </div>
       {showsMetaRow ? (
-        <div className={`${META_ROW} ${CONTENT_INDENT} justify-between gap-2`}>
+        <div
+          data-testid="sidebar-v2-card-line"
+          className={`${META_ROW} ${CONTENT_INDENT} justify-between gap-2`}
+        >
           <span className={`flex min-w-0 items-center gap-2 ${MUTED}`}>
             {props.prSlot}
             {hasDiff ? (
+              // Semantic tokens, not emerald/red literals: they already
+              // resolve to the design's #00d492 / #ff6467 in dark and stay
+              // legible in light, where a 400-weight green on white would not.
               <span className="flex shrink-0 items-center gap-1 font-mono">
                 {props.insertions !== null ? (
                   <span className="text-success-foreground">+{props.insertions}</span>

@@ -193,13 +193,16 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
       "pointer-events-none flex size-4 shrink-0 items-center justify-center",
     );
     expect(sidebarV2).toContain("<SidebarV2IdleMark />");
-    // The trailing cell still fades elapsed on a working row; that decoration
-    // must stay out of the hit path for the same reason status used to.
+    // The trailing cell still fades elapsed on a working row when the hover
+    // actions will replace it; that decoration must stay out of the hit path
+    // for the same reason status used to. The fade class is gated separately
+    // (no actions → nothing to yield to → no fade), so the base string is the
+    // anchor here.
     const elapsedSpanClass =
-      /"([^"]*col-start-1 row-start-1 flex items-center[^"]*transition-opacity[^"]*)"/u.exec(
+      /"(pointer-events-none[^"]*col-start-1 row-start-1 flex items-center[^"]*)"/u.exec(
         sidebarV2,
       )?.[1];
     expect(elapsedSpanClass).toBeDefined();
-    expect(elapsedSpanClass).toContain("pointer-events-none");
+    expect(sidebarV2).toContain("transition-opacity group-hover/v2-row:opacity-0");
   });
 });

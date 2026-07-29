@@ -57,23 +57,21 @@ export interface SidebarV2ChromeProjectGroup {
   readonly workspaceRoot: string;
 }
 
-/** The trailing inset aligns glyphs rather than boxes.
+/** These rows define the trailing column's axis rather than chasing it.
  *
- *  What the eye tracks down this column is a stack of 16px marks — these two
- *  icons, then every card's status dot and its runtime glyph. Matching the row
- *  edges instead leaves those marks on axes 4px apart, because a 16px icon
- *  centred in a 32px button sits 8px in from the button's edge while a card's
- *  mark sits 12px in from the card's. Squaring the icons costs the button 4px
- *  of its own right edge, which nothing reads, and buys the column a single
- *  axis, which everything does. See sidebar-v2-row-action-hit-area, which owns
- *  the matching nudges on the row actions.
+ *  The group's pe-3 ends the row 12px in, and the flush 24px trailing button
+ *  centres its glyph 12px further — the 24px axis every trailing mark in the
+ *  sidebar measures against. Note the list rows do NOT share this right edge:
+ *  they end 8px in, and each control there covers its own 4px however its
+ *  geometry dictates (a card's px-1, me-1 on the bare-edge rows) — the
+ *  derivations live in custom/sidebarV2TrailingColumn. An earlier revision
+ *  here claimed both columns end at the same place; that premise was 4px
+ *  wrong and every offset downstream inherited it.
  *
- *  These rows once also carried the list's scrollbar width here, because the
- *  list is a scroll container and its reserved gutter pushed every card 6px
- *  short of where these rows ended. The list now gives that 6px back out of its
- *  own end padding, so both columns end at the same place and only the 4px is
- *  left. Padding rather than a narrower width, so the row's own background, if
- *  it ever gains one, still spans the full column. */
+ *  The inset carries no scrollbar term. The list is a scroll container and
+ *  once pushed its cards short of these rows by its reserved gutter; the list
+ *  now gives that width back out of its own end padding, so a gutter term
+ *  reappearing here would double-count it. */
 const CONTROL_ROW = cn("flex h-7 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
 /** Displaces sidebarMenuButtonVariants' base icon pair (muted-foreground at
     opacity-60, upstream v0.0.30): parent-level [&>svg] selectors outweigh the
@@ -83,6 +81,11 @@ const CONTROL_ROW = cn("flex h-7 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET
     button that renders an icon as a direct child; the guard asserts the merged
     outcome, so a base-selector change that stops displacing shows up red. */
 export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-muted-foreground/80 [&>svg]:opacity-100";
+/** size-6 per the Figma chrome (24px boxes throughout the card-v2 design).
+    That is the WCAG 2.5.8 floor for a fine pointer on an always-on control —
+    deliberate and design-wide, not this button's private call; see the box
+    note in custom/sidebarV2TrailingColumn, which takes the same stance for
+    the list's controls. Coarse pointers get the 44px TOUCH_TARGET child. */
 const TRAILING_BUTTON = cn(
   "relative size-6 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
   CHROME_ROW_ICON_TINT,

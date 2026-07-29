@@ -56,23 +56,38 @@ import { cn } from "~/lib/utils";
  * actions are hover-gated and so never reach a touch device at all; the project
  * header's plus is always rendered, and its own handler closes the mobile
  * drawer, which is the code conceding it is reachable there. 24px is exactly
- * the WCAG 2.5.8 floor, with no margin, and a shared box whose whole argument
- * is "these were too small to hit" cannot ship the one always-on control at it.
+ * the WCAG 2.5.8 floor for a fine pointer, and that is a design-wide stance
+ * rather than this box's private compromise: the Figma card-v2 chrome draws
+ * every icon-only control — the always-on trailing buttons included — at the
+ * same 24px, and the margin everywhere comes from the coarse-pointer child,
+ * not the visual box.
  *
  * `focus-visible` for the same reason the hover fill exists: on a transparent
  * button you cannot see where the target ends, and that is as true of keyboard
- * focus as of the pointer. Ring offset against the sidebar, matching
- * TRAILING_BUTTON, because that is the surface these sit on.
+ * focus as of the pointer. Ring offset against the sidebar because that is
+ * the surface these sit on. Offset 1, not TRAILING_BUTTON's 2, and the
+ * difference is clipping, not taste: these buttons sit inside the row
+ * surface's overflow-hidden, and their right edge is 4px in from the clip
+ * boundary (flush with a card's px-1 content edge; me-1 on the bare-edge
+ * rows). ring-2 + offset-2 is 4px of shadow outside the button — its outer
+ * edge exactly on the boundary, so the ring rendered clipped. offset-1 keeps
+ * the full ring with 1px to spare; the chrome buttons are unclipped and keep
+ * their 2.
  *
  * A constant rather than a component, because the call sites need to be five
  * different elements — a plain button, a popover trigger's render prop, an
  * absolutely positioned overlay — and only the box is common to them. */
 export const SIDEBAR_V2_ICON_BUTTON_CLASS =
-  "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11";
+  "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11";
 
 /**
  * What each row spends to reach the axis. Derived, never tuned — the comment on
  * each is the arithmetic, and the numbers only hold against the padding named.
+ *
+ * An empty string is a derivation, not an omission: it records that the row's
+ * own geometry already lands its control on the axis, and the guard pins it so
+ * a nudge cannot creep back in. Do not delete the "empty" entries — the module
+ * is the derivation, and a call site with no entry has no derivation.
  */
 export const SIDEBAR_V2_TRAILING_OFFSET = {
   /** Card hover actions. List pad 8 + card px-1 puts the card's content edge
