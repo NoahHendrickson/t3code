@@ -4,6 +4,19 @@ T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provid
 
 You can think of T3 Code as an open source "bring-your-own-subscription" alternative to apps like Claude Desktop, Codex App, Cursor Glass and Conductor.
 
+<!-- fork:begin fork-change-scope — see .fork/customizations.yaml#fork-workflow-docs -->
+
+## Change Scope
+
+- Default to the smallest change that satisfies the request. Most work in this repo is presentation-layer work in `apps/web` and `apps/mobile` — refine what already exists rather than adding behavior.
+- Do not add features, settings, config flags, or abstractions that were not asked for. "While I was in there" cleanups belong in a separate change, or nowhere.
+- Do not change existing behavior as a side effect of a visual change. Restyling a component must not alter what it does.
+- Changes reaching `apps/server`, `packages/contracts`, or persistence/migrations are full-stack work requiring explicit intent. A new schema field, WebSocket message, or migration is never an incidental part of a frontend task. If a UI request appears to need one, say so and confirm before writing it.
+- Prefer fixing over rewriting, and deleting over adding. If both a targeted fix and a refactor would work, ship the fix.
+- Do not mix unrelated fixes into one change. `CONTRIBUTING.md` describes the PR expectations; they apply to agent-authored changes too.
+
+<!-- fork:end fork-change-scope -->
+
 ## What makes T3 Code special?
 
 We have over 100,000 users who love T3 Code. It's important we maintain the things they love as we continue to iterate on the product. Here's a brief list of the things we can never compromise on.
@@ -137,15 +150,6 @@ Full glossary with file links: `docs/reference/encyclopedia.md`
 
 - Don't verify with browsers or computer use unless the user explicitly agrees or requests it.
 - Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
-
-## Change Scope
-
-- Default to the smallest change that satisfies the request. Most work in this repo is presentation-layer work in `apps/web` and `apps/mobile` — refine what already exists rather than adding behavior.
-- Do not add features, settings, config flags, or abstractions that were not asked for. "While I was in there" cleanups belong in a separate change, or nowhere.
-- Do not change existing behavior as a side effect of a visual change. Restyling a component must not alter what it does.
-- Changes reaching `apps/server`, `packages/contracts`, or persistence/migrations are full-stack work requiring explicit intent. A new schema field, WebSocket message, or migration is never an incidental part of a frontend task. If a UI request appears to need one, say so and confirm before writing it.
-- Prefer fixing over rewriting, and deleting over adding. If both a targeted fix and a refactor would work, ship the fix.
-- Do not mix unrelated fixes into one change. `CONTRIBUTING.md` describes the PR expectations; they apply to agent-authored changes too.
 
 <!-- fork:begin fork-workflow — see .fork/customizations.yaml#fork-workflow-docs -->
 

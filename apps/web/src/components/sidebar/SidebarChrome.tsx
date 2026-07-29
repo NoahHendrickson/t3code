@@ -3,8 +3,13 @@ import { memo, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { APP_BASE_NAME } from "../../branding";
+import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
-import { useEnvironmentStageLabel } from "../SidebarStageBackdrop";
+import {
+  resolveEnvironmentIdentificationPillLabel,
+  useEnvironmentStageLabel,
+} from "../SidebarStageBackdrop";
+import { Badge } from "../ui/badge";
 import { ForkSidebarHeaderBackdrop } from "~/custom/SidebarHeaderBackdrop";
 import {
   SidebarFooter,
@@ -24,6 +29,11 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron: boolean;
 }) {
   const stageLabel = useEnvironmentStageLabel();
+  const environmentIdentificationMode = useEnvironmentIdentificationMode();
+  const pillLabel =
+    environmentIdentificationMode === "pill"
+      ? resolveEnvironmentIdentificationPillLabel(stageLabel)
+      : null;
 
   return (
     <SidebarHeader
@@ -65,6 +75,23 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           className="[:hover,[data-pressed]]:bg-white/15 focus-visible:ring-white/90 focus-visible:ring-offset-transparent [&_svg]:text-white! [&_svg]:opacity-100!"
         />
       </div>
+      {/* Upstream's pill mode, honored on top of the art rather than instead
+          of it: the art is brand chrome and never leaves, but "Version pill"
+          must still produce a pill or the setting lies. `none` produces
+          neither pill nor composer/auth art, and `artwork` gates those two
+          surfaces — every option stays distinguishable in the fork. White on
+          the art, not upstream's secondary-on-plain, for the same reason the
+          toggle is. */}
+      {pillLabel ? (
+        <Badge
+          className="relative z-10 ml-1 rounded-full border-0 bg-white/15 px-1.5 text-white/90"
+          data-environment-identification="pill"
+          size="sm"
+          variant="secondary"
+        >
+          {pillLabel}
+        </Badge>
+      ) : null}
       <SidebarBrand />
       {/* fork:end fork-sidebar-chrome */}
     </SidebarHeader>

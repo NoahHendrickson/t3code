@@ -992,6 +992,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               contain-intrinsic-size hints below move too or the scrollbar
               starts lying about the rows it is skipping. */}
           <div className="relative z-10 flex flex-col gap-[7px] px-3 py-2.5">
+            {/* fork:end sidebar-v2-card-rows */}
             {/* 18px, not the 16px the metadata lines use: that is the exact
                 height of the working rain's 3x5 grid, and cropping it would
                 clip the bottom row of drops. */}

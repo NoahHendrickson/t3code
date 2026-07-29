@@ -97,4 +97,47 @@ describe("fork guard: customizations manifest", () => {
     }
     expect(violations).toEqual([]);
   });
+
+  it("balances every fork:begin with a fork:end of the same id", () => {
+    // An open fence with no boundary marks nothing: the next sync cannot tell
+    // where the customization stops, so upstream's side of a conflict can be
+    // taken right through it and every fence-based audit stays quiet. The
+    // sidebar-v2-card-rows padding hunk shipped exactly this way for several
+    // syncs before it was noticed by hand. Balance is checked per file — a
+    // begin in one file cannot be closed from another. `.fork/` is excluded
+    // with the guards: both quote fence markers as prose, not as fences.
+    const tracked = NodeChildProcess.execSync("git ls-files", {
+      cwd: repoRoot,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    })
+      .split("\n")
+      .filter(Boolean)
+      .filter((path) => !path.includes("__fork_guards__") && !path.startsWith(".fork/"));
+
+    const violations: string[] = [];
+    for (const path of tracked) {
+      const absolute = NodePath.join(repoRoot, path);
+      if (!NodeFS.existsSync(absolute) || !NodeFS.statSync(absolute).isFile()) continue;
+      const content = NodeFS.readFileSync(absolute, "utf8");
+      const count = (kind: string) => {
+        const counts = new Map<string, number>();
+        for (const match of content.matchAll(new RegExp(`fork:${kind} ([a-z0-9-]+)`, "gu"))) {
+          const id = match[1] ?? "";
+          counts.set(id, (counts.get(id) ?? 0) + 1);
+        }
+        return counts;
+      };
+      const begins = count("begin");
+      const ends = count("end");
+      for (const id of new Set([...begins.keys(), ...ends.keys()])) {
+        const opened = begins.get(id) ?? 0;
+        const closed = ends.get(id) ?? 0;
+        if (opened !== closed) {
+          violations.push(`${path}: "${id}" has ${opened} begin(s) and ${closed} end(s)`);
+        }
+      }
+    }
+    expect(violations).toEqual([]);
+  });
 });

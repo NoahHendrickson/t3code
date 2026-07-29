@@ -30,6 +30,26 @@ describe("fork guard: fork-workflow-docs", () => {
     expect(agents).toContain(".fork/AGENTS.md");
   });
 
+  it("keeps Change Scope fenced and ahead of upstream's first section", () => {
+    // Fork-authored guidance in an upstream-owned file, so an upstream rewrite
+    // deletes it in a clean merge unless something reds. Position is asserted
+    // because position is the point: this is the scope contract every agent
+    // must hit before upstream's own guidance, not an appendix. The v0.0.30
+    // sync initially re-attached it at the bottom of the rewritten doc, which
+    // is what this catches.
+    const agents = NodeFS.readFileSync(NodePath.join(repoRoot, "AGENTS.md"), "utf8");
+    expect(agents).toContain("fork:begin fork-change-scope");
+    expect(agents).toContain("fork:end fork-change-scope");
+    const changeScope = agents.indexOf("## Change Scope");
+    expect(changeScope).toBeGreaterThanOrEqual(0);
+    const firstUpstreamSection = agents
+      .split("\n")
+      .findIndex((line) => line.startsWith("## ") && line !== "## Change Scope");
+    const firstUpstreamIndex = agents.split("\n").slice(0, firstUpstreamSection).join("\n").length;
+    expect(firstUpstreamSection).toBeGreaterThanOrEqual(0);
+    expect(changeScope).toBeLessThan(firstUpstreamIndex);
+  });
+
   it("keeps CLAUDE.md aliased to AGENTS.md so Claude agents get the same rules", () => {
     // Assert the committed object, not the working tree. What an agent gets
     // is whatever the clone materializes from this blob, and a checkout with

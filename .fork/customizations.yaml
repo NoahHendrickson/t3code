@@ -74,6 +74,12 @@
     Fork Workflow section pointing to .fork/AGENTS.md, which defines the
     branch model (work from custom, never touch main) and the placement
     ladder for fork changes.
+    AGENTS.md also carries the fork-authored Change Scope section, fenced as
+    fork-change-scope, and it must sit ahead of upstream's first section
+    heading: it is the scope contract an agent reads before upstream's own
+    guidance, not an appendix. Upstream owns the rest of the document — a sync
+    takes upstream's rewrite wholesale and re-seats these two fenced sections,
+    Change Scope at the top and Fork Workflow at the bottom.
     CLAUDE.md is a Tier-4 inline edit the fork owns outright, and it
     deliberately diverges from the blob upstream ships. Upstream's committed
     symlink target carries a trailing newline, so it names a file that cannot
@@ -611,6 +617,21 @@
     scroll gutter too; fork-sidebar-chrome now compensates for that gutter in
     the list's own end padding, so a scrollbar term reappearing here would
     double-count it and walk both icons back off the column.
+
+    Upstream v0.0.30 reworked its own card's status slot toward the same goal
+    (an absolute actions overlay with focus-within:static and a min-w-8 slot)
+    and put the "Settle" text label back on the card action. Both were
+    declined at the sync: the fork's shared-grid-cell already solves the
+    overlap upstream was chasing — the cell is as wide as whichever state is
+    showing, so the title truncates against the real width — and the text
+    label is what this entry removed in the first place (at 282px it pushed
+    the actions over the title, which now shares their line). A sync that
+    reintroduces either is resolving the conflict backwards. Upstream's
+    matching restyle of sidebarMenuButtonVariants ([&>svg] muted at
+    opacity-60) was kept for upstream surfaces but is displaced on the fork's
+    chrome rows, whose buttons re-assert the /80 tint at full opacity —
+    parent-level [&>svg] outweighs the icon's own class, so without that the
+    fork tint is silently dead and the duotone glyphs double-fade.
   tier: 4
   files:
     # Owned by fork-sidebar-chrome, which sets these rows' metrics; this entry
@@ -747,6 +768,24 @@
 
     The raster-vs-SVG history and the reason Nightly is unreachable in practice
     are in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+
+    Upstream v0.0.30 layered an environmentIdentificationMode setting
+    (artwork / pill / none) over the same surfaces. The fork's header art
+    ignores it — brand chrome is not identification and must not gate on a
+    setting whose off states would strip the packaged app's header — but the
+    pill half is honored: "Version pill" renders upstream's badge in this
+    header, white-on-art rather than secondary-on-plain, because upstream only
+    ever drew the pill here and dropping it would make that option do nothing
+    anywhere. artwork/none keep governing the composer send button and auth
+    screen exactly as upstream wrote them. The same release also moved
+    upstream's search/scope controls into SidebarContent's fixedHeader slot;
+    the fork declines that mechanism — its own rows sit as siblings above the
+    self-scrolling list group, which pins them identically — and a sync must
+    not re-adopt fixedHeader here just to shrink a conflict. The header's
+    stage label now comes from upstream's useEnvironmentStageLabel, which
+    replaced the fork's local hook when upstream's became an exact equivalent
+    (both delegate to resolveServerBackedAppStageLabel with the fork's
+    APP_STAGE_LABEL fallback).
   tier: 4
   files:
     - apps/web/src/custom/SidebarHeaderBackdrop.tsx

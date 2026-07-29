@@ -198,4 +198,22 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
   });
+
+  it("ignores the identification setting for the art and honors it for the pill", () => {
+    // Upstream's environmentIdentificationMode gates its own header art; the
+    // fork's header art is brand chrome and must never consult it — a sync
+    // that re-adopts upstream's gate turns the packaged app's header bare
+    // whenever the setting isn't "artwork". The pill half is the converse:
+    // "Version pill" must actually produce a pill, and upstream only ever
+    // rendered one here, so if this header drops it the option does nothing
+    // anywhere and the setting's own description becomes false in the fork.
+    expect(chrome).not.toContain('=== "artwork"');
+    expect(chrome).not.toMatch(/\?\s*<ForkSidebarHeaderBackdrop/u);
+    expect(chrome).toContain('environmentIdentificationMode === "pill"');
+    expect(chrome).toContain('data-environment-identification="pill"');
+    // The pill sits on the art, so upstream's secondary-on-plain treatment
+    // would vanish into it; white-on-dark is the same rule the toggle follows.
+    const pill = chrome.slice(chrome.indexOf("{pillLabel ? ("), chrome.indexOf("</Badge>"));
+    expect(pill).toContain("text-white");
+  });
 });
