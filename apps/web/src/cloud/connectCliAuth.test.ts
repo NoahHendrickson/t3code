@@ -18,6 +18,12 @@ describe("connectCliAuth", () => {
     vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", TEST_PUBLISHABLE_KEY);
     vi.stubEnv("VITE_CLERK_JWT_TEMPLATE", "t3-relay");
     vi.stubEnv("VITE_T3CODE_RELAY_URL", "https://relay.example.com");
+    // fork:begin t3-connect-official-config — see .fork/customizations.yaml#t3-connect-official-config
+    // The fork's tracked repo-root .env bakes the official CLI OAuth client id
+    // into every build, so leaving it unstubbed no longer models an
+    // unconfigured clone; blank it to restore the case this test asserts.
+    vi.stubEnv("VITE_CLERK_CLI_OAUTH_CLIENT_ID", "");
+    // fork:end t3-connect-official-config
     expect(hasConnectCliAuthConfig()).toBe(false);
 
     vi.stubEnv("VITE_CLERK_CLI_OAUTH_CLIENT_ID", "oauthapp_123");
@@ -48,6 +54,10 @@ describe("connectCliAuth", () => {
 
   it("returns null when the CLI OAuth client id is not configured", () => {
     vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", TEST_PUBLISHABLE_KEY);
+    // fork:begin t3-connect-official-config — see .fork/customizations.yaml#t3-connect-official-config
+    // Blank the baked client id from the fork's tracked .env; see above.
+    vi.stubEnv("VITE_CLERK_CLI_OAUTH_CLIENT_ID", "");
+    // fork:end t3-connect-official-config
     expect(
       buildConnectCliClerkAuthorizeUrl({ state: "state-1", challenge: "challenge-1" }),
     ).toBeNull();

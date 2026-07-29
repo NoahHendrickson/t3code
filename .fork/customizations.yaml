@@ -894,17 +894,26 @@
     the app is ready. Fast machines win that race; CI runners lose it
     deterministically, and a cold local boot is the same dice roll (the
     v0.1.2 launch isolation gate caught it: the app exited before its server
-    ever started). Fork builds bake no Clerk publishable key, so the bridge
-    is guaranteed dead weight — DesktopClerk skips it outright when
-    desktopClerkFrontendApiHostname is undefined, logging a warning, and
-    main.ts registers both schemes' privileges synchronously at module load
-    (guaranteed to precede "ready"; the sole registrar on the skip path;
-    observed against the bundled Electron 41 that pre-ready re-registration
-    by a keyed build's bridge replaces the list harmlessly). Keyed builds
-    keep upstream's behavior exactly: bridge created, initialization and
-    cleanup failures both loud — the cleanup path's Effect.orDie is
-    deliberately untouched, because a real Clerk defect in a keyed build
-    must not hide behind a warning. The singleton-lock behavior in
+    ever started). A build with no baked Clerk publishable key has a bridge
+    that is guaranteed dead weight — historically every fork build; since
+    t3-connect-official-config, only a checkout without the tracked .env or
+    one that blanks the key via .env.local. DesktopClerk skips it outright
+    when desktopClerkFrontendApiHostname is undefined, logging a warning,
+    and main.ts registers both schemes' privileges synchronously at module
+    load (guaranteed to precede "ready"; the sole registrar on the skip
+    path; observed against the bundled Electron 41 that pre-ready
+    re-registration by a keyed build's bridge replaces the list harmlessly).
+    Packaged fork builds are now keyed, so they take upstream's bridge path
+    — the same path every official desktop release ships — and keep
+    upstream's behavior exactly: bridge created, initialization and cleanup
+    failures both loud — the cleanup path's Effect.orDie is deliberately
+    untouched, because a real Clerk defect in a keyed build must not hide
+    behind a warning. Keyed bridge behavior stays unit-covered by upstream's
+    DesktopClerk.test.ts, whose fenced hunk bakes a key in before import;
+    the keyless skip is covered by DesktopClerkForkSkip.test.ts; and the
+    launch race itself is only observable in a real packaged boot, which is
+    what fork-release.yml's launch isolation gate exercises on every build,
+    dry runs included. The singleton-lock behavior in
     DesktopClerk.configure is bridge-independent and preserved on both
     paths.
   tier: 4
@@ -1219,5 +1228,13 @@
     # silently — the guard exercises the loader against the real repo root
     # so that failure turns CI red instead.
     - scripts/lib/public-config.ts
+    # Carries a fenced note telling developers NOT to `cp .env.example .env`
+    # in this fork — that documented upstream onboarding move would clobber
+    # the tracked file. An upstream rewrite of the example must re-seat it.
+    - .env.example
+    # Two fenced stubs blank the baked CLI OAuth client id: upstream models
+    # "unconfigured clone" by not stubbing the variable, which stopped being
+    # the ambient default once the tracked .env keyed every build.
+    - apps/web/src/cloud/connectCliAuth.test.ts
   verify:
     - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts

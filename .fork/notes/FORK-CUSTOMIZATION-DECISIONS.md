@@ -211,3 +211,29 @@ Related deep-dives that predate this file and stay where they are:
 - What this does not grant: relay access is authorized by the signed-in user's Clerk account
   (waitlist/allowlist on upstream's instance), not by the baked values. A fork build with these
   values but no approved account gets exactly what an official build gets — the sign-in flow.
+- Review follow-ups (PR #35). Accepted residual risk, named rather than implied: tracking `.env`
+  removes the structural impossibility of committing it, and `.env` is the file most likely to
+  receive a `CLERK_SECRET_KEY` by habit. The guard's exact-key-set assertion is the in-repo fence,
+  but it is CI-only and post-push; GitHub push protection / secret scanning on the fork is the
+  control actually positioned to catch it pre-push, and should be confirmed enabled in repository
+  settings (not verifiable from a checkout). Second recorded gap: the guard's value assertion
+  compares the tracked `.env` against a constant maintained in the same commits, so it catches
+  copy-drift and secret creep, not upstream rotating the values — if rotation happens, both copies
+  agree, CI stays green, and the failure surfaces as a dead relay handshake at runtime. A live
+  probe was considered and declined; guards do not do network.
+- Identity consequences of parity, stated out loud: dev runs (`vp run dev`, throwaway `test-t3-app`
+  worktrees) are now keyed against upstream's production Clerk instance and relay by default, where
+  T3 Connect was previously compiled out; and with `T3CODE_HOSTED_APP_URL` unset the `t3 connect`
+  CLI flow round-trips through upstream's hosted app, so the consent screen names upstream's
+  application. Both are exactly what "parity with official releases" means, and both are
+  overridable per-checkout via `.env.local`.
+- Keyed desktop launch path: baking a key moves packaged fork builds off
+  fork-clerk-launch-resilience's skip path and onto upstream's bridge path — deliberately, since
+  that is the path every official desktop release ships. main.ts's synchronous pre-ready privilege
+  registration remains in force on keyed builds too (strictly earlier than upstream's own
+  bridge-time registration, observed harmless on the bundled Electron 41), so a keyed fork build
+  is no worse-positioned in the ready race than an official build. Unit coverage of the keyed
+  bridge already existed before this change in upstream's DesktopClerk.test.ts, whose fenced hunk
+  bakes a key in before import; the launch race itself is only observable in a packaged boot,
+  which fork-release.yml's launch isolation gate exercises — run it with dry_run=true to prove a
+  keyed build before tagging a release.

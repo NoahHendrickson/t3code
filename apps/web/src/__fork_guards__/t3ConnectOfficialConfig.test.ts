@@ -4,11 +4,17 @@
  *
  * The fork tracks upstream's official T3 Connect public values in a
  * repository-root .env so source builds reach the hosted relay exactly like
- * released artifacts do. Three ways this dies silently without a guard: the
- * file drops out of the index (it matches .gitignore's .env* rule, so an
- * untracked copy looks identical on disk), it grows values it must never
- * carry (server-side secrets), or upstream's loader stops reading the
- * repo-root .env / renames the canonical variables during a sync.
+ * released artifacts do. What these tests catch: the file dropping out of
+ * the index (it matches .gitignore's .env* rule, so an untracked copy looks
+ * identical on disk), secret creep or copy-drift in its contents (the
+ * key-set assertion compares against a second hand-maintained copy of the
+ * same fact, so it only fails when the two copies disagree), and upstream's
+ * loader ceasing to read the repo-root .env or renaming the canonical
+ * variables during a sync. Known gap, deliberate and recorded in
+ * .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md: upstream rotating the values
+ * out from under us is NOT detected here — both copies keep agreeing while
+ * the relay handshake dies at runtime. Nothing short of a live probe would
+ * catch that, and guards do not do network.
  */
 
 import * as NodeChildProcess from "node:child_process";
@@ -38,13 +44,15 @@ describe("fork guard: t3-connect-official-config", () => {
   it("keeps .env tracked, not merely present on disk", () => {
     // .env matches .gitignore's .env* rule, so losing the index entry leaves
     // a working tree that looks right while every fresh clone and worktree
-    // silently builds with T3 Connect compiled out.
-    expect(() =>
-      NodeChildProcess.execSync("git ls-files --error-unmatch .env", {
-        cwd: repoRoot,
-        stdio: "pipe",
-      }),
-    ).not.toThrow();
+    // silently builds with T3 Connect compiled out. spawnSync rather than a
+    // bare execSync throw: a missing git binary must report itself as an
+    // environment problem, not masquerade as the tracking regression.
+    const result = NodeChildProcess.spawnSync("git", ["ls-files", "--error-unmatch", ".env"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+    expect(result.error, "git was not runnable in this environment").toBeUndefined();
+    expect(result.status, `.env is not tracked by git: ${result.stderr}`).toBe(0);
   });
 
   it("carries exactly the four official public values", () => {
