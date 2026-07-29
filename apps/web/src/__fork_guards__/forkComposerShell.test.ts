@@ -210,11 +210,19 @@ describe("fork guard: fork-composer-shell", () => {
     expect(scrollport!.body).toMatch(/max-height:\s*12\.5rem/u);
     expect(scrollport!.body).toMatch(/overflow-y:\s*auto/u);
 
+    // The `~ div` exclusion is load-bearing: the sibling clip rule below
+    // satisfies the other three predicates too, so without it this `find`
+    // resolves to the unclamp rule only because that rule happens to sit
+    // earlier in the file. Reorder the two blocks and `max-height: none`
+    // starts interrogating the sibling rule and fails for a reason unrelated
+    // to the invariant — the same class of wrong-thing-satisfied-it bug the
+    // @media prefix match already cost this file.
     const editor = rules.find(
       (rule) =>
         inDesktopLineBoxMedia(rule) &&
         rule.selector.includes("[data-fork-composer-prompt]") &&
-        rule.selector.includes('[data-testid="composer-editor"]'),
+        rule.selector.includes('[data-testid="composer-editor"]') &&
+        !/~\s*div/u.test(rule.selector),
     );
     expect(editor, "desktop editor unclamp rule missing or unscoped").toBeDefined();
     expect(editor!.body).toMatch(/max-height:\s*none/u);
@@ -237,6 +245,7 @@ describe("fork guard: fork-composer-shell", () => {
         /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector),
     );
     expect(siblings, "desktop placeholder clip rule missing or unscoped").toBeDefined();
+    expect(siblings, "the unclamp and clip rules must stay distinct").not.toBe(editor);
     expect(siblings!.body).toMatch(/overflow:\s*clip/u);
 
     // An imperative attribute toggle is the failure mode this replaces — see
