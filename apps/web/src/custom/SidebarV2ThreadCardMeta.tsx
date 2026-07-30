@@ -54,6 +54,12 @@ export interface SidebarV2ThreadCardMetaProps {
       server running" would overclaim (a debugger, an ssh tunnel, and a
       database all count). */
   readonly devServerPort?: number | null;
+  /** Pre-built terminal-status glyph (running terminal processes), or null.
+      Arrives as a slot for the same reason `prSlot` does: the icon and its
+      accessible label are upstream's, and no state crosses this boundary.
+      Rides the repo line after the branch cluster — upstream draws it after
+      the branch in its combined row, and this keeps that reading order. */
+  readonly terminalSlot?: ReactNode;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
   /** The row's VCS query has not answered yet, so `prSlot` being null means
@@ -203,6 +209,7 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
               ) : null}
             </span>
           ) : null}
+          {props.terminalSlot ?? null}
         </span>
         {showsMetaRow ? null : runtime}
       </div>
