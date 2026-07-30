@@ -195,8 +195,8 @@ jobs:
             so copy anything you need out of the prompt stash before upgrading.
             Details: the [v0.1.6 release notes](https://github.com/NoahHendrickson/t3code/releases/tag/v0.1.6).
 
-            Cloud features (T3 Connect remote access and sign-in) are not
-            configured in fork builds and will be unavailable. Everything local
-            works normally.
+            T3 Connect (remote access and sign-in) is configured with the same
+            public values as official T3 Code releases and uses upstream's
+            hosted relay. Everything local works without signing in, as always.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
