@@ -236,14 +236,17 @@ Related deep-dives that predate this file and stay where they are:
   hunk in upstream's build bootstrap to serve a local-experiment case that deletion already covers.
 - Keyed desktop launch path: baking a key moves packaged fork builds off
   fork-clerk-launch-resilience's skip path and onto upstream's bridge path — deliberately, since
-  that is the path every official desktop release ships. main.ts's synchronous pre-ready privilege
-  registration remains in force on keyed builds too (strictly earlier than upstream's own
-  bridge-time registration, observed harmless on the bundled Electron 41), so a keyed fork build
-  is no worse-positioned in the ready race than an official build. Unit coverage of the keyed
-  bridge already existed before this change in upstream's DesktopClerk.test.ts, whose fenced hunk
-  bakes a key in before import; the launch race itself is only observable in a packaged boot,
-  which fork-release.yml's launch isolation gate exercises — run it with dry_run=true to prove a
-  keyed build before tagging a release.
+  that is the path every official desktop release ships. This entry originally argued a keyed
+  fork build was "no worse-positioned in the ready race than an official build" because main.ts's
+  pre-ready registration was strictly earlier than the bridge's own. True, and useless: the
+  bridge's own post-ready call still throws regardless of what was registered first, official
+  builds ship that dice roll to end users, and upstream runs no launch gate in CI to see it. The
+  fork's first keyed dry-run gate saw it immediately and failed the build; the incident and fix
+  live under `## fork-clerk-launch-resilience` below. Unit coverage of the keyed bridge already
+  existed in upstream's DesktopClerk.test.ts, whose fenced hunk bakes a key in before import; the
+  launch race itself is only observable in a packaged boot, which fork-release.yml's launch
+  isolation gate exercises — run it with dry_run=true to prove a keyed build before tagging a
+  release.
 - Second review's sharpest catch: `infra/relay/scripts/deploy.ts`'s `reconcileRootEnv` writes
   relay public config — including `T3CODE_MOBILE_OTLP_TRACES_TOKEN` and
   `T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN`, the latter `::add-mask::`-ed in upstream's own release
@@ -258,3 +261,28 @@ Related deep-dives that predate this file and stay where they are:
   marker), closing the fourth finding: `watch:` reports drift after a sync merges, but only a
   failing test stops `cp .env.example .env` from shipping upstream's placeholders over the live
   values via a routine `git commit -a`.
+
+## fork-clerk-launch-resilience
+
+- The keyed-build story failed the moment it was actually tested. After t3-connect-official-config
+  keyed every fork build, the manifest was rewritten to say keyed builds keep upstream's bridge
+  behavior exactly, leaning on "pre-ready re-registration observed harmless on Electron 41". The
+  first dry-run launch gate on a keyed build (PR #35, run 30508846869) exited before the server
+  started: the macOS runner's layer construction trailed "ready", `createClerkBridge` called
+  `registerSchemesAsPrivileged` post-ready, and `DesktopClerkBridgeInitializationError` was
+  fatally loud — the v0.1.2 failure reproduced on the keyed path. "Observed harmless" had only
+  ever described boots that won the race; CI was the population of boots that lose it.
+- The fix (7eedbbb6) makes main.ts the sole registrar on every path: `createDesktopClerkBridge`
+  no-ops `protocol.registerSchemesAsPrivileged` for exactly the duration of `createClerkBridge`
+  and restores it in a `finally`. Chosen over gating on `app.isReady()` — an isReady gate keeps
+  fast and slow boots on different code paths, and the losing path is the one CI never exercises —
+  and over catching the initialization error, which would swallow unknown causes along with the
+  one known one. Safe only because main.ts registers the identical privilege set the bridge would
+  have; the launch-resilience guard pins that set item by item, and a future @clerk/electron that
+  registers a different set surfaces as a failing renderer in the launch gate, not silently.
+  Covered by DesktopClerkForkRegistrarSuppression.test.ts (registration lands on the no-op, the
+  registrar is restored after).
+- Two sessions independently authored this same fix within the hour, differing only in fence
+  placement and test naming — the shipped one is 7eedbbb6; the duplicate was dropped unpushed.
+  Recorded because the convergence is itself evidence the no-op-around-bridge-creation shape is
+  the minimal fix, not one agent's taste.
