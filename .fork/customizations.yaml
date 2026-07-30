@@ -55,7 +55,7 @@
     a fenced per-test timeout raise rather than a product change, because the
     underlying cost is upstream's to fix and diverging in hot upstream logic
     buys a conflict on every sync. Current carrier:
-    stashImageCompression.test.ts's give-up path (~15 encodes of an 8 MB stub
+    imageCompression.test.ts's give-up path (~15 encodes of an 8 MB stub
     through chunked base64 — deterministic work, not flake). No guard asserts
     these hunks; losing one turns CI red by itself, which is the enforcement.
   tier: 4
@@ -63,7 +63,7 @@
   shadows: []
   watch:
     - .github/workflows/ci.yml
-    - apps/web/src/lib/stashImageCompression.test.ts
+    - apps/web/src/lib/imageCompression.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
