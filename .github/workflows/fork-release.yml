@@ -164,6 +164,10 @@ jobs:
             release-publish/*.blockmap
             release-publish/*.yml
           fail_on_unmatched_files: true
+          # The upgrade warnings below are durable: they ride every release
+          # body because the hazards they describe fire on any version jump,
+          # not just the release that introduced them. Drop the prompt-stash
+          # stanza only when installs at v0.1.5 or earlier no longer matter.
           body: |
             Unsigned macOS arm64 build of this fork, built from `${{ github.sha }}`.
 
@@ -184,6 +188,12 @@ jobs:
             do not launch it again — it shared the real app's `~/.t3/userdata`
             database and left an orphaned `~/.t3/userdata-fork` directory you
             can also delete. Details: `.fork/notes/FORK-DATA-ISOLATION-HANDOFF.md`.
+
+            If you are upgrading from v0.1.5 or earlier: prompt stashes saved
+            by those versions are deleted on first launch. v0.1.6 moved the
+            stash to a new storage key and unconditionally purges the old one,
+            so copy anything you need out of the prompt stash before upgrading.
+            Details: the [v0.1.6 release notes](https://github.com/NoahHendrickson/t3code/releases/tag/v0.1.6).
 
             Cloud features (T3 Connect remote access and sign-in) are not
             configured in fork builds and will be unavailable. Everything local
