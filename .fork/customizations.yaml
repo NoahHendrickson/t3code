@@ -935,25 +935,30 @@
     one that blanks the key via .env.local. DesktopClerk skips it outright
     when desktopClerkFrontendApiHostname is undefined, logging a warning,
     and main.ts registers both schemes' privileges synchronously at module
-    load (guaranteed to precede "ready"; the sole registrar on the skip
-    path; observed against the bundled Electron 41 that pre-ready
-    re-registration by a keyed build's bridge replaces the list harmlessly).
-    Packaged fork builds are now keyed, so they take upstream's bridge path
-    — the same path every official desktop release ships — and keep
-    upstream's behavior exactly: bridge created, initialization and cleanup
-    failures both loud — the cleanup path's Effect.orDie is deliberately
-    untouched, because a real Clerk defect in a keyed build must not hide
-    behind a warning. Keyed bridge behavior stays unit-covered by upstream's
-    DesktopClerk.test.ts, whose fenced hunk bakes a key in before import;
-    the keyless skip is covered by DesktopClerkForkSkip.test.ts; and the
-    launch race itself is only observable in a real packaged boot, which is
-    what fork-release.yml's launch isolation gate exercises on every build,
-    dry runs included. The singleton-lock behavior in
-    DesktopClerk.configure is bridge-independent and preserved on both
-    paths.
+    load (guaranteed to precede "ready") and is the sole registrar on every
+    path: createDesktopClerkBridge no-ops the registrar for the duration of
+    the createClerkBridge call and restores it after, because the bridge
+    would re-register the identical privilege set and that call throws
+    post-"ready". The suppression is load-bearing, not hygiene — packaged
+    fork builds are keyed since t3-connect-official-config, and the v0.1.7
+    dry run's launch isolation gate caught the keyed build losing the ready
+    race and dying on the bridge's own registration (an earlier observation
+    that pre-ready re-registration is harmless was true but answered the
+    wrong case). Keyed builds otherwise keep upstream's behavior: bridge
+    created, initialization and cleanup failures both loud — the cleanup
+    path's Effect.orDie is deliberately untouched, because a real Clerk
+    defect in a keyed build must not hide behind a warning. Keyed bridge
+    behavior stays unit-covered by upstream's DesktopClerk.test.ts, whose
+    fenced hunk bakes a key in before import; the registrar suppression by
+    DesktopClerkForkRegistrarSuppression.test.ts; the keyless skip by
+    DesktopClerkForkSkip.test.ts; and the packaged boot itself by
+    fork-release.yml's launch isolation gate on every build, dry runs
+    included. The singleton-lock behavior in DesktopClerk.configure is
+    bridge-independent and preserved on both paths.
   tier: 4
   files:
     - apps/desktop/src/app/DesktopClerkForkSkip.test.ts
+    - apps/desktop/src/app/DesktopClerkForkRegistrarSuppression.test.ts
   shadows: []
   watch:
     - apps/desktop/src/main.ts

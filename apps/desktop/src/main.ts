@@ -66,11 +66,12 @@ import * as DesktopWslEnvironment from "./wsl/DesktopWslEnvironment.ts";
 // this synchronous module-load registration is the sole registrar on the
 // fork's own builds, and it is guaranteed to precede Electron's "ready"
 // event (module evaluation completes before the event loop can emit it).
-// For keyed builds the bridge still registers the active scheme pre-ready;
-// observed against the bundled Electron 41 framework binary that pre-ready
-// re-registration replaces the scheme list rather than throwing (the binary
-// carries only the post-ready error string, and browser_init's registration
-// overwrites the linked binding's globals), so the overlap is harmless.
+// Keyed builds create the Clerk bridge too, but its own registration is
+// suppressed (createDesktopClerkBridge in DesktopClerk.ts): layer
+// construction can trail "ready" on a packaged boot — the v0.1.7 dry run's
+// launch isolation gate died on exactly that — and the bridge's privilege
+// set is identical to this one, so this registration is the sole registrar
+// on every path.
 // Both schemes are registered so no env sniffing is needed; the privilege
 // set mirrors @clerk/electron's. try/catch because this runs before the
 // Effect runtime and any observability: a throw here would otherwise be a
