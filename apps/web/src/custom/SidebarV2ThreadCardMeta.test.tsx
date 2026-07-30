@@ -13,8 +13,10 @@ const base = {
   isRemote: false,
 } as const;
 
-/** Rows are the only fixed-height elements in this markup. */
-const countRows = (markup: string) => markup.split("h-[15px]").length - 1;
+/** Counted by the rows' own testid rather than by class-string sniffing: a
+    substring count over Tailwind spellings silently zeroed when `cn`
+    reordered a class run, and the test kept passing with the wrong number. */
+const countRows = (markup: string) => markup.split('data-testid="sidebar-v2-card-line"').length - 1;
 
 describe("SidebarV2ThreadCardMeta", () => {
   it("draws one row, carrying the model, when there is no PR and no diff", () => {

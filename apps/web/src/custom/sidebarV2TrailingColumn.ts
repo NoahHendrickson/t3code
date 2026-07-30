@@ -8,24 +8,29 @@
  *
  * ## The axis
  *
- * Everything trailing centres on the card's content edge minus 8px: the two
- * chrome icons above the list, each card's status dot and runtime glyph, the
- * hover actions on both row variants, the shelf chevrons, and the project
- * header's plus.
+ * Everything trailing centres 24px in from the panel's content edge, and the
+ * chrome rows are what set that number: they end at pe-3 (12px), and a 24px
+ * button flush there centres its glyph 12px further — 24. Everything else in
+ * the column measures itself against that centre: each card's runtime glyph
+ * (card content edge 12px in, 16px box behind the design's own 3px cluster
+ * pad), the hover actions on both row variants, the shelf chevrons, and the
+ * project header's plus. (The status mark used to sit in this column too; it
+ * now leads the title line, and the lower card rows indent under the title
+ * text instead.)
  *
- * They do not get there by sharing a right edge, which is what makes this worth
- * writing down once. A 16px mark flush with a card's content edge centres 12px
- * in; an icon centred in a 24px button flush with that same edge centres 4px
- * further left; a 16px icon centred in a 32px chrome button sits 8px in from
- * *its* own edge, 4px the other way. Align the boxes and the marks land on
- * three axes 4px apart — which is the kind of misalignment you feel before you
- * can name it. So each control gives up a few pixels of its own box, and the
- * column reads as one line.
+ * The rows do NOT share a right edge, which is what makes this worth writing
+ * down once. The list rows end 8px in where the chrome rows end 12; a card's
+ * own px-1 closes that gap, so a 24px box flush with the card's content edge
+ * is already on the axis — but a box flush with a row that has no such
+ * padding (the header, a slim row's right-0 overlay) sits 4px too far right
+ * and spends me-1 to get back. An earlier revision derived these against
+ * "both columns end at the same place", which was 4px wrong at the source,
+ * and every offset inherited the error — visibly, once the marks stacked.
  *
- * Each offset below is derived from the padding of the row it sits in. They are
- * not interchangeable and none of them is a taste value: change a row's padding
- * and its offset has to be re-derived, or that row's mark steps out of the
- * column on its own.
+ * Each offset below is derived from the inset of the edge its control is
+ * flush against. They are not interchangeable and none of them is a taste
+ * value: change a row's padding and its offset has to be re-derived, or that
+ * row's mark steps out of the column on its own.
  */
 import { cn } from "~/lib/utils";
 
@@ -51,44 +56,57 @@ import { cn } from "~/lib/utils";
  * actions are hover-gated and so never reach a touch device at all; the project
  * header's plus is always rendered, and its own handler closes the mobile
  * drawer, which is the code conceding it is reachable there. 24px is exactly
- * the WCAG 2.5.8 floor, with no margin, and a shared box whose whole argument
- * is "these were too small to hit" cannot ship the one always-on control at it.
+ * the WCAG 2.5.8 floor for a fine pointer, and that is a design-wide stance
+ * rather than this box's private compromise: the Figma card-v2 chrome draws
+ * every icon-only control — the always-on trailing buttons included — at the
+ * same 24px, and the margin everywhere comes from the coarse-pointer child,
+ * not the visual box.
  *
  * `focus-visible` for the same reason the hover fill exists: on a transparent
  * button you cannot see where the target ends, and that is as true of keyboard
- * focus as of the pointer. Ring offset against the sidebar, matching
- * TRAILING_BUTTON, because that is the surface these sit on.
+ * focus as of the pointer. Ring offset against the sidebar because that is
+ * the surface these sit on. Offset 1, not TRAILING_BUTTON's 2, and the
+ * difference is clipping, not taste: these buttons sit inside the row
+ * surface's overflow-hidden, and their right edge is 4px in from the clip
+ * boundary (flush with a card's px-1 content edge; me-1 on the bare-edge
+ * rows). ring-2 + offset-2 is 4px of shadow outside the button — its outer
+ * edge exactly on the boundary, so the ring rendered clipped. offset-1 keeps
+ * the full ring with 1px to spare; the chrome buttons are unclipped and keep
+ * their 2.
  *
  * A constant rather than a component, because the call sites need to be five
  * different elements — a plain button, a popover trigger's render prop, an
  * absolutely positioned overlay — and only the box is common to them. */
 export const SIDEBAR_V2_ICON_BUTTON_CLASS =
-  "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11";
+  "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar pointer-coarse:after:absolute pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11";
 
 /**
  * What each row spends to reach the axis. Derived, never tuned — the comment on
  * each is the arithmetic, and the numbers only hold against the padding named.
+ *
+ * An empty string is a derivation, not an omission: it records that the row's
+ * own geometry already lands its control on the axis, and the guard pins it so
+ * a nudge cannot creep back in. Do not delete the "empty" entries — the module
+ * is the derivation, and a call site with no entry has no derivation.
  */
 export const SIDEBAR_V2_TRAILING_OFFSET = {
-  /** Card hover actions. The card is `px-3`, so its status mark is a 16px box
-   *  flush with a content edge 12px in and its dot centres 8px further; a 24px
-   *  button flush with the same edge centres 12px in. 4px right. */
-  cardActions: "-me-1",
-  /** Slim-row hover actions. Same shape as the card's, 2px less to travel
-   *  because a slim row is `px-2.5` against the card's `px-3`. */
-  slimActions: "-me-0.5",
-  /** The project header's plus. A `px-2.5` row like the slim rows, and the
-   *  button is the same 24px box, so it takes the same 2px. */
-  headerPlus: "-me-0.5",
-  /** Shelf header chevrons — 4px the *other* way. A 12px glyph flush with a
-   *  `px-2.5` row centres 6px in, where a card's mark takes 8. */
-  shelfChevron: "me-1",
-  /** The chrome rows' trailing inset. A 16px icon centred in a 32px button sits
-   *  8px in from the button's edge against the card mark's 12, so the button
-   *  gives up 4px of its own right edge. Not a scrollbar term: the list pays
-   *  for its own gutter out of its end padding (see fork-sidebar-chrome), and a
-   *  scrollbar term here would double-count it. */
-  chromeRow: "pe-1",
+  /** Card hover actions. List pad 8 + card px-1 puts the card's content edge
+   *  12px in — the same inset as the chrome rows' pe-3 — so a flush 24px
+   *  button centres at 24 with nothing to correct. */
+  cardActions: "",
+  /** Slim-row hover actions. The overlay is `absolute right-0`, which lands on
+   *  the row's border box — the list's 8px inset, padding notwithstanding — so
+   *  a flush 24px button centres at 20. me-1 walks it the 4px back. */
+  slimActions: "me-1",
+  /** The project header's plus. The header has no own horizontal pad, so its
+   *  edge is the list's 8px inset: same 4px as the slim overlay. */
+  headerPlus: "me-1",
+  /** Shelf header chevrons. px-2.5 on the shelf button makes an 18px inset,
+   *  and a flush 12px glyph centres 6px further — 24 exactly. Nothing owed. */
+  shelfChevron: "",
+  /** The chrome rows' trailing inset — the pe-3 that defines the axis. The
+   *  24px button is flush with it, so nothing here either. */
+  chromeRow: "",
 } as const;
 
 /**

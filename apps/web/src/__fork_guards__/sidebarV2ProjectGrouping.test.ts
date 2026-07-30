@@ -135,6 +135,10 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     )?.[0];
     expect(headerRow).toBeDefined();
     expect(headerRow).not.toContain('role="heading"');
+    // Figma 113:3718: no own horizontal pad; 24px folder box + gap-1.
+    expect(headerRow).toContain("gap-1");
+    expect(headerRow).not.toContain("px-3");
+    expect(headerRow).not.toContain("px-2.5");
   });
 
   it("rebuilds the project index only when the project list changes", () => {
