@@ -7,10 +7,12 @@
  * races Electron's "ready" event; registerSchemesAsPrivileged throws once the
  * app is ready. CI runners lose that race deterministically — the v0.1.2
  * launch isolation gate caught the app exiting before its server started.
- * Two hunks close it: main.ts registers the scheme privileges synchronously
- * at module load (the sole registrar for keyless builds), and DesktopClerk
- * skips the bridge entirely when no publishable key is baked in, so keyless
- * builds never enter the race and keyed builds keep upstream's loud
+ * Three hunks close it: main.ts registers the scheme privileges
+ * synchronously at module load, DesktopClerk skips the bridge entirely when
+ * no publishable key is baked in, and createDesktopClerkBridge suppresses
+ * the bridge's redundant re-registration in keyed builds (the v0.1.7 dry
+ * run's launch isolation gate died on it post-"ready") — so main.ts is the
+ * sole registrar on every path and keyed builds keep upstream's loud
  * failures.
  */
 
@@ -85,5 +87,16 @@ describe("fork guard: fork-clerk-launch-resilience", () => {
     // Keyed builds keep upstream's loud failures — no catch may swallow the
     // bridge's initialization error.
     expect(clerk).not.toContain('catchTag("DesktopClerkBridgeInitializationError"');
+  });
+
+  it("makes main.ts the sole scheme registrar on keyed builds too", () => {
+    const clerk = read(DESKTOP_CLERK);
+    // The bridge's own registration is suppressed for the duration of the
+    // createClerkBridge call and the real registrar restored in a finally.
+    // Losing the no-op reintroduces the post-"ready" throw the v0.1.7 dry
+    // run died on; losing the restore breaks any later registration.
+    expect(clerk).toContain("protocol.registerSchemesAsPrivileged = () => {}");
+    expect(clerk).toContain("} finally {");
+    expect(clerk).toContain("protocol.registerSchemesAsPrivileged = registerSchemesAsPrivileged");
   });
 });

@@ -929,22 +929,36 @@
     the app is ready. Fast machines win that race; CI runners lose it
     deterministically, and a cold local boot is the same dice roll (the
     v0.1.2 launch isolation gate caught it: the app exited before its server
-    ever started). Fork builds bake no Clerk publishable key, so the bridge
-    is guaranteed dead weight — DesktopClerk skips it outright when
-    desktopClerkFrontendApiHostname is undefined, logging a warning, and
-    main.ts registers both schemes' privileges synchronously at module load
-    (guaranteed to precede "ready"; the sole registrar on the skip path;
-    observed against the bundled Electron 41 that pre-ready re-registration
-    by a keyed build's bridge replaces the list harmlessly). Keyed builds
-    keep upstream's behavior exactly: bridge created, initialization and
-    cleanup failures both loud — the cleanup path's Effect.orDie is
-    deliberately untouched, because a real Clerk defect in a keyed build
-    must not hide behind a warning. The singleton-lock behavior in
-    DesktopClerk.configure is bridge-independent and preserved on both
-    paths.
+    ever started). A build with no baked Clerk publishable key has a bridge
+    that is guaranteed dead weight — historically every fork build; since
+    t3-connect-official-config, only a checkout without the tracked .env or
+    one that blanks the key via .env.local. DesktopClerk skips it outright
+    when desktopClerkFrontendApiHostname is undefined, logging a warning,
+    and main.ts registers both schemes' privileges synchronously at module
+    load (guaranteed to precede "ready") and is the sole registrar on every
+    path: createDesktopClerkBridge no-ops the registrar for the duration of
+    the createClerkBridge call and restores it after, because the bridge
+    would re-register the identical privilege set and that call throws
+    post-"ready". The suppression is load-bearing, not hygiene — packaged
+    fork builds are keyed since t3-connect-official-config, and the v0.1.7
+    dry run's launch isolation gate caught the keyed build losing the ready
+    race and dying on the bridge's own registration (an earlier observation
+    that pre-ready re-registration is harmless was true but answered the
+    wrong case). Keyed builds otherwise keep upstream's behavior: bridge
+    created, initialization and cleanup failures both loud — the cleanup
+    path's Effect.orDie is deliberately untouched, because a real Clerk
+    defect in a keyed build must not hide behind a warning. Keyed bridge
+    behavior stays unit-covered by upstream's DesktopClerk.test.ts, whose
+    fenced hunk bakes a key in before import; the registrar suppression by
+    DesktopClerkForkRegistrarSuppression.test.ts; the keyless skip by
+    DesktopClerkForkSkip.test.ts; and the packaged boot itself by
+    fork-release.yml's launch isolation gate on every build, dry runs
+    included. The singleton-lock behavior in DesktopClerk.configure is
+    bridge-independent and preserved on both paths.
   tier: 4
   files:
     - apps/desktop/src/app/DesktopClerkForkSkip.test.ts
+    - apps/desktop/src/app/DesktopClerkForkRegistrarSuppression.test.ts
   shadows: []
   watch:
     - apps/desktop/src/main.ts
@@ -1216,3 +1230,61 @@
     - apps/web/src/components/ComposerPromptEditor.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
+
+- id: t3-connect-official-config
+  intent: >
+    Fork builds carry the same T3 Connect public configuration as official
+    releases, so the cloud UI, the `t3 connect` CLI group, and the managed
+    tunnel all work against upstream's hosted relay out of the box. Upstream
+    injects four public values at release time from CI variables this fork
+    does not have (release.yml's relay_public_config job); the fork instead
+    tracks them in a repository-root .env, which scripts/lib/public-config.ts
+    already reads for every dev run and build — with the right precedence
+    built in, since process env and .env.local both outrank it, so a personal
+    or self-hosted-relay override stays possible and stays gitignored. An
+    override REPLACES a value; it cannot blank one — the loader resolves
+    through firstNonEmpty, which treats empty as unset and falls through to
+    the tracked file. Building with T3 Connect off means temporarily
+    deleting the tracked .env in that checkout, never committing it. The
+    file is force-added past .gitignore's .env* rule on purpose: tracked
+    files are exempt from ignore rules, and upstream never ships a .env, so
+    a sync can never conflict with it. The values are public identifiers,
+    not secrets (docs/cloud/t3-connect-clerk.md) — the same ones baked into
+    every official artifact; they were read from the published npm CLI
+    (t3@0.0.30). The .env must never grow server-side secrets or tokens; the
+    guard pins its key set to exactly these four so secret creep fails CI.
+    Two neighbouring customizations make keyed fork builds safe rather than
+    accidental: fork-clerk-launch-resilience's keyless skip only engages
+    when no publishable key is baked and keyed builds keep upstream's Clerk
+    bridge behavior exactly, and fork-app-identity deliberately keeps the
+    shared t3code:// scheme, which is the desktop OAuth callback Clerk's
+    redirect allowlist expects. Relay access itself remains gated by the
+    user's own Clerk account, which is what authorizes use of the hosted
+    service.
+  tier: 1
+  files:
+    - .env
+  shadows: []
+  watch:
+    # Upstream's loader: the one place the repo-root .env is read and
+    # projected into VITE_*/EXPO_PUBLIC_* aliases. If upstream renames the
+    # canonical variables or stops reading .env, this customization dies
+    # silently — the guard exercises the loader against the real repo root
+    # so that failure turns CI red instead.
+    - scripts/lib/public-config.ts
+    # Carries a fenced note telling developers NOT to `cp .env.example .env`
+    # in this fork — that documented upstream onboarding move would clobber
+    # the tracked file. An upstream rewrite of the example must re-seat it.
+    - .env.example
+    # Two fenced stubs blank the baked CLI OAuth client id: upstream models
+    # "unconfigured clone" by not stubbing the variable, which stopped being
+    # the ambient default once the tracked .env keyed every build.
+    - apps/web/src/cloud/connectCliAuth.test.ts
+    # reconcileRootEnv writes relay public config — OTLP tracing tokens
+    # included — into the repo-root .env, which this customization made
+    # committable. Unfenced (the fork never runs relay deploys), but any
+    # upstream rework of where that write lands must be re-checked against
+    # the tracked file. See the decisions note.
+    - infra/relay/scripts/deploy.ts
+  verify:
+    - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts

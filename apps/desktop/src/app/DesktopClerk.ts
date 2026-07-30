@@ -1,5 +1,8 @@
 import { createClerkBridge } from "@clerk/electron";
 import { storage } from "@clerk/electron/storage";
+// fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
+import * as Electron from "electron";
+// fork:end fork-clerk-launch-resilience
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -72,14 +75,38 @@ export const desktopClerkFrontendApiHostname = resolveDesktopClerkFrontendApiHos
 );
 
 export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolean) {
-  return createClerkBridge({
-    storage: storage({ path: stateDir }),
-    passkeys: true,
-    renderer: {
-      scheme: ElectronProtocol.getDesktopScheme(isDevelopment),
-      host: ElectronProtocol.DESKTOP_HOST,
-    },
-  });
+  // fork:begin fork-clerk-launch-resilience — main.ts is the sole scheme registrar
+  // main.ts already registered both renderer schemes' privileges at module
+  // load with the exact set the bridge would ask for, so the bridge's own
+  // registerSchemesAsPrivileged call adds nothing — and throws once Electron
+  // is "ready", which layer construction can trail on a packaged boot (the
+  // v0.1.7 dry run's launch isolation gate died exactly there). No-op the
+  // registrar for the duration of the bridge call; everything else the
+  // bridge does (token persistence, OAuth transport, passkeys) is untouched.
+  // The optional reads are for unit tests, which import this module in plain
+  // Node where the electron shim exposes no protocol object.
+  const protocol = Electron.protocol as typeof Electron.protocol | undefined;
+  const registerSchemesAsPrivileged = protocol?.registerSchemesAsPrivileged;
+  if (protocol && registerSchemesAsPrivileged) {
+    protocol.registerSchemesAsPrivileged = () => {};
+  }
+  try {
+    // fork:end fork-clerk-launch-resilience
+    return createClerkBridge({
+      storage: storage({ path: stateDir }),
+      passkeys: true,
+      renderer: {
+        scheme: ElectronProtocol.getDesktopScheme(isDevelopment),
+        host: ElectronProtocol.DESKTOP_HOST,
+      },
+    });
+    // fork:begin fork-clerk-launch-resilience — restore the real registrar
+  } finally {
+    if (protocol && registerSchemesAsPrivileged) {
+      protocol.registerSchemesAsPrivileged = registerSchemesAsPrivileged;
+    }
+  }
+  // fork:end fork-clerk-launch-resilience
 }
 
 export const make = Effect.gen(function* () {
@@ -92,9 +119,11 @@ export const make = Effect.gen(function* () {
   // deterministically; a cold local boot rolls the same dice). Skip the
   // bridge outright when there is no key: deterministic, and the renderer's
   // scheme privileges come from main.ts's synchronous registration, which is
-  // the sole registrar on this path. Keyed builds keep upstream's behavior
-  // exactly — including loud initialization AND cleanup failures, which must
-  // stay fatal there rather than hide behind a warning. The singleton-lock
+  // the sole registrar on this path. Keyed builds keep upstream's bridge —
+  // including loud initialization AND cleanup failures, which must stay
+  // fatal there rather than hide behind a warning — except its redundant
+  // scheme re-registration, which createDesktopClerkBridge above suppresses
+  // so a post-"ready" layer build cannot die on it. The singleton-lock
   // behavior in configure below is bridge-independent either way.
   if (desktopClerkFrontendApiHostname === undefined) {
     yield* Effect.logWarning(

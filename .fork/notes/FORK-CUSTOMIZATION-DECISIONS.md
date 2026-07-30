@@ -185,3 +185,104 @@ Related deep-dives that predate this file and stay where they are:
   editor stays unclamped with `overflow-y: hidden` so Geist ink cannot inflate a scroll
   container. The guard's `not.toContain("data-composer-prompt-scrollable")` is a regression fence
   against bringing the toggle back, not an unexplained ban.
+
+## t3-connect-official-config
+
+- The goal was stated as "parity with official releases on top of the fork's changes", which ruled
+  out the two heavier options up front: self-hosting the relay (`infra/relay` — own Clerk app,
+  Cloudflare, PlanetScale; a second production system to operate for zero parity gain) and asking
+  every clone to hand-author an untracked `.env` (works once, silently absent in the next worktree
+  or clone, and this fork's contributions largely come from fresh agent worktrees).
+- The four values were extracted from the published npm CLI tarball (`t3@0.0.30`), where upstream's
+  release build inlines them (`VITE_CLERK_CLI_OAUTH_CLIENT_ID` etc. in the bundled web assets).
+  `app.t3.codes` would have shown the same values but is unreachable from the agent environment's
+  network policy. If upstream ever rotates them, the fix is re-extracting from the current release
+  and updating `.env` and the guard's `OFFICIAL_VALUES` together.
+- Committing a file that `.gitignore` matches is deliberate, not an oversight: ignore rules bind
+  only untracked files, so one `git add -f` makes it a normal tracked file forever, upstream can
+  never conflict with a path it has never shipped, and `.env.local` (still ignored, higher
+  precedence in `scripts/lib/public-config.ts`) remains the escape hatch for anyone pointing a
+  checkout at a staging or self-hosted relay. The alternative — carrying the values as code-level
+  fallbacks — would have meant a Tier-4 fence in an upstream loader that syncs would fight over.
+- No client code changes were needed, by construction: `fork-clerk-launch-resilience` only skips
+  the desktop Clerk bridge when the build is keyless, and `fork-app-identity` explicitly kept the
+  shared `t3code://` scheme, which is the redirect Clerk's desktop OAuth allowlist expects. The
+  packaged fork app signing in shares upstream's scheme contention caveat already recorded there.
+- What this does not grant: relay access is authorized by the signed-in user's Clerk account
+  (waitlist/allowlist on upstream's instance), not by the baked values. A fork build with these
+  values but no approved account gets exactly what an official build gets — the sign-in flow.
+- Review follow-ups (PR #35). Accepted residual risk, named rather than implied: tracking `.env`
+  removes the structural impossibility of committing it, and `.env` is the file most likely to
+  receive a `CLERK_SECRET_KEY` by habit. The guard's exact-key-set assertion is the in-repo fence,
+  but it is CI-only and post-push; GitHub push protection / secret scanning on the fork is the
+  control actually positioned to catch it pre-push, and should be confirmed enabled in repository
+  settings (not verifiable from a checkout). Second recorded gap: the guard's value assertion
+  compares the tracked `.env` against a constant maintained in the same commits, so it catches
+  copy-drift and secret creep, not upstream rotating the values — if rotation happens, both copies
+  agree, CI stays green, and the failure surfaces as a dead relay handshake at runtime. A live
+  probe was considered and declined; guards do not do network.
+- Identity consequences of parity, stated out loud: dev runs (`vp run dev`, throwaway `test-t3-app`
+  worktrees) are now keyed against upstream's production Clerk instance and relay by default, where
+  T3 Connect was previously compiled out; and with `T3CODE_HOSTED_APP_URL` unset the `t3 connect`
+  CLI flow round-trips through upstream's hosted app, so the consent screen names upstream's
+  application. Both are exactly what "parity with official releases" means, and both are
+  overridable per-checkout via `.env.local` — with a real limit the second review caught:
+  `.env.local` can replace a value, never blank one. `firstNonEmpty` in the loader treats an empty
+  string as absent and falls through to the tracked `.env`, and the resolved projection is spread
+  last, so `T3CODE_CLERK_PUBLISHABLE_KEY=` in `.env.local` (or the process env) leaves the build
+  keyed. Turning T3 Connect off in a checkout means temporarily deleting the tracked `.env` — the
+  guard suite will complain locally until it is restored, which is the visible reminder not to
+  commit the deletion. A fenced loader opt-out was considered and declined: it would put a fork
+  hunk in upstream's build bootstrap to serve a local-experiment case that deletion already covers.
+- Keyed desktop launch path: baking a key moves packaged fork builds off
+  fork-clerk-launch-resilience's skip path and onto upstream's bridge path — deliberately, since
+  that is the path every official desktop release ships. This entry originally argued a keyed
+  fork build was "no worse-positioned in the ready race than an official build" because main.ts's
+  pre-ready registration was strictly earlier than the bridge's own. True, and useless: the
+  bridge's own post-ready call still throws regardless of what was registered first, official
+  builds ship that dice roll to end users, and upstream runs no launch gate in CI to see it. The
+  fork's first keyed dry-run gate saw it immediately and failed the build; the incident and fix
+  live under `## fork-clerk-launch-resilience` below. Unit coverage of the keyed bridge already
+  existed in upstream's DesktopClerk.test.ts, whose fenced hunk bakes a key in before import; the
+  launch race itself is only observable in a packaged boot, which fork-release.yml's launch
+  isolation gate exercises — run it with dry_run=true to prove a keyed build before tagging a
+  release.
+- Second review's sharpest catch: `infra/relay/scripts/deploy.ts`'s `reconcileRootEnv` writes
+  relay public config — including `T3CODE_MOBILE_OTLP_TRACES_TOKEN` and
+  `T3CODE_RELAY_CLIENT_OTLP_TRACES_TOKEN`, the latter `::add-mask::`-ed in upstream's own release
+  workflow — into the repo-root `.env`, which this customization made committable. In-repo
+  automation of the exact failure the key-set guard fences. Accepted un-fenced because this fork
+  never runs relay deploys (self-hosting was rejected above) and a fenced redirect to `.env.local`
+  would also have to carry fenced edits to upstream's `deploy.test.ts`, which asserts the `.env`
+  target. If the fork ever self-hosts, redirecting that write is the first change to make. The
+  guard's failure message now names both legitimate writers (deploy output, optional OTLP values)
+  and points them at `.env.local`, so tripping it reads as "wrong file", not "you leaked a secret".
+- The `.env.example` fork note is now asserted by the guard suite (`toContain` on the fence
+  marker), closing the fourth finding: `watch:` reports drift after a sync merges, but only a
+  failing test stops `cp .env.example .env` from shipping upstream's placeholders over the live
+  values via a routine `git commit -a`.
+
+## fork-clerk-launch-resilience
+
+- The keyed-build story failed the moment it was actually tested. After t3-connect-official-config
+  keyed every fork build, the manifest was rewritten to say keyed builds keep upstream's bridge
+  behavior exactly, leaning on "pre-ready re-registration observed harmless on Electron 41". The
+  first dry-run launch gate on a keyed build (PR #35, run 30508846869) exited before the server
+  started: the macOS runner's layer construction trailed "ready", `createClerkBridge` called
+  `registerSchemesAsPrivileged` post-ready, and `DesktopClerkBridgeInitializationError` was
+  fatally loud — the v0.1.2 failure reproduced on the keyed path. "Observed harmless" had only
+  ever described boots that won the race; CI was the population of boots that lose it.
+- The fix (7eedbbb6) makes main.ts the sole registrar on every path: `createDesktopClerkBridge`
+  no-ops `protocol.registerSchemesAsPrivileged` for exactly the duration of `createClerkBridge`
+  and restores it in a `finally`. Chosen over gating on `app.isReady()` — an isReady gate keeps
+  fast and slow boots on different code paths, and the losing path is the one CI never exercises —
+  and over catching the initialization error, which would swallow unknown causes along with the
+  one known one. Safe only because main.ts registers the identical privilege set the bridge would
+  have; the launch-resilience guard pins that set item by item, and a future @clerk/electron that
+  registers a different set surfaces as a failing renderer in the launch gate, not silently.
+  Covered by DesktopClerkForkRegistrarSuppression.test.ts (registration lands on the no-op, the
+  registrar is restored after).
+- Two sessions independently authored this same fix within the hour, differing only in fence
+  placement and test naming — the shipped one is 7eedbbb6; the duplicate was dropped unpushed.
+  Recorded because the convergence is itself evidence the no-op-around-bridge-creation shape is
+  the minimal fix, not one agent's taste.
