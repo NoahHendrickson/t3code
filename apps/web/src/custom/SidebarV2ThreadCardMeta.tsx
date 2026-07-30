@@ -19,9 +19,12 @@
  * colour. That is a change from the two-specimen model this card used to
  * follow, where metadata brightness encoded whether a row was blocked on you
  * (65%) or merely busy (45%). The component set collapsed that to one tone: the
- * trailing status mark carries the distinction now, and it carries it in a
+ * leading status mark carries the distinction now, and it carries it in a
  * fixed column instead of as a brightness the eye has to compare against a
  * neighbouring row to read at all.
+ *
+ * Both lines indent `pl-6` (24px = the title row's 16px status + 8px gap) so
+ * they align under the title text rather than under the mark.
  */
 import type { ReactNode } from "react";
 
@@ -64,10 +67,12 @@ export interface SidebarV2ThreadCardMetaProps {
   readonly isRemote: boolean;
 }
 
-/** 15px rows, matching the design. Fixed-height so a card's drawn height is a
-    function of how many rows it has, not of which halves happen to be filled. */
-const ROW = "flex h-[15px] min-w-0 items-center text-[11px] leading-[15px]";
+/** Repo line is body/sm 12/16; meta line is caption 11/15 — Figma 113:3718. */
+const REPO_ROW = "flex h-4 min-w-0 items-center text-xs leading-4";
+const META_ROW = "flex h-[15px] min-w-0 items-center text-[11px] leading-[15px]";
 const MUTED = "text-muted-foreground/70";
+/** 24px = title's 16px leading status + 8px gap. Aligns under the prompt. */
+const CONTENT_INDENT = "pl-6";
 
 /**
  * Whether the card draws the PR/diff line at all — three lines rather than two.
@@ -106,35 +111,33 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
     deletions: props.deletions,
   });
 
-  /* 2px of trailing padding: (16 - 12) / 2, the inset a 12px glyph needs to
-     centre where the status mark above it does. That mark is 8px of ink in a
-     16px box flush with the card's content edge, so the trailing column's axis
-     is 8px in from that edge — the same axis the row actions and the two chrome
-     icons are nudged onto (see sidebar-v2-row-action-hit-area). This was 3px,
-     matching the mark's optical right EDGE instead, which left the glyph a
-     pixel light of the axis: enough to see in a column, and the one mark in it
-     still out of line after everything else was squared up. Derive the number,
-     don't tune it — an eyeballed value here is invisible until it is the only
-     thing left wrong.
-
+  /* Figma 113:3718 — runtime icon is 16px with pr-3 on its cluster, and the
+     model label is the caption style (11/15) even when the cluster sits on the
+     12px repo line, so it carries its own size rather than inheriting the
+     row's.
      `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
      `truncate` can never fire, so a long model name would push whatever shares
      its row — the half that *can* shrink — off the row instead of clipping
      itself. Capped at half the line so neither side can starve the other. */
   const runtime = (
-    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[2px] ${MUTED}`}>
-      {props.modelLabel ? <span className="truncate">{props.modelLabel}</span> : null}
+    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
+      {props.modelLabel ? (
+        <span className="truncate text-[11px] leading-[15px]">{props.modelLabel}</span>
+      ) : null}
       {props.isRemote ? (
-        <CloudIcon aria-hidden className="size-3 shrink-0" />
+        <CloudIcon aria-hidden className="size-4 shrink-0" />
       ) : (
-        <LaptopIcon aria-hidden className="size-3 shrink-0" />
+        <LaptopIcon aria-hidden className="size-4 shrink-0" />
       )}
     </span>
   );
 
   return (
     <>
-      <div className={`${ROW} justify-between gap-2 ${MUTED}`}>
+      <div
+        data-testid="sidebar-v2-card-line"
+        className={`${REPO_ROW} ${CONTENT_INDENT} justify-between gap-2 ${MUTED}`}
+      >
         <span className="flex min-w-0 flex-1 items-center gap-2">
           {props.projectTitle ? (
             // Capped rather than flexible: the branch is the more distinguishing
@@ -146,38 +149,40 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
               {props.projectTitle}
             </span>
           ) : null}
-          {/* The worktree mark replaces the branch mark rather than joining it.
-              This slot already answers "which code is this on", and the two
-              facts are not independent: a thread on a worktree is on that
-              worktree's branch, so a second glyph would spend ~16px of a line
-              whose branch name is already capped and truncating to restate what
-              the first one implies. The branch name stays put, labelled by
-              position.
-
-              The mark's condition is the worktree, not the branch. They are
-              independent fields on the shell and the row's own git predicate
-              treats them as such (`branch != null || worktreePath !== null`),
-              so gating the whole slot on the branch would draw a thread that
-              has a checkout of its own but no branch as if it ran in the
-              project's — the exact confusion the mark exists to prevent. With
-              no branch to name, the mark stands alone.
-
-              The distinction is invisible to a screen reader either way — both
-              marks are decorative — so the worktree case carries it in text. */}
-          {/* The dev-server pulse rides this same slot rather than adding a
-              glyph of its own: the question it answers — "which checkout is
-              the running server serving?" — is a property of the mark that
-              already names the checkout. The attribute lands on the slot and
-              the stylesheet animates the mark inside it (`> svg`, so the
-              branch text stays legible while the glyph carries the signal). A
-              thread with neither branch nor worktree never draws the slot and
-              so cannot pulse — such a thread runs in the project checkout,
-              which is not the ambiguity this exists to resolve. The animation
-              is decorative motion, so the state also rides in text for screen
-              readers — after the branch name, identity before transient state
-              — and survives `prefers-reduced-motion` as a static
-              working-green mark. */}
           {props.hasWorktree || props.branch ? (
+            /* The worktree mark replaces the branch mark rather than joining
+               it. This slot already answers "which code is this on", and the
+               two facts are not independent: a thread on a worktree is on
+               that worktree's branch, so a second glyph would spend ~16px of
+               a line whose branch name is already capped and truncating to
+               restate what the first one implies. The branch name stays put,
+               labelled by position.
+
+               The mark's condition is the worktree, not the branch. They are
+               independent fields on the shell and the row's own git predicate
+               treats them as such (`branch != null || worktreePath !== null`),
+               so gating the whole slot on the branch would draw a thread that
+               has a checkout of its own but no branch as if it ran in the
+               project's — the exact confusion the mark exists to prevent.
+               With no branch to name, the mark stands alone.
+
+               The distinction is invisible to a screen reader either way —
+               both marks are decorative — so the worktree case carries it in
+               text.
+
+               The dev-server pulse rides this same slot rather than adding a
+               glyph of its own: the question it answers — "which checkout is
+               the running server serving?" — is a property of the mark that
+               already names the checkout. The attribute lands on the slot and
+               the stylesheet animates the mark inside it (`> svg`, so the
+               branch text stays legible while the glyph carries the signal).
+               A thread with neither branch nor worktree never draws the slot
+               and so cannot pulse — such a thread runs in the project
+               checkout, which is not the ambiguity this exists to resolve.
+               The animation is decorative motion, so the state also rides in
+               text for screen readers — after the branch name, identity
+               before transient state — and survives `prefers-reduced-motion`
+               as a static working-green mark. */
             <span
               className="flex min-w-0 flex-1 items-center gap-0.5"
               data-fork-dev-server-live={props.devServerPort != null ? "" : undefined}
@@ -185,10 +190,10 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
               {props.hasWorktree ? (
                 <>
                   <span className="sr-only">Worktree</span>
-                  <WorktreeIcon aria-hidden className="size-3 shrink-0" />
+                  <WorktreeIcon aria-hidden className="size-4 shrink-0" />
                 </>
               ) : (
-                <GitBranchIcon aria-hidden className="size-3 shrink-0" />
+                <GitBranchIcon aria-hidden className="size-4 shrink-0" />
               )}
               {props.branch ? (
                 <span className="truncate whitespace-nowrap">{props.branch}</span>
@@ -202,13 +207,16 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
         {showsMetaRow ? null : runtime}
       </div>
       {showsMetaRow ? (
-        <div className={`${ROW} justify-between gap-2`}>
+        <div
+          data-testid="sidebar-v2-card-line"
+          className={`${META_ROW} ${CONTENT_INDENT} justify-between gap-2`}
+        >
           <span className={`flex min-w-0 items-center gap-2 ${MUTED}`}>
             {props.prSlot}
             {hasDiff ? (
-              // Semantic tokens, not emerald/red literals: they already resolve
-              // to the design's #00d492 / #ff6467 in dark and stay legible in
-              // light, where a 400-weight green on white would not.
+              // Semantic tokens, not emerald/red literals: they already
+              // resolve to the design's #00d492 / #ff6467 in dark and stay
+              // legible in light, where a 400-weight green on white would not.
               <span className="flex shrink-0 items-center gap-1 font-mono">
                 {props.insertions !== null ? (
                   <span className="text-success-foreground">+{props.insertions}</span>

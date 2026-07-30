@@ -2,11 +2,10 @@
  * The Sidebar V2 control rows — search, and the project scope filter — see
  * `.fork/customizations.yaml#fork-sidebar-chrome`.
  *
- * Both rows are 36px and 12px, down from upstream's 32/14, so they read as
- * chrome rather than as two more list items stacked above the thread list. The
- * group keeps `px-2` so a hover fill lands on the same 8px inset the thread
- * cards use, and the extra `px-2` on each control brings the content to the
- * design's 16px.
+ * Metrics from Figma t3-fork node 113:3718: outer `ps-2 pe-3` (8/12), inner
+ * control `px-1` + `gap-1`. Controls are 28px tall (h-7); the leading icon
+ * still sits at 12px — the same axis as each card's status (list pad 8 +
+ * card `px-1`).
  *
  * Fork-owned rather than fenced in place: this is ~150 lines of pure
  * presentation, and leaving it inline meant `SidebarV2.tsx` carried the whole
@@ -58,24 +57,22 @@ export interface SidebarV2ChromeProjectGroup {
   readonly workspaceRoot: string;
 }
 
-/** The trailing inset aligns glyphs rather than boxes.
+/** These rows define the trailing column's axis rather than chasing it.
  *
- *  What the eye tracks down this column is a stack of 16px marks — these two
- *  icons, then every card's status dot and its runtime glyph. Matching the row
- *  edges instead leaves those marks on axes 4px apart, because a 16px icon
- *  centred in a 32px button sits 8px in from the button's edge while a card's
- *  mark sits 12px in from the card's. Squaring the icons costs the button 4px
- *  of its own right edge, which nothing reads, and buys the column a single
- *  axis, which everything does. See sidebar-v2-row-action-hit-area, which owns
- *  the matching nudges on the row actions.
+ *  The group's pe-3 ends the row 12px in, and the flush 24px trailing button
+ *  centres its glyph 12px further — the 24px axis every trailing mark in the
+ *  sidebar measures against. Note the list rows do NOT share this right edge:
+ *  they end 8px in, and each control there covers its own 4px however its
+ *  geometry dictates (a card's px-1, me-1 on the bare-edge rows) — the
+ *  derivations live in custom/sidebarV2TrailingColumn. An earlier revision
+ *  here claimed both columns end at the same place; that premise was 4px
+ *  wrong and every offset downstream inherited it.
  *
- *  These rows once also carried the list's scrollbar width here, because the
- *  list is a scroll container and its reserved gutter pushed every card 6px
- *  short of where these rows ended. The list now gives that 6px back out of its
- *  own end padding, so both columns end at the same place and only the 4px is
- *  left. Padding rather than a narrower width, so the row's own background, if
- *  it ever gains one, still spans the full column. */
-const CONTROL_ROW = cn("flex h-9 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
+ *  The inset carries no scrollbar term. The list is a scroll container and
+ *  once pushed its cards short of these rows by its reserved gutter; the list
+ *  now gives that width back out of its own end padding, so a gutter term
+ *  reappearing here would double-count it. */
+const CONTROL_ROW = cn("flex h-7 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
 /** Displaces sidebarMenuButtonVariants' base icon pair (muted-foreground at
     opacity-60, upstream v0.0.30): parent-level [&>svg] selectors outweigh the
     icon's own class, so without this the fork's /80 tint on the glyph is dead
@@ -84,15 +81,23 @@ const CONTROL_ROW = cn("flex h-9 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET
     button that renders an icon as a direct child; the guard asserts the merged
     outcome, so a base-selector change that stops displacing shows up red. */
 export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-muted-foreground/80 [&>svg]:opacity-100";
+/** size-6 per the Figma chrome (24px boxes throughout the card-v2 design).
+    That is the WCAG 2.5.8 floor for a fine pointer on an always-on control —
+    deliberate and design-wide, not this button's private call; see the box
+    note in custom/sidebarV2TrailingColumn, which takes the same stance for
+    the list's controls. Coarse pointers get the 44px TOUCH_TARGET child. */
 const TRAILING_BUTTON = cn(
-  "relative size-8 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+  "relative size-6 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
   CHROME_ROW_ICON_TINT,
 );
 /** Coarse-pointer hit expansion — upstream's trick, kept: the visual button is
-    32px, which is below the 44px touch target, so an invisible child grows the
+    24px, which is below the 44px touch target, so an invisible child grows the
     tappable area without moving anything. */
 const TOUCH_TARGET =
   "pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden";
+
+const CHROME_CONTROL =
+  "h-7 gap-1 rounded-md border-0 bg-transparent px-1 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 
 export function SidebarV2SearchRow(props: {
   readonly commandPaletteShortcutLabel: string | null;
@@ -101,7 +106,8 @@ export function SidebarV2SearchRow(props: {
   readonly onNewThread: () => void;
 }) {
   return (
-    <SidebarGroup className="px-2 py-0">
+    // Figma 113:3718 — Search: pl-8 pr-12 pt-16 pb-4.
+    <SidebarGroup className="ps-2 pe-3 pt-4 pb-1">
       <div className={CONTROL_ROW}>
         <div className="min-w-0 flex-1">
           <CommandDialogTrigger
@@ -110,10 +116,7 @@ export function SidebarV2SearchRow(props: {
                 size="sm"
                 type="button"
                 aria-label="Search threads and commands"
-                className={cn(
-                  "h-8 gap-1 rounded-md border-0 bg-transparent px-2 py-1.5 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-                  CHROME_ROW_ICON_TINT,
-                )}
+                className={cn(CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
                 data-testid="command-palette-trigger"
               />
             }
@@ -173,23 +176,22 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   if (props.projectGroups.length === 0) return null;
 
   return (
-    // pb-1, where the search row above takes none: this is the last chrome row,
-    // and the 6px the list's own py-1 left under it read as the gap between two
-    // rows of the same list rather than as the break between the controls and
-    // the threads. The padding sits here rather than on the list group so it
-    // cannot also push the settled tail off the bottom.
-    <SidebarGroup className="px-2 pt-0 pb-1">
+    // Figma 113:3718 — All projects: pl-8 pr-12 pt-8 pb-16.
+    <SidebarGroup className="ps-2 pe-3 pt-2 pb-4">
       <div className={CONTROL_ROW}>
         <Menu open={props.menuOpen} onOpenChange={props.onMenuOpenChange}>
           <MenuTrigger
             aria-label="Filter threads by project"
-            className="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-md px-2 text-left text-xs font-normal text-sidebar-muted-foreground outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+            className={cn(
+              "flex min-w-0 flex-1 cursor-pointer items-center outline-none",
+              CHROME_CONTROL,
+            )}
           >
             {/* Leading caret, no trailing chevron and no favicon: the design
                 puts the affordance where the eye enters the row, and the label
                 already names the project the favicon used to repeat. */}
             <ChevronsUpDownIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-            <span className="min-w-0 flex-1 truncate">
+            <span className="min-w-0 flex-1 truncate text-left">
               {props.scopedProjectGroup?.displayName ?? "All projects"}
             </span>
           </MenuTrigger>

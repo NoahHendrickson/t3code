@@ -19,7 +19,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
-import { threadCardTitleRecedes } from "../custom/sidebarV2RowPolicy";
+import { threadCardTitleClassName, threadCardTitleRecedes } from "../custom/sidebarV2RowPolicy";
 import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "../custom/SidebarV2ThreadCardMeta";
 
 function readSibling(relativePath: string): string {
@@ -79,26 +79,37 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(icon).toContain('strokeWidth="2"');
   });
 
-  it("recedes exactly the two statuses with nothing to act on", () => {
-    // The component set mutes Working and Idle at rest and nothing else, and
-    // restores both on hover or selection. Asserted as behaviour rather than as
-    // a class string so the rule is pinned even if the classes change.
+  it("recedes exactly the two statuses with nothing left to act on", () => {
+    // The component set (Figma 113:724) mutes Done and Idle at rest and
+    // nothing else, and restores both on hover or selection. Asserted as
+    // behaviour rather than as a class string so the rule is pinned even if
+    // the classes change.
     const at = (over: Partial<Parameters<typeof threadCardTitleRecedes>[0]>) =>
       threadCardTitleRecedes({
-        isWorking: false,
+        isDone: false,
         isIdle: false,
         isActive: false,
         isSelected: false,
         ...over,
       });
-    expect(at({ isWorking: true })).toBe(true);
+    expect(at({ isDone: true })).toBe(true);
     expect(at({ isIdle: true })).toBe(true);
-    // Approval / Input / Done / Failed all carry a mark and are not working.
+    // Working / Approval / Input / Failed keep the foreground title — each is
+    // in motion or blocked on you.
     expect(at({})).toBe(false);
     // Pointing at a row always restores it — dimming there would read as
     // disabled rather than quiet.
-    expect(at({ isWorking: true, isActive: true })).toBe(false);
+    expect(at({ isDone: true, isActive: true })).toBe(false);
     expect(at({ isIdle: true, isSelected: true })).toBe(false);
+  });
+
+  it("draws every card title at the design's regular weight", () => {
+    // body/sm is Regular; the component set draws no medium titles. Colour
+    // alone separates a receded title from a forward one.
+    expect(threadCardTitleClassName({ recedes: true })).toContain("font-normal");
+    expect(threadCardTitleClassName({ recedes: true })).not.toContain("font-medium");
+    expect(threadCardTitleClassName({ recedes: false })).toContain("font-normal");
+    expect(threadCardTitleClassName({ recedes: false })).not.toContain("font-medium");
   });
 
   it("keeps row presentation policy out of the megacomponent", () => {
@@ -118,12 +129,27 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(upstreamCss).not.toContain("--color-sidebar-row-working");
   });
 
-  it("keeps a mark in the trailing slot for every status, idle included", () => {
-    // Idle used to fall back to a relative-time string, so the trailing column
-    // alternated between a 16px mark and a variable-width label and nothing
-    // below it could align.
+  it("keeps a mark in the leading status slot for every status, idle included", () => {
+    // Idle used to fall back to a relative-time string on the trailing edge,
+    // so the column alternated between a 16px mark and a variable-width label.
+    // The mark now leads the title line and is never empty — the hollow ring
+    // holds the left column so the title text and the indented rows below
+    // share one edge.
     expect(typeof SidebarV2IdleMark).toBe("function");
     expect(sidebarV2).toContain("<SidebarV2IdleMark />");
+    expect(sidebarV2).toContain(
+      "pointer-events-none flex size-4 shrink-0 items-center justify-center",
+    );
+  });
+
+  it("indents the card's lower rows under the title text", () => {
+    // 24px = the leading 16px status + the title row's 8px gap — matches the
+    // group header label once list pad is shared. Dropping the indent puts
+    // the branch under the rain instead of under the prompt.
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).toContain('CONTENT_INDENT = "pl-6"');
+    expect(meta).toContain("${CONTENT_INDENT}");
+    expect(sidebarV2).toContain("flex h-4 min-w-0 items-center gap-2");
   });
 
   it("collapses to two lines only when it knows there is no PR and no diff", () => {
@@ -154,13 +180,13 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // content-visibility skips offscreen rows; the intrinsic size is what keeps
     // the scrollbar honest while they are skipped. A stale value here makes the
     // list jump as you scroll, so both heights are pinned. They measure the li,
-    // which is the drawn card plus its own py-0.5: at the card's py-2.5, three
-    // lines are 82 + 4 and two are 60 + 4. Change the card's vertical padding
-    // and these move with it or the scrollbar starts lying by the difference
-    // on every row it skips.
-    expect(sidebarV2).toContain("px-3 py-2.5");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_86px]");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_64px]");
+    // which carries no padding of its own and so equals the drawn card: at
+    // px-1 py-2 over 16px rows with a 6px row gap, two lines are 54 and three
+    // are 75. Change the card's vertical padding and these move with it or the
+    // scrollbar starts lying by the difference on every row it skips.
+    expect(sidebarV2).toContain("gap-1.5 px-1 py-2");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_75px]");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_54px]");
     // And the choice is made from the same predicate the component renders
     // from, so the hint cannot drift from the row count it describes.
     expect(sidebarV2).toContain("threadCardShowsMetaRow({");

@@ -12,16 +12,20 @@
  * There are two distinct "this row is quiet" notions and they are not the same
  * rule, which is worth stating because they read like duplicates:
  *
- * - **`recedes` (upstream's, passed in)** describes a *slim* row in the settled
- *   shelf — history you have already dealt with. It dims the whole row,
- *   including its surface, and it folds in read/woke state.
- * - **`threadCardTitleRecedes` (here)** describes a *card* whose subject line
- *   has nothing waiting on you. It touches the title only, never the surface,
- *   and it ignores read state entirely.
+ * - **`shouldRecede` (upstream's, in SidebarV2)** describes a *slim* row in
+ *   the settled shelf — history you have already dealt with. It folds in
+ *   read/woke state, and slim rows keep it for brightness too: an unread
+ *   settled thread still reads brighter than a read one there.
+ * - **`threadCardTitleRecedes` (here)** describes a *card* with nothing left
+ *   in motion or blocked on you — Done or Idle, per the component set. A
+ *   card's title AND surface both read this one predicate (two definitions of
+ *   "receded" in one rectangle dim different parts in opposite directions),
+ *   and the card deliberately does not brighten for unread-ness the way slim
+ *   rows do: the unread signal is the Done dot, not the title's tone.
  *
- * They overlap on read-ready threads and diverge everywhere else, so collapsing
- * them into one predicate would silently change both. Naming them separately is
- * the fix; merging them is not.
+ * The two rules disagree on Working and on unread-Done by design, so
+ * collapsing them into one predicate would silently change both variants.
+ * Naming them separately is the fix; merging them is not.
  */
 import { cn } from "~/lib/utils";
 
@@ -31,24 +35,27 @@ import { cn } from "~/lib/utils";
 
 /** Does a card's *title* step back?
  *
- * The component set mutes exactly two statuses at rest — Working and Idle — and
- * restores both on hover or selection. The rule underneath is "is there
- * anything here for you to act on": a running agent is the row you can least
- * act on, and an idle one has already been dealt with. Approval, Input, Done
- * and Failed all stay at full strength, because each is either blocked on you
- * or reporting an outcome you have not seen.
+ * The component set (Figma 113:724) mutes exactly two statuses at rest — Done
+ * and Idle — and restores both on hover or selection. The rule underneath is
+ * "is this row finished": a done thread is reporting an outcome you may merely
+ * acknowledge, and an idle one has already been dealt with. Working, Approval,
+ * Input and Failed all keep the foreground title, because each is either in
+ * motion or blocked on you. (An earlier revision muted Working instead; the
+ * component set draws Working titles at full strength — the rain is the
+ * quiet-vs-busy signal, not the title's tone.)
  *
  * Route-active and multi-selected rows never recede: you have just pointed at
  * them, so dimming would read as the row being disabled rather than quiet. */
 export function threadCardTitleRecedes(input: {
-  readonly isWorking: boolean;
+  /** The unread-done dot — an outcome reported but not yet opened. */
+  readonly isDone: boolean;
   /** No status mark at all — read, settled, nothing pending. */
   readonly isIdle: boolean;
   readonly isActive: boolean;
   readonly isSelected: boolean;
 }): boolean {
   if (input.isActive || input.isSelected) return false;
-  return input.isWorking || input.isIdle;
+  return input.isDone || input.isIdle;
 }
 
 /** The surface every Sidebar V2 row shares.
@@ -66,7 +73,8 @@ export function threadCardTitleRecedes(input: {
 export function threadRowSurfaceClassName(input: {
   readonly isActive: boolean;
   readonly isSelected: boolean;
-  /** Upstream's slim-shelf rule — see the note at the top of this file. */
+  /** The variant's own recede rule — the card policy for cards, upstream's
+      slim-shelf rule for shelves. See the note at the top of this file. */
   readonly recedes: boolean;
 }): string {
   return cn(
@@ -82,10 +90,12 @@ export function threadRowSurfaceClassName(input: {
 }
 
 /** A card title's colour. Hover restores a receded title, which is what keeps
-    the dimming reading as depth rather than as a disabled row. */
-export function threadCardTitleClassName(recedes: boolean): string {
+    the dimming reading as depth rather than as a disabled row. Weight is the
+    design's body/sm — Regular for every status (Figma 113:724 draws no medium
+    titles); the colour alone carries the receded/forward distinction. */
+export function threadCardTitleClassName(input: { readonly recedes: boolean }): string {
   return cn(
-    "truncate",
-    recedes ? "text-muted-foreground group-hover/v2-row:text-foreground" : "text-foreground",
+    "truncate font-normal",
+    input.recedes ? "text-muted-foreground group-hover/v2-row:text-foreground" : "text-foreground",
   );
 }

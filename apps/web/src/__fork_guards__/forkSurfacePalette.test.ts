@@ -163,6 +163,21 @@ describe("fork guard: fork-surface-palette", () => {
     expect(panel).toContain("--sidebar-control-surface: #303030");
   });
 
+  it("brightens the chrome muted token only — card text keeps upstream's", () => {
+    // Chrome rows and project headers read --sidebar-muted-foreground (then
+    // tint /80, /70); the cards read --muted-foreground, and the card design
+    // needs it dim: a receded title is text-muted-foreground against a
+    // text-foreground forward one, and colour alone carries the distinction.
+    // An earlier revision lifted both tokens and receded titles landed
+    // ~1.19:1 from --foreground — not visible — so the absence of a panel
+    // --muted-foreground override is itself the invariant here, and the
+    // chrome value is pinned exact like every other hex in this file (a
+    // brighter-than floor let #f1f3f7 pass, which is the failure mode).
+    const panel = blockFor(theme, PANEL);
+    expect(declarationHex(panel, "--sidebar-muted-foreground")).toBe("#e0e0e0");
+    expect(panel).not.toMatch(/^\s*--muted-foreground:/mu);
+  });
+
   it("clears the grain that would compound drift onto flat surfaces", () => {
     // Kept for the flat-opaque reason alone. Upstream's 0.035 noise was
     // calibrated against #000; on these surfaces any useful opacity leaves
