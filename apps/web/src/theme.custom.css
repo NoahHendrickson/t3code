@@ -79,8 +79,10 @@
    darker stage it reads a touch stronger than against the old #212121, which
    is fine for a hairline. Chrome muted text (--sidebar-muted-foreground) is
    #e0e0e0 rather than upstream's #a3a3a3 so chrome labels stay readable on
-   the lifted surface; the cards' --muted-foreground lifts to #c0c0c0 — see
-   the note at the declaration.
+   the lifted surface; the cards' --muted-foreground stays upstream's — see
+   the note at the declaration. Receded card *titles* use a dedicated token
+   (--fork-sidebar-card-title-receded) rather than lifting the shared muted
+   channel.
 
    Two blocks, not one, and the second is not redundant. Upstream re-declares
    --background / --card / --border and the whole --sidebar-* family *on the
@@ -132,17 +134,18 @@
   /* Upstream's panel muted text is #a3a3a3. On #1e1e1e that reads too soft for
      Search / All projects / project headers (and those rows further tint at
      /80 and /70), so the chrome token lifts toward foreground (#f1f3f7)
-     without matching it. Chrome and cards stay on separate tokens: every
-     chrome consumer reads --sidebar-muted-foreground, while the thread cards
-     read --muted-foreground. Cards need a dimmer value than chrome because a
-     receded title is text-muted-foreground against a text-foreground forward
-     one and colour alone carries that distinction — lifting cards all the way
-     to #e0e0e0 collapsed it to ~1.19:1 (invisible). Upstream's #a3a3a3 kept
-     the gap but read a touch soft on the lifted panel, so cards land at
-     #c0c0c0: brighter than upstream, still clearly below chrome and
-     foreground. */
-  --muted-foreground: #c0c0c0;
+     without matching it. The sidebar-scoped token ONLY: every chrome consumer
+     reads --sidebar-muted-foreground, while the thread cards read
+     --muted-foreground — and the cards' shared muted channel stays upstream's
+     dim value on purpose. Alpha-tinted meta (/70), shelf ghosts (/35), and
+     unread encoding were calibrated against #a3a3a3; lifting the channel would
+     re-derive all of them. Receded *titles* alone read
+     --fork-sidebar-card-title-receded (#c0c0c0) via threadCardTitleClassName. */
   --sidebar-muted-foreground: #e0e0e0;
+  /* Done/Idle card titles on the lifted panel — brighter than upstream muted
+     (#a3a3a3), still clearly below chrome (#e0e0e0) and foreground (#f1f3f7).
+     Lifting to chrome collapsed the receded/forward gap to ~1.19:1. */
+  --fork-sidebar-card-title-receded: #c0c0c0;
   /* The ⌘K chip: rgba(255,255,255,0.08) over the panel in the design. */
   --sidebar-control-surface: #303030;
   --sidebar-row-hover: #262626;
@@ -155,16 +158,18 @@
 
    Tailwind's text-xs / text-sm utilities read --text-xs / --text-sm (they are
    @theme variables, not @theme inline, so a descendant override reaches the
-   compiled utilities). Remapping both to 13px on the v2 panel makes Search,
-   scope, project headers, card titles and slim shelves share one body size
-   without rewriting every className. Line-height stays 16px so the card's
-   fixed h-4 rows and contain-intrinsic-size hints (54 / 75) do not grow.
-   Captions that use literal text-[11px] / text-[10px] are untouched. */
+   compiled utilities). Remapping both to 0.8125rem (13px at the default root)
+   on the v2 panel makes Search, scope, project headers, card titles and slim
+   shelves share one body size without rewriting every className. Line-height
+   stays 1rem so the card's h-4 rows scale with the type; captions that use
+   literal text-[11px] / text-[10px] are untouched. Rem, not px: a px pin would
+   freeze the sidebar while the rest of the app (and h-4 itself) still honour
+   the browser font-size setting. */
 :root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
-  --text-xs: 13px;
-  --text-xs--line-height: 16px;
-  --text-sm: 13px;
-  --text-sm--line-height: 16px;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1rem;
 }
 
 /* The band is a solid header-height slab with a hard bottom edge, per the

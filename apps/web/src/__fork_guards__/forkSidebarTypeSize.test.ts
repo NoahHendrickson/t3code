@@ -16,6 +16,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
+import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -24,45 +25,52 @@ function readSibling(relativePath: string): string {
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
 
-/** The type-size block is the only panel rule that sets --text-xs. */
-function typeSizeBlock(): string {
-  const pattern = new RegExp(
-    `${MARKER.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\\s*` +
-      `\\[data-sidebar-version="v2"\\]\\s*` +
-      `\\{([^}]*)\\}`,
-    "u",
+const TEXT_SIZE_PROPS = [
+  "--text-xs",
+  "--text-xs--line-height",
+  "--text-sm",
+  "--text-sm--line-height",
+] as const;
+
+function declarationValue(body: string, prop: string): string | null {
+  const pattern = new RegExp(`${prop.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}:\\s*([^;]+);`, "u");
+  return pattern.exec(body)?.[1]?.trim() ?? null;
+}
+
+/** Every leaf rule that declares any of the remapped text-size props. */
+function textSizeRules() {
+  return cssRules(theme).filter((rule) =>
+    TEXT_SIZE_PROPS.some((prop) => declarationValue(rule.body, prop) !== null),
   );
-  const matches = [...theme.matchAll(new RegExp(pattern.source, "gu"))].filter((match) =>
-    (match[1] ?? "").includes("--text-xs:"),
-  );
-  expect(matches.length, "expected exactly one panel --text-xs block").toBe(1);
-  return matches[0]?.[1] ?? "";
 }
 
 describe("fork guard: fork-sidebar-type-size", () => {
-  it("remaps sidebar body type to 13px / 16px on the v2 panel", () => {
-    const block = typeSizeBlock();
-    expect(block).toContain("--text-xs: 13px");
-    expect(block).toContain("--text-xs--line-height: 16px");
-    expect(block).toContain("--text-sm: 13px");
-    expect(block).toContain("--text-sm--line-height: 16px");
+  it("remaps sidebar body type to 0.8125rem / 1rem on the v2 panel", () => {
+    const panel = textSizeRules().find((rule) =>
+      rule.selector.includes('[data-sidebar-version="v2"]'),
+    );
+    expect(panel, "expected a panel-scoped text-size rule").toBeDefined();
+    expect(declarationValue(panel?.body ?? "", "--text-xs")).toBe("0.8125rem");
+    expect(declarationValue(panel?.body ?? "", "--text-xs--line-height")).toBe("1rem");
+    expect(declarationValue(panel?.body ?? "", "--text-sm")).toBe("0.8125rem");
+    expect(declarationValue(panel?.body ?? "", "--text-sm--line-height")).toBe("1rem");
+    // Rem, not px — a px pin freezes the sidebar while h-4 and the rest of
+    // the app still honour the browser font-size setting.
+    expect(panel?.body ?? "").not.toMatch(/--text-(?:xs|sm):\s*\d+px/u);
   });
 
-  it("does not leak the 13px remap outside the sidebar panel", () => {
-    // A bare :root rule would resize the workspace too. The remap must keep
-    // the panel attribute in its selector.
-    expect(theme).toMatch(
-      new RegExp(
-        `${MARKER.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}` +
-          `[^/{]*\\[data-sidebar-version="v2"\\][^/{]*\\{[^}]*--text-xs:\\s*13px`,
-        "u",
-      ),
-    );
-    expect(theme).not.toMatch(
-      new RegExp(
-        `${MARKER.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}\\.dark\\s*\\{[^}]*--text-xs:`,
-        "u",
-      ),
-    );
+  it("scopes every text-size remap to the sidebar panel", () => {
+    // The invariant: any declaration of these props must sit under a selector
+    // that includes [data-sidebar-version=…]. A bare :root { --text-xs: … }
+    // would resize the whole app and must fail this test — unlike checking
+    // only for one arbitrary leak shape (MARKER.dark { … }).
+    const rules = textSizeRules();
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) {
+      expect(rule.selector, `text-size remap leaked outside the panel: ${rule.selector}`).toMatch(
+        /\[data-sidebar-version=/u,
+      );
+      expect(rule.selector).toContain(MARKER);
+    }
   });
 });

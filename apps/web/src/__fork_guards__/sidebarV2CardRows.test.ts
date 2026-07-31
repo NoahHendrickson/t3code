@@ -112,6 +112,18 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(threadCardTitleClassName({ recedes: false })).not.toContain("font-medium");
   });
 
+  it("lifts receded titles via a dedicated token, not the shared muted channel", () => {
+    // Done/Idle titles read --fork-sidebar-card-title-receded so meta /70 and
+    // shelf unread encoding keep calibrating against upstream
+    // --muted-foreground. Falling back to text-muted-foreground alone would
+    // quietly undo the title lift; lifting --muted-foreground itself would
+    // re-derive every tinted muted consumer.
+    const receded = threadCardTitleClassName({ recedes: true });
+    expect(receded).toContain("--fork-sidebar-card-title-receded");
+    expect(receded).not.toMatch(/(?:^|\s)text-muted-foreground(?:\/|\s|$)/u);
+    expect(threadCardTitleClassName({ recedes: false })).toContain("text-foreground");
+  });
+
   it("keeps row presentation policy out of the megacomponent", () => {
     // The policy is pure and fork-owned, so SidebarV2 carries call sites rather
     // than the rules. Inlining it back is the regression this catches.

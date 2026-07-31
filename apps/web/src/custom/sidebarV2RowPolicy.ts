@@ -92,10 +92,17 @@ export function threadRowSurfaceClassName(input: {
 /** A card title's colour. Hover restores a receded title, which is what keeps
     the dimming reading as depth rather than as a disabled row. Weight is the
     design's body/sm — Regular for every status (Figma 113:724 draws no medium
-    titles); the colour alone carries the receded/forward distinction. */
+    titles); the colour alone carries the receded/forward distinction.
+    Receded titles use `--fork-sidebar-card-title-receded` (dark panel) rather
+    than `--muted-foreground`, so lifting title brightness does not re-derive
+    meta /70, shelf ghosts, or unread encoding that were calibrated against
+    upstream's dimmer muted channel. Light mode falls through to
+    `--muted-foreground` via the var fallback. */
 export function threadCardTitleClassName(input: { readonly recedes: boolean }): string {
   return cn(
     "truncate font-normal",
-    input.recedes ? "text-muted-foreground group-hover/v2-row:text-foreground" : "text-foreground",
+    input.recedes
+      ? "text-[color:var(--fork-sidebar-card-title-receded,var(--muted-foreground))] group-hover/v2-row:text-foreground"
+      : "text-foreground",
   );
 }
