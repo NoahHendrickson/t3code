@@ -117,12 +117,22 @@ describe("fork guard: fork-composer-shell", () => {
     expect(collapsed?.body).toMatch(/border-radius:\s*12px/u);
   });
 
-  it("docks the composer at the bottom for empty and started threads", () => {
+  it("docks the composer at the bottom and centers the draft greeting independently", () => {
     expect(chatView).toContain(
       'className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"',
     );
     expect(chatView).not.toMatch(/isDraftHeroState\s*\?\s*"pointer-events-none absolute inset-0/u);
     expect(chatView).not.toContain("isDraftHero={isDraftHeroState}");
+    // Greeting is its own centered layer; it must not ride bottom-full above the input.
+    expect(chatView).toContain(
+      'className="pointer-events-none absolute inset-0 z-10 flex items-center"',
+    );
+    const headlineIdx = chatView.indexOf("<DraftHeroHeadline");
+    const composerOverlayIdx = chatView.indexOf('data-chat-composer-overlay="true"');
+    expect(headlineIdx).toBeGreaterThan(-1);
+    expect(composerOverlayIdx).toBeGreaterThan(-1);
+    expect(headlineIdx).toBeLessThan(composerOverlayIdx);
+    expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
   });
 
   it("keeps composer styling scoped to the fork marker", () => {
