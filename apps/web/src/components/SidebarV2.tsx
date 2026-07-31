@@ -29,10 +29,12 @@ import {
   TerminalIcon,
   Trash2Icon,
   Undo2Icon,
-  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-  XIcon,
-  /* fork:end sidebar-v2-draft-rows */
 } from "lucide-react";
+/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+// Own statement: a fence comment inside the lucide brace list is scraped as a
+// binding by phosphorIcons.test.ts (same reason Globe2Icon sits out here).
+import { XIcon } from "lucide-react";
+/* fork:end sidebar-v2-draft-rows */
 /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
 // A statement of its own rather than a name in upstream's list: the phosphor
 // guard parses that list's braces, and a fence comment inside them reads as a
