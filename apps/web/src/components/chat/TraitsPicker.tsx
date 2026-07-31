@@ -429,7 +429,11 @@ export function buildTraitsTriggerDisplay(input: {
   if (labels.length === 0 && hasFastMode) {
     return { label: fastModeEnabled ? "Fast" : "Normal", showFastModeIcon: false };
   }
-  return { label: labels.join(" · "), showFastModeIcon: fastModeEnabled };
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /* A plain space, not upstream's " · ": the composer's effort chip reads
+     "High 1M". Settings uses the same trigger and stays consistent. */
+  return { label: labels.join(" "), showFastModeIcon: fastModeEnabled };
+  /* fork:end fork-composer-shell */
 }
 
 export const TraitsPicker = memo(function TraitsPicker({

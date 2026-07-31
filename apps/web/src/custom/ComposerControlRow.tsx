@@ -13,15 +13,29 @@ interface ComposerControlRowProps {
   className?: string;
 }
 
+interface ComposerContextRowProps {
+  children: ReactNode;
+  className?: string;
+}
+
+/** Repository and worktree controls that sit above the prompt surface. */
+export const ComposerContextRow = memo(function ComposerContextRow({
+  children,
+  className,
+}: ComposerContextRowProps) {
+  return (
+    <div
+      data-fork-composer-context-row="true"
+      className={cn("flex min-w-0 items-center pb-2", className)}
+    >
+      {children}
+    </div>
+  );
+});
+
 /**
- * The composer's control row, below the box rather than inside it.
- *
- * The designs put the run controls and the worktree/branch pair on one line
- * outside the composer, 4px under it, inset to the box's own 16px padding so
- * the two read as one column. Upstream splits these across two places — mode
- * controls inside the box's footer, BranchToolbar as a separate strip stitched
- * to the box's underside by a shared glass outline — so this joins them and
- * `theme.custom.css` unpicks the stitching.
+ * The composer's control row, below the prompt surface. Run modes stay left;
+ * context usage, model and effort stay right.
  */
 export const ComposerControlRow = memo(function ComposerControlRow({
   left,
@@ -31,7 +45,7 @@ export const ComposerControlRow = memo(function ComposerControlRow({
   return (
     <div
       data-fork-composer-control-row="true"
-      className={cn("flex min-w-0 items-center justify-between gap-2 px-4 pt-1", className)}
+      className={cn("flex min-h-6 min-w-0 items-center justify-between gap-2 pt-2", className)}
     >
       <div
         data-fork-composer-control-row-slot="left"

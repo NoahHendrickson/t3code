@@ -5879,15 +5879,11 @@ function ChatViewContent(props: ChatViewProps) {
               )}
             </div>
 
-            {/* Input bar — centered hero while a draft has no messages, docked at the bottom otherwise */}
+            {/* Input bar — always docked at the bottom, including an empty draft. */}
             <div
               ref={setComposerOverlayElement}
               data-chat-composer-overlay="true"
-              className={
-                isDraftHeroState
-                  ? "pointer-events-none absolute inset-0 z-20 flex items-center"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
-              }
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
             >
               <div
                 ref={attachDraftHeroTransitionGroupRef}
@@ -5950,7 +5946,6 @@ function ChatViewContent(props: ChatViewProps) {
                             forceExpandedOnMobile={forceExpandedMobileComposer && isDraftHeroState}
                             projectSelectionRequired={isLocalDraftThread && activeProject === null}
                             /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                            isDraftHero={isDraftHeroState}
                             {...(composerContextStrip
                               ? { contextStrip: composerContextStrip }
                               : {})}

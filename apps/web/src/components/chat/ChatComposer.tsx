@@ -86,10 +86,7 @@ import {
 } from "../composerFooterLayout";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
-import { ComposerControlRow } from "../../custom/ComposerControlRow";
-import { resolveComposerDensity } from "../../custom/composerDensity";
-import { useComposerPromptWrapLatch } from "../../custom/useComposerPromptWrapLatch";
+import { ComposerContextRow, ComposerControlRow } from "../../custom/ComposerControlRow";
 /* fork:end fork-composer-shell */
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
@@ -99,7 +96,9 @@ import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerPendingApprovalPanel } from "./ComposerPendingApprovalPanel";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { ComposerPlanFollowUpBanner } from "./ComposerPlanFollowUpBanner";
-import { ComposerControl, ComposerControlIcon, ComposerSelectControl } from "./ComposerControl";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { ComposerControl, ComposerSelectControl } from "./ComposerControl";
+/* fork:end fork-composer-shell */
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { searchSlashCommandItems } from "./composerSlashCommandSearch";
 import {
@@ -175,11 +174,9 @@ import { Button } from "../ui/button";
 import { Select, SelectItem, SelectPopup, SelectValue } from "../ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import {
-  BotIcon,
   CircleAlertIcon,
-  ListTodoIcon,
-  PencilRulerIcon,
   type LucideIcon,
   LockIcon,
   LockOpenIcon,
@@ -187,6 +184,7 @@ import {
   SparklesIcon,
   XIcon,
 } from "lucide-react";
+/* fork:end fork-composer-shell */
 import { proposedPlanTitle } from "../../proposedPlan";
 import { getProviderDisplayName, getProviderInteractionModeToggle } from "../../providerModels";
 import {
@@ -291,7 +289,6 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
   onTogglePlanSidebar: () => void;
 }) {
   const runtimeModeOption = runtimeModeConfig[props.runtimeMode];
-  const RuntimeModeIcon = runtimeModeOption.icon;
   const interactionModeTooltip =
     props.interactionMode === "plan"
       ? "Plan mode — click to return to normal build mode"
@@ -319,14 +316,10 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
             />
           }
         >
-          {props.interactionMode === "plan" ? (
-            <ComposerControlIcon icon={PencilRulerIcon} className="text-current opacity-100" />
-          ) : (
-            <ComposerControlIcon icon={BotIcon} opticalSize="large" />
-          )}
-          <span className="sr-only sm:not-sr-only">
-            {props.interactionMode === "plan" ? "Plan" : "Build"}
-          </span>
+          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+          {/* Text-only, per the designs: the label is the whole control. */}
+          <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
+          {/* fork:end fork-composer-shell */}
         </TooltipTrigger>
         <TooltipPopup side="top">{interactionModeTooltip}</TooltipPopup>
       </Tooltip>
@@ -343,9 +336,20 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           onValueChange={(value) => props.onRuntimeModeChange(value!)}
         >
           <TooltipTrigger
-            render={<ComposerSelectControl className="font-medium" aria-label="Runtime mode" />}
+            render={
+              /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+              // The designs draw the runtime mode as an accent chip with the
+              // label alone — no icon, no caret. The attribute carries the
+              // whole restyle and its value picks the mode's accent color;
+              // the popup keeps its icons and descriptions.
+              <ComposerSelectControl
+                data-fork-composer-mode-chip={props.runtimeMode}
+                className="font-medium"
+                aria-label="Runtime mode"
+              />
+              /* fork:end fork-composer-shell */
+            }
           >
-            <ComposerControlIcon icon={RuntimeModeIcon} />
             <SelectValue>{runtimeModeOption.label}</SelectValue>
           </TooltipTrigger>
           <SelectPopup alignItemWithTrigger={false}>
@@ -394,11 +398,9 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                 />
               }
             >
-              <ComposerControlIcon
-                icon={ListTodoIcon}
-                className={props.planSidebarOpen ? "text-current opacity-100" : undefined}
-              />
-              <span className="sr-only sm:not-sr-only">{props.planSidebarLabel}</span>
+              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+              <span>{props.planSidebarLabel}</span>
+              {/* fork:end fork-composer-shell */}
             </TooltipTrigger>
             <TooltipPopup side="top">{planSidebarTooltip}</TooltipPopup>
           </Tooltip>
@@ -526,11 +528,9 @@ export interface ChatComposerProps {
   forceExpandedOnMobile: boolean;
   projectSelectionRequired: boolean;
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  /** The new-chat hero. Pins the composer to the tall shell. */
-  isDraftHero?: boolean;
   /**
-   * Worktree/branch controls, rendered into the composer's own control row
-   * instead of as a separate strip below it.
+   * Worktree/branch controls, rendered above the prompt surface instead of as
+   * a separate stitched strip below it.
    */
   contextStrip?: ReactNode;
   /* fork:end fork-composer-shell */
@@ -649,7 +649,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     forceExpandedOnMobile,
     projectSelectionRequired,
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-    isDraftHero = false,
     contextStrip,
     /* fork:end fork-composer-shell */
     phase,
@@ -997,19 +996,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const isMobileViewport = useMediaQuery("max-sm");
   const isComposerCollapsedMobile =
     isMobileViewport && !forceExpandedOnMobile && !isComposerFocused;
-  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  const { isPromptWrapped, attachPromptElement } = useComposerPromptWrapLatch(
-    prompt,
-    // ChatComposer is not keyed by thread, so the latch has to be told when the
-    // draft underneath it changed. Same discrimination composerDraftStore's own
-    // private composerTargetKey uses: a DraftId is already a string, a real
-    // thread needs its environment folded in.
-    typeof composerDraftTarget === "string"
-      ? composerDraftTarget
-      : scopedThreadKey(composerDraftTarget),
-  );
-  /* fork:end fork-composer-shell */
-
   // ------------------------------------------------------------------
   // Refs
   // ------------------------------------------------------------------
@@ -1178,21 +1164,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const isComposerApprovalState = activePendingApproval !== null;
   const activePendingUserInput = pendingUserInputs[0] ?? null;
-  const hasComposerHeader =
-    isComposerApprovalState ||
-    pendingUserInputs.length > 0 ||
-    (showPlanFollowUpPrompt && activeProposedPlan !== null);
   const showCollapsedMobilePromptRow =
     isComposerCollapsedMobile && !isComposerApprovalState && pendingUserInputs.length === 0;
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  const composerDensity = resolveComposerDensity({
-    isDraftHero,
-    isPromptWrapped,
-    hasComposerHeader,
-    isCollapsedMobile: isComposerCollapsedMobile,
-    isNarrowViewport: isMobileViewport,
-  });
-  const isComposerSlim = composerDensity === "slim";
+  const composerDensity = isComposerCollapsedMobile ? "collapsed" : "base";
   /* fork:end fork-composer-shell */
 
   const composerFooterHasWideActions = showPlanFollowUpPrompt || activePendingProgress !== null;
@@ -2725,13 +2700,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         getModelDisabledReason={getModelDisabledReason}
         onInstanceModelChange={onProviderModelSelect}
       />
-      {/* At compact widths the traits fold into CompactComposerControlsMenu on
-          the control row, so the box carries the model pill alone. */}
+      {/* At compact widths the traits fold into CompactComposerControlsMenu. */}
       {!isComposerFooterCompact && providerTraitsPicker ? providerTraitsPicker : null}
     </>
   );
 
-  const composerRunControls = (
+  const composerModeControls = (
     <>
       {noProviderAvailable ? (
         <Button
@@ -2772,14 +2746,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           onTogglePlanSidebar={togglePlanSidebar}
         />
       )}
-      {/* Both are pinned shrink-0. The control row's left slot is
-          overflow-x-auto with its scrollbar hidden, so anything allowed to be
-          squeezed out of it disappears with no affordance saying so. The mode
-          controls can scroll — they have a compact menu fallback and the user
-          knows they asked for them. The context meter is a status readout
-          people watch to decide when to compact; it must not silently vanish. */}
+    </>
+  );
+
+  const composerModelAndStatusControls = (
+    <>
       {activeContextWindow ? (
-        <div className="shrink-0">
+        <div data-fork-composer-status="true" className="shrink-0">
           <ContextWindowMeter
             usage={activeContextWindow}
             providerDisplayName={activeThreadProviderDisplayName}
@@ -2791,6 +2764,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           Preparing worktree...
         </span>
       ) : null}
+      <div data-fork-composer-pills="true" className="flex min-w-0 items-center">
+        {composerModelControls}
+      </div>
     </>
   );
 
@@ -2834,6 +2810,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       className="mx-auto w-full min-w-0 max-w-3xl"
       data-chat-composer-form="true"
     >
+      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      {contextStrip ? <ComposerContextRow>{contextStrip}</ComposerContextRow> : null}
+      {/* fork:end fork-composer-shell */}
       <div
         /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
         data-fork-composer-box="true"
@@ -3048,14 +3027,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             ref={setComposerMenuAnchor}
             className={cn(
               /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-              // The box owns a flat 16px inset in both shells; the slim shell
-              // trims it to 12px vertically to land the row at 48px. In the
-              // tall shell this element's bottom padding *is* the 24px gap
-              // between the prompt and the control row under it, which is why
-              // it is 6 and not 4.
-              "relative px-4",
-              isComposerSlim ? "py-3" : "pb-6",
-              isComposerSlim ? null : hasComposerHeader ? "pt-3" : "pt-4",
+              // Eight pixels around a one-line prompt and 24px send button
+              // produces the design's single 40px base surface. The editor
+              // grows this same row naturally when the prompt wraps.
+              "relative p-2",
               /* fork:end fork-composer-shell */
               isComposerCollapsedMobile && "hidden",
             )}
@@ -3221,12 +3196,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               )}
 
             {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-            <div className={cn("flex min-w-0", isComposerSlim ? "items-center gap-6" : "flex-col")}>
-              <div
-                ref={attachPromptElement}
-                data-fork-composer-prompt="true"
-                className="relative min-w-0 flex-1"
-              >
+            {/* items-center + self-start on the action: a one-line prompt sits
+                centred beside the 24px button (the drawn 40px base row), and as
+                the prompt wraps the button stays pinned top-right, as in the
+                tall frame of the designs. */}
+            <div className="flex min-w-0 items-center gap-6">
+              <div data-fork-composer-prompt="true" className="relative min-w-0 flex-1">
                 {/* fork:end fork-composer-shell */}
                 <ComposerPromptEditor
                   editorRef={composerEditorRef}
@@ -3264,12 +3239,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                               : phase === "disconnected"
                                 ? "Ask for follow-up changes or attach images"
                                 : /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                                  // Absolute placeholder is invisible to the wrap latch. Slim shortens
-                                  // the hint so @/$/ stay discoverable instead of truncating them away.
-                                  isComposerSlim
-                                  ? "Ask anything, @tag, $skills, / commands"
-                                  : /* fork:end fork-composer-shell */
-                                    "Ask anything, @tag files/folders, $use skills, or / for commands"
+                                  "Ask anything,"
+                    /* fork:end fork-composer-shell */
                   }
                   disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
                 />
@@ -3303,19 +3274,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 ) : null}
               </div>
               {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-              {/* Slim shell: the pills and the send button ride inline with the
-                  prompt rather than sitting on their own row beneath it. */}
-              {/* No `&& !activePendingApproval` here: an approval sets
-                  hasComposerHeader, which resolves density to tall, so the
-                  right conjunct can never be false when the left is true. */}
-              {isComposerSlim ? (
+              {!activePendingApproval ? (
                 <div
                   data-chat-composer-inline-actions="true"
-                  className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
+                  className="flex shrink-0 items-center self-start"
                 >
-                  <div data-fork-composer-pills="true" className="flex min-w-0 items-center">
-                    {composerModelControls}
-                  </div>
                   {composerPrimaryActionSlot}
                 </div>
               ) : null}
@@ -3323,17 +3286,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             {/* fork:end fork-composer-shell */}
           </div>
 
-          {/* Bottom toolbar */}
           {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-          {/* The slim shell already rendered the pills and the send button
-              inline with the prompt. Skipping the row outright rather than
-              hiding it keeps a second data-chat-composer-actions="right" out of
-              the DOM — and `cn()` is tailwind-merge, so a conditional "hidden"
-              here would lose to the base "flex" that follows it anyway. An
-              approval always resolves to the tall shell, so that branch is
-              still reachable. */}
-          {composerDensity !== "tall" ? null : activePendingApproval ? (
-            /* fork:end fork-composer-shell */
+          {activePendingApproval ? (
             <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
               <ComposerPendingApprovalActions
                 requestId={activePendingApproval.requestId}
@@ -3341,58 +3295,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 onRespondToApproval={onRespondToApproval}
               />
             </div>
-          ) : (
-            <div
-              data-chat-composer-footer="true"
-              data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
-              className={cn(
-                /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-4 pb-4",
-                /* fork:end fork-composer-shell */
-                pendingUserInputs.length > 0 && "pt-2",
-                isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
-                showMobilePendingAnswerActions && "hidden sm:flex",
-              )}
-            >
-              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-              <div
-                data-fork-composer-pills="true"
-                className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                {composerModelControls}
-              </div>
-
-              {/* Right side: send / stop button */}
-              {composerPrimaryActionSlot}
-              {/* fork:end fork-composer-shell */}
-            </div>
-          )}
+          ) : null}
+          {/* fork:end fork-composer-shell */}
         </div>
       </div>
       {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-      {/* The control row: run controls and the worktree/branch pair on one line
-          under the box, replacing both the in-box mode controls and the
-          separately-stitched context strip.
-
-          The row renders in every state, including collapsed — only its left
-          half is conditional. Two upstream behaviours depend on that:
-
-          Collapsed on mobile, upstream still rendered BranchToolbar (gated on
-          showComposerContextStrip alone, with its own MobileRunContextSelector
-          branch), so env mode and branch were switchable without focusing the
-          composer and raising the keyboard. Dropping the whole row took that
-          away. The mode controls stay hidden, which is what upstream did — its
-          footer was unmounted while collapsed.
-
-          During a pending approval, upstream replaced the entire footer with
-          ComposerPendingApprovalActions, unmounting the runtime-mode, Build/Plan
-          and plan-sidebar toggles. The in-box footer still swaps, but these
-          moved out here, so they need the same gate — otherwise the user can
-          flip modes for a run whose approval is still unresolved. BranchToolbar
-          is deliberately not gated on approval; upstream showed it too. */}
+      {/* Modes sit below-left; context usage, model and effort sit below-right. */}
       <ComposerControlRow
-        left={activePendingApproval ? null : composerRunControls}
-        {...(contextStrip ? { right: contextStrip } : {})}
+        left={activePendingApproval ? null : composerModeControls}
+        right={composerModelAndStatusControls}
       />
       {/* fork:end fork-composer-shell */}
     </form>

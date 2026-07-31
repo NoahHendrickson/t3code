@@ -1122,141 +1122,74 @@
 
 - id: fork-composer-shell
   intent: >
-    The chat composer is a discrete bordered box with its run controls floating
-    on a line underneath it, and it comes in two sizes. The new-chat screen
-    gets the tall shell: the prompt on its own line above a row carrying the
-    model and effort pills on the left and send on the right, in a 20px box. A
-    started thread gets the slim shell: one 48px line, prompt inline with those
-    same pills and send, in a 12px box. Slim grows into tall the moment the
-    prompt wraps past its first line and never shrinks back within a composing
-    session. The wrap is observed on the editor element (Lexical reflows
-    without a React render) and latched; the latch clears on an empty prompt
-    and on a draft change — ChatComposer carries no key in ChatView, so it and
-    the latch survive thread switches, and "only an empty prompt turns it off"
-    is a rule about one composing session, not the component's lifetime.
-    Which controls sit where is the whole point. Inside the box: the model
-    pill, the effort pill, and the send/stop button. In dark mode a send
-    button without stage-channel art — any stage label that is not Dev/Nightly
-    — is flat pure white with a black icon
-    (data-fork-composer-send-tone="flat"); Dev and Nightly keep the
-    stage-channel fill, and light builds keep upstream's fill. Everything else
-    is on the
-    control row below it — runtime mode ("Auto"), interaction mode ("Build"),
-    the plan-sidebar toggle, the context meter, the preparing-worktree line,
-    the no-provider badge, and, at the row's right end, the worktree/branch
-    pair. Upstream renders that last pair as BranchToolbar, a sibling of the
-    composer; here it is passed into ChatComposer as contextStrip, which is
-    why ChatView no longer renders it directly. contextStrip is a memoised
-    element and onStartFromOriginChange a useCallback, and that is correctness
-    rather than tuning: ChatComposer is memo'd, every other prop is a stable
-    reference or primitive, and an inline element at the call site defeats the
-    memo on a ~2900-line component that re-renders throughout a streaming turn.
-    Upstream's continuous "glass shell" paint — one frosted ::before and one
-    1px ::after joining composer and branch strip through a shape() notch — is
-    switched off under the fork marker; the box paints its own fill and border.
-    The backdrop blur moves with it rather than being dropped, because the
-    drawn fill is 80% opaque and only works over a blurred backdrop. Focus is
-    drawn by recolouring that border rather than adding a ring, so nothing
-    reflows when the caret lands.
-    Upstream's min-h-17.5 on the prompt editor is removed: it holds the editor
-    open at roughly three lines, which makes the slim shell geometrically
-    impossible and leaves the tall one hollow. The prompt is 14px/16px at
-    >=sm; below sm it stays 16px, because anything smaller makes iOS zoom on
-    focus. 14 is a deliberate divergence from the drawn 12, and the pills are
-    12px where the designs draw 10 — the guard pins both so a later
-    reconciliation against Figma does not quietly "correct" them back.
-    Desktop moves the max-height scrollport onto data-fork-composer-prompt
-    rather than the contenteditable: the tight 14/16 line box lets Geist ink
-    inflate scrollHeight on the editor, so upstream's max-h + overflow-y:auto
-    there painted a phantom thumb on a single line. The wrapper owns the
-    12.5rem cap (upstream max-h-50); the editor stays unclamped and clips its
-    ink. The editor's siblings — Lexical's placeholder and spacer — carry
-    overflow clip on both axes (clip, not hidden, so the pure-paint
-    placeholder never becomes a scroll box; both axes, so an unbreakable
-    approval-detail placeholder can neither eat its own 16px line with a
-    horizontal scrollbar nor propagate one onto the wrapper), because the
-    placeholder's overhanging line box otherwise reaches the wrapper's
-    scrollable overflow through its abspos box and paints the thumb on an
-    empty prompt only. Scoped to the same >=40rem media as the
-    line box — below that the prompt stays on leading-relaxed and upstream's
-    editor scroll is left alone.
-    The prompt and its placeholder are set by one rule and must stay that way:
-    they are two elements stacked exactly on top of each other, and any
-    disagreement about size or leading puts the caret beside the text it
-    belongs inside. The selector uses a general sibling combinator, because
-    Lexical renders the placeholder as the editor's third child with an empty
-    spacer between them, so `+ div` silently misses it. The line box stays
-    16px regardless of type size, because the drawn box heights (96 tall, 48
-    slim) are derived from it.
-    Density has three values, not two: `collapsed` is upstream's mobile tap
-    target, which the fork restyles but does not lay out, and it is
-    deliberately not a flavour of `slim`. Both short shells take the 12px
-    radius, which is why the CSS lists them together. The wrap observer and
-    its latch live in custom/, beside the pure rule they drive.
-    The box's fill and hairline are selected through
-    data-fork-composer-surface, not a positional child selector — the
-    positional form held only because the frame has exactly one child today.
-    Three rules are deliberately narrow, and the common cause matters for any
-    future rule: this stylesheet is unlayered while Tailwind v4 utilities sit
-    in @layer utilities, so a fork rule beats them regardless of specificity.
-    The pill restyle is scoped to data-fork-composer-pills (the footer also
-    holds ComposerPrimaryActions' real CTAs), the separator rule to the left
-    slot (BranchToolbar draws its own in the right one), and the drag-over
-    state is repainted explicitly (upstream signals it with a background and a
-    ring — a box-shadow — on the very element whose background and box-shadow
-    this file pins).
-    The context meter and the worktree status line are pinned shrink-0 on the
-    control row: its left slot is overflow-x-auto with the scrollbar hidden,
-    the mode controls may scroll because they have a compact menu fallback,
-    but the meter is a readout people watch to decide when to compact and must
-    not vanish silently.
-    The slim shell is desktop-only: at phone widths the placeholder — an
-    absolutely positioned overlay outside the editor's scroll box — wraps and
-    paints straight through the 48px box, and stably so (the overlay never
-    changes the observed editor height, so the latch cannot rescue it). A
-    narrow viewport resolves tall regardless. On desktop slim the default
-    empty-state hint is a shorter string that still names @, $, and /; tall
-    keeps the long form. States the designs do not draw also resolve tall: an
-    approval request, a pending user-input question, and the plan follow-up
-    banner all own the box's internals and carry their own action rows.
-    Attachments deliberately do not force tall — attachment cards render as a
-    full-width band above the inline row.
-    The control row renders in every density, including collapsed; only its
-    left half is conditional. The run controls are gated on a pending approval
-    — they moved out of the box, which upstream unmounted wholesale during
-    approval, so they would otherwise stay live for a run whose approval is
-    unresolved. BranchToolbar is deliberately not gated on approval; upstream
-    showed it too, including while collapsed, so env mode and branch stay
-    switchable without raising the keyboard.
-    ComposerFooterPrimaryActions keeps rendering the meter and worktree status
-    for any caller that wants them; the fork passes showStatusAdornments=false
-    and renders both on the control row, so the behaviour is relocated rather
-    than dropped. At compact widths the effort pill folds into
-    CompactComposerControlsMenu exactly as upstream does, leaving the box with
-    the model pill alone — intended, not a gap.
-    Design history — the latch extraction, the collapsed/slim naming, the
-    `+ div` placeholder bug, the rule-narrowing incidents, and the known
-    weakness of text-of-stylesheet guards — is in
-    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+    The chat composer is a discrete 8px bordered surface with one compact base
+    layout in every thread state, including a brand-new draft. ChatView always
+    docks it to the bottom instead of centering it as a new-chat hero. The base
+    row is 40px tall: 8px padding around a one-line prompt and the 24px
+    send/stop button. The prompt and action remain in that same row as text
+    wraps — the action pinned top-right, per the design's tall frame — so the
+    surface grows naturally with the editor; there is no tall/slim density
+    switch, resize observer, or wrap latch. Upstream's collapsed mobile tap
+    target remains a separate functional state.
+
+    Which controls sit where is the main design contract. BranchToolbar's
+    worktree and branch chips sit above the surface as filled chips sharing
+    one selected-surface fill with no hairline, 4px apart, on the Auto chip's
+    container at the drawn 4px inline padding (20px tall, 4px radius) at 12px
+    type matching the control row's ghost pills (Noey's finish over the drawn
+    6px-radius, 10px-type chips), and the workspace chip's trigger caret is
+    dropped. Only the prompt and primary
+    action sit inside the base row. Runtime and interaction modes sit
+    below-left; context usage, model, and effort sit below-right in a 24px
+    control row of 20px, 4px-radius controls (Noey's radius over the drawn
+    full-pill ghosts, so hover fills square off). The runtime mode renders as
+    the design's 20px accent chip — label only, no icon or caret — whose
+    data-fork-composer-mode-chip value is the mode itself, each with its own
+    hue: auto green, full access yellow, auto-accept edits purple, supervised
+    red. The interaction and plan-sidebar toggles are text-only ghost chips,
+    the model and effort selects share the row's 12px type (Noey's call over
+    the drawn 10px), and the effort trigger joins its trait labels with a
+    plain space ("High 1M"), not upstream's " · " separator. The branch strip is still passed into ChatComposer as
+    the memoised contextStrip element, preserving ChatComposer's memo boundary
+    and keeping branch controls reachable while mobile is collapsed. Runtime
+    controls remain gated during a pending approval.
+
+    Upstream's stitched glass-shell paint is disabled under the fork marker.
+    The prompt surface keeps its own translucent fill, inset hairline,
+    focus-border recolour, backdrop blur, and explicit drag-over outline.
+    BranchToolbar's stitched-strip spacing is flattened in the named context
+    row. Send and stop remain 24px square; dark builds without stage-channel
+    art use a flat white send button with a black icon, while Dev and Nightly
+    retain their channel fill. Existing project components supply all icons and
+    controls; no Figma-exported assets are committed.
+
+    Type follows the design system's dark tokens: the prompt is body/md — 14px
+    on a 23px line at >=40rem with a full muted-foreground placeholder (16px
+    mobile type stays, avoiding iOS focus zoom) — and the ghost controls and
+    mode chip are 12px medium on 16px with 12px glyphs. The prompt wrapper
+    owns the 12.5rem scroll cap so a one-line Lexical editor never paints a
+    phantom scrollbar, and the placeholder/spacer overflow containment remains
+    in place. Attachment and pending-state content may add height above the
+    base row, but ordinary composer height changes only when prompt content
+    wraps. Pill styling stays narrowly scoped so pending-state primary actions
+    retain their upstream geometry.
   tier: 4
   files:
     - apps/web/src/custom/ComposerControlRow.tsx
-    - apps/web/src/custom/composerDensity.ts
-    - apps/web/src/custom/useComposerPromptWrapLatch.ts
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
-    # Carries the density derivation, the two shells, the control row, and the
-    # contextStrip prop.
+    # Carries the base row, the context/control rows, and contextStrip prop.
     - apps/web/src/components/chat/ChatComposer.tsx
-    # Passes BranchToolbar in as contextStrip instead of rendering it as a
-    # sibling of the composer.
+    # Docks the composer for new drafts and passes BranchToolbar as contextStrip.
     - apps/web/src/components/ChatView.tsx
     # data-fork-composer-action on the send and stop buttons; the whole 24px
     # square restyle hangs off it. Send also carries
     # data-fork-composer-send-tone ("channel" with stage art, "flat"
     # otherwise) for the dark-mode white/black fill.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    # The effort trigger's label join: a plain space instead of " · ".
+    - apps/web/src/components/chat/TraitsPicker.tsx
     # The glass-shell pseudo-elements and .chat-composer-context-strip this
     # customization switches off. An upstream rework of that paint would leave
     # the fork disabling rules that no longer exist.
