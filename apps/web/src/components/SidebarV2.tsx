@@ -1115,7 +1115,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
             {/* gap-2.5 (10px): 14px status + 10px gap keeps the prompt at
                 36px — same as the group header label (24px folder box +
                 4px gap). gap-2 would have walked it 2px left. */}
-            <div className="flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5 overflow-hidden">
+            {/* No overflow-hidden on the row: the trailing settle/X cell is
+                h-6 and must overhang into py-2/gap-2. Clipping here cut the
+                24px hover fill into a short rectangle. Rain clips itself in
+                the status slot below. */}
+            <div className="flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5">
               {/* Leading 14px status column. Always present (idle draws the
                   hollow ring) so the title text and the indented rows below
                   share one left edge. pointer-events-none: a mark is never a

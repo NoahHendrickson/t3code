@@ -197,8 +197,11 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
     expect(meta).toContain('CONTENT_INDENT = "pl-6"');
     expect(meta).toContain("${CONTENT_INDENT}");
-    expect(sidebarV2).toContain(
-      "flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5 overflow-hidden",
+    // No overflow-hidden: the trailing h-6 settle/X cell overhangs this line
+    // on purpose; clipping it was what squashed the hover fill into a bar.
+    expect(sidebarV2).toContain("flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5");
+    expect(sidebarV2).not.toMatch(
+      /flex h-\[14px\] min-h-\[14px\] min-w-0 items-center gap-2\.5 overflow-hidden/u,
     );
   });
 
