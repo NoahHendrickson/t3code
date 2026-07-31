@@ -326,8 +326,9 @@
 }
 
 /* Mobile's collapsed tap target remains a distinct functional state. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-density="collapsed"] {
-  --fork-composer-radius: 12px;
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-mobile-collapsed="true"][data-fork-composer-surface] {
+  border-radius: 12px;
 }
 
 /* Selected by name, not by position. This used to be `[data-fork-composer-box]
@@ -469,31 +470,14 @@
   }
 }
 
-/* The control row's ghost buttons: 20px tall, 12px medium type on a 16px
+/* The control row's ghost controls: 20px tall, 12px medium type on a 16px
    line, a 12px glyph, 8px inline padding, at a 4px radius (Noey's call over
-   the drawn full pill, so hover fills paint 4px corners like every other
-   chip). The runtime mode chip is excluded by name: it is the one
-   accent-styled control on the row and gets its own treatment below.
-
-   Scoped to `[data-fork-composer-pills]` rather than to the footer and the
-   inline-actions row wholesale. Those containers also hold the primary action
-   slot, and `ComposerPrimaryActions` renders real CTAs into it: the h-9
-   Implement/Refine split button and the pending-question Previous / Next /
-   Submit answers buttons. Because this stylesheet is unlayered it beat their
-   Tailwind utilities outright — the split button came apart into two 24px pills
-   with a broken seam, the CTAs collapsed to 24px, and the `.dark` colour rule
-   below painted their labels #a6a6a6 on a filled primary background. Both
-   states are ordinary, not edge cases.
-
-   Send and stop are still excluded by name rather than out-specified by a later
-   rule. `:is()` takes the highest specificity among its arguments, so this
-   selector lands at (0,4,0) and a plain `[data-fork-composer-action]` rule at
-   (0,3,0) would quietly lose its 6px radius back to the pill. */
+   the drawn full pill). The named mode and model groups contain only ghost
+   controls; the mode chip is the single exception and owns its styling in
+   `custom/ComposerShell.css`. */
 :root[data-fork="noahhendrickson-t3code"]
-  :is([data-fork-composer-pills], [data-fork-composer-control-row])
-  :is(button, [data-slot="button"]):not([data-fork-composer-action]):not(
-    [data-fork-composer-mode-chip]
-  ):not([data-fork-composer-status] button) {
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
   height: 20px;
   min-height: 20px;
   gap: 6px;
@@ -505,99 +489,17 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  :is([data-fork-composer-pills], [data-fork-composer-control-row])
-  :is(button, [data-slot="button"]):not([data-fork-composer-action]):not(
-    [data-fork-composer-mode-chip]
-  ):not([data-fork-composer-status] button)
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip])
   svg {
   width: 12px;
   height: 12px;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  :is([data-fork-composer-pills], [data-fork-composer-control-row])
-  :is(button, [data-slot="button"]):not([data-fork-composer-action]):not(
-    [data-fork-composer-mode-chip]
-  ) {
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
   color: #a6a6a6;
-}
-
-/* The runtime mode chip: the one accent control on the row. The designs draw
-   it as a 20px, 4px-radius chip carrying the label alone on an accent wash —
-   no icon, no caret (the select popup still opens on click and keeps both).
-   The attribute value is the runtime mode, and each mode gets its own hue:
-   auto green (the drawn state), full access yellow, auto-accept edits purple,
-   supervised red. Dark mode uses neon label text over a 16% wash of the same
-   hue; light mode keeps the wash and drops each label to its dark Tailwind
-   shade so it stays readable. Hover deepens the wash rather than falling
-   back to the ghost variant's gray. */
-:root[data-fork="noahhendrickson-t3code"] {
-  --fork-composer-mode-chip-bg: rgb(18 255 89 / 16%);
-  --fork-composer-mode-chip-bg-hover: rgb(18 255 89 / 24%);
-  --fork-composer-mode-chip-fg: var(--color-emerald-700);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark {
-  --fork-composer-mode-chip-fg: #00ff88;
-}
-
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-mode-chip="full-access"] {
-  --fork-composer-mode-chip-bg: rgb(255 205 89 / 16%);
-  --fork-composer-mode-chip-bg-hover: rgb(255 205 89 / 24%);
-  --fork-composer-mode-chip-fg: var(--color-amber-700);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-mode-chip="full-access"] {
-  --fork-composer-mode-chip-fg: #ffcd59;
-}
-
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-mode-chip="auto-accept-edits"] {
-  --fork-composer-mode-chip-bg: rgb(192 132 252 / 16%);
-  --fork-composer-mode-chip-bg-hover: rgb(192 132 252 / 24%);
-  --fork-composer-mode-chip-fg: var(--color-violet-700);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-mode-chip="auto-accept-edits"] {
-  --fork-composer-mode-chip-fg: #c084fc;
-}
-
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-mode-chip="approval-required"] {
-  --fork-composer-mode-chip-bg: rgb(255 107 96 / 16%);
-  --fork-composer-mode-chip-bg-hover: rgb(255 107 96 / 24%);
-  --fork-composer-mode-chip-fg: var(--color-red-700);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-mode-chip="approval-required"] {
-  --fork-composer-mode-chip-fg: #ff6b60;
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-control-row]
-  [data-fork-composer-mode-chip] {
-  height: 20px;
-  min-height: 20px;
-  gap: 6px;
-  padding-inline: 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
-  background: var(--fork-composer-mode-chip-bg);
-  color: var(--fork-composer-mode-chip-fg);
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-control-row]
-  [data-fork-composer-mode-chip]:is(:hover, [data-pressed], [data-popup-open]) {
-  background: var(--fork-composer-mode-chip-bg-hover);
-  color: var(--fork-composer-mode-chip-fg);
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-control-row]
-  [data-fork-composer-mode-chip]
-  [data-slot="select-icon"] {
-  display: none;
 }
 
 /* Send and stop are the one exception to the pill rule: 24px squares at an 8px

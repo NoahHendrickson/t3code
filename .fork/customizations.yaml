@@ -1135,7 +1135,7 @@
     Which controls sit where is the main design contract. BranchToolbar's
     worktree and branch chips sit above the surface as filled chips sharing
     one selected-surface fill with no hairline, 4px apart, on the Auto chip's
-    container at the drawn 4px inline padding (20px tall, 4px radius) at 12px
+    container at the drawn 4px inline padding (24px tall, 4px radius) at 12px
     type matching the control row's ghost pills (Noey's finish over the drawn
     6px-radius, 10px-type chips), and the workspace chip's trigger caret is
     dropped. Only the prompt and primary
@@ -1143,16 +1143,20 @@
     below-left; context usage, model, and effort sit below-right in a 24px
     control row of 20px, 4px-radius controls (Noey's radius over the drawn
     full-pill ghosts, so hover fills square off). The runtime mode renders as
-    the design's 20px accent chip — label only, no icon or caret — whose
-    data-fork-composer-mode-chip value is the mode itself, each with its own
-    hue: auto green, full access yellow, auto-accept edits purple, supervised
-    red. The interaction and plan-sidebar toggles are text-only ghost chips,
+    the design's 20px accent chip — label only, no icon or caret — with its
+    hue selected by a typed fork-owned token map: auto green, full access
+    yellow, auto-accept edits purple, supervised red. The interaction and
+    plan-sidebar toggles are text-only ghost chips,
     the model and effort selects share the row's 12px type (Noey's call over
-    the drawn 10px), and the effort trigger joins its trait labels with a
-    plain space ("High 1M"), not upstream's " · " separator. The branch strip is still passed into ChatComposer as
+    the drawn 10px), and the composer's effort trigger joins its trait labels
+    with a plain space ("High 1M") while Settings keeps upstream's " · "
+    separator. The branch strip is still passed into ChatComposer as
     the memoised contextStrip element, preserving ChatComposer's memo boundary
-    and keeping branch controls reachable while mobile is collapsed. Runtime
-    controls remain gated during a pending approval.
+    and keeping branch controls reachable while mobile is collapsed. Runtime,
+    model, and effort controls remain gated during a pending approval and while
+    the mobile composer is collapsed; the read-only context meter may remain.
+    The inline primary-action cluster is suppressed whenever the mobile
+    pending-answer cluster is visible, so only one answer action renders.
 
     Upstream's stitched glass-shell paint is disabled under the fork marker.
     The prompt surface keeps its own translucent fill, inset hairline,
@@ -1175,7 +1179,8 @@
     retain their upstream geometry.
   tier: 4
   files:
-    - apps/web/src/custom/ComposerControlRow.tsx
+    - apps/web/src/custom/ComposerShell.tsx
+    - apps/web/src/custom/ComposerShell.css
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
@@ -1190,6 +1195,8 @@
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
     # The effort trigger's label join: a plain space instead of " · ".
     - apps/web/src/components/chat/TraitsPicker.tsx
+    # Passes the composer-only label separator through to TraitsPicker.
+    - apps/web/src/components/chat/composerProviderState.tsx
     # The glass-shell pseudo-elements and .chat-composer-context-strip this
     # customization switches off. An upstream rework of that paint would leave
     # the fork disabling rules that no longer exist.
