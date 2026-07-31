@@ -4,6 +4,7 @@ import {
   UNGROUPED_PROJECT_KEY,
   buildActiveThreadSections,
   createProjectRefIndex,
+  threadsVisibleInProjectSection,
 } from "./sidebarV2ProjectGrouping";
 
 const project = (
@@ -140,5 +141,39 @@ describe("createProjectRefIndex", () => {
 
     expect(index.size).toBe(3);
     expect([...index.values()].toSorted()).toEqual(["other", "repo", "repo"]);
+  });
+});
+
+describe("threadsVisibleInProjectSection", () => {
+  const threads = [thread("a", "local", "p1"), thread("b", "local", "p1")];
+
+  it("returns every thread when the group is open", () => {
+    expect(
+      threadsVisibleInProjectSection({
+        threads,
+        collapsed: false,
+        keepThread: () => false,
+      }),
+    ).toBe(threads);
+  });
+
+  it("hides every thread when collapsed with nothing to keep", () => {
+    expect(
+      threadsVisibleInProjectSection({
+        threads,
+        collapsed: true,
+        keepThread: () => false,
+      }),
+    ).toEqual([]);
+  });
+
+  it("keeps only the matching thread when collapsed", () => {
+    expect(
+      threadsVisibleInProjectSection({
+        threads,
+        collapsed: true,
+        keepThread: (entry) => entry.id === "b",
+      }).map((entry) => entry.id),
+    ).toEqual(["b"]);
   });
 });

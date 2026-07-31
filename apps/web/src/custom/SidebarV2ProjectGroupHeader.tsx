@@ -2,11 +2,13 @@
  * The project header that separates grouped active cards — see
  * `.fork/customizations.yaml#sidebar-v2-project-grouping`.
  *
- * Deliberately not a button. Upstream's two shelf headers (Snoozed, Settled)
- * collapse because each hides a tail whose whole job is to stay out of the way;
- * a project header sits over the inbox, where nothing wants hiding, and the
- * scope menu one row above already answers "just this project" without leaving
- * a row of collapsed stubs behind.
+ * The whole row owns the collapse affordance: hovering anywhere on it swaps
+ * the folder mark for a chevron, and clicking the mark or the label toggles
+ * the group. Collapse is an absolutely-positioned hit layer behind the row
+ * content so the new-thread plus can sit above it (`z-10`) and keep its own
+ * clicks — a flex-1 collapse button beside the plus was eating them. When the
+ * group is collapsed the chevron stays (rotated to point at the label) so the
+ * row does not look like an open folder over a missing list.
  *
  * Metrics are the shelf headers' verbatim, but the trailing hairline is not.
  * The shelves use a rule because each is one divider closing off the list above
@@ -27,7 +29,7 @@
  * visually hidden, since the header carries it for sighted users — so grouped
  * mode never carries less information than flat mode.
  */
-import { FolderOpenIcon, PlusIcon } from "lucide-react";
+import { ChevronDownIcon, FolderOpenIcon, PlusIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 import {
@@ -43,39 +45,65 @@ const UNGROUPED_PROJECT_LABEL = "Unknown project";
 export function SidebarV2ProjectGroupHeader(props: {
   readonly label: string | null;
   readonly isFirst: boolean;
+  readonly collapsed: boolean;
+  readonly onToggleCollapsed: () => void;
   /** Starts a thread in this header's project. Omitted for the
       unresolved-project section, which names no project to start one in. */
   readonly onNewThread?: (() => void) | undefined;
 }) {
+  const label = props.label ?? UNGROUPED_PROJECT_LABEL;
   return (
     <li role="presentation" className="list-none">
+      {/* group/collapse on the row so hovering the plus still swaps the mark.
+          Collapse is a behind-layer button; the plus paints above it. */}
       <div
         data-testid="sidebar-v2-project-group-header"
         className={cn(
-          // No horizontal pad — the list's 8px is the content edge. Folder in a
-          // 24px box centres its 16px glyph on the same 12px axis as card status.
-          "flex w-full items-center gap-1 text-left",
+          "group/collapse relative flex w-full items-center gap-1 text-left",
           props.isFirst ? "mt-0" : "mt-3.5",
         )}
       >
-        {/* FolderOpen, matching the chrome's New-project glyph — the design
-            (113:3718 Frame 48) draws the group mark open, not closed. */}
-        <span className="flex size-6 shrink-0 items-center justify-center">
-          <FolderOpenIcon aria-hidden className="size-4 text-sidebar-muted-foreground/80" />
+        <button
+          type="button"
+          data-testid="sidebar-v2-project-group-collapse"
+          aria-expanded={!props.collapsed}
+          aria-label={props.collapsed ? `Expand ${label}` : `Collapse ${label}`}
+          onClick={props.onToggleCollapsed}
+          className={cn(
+            "absolute inset-0 z-0 cursor-pointer rounded-md",
+            "outline-none",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
+          )}
+        />
+        {/* Folder at rest, chevron on row-hover / when collapsed — stacked in
+            one 24px box so the swap does not shift the label. pointer-events
+            none so clicks fall through to the collapse layer. */}
+        <span className="pointer-events-none relative z-[1] flex size-6 shrink-0 items-center justify-center text-sidebar-muted-foreground/80 group-hover/collapse:text-sidebar-foreground">
+          <FolderOpenIcon
+            aria-hidden
+            className={cn(
+              "size-4",
+              props.collapsed ? "invisible" : "group-hover/collapse:invisible",
+            )}
+          />
+          <ChevronDownIcon
+            aria-hidden
+            className={cn(
+              "absolute size-4 transition-transform",
+              props.collapsed ? "-rotate-90" : "invisible group-hover/collapse:visible",
+            )}
+          />
         </span>
-        {/* The heading is the label, not the row: the row now also holds a
-            button, and a heading that contains one takes the button's text into
-            its own accessible name — "no3y-code New thread in no3y-code" for a
-            landmark whose whole job is to say which project this run of cards
-            belongs to. */}
+        {/* The heading is the label, not the collapse button: a heading that
+            wraps the button would take "Collapse <project>" as its name. */}
         <span
           role="heading"
           aria-level={3}
           // Foreground, not muted: the design (113:4023) sets the label a step
           // brighter than the folder beside it — the name is the landmark.
-          className="min-w-0 truncate text-xs font-normal leading-4 text-sidebar-foreground"
+          className="pointer-events-none relative z-[1] min-w-0 flex-1 truncate text-xs font-normal leading-4 text-sidebar-foreground"
         >
-          {props.label ?? UNGROUPED_PROJECT_LABEL}
+          {label}
         </span>
         {props.onNewThread ? (
           <button
@@ -83,13 +111,18 @@ export function SidebarV2ProjectGroupHeader(props: {
             // Named for the project, not "New thread": a screen reader running
             // the headings of a grouped sidebar would otherwise hear the same
             // control repeated once per group with nothing to tell them apart.
-            aria-label={`New thread in ${props.label ?? UNGROUPED_PROJECT_LABEL}`}
-            onClick={props.onNewThread}
+            aria-label={`New thread in ${label}`}
+            onClick={(event) => {
+              // The collapse layer sits under the whole row; stop anything from
+              // treating this as a toggle if an ancestor starts listening.
+              event.stopPropagation();
+              props.onNewThread?.();
+            }}
             className={cn(
               SIDEBAR_V2_ICON_BUTTON_CLASS,
-              // ms-auto rather than a spacer: the label truncates, so anything
-              // that pushed from the left would have to be told not to shrink.
-              "ms-auto",
+              // Above the collapse layer — without z-10 the absolute inset-0
+              // button steals the click and the plus looks dead.
+              "relative z-10",
               SIDEBAR_V2_TRAILING_OFFSET.headerPlus,
             )}
           >

@@ -45,10 +45,11 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
 
   it("renders and orders from one sequence", () => {
     expect(sidebar).toContain("const activeSections = useMemo(");
-    // Keyboard order is the flattened render sequence, not a parallel
-    // derivation that has to agree with it by convention.
-    expect(sidebar).toContain("activeSections.flatMap((section) => section.threads)");
-    expect(sidebar).toContain("activeSections.flatMap((section, sectionIndex)");
+    // Collapse filters paint before flatten: keyboard order reads the same
+    // visible sequence the list draws, not the unfiltered bucket list.
+    expect(sidebar).toContain("const visibleActiveSections = useMemo(");
+    expect(sidebar).toContain("visibleActiveSections.flatMap((section) => section.threads)");
+    expect(sidebar).toContain("visibleActiveSections.flatMap((section, sectionIndex)");
     expect(sidebar).toContain("[...orderedActiveThreads, ...visibleSnoozedThreads");
     const definition = sidebar.indexOf("const orderedActiveThreads");
     const use = sidebar.indexOf("[...orderedActiveThreads,");
@@ -61,7 +62,7 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // header from the same section whose threads follow it. Dropping this hunk
     // is the likeliest outcome of a merge that rewrites upstream's list body,
     // and it would leave a flat-looking sidebar over a grouped ordered list.
-    const start = sidebar.indexOf("const items: ReactNode[] = activeSections.flatMap(");
+    const start = sidebar.indexOf("const items: ReactNode[] = visibleActiveSections.flatMap(");
     expect(start).toBeGreaterThanOrEqual(0);
     const render = sidebar.slice(start, sidebar.indexOf("});", start));
     expect(render).toContain("<SidebarV2ProjectGroupHeader");
@@ -70,6 +71,31 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // the same value, so they cannot come to disagree.
     expect(render).toContain("const header = section.header;");
     expect(render).toContain('renderThreadRow(thread, "active", header !== null)');
+    expect(render).toContain("collapsed={collapsed}");
+    expect(render).toContain("onToggleCollapsed=");
+  });
+
+  it("collapses from the row with a hover chevron, leaving the plus alone", () => {
+    const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
+    expect(header).toContain('data-testid="sidebar-v2-project-group-collapse"');
+    expect(header).toContain("aria-expanded={!props.collapsed}");
+    expect(header).toContain("FolderOpenIcon");
+    expect(header).toContain("ChevronDownIcon");
+    // Hover group is on the row; collapse is a behind-layer so the plus can
+    // paint above it. A flex-1 collapse sibling was eating plus clicks.
+    expect(header).toContain("group/collapse relative flex w-full");
+    expect(header).toContain("absolute inset-0 z-0");
+    expect(header).toContain('"relative z-10"');
+    expect(header).toContain("group-hover/collapse:invisible");
+    expect(header).toContain("group-hover/collapse:visible");
+    expect(header).toContain("New thread in ${label}");
+    expect(header).toContain("event.stopPropagation()");
+    // Persistence and the route-thread keep live in the grouping module so a
+    // sync that drops the SidebarV2 wiring still fails the behaviour tests.
+    const grouping = readSibling("../custom/sidebarV2ProjectGrouping.ts");
+    expect(grouping).toContain("SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY");
+    expect(grouping).toContain("threadsVisibleInProjectSection");
+    expect(sidebar).toContain("useSidebarV2CollapsedProjects");
   });
 
   it("starts a thread in the header's own project, and only where there is one", () => {
@@ -122,13 +148,12 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
     expect(header).toContain('role="presentation"');
     expect(header).toContain("aria-level={3}");
-    // On the label span, not on the row. The row also holds the new-thread
-    // button, and a heading containing one takes the button's text into its own
-    // accessible name — "<project> New thread in <project>" for a landmark
-    // whose whole job is to say which project a run of cards belongs to. That
-    // was the role's position before the button existed, so a sync restoring it
-    // is the realistic regression, and asserting the role appears *somewhere*
-    // in the file cannot tell the two apart.
+    // On the label span, not on the row. The row also holds the collapse
+    // control and the new-thread button, and a heading containing either takes
+    // that control's text into its own accessible name. That was the role's
+    // position before those buttons existed, so a sync restoring it onto the
+    // row is the realistic regression, and asserting the role appears
+    // *somewhere* in the file cannot tell the two apart.
     expect(header).toMatch(/<span\s+role="heading"/u);
     const headerRow = /<div\s+data-testid="sidebar-v2-project-group-header"[\s\S]*?>/u.exec(
       header,

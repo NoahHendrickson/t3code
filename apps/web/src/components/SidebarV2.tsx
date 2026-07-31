@@ -29,6 +29,9 @@ import {
   TerminalIcon,
   Trash2Icon,
   Undo2Icon,
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  XIcon,
+  /* fork:end sidebar-v2-draft-rows */
 } from "lucide-react";
 /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
 // A statement of its own rather than a name in upstream's list: the phosphor
@@ -112,6 +115,9 @@ import { projectEnvironment } from "../state/projects";
 import { useEnvironmentQuery } from "../state/query";
 import { useAtomCommand } from "../state/use-atom-command";
 import {
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  buildDraftThreadRouteParams,
+  /* fork:end sidebar-v2-draft-rows */
   buildThreadRouteParams,
   resolveActiveThreadRouteRef,
   resolveThreadRouteTarget,
@@ -177,12 +183,26 @@ import { SidebarV2ProjectGroupHeader } from "~/custom/SidebarV2ProjectGroupHeade
 import {
   buildActiveThreadSections,
   createProjectRefIndex,
+  threadsVisibleInProjectSection,
   UNGROUPED_PROJECT_KEY,
+  useSidebarV2CollapsedProjects,
   useSidebarV2GroupByProject,
 } from "~/custom/sidebarV2ProjectGrouping";
 /* fork:end sidebar-v2-project-grouping */
+/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+import {
+  draftIdByThreadKey as indexDraftIdsByThreadKey,
+  listSidebarDraftRows,
+} from "~/custom/sidebarV2DraftRows";
+/* fork:end sidebar-v2-draft-rows */
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
-import { deriveProviderInstanceEntries, type ProviderInstanceEntry } from "../providerInstances";
+import {
+  deriveProviderInstanceEntries,
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  NO_PROVIDER_MODEL_SELECTION,
+  /* fork:end sidebar-v2-draft-rows */
+  type ProviderInstanceEntry,
+} from "../providerInstances";
 import { primaryServerProvidersAtom } from "../state/server";
 import { useThreadRunningTerminalIds } from "../state/terminalSessions";
 import { stackedThreadToast, toastManager } from "./ui/toast";
@@ -492,6 +512,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   onUnsettle: (threadRef: ScopedThreadRef) => void;
   onSnooze: (threadRef: ScopedThreadRef, preset: SnoozePreset) => void;
   onUnsnooze: (threadRef: ScopedThreadRef) => void;
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  // Drafts sit in the settle slot with an X instead of Check — same hover
+  // cell, no server lifecycle. null on real threads.
+  onDiscardDraft: ((threadRef: ScopedThreadRef) => void) | null;
+  /* fork:end sidebar-v2-draft-rows */
   onChangeRequestState: (threadKey: string, state: "open" | "closed" | "merged" | null) => void;
 }) {
   const {
@@ -500,6 +525,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     onCancelRename,
     onCommitRename,
     onContextMenu,
+    /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+    onDiscardDraft,
+    /* fork:end sidebar-v2-draft-rows */
     onRenameTitleChange,
     onSettle,
     onSnooze,
@@ -760,6 +788,17 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     },
     [onSettle, threadRef],
   );
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  const handleDiscardDraftClick = useCallback(
+    (event: ReactMouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onDiscardDraft?.(threadRef);
+    },
+    [onDiscardDraft, threadRef],
+  );
+  const showDiscardDraft = onDiscardDraft !== null;
+  /* fork:end sidebar-v2-draft-rows */
   const handleUnsettleClick = useCallback(
     (event: ReactMouseEvent) => {
       event.preventDefault();
@@ -834,10 +873,14 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     <span
       className={cn(
         "min-w-0 flex-1 transition-opacity motion-reduce:transition-none",
-        variant === "card" ? "text-xs" : "text-sm",
+        // Card titles own size+leading in threadCardTitleClassName
+        // (0.875rem / 14px). text-xs here used to win the cascade and inject
+        // --text-xs--line-height: 1rem (16px), which grew the title row past
+        // its h-[14px] via flex min-height:auto — the rain then read as 16px.
         variant === "card"
           ? threadCardTitleClassName({ recedes: cardRecedes })
           : cn(
+              "text-sm",
               shouldRecede ? "font-normal" : "font-medium",
               "truncate group-hover/v2-row:text-foreground",
               props.isActive || isWoke
@@ -1015,7 +1058,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   // scrollbar lies about every skipped row. The li carries no padding of its
   // own (the ul's gap-1 is the 4px between cards — fork retune of Figma's
   // 2px), so both values are the drawn card exactly: two lines are
-  // 8 + 16 + 6 + 16 + 8 = 54, and three lines add the meta row's 6 + 15 for 75.
+  // 8 + 14 + 8 + 16 + 8 = 54, and three lines add the meta row's 8 + 15 for 77.
   const showsMetaRow = threadCardShowsMetaRow({
     hasPr: prBadge !== null,
     prUnknown,
@@ -1029,7 +1072,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
       className={cn(
         "list-none [content-visibility:auto]",
         /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
-        showsMetaRow ? "[contain-intrinsic-size:auto_75px]" : "[contain-intrinsic-size:auto_54px]",
+        showsMetaRow ? "[contain-intrinsic-size:auto_77px]" : "[contain-intrinsic-size:auto_54px]",
         /* fork:end sidebar-v2-card-rows */
       )}
     >
@@ -1050,41 +1093,35 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
           }
         >
           {/* Three rows: title, repo, meta. Status leads the title line; repo
-              and meta indent under the title text (16px mark + 8px gap). The
+              and meta indent under the title text (14px mark + 10px gap). The
               trailing cell on the title line holds elapsed time while working
               and the hover actions — status no longer shares that cell, so the
               opacity crossfade hit-path bug cannot return.
 
-              The design draws this at px-4 py-8 over 16px rows (Figma
-              113:3718 Thread card v2); row gap is 6px. Repo/meta indent is
-              24px (16 status + 8 gap). Drawn heights: two-line 54, three-line
-              75; the li adds nothing, so contain-intrinsic-size is those
-              exact values. */}
+              Drawn heights: two-line 54 (8+14+8+16+8), three-line 77; the li
+              adds nothing, so contain-intrinsic-size is those exact values. */}
           {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
               Figma 113:3718: px-4 py-8 (4/8). List pad 8 puts the leading
               status at 12px — same axis as Search and the group folder icon.
-              Row gap is 6px (gap-1.5), not Figma's 4 — retuned live with the
-              8px title gap below: once the prompt moved to the header label's
-              36px axis, the mock's literal 4px read cramped between two 16px
-              text rows. The drawn heights (54/75) and the guards pin this
-              retune, not the Figma literal. */}
-          <div className="relative z-10 flex flex-col gap-1.5 px-1 py-2">
+              Row gap is 8px (gap-2), not Figma's 4 — retuned so the title and
+              branch breathe. Title line is 14px (status + prompt); repo stays
+              16px. Drawn heights (54/77) and the guards pin this retune. */}
+          <div className="relative z-10 flex flex-col gap-2 px-1 py-2">
             {/* fork:end sidebar-v2-card-rows */}
-            {/* 16px, same as the metadata lines — the card draws at 54
-                (8 + 16 + 6 + 16 + 8). The working rain's 3x5 grid is 18px
-                tall; rather than growing the row for it, the SVG's
-                overflow-visible lets it spill 1px into the card's py-2 on
-                each side, where there is nothing to collide with. */}
-            {/* gap-2 (8px): status stays on the 12px axis; the prompt starts
-                at 36px — same as the group header label (24px folder box +
-                4px gap). Figma's title gap was 4px; that put the prompt 4px
-                left of the group name. */}
-            <div className="flex h-4 min-w-0 items-center gap-2">
-              {/* Leading 16px status column. Always present (idle draws the
+            {/* Title line is 14px tall — the card draws at 54
+                (8 + 14 + 8 + 16 + 8). Status mark and title share that
+                height; a 16px line around a 14px rain made the mark look
+                oversized / low against the prompt. */}
+            {/* gap-2.5 (10px): 14px status + 10px gap keeps the prompt at
+                36px — same as the group header label (24px folder box +
+                4px gap). gap-2 would have walked it 2px left. */}
+            <div className="flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5 overflow-hidden">
+              {/* Leading 14px status column. Always present (idle draws the
                   hollow ring) so the title text and the indented rows below
                   share one left edge. pointer-events-none: a mark is never a
-                  target. */}
-              <span className="pointer-events-none flex size-4 shrink-0 items-center justify-center">
+                  target. Explicit px so DevTools / rem remaps cannot leave
+                  this at 16. */}
+              <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
                 {topStatus ? (
                   <>
                     <span role="status" className="sr-only">
@@ -1121,12 +1158,17 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   against whichever child is showing. Status used to live here
                   too; moving it left is what let the indent below line up. */}
               {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */}
-              {/* h-6, not the line's h-4: the hover actions share this cell
-                  and a 24px target cannot fit in a 16px one. The cell is
-                  centred in the 16px line, so it overhangs 4px into the card's
-                  py-2 above and its gap-1.5 below — neither of which carries
+              {/* h-6, not the line's 14px: the hover actions share this cell
+                  and a 24px target cannot fit in a 14px one. The cell is
+                  centred in the title line, so it overhangs into the card's
+                  py-2 above and its gap-2 below — neither of which carries
                   anything to collide with. */}
-              {props.settlementSupported || showSnoozeButton || status === "working" ? (
+              {props.settlementSupported ||
+              showSnoozeButton ||
+              /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+              showDiscardDraft ||
+              /* fork:end sidebar-v2-draft-rows */
+              status === "working" ? (
                 <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
                   {/* fork:end sidebar-v2-row-action-hit-area */}
                   {status === "working" ? (
@@ -1137,7 +1179,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         // actions. When neither action is offered there is
                         // nothing to yield to, and an unconditional fade
                         // blanks the timer on hover with nothing in its place.
-                        (props.settlementSupported || showSnoozeButton) &&
+                        (props.settlementSupported ||
+                          showSnoozeButton ||
+                          /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                          showDiscardDraft) &&
+                          /* fork:end sidebar-v2-draft-rows */
                           "transition-opacity group-hover/v2-row:opacity-0",
                         snoozeMenuOpen && "opacity-0",
                       )}
@@ -1150,7 +1196,11 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       </span>
                     </span>
                   ) : null}
-                  {props.settlementSupported || showSnoozeButton ? (
+                  {props.settlementSupported ||
+                  showSnoozeButton ||
+                  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                  showDiscardDraft ? (
+                    /* fork:end sidebar-v2-draft-rows */
                     <span
                       className={cn(
                         // Zero-width at rest so a settled row's title still runs
@@ -1198,6 +1248,18 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                           <CheckIcon className="size-3" />
                         </button>
                       ) : null}
+                      {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
+                      {showDiscardDraft ? (
+                        <button
+                          type="button"
+                          aria-label="Discard draft"
+                          onClick={handleDiscardDraftClick}
+                          className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                        >
+                          <XIcon className="size-3" />
+                        </button>
+                      ) : null}
+                      {/* fork:end sidebar-v2-draft-rows */}
                     </span>
                   ) : null}
                 </span>
@@ -1263,6 +1325,7 @@ export default function SidebarV2() {
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   const [groupByProject, setGroupByProject] = useSidebarV2GroupByProject();
+  const [collapsedProjectKeys, toggleProjectGroupCollapsed] = useSidebarV2CollapsedProjects();
   /* fork:end sidebar-v2-project-grouping */
   const { settleThread, unsettleThread, snoozeThread, unsnoozeThread, deleteThread } =
     useThreadActions();
@@ -1339,10 +1402,19 @@ export default function SidebarV2() {
   const routeDraftThread = useComposerDraftStore((store) =>
     routeTarget?.kind === "draft" ? store.getDraftSession(routeTarget.draftId) : null,
   );
-  const routeThreadRef = useMemo(
-    () => resolveActiveThreadRouteRef(routeTarget, routeDraftThread),
-    [routeDraftThread, routeTarget],
-  );
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  // Upstream only resolves a draft route after promotion. Unpromoted drafts
+  // still own a reserved thread id — use it so the sidebar card highlights
+  // and keyboard order treat the draft the same as any other open thread.
+  const routeThreadRef = useMemo(() => {
+    const promoted = resolveActiveThreadRouteRef(routeTarget, routeDraftThread);
+    if (promoted) return promoted;
+    if (routeTarget?.kind === "draft" && routeDraftThread) {
+      return scopeThreadRef(routeDraftThread.environmentId, routeDraftThread.threadId);
+    }
+    return null;
+  }, [routeDraftThread, routeTarget]);
+  /* fork:end sidebar-v2-draft-rows */
   const routeThreadKey = routeThreadRef ? scopedThreadKey(routeThreadRef) : null;
   const routeTargetRef = useRef(routeTarget);
   routeTargetRef.current = routeTarget;
@@ -1652,6 +1724,46 @@ export default function SidebarV2() {
   // merging, no optimistic holds. Archived threads remain hidden here —
   // archive keeps its original "remove from sidebar" meaning.
   const serverConfigs = useAtomValue(environmentServerConfigsAtom);
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  const draftThreadsByThreadKey = useComposerDraftStore((store) => store.draftThreadsByThreadKey);
+  const projectDefaultModelByKey = useMemo(
+    () =>
+      new Map(
+        projects.map((project) => [
+          `${project.environmentId}:${project.id}`,
+          project.defaultModelSelection,
+        ]),
+      ),
+    [projects],
+  );
+  const serverThreadKeys = useMemo(
+    () =>
+      new Set(
+        threads.map((thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))),
+      ),
+    [threads],
+  );
+  // Prompt titles are read from getState() on route/shell changes — not
+  // subscribed per keystroke — so typing in the composer does not rebuild the
+  // partition. Leaving the draft (routeThreadKey) is what refreshes the label.
+  const draftRows = useMemo(
+    () =>
+      listSidebarDraftRows({
+        draftsById: draftThreadsByThreadKey,
+        modelSelectionForDraft: (_draftId, draft) =>
+          projectDefaultModelByKey.get(`${draft.environmentId}:${draft.projectId}`) ??
+          NO_PROVIDER_MODEL_SELECTION,
+        promptForDraft: (draftId) =>
+          useComposerDraftStore.getState().getComposerDraft(draftId)?.prompt ?? "",
+        hasServerShell: (threadRef) => serverThreadKeys.has(scopedThreadKey(threadRef)),
+      }),
+    // routeThreadKey: snapshot composer prompts when the open thread changes.
+    [draftThreadsByThreadKey, projectDefaultModelByKey, routeThreadKey, serverThreadKeys],
+  );
+  const draftIdByThreadKey = useMemo(() => indexDraftIdsByThreadKey(draftRows), [draftRows]);
+  const draftIdByThreadKeyRef = useRef(draftIdByThreadKey);
+  draftIdByThreadKeyRef.current = draftIdByThreadKey;
+  /* fork:end sidebar-v2-draft-rows */
   const { activeThreads, snoozedThreads, settledThreads, snoozeNow } = useMemo(() => {
     const now = `${nowMinute}:00.000Z`;
     // Snooze classification uses a REAL clock, not the quantized minute:
@@ -1694,6 +1806,21 @@ export default function SidebarV2() {
         active.push(thread);
       }
     }
+    /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+    // Client-only drafts (plus → /draft/$id) never enter the shell stream
+    // until the first send. Fold them into the active list so the card shows
+    // up under the project the moment the draft exists.
+    for (const row of draftRows) {
+      const shell = row.shell;
+      if (
+        scopedProjectKeys !== null &&
+        !scopedProjectKeys.has(`${shell.environmentId}:${shell.projectId}`)
+      ) {
+        continue;
+      }
+      active.push(shell);
+    }
+    /* fork:end sidebar-v2-draft-rows */
     return {
       activeThreads: sortThreadsForSidebarV2(active),
       // Soonest wake first: "what comes back next" is the shelf's question.
@@ -1708,6 +1835,9 @@ export default function SidebarV2() {
   }, [
     autoSettleAfterDays,
     changeRequestStateByKey,
+    /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+    draftRows,
+    /* fork:end sidebar-v2-draft-rows */
     nowMinute,
     scopedProjectKeys,
     serverConfigs,
@@ -1816,6 +1946,28 @@ export default function SidebarV2() {
       }),
     [activeThreads, groupByProject, projectGroups, projectRefIndex, projectScopeKey],
   );
+  // Collapse filters the paint sequence: a closed group hides its cards, with
+  // the open route thread kept visible so a deep link (or a collapse while
+  // viewing) cannot bury the row you are on — same exception the snoozed shelf
+  // makes. Paint and keyboard order both read this, so they cannot disagree.
+  const visibleActiveSections = useMemo(
+    () =>
+      activeSections.map((section) => {
+        const collapsed =
+          section.header !== null && collapsedProjectKeys.has(section.header.projectKey);
+        return {
+          ...section,
+          threads: threadsVisibleInProjectSection({
+            threads: section.threads,
+            collapsed,
+            keepThread: (thread) =>
+              routeThreadKey !== null &&
+              scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)) === routeThreadKey,
+          }),
+        };
+      }),
+    [activeSections, collapsedProjectKeys, routeThreadKey],
+  );
   // Positional consumers read this: resolveAdjacentThreadId (arrow nav),
   // rangeSelectTo (shift-select) and planForwardNavigation (where you land
   // after settling or snoozing the thread you are viewing). It has to be the
@@ -1824,8 +1976,8 @@ export default function SidebarV2() {
   // misaddress — but they are numbered from this list, so a stale order shows
   // them out of sequence down the screen.
   const orderedActiveThreads = useMemo(
-    () => activeSections.flatMap((section) => section.threads),
-    [activeSections],
+    () => visibleActiveSections.flatMap((section) => section.threads),
+    [visibleActiveSections],
   );
   /* fork:end sidebar-v2-project-grouping */
   const orderedThreads = useMemo(
@@ -1911,6 +2063,16 @@ export default function SidebarV2() {
       if (isMobile) {
         setOpenMobile(false);
       }
+      /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+      const draftId = draftIdByThreadKeyRef.current.get(scopedThreadKey(threadRef));
+      if (draftId) {
+        void router.navigate({
+          to: "/draft/$draftId",
+          params: buildDraftThreadRouteParams(draftId),
+        });
+        return;
+      }
+      /* fork:end sidebar-v2-draft-rows */
       void router.navigate({
         to: "/$environmentId/$threadId",
         params: buildThreadRouteParams(threadRef),
@@ -1922,6 +2084,11 @@ export default function SidebarV2() {
   const [renamingThreadKey, setRenamingThreadKey] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
   const startThreadRename = useCallback((threadRef: ScopedThreadRef, title: string) => {
+    /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+    // Drafts are client-only until the first send; there is no server title
+    // to rename, and the painted label is fixed ("New thread").
+    if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
+    /* fork:end sidebar-v2-draft-rows */
     setRenamingThreadKey(scopedThreadKey(threadRef));
     setRenamingTitle(title);
   }, []);
@@ -2011,10 +2178,79 @@ export default function SidebarV2() {
     [navigateToThread, router],
   );
 
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  // Discard must not reuse planForwardNavigation: that helper's last-card
+  // fallback spawns a fresh draft (correct for settle, wrong here — the user
+  // just deleted one and would appear stuck on "New thread"). Prefer the row
+  // visually below in the painted order, then the row above; never create.
+  //
+  // Await navigation, then clear. Fire-and-forget navigate + sync clear left
+  // us on /draft/$id with a null session; that route's missing-session effect
+  // replaces to `/`, and `_chat.index` immediately handleNewThread's a fresh
+  // draft — so the card animates out and straight back in, still viewing a
+  // draft. replace: true keeps the discarded draft off the back stack.
+  const discardDraftThread = useCallback(
+    (threadRef: ScopedThreadRef) => {
+      void (async () => {
+        const threadKey = scopedThreadKey(threadRef);
+        const draftId = draftIdByThreadKeyRef.current.get(threadKey);
+        if (!draftId) return;
+
+        if (routeThreadKeyRef.current === threadKey) {
+          const orderedKeys = orderedThreadKeysRef.current;
+          const currentIndex = orderedKeys.indexOf(threadKey);
+          const belowKey =
+            currentIndex === -1
+              ? null
+              : (orderedKeys.slice(currentIndex + 1).find((key) => key !== threadKey) ?? null);
+          const aboveKey =
+            currentIndex <= 0
+              ? null
+              : ([...orderedKeys.slice(0, currentIndex)]
+                  .reverse()
+                  .find((key) => key !== threadKey) ?? null);
+          const targetKey = belowKey ?? aboveKey;
+          const nextThread = targetKey ? threadByKeyRef.current.get(targetKey) : null;
+          if (nextThread) {
+            const nextRef = scopeThreadRef(nextThread.environmentId, nextThread.id);
+            const nextKey = scopedThreadKey(nextRef);
+            if (useThreadSelectionStore.getState().selectedThreadKeys.size > 0) {
+              clearSelection();
+            }
+            setSelectionAnchor(nextKey);
+            const nextDraftId = draftIdByThreadKeyRef.current.get(nextKey);
+            if (nextDraftId) {
+              await router.navigate({
+                to: "/draft/$draftId",
+                params: buildDraftThreadRouteParams(nextDraftId),
+                replace: true,
+              });
+            } else {
+              await router.navigate({
+                to: "/$environmentId/$threadId",
+                params: buildThreadRouteParams(nextRef),
+                replace: true,
+              });
+            }
+          } else {
+            await router.navigate({ to: "/", replace: true });
+          }
+        }
+
+        useComposerDraftStore.getState().clearDraftThread(draftId);
+      })();
+    },
+    [clearSelection, router, setSelectionAnchor],
+  );
+  /* fork:end sidebar-v2-draft-rows */
+
   const attemptSettle = useCallback(
     (threadRef: ScopedThreadRef, opts: { coSettlingKeys?: ReadonlySet<string> } = {}) => {
       void (async () => {
         const threadKey = scopedThreadKey(threadRef);
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        if (draftIdByThreadKeyRef.current.has(threadKey)) return;
+        /* fork:end sidebar-v2-draft-rows */
         if (settlingThreadKeysRef.current.has(threadKey)) return;
         settlingThreadKeysRef.current.add(threadKey);
         try {
@@ -2092,6 +2328,9 @@ export default function SidebarV2() {
     ) => {
       void (async () => {
         const threadKey = scopedThreadKey(threadRef);
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        if (draftIdByThreadKeyRef.current.has(threadKey)) return;
+        /* fork:end sidebar-v2-draft-rows */
         if (snoozingThreadKeysRef.current.has(threadKey)) return;
         snoozingThreadKeysRef.current.add(threadKey);
         try {
@@ -2322,6 +2561,19 @@ export default function SidebarV2() {
         const api = readLocalApi();
         if (!api) return;
         const threadKey = scopedThreadKey(threadRef);
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        if (draftIdByThreadKeyRef.current.has(threadKey)) {
+          const clicked = await settlePromise(() =>
+            api.contextMenu.show(
+              [{ id: "discard-draft", label: "Discard draft", destructive: true, icon: "trash" }],
+              position,
+            ),
+          );
+          if (clicked._tag === "Failure" || clicked.value !== "discard-draft") return;
+          discardDraftThread(threadRef);
+          return;
+        }
+        /* fork:end sidebar-v2-draft-rows */
         const selectionState = useThreadSelectionStore.getState();
         if (selectionState.hasSelection() && selectionState.selectedThreadKeys.has(threadKey)) {
           await handleMultiSelectContextMenu(position);
@@ -2520,6 +2772,9 @@ export default function SidebarV2() {
       attemptSnooze,
       attemptUnsettle,
       attemptUnsnooze,
+      /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+      discardDraftThread,
+      /* fork:end sidebar-v2-draft-rows */
       confirmThreadDelete,
       copyBranchToClipboard,
       copyPathToClipboard,
@@ -2751,6 +3006,10 @@ export default function SidebarV2() {
                   const threadKey = scopedThreadKey(
                     scopeThreadRef(thread.environmentId, thread.id),
                   );
+                  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                  // Drafts are not on the server yet — settle/snooze would fail.
+                  const isDraftRow = draftIdByThreadKey.has(threadKey);
+                  /* fork:end sidebar-v2-draft-rows */
                   // Settled and snoozed are the ONLY things that collapse a
                   // row: every other thread is a full card. Density comes
                   // from users (or the auto rules) actually parking work,
@@ -2779,10 +3038,16 @@ export default function SidebarV2() {
                             : "settle"
                       }
                       settlementSupported={
+                        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                        !isDraftRow &&
+                        /* fork:end sidebar-v2-draft-rows */
                         serverConfigs.get(thread.environmentId)?.environment.capabilities
                           .threadSettlement === true
                       }
                       snoozeSupported={
+                        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                        !isDraftRow &&
+                        /* fork:end sidebar-v2-draft-rows */
                         serverConfigs.get(thread.environmentId)?.environment.capabilities
                           .threadSnooze === true
                       }
@@ -2826,6 +3091,9 @@ export default function SidebarV2() {
                       isRenaming={renamingThreadKey === threadKey}
                       renamingTitle={renamingThreadKey === threadKey ? renamingTitle : ""}
                       onContextMenu={handleThreadContextMenu}
+                      /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                      onDiscardDraft={isDraftRow ? discardDraftThread : null}
+                      /* fork:end sidebar-v2-draft-rows */
                       onSettle={attemptSettle}
                       onUnsettle={attemptUnsettle}
                       onSnooze={attemptSnooze}
@@ -2840,39 +3108,47 @@ export default function SidebarV2() {
                 // Flat is the one-headerless-section case, so this is the only
                 // path either way — and it is the same sequence
                 // orderedActiveThreads flattens.
-                const items: ReactNode[] = activeSections.flatMap((section, sectionIndex) => {
-                  // Bound here rather than read off `section.header` inside the
-                  // callback below: the narrowing does not survive into a
-                  // closure, and the key the plus starts a thread from must be
-                  // the one this header was drawn for.
-                  const header = section.header;
-                  return [
-                    ...(header
-                      ? [
-                          <SidebarV2ProjectGroupHeader
-                            key={`project-group-header:${header.projectKey}`}
-                            label={header.displayName}
-                            isFirst={sectionIndex === 0}
-                            // The unresolved-project section names no project,
-                            // so there is nowhere for its plus to start a
-                            // thread. Keyed off the bucket's own identity
-                            // rather than off its label being null: the label
-                            // is a rendering detail that happens to correlate
-                            // today, and one signal carrying two meanings is
-                            // how it stops correlating later.
-                            onNewThread={
-                              header.projectKey === UNGROUPED_PROJECT_KEY
-                                ? undefined
-                                : () => handleNewThreadInProject(header.projectKey)
-                            }
-                          />,
-                        ]
-                      : []),
-                    ...section.threads.map((thread) =>
-                      renderThreadRow(thread, "active", header !== null),
-                    ),
-                  ];
-                });
+                const items: ReactNode[] = visibleActiveSections.flatMap(
+                  (section, sectionIndex) => {
+                    // Bound here rather than read off `section.header` inside the
+                    // callback below: the narrowing does not survive into a
+                    // closure, and the key the plus starts a thread from must be
+                    // the one this header was drawn for.
+                    const header = section.header;
+                    const collapsed =
+                      header !== null && collapsedProjectKeys.has(header.projectKey);
+                    return [
+                      ...(header
+                        ? [
+                            <SidebarV2ProjectGroupHeader
+                              key={`project-group-header:${header.projectKey}`}
+                              label={header.displayName}
+                              isFirst={sectionIndex === 0}
+                              collapsed={collapsed}
+                              onToggleCollapsed={() =>
+                                toggleProjectGroupCollapsed(header.projectKey)
+                              }
+                              // The unresolved-project section names no project,
+                              // so there is nowhere for its plus to start a
+                              // thread. Keyed off the bucket's own identity
+                              // rather than off its label being null: the label
+                              // is a rendering detail that happens to correlate
+                              // today, and one signal carrying two meanings is
+                              // how it stops correlating later.
+                              onNewThread={
+                                header.projectKey === UNGROUPED_PROJECT_KEY
+                                  ? undefined
+                                  : () => handleNewThreadInProject(header.projectKey)
+                              }
+                            />,
+                          ]
+                        : []),
+                      ...section.threads.map((thread) =>
+                        renderThreadRow(thread, "active", header !== null),
+                      ),
+                    ];
+                  },
+                );
                 /* fork:end sidebar-v2-project-grouping */
                 // Snoozed shelf: between the inbox and Settled — out of the
                 // way, never gone. The header always renders while anything

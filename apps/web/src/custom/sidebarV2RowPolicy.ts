@@ -89,18 +89,22 @@ export function threadRowSurfaceClassName(input: {
   );
 }
 
-/** A card title's colour. Hover restores a receded title, which is what keeps
-    the dimming reading as depth rather than as a disabled row. Weight is the
-    design's body/sm — Regular for every status (Figma 113:724 draws no medium
-    titles); the colour alone carries the receded/forward distinction.
-    Receded titles use `--fork-sidebar-card-title-receded` (dark panel) rather
-    than `--muted-foreground`, so lifting title brightness does not re-derive
-    meta /70, shelf ghosts, or unread encoding that were calibrated against
+/** A card title's colour and size. Hover restores a receded title, which is
+    what keeps the dimming reading as depth rather than as a disabled row.
+    Weight is Regular for every status (Figma 113:724 draws no medium titles);
+    the colour alone carries the receded/forward distinction. Size is
+    0.875rem (14px) — explicit, not `text-sm`, so the panel's --text-sm remap
+    to 13px cannot shrink it. Receded titles use
+    `--fork-sidebar-card-title-receded` (dark panel) rather than
+    `--muted-foreground`, so lifting title brightness does not re-derive meta
+    /70, shelf ghosts, or unread encoding that were calibrated against
     upstream's dimmer muted channel. Light mode falls through to
     `--muted-foreground` via the var fallback. */
 export function threadCardTitleClassName(input: { readonly recedes: boolean }): string {
   return cn(
-    "truncate font-normal",
+    // leading-[14px] matches the 14px status slot — leading-4 (16px) made the
+    // title line box taller than the rain and read as the mark hanging low.
+    "truncate text-[0.875rem] leading-[14px] font-normal",
     input.recedes
       ? "text-[color:var(--fork-sidebar-card-title-receded,var(--muted-foreground))] group-hover/v2-row:text-foreground"
       : "text-foreground",
