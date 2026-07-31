@@ -124,6 +124,18 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(threadCardTitleClassName({ recedes: false })).not.toContain("font-medium");
   });
 
+  it("lifts receded titles via a dedicated token, not the shared muted channel", () => {
+    // Done/Idle titles read --fork-sidebar-card-title-receded so meta /70 and
+    // shelf unread encoding keep calibrating against upstream
+    // --muted-foreground. Falling back to text-muted-foreground alone would
+    // quietly undo the title lift; lifting --muted-foreground itself would
+    // re-derive every tinted muted consumer.
+    const receded = threadCardTitleClassName({ recedes: true });
+    expect(receded).toContain("--fork-sidebar-card-title-receded");
+    expect(receded).not.toMatch(/(?:^|\s)text-muted-foreground(?:\/|\s|$)/u);
+    expect(threadCardTitleClassName({ recedes: false })).toContain("text-foreground");
+  });
+
   it("keeps row presentation policy out of the megacomponent", () => {
     // The policy is pure and fork-owned, so SidebarV2 carries call sites rather
     // than the rules. Inlining it back is the regression this catches.
@@ -202,6 +214,15 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // And the choice is made from the same predicate the component renders
     // from, so the hint cannot drift from the row count it describes.
     expect(sidebarV2).toContain("threadCardShowsMetaRow({");
+  });
+
+  it("spaces cards 4px apart on the list, not Figma's 2px", () => {
+    // The ul's gap is the only vertical space between cards (and between a
+    // group header and its first card). Figma drew 2px (gap-0.5); the fork
+    // retunes to 4px (gap-1) for breathing room on the lifted panel. A sync
+    // that restores gap-0.5 would quietly tighten the list again.
+    expect(sidebarV2).toContain('className="flex flex-col gap-1"');
+    expect(sidebarV2).not.toContain('className="flex flex-col gap-0.5"');
   });
 
   it("binds diff counts to semantic tokens rather than palette literals", () => {

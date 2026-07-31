@@ -308,7 +308,8 @@
     selection), per the component set — Working, Approval, Input and Failed
     keep the foreground title. Every title is the design's Regular body/sm
     weight; colour alone carries the receded/forward distinction, which is
-    why the card's --muted-foreground must stay upstream's dim value (see
+    why receded titles use --fork-sidebar-card-title-receded (#c0c0c0) rather
+    than lifting the shared --muted-foreground channel (see
     fork-surface-palette). A card's surface reads the same Done/Idle
     predicate as its title (`cardRecedes`); upstream's shouldRecede survives
     for the slim shelves only, where brightness still encodes unread-ness —
@@ -335,8 +336,9 @@
     8px so the prompt lines up with the group header label (24px folder +
     4px gap); repo/meta indent 24px (16 status + 8 gap). Row gap is 6px
     (gap-1.5), not Figma's 4.
-    Cards sit 2px apart — the list ul's gap-0.5; the li itself carries no
-    padding. List pad 8 puts the leading status at 12px — the same axis as
+    Cards sit 4px apart — the list ul's gap-1 (fork retune of Figma's 2px /
+    gap-0.5, for breathing room on the lifted panel); the li itself carries
+    no padding. List pad 8 puts the leading status at 12px — the same axis as
     Search and the group folder icon. contain-intrinsic-size is 54 / 75, the
     drawn card exactly. Branch and runtime glyphs are 16px; the model label
     is caption 11/15 on either line it lands on.
@@ -572,11 +574,11 @@
     The header has no own horizontal pad — the list's 8px is the edge. The
     folder sits in a 24px box so its 16px glyph centres on the same 12px axis as
     Search and each card's status; gap-1 to the label (FolderOpen at
-    icon tint, the label at foreground — Figma 113:3718 Frame 48); 2px to the
-    first card via the list ul's gap-0.5, and mt-3.5 plus that gap makes the
-    design's 16px between groups. The trailing plus takes no nudge: with no
-    row padding to compensate for, a flush 24px button already centres on the
-    trailing axis.
+    icon tint, the label at foreground — Figma 113:3718 Frame 48); 4px to the
+    first card via the list ul's gap-1 (fork retune of Figma's 2px), and
+    mt-3.5 plus that gap makes 18px between groups. The trailing plus takes
+    no nudge: with no row padding to compensate for, a flush 24px button
+    already centres on the trailing axis.
 
     The ref index is memoized on the project list alone; the thread list churns
     on the clock, capability descriptors and per-row PR states, none of which
@@ -708,12 +710,12 @@
     reads in front of the work surface. Borders are #2d2e2e, row hover #262626,
     row selected and route-active #2a2a2a. Chrome muted text
     (--sidebar-muted-foreground) is #e0e0e0 (not upstream's #a3a3a3) so
-    Search / scope / project headers stay readable — and ONLY that token: the
-    thread cards read --muted-foreground, which stays upstream's, because a
-    receded card title is text-muted-foreground against a text-foreground
-    forward one and lifting it to #e0e0e0 collapses that distinction to
-    ~1.19:1. The guard asserts the panel block does not override
-    --muted-foreground at all.
+    Search / scope / project headers stay readable — and ONLY that shared
+    chrome token: the cards' --muted-foreground stays upstream's #a3a3a3 so
+    meta /70, shelf ghosts, and unread encoding keep their calibration.
+    Done/Idle *titles* alone lift via --fork-sidebar-card-title-receded
+    (#c0c0c0), still below chrome and foreground (#f1f3f7); lifting titles
+    to #e0e0e0 collapsed the receded/forward distinction to ~1.19:1.
 
     The stage stays near upstream's pre-paint / overscroll colour (#161616 in
     apps/web/index.html) so the load flash and rubber-band band do not seam
@@ -744,6 +746,38 @@
     - apps/web/index.html
   verify:
     - apps/web/src/__fork_guards__/forkSurfacePalette.test.ts
+
+- id: fork-sidebar-type-size
+  intent: >
+    Sidebar V2 body type is 0.8125rem (13px at the default root). The panel
+    remaps Tailwind's --text-xs and --text-sm (and their --line-height
+    companions) to 0.8125rem / 1rem so every text-xs and text-sm consumer
+    inside the panel — Search, scope, project headers, card titles, slim
+    shelves — shares one size without rewriting each className. Rem, not px:
+    a px pin would freeze the sidebar while h-4 and the rest of the app still
+    honour the browser font-size setting. Line-height stays 1rem so the card's
+    h-4 rows scale with the type. Literal captions (text-[11px], text-[10px]
+    for meta, ⌘K, elapsed) stay at their drawn sizes. Scoped to
+    [data-sidebar-version="v2"] under the fork marker; light and dark share
+    the size. Portaled menus outside the panel keep upstream sizes.
+
+    The remap depends on two upstream facts the drift job must watch:
+    apps/web/src/index.css (text scale must stay non-inline @theme so
+    utilities emit var(--text-xs); moving it into this repo's @theme inline
+    block would bake the values and silently ignore the override — the same
+    failure geist-typography documents), and
+    apps/web/src/components/AppSidebarLayout.tsx (sole site rendering
+    data-sidebar-version; dropping the attribute makes the selector match
+    nothing).
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/index.css
+    - apps/web/src/components/AppSidebarLayout.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkSidebarTypeSize.test.ts
 
 - id: fork-sidebar-chrome
   intent: >
