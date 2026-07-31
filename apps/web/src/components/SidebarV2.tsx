@@ -2206,9 +2206,7 @@ export default function SidebarV2() {
           const aboveKey =
             currentIndex <= 0
               ? null
-              : ([...orderedKeys.slice(0, currentIndex)]
-                  .reverse()
-                  .find((key) => key !== threadKey) ?? null);
+              : (orderedKeys.slice(0, currentIndex).findLast((key) => key !== threadKey) ?? null);
           const targetKey = belowKey ?? aboveKey;
           const nextThread = targetKey ? threadByKeyRef.current.get(targetKey) : null;
           if (nextThread) {
