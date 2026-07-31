@@ -73,7 +73,10 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // the same value, so they cannot come to disagree.
     expect(render).toContain("const header = section.header;");
     expect(render).toContain('renderThreadRow(thread, "active", header !== null)');
-    expect(render).toContain("collapsed={collapsed}");
+    // collapsed is decided once in visibleActiveSections and carried on the
+    // section — recomputing membership here would drift from the filter.
+    expect(render).toContain("collapsed={section.collapsed}");
+    expect(render).not.toContain("collapsedProjectKeys.has(header.projectKey)");
     expect(render).toContain("onToggleCollapsed=");
   });
 

@@ -101,3 +101,38 @@ export function draftIdByThreadKey(
     ]),
   );
 }
+
+/** Row-kind capabilities at the list boundary — one boolean, not four gates. */
+export function sidebarDraftRowCapabilities(isDraft: boolean): {
+  readonly canSettle: boolean;
+  readonly canSnooze: boolean;
+  readonly canRename: boolean;
+  readonly showDiscard: boolean;
+} {
+  return {
+    canSettle: !isDraft,
+    canSnooze: !isDraft,
+    canRename: !isDraft,
+    showDiscard: isDraft,
+  };
+}
+
+/**
+ * Next painted key after discarding the open draft: the row below, else the
+ * row above. No wrap, no spawn — settle's last-card path creates a draft,
+ * which is the opposite of what discard wants.
+ */
+export function pickDiscardNeighborKey(input: {
+  readonly orderedKeys: readonly string[];
+  readonly currentKey: string;
+}): string | null {
+  const currentIndex = input.orderedKeys.indexOf(input.currentKey);
+  if (currentIndex === -1) return null;
+  const below =
+    input.orderedKeys.slice(currentIndex + 1).find((key) => key !== input.currentKey) ?? null;
+  if (below) return below;
+  if (currentIndex <= 0) return null;
+  return (
+    input.orderedKeys.slice(0, currentIndex).findLast((key) => key !== input.currentKey) ?? null
+  );
+}

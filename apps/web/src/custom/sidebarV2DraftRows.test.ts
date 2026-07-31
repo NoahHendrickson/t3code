@@ -8,6 +8,8 @@ import {
   buildSidebarDraftShell,
   draftIdByThreadKey,
   listSidebarDraftRows,
+  pickDiscardNeighborKey,
+  sidebarDraftRowCapabilities,
   sidebarDraftTitleFromPrompt,
 } from "./sidebarV2DraftRows";
 
@@ -103,5 +105,45 @@ describe("draftIdByThreadKey", () => {
     });
     const map = draftIdByThreadKey(rows);
     expect(map.get("env-local:thread-draft")).toBe("draft-1");
+  });
+});
+
+describe("sidebarDraftRowCapabilities", () => {
+  it("gates server actions and offers discard only for drafts", () => {
+    expect(sidebarDraftRowCapabilities(true)).toEqual({
+      canSettle: false,
+      canSnooze: false,
+      canRename: false,
+      showDiscard: true,
+    });
+    expect(sidebarDraftRowCapabilities(false)).toEqual({
+      canSettle: true,
+      canSnooze: true,
+      canRename: true,
+      showDiscard: false,
+    });
+  });
+});
+
+describe("pickDiscardNeighborKey", () => {
+  it("prefers the painted row below, then above, and never wraps", () => {
+    expect(
+      pickDiscardNeighborKey({
+        orderedKeys: ["a", "b", "c"],
+        currentKey: "b",
+      }),
+    ).toBe("c");
+    expect(
+      pickDiscardNeighborKey({
+        orderedKeys: ["a", "b", "c"],
+        currentKey: "c",
+      }),
+    ).toBe("b");
+    expect(
+      pickDiscardNeighborKey({
+        orderedKeys: ["only"],
+        currentKey: "only",
+      }),
+    ).toBeNull();
   });
 });

@@ -195,6 +195,8 @@ import {
 import {
   draftIdByThreadKey as indexDraftIdsByThreadKey,
   listSidebarDraftRows,
+  pickDiscardNeighborKey,
+  sidebarDraftRowCapabilities,
 } from "~/custom/sidebarV2DraftRows";
 /* fork:end sidebar-v2-draft-rows */
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
@@ -800,6 +802,7 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     [onDiscardDraft, threadRef],
   );
   const showDiscardDraft = onDiscardDraft !== null;
+  const hasHoverActions = props.settlementSupported || showSnoozeButton || showDiscardDraft;
   /* fork:end sidebar-v2-draft-rows */
   const handleUnsettleClick = useCallback(
     (event: ReactMouseEvent) => {
@@ -1169,10 +1172,8 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   centred in the title line, so it overhangs into the card's
                   py-2 above and its gap-2 below — neither of which carries
                   anything to collide with. */}
-              {props.settlementSupported ||
-              showSnoozeButton ||
-              /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-              showDiscardDraft ||
+              {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
+              {hasHoverActions ||
               /* fork:end sidebar-v2-draft-rows */
               status === "working" ? (
                 <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
@@ -1185,10 +1186,8 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         // actions. When neither action is offered there is
                         // nothing to yield to, and an unconditional fade
                         // blanks the timer on hover with nothing in its place.
-                        (props.settlementSupported ||
-                          showSnoozeButton ||
-                          /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-                          showDiscardDraft) &&
+                        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                        hasHoverActions &&
                           /* fork:end sidebar-v2-draft-rows */
                           "transition-opacity group-hover/v2-row:opacity-0",
                         snoozeMenuOpen && "opacity-0",
@@ -1202,10 +1201,8 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                       </span>
                     </span>
                   ) : null}
-                  {props.settlementSupported ||
-                  showSnoozeButton ||
-                  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-                  showDiscardDraft ? (
+                  {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
+                  {hasHoverActions ? (
                     /* fork:end sidebar-v2-draft-rows */
                     <span
                       className={cn(
@@ -1963,6 +1960,7 @@ export default function SidebarV2() {
           section.header !== null && collapsedProjectKeys.has(section.header.projectKey);
         return {
           ...section,
+          collapsed,
           threads: threadsVisibleInProjectSection({
             threads: section.threads,
             collapsed,
@@ -2061,7 +2059,7 @@ export default function SidebarV2() {
   // history stays readable without un-settling, and sending a message or
   // starting a session un-settles server-side.
   const navigateToThread = useCallback(
-    (threadRef: ScopedThreadRef) => {
+    async (threadRef: ScopedThreadRef, opts?: { readonly replace?: boolean }) => {
       if (useThreadSelectionStore.getState().selectedThreadKeys.size > 0) {
         clearSelection();
       }
@@ -2072,16 +2070,18 @@ export default function SidebarV2() {
       /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
       const draftId = draftIdByThreadKeyRef.current.get(scopedThreadKey(threadRef));
       if (draftId) {
-        void router.navigate({
+        await router.navigate({
           to: "/draft/$draftId",
           params: buildDraftThreadRouteParams(draftId),
+          replace: opts?.replace,
         });
         return;
       }
       /* fork:end sidebar-v2-draft-rows */
-      void router.navigate({
+      await router.navigate({
         to: "/$environmentId/$threadId",
         params: buildThreadRouteParams(threadRef),
+        replace: opts?.replace,
       });
     },
     [clearSelection, isMobile, router, setOpenMobile, setSelectionAnchor],
@@ -2186,15 +2186,10 @@ export default function SidebarV2() {
 
   /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
   // Discard must not reuse planForwardNavigation: that helper's last-card
-  // fallback spawns a fresh draft (correct for settle, wrong here — the user
-  // just deleted one and would appear stuck on "New thread"). Prefer the row
-  // visually below in the painted order, then the row above; never create.
-  //
-  // Await navigation, then clear. Fire-and-forget navigate + sync clear left
-  // us on /draft/$id with a null session; that route's missing-session effect
-  // replaces to `/`, and `_chat.index` immediately handleNewThread's a fresh
-  // draft — so the card animates out and straight back in, still viewing a
-  // draft. replace: true keeps the discarded draft off the back stack.
+  // fallback spawns a fresh draft (correct for settle, wrong here). Neighbor
+  // pick lives in pickDiscardNeighborKey; navigation reuses navigateToThread
+  // with replace. Await then clear — sync clear while still on /draft/$id
+  // races the missing-session redirect into a fresh draft.
   const discardDraftThread = useCallback(
     (threadRef: ScopedThreadRef) => {
       void (async () => {
@@ -2203,39 +2198,15 @@ export default function SidebarV2() {
         if (!draftId) return;
 
         if (routeThreadKeyRef.current === threadKey) {
-          const orderedKeys = orderedThreadKeysRef.current;
-          const currentIndex = orderedKeys.indexOf(threadKey);
-          const belowKey =
-            currentIndex === -1
-              ? null
-              : (orderedKeys.slice(currentIndex + 1).find((key) => key !== threadKey) ?? null);
-          const aboveKey =
-            currentIndex <= 0
-              ? null
-              : (orderedKeys.slice(0, currentIndex).findLast((key) => key !== threadKey) ?? null);
-          const targetKey = belowKey ?? aboveKey;
+          const targetKey = pickDiscardNeighborKey({
+            orderedKeys: orderedThreadKeysRef.current,
+            currentKey: threadKey,
+          });
           const nextThread = targetKey ? threadByKeyRef.current.get(targetKey) : null;
           if (nextThread) {
-            const nextRef = scopeThreadRef(nextThread.environmentId, nextThread.id);
-            const nextKey = scopedThreadKey(nextRef);
-            if (useThreadSelectionStore.getState().selectedThreadKeys.size > 0) {
-              clearSelection();
-            }
-            setSelectionAnchor(nextKey);
-            const nextDraftId = draftIdByThreadKeyRef.current.get(nextKey);
-            if (nextDraftId) {
-              await router.navigate({
-                to: "/draft/$draftId",
-                params: buildDraftThreadRouteParams(nextDraftId),
-                replace: true,
-              });
-            } else {
-              await router.navigate({
-                to: "/$environmentId/$threadId",
-                params: buildThreadRouteParams(nextRef),
-                replace: true,
-              });
-            }
+            await navigateToThread(scopeThreadRef(nextThread.environmentId, nextThread.id), {
+              replace: true,
+            });
           } else {
             await router.navigate({ to: "/", replace: true });
           }
@@ -2244,7 +2215,7 @@ export default function SidebarV2() {
         useComposerDraftStore.getState().clearDraftThread(draftId);
       })();
     },
-    [clearSelection, router, setSelectionAnchor],
+    [navigateToThread, router],
   );
   /* fork:end sidebar-v2-draft-rows */
 
@@ -3012,7 +2983,7 @@ export default function SidebarV2() {
                   );
                   /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
                   // Drafts are not on the server yet — settle/snooze would fail.
-                  const isDraftRow = draftIdByThreadKey.has(threadKey);
+                  const draftCaps = sidebarDraftRowCapabilities(draftIdByThreadKey.has(threadKey));
                   /* fork:end sidebar-v2-draft-rows */
                   // Settled and snoozed are the ONLY things that collapse a
                   // row: every other thread is a full card. Density comes
@@ -3043,14 +3014,14 @@ export default function SidebarV2() {
                       }
                       settlementSupported={
                         /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-                        !isDraftRow &&
+                        draftCaps.canSettle &&
                         /* fork:end sidebar-v2-draft-rows */
                         serverConfigs.get(thread.environmentId)?.environment.capabilities
                           .threadSettlement === true
                       }
                       snoozeSupported={
                         /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-                        !isDraftRow &&
+                        draftCaps.canSnooze &&
                         /* fork:end sidebar-v2-draft-rows */
                         serverConfigs.get(thread.environmentId)?.environment.capabilities
                           .threadSnooze === true
@@ -3096,7 +3067,7 @@ export default function SidebarV2() {
                       renamingTitle={renamingThreadKey === threadKey ? renamingTitle : ""}
                       onContextMenu={handleThreadContextMenu}
                       /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-                      onDiscardDraft={isDraftRow ? discardDraftThread : null}
+                      onDiscardDraft={draftCaps.showDiscard ? discardDraftThread : null}
                       /* fork:end sidebar-v2-draft-rows */
                       onSettle={attemptSettle}
                       onUnsettle={attemptUnsettle}
@@ -3119,8 +3090,6 @@ export default function SidebarV2() {
                     // closure, and the key the plus starts a thread from must be
                     // the one this header was drawn for.
                     const header = section.header;
-                    const collapsed =
-                      header !== null && collapsedProjectKeys.has(header.projectKey);
                     return [
                       ...(header
                         ? [
@@ -3128,7 +3097,7 @@ export default function SidebarV2() {
                               key={`project-group-header:${header.projectKey}`}
                               label={header.displayName}
                               isFirst={sectionIndex === 0}
-                              collapsed={collapsed}
+                              collapsed={section.collapsed}
                               onToggleCollapsed={() =>
                                 toggleProjectGroupCollapsed(header.projectKey)
                               }

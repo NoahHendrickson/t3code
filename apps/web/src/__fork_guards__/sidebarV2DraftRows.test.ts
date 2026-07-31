@@ -42,29 +42,39 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
   });
 
   it("keeps settle/snooze/rename off drafts and offers discard", () => {
-    expect(sidebar).toContain("const isDraftRow = draftIdByThreadKey.has(threadKey)");
-    expect(sidebar).toContain("!isDraftRow &&");
+    // Capabilities from one helper at the list boundary — not four gates.
+    expect(sidebar).toContain("sidebarDraftRowCapabilities(");
+    expect(sidebar).toContain("draftCaps.canSettle &&");
+    expect(sidebar).toContain("draftCaps.canSnooze &&");
+    expect(sidebar).toContain("onDiscardDraft={draftCaps.showDiscard ? discardDraftThread : null}");
     expect(sidebar).toContain('id: "discard-draft"');
     expect(sidebar).toContain("discardDraftThread");
     expect(sidebar).toContain('aria-label="Discard draft"');
-    expect(sidebar).toContain("onDiscardDraft={isDraftRow ? discardDraftThread : null}");
     expect(sidebar).toContain(
       "if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;",
     );
-    // Prefer the painted row below; never spawn a replacement draft.
-    expect(sidebar).toContain("orderedKeys.slice(currentIndex + 1)");
+    // Neighbor pick is pure; navigate reuses navigateToThread({ replace }).
+    expect(sidebar).toContain("pickDiscardNeighborKey({");
+    expect(sidebar).toContain("await navigateToThread(");
     expect(sidebar).not.toMatch(/discardDraftThread[\s\S]{0,800}handleNewThreadRef\.current/u);
-    // Await next route, then clear — sync clear races `/` → index new-draft.
     const discardStart = sidebar.indexOf("const discardDraftThread = useCallback(");
     expect(discardStart).toBeGreaterThanOrEqual(0);
     const discardBody = sidebar.slice(
       discardStart,
       sidebar.indexOf("/* fork:end sidebar-v2-draft-rows */", discardStart),
     );
-    expect(discardBody).toContain("await router.navigate(");
     expect(discardBody).toContain("replace: true");
-    expect(discardBody.indexOf("await router.navigate(")).toBeLessThan(
+    expect(discardBody.indexOf("await navigateToThread(")).toBeLessThan(
       discardBody.indexOf("clearDraftThread(draftId)"),
     );
+  });
+
+  it("computes trailing hover actions once on the card", () => {
+    expect(sidebar).toContain(
+      "const hasHoverActions =\n    props.settlementSupported || showSnoozeButton || showDiscardDraft;",
+    );
+    expect(sidebar).toContain("hasHoverActions ||");
+    expect(sidebar).toContain("hasHoverActions &&");
+    expect(sidebar).toContain("{hasHoverActions ? (");
   });
 });

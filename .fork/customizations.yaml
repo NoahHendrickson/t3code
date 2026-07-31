@@ -343,15 +343,15 @@
     Cards sit 4px apart — the list ul's gap-1 (fork retune of Figma's 2px /
     gap-0.5, for breathing room on the lifted panel); the li itself carries
     no padding. List pad 8 puts the leading status at 12px — the same axis as
-    Search and the group folder icon. contain-intrinsic-size is 56 / 79, the
-    drawn card exactly. Branch and runtime glyphs are 14px; the runtime mark
-    sits in a 24px box flush with the card edge so it shares the settle/
-    discard centre on the trailing axis (a lone 14px + pr-[3px] was 2px
-    off once actions grew to size-6). The model label is caption 11/15 on
-    either line it lands on. The branch/worktree cluster (mark plus name)
-    reads at text-foreground/70 — closer to the title than the surrounding
-    muted-foreground/70 meta — so the checkout stays legible without
-    matching the prompt.
+    Search and the group folder icon. contain-intrinsic-size is 54 / 77 —
+    the drawn card exactly (same as the heights above). Branch and runtime
+    glyphs are 14px; the runtime mark sits in a 24px box flush with the
+    card edge so it shares the settle/discard centre on the trailing axis
+    (a lone 14px + pr-[3px] was 2px off once actions grew to size-6). The
+    model label is caption 11/15 on either line it lands on. The
+    branch/worktree cluster (mark plus name) reads at text-foreground/70 —
+    closer to the title than the surrounding muted-foreground/70 meta —
+    so the checkout stays legible without matching the prompt.
 
     A card is three lines only when it has a PR or a diff for the third, or does
     not yet know whether it has a PR; with a known-empty third line the model and
@@ -363,7 +363,7 @@
     closing the row up. The li's contain-intrinsic-size is chosen by the same
     predicate the component renders from, so it can never claim a height the row
     does not have, and it measures the li — which carries no padding of its own,
-    so the hints equal the drawn heights of 56 and 79. Retune the card's
+    so the hints equal the drawn heights of 54 and 77. Retune the card's
     vertical padding or row gap and both hints move with it, or the scrollbar
     misreports every skipped row by the difference.
 
