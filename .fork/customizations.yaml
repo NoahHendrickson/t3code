@@ -55,7 +55,7 @@
     a fenced per-test timeout raise rather than a product change, because the
     underlying cost is upstream's to fix and diverging in hot upstream logic
     buys a conflict on every sync. Current carrier:
-    stashImageCompression.test.ts's give-up path (~15 encodes of an 8 MB stub
+    imageCompression.test.ts's give-up path (~15 encodes of an 8 MB stub
     through chunked base64 — deterministic work, not flake). No guard asserts
     these hunks; losing one turns CI red by itself, which is the enforcement.
   tier: 4
@@ -63,7 +63,7 @@
   shadows: []
   watch:
     - .github/workflows/ci.yml
-    - apps/web/src/lib/stashImageCompression.test.ts
+    - apps/web/src/lib/imageCompression.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
@@ -296,7 +296,11 @@
     fixed corners — PR number and diff counts on the left, model label and
     runtime glyph on the right. Splitting repo from meta is the point: the two
     things you compare across rows, what a thread is and how big it got, are
-    then always at the same x.
+    then always at the same x. Upstream's terminal-status glyph (#4712) rides
+    the repo line after the branch cluster, handed in pre-built as a required
+    `terminalSlot` — required like `prSlot`, so a sync resolution that drops
+    the call-site line fails the typecheck instead of silently un-porting the
+    feature from the card variant.
 
     Surface encodes interaction and nothing else. A row is filled on hover and
     when selected or routed to; it is never filled because of its status.
@@ -1249,7 +1253,7 @@
     file is force-added past .gitignore's .env* rule on purpose: tracked
     files are exempt from ignore rules, and upstream never ships a .env, so
     a sync can never conflict with it. The values are public identifiers,
-    not secrets (docs/cloud/t3-connect-clerk.md) — the same ones baked into
+    not secrets (docs/internals/t3-connect.md) — the same ones baked into
     every official artifact; they were read from the published npm CLI
     (t3@0.0.30). The .env must never grow server-side secrets or tokens; the
     guard pins its key set to exactly these four so secret creep fails CI.

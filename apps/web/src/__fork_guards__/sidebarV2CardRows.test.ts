@@ -45,6 +45,18 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     }
   });
 
+  it("keeps upstream's terminal-status glyph on the card's repo line", () => {
+    // Ported from upstream #4712: the slim row renders `terminalStatusIcon`
+    // directly, the card hands it to the fork-owned meta component as a slot.
+    // The slot is required, so the typecheck catches a dropped prop — this
+    // pins what the type cannot: that the call site passes the real glyph
+    // rather than a placating `null`, and that the component actually renders
+    // its slot instead of accepting and discarding it.
+    expect(sidebarV2).toContain("terminalSlot={terminalStatusIcon}");
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).toContain("props.terminalSlot");
+  });
+
   it("marks a thread that runs in a worktree of its own", () => {
     // The mark replaces the branch mark rather than joining it, so losing the
     // prop does not empty a slot — it silently draws every worktree thread as

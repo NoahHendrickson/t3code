@@ -49,6 +49,7 @@ import {
   ArrowsInLineVertical as PhArrowsInLineVertical,
   ArrowsInSimple as PhArrowsInSimple,
   ArrowsOutSimple as PhArrowsOutSimple,
+  BatteryEmpty as PhBatteryEmpty,
   BellSlash as PhBellSlash,
   BookmarkSimple as PhBookmarkSimple,
   BoxArrowUp as PhBoxArrowUp,
@@ -73,8 +74,10 @@ import {
   Code as PhCode,
   Columns as PhColumns,
   Copy as PhCopy,
+  Cpu as PhCpu,
   Cursor as PhCursor,
   CursorClick as PhCursorClick,
+  Database as PhDatabase,
   DeviceMobile as PhDeviceMobile,
   DotsThree as PhDotsThree,
   DotsThreeVertical as PhDotsThreeVertical,
@@ -90,6 +93,7 @@ import {
   FolderDashed as PhFolderDashed,
   FolderOpen as PhFolderOpen,
   FolderPlus as PhFolderPlus,
+  Gauge as PhGauge,
   Gear as PhGear,
   GearSix as PhGearSix,
   GitBranch as PhGitBranch,
@@ -100,6 +104,7 @@ import {
   Globe as PhGlobe,
   GlobeHemisphereWest as PhGlobeHemisphereWest,
   Hammer as PhHammer,
+  HardDrive as PhHardDrive,
   HardDrives as PhHardDrives,
   Info as PhInfo,
   Keyboard as PhKeyboard,
@@ -111,6 +116,7 @@ import {
   Lock as PhLock,
   LockOpen as PhLockOpen,
   MagnifyingGlass as PhMagnifyingGlass,
+  Memory as PhMemory,
   Minus as PhMinus,
   Monitor as PhMonitor,
   NotePencil as PhNotePencil,
@@ -124,6 +130,7 @@ import {
   PlugsConnected as PhPlugsConnected,
   Plus as PhPlus,
   PlusCircle as PhPlusCircle,
+  Pulse as PhPulse,
   QrCode as PhQrCode,
   Robot as PhRobot,
   Rows as PhRows,
@@ -304,6 +311,21 @@ export const KeyboardIcon = icon("keyboard", PhKeyboard, "duotone");
 export const MonitorIcon = icon("monitor", PhMonitor, "duotone");
 export const LaptopIcon = icon("laptop", PhLaptop, "duotone");
 export const SmartphoneIcon = icon("smartphone", PhDeviceMobile, "duotone");
+// Resource telemetry diagnostics (upstream #2679). Pulse is Phosphor's
+// activity waveform — a pure line glyph, so it takes `bold` per this file's
+// no-enclosed-area rule; duotone weight would thin the stroke, not fill it.
+// Lucide's Battery is an empty body with no charge bars, and its one call
+// site is the "Host state" *section header* over rows that report the real
+// power source — so BatteryEmpty, the matching bare-body glyph; any
+// bar-carrying variant would read as a charge level where none is meant.
+// MemoryStick maps to Memory (a RAM chip).
+export const ActivityIcon = icon("activity", PhPulse, "bold");
+export const BatteryIcon = icon("battery", PhBatteryEmpty, "duotone");
+export const CpuIcon = icon("cpu", PhCpu, "duotone");
+export const DatabaseIcon = icon("database", PhDatabase, "duotone");
+export const GaugeIcon = icon("gauge", PhGauge, "duotone");
+export const HardDriveIcon = icon("hard-drive", PhHardDrive, "duotone");
+export const MemoryStickIcon = icon("memory-stick", PhMemory, "duotone");
 export const BotIcon = icon("bot", PhRobot, "duotone");
 export const SparklesIcon = icon("sparkles", PhSparkle, "duotone");
 export const ZapIcon = icon("zap", PhLightning, "duotone");

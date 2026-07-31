@@ -6,6 +6,7 @@ import { SidebarV2ThreadCardMeta } from "./SidebarV2ThreadCardMeta";
 const base = {
   projectTitle: "alpha-service",
   branch: "main",
+  terminalSlot: null,
   prSlot: null,
   insertions: null,
   deletions: null,
