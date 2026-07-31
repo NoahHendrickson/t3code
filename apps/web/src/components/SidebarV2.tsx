@@ -802,7 +802,6 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     [onDiscardDraft, threadRef],
   );
   const showDiscardDraft = onDiscardDraft !== null;
-  const hasHoverActions = props.settlementSupported || showSnoozeButton || showDiscardDraft;
   /* fork:end sidebar-v2-draft-rows */
   const handleUnsettleClick = useCallback(
     (event: ReactMouseEvent) => {
@@ -833,6 +832,10 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   // on blocked-on-you work or queued turns (the server rejects both).
   const showSnoozeButton =
     props.snoozeSupported && canSnooze(thread, { now: new Date().toISOString() });
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  // After showSnoozeButton — using it above its declaration fails typecheck.
+  const hasHoverActions = props.settlementSupported || showSnoozeButton || showDiscardDraft;
+  /* fork:end sidebar-v2-draft-rows */
   // If the thread becomes blocked while the popover is open, the button
   // unmounts without firing onOpenChange(false). Deriving the flag keeps a
   // stale true from permanently hiding the status label / pinning the
@@ -2073,7 +2076,7 @@ export default function SidebarV2() {
         await router.navigate({
           to: "/draft/$draftId",
           params: buildDraftThreadRouteParams(draftId),
-          replace: opts?.replace,
+          ...(opts?.replace === true ? { replace: true } : null),
         });
         return;
       }
@@ -2081,7 +2084,7 @@ export default function SidebarV2() {
       await router.navigate({
         to: "/$environmentId/$threadId",
         params: buildThreadRouteParams(threadRef),
-        replace: opts?.replace,
+        ...(opts?.replace === true ? { replace: true } : null),
       });
     },
     [clearSelection, isMobile, router, setOpenMobile, setSelectionAnchor],

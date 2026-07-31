@@ -70,8 +70,9 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
   });
 
   it("computes trailing hover actions once on the card", () => {
+    // Declared after showSnoozeButton so typecheck accepts the reference.
     expect(sidebar).toContain(
-      "const hasHoverActions =\n    props.settlementSupported || showSnoozeButton || showDiscardDraft;",
+      "const hasHoverActions = props.settlementSupported || showSnoozeButton || showDiscardDraft;",
     );
     expect(sidebar).toContain("hasHoverActions ||");
     expect(sidebar).toContain("hasHoverActions &&");
