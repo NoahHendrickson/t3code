@@ -49,7 +49,9 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // visible sequence the list draws, not the unfiltered bucket list.
     expect(sidebar).toContain("const visibleActiveSections = useMemo(");
     expect(sidebar).toContain("visibleActiveSections.flatMap((section) => section.threads)");
-    expect(sidebar).toContain("visibleActiveSections.flatMap((section, sectionIndex)");
+    // Render call is multiline after format — pin the callback args, not a
+    // single-line spelling prettier will keep rewriting.
+    expect(sidebar).toMatch(/visibleActiveSections\.flatMap\(\s*\(section,\s*sectionIndex\)\s*=>/u);
     expect(sidebar).toContain("[...orderedActiveThreads, ...visibleSnoozedThreads");
     const definition = sidebar.indexOf("const orderedActiveThreads");
     const use = sidebar.indexOf("[...orderedActiveThreads,");
