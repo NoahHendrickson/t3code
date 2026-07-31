@@ -58,8 +58,12 @@ export interface SidebarV2ThreadCardMetaProps {
       Arrives as a slot for the same reason `prSlot` does: the icon and its
       accessible label are upstream's, and no state crosses this boundary.
       Rides the repo line after the branch cluster — upstream draws it after
-      the branch in its combined row, and this keeps that reading order. */
-  readonly terminalSlot?: ReactNode;
+      the branch in its combined row, and this keeps that reading order.
+      Required like `prSlot`, so a call site has to say `null` out loud: an
+      optional slot dropped in a sync resolution is invisible to both the
+      typecheck and the guard, and the glyph would quietly vanish from the
+      card variant while the slim row keeps it. */
+  readonly terminalSlot: ReactNode;
   /** Pre-built `#123` badge, or null when the thread has no pull request. */
   readonly prSlot: ReactNode;
   /** The row's VCS query has not answered yet, so `prSlot` being null means

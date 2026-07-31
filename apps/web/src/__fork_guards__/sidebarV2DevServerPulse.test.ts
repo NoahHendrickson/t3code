@@ -72,6 +72,7 @@ function renderMeta(over: {
       branch: over.branch ?? null,
       hasWorktree: over.hasWorktree ?? false,
       devServerPort: over.devServerPort ?? null,
+      terminalSlot: null,
       prSlot: null,
       prUnknown: false,
       insertions: null,

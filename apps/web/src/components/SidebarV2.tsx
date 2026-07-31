@@ -1218,7 +1218,13 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
               /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
               devServerPort={devServerPort}
               /* fork:end sidebar-v2-dev-server-pulse */
+              /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                 Upstream's terminal-status glyph (#4712), pre-built above and
+                 handed in as a slot so the fork card keeps upstream's
+                 after-the-branch reading order without upstream state crossing
+                 the component boundary. */
               terminalSlot={terminalStatusIcon}
+              /* fork:end sidebar-v2-card-rows */
               prSlot={prBadge}
               prUnknown={prUnknown}
               insertions={diff?.insertions ?? null}
