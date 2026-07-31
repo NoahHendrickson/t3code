@@ -192,6 +192,15 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(sidebarV2).toContain("threadCardShowsMetaRow({");
   });
 
+  it("spaces cards 4px apart on the list, not Figma's 2px", () => {
+    // The ul's gap is the only vertical space between cards (and between a
+    // group header and its first card). Figma drew 2px (gap-0.5); the fork
+    // retunes to 4px (gap-1) for breathing room on the lifted panel. A sync
+    // that restores gap-0.5 would quietly tighten the list again.
+    expect(sidebarV2).toContain('className="flex flex-col gap-1"');
+    expect(sidebarV2).not.toContain('className="flex flex-col gap-0.5"');
+  });
+
   it("binds diff counts to semantic tokens rather than palette literals", () => {
     // emerald-400/red-400 are correct in dark and illegible on the light panel.
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");

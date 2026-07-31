@@ -163,19 +163,24 @@ describe("fork guard: fork-surface-palette", () => {
     expect(panel).toContain("--sidebar-control-surface: #303030");
   });
 
-  it("brightens the chrome muted token only — card text keeps upstream's", () => {
+  it("keeps card muted below chrome muted, and both below foreground", () => {
     // Chrome rows and project headers read --sidebar-muted-foreground (then
-    // tint /80, /70); the cards read --muted-foreground, and the card design
-    // needs it dim: a receded title is text-muted-foreground against a
-    // text-foreground forward one, and colour alone carries the distinction.
-    // An earlier revision lifted both tokens and receded titles landed
-    // ~1.19:1 from --foreground — not visible — so the absence of a panel
-    // --muted-foreground override is itself the invariant here, and the
-    // chrome value is pinned exact like every other hex in this file (a
-    // brighter-than floor let #f1f3f7 pass, which is the failure mode).
+    // tint /80, /70); the cards read --muted-foreground. Cards need a
+    // dimmer value than chrome: a receded title is text-muted-foreground
+    // against a text-foreground forward one, and colour alone carries the
+    // distinction. An earlier revision lifted both to #e0e0e0 and receded
+    // titles landed ~1.19:1 from --foreground — not visible. Upstream's
+    // #a3a3a3 kept the gap but read soft on #1e1e1e, so cards land at
+    // #c0c0c0. Both hexes are pinned exact (a brighter-than floor let
+    // #f1f3f7 pass, which is the failure mode), and the ordering check
+    // catches a tweak that inverts the hierarchy.
     const panel = blockFor(theme, PANEL);
-    expect(declarationHex(panel, "--sidebar-muted-foreground")).toBe("#e0e0e0");
-    expect(panel).not.toMatch(/^\s*--muted-foreground:/mu);
+    const cardMuted = declarationHex(panel, "--muted-foreground");
+    const chromeMuted = declarationHex(panel, "--sidebar-muted-foreground");
+    expect(cardMuted).toBe("#c0c0c0");
+    expect(chromeMuted).toBe("#e0e0e0");
+    expect(relativeLuminance(chromeMuted)).toBeGreaterThan(relativeLuminance(cardMuted));
+    expect(relativeLuminance("#f1f3f7")).toBeGreaterThan(relativeLuminance(chromeMuted));
   });
 
   it("clears the grain that would compound drift onto flat surfaces", () => {

@@ -79,7 +79,7 @@
    darker stage it reads a touch stronger than against the old #212121, which
    is fine for a hairline. Chrome muted text (--sidebar-muted-foreground) is
    #e0e0e0 rather than upstream's #a3a3a3 so chrome labels stay readable on
-   the lifted surface; the cards' --muted-foreground stays upstream's — see
+   the lifted surface; the cards' --muted-foreground lifts to #c0c0c0 — see
    the note at the declaration.
 
    Two blocks, not one, and the second is not redundant. Upstream re-declares
@@ -132,20 +132,39 @@
   /* Upstream's panel muted text is #a3a3a3. On #1e1e1e that reads too soft for
      Search / All projects / project headers (and those rows further tint at
      /80 and /70), so the chrome token lifts toward foreground (#f1f3f7)
-     without matching it. The sidebar-scoped token ONLY: every chrome consumer
-     reads --sidebar-muted-foreground, while the thread cards read
-     --muted-foreground — and the cards need it dim, because a receded title
-     is text-muted-foreground against a text-foreground forward one and colour
-     alone carries that distinction. An earlier revision lifted both tokens;
-     receded titles landed ~1.19:1 from --foreground (invisible) and the
-     title→branch hierarchy flattened with them. Cards keep upstream's value
-     on purpose. */
+     without matching it. Chrome and cards stay on separate tokens: every
+     chrome consumer reads --sidebar-muted-foreground, while the thread cards
+     read --muted-foreground. Cards need a dimmer value than chrome because a
+     receded title is text-muted-foreground against a text-foreground forward
+     one and colour alone carries that distinction — lifting cards all the way
+     to #e0e0e0 collapsed it to ~1.19:1 (invisible). Upstream's #a3a3a3 kept
+     the gap but read a touch soft on the lifted panel, so cards land at
+     #c0c0c0: brighter than upstream, still clearly below chrome and
+     foreground. */
+  --muted-foreground: #c0c0c0;
   --sidebar-muted-foreground: #e0e0e0;
   /* The ⌘K chip: rgba(255,255,255,0.08) over the panel in the design. */
   --sidebar-control-surface: #303030;
   --sidebar-row-hover: #262626;
   --sidebar-row-active: #2a2a2a;
   --sidebar-row-selected: #2a2a2a;
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar type size — see `.fork/customizations.yaml#fork-sidebar-type-size`.
+
+   Tailwind's text-xs / text-sm utilities read --text-xs / --text-sm (they are
+   @theme variables, not @theme inline, so a descendant override reaches the
+   compiled utilities). Remapping both to 13px on the v2 panel makes Search,
+   scope, project headers, card titles and slim shelves share one body size
+   without rewriting every className. Line-height stays 16px so the card's
+   fixed h-4 rows and contain-intrinsic-size hints (54 / 75) do not grow.
+   Captions that use literal text-[11px] / text-[10px] are untouched. */
+:root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
+  --text-xs: 13px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 16px;
 }
 
 /* The band is a solid header-height slab with a hard bottom edge, per the

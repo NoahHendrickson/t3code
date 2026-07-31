@@ -17,8 +17,8 @@
  * Spacing from Figma t3-fork node 113:3718: list pad supplies the 8px inset;
  * the folder sits in a 24px box (16px glyph centred) so its ink shares the
  * 12px axis with Search and each card's status; gap-1 (4px) to the label;
- * 2px to the first card (the list ul's own gap-0.5). Between groups the
- * design puts 16px: the ul's 2px gap plus `mt-3.5` here.
+ * 4px to the first card (the list ul's own gap-1 — fork retune of Figma's
+ * 2px). Between groups that is 18px: the ul's 4px gap plus `mt-3.5` here.
  *
  * It is a heading rather than a bare span, and its `li` drops the list
  * semantics it would otherwise inherit from upstream's thread `ul`: a screen

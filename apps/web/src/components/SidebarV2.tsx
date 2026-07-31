@@ -962,9 +962,9 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   // A card is three lines only when it has a PR or a diff to put on the third,
   // or does not yet know whether it has a PR; the hint has to follow, or the
   // scrollbar lies about every skipped row. The li carries no padding of its
-  // own (the ul's gap-0.5 is the 2px between cards — Figma 113:3718), so both
-  // values are the drawn card exactly: two lines are 8 + 16 + 6 + 16 + 8 = 54,
-  // and three lines add the meta row's 6 + 15 for 75.
+  // own (the ul's gap-1 is the 4px between cards — fork retune of Figma's
+  // 2px), so both values are the drawn card exactly: two lines are
+  // 8 + 16 + 6 + 16 + 8 = 54, and three lines add the meta row's 6 + 15 for 75.
   const showsMetaRow = threadCardShowsMetaRow({
     hasPr: prBadge !== null,
     prUnknown,
@@ -2553,10 +2553,13 @@ export default function SidebarV2() {
             closeDelay={0}
             timeout={400}
           >
-            {/* gap-0.5 is the design's 2px between cards and between a group
-                header and its first card (Figma 113:3718, Frame 50's own
-                gap-[2px]); the rows themselves carry no vertical padding. */}
-            <ul ref={attachListAutoAnimateRef} role="list" className="flex flex-col gap-0.5">
+            {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                gap-1 is the fork's 4px between cards and between a group
+                header and its first card (Figma 113:3718 drew 2px; retuned
+                for breathing room on the lifted panel). Rows carry no
+                vertical padding of their own. */}
+            <ul ref={attachListAutoAnimateRef} role="list" className="flex flex-col gap-1">
+              {/* fork:end sidebar-v2-card-rows */}
               {(() => {
                 const renderThreadRow = (
                   thread: EnvironmentThreadShell,
