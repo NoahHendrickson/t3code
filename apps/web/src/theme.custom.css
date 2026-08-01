@@ -591,9 +591,10 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
-  /* Match the composer input fill so checkout / branch read as the same surface. */
-  --fork-context-chip-bg: var(--fork-composer-bg);
-  --fork-context-chip-bg-hover: color-mix(in srgb, var(--fork-composer-bg) 85%, white);
+  /* Opaque resolved fills: unlike the composer, these chips do not own a
+     backdrop-filter and must not expose scrolling message text. */
+  --fork-context-chip-bg: #2a2a2a;
+  --fork-context-chip-bg-hover: #303030;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
@@ -659,6 +660,8 @@
   --fork-composer-bg: rgb(44 47 51 / 80%);
   --fork-composer-border: rgb(220 222 226 / 10%);
   --fork-composer-border-focus: #52565c;
+  --fork-context-chip-bg: #2c2f33;
+  --fork-context-chip-bg-hover: #34383c;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
