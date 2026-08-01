@@ -12,11 +12,11 @@
  * chrome rows are what set that number: they end at pe-3 (12px), and a 24px
  * button flush there centres its glyph 12px further — 24. Everything else in
  * the column measures itself against that centre: each card's runtime glyph
- * (card content edge 12px in, 16px box behind the design's own 3px cluster
- * pad), the hover actions on both row variants, the shelf chevrons, and the
- * project header's plus. (The status mark used to sit in this column too; it
- * now leads the title line, and the lower card rows indent under the title
- * text instead.)
+ * (card content edge 12px in, 24px box — same as the hover actions — with the
+ * 14px mark centred inside), the hover actions on both row variants, the
+ * shelf chevrons, and the project header's plus. (The status mark used to
+ * sit in this column too; it now leads the title line, and the lower card
+ * rows indent under the title text instead.)
  *
  * The rows do NOT share a right edge, which is what makes this worth writing
  * down once. The list rows end 8px in where the chrome rows end 12; a card's

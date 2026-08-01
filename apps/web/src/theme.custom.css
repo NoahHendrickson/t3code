@@ -159,12 +159,13 @@
    Tailwind's text-xs / text-sm utilities read --text-xs / --text-sm (they are
    @theme variables, not @theme inline, so a descendant override reaches the
    compiled utilities). Remapping both to 0.8125rem (13px at the default root)
-   on the v2 panel makes Search, scope, project headers, card titles and slim
-   shelves share one body size without rewriting every className. Line-height
-   stays 1rem so the card's h-4 rows scale with the type; captions that use
-   literal text-[11px] / text-[10px] are untouched. Rem, not px: a px pin would
-   freeze the sidebar while the rest of the app (and h-4 itself) still honour
-   the browser font-size setting. */
+   on the v2 panel makes Search, scope, project headers and slim shelves share
+   one body size without rewriting every className. Card titles (0.875rem) and
+   the repo/branch line (0.75rem) opt out with literal rem sizes — see
+   sidebar-v2-card-rows. Line-height stays 1rem so the card's h-4 rows scale
+   with the type; captions that use literal text-[11px] / text-[10px] are
+   untouched. Rem, not px: a px pin would freeze the sidebar while the rest of
+   the app (and h-4 itself) still honour the browser font-size setting. */
 :root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
   --text-xs: 0.8125rem;
   --text-xs--line-height: 1rem;

@@ -40,11 +40,9 @@ const TONE_COLOR_CLASS: Record<SidebarV2DotTone, string> = {
 };
 
 // Geometry from PixelSparkleView: a 3x5 grid on a 3.8px pitch with 2.85px cells
-// rounded at 28% of their size. That lands the box at 10.45x18.05 — 2px taller
-// than the card's 16px title line. The row is not grown for it: the SVG's
-// overflow-visible lets the grid spill 1px into the card's py-2 on each side,
-// so a working card is exactly as tall as any other (the card comment in
-// SidebarV2 owns the drawn heights). Unaffected by column count.
+// rounded at 28% of their size. Native units land at 10.45×18.05; the SVG
+// scales that into the leading 14px status slot (height-bound, aspect kept)
+// so the rain reads with the title text instead of hanging below its baseline.
 //
 // The native view runs four columns; this is three. At 16px the fourth column
 // read as density rather than as a separate falling stream, and the mark is
@@ -52,6 +50,8 @@ const TONE_COLOR_CLASS: Record<SidebarV2DotTone, string> = {
 const ROWS = 5;
 const PITCH = 3.8;
 const CELL = 2.85;
+/** Leading status slot — same 14px box the dots, idle ring, and woke mark use. */
+const SLOT = 14;
 
 /** Per-column clock, straight off the Swift constants: `speed` and `phase` come
     from its `frac(sin(n) * 43758.5453)` hash, one fall takes `(rows + 3) / speed`
@@ -139,6 +139,9 @@ export const RAIN_ANIMATION_CLASS = [
 
 const WIDTH = (COLS - 1) * PITCH + CELL;
 const HEIGHT = (ROWS - 1) * PITCH + CELL;
+/** Drawn size: fit the 14px rain box on the tall axis, keep the native aspect. */
+const DRAW_HEIGHT = SLOT;
+const DRAW_WIDTH = (WIDTH / HEIGHT) * SLOT;
 
 /** The grid is fixed and never reorders, so the twenty drops are resolved once
     at module load — position, clock and keyframe per cell. Only the per-row
@@ -167,9 +170,9 @@ export function SidebarV2WorkingRain({ seed }: { seed: string }) {
   return (
     <svg
       aria-hidden
-      className="block shrink-0 overflow-visible"
-      width={WIDTH}
-      height={HEIGHT}
+      className="block h-[14px] w-auto shrink-0 overflow-hidden"
+      width={DRAW_WIDTH}
+      height={DRAW_HEIGHT}
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
     >
       {CELLS.map((cell) => (
@@ -207,11 +210,11 @@ export function SidebarV2WorkingRain({ seed }: { seed: string }) {
 }
 
 /** The blocked/settled counterpart to the rain: one 8px dot centered in the
-    same 16px box the provider icons use, so the trailing edge of every row
-    lines up whether the mark is a dot, a clock, or the grid. */
+    same 14px box, so the trailing edge of every row lines up whether the mark
+    is a dot, a clock, or the grid. */
 export function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
   return (
-    <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
+    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
       <span className={cn("size-2 rounded-full", TONE_COLOR_CLASS[tone])} />
     </span>
   );
@@ -226,7 +229,7 @@ export function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
     mark and a string. */
 export function SidebarV2IdleMark() {
   return (
-    <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
+    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
       <span className="size-2 rounded-full border border-muted-foreground/70" />
     </span>
   );
@@ -238,8 +241,8 @@ export function SidebarV2IdleMark() {
     with, since Approval is blocking and Woke is not. */
 export function SidebarV2WokeMark() {
   return (
-    <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
-      <AlarmClockIcon className="size-3.5 text-sidebar-v2-status-approval" />
+    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
+      <AlarmClockIcon className="size-3 text-sidebar-v2-status-approval" />
     </span>
   );
 }

@@ -120,8 +120,8 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
   });
 
   it("gives the card's trailing cell room for a 24px target", () => {
-    // h-4 is the title line (the rain overflows it by design); the cell
-    // holding the actions has to be 24 or the button is clipped back to 18.
+    // Title line is 14px; the cell holding the actions has to be 24 or the
+    // button is clipped. It centres in the line and overhangs into py-2/gap-2.
     expect(sidebarV2).toContain("grid h-6 shrink-0 grid-cols-1 items-center justify-items-end");
   });
 
@@ -190,7 +190,7 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // structural fix — assert it stays there, and that the leading slot itself
     // is never a target.
     expect(sidebarV2).toContain(
-      "pointer-events-none flex size-4 shrink-0 items-center justify-center",
+      "pointer-events-none flex size-[14px] shrink-0 items-center justify-center",
     );
     expect(sidebarV2).toContain("<SidebarV2IdleMark />");
     // The trailing cell still fades elapsed on a working row when the hover

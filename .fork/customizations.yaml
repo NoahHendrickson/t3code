@@ -306,42 +306,52 @@
     when selected or routed to; it is never filled because of its status.
     Done and Idle recede their title colour at rest (restored on hover or
     selection), per the component set — Working, Approval, Input and Failed
-    keep the foreground title. Every title is the design's Regular body/sm
-    weight; colour alone carries the receded/forward distinction, which is
-    why receded titles use --fork-sidebar-card-title-receded (#c0c0c0) rather
+    keep the foreground title. Every title is Regular at 0.875rem (14px);
+    colour alone carries the receded/forward distinction, which is why
+    receded titles use --fork-sidebar-card-title-receded (#c0c0c0) rather
     than lifting the shared --muted-foreground channel (see
-    fork-surface-palette). A card's surface reads the same Done/Idle
-    predicate as its title (`cardRecedes`); upstream's shouldRecede survives
-    for the slim shelves only, where brightness still encodes unread-ness —
-    the card delegates unread to the Done dot.
+    fork-surface-palette). The size is literal on threadCardTitleClassName so
+    the panel's --text-xs/--text-sm remap to 13px cannot shrink it. The repo
+    line (project + branch) is 0.75rem (12px) for the same reason. A card's
+    surface reads the same Done/Idle predicate as its title (`cardRecedes`);
+    upstream's shouldRecede survives for the slim shelves only, where
+    brightness still encodes unread-ness — the card delegates unread to the
+    Done dot.
 
-    Status text labels ("Working", "Approval") are replaced by a single 16px
+    Status text labels ("Working", "Approval") are replaced by a single 14px
     mark in a fixed leading slot on the title line, and the slot is never empty
     — idle draws a hollow ring rather than falling back to a variable-width
     relative-time string, so the title text and the rows below share one left
-    edge. Repo and meta rows indent 24px (the mark's 16 plus the title gap's 8)
-    so they align under the prompt rather than under the mark. The mark's form
-    carries the state — falling pixels while the agent runs, a static dot once
-    it stops, a clock for woke, a ring for idle — and the hue only reinforces
-    it. Working is emerald, deliberately diverging from the sky the mobile Live
-    Activity still uses; mobile has not been migrated.
+    edge. Repo and meta rows indent 24px (the mark's 14 plus the title gap's
+    10) so they align under the prompt rather than under the mark. The mark's
+    form carries the state — falling pixels while the agent runs, a static
+    dot once it stops, a clock for woke, a ring for idle — and the hue only
+    reinforces it. Working is emerald, deliberately diverging from the sky
+    the mobile Live Activity still uses; mobile has not been migrated.
 
     Working duration and the hover actions stay on the title line's trailing
     cell. Status no longer shares that cell, so the opacity-crossfade hit-path
     bug that used to eat settle clicks cannot return.
 
-    Card metrics from Figma t3-fork node 113:3718: px-4 py-8 (4/8), all rows
-    16px tall (the working rain's 18px grid overflows the title line by 1px
-    into the card's padding rather than growing it). Title-to-status gap is
-    8px so the prompt lines up with the group header label (24px folder +
-    4px gap); repo/meta indent 24px (16 status + 8 gap). Row gap is 6px
-    (gap-1.5), not Figma's 4.
+    Card metrics from Figma t3-fork node 113:3718: px-4 py-8 (4/8). The
+    title line (status + prompt) is 14px — status slot, rain, and title
+    leading all share that height; at 16px the rain read as hanging below
+    the prompt. Repo line stays 16px. Title-to-status gap is 10px
+    (gap-2.5) so 14+10 keeps the prompt lined up with the group header
+    label (24px folder + 4px gap); repo/meta indent 24px. Drawn card
+    heights are 54 / 77. Row gap is 8px (gap-2), not Figma's 4.
     Cards sit 4px apart — the list ul's gap-1 (fork retune of Figma's 2px /
     gap-0.5, for breathing room on the lifted panel); the li itself carries
     no padding. List pad 8 puts the leading status at 12px — the same axis as
-    Search and the group folder icon. contain-intrinsic-size is 54 / 75, the
-    drawn card exactly. Branch and runtime glyphs are 16px; the model label
-    is caption 11/15 on either line it lands on.
+    Search and the group folder icon. contain-intrinsic-size is 54 / 77 —
+    the drawn card exactly (same as the heights above). Branch and runtime
+    glyphs are 14px; the runtime mark sits in a 24px box flush with the
+    card edge so it shares the settle/discard centre on the trailing axis
+    (a lone 14px + pr-[3px] was 2px off once actions grew to size-6). The
+    model label is caption 11/15 on either line it lands on. The
+    branch/worktree cluster (mark plus name) reads at text-foreground/70 —
+    closer to the title than the surrounding muted-foreground/70 meta —
+    so the checkout stays legible without matching the prompt.
 
     A card is three lines only when it has a PR or a diff for the third, or does
     not yet know whether it has a PR; with a known-empty third line the model and
@@ -353,15 +363,15 @@
     closing the row up. The li's contain-intrinsic-size is chosen by the same
     predicate the component renders from, so it can never claim a height the row
     does not have, and it measures the li — which carries no padding of its own,
-    so the hints equal the drawn heights of 54 and 75. Retune the card's
-    vertical padding and both hints move with it, or the scrollbar misreports
-    every skipped row by the difference.
+    so the hints equal the drawn heights of 54 and 77. Retune the card's
+    vertical padding or row gap and both hints move with it, or the scrollbar
+    misreports every skipped row by the difference.
 
     A thread that runs in a worktree of its own draws a worktree mark where the
     branch mark otherwise goes — replacing it, not joining it. That slot already
     answers "which code is this on", and the two facts are not independent: a
     thread on a worktree is on that worktree's branch, so a second glyph would
-    spend ~16px of a line whose branch name is already capped and truncating to
+    spend ~14px of a line whose branch name is already capped and truncating to
     restate what the first implies. The predicate is the one the row's own git
     cwd and env mode come from, so the mark cannot claim a worktree the rest of
     the row is not treating as one, and the worktree case carries a `sr-only`
@@ -564,12 +574,25 @@
     UNGROUPED_PROJECT_KEY. Not on its label being null: the label correlates
     today, and one signal carrying two meanings is how it stops correlating.
 
-    The heading role sits on the label span, not on the header row. The row now
-    also holds that button, and a heading containing one takes the button's text
-    into its own accessible name, so the landmark announcing which project a run
-    of cards belongs to would read "<project> New thread in <project>". The row
-    is a presentational li, the label is the heading, and neither is a
-    collapsible button; the folder mark stays 16px with no trailing hairline.
+    The heading role sits on the label span, not on the header row. The row also
+    holds the collapse control and the new-thread plus, and a heading containing
+    either takes that control's text into its own accessible name, so the
+    landmark announcing which project a run of cards belongs to would read
+    "<project> Collapse <project>" (or the plus's name). The row is a
+    presentational li and the label is the heading.
+
+    Groups collapse from the header row. Hovering anywhere on the row swaps the
+    folder mark for a chevron (FolderOpen at rest — Figma 113:3718 Frame 48);
+    clicking the mark or the label toggles. Collapse is an absolutely-
+    positioned hit layer behind the row; the new-thread plus paints above it
+    (z-10) so its clicks start a thread instead of toggling — a flex-1
+    collapse sibling was eating them. Row-hover still swaps the mark when the
+    pointer is over the plus. When collapsed the chevron stays (rotated to
+    point at the label). Collapsed keys persist in localStorage (device-local,
+    like the grouping switch). A collapsed section hides its cards from both
+    paint and keyboard order, with the open route thread kept visible — the
+    same exception the snoozed shelf makes for a deep-linked row — so collapse
+    cannot bury the thread you are viewing.
 
     The header has no own horizontal pad — the list's 8px is the edge. The
     folder sits in a 24px box so its 16px glyph centres on the same 12px axis as
@@ -603,6 +626,45 @@
     - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
+
+- id: sidebar-v2-draft-rows
+  intent: >
+    New thread (project-header plus, chrome plus, shortcut) creates a
+    client-only draft and navigates to /draft/$draftId, but Sidebar V2's
+    list is fed from server shells — so until the first send the card was
+    missing and the sidebar looked empty for the thread you just opened.
+
+    Unpromoted drafts in composerDraftStore.draftThreadsByThreadKey are
+    projected into the same EnvironmentThreadShell shape the list already
+    paints, then folded into the active partition before sort. The card
+    title is the unsaved composer prompt (trimmed/truncated like ChatView's
+    auto-title) or "New thread" when empty — so typing then clicking away
+    leaves a named draft in the list. Prompts are read from getState() when
+    the open route changes, not subscribed per keystroke. Promoted drafts
+    and drafts whose reserved thread id already has a server shell are
+    skipped so the row never doubles.
+
+    Clicking a draft card navigates to /draft/$draftId (not the server
+    thread route). The open draft highlights via its reserved thread id —
+    upstream resolveActiveThreadRouteRef only resolves after promotion.
+    Settle, snooze, and rename are disabled. The settle slot shows an X
+    (Discard draft) on hover instead of Check; the context menu offers the
+    same discard via clearDraftThread. Discarding the draft you are viewing
+    selects the next painted row below (then the row above); it must not
+    fall through to handleNewThread the way settle does. Await the next
+    route (replace: true) before clear — a sync clear while still on
+    /draft/$id races the draft route's missing-session redirect to `/`,
+    and `_chat.index` immediately opens a fresh draft, so the card
+    animates out and back in while the workspace stays on "New thread".
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2DraftRows.ts
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2DraftRows.test.ts
+    - apps/web/src/custom/sidebarV2DraftRows.test.ts
 
 - id: sidebar-v2-row-action-hit-area
   intent: >
@@ -647,7 +709,7 @@
 
     The card's trailing cell is h-6 rather than the title line's h-4 —
     a 24px target cannot fit a 16px cell. It is centred in the 16px line, so it
-    overhangs 4px into the card's py-2 above and its gap-1.5 below, neither of
+    overhangs 4px into the card's py-2 above and its gap-2 below, neither of
     which carries anything to collide with. Status no longer shares this cell —
     it leads the title line — so the opacity-crossfade hit-path bug that used to
     eat settle clicks (an opacity-0 status span stacking above the actions)
@@ -749,11 +811,12 @@
 
 - id: fork-sidebar-type-size
   intent: >
-    Sidebar V2 body type is 0.8125rem (13px at the default root). The panel
-    remaps Tailwind's --text-xs and --text-sm (and their --line-height
-    companions) to 0.8125rem / 1rem so every text-xs and text-sm consumer
-    inside the panel — Search, scope, project headers, card titles, slim
-    shelves — shares one size without rewriting each className. Rem, not px:
+    Sidebar V2 chrome body type is 0.8125rem (13px at the default root). The
+    panel remaps Tailwind's --text-xs and --text-sm (and their --line-height
+    companions) to 0.8125rem / 1rem so Search, scope, project headers, and
+    slim shelves share one size without rewriting each className. Card titles
+    and the repo/branch line opt out with literal rem sizes (0.875rem / 0.75rem
+    — see sidebar-v2-card-rows) so the remap cannot flatten them. Rem, not px:
     a px pin would freeze the sidebar while h-4 and the rest of the app still
     honour the browser font-size setting. Line-height stays 1rem so the card's
     h-4 rows scale with the type. Literal captions (text-[11px], text-[10px]

@@ -15,15 +15,22 @@
  * flag re-tested at each of those sites, where the two could silently disagree
  * about what order the list is in.
  *
- * The preference is device-local (localStorage, not client settings). It is a
- * fork-only affordance and a contracts field would put a fork-shaped key in a
- * schema upstream owns, which every sync would then have to carry.
+ * Group headers collapse: a collapsed section hides its cards (except the open
+ * route thread, matching the snoozed shelf), and collapsed keys persist in
+ * localStorage so a reload does not re-expand every group.
+ *
+ * The preferences are device-local (localStorage, not client settings). They
+ * are fork-only affordances and a contracts field would put a fork-shaped key
+ * in a schema upstream owns, which every sync would then have to carry.
  */
 import * as Schema from "effect/Schema";
+import { useCallback, useMemo } from "react";
 
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 
 export const SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-project:v1";
+export const SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY =
+  "t3code:fork:sidebar-v2-collapsed-projects:v1";
 
 /** Threads whose project no longer resolves to a group — a just-deleted
  *  project, or an environment whose projects have not loaded yet. They keep a
@@ -33,8 +40,47 @@ export const SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY = "t3code:fork:sidebar-v2-g
  *  user-facing. */
 export const UNGROUPED_PROJECT_KEY = "fork:ungrouped";
 
+const CollapsedProjectKeys = Schema.Array(Schema.String);
+const EMPTY_COLLAPSED_PROJECT_KEYS: readonly string[] = [];
+
 export function useSidebarV2GroupByProject(): [boolean, (value: boolean) => void] {
   return useLocalStorage(SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY, false, Schema.Boolean);
+}
+
+/** Collapsed project keys as a Set for O(1) membership in the list memos. */
+export function useSidebarV2CollapsedProjects(): readonly [
+  ReadonlySet<string>,
+  (projectKey: string) => void,
+] {
+  const [keys, setKeys] = useLocalStorage(
+    SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY,
+    EMPTY_COLLAPSED_PROJECT_KEYS,
+    CollapsedProjectKeys,
+  );
+  const collapsed = useMemo(() => new Set(keys), [keys]);
+  const toggle = useCallback(
+    (projectKey: string) => {
+      setKeys((previous) =>
+        previous.includes(projectKey)
+          ? previous.filter((key) => key !== projectKey)
+          : [...previous, projectKey],
+      );
+    },
+    [setKeys],
+  );
+  return [collapsed, toggle];
+}
+
+/** Cards under a collapsed header stay hidden — except a keep-predicate match,
+    so the open route thread cannot vanish behind a collapse the way the snoozed
+    shelf keeps a deep-linked row. */
+export function threadsVisibleInProjectSection<TThread>(input: {
+  readonly threads: readonly TThread[];
+  readonly collapsed: boolean;
+  readonly keepThread: (thread: TThread) => boolean;
+}): readonly TThread[] {
+  if (!input.collapsed) return input.threads;
+  return input.threads.filter(input.keepThread);
 }
 
 /** Structural on purpose: the three fields grouping reads off upstream's

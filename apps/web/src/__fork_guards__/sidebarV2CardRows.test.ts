@@ -73,6 +73,15 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(meta).toContain("props.hasWorktree || props.branch ?");
     expect(meta).toContain("props.hasWorktree ?");
     expect(meta).toContain("<WorktreeIcon");
+    // Branch, worktree, and runtime marks are 14px — retuning them to size-4
+    // re-crowds the capped branch name and the model label. Runtime sits in a
+    // 24px box so its centre matches settle/discard on the trailing axis.
+    expect(meta).toContain('<WorktreeIcon aria-hidden className="size-3.5 shrink-0" />');
+    expect(meta).toContain('<GitBranchIcon aria-hidden className="size-3.5 shrink-0" />');
+    expect(meta).toContain("inline-flex size-6 shrink-0 items-center justify-center");
+    expect(meta).toContain('<CloudIcon aria-hidden className="size-3.5" />');
+    expect(meta).toContain('<LaptopIcon aria-hidden className="size-3.5" />');
+    expect(meta).not.toContain("pr-[3px]");
     // Decorative marks carry nothing to a screen reader, so the distinction
     // rides on text; a `sr-only` here is the whole of it.
     expect(meta).toMatch(/sr-only">Worktree</u);
@@ -116,12 +125,22 @@ describe("fork guard: sidebar-v2-card-rows", () => {
   });
 
   it("draws every card title at the design's regular weight", () => {
-    // body/sm is Regular; the component set draws no medium titles. Colour
-    // alone separates a receded title from a forward one.
+    // Regular; the component set draws no medium titles. Colour alone
+    // separates a receded title from a forward one.
     expect(threadCardTitleClassName({ recedes: true })).toContain("font-normal");
     expect(threadCardTitleClassName({ recedes: true })).not.toContain("font-medium");
     expect(threadCardTitleClassName({ recedes: false })).toContain("font-normal");
     expect(threadCardTitleClassName({ recedes: false })).not.toContain("font-medium");
+  });
+
+  it("sizes the card title at 0.875rem / 14px line and the repo/branch line at 0.75rem", () => {
+    // Explicit rem so the panel's --text-xs/--text-sm → 13px remap cannot
+    // flatten title and branch to the chrome body size. Title leading matches
+    // the 14px status slot — leading-4 left a 16px line around the rain.
+    expect(threadCardTitleClassName({ recedes: false })).toContain("text-[0.875rem]");
+    expect(threadCardTitleClassName({ recedes: false })).toContain("leading-[14px]");
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).toContain('REPO_ROW = "flex h-4 min-w-0 items-center text-[0.75rem] leading-4"');
   });
 
   it("lifts receded titles via a dedicated token, not the shared muted channel", () => {
@@ -155,25 +174,59 @@ describe("fork guard: sidebar-v2-card-rows", () => {
 
   it("keeps a mark in the leading status slot for every status, idle included", () => {
     // Idle used to fall back to a relative-time string on the trailing edge,
-    // so the column alternated between a 16px mark and a variable-width label.
+    // so the column alternated between a mark and a variable-width label.
     // The mark now leads the title line and is never empty — the hollow ring
     // holds the left column so the title text and the indented rows below
-    // share one edge.
+    // share one edge. 14px slot: at 16px the rain read as hanging below the
+    // title. overflow-hidden is load-bearing — the native grid is taller.
     expect(typeof SidebarV2IdleMark).toBe("function");
     expect(sidebarV2).toContain("<SidebarV2IdleMark />");
     expect(sidebarV2).toContain(
-      "pointer-events-none flex size-4 shrink-0 items-center justify-center",
+      "pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden",
     );
+    const rain = readSibling("../custom/SidebarV2StatusIndicator.tsx");
+    expect(rain).toContain('className="block h-[14px] w-auto shrink-0 overflow-hidden"');
+    expect(rain).toContain("const SLOT = 14");
+    expect(rain).not.toContain("overflow-visible");
   });
 
   it("indents the card's lower rows under the title text", () => {
-    // 24px = the leading 16px status + the title row's 8px gap — matches the
+    // 24px = the leading 14px status + the title row's 10px gap — matches the
     // group header label once list pad is shared. Dropping the indent puts
     // the branch under the rain instead of under the prompt.
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
     expect(meta).toContain('CONTENT_INDENT = "pl-6"');
     expect(meta).toContain("${CONTENT_INDENT}");
-    expect(sidebarV2).toContain("flex h-4 min-w-0 items-center gap-2");
+    // No overflow-hidden: the trailing h-6 settle/X cell overhangs this line
+    // on purpose; clipping it was what squashed the hover fill into a bar.
+    expect(sidebarV2).toContain("flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5");
+    expect(sidebarV2).not.toMatch(
+      /flex h-\[14px\] min-h-\[14px\] min-w-0 items-center gap-2\.5 overflow-hidden/u,
+    );
+  });
+
+  it("does not layer text-xs onto card titles (that forced a 16px line box)", () => {
+    // text-xs carries --text-xs--line-height: 1rem. Paired with the card's
+    // explicit 0.875rem size it still won the cascade for leading and grew
+    // the title row to 16px around a 14px rain. Slim shelves keep text-sm.
+    const titleClass =
+      /className=\{cn\(\s*"min-w-0 flex-1[^"]*",([\s\S]*?)isRegeneratingTitle/u.exec(
+        sidebarV2,
+      )?.[1];
+    expect(titleClass).toBeDefined();
+    expect(titleClass).toContain("threadCardTitleClassName({ recedes: cardRecedes })");
+    expect(titleClass).not.toMatch(/variant === "card" \? "text-xs"/u);
+    expect(titleClass).toContain('"text-sm"');
+  });
+
+  it("lifts the branch cluster closer to the title than the surrounding meta", () => {
+    // Project, model, and runtime stay at muted/70; the checkout mark+name
+    // shares the title's foreground channel at 70% so it stays readable
+    // without matching the prompt.
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).toContain('BRANCH = "text-foreground/70"');
+    expect(meta).toContain("${BRANCH}");
+    expect(meta).toContain('MUTED = "text-muted-foreground/70"');
   });
 
   it("collapses to two lines only when it knows there is no PR and no diff", () => {
@@ -204,12 +257,12 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // content-visibility skips offscreen rows; the intrinsic size is what keeps
     // the scrollbar honest while they are skipped. A stale value here makes the
     // list jump as you scroll, so both heights are pinned. They measure the li,
-    // which carries no padding of its own and so equals the drawn card: at
-    // px-1 py-2 over 16px rows with a 6px row gap, two lines are 54 and three
-    // are 75. Change the card's vertical padding and these move with it or the
+    // which carries no padding of its own and so equals the drawn card: title
+    // line 14px + repo 16px + gaps/pad → 54 two-line, 77 three-line. Change
+    // the card's vertical padding or gap and these move with it or the
     // scrollbar starts lying by the difference on every row it skips.
-    expect(sidebarV2).toContain("gap-1.5 px-1 py-2");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_75px]");
+    expect(sidebarV2).toContain("gap-2 px-1 py-2");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_77px]");
     expect(sidebarV2).toContain("[contain-intrinsic-size:auto_54px]");
     // And the choice is made from the same predicate the component renders
     // from, so the hint cannot drift from the row count it describes.

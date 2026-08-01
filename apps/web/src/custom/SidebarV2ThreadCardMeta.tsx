@@ -15,15 +15,17 @@
  * the row up, so rows stay comparable across cards.
  *
  * Both lines are the design's `caption` style — 11/15 Geist at
- * `--muted-foreground` 70% — with only the diff counts and nothing else taking
- * colour. That is a change from the two-specimen model this card used to
- * follow, where metadata brightness encoded whether a row was blocked on you
- * (65%) or merely busy (45%). The component set collapsed that to one tone: the
- * leading status mark carries the distinction now, and it carries it in a
- * fixed column instead of as a brightness the eye has to compare against a
- * neighbouring row to read at all.
+ * `--muted-foreground` 70% — except the branch/worktree cluster, which sits
+ * closer to the title at `text-foreground/70` so the checkout identity stays
+ * readable without competing with the prompt. Diff counts still take colour;
+ * nothing else on these lines does. That is a change from the two-specimen
+ * model this card used to follow, where metadata brightness encoded whether a
+ * row was blocked on you (65%) or merely busy (45%). The component set
+ * collapsed that to one tone: the leading status mark carries the distinction
+ * now, and it carries it in a fixed column instead of as a brightness the eye
+ * has to compare against a neighbouring row to read at all.
  *
- * Both lines indent `pl-6` (24px = the title row's 16px status + 8px gap) so
+ * Both lines indent `pl-6` (24px = the title row's 14px status + 10px gap) so
  * they align under the title text rather than under the mark.
  */
 import type { ReactNode } from "react";
@@ -77,11 +79,14 @@ export interface SidebarV2ThreadCardMetaProps {
   readonly isRemote: boolean;
 }
 
-/** Repo line is body/sm 12/16; meta line is caption 11/15 — Figma 113:3718. */
-const REPO_ROW = "flex h-4 min-w-0 items-center text-xs leading-4";
+/** Repo line is 0.75rem/1rem (12px); meta line is caption 11/15 — Figma 113:3718
+    retuned: explicit rem so the panel's --text-xs → 13px remap cannot enlarge it. */
+const REPO_ROW = "flex h-4 min-w-0 items-center text-[0.75rem] leading-4";
 const META_ROW = "flex h-[15px] min-w-0 items-center text-[11px] leading-[15px]";
 const MUTED = "text-muted-foreground/70";
-/** 24px = title's 16px leading status + 8px gap. Aligns under the prompt. */
+/** Branch/worktree identity — nearer the title than the rest of the meta. */
+const BRANCH = "text-foreground/70";
+/** 24px = title's 14px leading status + 10px gap. Aligns under the prompt. */
 const CONTENT_INDENT = "pl-6";
 
 /**
@@ -121,24 +126,29 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
     deletions: props.deletions,
   });
 
-  /* Figma 113:3718 — runtime icon is 16px with pr-3 on its cluster, and the
-     model label is the caption style (11/15) even when the cluster sits on the
-     12px repo line, so it carries its own size rather than inheriting the
-     row's.
+  /* Branch / worktree marks are 14px (size-3.5). The runtime glyph sits in a
+     24px box flush with the card's content edge — same box as settle/discard
+     on the title line — so the trailing column shares one centre. A lone
+     14px icon with a 3px end pad sat 2px off that axis once the actions grew
+     to size-6. The model label is the caption style (11/15) even when the
+     cluster sits on the 12px repo line, so it carries its own size rather
+     than inheriting the row's.
      `min-w-0` rather than `shrink-0`: inside a shrink-0 item the label's
      `truncate` can never fire, so a long model name would push whatever shares
      its row — the half that *can* shrink — off the row instead of clipping
      itself. Capped at half the line so neither side can starve the other. */
   const runtime = (
-    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 pr-[3px] ${MUTED}`}>
+    <span className={`flex min-w-0 max-w-[50%] items-center gap-1 ${MUTED}`}>
       {props.modelLabel ? (
         <span className="truncate text-[11px] leading-[15px]">{props.modelLabel}</span>
       ) : null}
-      {props.isRemote ? (
-        <CloudIcon aria-hidden className="size-4 shrink-0" />
-      ) : (
-        <LaptopIcon aria-hidden className="size-4 shrink-0" />
-      )}
+      <span className="inline-flex size-6 shrink-0 items-center justify-center">
+        {props.isRemote ? (
+          <CloudIcon aria-hidden className="size-3.5" />
+        ) : (
+          <LaptopIcon aria-hidden className="size-3.5" />
+        )}
+      </span>
     </span>
   );
 
@@ -163,7 +173,7 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
             /* The worktree mark replaces the branch mark rather than joining
                it. This slot already answers "which code is this on", and the
                two facts are not independent: a thread on a worktree is on
-               that worktree's branch, so a second glyph would spend ~16px of
+               that worktree's branch, so a second glyph would spend ~14px of
                a line whose branch name is already capped and truncating to
                restate what the first one implies. The branch name stays put,
                labelled by position.
@@ -194,16 +204,16 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
                before transient state — and survives `prefers-reduced-motion`
                as a static working-green mark. */
             <span
-              className="flex min-w-0 flex-1 items-center gap-0.5"
+              className={`flex min-w-0 flex-1 items-center gap-0.5 ${BRANCH}`}
               data-fork-dev-server-live={props.devServerPort != null ? "" : undefined}
             >
               {props.hasWorktree ? (
                 <>
                   <span className="sr-only">Worktree</span>
-                  <WorktreeIcon aria-hidden className="size-4 shrink-0" />
+                  <WorktreeIcon aria-hidden className="size-3.5 shrink-0" />
                 </>
               ) : (
-                <GitBranchIcon aria-hidden className="size-4 shrink-0" />
+                <GitBranchIcon aria-hidden className="size-3.5 shrink-0" />
               )}
               {props.branch ? (
                 <span className="truncate whitespace-nowrap">{props.branch}</span>
