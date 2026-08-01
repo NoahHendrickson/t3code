@@ -244,4 +244,13 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(rows.split("[&>svg]:opacity-100").length - 1).toBe(1);
     expect(rows.split("CHROME_ROW_ICON_TINT").length - 1).toBeGreaterThanOrEqual(3);
   });
+
+  it("keeps Search and All projects at 14px, outside the panel's 13px remap", () => {
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    const className = /const CHROME_CONTROL[\s\S]*?"([^"]+)"/u.exec(rows)?.[1];
+    expect(className).toBeDefined();
+    expect(className).toContain("text-[0.875rem]");
+    expect(className).not.toMatch(/\btext-xs\b/u);
+    expect(className).not.toMatch(/\btext-sm\b/u);
+  });
 });

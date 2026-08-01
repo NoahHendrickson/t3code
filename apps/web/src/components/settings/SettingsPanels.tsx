@@ -63,7 +63,10 @@ import {
 } from "../SidebarStageBackdrop";
 import { isElectron } from "../../env";
 import { buildHostedChannelSelectionUrl, type HostedAppChannel } from "../../hostedPairing";
-import { useTheme } from "../../hooks/useTheme";
+/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme
+   Tilde import so TypeScript resolves the override that accepts `cool-dark`. */
+import { useTheme } from "~/hooks/useTheme";
+/* fork:end fork-cool-dark-theme */
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
 import { useThreadActions } from "../../hooks/useThreadActions";
 import { useDesktopUpdateState } from "../../state/desktopUpdate";
@@ -152,6 +155,12 @@ const THEME_OPTIONS = [
     value: "dark",
     label: "Dark",
   },
+  /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+  {
+    value: "cool-dark",
+    label: "Cool Dark",
+  },
+  /* fork:end fork-cool-dark-theme */
 ] as const;
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
@@ -976,12 +985,19 @@ export function AppearanceSettingsPanel() {
             <Select
               value={theme}
               onValueChange={(value) => {
-                if (value === "system" || value === "light" || value === "dark") {
+                /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+                if (
+                  value === "system" ||
+                  value === "light" ||
+                  value === "dark" ||
+                  value === "cool-dark"
+                ) {
                   setTheme(value);
                 }
+                /* fork:end fork-cool-dark-theme */
               }}
             >
-              <SelectTrigger className="w-full sm:w-40" aria-label="Theme preference">
+              <SelectTrigger className="w-full sm:w-44" aria-label="Theme preference">
                 <SelectValue>
                   {THEME_OPTIONS.find((option) => option.value === theme)?.label ?? "System"}
                 </SelectValue>

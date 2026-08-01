@@ -503,13 +503,13 @@
   color: #a6a6a6;
 }
 
-/* Send and stop are the one exception to the pill rule: 24px squares at an 8px
+/* Send and stop are the one exception to the pill rule: 24px squares at a 4px
    radius, drawn as the only filled controls in the composer. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {
   width: 24px;
   height: 24px;
   min-height: 24px;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 /* Flat send (tone="flat"): in dark mode, a send button without stage-channel
@@ -577,35 +577,36 @@
   max-width: none;
   margin: 0;
   padding: 0;
-  /* The drawn 4px between the workspace and branch chips, replacing the
-     strip's own gap-2. */
-  gap: 4px;
+  /* Match the context row's pb-2 (8px) above the composer so the space
+     between checkout and branch equals the space under both pills. */
+  gap: 8px;
 }
 
-/* The context chips are the filled 20px, 6px-radius controls above the
-   surface. The design draws both on the same selected-surface fill with no
-   hairline. Light mode falls back to upstream's accent; the drawn values are
-   dark-only. */
+/* The context chips are the filled controls above the surface (checkout /
+   worktree mode and branch). Same selected-surface fill, no hairline. Light
+   mode falls back to upstream's accent; the drawn values are dark-only. */
 :root[data-fork="noahhendrickson-t3code"] {
   --fork-context-chip-bg: var(--accent);
   --fork-context-chip-bg-hover: var(--muted);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
-  --fork-context-chip-bg: #2a2a2a;
-  --fork-context-chip-bg-hover: #303030;
+  /* Match the composer input fill so checkout / branch read as the same surface. */
+  --fork-context-chip-bg: var(--fork-composer-bg);
+  --fork-context-chip-bg-hover: color-mix(in srgb, var(--fork-composer-bg) 85%, white);
 }
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
   :is(button, [data-slot="button"]) {
-  /* The Auto chip's container at the drawn 4px inline padding, four pixels
-     taller (Noey's call): 24px, 4px radius. */
+  /* 24px tall, 6px radius. End padding is 2px more than start so the trailing
+     chevron (and the text-only end of Current checkout) don't sit hard against
+     the curve. */
   height: 24px;
   min-height: 24px;
   gap: 6px;
-  padding-inline: 4px;
-  border-radius: 4px;
+  padding-inline: 4px 6px;
+  border-radius: 6px;
   /* 12px, matching the control row's Auto/Build type — Noey's bump over the
      drawn 10px. */
   font-size: 12px;
@@ -626,14 +627,83 @@
   color: #a6a6a6;
 }
 
-/* The workspace chip's folder glyph carries more empty space in its 12px
-   frame than the branch glyph, so at equal box padding its left edge reads
-   wider. Two fewer pixels on the start side optically matches the pair.
-   Equal specificity with the shared chip rule; source order wins. */
+/* ---------------------------------------------------------------------------
+   Cool Dark — see `.fork/customizations.yaml#fork-cool-dark-theme`.
+
+   A selectable alternate dark palette: lighter and a touch cooler (cool gray,
+   not blue-slate) than the default fork dark. Placed after the default dark
+   surface / pill / composer / context-chip tokens so Cool Dark wins on both
+   specificity and source order. Same two-block pattern (stage + v2 panel) for
+   the upstream re-declaration reason. Keyed on data-fork-theme so Dark and
+   Cool Dark can coexist; both still carry `.dark` for Tailwind. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] {
+  --background: #1c1e20;
+  --app-chrome-background: #1c1e20;
+  --foreground: #e9eaec;
+  --card: #232628;
+  --card-foreground: #e9eaec;
+  --popover: #232628;
+  --popover-foreground: #e9eaec;
+  --secondary: #2c2f33;
+  --secondary-foreground: #e9eaec;
+  --muted: #2c2f33;
+  --muted-foreground: #90949a;
+  --accent: #2c2f33;
+  --accent-foreground: #e9eaec;
+  --border: #34383c;
+  --input: #34383c;
+  --surface-grain: none;
+  --fork-pill-border: #3c4045;
+  --fork-pill-fg: #e6e7e9;
+  --fork-pill-hover: #2c2f33;
+  --fork-composer-bg: rgb(44 47 51 / 80%);
+  --fork-composer-border: rgb(220 222 226 / 10%);
+  --fork-composer-border-focus: #52565c;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-sidebar-version="v2"] {
+  --background: #232628;
+  --foreground: #e9eaec;
+  --card: #232628;
+  --card-foreground: #e9eaec;
+  --sidebar: #232628;
+  --sidebar-foreground: #e9eaec;
+  --border: #34383c;
+  --sidebar-border: #34383c;
+  --sidebar-stage-fade: #232628;
+  --muted: #2c2f33;
+  --accent: #2c2f33;
+  --accent-foreground: #e9eaec;
+  --muted-foreground: #90949a;
+  --sidebar-muted-foreground: #d5d7da;
+  --fork-sidebar-card-title-receded: #b2b5ba;
+  --sidebar-control-surface: #393d42;
+  --sidebar-row-hover: #2c2f33;
+  --sidebar-row-active: #32363a;
+  --sidebar-row-selected: #32363a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]) {
+  color: #92969c;
+}
+
+/* Optical start padding per chip: the workspace folder glyph carries more
+   empty space in its 12px frame than the branch glyph, so start is 0; the
+   branch combobox needs 6px so its ink clears the curve the same way. Equal
+   specificity with the shared chip rule; source order wins. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
   [data-slot="select-trigger"] {
-  padding-inline-start: 2px;
+  padding-inline-start: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="combobox-trigger"] {
+  padding-inline-start: 6px;
 }
 
 /* The workspace select keeps its popup but drops the trigger caret — the drawn

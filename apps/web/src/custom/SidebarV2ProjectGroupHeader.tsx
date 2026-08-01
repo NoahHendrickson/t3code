@@ -6,9 +6,9 @@
  * the folder mark for a chevron, and clicking the mark or the label toggles
  * the group. Collapse is an absolutely-positioned hit layer behind the row
  * content so the new-thread plus can sit above it (`z-10`) and keep its own
- * clicks — a flex-1 collapse button beside the plus was eating them. When the
- * group is collapsed the chevron stays (rotated to point at the label) so the
- * row does not look like an open folder over a missing list.
+ * clicks — a flex-1 collapse button beside the plus was eating them. At rest
+ * the mark is FolderOpen when expanded and FolderClosed when collapsed
+ * (Figma 151:6742); hover still swaps either for the chevron.
  *
  * Metrics are the shelf headers' verbatim, but the trailing hairline is not.
  * The shelves use a rule because each is one divider closing off the list above
@@ -29,7 +29,7 @@
  * visually hidden, since the header carries it for sighted users — so grouped
  * mode never carries less information than flat mode.
  */
-import { ChevronDownIcon, FolderOpenIcon, PlusIcon } from "lucide-react";
+import { ChevronDownIcon, FolderClosedIcon, FolderOpenIcon, PlusIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 import {
@@ -75,9 +75,10 @@ export function SidebarV2ProjectGroupHeader(props: {
             "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
           )}
         />
-        {/* Folder at rest, chevron on row-hover / when collapsed — stacked in
-            one 24px box so the swap does not shift the label. pointer-events
-            none so clicks fall through to the collapse layer. */}
+        {/* Open folder when expanded, closed when collapsed (Figma 151:6742);
+            chevron on row-hover either way. Stacked in one 24px box so the
+            swap does not shift the label. pointer-events none so clicks fall
+            through to the collapse layer. */}
         <span className="pointer-events-none relative z-[1] flex size-6 shrink-0 items-center justify-center text-sidebar-muted-foreground/80 group-hover/collapse:text-sidebar-foreground">
           <FolderOpenIcon
             aria-hidden
@@ -86,11 +87,18 @@ export function SidebarV2ProjectGroupHeader(props: {
               props.collapsed ? "invisible" : "group-hover/collapse:invisible",
             )}
           />
+          <FolderClosedIcon
+            aria-hidden
+            className={cn(
+              "absolute size-4",
+              props.collapsed ? "group-hover/collapse:invisible" : "invisible",
+            )}
+          />
           <ChevronDownIcon
             aria-hidden
             className={cn(
-              "absolute size-4 transition-transform",
-              props.collapsed ? "-rotate-90" : "invisible group-hover/collapse:visible",
+              "absolute size-4 transition-transform invisible group-hover/collapse:visible",
+              props.collapsed && "-rotate-90",
             )}
           />
         </span>

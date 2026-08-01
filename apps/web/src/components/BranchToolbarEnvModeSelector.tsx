@@ -94,7 +94,8 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
         )}
         <SelectValue />
       </SelectTrigger>
-      <SelectPopup>
+      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      <SelectPopup alignItemWithTrigger={false} side="top">
         <SelectGroup>
           <SelectGroupLabel>Workspace</SelectGroupLabel>
           <SelectItem value="local">
@@ -123,6 +124,7 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
           ) : null}
         </SelectGroup>
       </SelectPopup>
+      {/* fork:end fork-composer-shell */}
     </Select>
   );
 });

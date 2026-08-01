@@ -28,6 +28,7 @@ const rules = cssRules(styles);
 const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
+const envModeSelector = readSibling("../components/BranchToolbarEnvModeSelector.tsx");
 
 function shellMarkup(input: { approvalPending?: boolean; collapsedMobile?: boolean } = {}) {
   return renderToStaticMarkup(
@@ -261,14 +262,32 @@ describe("fork guard: fork-composer-shell", () => {
     }
   });
 
+  it("opens the workspace select above the context chip row", () => {
+    expect(envModeSelector).toMatch(
+      /SelectPopup[^>]*alignItemWithTrigger=\{false\}[^>]*side="top"/u,
+    );
+  });
+
   it("keeps context chips at 24px and the meter outside ghost geometry", () => {
     const context = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.body.includes("height: 24px"),
     );
-    expect(context?.body).toMatch(/border-radius:\s*4px/u);
-    expect(context?.body).toMatch(/padding-inline:\s*4px/u);
+    expect(context?.body).toMatch(/border-radius:\s*6px/u);
+    expect(context?.body).toMatch(/padding-inline:\s*4px 6px/u);
+    const checkoutChip = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes('[data-slot="select-trigger"]'),
+    );
+    expect(checkoutChip?.body).toMatch(/padding-inline-start:\s*0/u);
+    const branchChip = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes('[data-slot="combobox-trigger"]'),
+    );
+    expect(branchChip?.body).toMatch(/padding-inline-start:\s*6px/u);
     const meter = rules.find((rule) =>
       rule.selector.endsWith("[data-fork-composer-status] button"),
     );
@@ -296,7 +315,7 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.endsWith("[data-fork-composer-action]") && rule.body.includes("width: 24px"),
     );
     expect(action?.body).toMatch(/height:\s*24px/u);
-    expect(action?.body).toMatch(/border-radius:\s*8px/u);
+    expect(action?.body).toMatch(/border-radius:\s*4px/u);
     for (const rule of rules.filter((candidate) => candidate.body.includes("height: 20px"))) {
       expect(rule.selector).not.toMatch(
         /data-chat-composer-(inline-actions|mobile-pending-actions)/u,
@@ -319,6 +338,6 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes(".chat-composer-context-strip"),
     );
     expect(strip?.body).toMatch(/margin:\s*0/u);
-    expect(strip?.body).toMatch(/gap:\s*4px/u);
+    expect(strip?.body).toMatch(/gap:\s*8px/u);
   });
 });
