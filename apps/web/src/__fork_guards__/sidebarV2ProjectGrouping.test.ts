@@ -66,7 +66,9 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // and it would leave a flat-looking sidebar over a grouped ordered list.
     const start = sidebar.indexOf("const items: ReactNode[] = visibleActiveSections.flatMap(");
     expect(start).toBeGreaterThanOrEqual(0);
-    const render = sidebar.slice(start, sidebar.indexOf("});", start));
+    const end = sidebar.indexOf("/* fork:end sidebar-v2-project-grouping */", start);
+    expect(end).toBeGreaterThan(start);
+    const render = sidebar.slice(start, end);
     expect(render).toContain("<SidebarV2ProjectGroupHeader");
     // One binding for both halves, taken from the section being rendered: the
     // header is drawn from it and the cards' under-a-header flag is read off

@@ -13,7 +13,7 @@ import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/model
 import type { ModelSelection, ScopedThreadRef } from "@t3tools/contracts";
 import { truncate } from "@t3tools/shared/String";
 
-import type { DraftId, DraftSessionState } from "../composerDraftStore";
+import type { ComposerThreadDraftState, DraftId, DraftSessionState } from "../composerDraftStore";
 
 export interface SidebarV2DraftRow {
   readonly draftId: DraftId;
@@ -25,6 +25,20 @@ export interface SidebarV2DraftRow {
 export function sidebarDraftTitleFromPrompt(prompt: string | null | undefined): string {
   const trimmed = prompt?.trim() ?? "";
   return trimmed.length > 0 ? truncate(trimmed) : "New thread";
+}
+
+/** The unsaved picker state is what the composer currently shows. */
+export function sidebarDraftModelSelection(input: {
+  readonly composerDraft:
+    | Pick<ComposerThreadDraftState, "activeProvider" | "modelSelectionByProvider">
+    | null
+    | undefined;
+  readonly fallback: ModelSelection;
+}): ModelSelection {
+  const activeProvider = input.composerDraft?.activeProvider;
+  return activeProvider
+    ? (input.composerDraft?.modelSelectionByProvider[activeProvider] ?? input.fallback)
+    : input.fallback;
 }
 
 /** Builds the list shell for a pre-promotion draft. */
@@ -115,6 +129,17 @@ export function sidebarDraftRowCapabilities(isDraft: boolean): {
     canRename: !isDraft,
     showDiscard: isDraft,
   };
+}
+
+/** Bulk lifecycle actions operate on rendered server rows, never draft shells. */
+export function sidebarServerActionThreadKeys(input: {
+  readonly selectedThreadKeys: Iterable<string>;
+  readonly hasRenderedRow: (threadKey: string) => boolean;
+  readonly isDraft: (threadKey: string) => boolean;
+}): readonly string[] {
+  return [...input.selectedThreadKeys].filter(
+    (threadKey) => input.hasRenderedRow(threadKey) && !input.isDraft(threadKey),
+  );
 }
 
 /**

@@ -29,6 +29,7 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
     // getState() so keystrokes do not rebuild the partition.
     expect(sidebar).toContain("promptForDraft:");
     expect(sidebar).toContain("getComposerDraft(draftId)?.prompt");
+    expect(sidebar).toContain("sidebarDraftModelSelection({");
     expect(sidebar).toContain("routeThreadKey");
   });
 
@@ -44,6 +45,7 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
   it("keeps settle/snooze/rename off drafts and offers discard", () => {
     // Capabilities from one helper at the list boundary — not four gates.
     expect(sidebar).toContain("sidebarDraftRowCapabilities(");
+    expect(sidebar).toContain("sidebarServerActionThreadKeys({");
     expect(sidebar).toContain("draftCaps.canSettle &&");
     expect(sidebar).toContain("draftCaps.canSnooze &&");
     expect(sidebar).toContain("onDiscardDraft={draftCaps.showDiscard ? discardDraftThread : null}");

@@ -41,6 +41,7 @@ export const SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY =
 export const UNGROUPED_PROJECT_KEY = "fork:ungrouped";
 
 const CollapsedProjectKeys = Schema.Array(Schema.String);
+const EMPTY_COLLAPSED_PROJECT_KEYS: readonly string[] = [];
 
 export function useSidebarV2GroupByProject(): [boolean, (value: boolean) => void] {
   return useLocalStorage(SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY, false, Schema.Boolean);
@@ -53,7 +54,7 @@ export function useSidebarV2CollapsedProjects(): readonly [
 ] {
   const [keys, setKeys] = useLocalStorage(
     SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY,
-    [] as readonly string[],
+    EMPTY_COLLAPSED_PROJECT_KEYS,
     CollapsedProjectKeys,
   );
   const collapsed = useMemo(() => new Set(keys), [keys]);

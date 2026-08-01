@@ -9,7 +9,9 @@ import {
   draftIdByThreadKey,
   listSidebarDraftRows,
   pickDiscardNeighborKey,
+  sidebarDraftModelSelection,
   sidebarDraftRowCapabilities,
+  sidebarServerActionThreadKeys,
   sidebarDraftTitleFromPrompt,
 } from "./sidebarV2DraftRows";
 
@@ -64,6 +66,35 @@ describe("buildSidebarDraftShell", () => {
       prompt: "rename draft from typed text",
     });
     expect(shell.title).toBe("rename draft from typed text");
+  });
+});
+
+describe("sidebarDraftModelSelection", () => {
+  it("uses the active unsaved composer selection before the project fallback", () => {
+    const pickedSelection = {
+      instanceId: ProviderInstanceId.make("claudeAgent"),
+      model: "claude-fable-5",
+    };
+    expect(
+      sidebarDraftModelSelection({
+        composerDraft: {
+          activeProvider: ProviderInstanceId.make("claudeAgent"),
+          modelSelectionByProvider: {
+            [ProviderInstanceId.make("claudeAgent")]: pickedSelection,
+          },
+        },
+        fallback: modelSelection,
+      }),
+    ).toEqual(pickedSelection);
+  });
+
+  it("falls back when the draft has no active selection", () => {
+    expect(
+      sidebarDraftModelSelection({
+        composerDraft: { activeProvider: null, modelSelectionByProvider: {} },
+        fallback: modelSelection,
+      }),
+    ).toEqual(modelSelection);
   });
 });
 
@@ -122,6 +153,18 @@ describe("sidebarDraftRowCapabilities", () => {
       canRename: true,
       showDiscard: false,
     });
+  });
+});
+
+describe("sidebarServerActionThreadKeys", () => {
+  it("keeps rendered server rows and excludes drafts and stale selections", () => {
+    expect(
+      sidebarServerActionThreadKeys({
+        selectedThreadKeys: ["server", "draft", "stale"],
+        hasRenderedRow: (threadKey) => threadKey !== "stale",
+        isDraft: (threadKey) => threadKey === "draft",
+      }),
+    ).toEqual(["server"]);
   });
 });
 

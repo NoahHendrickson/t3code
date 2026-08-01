@@ -196,7 +196,9 @@ import {
   draftIdByThreadKey as indexDraftIdsByThreadKey,
   listSidebarDraftRows,
   pickDiscardNeighborKey,
+  sidebarDraftModelSelection,
   sidebarDraftRowCapabilities,
+  sidebarServerActionThreadKeys,
 } from "~/custom/sidebarV2DraftRows";
 /* fork:end sidebar-v2-draft-rows */
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
@@ -1756,9 +1758,13 @@ export default function SidebarV2() {
     () =>
       listSidebarDraftRows({
         draftsById: draftThreadsByThreadKey,
-        modelSelectionForDraft: (_draftId, draft) =>
-          projectDefaultModelByKey.get(`${draft.environmentId}:${draft.projectId}`) ??
-          NO_PROVIDER_MODEL_SELECTION,
+        modelSelectionForDraft: (draftId, draft) =>
+          sidebarDraftModelSelection({
+            composerDraft: useComposerDraftStore.getState().getComposerDraft(draftId),
+            fallback:
+              projectDefaultModelByKey.get(`${draft.environmentId}:${draft.projectId}`) ??
+              NO_PROVIDER_MODEL_SELECTION,
+          }),
         promptForDraft: (draftId) =>
           useComposerDraftStore.getState().getComposerDraft(draftId)?.prompt ?? "",
         hasServerShell: (threadRef) => serverThreadKeys.has(scopedThreadKey(threadRef)),
@@ -2365,9 +2371,11 @@ export default function SidebarV2() {
       // right now. Selections can outlive their rows (settled-tail paging,
       // thread deletion elsewhere) and the menu labels must count only what
       // the actions will touch.
-      const threadKeys = [...useThreadSelectionStore.getState().selectedThreadKeys].filter(
-        (threadKey) => threadByKeyRef.current.has(threadKey),
-      );
+      const threadKeys = sidebarServerActionThreadKeys({
+        selectedThreadKeys: useThreadSelectionStore.getState().selectedThreadKeys,
+        hasRenderedRow: (threadKey) => threadByKeyRef.current.has(threadKey),
+        isDraft: (threadKey) => draftIdByThreadKeyRef.current.has(threadKey),
+      });
       if (threadKeys.length === 0) return;
       const count = threadKeys.length;
       // Snooze (N) is offered when every selected thread can actually take
