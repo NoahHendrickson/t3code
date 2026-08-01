@@ -303,8 +303,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"] {
-  /* 12px slim, 20px tall — the two radii the designs draw. */
-  --fork-composer-radius: 20px;
+  --fork-composer-radius: 8px;
   --fork-composer-bg: var(--card);
   --fork-composer-border: var(--border);
   --fork-composer-border-focus: var(--ring);
@@ -313,7 +312,9 @@
 :root[data-fork="noahhendrickson-t3code"].dark {
   --fork-composer-bg: rgb(41 41 41 / 80%);
   --fork-composer-border: rgb(255 255 255 / 8%);
-  --fork-composer-border-focus: #595959;
+  /* A step above the resting hairline, a step below the old #595959 — the
+     focus recolour should register, not glow. */
+  --fork-composer-border-focus: #474747;
 }
 
 /* The frame div is upstream's 1px gradient-border trick: a p-px shim whose
@@ -325,13 +326,10 @@
   background: none;
 }
 
-/* Both short shells take the tighter radius. `collapsed` is listed explicitly
-   rather than folded into `slim`: it is upstream's mobile tap target, which the
-   fork restyles but does not lay out, and conflating the two is what previously
-   had the DOM reporting a slim composer that the slim layout never touched. */
+/* Mobile's collapsed tap target remains a distinct functional state. */
 :root[data-fork="noahhendrickson-t3code"]
-  :is([data-fork-composer-density="slim"], [data-fork-composer-density="collapsed"]) {
-  --fork-composer-radius: 12px;
+  [data-chat-composer-mobile-collapsed="true"][data-fork-composer-surface] {
+  border-radius: 12px;
 }
 
 /* Selected by name, not by position. This used to be `[data-fork-composer-box]
@@ -391,12 +389,20 @@
   box-shadow: inset 0 0 0 1px var(--fork-composer-border-focus);
 }
 
-/* The prompt sits on a 16px line box at 14px type. Upstream's min-height holds
-   the editor open at ~3 lines, which would make the slim shell impossible and
-   leave the tall one hollow; one line is the drawn height and it grows from
-   there. 16px is kept below sm so iOS does not zoom the viewport on focus. */
+/* Upstream's min-height holds the editor open at ~3 lines instead of the
+   compact base row; one line is the drawn height and it grows from there. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box] [data-testid="composer-editor"] {
   min-height: 0;
+}
+
+/* The drawn placeholder is full muted-foreground, not upstream's /35 tint. The
+   sibling selector only ever matches Lexical's placeholder (and its empty
+   spacer, which has no text) — typed text lives inside the editor itself. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-box]
+  [data-testid="composer-editor"]
+  ~ div {
+  color: var(--muted-foreground);
 }
 
 /* The placeholder has to move with the prompt, or the two disagree about both
@@ -419,12 +425,12 @@
   :root[data-fork="noahhendrickson-t3code"]
     [data-fork-composer-box]
     :is([data-testid="composer-editor"], [data-testid="composer-editor"] ~ div) {
+    /* The design's body/md: 14px Geist on a 23px line. The 24px action is
+       what sets the 40px base row (8 + 24 + 8); the one-line 23px prompt sits
+       centred beside it, and each wrapped line adds 23px. Below sm the type
+       stays 16px so iOS does not zoom on focus. */
     font-size: 14px;
-    /* Held at 16px rather than scaled with the type. The line box is what the
-       drawn box heights are built from — 96px tall, 48px slim — so letting it
-       grow to match 14px type would push the tall box to 100. Tight for a
-       wrapped prompt; the geometry is the thing being protected. */
-    line-height: 16px;
+    line-height: 23px;
   }
 
   :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
@@ -465,57 +471,45 @@
   }
 }
 
-/* The in-box pills and the control row below it share one 24px ghost treatment:
-   12px medium type, a 12px glyph, and a full pill. The designs draw this type at
-   10px; 12px is the fork's own call, and it matches the prompt beside it.
-
-   Scoped to `[data-fork-composer-pills]` rather than to the footer and the
-   inline-actions row wholesale. Those containers also hold the primary action
-   slot, and `ComposerPrimaryActions` renders real CTAs into it: the h-9
-   Implement/Refine split button and the pending-question Previous / Next /
-   Submit answers buttons. Because this stylesheet is unlayered it beat their
-   Tailwind utilities outright — the split button came apart into two 24px pills
-   with a broken seam, the CTAs collapsed to 24px, and the `.dark` colour rule
-   below painted their labels #a6a6a6 on a filled primary background. Both
-   states are ordinary, not edge cases.
-
-   Send and stop are still excluded by name rather than out-specified by a later
-   rule. `:is()` takes the highest specificity among its arguments, so this
-   selector lands at (0,4,0) and a plain `[data-fork-composer-action]` rule at
-   (0,3,0) would quietly lose its 6px radius back to the pill. */
+/* The control row's ghost controls: 20px tall, 12px medium type on a 16px
+   line, a 12px glyph, 8px inline padding, at a 4px radius (Noey's call over
+   the drawn full pill). The named mode and model groups contain only ghost
+   controls; the mode chip is the single exception and owns its styling in
+   `custom/ComposerShell.css`. */
 :root[data-fork="noahhendrickson-t3code"]
-  :is([data-fork-composer-pills], [data-fork-composer-control-row])
-  :is(button, [data-slot="button"]):not([data-fork-composer-action]) {
-  height: 24px;
-  min-height: 24px;
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  height: 20px;
+  min-height: 20px;
   gap: 6px;
-  border-radius: 999px;
+  padding-inline: 8px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  :is([data-fork-composer-pills], [data-fork-composer-control-row])
-  :is(button, [data-slot="button"]):not([data-fork-composer-action])
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip])
   svg {
   width: 12px;
   height: 12px;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  :is([data-fork-composer-pills], [data-fork-composer-control-row])
-  :is(button, [data-slot="button"]):not([data-fork-composer-action]) {
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
   color: #a6a6a6;
 }
 
-/* Send and stop are the one exception to the pill rule: 24px squares at a 6px
+/* Send and stop are the one exception to the pill rule: 24px squares at an 8px
    radius, drawn as the only filled controls in the composer. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {
   width: 24px;
   height: 24px;
   min-height: 24px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* Flat send (tone="flat"): in dark mode, a send button without stage-channel
@@ -536,9 +530,8 @@
 }
 
 /* The model pill is the provider's name and a caret, nothing else. Upstream
-   leads it with a ProviderInstanceIcon, which made sense when the pill sat in a
-   crowded footer and had to identify itself; inside the box it is the only
-   named control, so the icon is redundant with the word beside it.
+   leads it with a ProviderInstanceIcon, but this is the only named model
+   control on the lower row, so the icon is redundant with the word beside it.
 
    Scoped to the composer: ProviderModelPicker is also used in Settings, where
    the icon still does the work of distinguishing one configured instance from
@@ -550,7 +543,7 @@
    the model name becomes the first child — and without this guard the rule
    would hide the name instead, leaving a pill with nothing but a caret. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-box]
+  [data-fork-composer-control-row]
   [data-chat-provider-model-picker]
   > span:first-child
   > span:first-child:not([data-base-ui-tooltip-trigger]) {
@@ -578,12 +571,120 @@
    cleared the stitched outline. Inside the control row it is just the row's
    right-hand group, so the wrapper flattens to nothing. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-control-row-slot="right"]
+  [data-fork-composer-context-row]
   .chat-composer-context-strip {
   width: auto;
   max-width: none;
   margin: 0;
   padding: 0;
+  /* The drawn 4px between the workspace and branch chips, replacing the
+     strip's own gap-2. */
+  gap: 4px;
+}
+
+/* The context chips are the filled 20px, 6px-radius controls above the
+   surface. The design draws both on the same selected-surface fill with no
+   hairline. Light mode falls back to upstream's accent; the drawn values are
+   dark-only. */
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-context-chip-bg: var(--accent);
+  --fork-context-chip-bg-hover: var(--muted);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-context-chip-bg: #2a2a2a;
+  --fork-context-chip-bg-hover: #303030;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]) {
+  /* The Auto chip's container at the drawn 4px inline padding, four pixels
+     taller (Noey's call): 24px, 4px radius. */
+  height: 24px;
+  min-height: 24px;
+  gap: 6px;
+  padding-inline: 4px;
+  border-radius: 4px;
+  /* 12px, matching the control row's Auto/Build type — Noey's bump over the
+     drawn 10px. */
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  background: var(--fork-context-chip-bg);
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]):is(:hover, [data-pressed], [data-popup-open]) {
+  background: var(--fork-context-chip-bg-hover);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]) {
+  color: #a6a6a6;
+}
+
+/* The workspace chip's folder glyph carries more empty space in its 12px
+   frame than the branch glyph, so at equal box padding its left edge reads
+   wider. Two fewer pixels on the start side optically matches the pair.
+   Equal specificity with the shared chip rule; source order wins. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="select-trigger"] {
+  padding-inline-start: 2px;
+}
+
+/* The workspace select keeps its popup but drops the trigger caret — the drawn
+   chip is icon + label only. The branch chip's caret is its own Lucide glyph,
+   not a select icon, so it stays. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="select-icon"] {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"])
+  svg {
+  width: 12px;
+  height: 12px;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-control-row-slot="right"] {
+  gap: 0;
+}
+
+/* Context usage is the circular readout immediately before model: a 24px
+   button around the ring's own 20px span. The ring's circle only inks ~70% of
+   its frame, so squeezing the span to the drawn 16px leaves a ~11px ring that
+   reads broken next to the 20px controls; the natural art lands at the drawn
+   visual weight. The control-geometry and glyph rules above exclude this
+   button by name because they out-rank anything written here. */
+/* Flex, not block: as a plain div the inline-flex button sits on the text
+   baseline, and the phantom descender space below it shoves the ring above
+   the row's centreline. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-status] {
+  display: flex;
+  align-items: center;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-status] button {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  /* Its hover fill squares off like every other control's. */
+  border-radius: 4px;
+}
+
+/* Down from the span's natural 20px: the ring inks ~70% of its frame, so
+   16px lands a ~11px visible circle beside the 20px controls. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-status] button > span {
+  width: 16px;
+  height: 16px;
 }
 
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
