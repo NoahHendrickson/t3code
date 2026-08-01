@@ -582,6 +582,17 @@
   gap: 8px;
 }
 
+/* Upstream nests the PR pill with the branch trigger at gap-1 (4px), while the
+   strip itself is 8px between checkout and that pair — so checkout→PR reads
+   loose and PR→branch reads tight. Same 8px on every direct flex child keeps
+   the three chips (and env→checkout when both show) evenly spaced. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  .chat-composer-context-strip
+  > .flex {
+  gap: 8px;
+}
+
 /* The context chips are the filled controls above the surface (checkout /
    worktree mode and branch). Same selected-surface fill, no hairline. Light
    mode falls back to upstream's accent; the drawn values are dark-only. */

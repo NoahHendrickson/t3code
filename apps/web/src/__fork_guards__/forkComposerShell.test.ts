@@ -263,9 +263,9 @@ describe("fork guard: fork-composer-shell", () => {
   });
 
   it("opens the workspace select above the context chip row", () => {
-    expect(envModeSelector).toMatch(
-      /SelectPopup[^>]*alignItemWithTrigger=\{false\}[^>]*side="top"/u,
-    );
+    // Assert independently — prop order must not matter to the guard.
+    expect(envModeSelector).toMatch(/SelectPopup[^>]*alignItemWithTrigger=\{false\}/u);
+    expect(envModeSelector).toMatch(/SelectPopup[^>]*side="top"/u);
   });
 
   it("keeps context chips at 24px and the meter outside ghost geometry", () => {
@@ -335,9 +335,20 @@ describe("fork guard: fork-composer-shell", () => {
     const strip = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes(".chat-composer-context-strip"),
+        rule.selector.includes(".chat-composer-context-strip") &&
+        !rule.selector.includes(">.flex") &&
+        !rule.selector.includes("> .flex"),
     );
     expect(strip?.body).toMatch(/margin:\s*0/u);
     expect(strip?.body).toMatch(/gap:\s*8px/u);
+    // Nested PR+branch (and env+checkout) wrappers keep upstream gap-1; the
+    // fork re-gaps them to 8px so checkout→PR→branch reads evenly.
+    const nested = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes(".chat-composer-context-strip") &&
+        (rule.selector.includes(">.flex") || rule.selector.includes("> .flex")),
+    );
+    expect(nested?.body).toMatch(/gap:\s*8px/u);
   });
 });

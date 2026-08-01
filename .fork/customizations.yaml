@@ -1238,23 +1238,25 @@
     target remains a separate functional state.
 
     Which controls sit where is the main design contract. BranchToolbar's
-    worktree and branch chips sit above the surface as filled chips sharing
-    one selected-surface fill with no hairline, 4px apart, on the Auto chip's
-    container at 4px/6px inline padding (24px tall, 6px radius — extra 2px on
-    the end so the trailing chevron clears the curve; branch combobox takes
-    6px start, workspace select 0 for its roomier folder glyph) at 12px type
-    matching the control row's ghost pills, and the workspace chip's trigger
-    caret is dropped. The workspace select opens above the chip row
-    (side top, no align-item-with-trigger) so its glass menu clears the
-    neighboring branch pill instead of overlapping it. Only the prompt and primary
-    action sit inside the base row. Runtime and interaction modes sit
-    below-left; context usage, model, and effort sit below-right in a 24px
-    control row of 20px, 4px-radius controls (Noey's radius over the drawn
-    full-pill ghosts, so hover fills square off). The runtime mode renders as
-    the design's 20px accent chip — label only, no icon or caret — with its
-    hue selected by a typed fork-owned token map: auto green, full access
-    yellow, auto-accept edits purple, supervised red. The interaction and
-    plan-sidebar toggles are text-only ghost chips,
+    worktree, PR, and branch chips sit above the surface as filled chips
+    sharing one selected-surface fill with no hairline, 8px apart (matching
+    the context row's pb-2 under the pills — including the nested PR+branch
+    pair that upstream keeps at gap-1), on the Auto chip's container at
+    4px/6px inline padding (24px tall, 6px radius — extra 2px on the end so
+    the trailing chevron clears the curve; branch combobox takes 6px start,
+    workspace select 0 for its roomier folder glyph) at 12px type matching
+    the control row's ghost pills, and the workspace chip's trigger caret is
+    dropped. The workspace select opens above the chip row (side top, no
+    align-item-with-trigger) so its glass menu clears the neighboring branch
+    pill instead of overlapping it. Only the prompt and primary action sit
+    inside the base row. Runtime and interaction modes sit below-left;
+    context usage, model, and effort sit below-right in a 24px control row of
+    20px, 4px-radius controls (Noey's radius over the drawn full-pill ghosts,
+    so hover fills square off). The runtime mode renders as the design's 20px
+    accent chip — label only, no icon or caret — with its hue selected by a
+    typed fork-owned token map: auto green, full access yellow, auto-accept
+    edits purple, supervised red. The interaction and plan-sidebar toggles
+    are text-only ghost chips,
     the model and effort selects share the row's 12px type (Noey's call over
     the drawn 10px), and the composer's effort trigger joins its trait labels
     with a plain space ("High 1M") while Settings keeps upstream's " · "
