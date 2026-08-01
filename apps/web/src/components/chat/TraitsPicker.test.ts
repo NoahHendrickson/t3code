@@ -92,6 +92,18 @@ describe("buildTraitsTriggerDisplay", () => {
     });
   });
 
+  it("allows the composer to request its compact label separator", () => {
+    expect(
+      buildTraitsTriggerDisplay({
+        provider: CODEX,
+        descriptors: [EFFORT, CONTEXT_WINDOW],
+        primarySelectDescriptorId: "reasoningEffort",
+        ultrathinkPromptControlled: false,
+        labelSeparator: " ",
+      }),
+    ).toEqual({ label: "High 1M", showFastModeIcon: false });
+  });
+
   it("falls back to a text label when fast mode is the only trait", () => {
     expect(display([fastModeDescriptor(true)])).toEqual({
       label: "Fast",

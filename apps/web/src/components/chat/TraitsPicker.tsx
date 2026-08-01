@@ -216,6 +216,10 @@ export interface TraitsMenuContentProps {
   allowPromptInjectedEffort?: boolean;
   triggerVariant?: VariantProps<typeof buttonVariants>["variant"];
   triggerClassName?: string;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /** Composer-only label treatment; Settings keeps the legible shared default. */
+  triggerLabelSeparator?: string;
+  /* fork:end fork-composer-shell */
 }
 
 export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
@@ -389,6 +393,9 @@ export function buildTraitsTriggerDisplay(input: {
   descriptors: ReadonlyArray<ProviderOptionDescriptor>;
   primarySelectDescriptorId: string | null;
   ultrathinkPromptControlled: boolean;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  labelSeparator?: string;
+  /* fork:end fork-composer-shell */
 }): { label: string; showFastModeIcon: boolean } {
   let hasFastMode = false;
   let fastModeEnabled = false;
@@ -429,7 +436,12 @@ export function buildTraitsTriggerDisplay(input: {
   if (labels.length === 0 && hasFastMode) {
     return { label: fastModeEnabled ? "Fast" : "Normal", showFastModeIcon: false };
   }
-  return { label: labels.join(" · "), showFastModeIcon: fastModeEnabled };
+  return {
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    label: labels.join(input.labelSeparator ?? " · "),
+    /* fork:end fork-composer-shell */
+    showFastModeIcon: fastModeEnabled,
+  };
 }
 
 export const TraitsPicker = memo(function TraitsPicker({
@@ -443,6 +455,9 @@ export const TraitsPicker = memo(function TraitsPicker({
   allowPromptInjectedEffort = true,
   triggerVariant,
   triggerClassName,
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  triggerLabelSeparator,
+  /* fork:end fork-composer-shell */
   ...persistence
 }: TraitsMenuContentProps & TraitsPersistence) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -473,6 +488,9 @@ export const TraitsPicker = memo(function TraitsPicker({
     descriptors,
     primarySelectDescriptorId: primarySelectDescriptor?.id ?? null,
     ultrathinkPromptControlled,
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    ...(triggerLabelSeparator !== undefined ? { labelSeparator: triggerLabelSeparator } : {}),
+    /* fork:end fork-composer-shell */
   });
   const fastModeIcon = showFastModeIcon ? (
     <>

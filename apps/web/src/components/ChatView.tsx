@@ -5879,43 +5879,39 @@ function ChatViewContent(props: ChatViewProps) {
               )}
             </div>
 
-            {/* Input bar — centered hero while a draft has no messages, docked at the bottom otherwise */}
+            {/* Draft greeting — centered in the chat column; composer stays docked below. */}
+            {isDraftHeroState ? (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center">
+                <div
+                  className="chat-composer-horizontal-inset pointer-events-auto w-full"
+                  style={
+                    forceExpandedMobileComposer
+                      ? {
+                          viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME,
+                        }
+                      : undefined
+                  }
+                >
+                  <DraftHeroHeadline
+                    activeProjectRef={activeProjectRef}
+                    activeProjectTitle={activeProject?.title ?? null}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {/* Input bar — always docked at the bottom, including an empty draft. */}
             <div
               ref={setComposerOverlayElement}
               data-chat-composer-overlay="true"
-              className={
-                isDraftHeroState
-                  ? "pointer-events-none absolute inset-0 z-20 flex items-center"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
-              }
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
             >
               <div
                 ref={attachDraftHeroTransitionGroupRef}
                 className="chat-composer-horizontal-inset w-full"
               >
                 <div className="pointer-events-auto relative z-10">
-                  {isDraftHeroState ? (
-                    <div className="absolute inset-x-0 bottom-full z-0">
-                      <div
-                        className="pb-8"
-                        style={
-                          forceExpandedMobileComposer
-                            ? {
-                                viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME,
-                              }
-                            : undefined
-                        }
-                      >
-                        <DraftHeroHeadline
-                          activeProjectRef={activeProjectRef}
-                          activeProjectTitle={activeProject?.title ?? null}
-                        />
-                      </div>
-                      <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
-                    </div>
-                  ) : (
-                    <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
-                  )}
+                  <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
                   {threadSyncPhase && !activeEnvironmentUnavailable ? (
                     <ThreadSyncStatusPill phase={threadSyncPhase} />
                   ) : null}
@@ -5950,7 +5946,6 @@ function ChatViewContent(props: ChatViewProps) {
                             forceExpandedOnMobile={forceExpandedMobileComposer && isDraftHeroState}
                             projectSelectionRequired={isLocalDraftThread && activeProject === null}
                             /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                            isDraftHero={isDraftHeroState}
                             {...(composerContextStrip
                               ? { contextStrip: composerContextStrip }
                               : {})}
@@ -6043,7 +6038,7 @@ function ChatViewContent(props: ChatViewProps) {
                 key={`${activeThreadKey}:${activePreviewMiniPlayer.tabId}`}
                 threadRef={activeThreadRef}
                 tabId={activePreviewMiniPlayer.tabId}
-                bottomInset={isDraftHeroState ? 0 : composerOverlayHeight}
+                bottomInset={composerOverlayHeight}
               />
             ) : null}
 

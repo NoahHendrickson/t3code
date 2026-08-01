@@ -1,26 +1,19 @@
 // @effect-diagnostics nodeBuiltinImport:off
-/**
- * Fork guard — see `.fork/README.md` §4b and
- * `.fork/customizations.yaml#fork-composer-shell`.
- *
- * The composer restyle spans three upstream files and one stylesheet, and the
- * halves fail independently: the JSX can keep its fences while the CSS stops
- * matching, or the CSS can survive a rebase that quietly drops the attribute it
- * hangs off. So this checks both ends of each seam — the hooks in the TSX, and
- * the rules that consume them — plus the one piece of behaviour that is pure
- * logic (which shell a given composer state wears).
- */
+/** Fork guard — see `.fork/customizations.yaml#fork-composer-shell`. */
 
 import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 
-import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import {
-  resolveComposerDensity,
-  isPromptHeightWrapped,
-  nextWrapLatch,
-} from "../custom/composerDensity";
+  ComposerPromptRow,
+  ComposerShell,
+  getRuntimeModeChipStyle,
+  resolveComposerShellVisibility,
+} from "../custom/ComposerShell";
+import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
@@ -28,39 +21,122 @@ function readSibling(relativePath: string): string {
 }
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
-
 const theme = readSibling("../theme.custom.css");
+const shellCss = readSibling("../custom/ComposerShell.css");
+const styles = `${theme}\n${shellCss}`;
+const rules = cssRules(styles);
 const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
-const controlRow = readSibling("../custom/ComposerControlRow.tsx");
+
+function shellMarkup(input: { approvalPending?: boolean; collapsedMobile?: boolean } = {}) {
+  return renderToStaticMarkup(
+    createElement(
+      ComposerShell,
+      {
+        approvalPending: input.approvalPending ?? false,
+        collapsedMobile: input.collapsedMobile ?? false,
+        context: createElement("span", { "data-test-context": true }),
+        mobilePendingActionsVisible: false,
+        modeControls: createElement("button", { "data-test-mode": true }),
+        modelControls: createElement("button", { "data-test-model": true }),
+        readoutControls: createElement("span", { "data-test-readout": true }),
+      },
+      createElement("div", { "data-test-surface": true }),
+    ),
+  );
+}
+
+function promptMarkup(input: { approvalPending?: boolean; mobilePendingActionsVisible?: boolean }) {
+  return renderToStaticMarkup(
+    createElement(
+      ComposerPromptRow,
+      {
+        action: createElement("button", { "data-test-primary-action": true }),
+        approvalPending: input.approvalPending ?? false,
+        mobilePendingActionsVisible: input.mobilePendingActionsVisible ?? false,
+      },
+      createElement("div", { "data-test-editor": true }),
+    ),
+  );
+}
 
 describe("fork guard: fork-composer-shell", () => {
-  it("keeps the box, send and stop hooks the stylesheet hangs off", () => {
-    // Every visual decision below is keyed to one of these attributes. Lose one
-    // in a rebase and the CSS still compiles, still ships, and matches nothing.
-    expect(chatComposer, "ChatComposer lost data-fork-composer-box").toContain(
-      'data-fork-composer-box="true"',
-    );
-    expect(chatComposer, "ChatComposer lost the density attribute").toContain(
-      "data-fork-composer-density={composerDensity}",
-    );
-    expect(chatComposer, "ChatComposer lost the prompt scrollport hook").toContain(
-      'data-fork-composer-prompt="true"',
-    );
-    expect(primaryActions, "send button lost its fork hook").toContain(
-      'data-fork-composer-action="send"',
-    );
-    expect(primaryActions, "stop button lost its fork hook").toContain(
-      'data-fork-composer-action="stop"',
-    );
-    expect(controlRow).toContain('data-fork-composer-control-row="true"');
+  it("orders context, surface, and controls in the fork-owned shell", () => {
+    const markup = shellMarkup();
+    const context = markup.indexOf("data-test-context");
+    const surface = markup.indexOf("data-test-surface");
+    const controls = markup.indexOf("data-fork-composer-control-row");
+
+    expect(context).toBeGreaterThanOrEqual(0);
+    expect(context).toBeLessThan(surface);
+    expect(surface).toBeLessThan(controls);
   });
 
-  it("styles the composer only under the fork marker", () => {
-    // An unmarked or pure-upstream build must render upstream's glass shell
-    // untouched, so every composer rule has to be scoped to the marker.
-    const composerRules = cssRules(theme).filter(
+  it("gates every interactive control during approvals but keeps readouts", () => {
+    expect(
+      resolveComposerShellVisibility({
+        approvalPending: true,
+        collapsedMobile: false,
+        mobilePendingActionsVisible: false,
+      }),
+    ).toEqual({ showInlinePrimaryAction: false, showInteractiveControls: false });
+
+    const markup = shellMarkup({ approvalPending: true });
+    expect(markup).not.toContain("data-test-mode");
+    expect(markup).not.toContain("data-test-model");
+    expect(markup).toContain("data-test-readout");
+  });
+
+  it("hides model and mode controls under the collapsed mobile composer", () => {
+    const markup = shellMarkup({ collapsedMobile: true });
+    expect(markup).not.toContain("data-test-mode");
+    expect(markup).not.toContain("data-test-model");
+    expect(markup).toContain("data-test-context");
+    expect(markup).toContain("data-test-readout");
+  });
+
+  it("renders only one primary-action cluster for a mobile pending answer", () => {
+    expect(promptMarkup({})).toContain("data-test-primary-action");
+    expect(promptMarkup({ mobilePendingActionsVisible: true })).not.toContain(
+      "data-test-primary-action",
+    );
+    expect(promptMarkup({ approvalPending: true })).not.toContain("data-test-primary-action");
+  });
+
+  it("keeps one base shell without the removed density machinery", () => {
+    expect(chatComposer).not.toContain("composerDensity");
+    expect(chatComposer).not.toContain("data-fork-composer-density");
+    expect(chatComposer).not.toContain("useComposerPromptWrapLatch");
+    expect(styles).not.toContain("data-fork-composer-density");
+
+    const collapsed = rules.find((rule) =>
+      rule.selector.includes('[data-chat-composer-mobile-collapsed="true"]'),
+    );
+    expect(collapsed?.selector).toContain("[data-fork-composer-surface]");
+    expect(collapsed?.body).toMatch(/border-radius:\s*12px/u);
+  });
+
+  it("docks the composer at the bottom and centers the draft greeting independently", () => {
+    expect(chatView).toContain(
+      'className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"',
+    );
+    expect(chatView).not.toMatch(/isDraftHeroState\s*\?\s*"pointer-events-none absolute inset-0/u);
+    expect(chatView).not.toContain("isDraftHero={isDraftHeroState}");
+    // Greeting is its own centered layer; it must not ride bottom-full above the input.
+    expect(chatView).toContain(
+      'className="pointer-events-none absolute inset-0 z-10 flex items-center"',
+    );
+    const headlineIdx = chatView.indexOf("<DraftHeroHeadline");
+    const composerOverlayIdx = chatView.indexOf('data-chat-composer-overlay="true"');
+    expect(headlineIdx).toBeGreaterThan(-1);
+    expect(composerOverlayIdx).toBeGreaterThan(-1);
+    expect(headlineIdx).toBeLessThan(composerOverlayIdx);
+    expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
+  });
+
+  it("keeps composer styling scoped to the fork marker", () => {
+    const composerRules = rules.filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer") ||
         rule.selector.includes("chat-composer-glass") ||
@@ -72,399 +148,136 @@ describe("fork guard: fork-composer-shell", () => {
     }
   });
 
-  it("switches off upstream's stitched glass shell", () => {
-    // The designs draw a discrete box with a free-floating control row. Leaving
-    // either painted pseudo-element on restores the joined vessel the fork
-    // replaced, outlining the control row along with the box.
-    expect(theme).toMatch(/\.chat-composer-glass-shell::before[\s\S]{0,240}display:\s*none/u);
-    expect(theme).toMatch(/\.chat-composer-glass-host::after[\s\S]{0,240}display:\s*none/u);
-    expect(theme).toMatch(/\.chat-composer-context-strip::before[\s\S]{0,240}display:\s*none/u);
-  });
+  it("paints the surface by name and restores drag-over feedback", () => {
+    expect(chatComposer).toContain('data-fork-composer-surface="true"');
+    expect(chatComposer).toContain("data-fork-composer-drag-over=");
+    expect(
+      rules.filter((rule) => /\[data-fork-composer-box\]\s*>\s*div/u.test(rule.selector)),
+    ).toHaveLength(0);
 
-  it("draws both radii and moves focus onto the border", () => {
-    expect(theme).toMatch(/--fork-composer-radius:\s*20px/u);
-    expect(theme).toMatch(
-      /\[data-fork-composer-density="slim"\][\s\S]{0,200}--fork-composer-radius:\s*12px/u,
-    );
-    // Both short shells take it; `collapsed` stopped reporting itself as slim.
-    expect(theme).toMatch(
-      /\[data-fork-composer-density="collapsed"\][\s\S]{0,200}--fork-composer-radius:\s*12px/u,
-    );
-    // Inset shadow rather than a border, so the stroke does not add 2px to a
-    // box the designs measure at 96 including it.
-    expect(theme).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--fork-composer-border\)/u);
-    expect(theme).toMatch(
-      /:focus-within[\s\S]{0,200}box-shadow:\s*inset 0 0 0 1px var\(--fork-composer-border-focus\)/u,
-    );
-  });
-
-  it("takes the drawn colours in dark and defers to upstream in light", () => {
-    // Dark-only design, same as the rest of the fork's surface work.
-    expect(theme).toMatch(/\.dark\s*\{[^}]*--fork-composer-bg:\s*rgb\(41 41 41 \/ 80%\)/u);
-    expect(theme).toMatch(/\.dark\s*\{[^}]*--fork-composer-border:\s*rgb\(255 255 255 \/ 8%\)/u);
-    expect(theme).toMatch(/\.dark\s*\{[^}]*--fork-composer-border-focus:\s*#595959/u);
-    expect(theme).toMatch(/--fork-composer-bg:\s*var\(--card\)/u);
-    expect(theme).toMatch(/--fork-composer-border:\s*var\(--border\)/u);
-  });
-
-  it("pins both divergences from Figma, on the rules that carry them", () => {
-    // Two deliberate divergences, and both need pinning: someone reconciling
-    // this stylesheet against the design would otherwise "correct" either one
-    // and think they were fixing a typo.
-    //
-    // Routed through cssRules rather than a bare toMatch. The previous version
-    // asserted /font-size:\s*12px;\s*\n\s*font-weight:\s*500/ against the whole
-    // file, which was satisfied by any such pair anywhere in ~1000 lines and
-    // depended on where `vp fmt` happened to break the line. Anchoring to the
-    // selector is what makes it a guard rather than a coincidence detector.
-    const rules = cssRules(theme);
-
-    const pillRule = rules.find(
+    const surface = rules.find(
       (rule) =>
-        rule.selector.includes("[data-fork-composer-control-row]") &&
-        rule.body.includes("font-size"),
+        rule.selector.includes("[data-fork-composer-surface]") && rule.body.includes("box-shadow"),
     );
-    expect(pillRule, "no rule sets the pill type").toBeDefined();
-    expect(pillRule!.body, "pills are drawn at 10px; the fork uses 12px").toMatch(
-      /font-size:\s*12px/u,
-    );
-
-    // The prompt was previously unpinned entirely — the placeholder test checks
-    // the combinator, not the size the combinator exists to deliver, so a
-    // revert to Figma's 12px passed every assertion in this file.
-    const promptRule = rules.find(
-      (rule) =>
-        rule.selector.includes('[data-testid="composer-editor"]') &&
-        rule.body.includes("font-size"),
-    );
-    expect(promptRule, "no rule sets the prompt type").toBeDefined();
-    expect(promptRule!.body, "prompt is drawn at 12px; the fork uses 14px").toMatch(
-      /font-size:\s*14px/u,
-    );
-    // The more consequential half: the manifest states outright that the 96/48
-    // box heights are derived from this line box, so it does not scale with the
-    // font.
-    expect(promptRule!.body, "the 96/48 heights are derived from this").toMatch(
-      /line-height:\s*16px/u,
-    );
+    expect(surface?.body).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--fork-composer-border\)/u);
+    const drag = rules.find((rule) => rule.selector.includes("[data-fork-composer-drag-over]"));
+    expect(drag?.body).toMatch(/background:/u);
+    expect(drag?.body).toMatch(/outline:\s*2px solid/u);
   });
 
-  it("drops the provider icon from the model pill, in the composer only", () => {
-    // ProviderModelPicker is shared with Settings, where the icon still
-    // distinguishes one configured instance from another. Unscoping this rule
-    // would strip it there too.
-    const iconRules = cssRules(theme).filter((rule) =>
-      rule.selector.includes("[data-chat-provider-model-picker]"),
-    );
-    expect(iconRules.length).toBeGreaterThan(0);
-    for (const rule of iconRules) {
-      expect(rule.selector, `unscoped model-pill rule: ${rule.selector}`).toContain(
-        "[data-fork-composer-box]",
-      );
-      // The icon carries no attributes; the model name is tooltip-wrapped. Drop
-      // this guard and an upstream that removes the icon leaves the rule hiding
-      // the model name instead, for a pill of pure caret.
-      expect(rule.selector).toContain(":not([data-base-ui-tooltip-trigger])");
-    }
-  });
-
-  it("resizes the placeholder with the prompt, via a general sibling combinator", () => {
-    // Lexical renders the placeholder as the editor's third child, with an
-    // empty zero-height div between them. `+ div` matches the spacer and leaves
-    // the placeholder at upstream's 14px/22.75px, which reads as a caret
-    // misaligned against the text it sits in front of. Regressing this to `+`
-    // looks like a tidy-up and is not one.
-    expect(theme).toMatch(/\[data-testid="composer-editor"\]\s*~\s*div/u);
-    expect(theme).not.toMatch(/\[data-testid="composer-editor"\]\s*\+\s*div/u);
-  });
-
-  it("frees the prompt from upstream's three-line minimum", () => {
-    // Upstream holds the editor open at min-h-17.5. That makes the slim shell
-    // geometrically impossible and leaves the tall one hollow.
-    expect(theme).toMatch(/\[data-testid="composer-editor"\][\s\S]{0,160}min-height:\s*0/u);
-  });
-
-  it("moves the desktop prompt scrollport onto the wrapper, not the editor", () => {
-    // The 14/16 line box lets Geist ink inflate scrollHeight on the
-    // contenteditable, so upstream's max-h + overflow-y:auto there paints a
-    // phantom thumb. The wrapper owns the cap; the editor clips ink and stays
-    // unclamped. Scoped to the same >=40rem media as the line box — below that
-    // upstream's editor scroll behaviour is correct and must stay alone.
-    //
-    // Routed through cssRules (with atRules) rather than a bare @media…[\s\S]
-    // regex: theme.custom.css has one media query today, so a prefix match was
-    // satisfied by any placement within ~1200 chars of it — including after the
-    // block's closing brace. Hoisting these rules out of the media stayed green.
-    expect(chatComposer).toContain('data-fork-composer-prompt="true"');
-    const rules = cssRules(theme);
-    const inDesktopLineBoxMedia = (rule: (typeof rules)[number]) =>
-      rule.atRules.some((at) => /@media\s*\(\s*width\s*>=\s*40rem\s*\)/u.test(at));
-
+  it("moves the desktop scrollport to the prompt wrapper and clips its placeholder", () => {
+    const isDesktop = (rule: (typeof rules)[number]) =>
+      rule.atRules.some((atRule) => /@media\s*\(\s*width\s*>=\s*40rem\s*\)/u.test(atRule));
     const scrollport = rules.find(
       (rule) =>
-        inDesktopLineBoxMedia(rule) &&
+        isDesktop(rule) &&
         rule.selector.includes("[data-fork-composer-prompt]") &&
         !rule.selector.includes('[data-testid="composer-editor"]'),
     );
-    expect(scrollport, "desktop prompt scrollport rule missing or unscoped").toBeDefined();
-    expect(scrollport!.body).toMatch(/max-height:\s*12\.5rem/u);
-    expect(scrollport!.body).toMatch(/overflow-y:\s*auto/u);
+    expect(scrollport?.body).toMatch(/max-height:\s*12\.5rem/u);
+    expect(scrollport?.body).toMatch(/overflow-y:\s*auto/u);
 
-    // The `~ div` exclusion is load-bearing: the sibling clip rule below
-    // satisfies the other three predicates too, so without it this `find`
-    // resolves to the unclamp rule only because that rule happens to sit
-    // earlier in the file. Reorder the two blocks and `max-height: none`
-    // starts interrogating the sibling rule and fails for a reason unrelated
-    // to the invariant — the same class of wrong-thing-satisfied-it bug the
-    // @media prefix match already cost this file.
     const editor = rules.find(
       (rule) =>
-        inDesktopLineBoxMedia(rule) &&
+        isDesktop(rule) &&
         rule.selector.includes("[data-fork-composer-prompt]") &&
         rule.selector.includes('[data-testid="composer-editor"]') &&
         !/~\s*div/u.test(rule.selector),
     );
-    expect(editor, "desktop editor unclamp rule missing or unscoped").toBeDefined();
-    expect(editor!.body).toMatch(/max-height:\s*none/u);
-    expect(editor!.body).toMatch(/overflow-y:\s*hidden/u);
+    expect(editor?.body).toMatch(/max-height:\s*none/u);
+    expect(editor?.body).toMatch(/overflow-y:\s*hidden/u);
 
-    // The editor's clip does not cover its siblings: the placeholder's line
-    // box overhangs its inset-0 box by a pixel at 14/16, and abspos overflow
-    // propagates to the wrapper's scrollable overflow — a thumb that appears
-    // only while the prompt is empty. Clip specifically, not hidden: hidden
-    // computes the other axis's visible to auto, and an unbreakable
-    // approval-detail placeholder would then hand the 16px line to a
-    // horizontal scrollbar. Both axes, because a visible x would propagate
-    // that same text sideways into the wrapper's auto overflow-x instead.
-    // (The editor tolerates hidden only because pre-wrap + wrap-break-word
-    // forecloses horizontal overflow.)
-    const siblings = rules.find(
+    const placeholder = rules.find(
       (rule) =>
-        inDesktopLineBoxMedia(rule) &&
-        rule.selector.includes("[data-fork-composer-prompt]") &&
-        /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector),
+        isDesktop(rule) &&
+        /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector) &&
+        rule.body.includes("overflow"),
     );
-    expect(siblings, "desktop placeholder clip rule missing or unscoped").toBeDefined();
-    expect(siblings, "the unclamp and clip rules must stay distinct").not.toBe(editor);
-    expect(siblings!.body).toMatch(/overflow:\s*clip/u);
-
-    // An imperative attribute toggle is the failure mode this replaces — see
-    // .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md#fork-composer-shell.
-    expect(theme).not.toContain("data-composer-prompt-scrollable");
-    expect(chatComposer).not.toContain("data-composer-prompt-scrollable");
+    expect(placeholder?.body).toMatch(/overflow:\s*clip/u);
+    expect(styles).not.toMatch(/\[data-testid="composer-editor"\]\s*\+\s*div/u);
   });
 
-  it("squares the send and stop buttons, flattens release send, and reddens stop", () => {
-    expect(theme).toMatch(/\[data-fork-composer-action\]\s*\{[\s\S]{0,200}border-radius:\s*6px/u);
-    // Flat (no stage art) is pure white / black icon in dark mode only; light
-    // and unmarked builds keep upstream's fill, so the rule must stay anchored
-    // on the dark-scoped marker prefix. Dev/Nightly keep tone=channel and the
-    // stage art; do not collapse them.
-    expect(primaryActions).toMatch(
-      /data-fork-composer-send-tone=\{\s*stageBackdropVariant\s*\?\s*"channel"\s*:\s*"flat"\s*\}/u,
-    );
-    expect(theme).toMatch(
-      /:root\[data-fork="noahhendrickson-t3code"\]\.dark\s+\[data-fork-composer-action="send"\]\[data-fork-composer-send-tone="flat"\][\s\S]{0,200}background:\s*#ffffff/u,
-    );
-    expect(theme).toMatch(
-      /:root\[data-fork="noahhendrickson-t3code"\]\.dark\s+\[data-fork-composer-action="send"\]\[data-fork-composer-send-tone="flat"\][\s\S]{0,200}color:\s*#000000/u,
-    );
-    expect(theme).toMatch(
-      /\[data-fork-composer-action="stop"\][\s\S]{0,120}background:\s*#ea3150/u,
-    );
-  });
-
-  it("routes the branch strip through the composer's control row", () => {
-    // The worktree/branch pair is the control row's right-hand group. If a sync
-    // restores BranchToolbar as a sibling of the composer, the row loses its
-    // right half and the strip reappears underneath, stitched or not.
-    expect(chatView, "ChatView stopped passing contextStrip").toContain(
-      "contextStrip: composerContextStrip",
-    );
-    expect(chatView).toContain("<BranchToolbar");
-    // Memoised, and that is correctness rather than tuning: ChatComposer is
-    // memo'd and every other prop it takes is a stable reference or a
-    // primitive, so an inline element here is the one new object identity per
-    // render and defeats the memo outright on a ~2900-line component that
-    // re-renders throughout a streaming turn.
-    expect(chatView, "the contextStrip element must stay memoised").toMatch(
-      /const composerContextStrip = useMemo\(/u,
-    );
-    // The memo is only as stable as its inputs; this one was a bare arrow.
-    expect(chatView).toMatch(/const onStartFromOriginChange = useCallback\(/u);
-    expect(chatComposer).toContain("<ComposerControlRow");
-    // ...and the wrapper that hung it off the composer's underside is flattened.
-    expect(theme).toMatch(
-      /\[data-fork-composer-control-row-slot="right"\][\s\S]{0,200}margin:\s*0/u,
-    );
-  });
-
-  it("pins the new-chat screen to the tall shell and a started thread to the slim one", () => {
-    const base = {
-      isDraftHero: false,
-      isPromptWrapped: false,
-      hasComposerHeader: false,
-      isCollapsedMobile: false,
-      isNarrowViewport: false,
-    };
-    expect(resolveComposerDensity({ ...base, isDraftHero: true })).toBe("tall");
-    expect(resolveComposerDensity(base)).toBe("slim");
-  });
-
-  it("grows the slim shell into the tall one once the prompt wraps", () => {
-    const base = {
-      isDraftHero: false,
-      isPromptWrapped: false,
-      hasComposerHeader: false,
-      isCollapsedMobile: false,
-      isNarrowViewport: false,
-    };
-    expect(resolveComposerDensity({ ...base, isPromptWrapped: true })).toBe("tall");
-    // A panel that owns the box's internals — approval, pending question, plan
-    // banner — has nowhere to put its action row in a single 24px line.
-    expect(resolveComposerDensity({ ...base, hasComposerHeader: true })).toBe("tall");
-  });
-
-  it("gives the collapsed mobile composer its own density, not a flavour of slim", () => {
-    // Returning "slim" here put `data-fork-composer-density="slim"` on a
-    // composer the slim layout was never applied to, so every call site had to
-    // re-exclude the collapsed case by hand and two things named "slim"
-    // disagreed. It outranks every other input.
-    expect(
-      resolveComposerDensity({
-        isDraftHero: true,
-        isPromptWrapped: true,
-        hasComposerHeader: true,
-        isCollapsedMobile: true,
-        isNarrowViewport: true,
-      }),
-    ).toBe("collapsed");
-    // ...which is what lets the call sites read as plain equality.
-    expect(chatComposer).toContain('const isComposerSlim = composerDensity === "slim"');
-  });
-
-  it("latches the wrap so the two shell widths cannot oscillate", () => {
-    // The tall shell is ~736px where slim is ~460px, so a prompt between those
-    // widths un-wraps the moment the flip lands. Deriving density straight from
-    // the measurement makes that a loop that pins the main thread. Once true,
-    // only an empty prompt clears it.
-    expect(nextWrapLatch({ latched: false, measuredWrapped: true, isPromptEmpty: false })).toBe(
-      true,
-    );
-    expect(nextWrapLatch({ latched: true, measuredWrapped: false, isPromptEmpty: false })).toBe(
-      true,
-    );
-    expect(nextWrapLatch({ latched: true, measuredWrapped: false, isPromptEmpty: true })).toBe(
-      false,
-    );
-    expect(nextWrapLatch({ latched: false, measuredWrapped: false, isPromptEmpty: false })).toBe(
-      false,
-    );
-  });
-
-  it("releases the latch on an emptied prompt without waiting for a resize", () => {
-    // Clearing a one-line prompt in the tall shell changes no height, so the
-    // ResizeObserver never fires and the effect is the only thing that resets.
-    const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
-    expect(latchHook).toMatch(
-      /prompt\.trim\(\)\.length === 0\s*\)\s*\{\s*setIsPromptWrapped\(false\)/u,
-    );
-  });
-
-  it("never uses the slim shell on a phone", () => {
-    // At 375px the model pill and send button leave the flex-1 editor ~90-150px,
-    // and the placeholder — an absolute overlay outside the editor's scroll box
-    // — wraps to several lines and paints straight through the 48px box. It is
-    // also stable: the overlay never changes the observed editor height, so the
-    // wrap latch cannot rescue it.
-    expect(
-      resolveComposerDensity({
-        isDraftHero: false,
-        isPromptWrapped: false,
-        hasComposerHeader: false,
-        isCollapsedMobile: false,
-        isNarrowViewport: true,
-      }),
-    ).toBe("tall");
-  });
-
-  it("shortens the empty-state hint in the slim shell instead of truncating it", () => {
-    // The absolute placeholder is invisible to the wrap latch (empty prompt ⇒
-    // latch false; placeholder only exists when empty). Truncating the 64-char
-    // default hint would eat `$use skills` / `/ commands`, which have no other
-    // discovery surface — so slim uses a shorter string that still names all
-    // three affordances, and tall keeps the long one.
-    expect(chatComposer).toMatch(
-      /isComposerSlim\s*\?\s*"Ask anything, @tag, \$skills, \/ commands"/u,
-    );
-    expect(chatComposer).toContain(
-      "Ask anything, @tag files/folders, $use skills, or / for commands",
-    );
-    // Truncation was considered and declined: no ellipsis rule on the
-    // placeholder sibling, so a sync that reintroduces one is a regression.
-    const rules = cssRules(theme);
-    const placeholderTruncate = rules.find(
+  it("keeps the prompt type, one-line minimum, and placeholder treatment", () => {
+    const editorMin = rules.find(
       (rule) =>
         rule.selector.includes('[data-testid="composer-editor"]') &&
-        rule.selector.includes("~") &&
-        (rule.body.includes("text-overflow") || rule.body.includes("ellipsis")),
+        rule.body.includes("min-height"),
     );
-    expect(placeholderTruncate, "slim placeholder must not truncate").toBeUndefined();
+    expect(editorMin?.body).toMatch(/min-height:\s*0/u);
+    const promptType = rules.find(
+      (rule) =>
+        rule.selector.includes('[data-testid="composer-editor"]') &&
+        rule.body.includes("font-size"),
+    );
+    expect(promptType?.body).toMatch(/font-size:\s*14px/u);
+    expect(promptType?.body).toMatch(/line-height:\s*23px/u);
+    const placeholderColor = rules.find(
+      (rule) =>
+        /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector) &&
+        rule.body.includes("color"),
+    );
+    expect(placeholderColor?.body).toMatch(/color:\s*var\(--muted-foreground\)/u);
   });
 
-  it("keeps the branch controls reachable while collapsed, and gates modes on approval", () => {
-    // Two upstream behaviours the control row has to preserve. Upstream showed
-    // BranchToolbar while collapsed (gated on showComposerContextStrip alone),
-    // so env mode and branch were switchable without raising the keyboard; and
-    // it unmounted the whole footer during an approval, so the mode toggles
-    // could not be flipped for a run whose approval was unresolved.
-    expect(chatComposer, "the control row must render in every density").not.toMatch(
-      /composerDensity === "collapsed" \? null : \(\s*<ComposerControlRow/u,
+  it("keeps ghost geometry on named interactive groups only", () => {
+    const geometry = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-model-controls]") &&
+        rule.body.includes("height: 20px"),
     );
-    expect(chatComposer).toMatch(/left=\{activePendingApproval \? null : composerRunControls\}/u);
+    expect(geometry?.selector).toContain('[data-fork-composer-control-row-slot="left"]');
+    expect(geometry?.selector).not.toContain("data-fork-composer-status");
+    expect(geometry?.selector).not.toContain("data-fork-composer-action");
+    expect(geometry?.body).toMatch(/border-radius:\s*4px/u);
+    expect(geometry?.body).toMatch(/font-size:\s*12px/u);
   });
 
-  it("keeps the pill restyle off the primary CTAs", () => {
-    // ComposerPrimaryActions renders real buttons into the same containers:
-    // the h-9 Implement/Refine split button and the pending-question
-    // Previous/Next/Submit set. This stylesheet is unlayered, so it beat their
-    // Tailwind utilities outright — squashing them to 24px pills and, in dark,
-    // painting their labels #a6a6a6 on a filled primary background.
-    expect(chatComposer).toContain('data-fork-composer-pills="true"');
-    const pillRules = cssRules(theme).filter(
-      (rule) => /height:\s*24px/u.test(rule.body) && rule.selector.includes("button"),
+  it("owns runtime-mode geometry in the component and maps every mode to tokens", () => {
+    const modeRule = rules.find(
+      (rule) =>
+        rule.selector.endsWith("[data-fork-composer-mode-chip]") &&
+        rule.body.includes("height: 20px"),
     );
-    expect(pillRules.length).toBeGreaterThan(0);
-    for (const rule of pillRules) {
-      expect(rule.selector, `pill rule reaches the whole footer: ${rule.selector}`).not.toMatch(
-        /\[data-chat-composer-(footer|inline-actions)\]/u,
-      );
+    expect(modeRule?.body).toMatch(/border-radius:\s*4px/u);
+    expect(modeRule?.body).toMatch(/background:\s*var\(--fork-mode-bg\)/u);
+    const tokens = [
+      getRuntimeModeChipStyle("auto"),
+      getRuntimeModeChipStyle("full-access"),
+      getRuntimeModeChipStyle("auto-accept-edits"),
+      getRuntimeModeChipStyle("approval-required"),
+    ];
+    expect(new Set(tokens.map((token) => token["--fork-mode-bg"])).size).toBe(4);
+    expect(new Set(tokens.map((token) => token["--fork-mode-fg-dark"])).size).toBe(4);
+  });
+
+  it("keeps the provider icon hidden in the composer only", () => {
+    const iconRules = rules.filter((rule) =>
+      rule.selector.includes("[data-chat-provider-model-picker]"),
+    );
+    expect(iconRules.length).toBeGreaterThan(0);
+    for (const rule of iconRules) {
+      expect(rule.selector).toContain("[data-fork-composer-control-row]");
+      expect(rule.selector).toContain(":not([data-base-ui-tooltip-trigger])");
     }
   });
 
-  it("repaints the drag-over state the surface rule would otherwise swallow", () => {
-    // Upstream signals it with bg-accent/45 + ring-1 on this element. Tailwind
-    // v4 utilities live in @layer utilities and this stylesheet is unlayered,
-    // so both the tint and the ring — itself a box-shadow — lost to the pinned
-    // background and hairline, leaving a drag with no feedback at all.
-    expect(chatComposer).toContain("data-fork-composer-drag-over=");
-    // Outline, asserted by name. A box-shadow declaration on this element was
-    // measured in the browser not to land — the tint from the same rule did —
-    // so reverting to one would silently return the composer to a drag state
-    // advertised by a 4% fill and nothing else.
-    const dragRule = cssRules(theme).find((rule) =>
-      rule.selector.includes("[data-fork-composer-drag-over]"),
+  it("keeps context chips at 24px and the meter outside ghost geometry", () => {
+    const context = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.body.includes("height: 24px"),
     );
-    expect(dragRule, "no drag-over rule").toBeDefined();
-    expect(dragRule!.body).toMatch(/outline:\s*2px solid/u);
-    expect(dragRule!.body).toMatch(/background:/u);
+    expect(context?.body).toMatch(/border-radius:\s*4px/u);
+    expect(context?.body).toMatch(/padding-inline:\s*4px/u);
+    const meter = rules.find((rule) =>
+      rule.selector.endsWith("[data-fork-composer-status] button"),
+    );
+    expect(meter?.body).toMatch(/width:\s*24px/u);
+    expect(meter?.body).toMatch(/height:\s*24px/u);
   });
 
-  it("hides only the left slot's separators, not BranchToolbar's own", () => {
-    // BranchToolbar draws a separator between the environment picker and the
-    // env-mode/branch pair on multi-environment projects. A row-wide rule hid
-    // it and merged two groups the design keeps apart.
-    const separatorRules = cssRules(theme).filter(
+  it("hides only separators in the left mode slot", () => {
+    const separatorRules = rules.filter(
       (rule) =>
         rule.selector.includes('[data-slot="separator"]') &&
         rule.selector.includes("fork-composer-control-row"),
@@ -475,54 +288,37 @@ describe("fork guard: fork-composer-shell", () => {
     }
   });
 
-  it("clears the latch when the draft changes, not just when the prompt empties", () => {
-    // ChatComposer is not keyed by thread, so it survives thread switches and
-    // so does the latch. Leaving a wrapped prompt and arriving at a thread whose
-    // saved draft is a short one-liner would otherwise render the new thread in
-    // the tall shell and strand it there — the prompt is non-empty, so the
-    // release effect never fires, and the observer only ever latches on.
-    const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
-    expect(latchHook).toMatch(/setIsPromptWrapped\(false\);\s*\n\s*\}, \[draftKey\]\)/u);
-    expect(chatComposer).toContain("useComposerPromptWrapLatch(");
-    expect(chatComposer).toContain("scopedThreadKey(composerDraftTarget)");
-  });
-
-  it("paints the surface by name, so an added sibling cannot inherit the box", () => {
-    // This was `[data-fork-composer-box] > div`, which held only because the
-    // frame has exactly one child today. Upstream adding a drop overlay or a
-    // banner inside it would paint a second frosted card with its own hairline,
-    // and every text-matching assertion here would stay green.
-    expect(chatComposer).toContain('data-fork-composer-surface="true"');
-    const positional = cssRules(theme).filter((rule) =>
-      /\[data-fork-composer-box\]\s*>\s*div/u.test(rule.selector),
+  it("keeps primary actions out of ghost sizing", () => {
+    expect(primaryActions).toContain('data-fork-composer-action="send"');
+    expect(primaryActions).toContain('data-fork-composer-action="stop"');
+    const action = rules.find(
+      (rule) =>
+        rule.selector.endsWith("[data-fork-composer-action]") && rule.body.includes("width: 24px"),
     );
-    expect(positional, "composer paint is coupled to child position").toHaveLength(0);
+    expect(action?.body).toMatch(/height:\s*24px/u);
+    expect(action?.body).toMatch(/border-radius:\s*8px/u);
+    for (const rule of rules.filter((candidate) => candidate.body.includes("height: 20px"))) {
+      expect(rule.selector).not.toMatch(
+        /data-chat-composer-(inline-actions|mobile-pending-actions)/u,
+      );
+    }
   });
 
-  it("keeps the wrap observer in fork-owned code, not in the hot upstream file", () => {
-    // The pure half of the density rule was always fork-owned; leaving the
-    // observer and the latch state inline in a 2.9k-line upstream file split
-    // one rule across two places and added fences to the file least able to
-    // absorb them.
-    const latchHook = readSibling("../custom/useComposerPromptWrapLatch.ts");
-    expect(latchHook).toContain("ResizeObserver");
-    expect(chatComposer).toMatch(/useComposerPromptWrapLatch\(\s*\n?\s*prompt,/u);
-    // Named helpers rather than "ResizeObserver": ChatComposer legitimately
-    // runs three observers of its own, for footer compactness and menu
-    // positioning, so the broad check cannot tell the fork's from upstream's.
-    expect(chatComposer).not.toContain("nextWrapLatch");
-    expect(chatComposer).not.toContain("isPromptHeightWrapped");
-  });
-
-  it("does not flap densities on sub-pixel line-box rounding", () => {
-    // One line, measured a shade over its nominal box. Treating that as a wrap
-    // would toggle the shell on every keystroke.
-    expect(isPromptHeightWrapped(16, 16)).toBe(false);
-    expect(isPromptHeightWrapped(16.5, 16)).toBe(false);
-    expect(isPromptHeightWrapped(32, 16)).toBe(true);
-    // A missing or unparseable computed line-height falls back to the desktop
-    // line box rather than reporting every prompt as wrapped.
-    expect(isPromptHeightWrapped(16, Number.NaN)).toBe(false);
-    expect(isPromptHeightWrapped(64, Number.NaN)).toBe(true);
+  it("switches off the stitched glass shell and flattens the context strip", () => {
+    for (const selector of [
+      ".chat-composer-glass-shell::before",
+      ".chat-composer-glass-host::after",
+      ".chat-composer-context-strip::before",
+    ]) {
+      const rule = rules.find((candidate) => candidate.selector.includes(selector));
+      expect(rule?.body).toMatch(/display:\s*none/u);
+    }
+    const strip = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes(".chat-composer-context-strip"),
+    );
+    expect(strip?.body).toMatch(/margin:\s*0/u);
+    expect(strip?.body).toMatch(/gap:\s*4px/u);
   });
 });

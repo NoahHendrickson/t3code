@@ -46,6 +46,9 @@ type TraitsRenderInput = {
   modelOptions: ReadonlyArray<ProviderOptionSelection> | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  triggerLabelSeparator?: string;
+  /* fork:end fork-composer-shell */
 };
 
 export function getComposerPromptInjectionState(prompt: string): ComposerPromptInjectionState {
@@ -94,6 +97,9 @@ function renderTraitsControl(
     modelOptions,
     prompt,
     onPromptChange,
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    triggerLabelSeparator,
+    /* fork:end fork-composer-shell */
   } = input;
   const hasTarget = threadRef !== undefined || draftId !== undefined;
   if (
@@ -113,6 +119,7 @@ function renderTraitsControl(
       modelOptions={modelOptions}
       prompt={prompt}
       onPromptChange={onPromptChange}
+      {...(triggerLabelSeparator !== undefined ? { triggerLabelSeparator } : {})}
     />
   );
 }

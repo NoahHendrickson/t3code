@@ -86,10 +86,11 @@ import {
 } from "../composerFooterLayout";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
-import { ComposerControlRow } from "../../custom/ComposerControlRow";
-import { resolveComposerDensity } from "../../custom/composerDensity";
-import { useComposerPromptWrapLatch } from "../../custom/useComposerPromptWrapLatch";
+import {
+  ComposerPromptRow,
+  ComposerRuntimeModeTrigger,
+  ComposerShell,
+} from "../../custom/ComposerShell";
 /* fork:end fork-composer-shell */
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
@@ -99,7 +100,9 @@ import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerPendingApprovalPanel } from "./ComposerPendingApprovalPanel";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { ComposerPlanFollowUpBanner } from "./ComposerPlanFollowUpBanner";
-import { ComposerControl, ComposerControlIcon, ComposerSelectControl } from "./ComposerControl";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { ComposerControl } from "./ComposerControl";
+/* fork:end fork-composer-shell */
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { searchSlashCommandItems } from "./composerSlashCommandSearch";
 import {
@@ -175,11 +178,9 @@ import { Button } from "../ui/button";
 import { Select, SelectItem, SelectPopup, SelectValue } from "../ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import {
-  BotIcon,
   CircleAlertIcon,
-  ListTodoIcon,
-  PencilRulerIcon,
   type LucideIcon,
   LockIcon,
   LockOpenIcon,
@@ -187,6 +188,7 @@ import {
   SparklesIcon,
   XIcon,
 } from "lucide-react";
+/* fork:end fork-composer-shell */
 import { proposedPlanTitle } from "../../proposedPlan";
 import { getProviderDisplayName, getProviderInteractionModeToggle } from "../../providerModels";
 import {
@@ -291,7 +293,6 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
   onTogglePlanSidebar: () => void;
 }) {
   const runtimeModeOption = runtimeModeConfig[props.runtimeMode];
-  const RuntimeModeIcon = runtimeModeOption.icon;
   const interactionModeTooltip =
     props.interactionMode === "plan"
       ? "Plan mode — click to return to normal build mode"
@@ -319,14 +320,10 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
             />
           }
         >
-          {props.interactionMode === "plan" ? (
-            <ComposerControlIcon icon={PencilRulerIcon} className="text-current opacity-100" />
-          ) : (
-            <ComposerControlIcon icon={BotIcon} opticalSize="large" />
-          )}
-          <span className="sr-only sm:not-sr-only">
-            {props.interactionMode === "plan" ? "Plan" : "Build"}
-          </span>
+          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+          {/* Text-only, per the designs: the label is the whole control. */}
+          <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
+          {/* fork:end fork-composer-shell */}
         </TooltipTrigger>
         <TooltipPopup side="top">{interactionModeTooltip}</TooltipPopup>
       </Tooltip>
@@ -343,9 +340,15 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           onValueChange={(value) => props.onRuntimeModeChange(value!)}
         >
           <TooltipTrigger
-            render={<ComposerSelectControl className="font-medium" aria-label="Runtime mode" />}
+            render={
+              /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+              <ComposerRuntimeModeTrigger
+                runtimeMode={props.runtimeMode}
+                aria-label="Runtime mode"
+              />
+              /* fork:end fork-composer-shell */
+            }
           >
-            <ComposerControlIcon icon={RuntimeModeIcon} />
             <SelectValue>{runtimeModeOption.label}</SelectValue>
           </TooltipTrigger>
           <SelectPopup alignItemWithTrigger={false}>
@@ -394,11 +397,9 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                 />
               }
             >
-              <ComposerControlIcon
-                icon={ListTodoIcon}
-                className={props.planSidebarOpen ? "text-current opacity-100" : undefined}
-              />
-              <span className="sr-only sm:not-sr-only">{props.planSidebarLabel}</span>
+              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+              <span>{props.planSidebarLabel}</span>
+              {/* fork:end fork-composer-shell */}
             </TooltipTrigger>
             <TooltipPopup side="top">{planSidebarTooltip}</TooltipPopup>
           </Tooltip>
@@ -526,11 +527,9 @@ export interface ChatComposerProps {
   forceExpandedOnMobile: boolean;
   projectSelectionRequired: boolean;
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  /** The new-chat hero. Pins the composer to the tall shell. */
-  isDraftHero?: boolean;
   /**
-   * Worktree/branch controls, rendered into the composer's own control row
-   * instead of as a separate strip below it.
+   * Worktree/branch controls, rendered above the prompt surface instead of as
+   * a separate stitched strip below it.
    */
   contextStrip?: ReactNode;
   /* fork:end fork-composer-shell */
@@ -649,7 +648,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     forceExpandedOnMobile,
     projectSelectionRequired,
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-    isDraftHero = false,
     contextStrip,
     /* fork:end fork-composer-shell */
     phase,
@@ -997,19 +995,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const isMobileViewport = useMediaQuery("max-sm");
   const isComposerCollapsedMobile =
     isMobileViewport && !forceExpandedOnMobile && !isComposerFocused;
-  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  const { isPromptWrapped, attachPromptElement } = useComposerPromptWrapLatch(
-    prompt,
-    // ChatComposer is not keyed by thread, so the latch has to be told when the
-    // draft underneath it changed. Same discrimination composerDraftStore's own
-    // private composerTargetKey uses: a DraftId is already a string, a real
-    // thread needs its environment folded in.
-    typeof composerDraftTarget === "string"
-      ? composerDraftTarget
-      : scopedThreadKey(composerDraftTarget),
-  );
-  /* fork:end fork-composer-shell */
-
   // ------------------------------------------------------------------
   // Refs
   // ------------------------------------------------------------------
@@ -1178,23 +1163,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const isComposerApprovalState = activePendingApproval !== null;
   const activePendingUserInput = pendingUserInputs[0] ?? null;
-  const hasComposerHeader =
-    isComposerApprovalState ||
-    pendingUserInputs.length > 0 ||
-    (showPlanFollowUpPrompt && activeProposedPlan !== null);
   const showCollapsedMobilePromptRow =
     isComposerCollapsedMobile && !isComposerApprovalState && pendingUserInputs.length === 0;
-  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  const composerDensity = resolveComposerDensity({
-    isDraftHero,
-    isPromptWrapped,
-    hasComposerHeader,
-    isCollapsedMobile: isComposerCollapsedMobile,
-    isNarrowViewport: isMobileViewport,
-  });
-  const isComposerSlim = composerDensity === "slim";
-  /* fork:end fork-composer-shell */
-
   const composerFooterHasWideActions = showPlanFollowUpPrompt || activePendingProgress !== null;
   const showPlanSidebarToggle = Boolean(activePlan || sidebarProposedPlan || planSidebarOpen);
   const composerFooterActionLayoutKey = useMemo(() => {
@@ -1271,6 +1241,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     modelOptions: composerModelOptions?.[selectedInstanceId],
     prompt,
     onPromptChange: setPromptFromTraits,
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    triggerLabelSeparator: " ",
+    /* fork:end fork-composer-shell */
   });
   const pendingPrimaryAction = useMemo(
     () =>
@@ -2700,9 +2673,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
 
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  // The footer's three clusters, split by where the designs put them: the model
-  // and effort pills live inside the box beside the send button, everything
-  // else moves to the control row underneath it.
+  // The footer's three clusters, split by where the designs put them.
   const composerModelControls = noProviderAvailable ? null : (
     <>
       <ProviderModelPicker
@@ -2725,13 +2696,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         getModelDisabledReason={getModelDisabledReason}
         onInstanceModelChange={onProviderModelSelect}
       />
-      {/* At compact widths the traits fold into CompactComposerControlsMenu on
-          the control row, so the box carries the model pill alone. */}
+      {/* At compact widths the traits fold into CompactComposerControlsMenu. */}
       {!isComposerFooterCompact && providerTraitsPicker ? providerTraitsPicker : null}
     </>
   );
 
-  const composerRunControls = (
+  const composerModeControls = (
     <>
       {noProviderAvailable ? (
         <Button
@@ -2772,27 +2742,27 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           onTogglePlanSidebar={togglePlanSidebar}
         />
       )}
-      {/* Both are pinned shrink-0. The control row's left slot is
-          overflow-x-auto with its scrollbar hidden, so anything allowed to be
-          squeezed out of it disappears with no affordance saying so. The mode
-          controls can scroll — they have a compact menu fallback and the user
-          knows they asked for them. The context meter is a status readout
-          people watch to decide when to compact; it must not silently vanish. */}
-      {activeContextWindow ? (
-        <div className="shrink-0">
-          <ContextWindowMeter
-            usage={activeContextWindow}
-            providerDisplayName={activeThreadProviderDisplayName}
-          />
-        </div>
-      ) : null}
-      {isPreparingWorktree ? (
-        <span className="shrink-0 whitespace-nowrap text-muted-foreground/70 text-xs">
-          Preparing worktree...
-        </span>
-      ) : null}
     </>
   );
+
+  const composerReadoutControls =
+    activeContextWindow || isPreparingWorktree ? (
+      <>
+        {activeContextWindow ? (
+          <div data-fork-composer-status="true" className="shrink-0">
+            <ContextWindowMeter
+              usage={activeContextWindow}
+              providerDisplayName={activeThreadProviderDisplayName}
+            />
+          </div>
+        ) : null}
+        {isPreparingWorktree ? (
+          <span className="shrink-0 whitespace-nowrap text-muted-foreground/70 text-xs">
+            Preparing worktree...
+          </span>
+        ) : null}
+      </>
+    ) : null;
 
   const composerPrimaryActionSlot = (
     <div
@@ -2834,73 +2804,123 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       className="mx-auto w-full min-w-0 max-w-3xl"
       data-chat-composer-form="true"
     >
-      <div
-        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-        data-fork-composer-box="true"
-        data-fork-composer-density={composerDensity}
-        /* fork:end fork-composer-shell */
-        className={cn(
-          "group rounded-[22px] p-px transition-colors duration-200",
-          composerProviderState.composerFrameClassName,
-        )}
-        onDragEnter={onComposerDragEnter}
-        onDragOver={onComposerDragOver}
-        onDragLeave={onComposerDragLeave}
-        onDrop={onComposerDrop}
-        onDragEnterCapture={composerMentionDragHandlers.onDragEnter}
-        onDragOverCapture={composerMentionDragHandlers.onDragOver}
-        onDragLeaveCapture={onComposerMentionDragLeaveCapture}
-        onDropCapture={composerMentionDragHandlers.onDrop}
+      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      <ComposerShell
+        approvalPending={activePendingApproval !== null}
+        collapsedMobile={isComposerCollapsedMobile}
+        context={contextStrip}
+        mobilePendingActionsVisible={showMobilePendingAnswerActions}
+        modeControls={composerModeControls}
+        modelControls={composerModelControls}
+        readoutControls={composerReadoutControls}
       >
+        {/* fork:end fork-composer-shell */}
         <div
-          ref={composerSurfaceRef}
           /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-          data-fork-composer-surface="true"
-          // The drag state needs an attribute of its own. Upstream signals it
-          // with `bg-accent/45 ring-1 ring-primary/70` on this element, but the
-          // fork pins `background` and `box-shadow` here from an unlayered
-          // stylesheet — and Tailwind v4 utilities live in `@layer utilities`,
-          // which loses to unlayered rules regardless of specificity. Both the
-          // tint and the ring (also box-shadow) were being swallowed, leaving a
-          // drag over the composer with no feedback at all.
-          data-fork-composer-drag-over={isDragOverComposer ? "true" : undefined}
+          data-fork-composer-box="true"
           /* fork:end fork-composer-shell */
-          data-chat-composer-mobile-collapsed={isComposerCollapsedMobile ? "true" : "false"}
           className={cn(
-            "rounded-[20px] transition-[background-color] duration-200",
-            isDragOverComposer ? "bg-accent/45 ring-1 ring-primary/70" : null,
-            projectSelectionRequired ? "opacity-75" : null,
-            composerProviderState.composerSurfaceClassName,
+            "group rounded-[22px] p-px transition-colors duration-200",
+            composerProviderState.composerFrameClassName,
           )}
-          onFocusCapture={(event) => {
-            const activeElement = event.target;
-            if (
-              isComposerCollapsedMobile &&
-              activeElement instanceof HTMLElement &&
-              activeElement.closest('[data-chat-composer-collapsed-controls="true"]')
-            ) {
-              return;
-            }
-            if (composerBlurFrameRef.current !== null) {
-              window.cancelAnimationFrame(composerBlurFrameRef.current);
-              composerBlurFrameRef.current = null;
-            }
-            setIsComposerFocused(true);
-          }}
-          onBlurCapture={() => {
-            scheduleComposerCollapseCheck();
-          }}
+          onDragEnter={onComposerDragEnter}
+          onDragOver={onComposerDragOver}
+          onDragLeave={onComposerDragLeave}
+          onDrop={onComposerDrop}
+          onDragEnterCapture={composerMentionDragHandlers.onDragEnter}
+          onDragOverCapture={composerMentionDragHandlers.onDragOver}
+          onDragLeaveCapture={onComposerMentionDragLeaveCapture}
+          onDropCapture={composerMentionDragHandlers.onDrop}
         >
-          {!isComposerCollapsedMobile &&
-            (activePendingApproval ? (
-              <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+          <div
+            ref={composerSurfaceRef}
+            /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+            data-fork-composer-surface="true"
+            // The drag state needs an attribute of its own. Upstream signals it
+            // with `bg-accent/45 ring-1 ring-primary/70` on this element, but the
+            // fork pins `background` and `box-shadow` here from an unlayered
+            // stylesheet — and Tailwind v4 utilities live in `@layer utilities`,
+            // which loses to unlayered rules regardless of specificity. Both the
+            // tint and the ring (also box-shadow) were being swallowed, leaving a
+            // drag over the composer with no feedback at all.
+            data-fork-composer-drag-over={isDragOverComposer ? "true" : undefined}
+            /* fork:end fork-composer-shell */
+            data-chat-composer-mobile-collapsed={isComposerCollapsedMobile ? "true" : "false"}
+            className={cn(
+              "rounded-[20px] transition-[background-color] duration-200",
+              isDragOverComposer ? "bg-accent/45 ring-1 ring-primary/70" : null,
+              projectSelectionRequired ? "opacity-75" : null,
+              composerProviderState.composerSurfaceClassName,
+            )}
+            onFocusCapture={(event) => {
+              const activeElement = event.target;
+              if (
+                isComposerCollapsedMobile &&
+                activeElement instanceof HTMLElement &&
+                activeElement.closest('[data-chat-composer-collapsed-controls="true"]')
+              ) {
+                return;
+              }
+              if (composerBlurFrameRef.current !== null) {
+                window.cancelAnimationFrame(composerBlurFrameRef.current);
+                composerBlurFrameRef.current = null;
+              }
+              setIsComposerFocused(true);
+            }}
+            onBlurCapture={() => {
+              scheduleComposerCollapseCheck();
+            }}
+          >
+            {!isComposerCollapsedMobile &&
+              (activePendingApproval ? (
+                <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                  <ComposerPendingApprovalPanel
+                    approval={activePendingApproval}
+                    pendingCount={pendingApprovals.length}
+                  />
+                </div>
+              ) : pendingUserInputs.length > 0 ? (
+                <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                  <ComposerPendingUserInputPanel
+                    pendingUserInputs={pendingUserInputs}
+                    respondingRequestIds={respondingRequestIds}
+                    answers={activePendingDraftAnswers}
+                    questionIndex={activePendingQuestionIndex}
+                    onToggleOption={onSelectActivePendingUserInputOption}
+                    onAdvance={onAdvanceActivePendingUserInput}
+                  />
+                </div>
+              ) : showPlanFollowUpPrompt && activeProposedPlan ? (
+                <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                  <ComposerPlanFollowUpBanner
+                    key={activeProposedPlan.id}
+                    planTitle={proposedPlanTitle(activeProposedPlan.planMarkdown) ?? null}
+                  />
+                </div>
+              ) : null)}
+
+            {isComposerCollapsedMobile && activePendingApproval ? (
+              <div
+                className="rounded-t-[19px] border-b border-border/65 bg-muted/20"
+                data-chat-composer-collapsed-controls="true"
+              >
                 <ComposerPendingApprovalPanel
                   approval={activePendingApproval}
                   pendingCount={pendingApprovals.length}
                 />
+                <div className="flex flex-wrap items-center justify-end gap-2 px-3 pb-3 sm:px-4">
+                  <ComposerPendingApprovalActions
+                    requestId={activePendingApproval.requestId}
+                    isResponding={respondingRequestIds.includes(activePendingApproval.requestId)}
+                    onRespondToApproval={onRespondToApproval}
+                  />
+                </div>
               </div>
-            ) : pendingUserInputs.length > 0 ? (
-              <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+            ) : isComposerCollapsedMobile && pendingUserInputs.length > 0 ? (
+              <div
+                className="rounded-t-[19px] border-b border-border/65 bg-muted/20"
+                data-chat-composer-collapsed-controls="true"
+              >
                 <ComposerPendingUserInputPanel
                   pendingUserInputs={pendingUserInputs}
                   respondingRequestIds={respondingRequestIds}
@@ -2909,323 +2929,278 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   onToggleOption={onSelectActivePendingUserInputOption}
                   onAdvance={onAdvanceActivePendingUserInput}
                 />
-              </div>
-            ) : showPlanFollowUpPrompt && activeProposedPlan ? (
-              <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
-                <ComposerPlanFollowUpBanner
-                  key={activeProposedPlan.id}
-                  planTitle={proposedPlanTitle(activeProposedPlan.planMarkdown) ?? null}
-                />
-              </div>
-            ) : null)}
-
-          {isComposerCollapsedMobile && activePendingApproval ? (
-            <div
-              className="rounded-t-[19px] border-b border-border/65 bg-muted/20"
-              data-chat-composer-collapsed-controls="true"
-            >
-              <ComposerPendingApprovalPanel
-                approval={activePendingApproval}
-                pendingCount={pendingApprovals.length}
-              />
-              <div className="flex flex-wrap items-center justify-end gap-2 px-3 pb-3 sm:px-4">
-                <ComposerPendingApprovalActions
-                  requestId={activePendingApproval.requestId}
-                  isResponding={respondingRequestIds.includes(activePendingApproval.requestId)}
-                  onRespondToApproval={onRespondToApproval}
-                />
-              </div>
-            </div>
-          ) : isComposerCollapsedMobile && pendingUserInputs.length > 0 ? (
-            <div
-              className="rounded-t-[19px] border-b border-border/65 bg-muted/20"
-              data-chat-composer-collapsed-controls="true"
-            >
-              <ComposerPendingUserInputPanel
-                pendingUserInputs={pendingUserInputs}
-                respondingRequestIds={respondingRequestIds}
-                answers={activePendingDraftAnswers}
-                questionIndex={activePendingQuestionIndex}
-                onToggleOption={onSelectActivePendingUserInputOption}
-                onAdvance={onAdvanceActivePendingUserInput}
-              />
-              <div className="px-3 pb-3 sm:px-4">
-                <div
-                  data-chat-composer-mobile-pending-compact="true"
-                  className={cn(
-                    "flex min-w-0 items-center gap-2 rounded-lg border border-border/55 bg-background/55 p-1.5 pl-3 transition-colors hover:bg-background/80",
-                    !activePendingProgress?.activeQuestion?.multiSelect && "p-0",
-                  )}
-                >
-                  <button
-                    type="button"
+                <div className="px-3 pb-3 sm:px-4">
+                  <div
+                    data-chat-composer-mobile-pending-compact="true"
                     className={cn(
-                      "min-w-0 flex-1 truncate bg-transparent py-1.5 text-left text-sm",
-                      activePendingProgress?.customAnswer
-                        ? "text-foreground"
-                        : "text-muted-foreground/60",
-                      !activePendingProgress?.activeQuestion?.multiSelect && "px-3 py-2",
+                      "flex min-w-0 items-center gap-2 rounded-lg border border-border/55 bg-background/55 p-1.5 pl-3 transition-colors hover:bg-background/80",
+                      !activePendingProgress?.activeQuestion?.multiSelect && "p-0",
                     )}
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={expandMobileComposer}
-                    aria-label="Write custom answer"
                   >
-                    {activePendingProgress?.customAnswer || "Write custom answer"}
-                  </button>
-                  {activePendingProgress?.activeQuestion?.multiSelect ? (
-                    <ComposerPrimaryActions
-                      compact
-                      pendingAction={pendingPrimaryAction}
-                      isRunning={false}
-                      showPlanFollowUpPrompt={false}
-                      promptHasText={false}
-                      isSendBusy={isSendBusy}
-                      sendDisabledReason={sendDisabledReason}
-                      isConnecting={isConnecting}
-                      isEnvironmentUnavailable={
-                        environmentUnavailable !== null ||
-                        noProviderAvailable ||
-                        projectSelectionRequired
-                      }
-                      isPreparingWorktree={false}
-                      hasSendableContent={false}
-                      preserveComposerFocusOnPointerDown
-                      onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
-                      onInterrupt={handleInterruptPrimaryAction}
-                      onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}
-                    />
-                  ) : null}
+                    <button
+                      type="button"
+                      className={cn(
+                        "min-w-0 flex-1 truncate bg-transparent py-1.5 text-left text-sm",
+                        activePendingProgress?.customAnswer
+                          ? "text-foreground"
+                          : "text-muted-foreground/60",
+                        !activePendingProgress?.activeQuestion?.multiSelect && "px-3 py-2",
+                      )}
+                      onPointerDown={(event) => event.preventDefault()}
+                      onClick={expandMobileComposer}
+                      aria-label="Write custom answer"
+                    >
+                      {activePendingProgress?.customAnswer || "Write custom answer"}
+                    </button>
+                    {activePendingProgress?.activeQuestion?.multiSelect ? (
+                      <ComposerPrimaryActions
+                        compact
+                        pendingAction={pendingPrimaryAction}
+                        isRunning={false}
+                        showPlanFollowUpPrompt={false}
+                        promptHasText={false}
+                        isSendBusy={isSendBusy}
+                        sendDisabledReason={sendDisabledReason}
+                        isConnecting={isConnecting}
+                        isEnvironmentUnavailable={
+                          environmentUnavailable !== null ||
+                          noProviderAvailable ||
+                          projectSelectionRequired
+                        }
+                        isPreparingWorktree={false}
+                        hasSendableContent={false}
+                        preserveComposerFocusOnPointerDown
+                        onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
+                        onInterrupt={handleInterruptPrimaryAction}
+                        onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}
+                      />
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
 
-          {showCollapsedMobilePromptRow ? (
-            <div className="flex items-center justify-between gap-2 px-3 py-2">
-              <button
-                type="button"
-                className={cn(
-                  "min-w-0 flex-1 truncate bg-transparent p-0 text-left text-[14px] focus:outline-none",
-                  (activePendingProgress ? activePendingProgress.customAnswer : prompt.trim())
-                    ? "text-foreground"
-                    : "text-muted-foreground/35",
-                )}
-                onPointerDown={(event) => event.preventDefault()}
-                onClick={expandMobileComposer}
-                aria-label="Expand composer"
-              >
-                {activePendingProgress
-                  ? activePendingProgress.customAnswer ||
-                    "Type your own answer, or leave this blank to use the selected option"
-                  : prompt.trim() ||
-                    (noProviderAvailable ? "Enable a provider in Settings" : "Ask anything...")}
-              </button>
-              <button
-                type="button"
-                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/90 text-primary-foreground disabled:opacity-30"
-                disabled={collapsedComposerPrimaryActionDisabled}
-                aria-label={collapsedComposerPrimaryActionLabel}
-                onPointerDown={(event) => event.preventDefault()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  submitComposer();
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path
-                    d="M8 3L8 13M8 3L4 7M8 3L12 7"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-          ) : null}
-
-          <div
-            ref={setComposerMenuAnchor}
-            className={cn(
-              /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-              // The box owns a flat 16px inset in both shells; the slim shell
-              // trims it to 12px vertically to land the row at 48px. In the
-              // tall shell this element's bottom padding *is* the 24px gap
-              // between the prompt and the control row under it, which is why
-              // it is 6 and not 4.
-              "relative px-4",
-              isComposerSlim ? "py-3" : "pb-6",
-              isComposerSlim ? null : hasComposerHeader ? "pt-3" : "pt-4",
-              /* fork:end fork-composer-shell */
-              isComposerCollapsedMobile && "hidden",
-            )}
-          >
-            <ComposerStashBadge
-              count={stashQueue.length}
-              pulseKey={stashPulse.key}
-              pulsing={stashPulse.active}
-              menuOpen={isStashMenuOpen}
-              onToggleMenu={toggleStashMenu}
-            />
-
-            {isStashMenuOpen && !composerMenuOpen && !isComposerApprovalState && (
-              <ComposerCommandMenuLayer anchor={composerMenuAnchor}>
-                <ComposerStashMenu
-                  entries={stashQueue}
-                  onRestore={restoreStashEntry}
-                  onDelete={deleteStashEntry}
-                  onClose={() => setIsStashMenuOpen(false)}
-                />
-              </ComposerCommandMenuLayer>
-            )}
-
-            {composerMenuOpen && !isComposerApprovalState && (
-              <ComposerCommandMenuLayer anchor={composerMenuAnchor}>
-                <ComposerCommandMenu
-                  items={composerMenuItems}
-                  resolvedTheme={resolvedTheme}
-                  isLoading={isComposerMenuLoading}
-                  triggerKind={composerTriggerKind}
-                  groupSlashCommandSections={
-                    composerTrigger?.kind === "slash-command" &&
-                    composerTrigger.query.trim().length === 0
-                  }
-                  emptyStateText={composerMenuEmptyState}
-                  activeItemId={activeComposerMenuItem?.id ?? null}
-                  onHighlightedItemChange={onComposerMenuItemHighlighted}
-                  onSelect={onSelectComposerItem}
-                />
-              </ComposerCommandMenuLayer>
-            )}
-
-            {!isComposerCollapsedMobile &&
-              !isComposerApprovalState &&
-              pendingUserInputs.length === 0 &&
-              composerPreviewAnnotations.length > 0 && (
-                <ComposerPreviewAnnotationCards
-                  annotations={composerPreviewAnnotations}
-                  images={composerImages}
-                  onRemove={(annotationId) =>
-                    removeComposerDraftPreviewAnnotation(composerDraftTarget, annotationId)
-                  }
-                  onExpandImage={(imageId) => {
-                    const preview = buildExpandedImagePreview(composerImages, imageId);
-                    if (preview) onExpandImage(preview);
+            {showCollapsedMobilePromptRow ? (
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <button
+                  type="button"
+                  className={cn(
+                    "min-w-0 flex-1 truncate bg-transparent p-0 text-left text-[14px] focus:outline-none",
+                    (activePendingProgress ? activePendingProgress.customAnswer : prompt.trim())
+                      ? "text-foreground"
+                      : "text-muted-foreground/35",
+                  )}
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={expandMobileComposer}
+                  aria-label="Expand composer"
+                >
+                  {activePendingProgress
+                    ? activePendingProgress.customAnswer ||
+                      "Type your own answer, or leave this blank to use the selected option"
+                    : prompt.trim() ||
+                      (noProviderAvailable ? "Enable a provider in Settings" : "Ask anything...")}
+                </button>
+                <button
+                  type="button"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/90 text-primary-foreground disabled:opacity-30"
+                  disabled={collapsedComposerPrimaryActionDisabled}
+                  aria-label={collapsedComposerPrimaryActionLabel}
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    submitComposer();
                   }}
-                  className="mb-3"
-                />
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path
+                      d="M8 3L8 13M8 3L4 7M8 3L12 7"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : null}
+
+            <div
+              ref={setComposerMenuAnchor}
+              className={cn(
+                /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                // Eight pixels around a one-line prompt and 24px send button
+                // produces the design's single 40px base surface. The editor
+                // grows this same row naturally when the prompt wraps.
+                "relative p-2",
+                /* fork:end fork-composer-shell */
+                isComposerCollapsedMobile && "hidden",
+              )}
+            >
+              <ComposerStashBadge
+                count={stashQueue.length}
+                pulseKey={stashPulse.key}
+                pulsing={stashPulse.active}
+                menuOpen={isStashMenuOpen}
+                onToggleMenu={toggleStashMenu}
+              />
+
+              {isStashMenuOpen && !composerMenuOpen && !isComposerApprovalState && (
+                <ComposerCommandMenuLayer anchor={composerMenuAnchor}>
+                  <ComposerStashMenu
+                    entries={stashQueue}
+                    onRestore={restoreStashEntry}
+                    onDelete={deleteStashEntry}
+                    onClose={() => setIsStashMenuOpen(false)}
+                  />
+                </ComposerCommandMenuLayer>
               )}
 
-            {!isComposerCollapsedMobile &&
-              !isComposerApprovalState &&
-              pendingUserInputs.length === 0 &&
-              composerReviewComments.length > 0 && (
-                <ComposerPendingReviewComments
-                  comments={composerReviewComments}
-                  onRemove={(commentId) =>
-                    removeComposerDraftReviewComment(composerDraftTarget, commentId)
-                  }
-                  className="mb-3"
-                />
+              {composerMenuOpen && !isComposerApprovalState && (
+                <ComposerCommandMenuLayer anchor={composerMenuAnchor}>
+                  <ComposerCommandMenu
+                    items={composerMenuItems}
+                    resolvedTheme={resolvedTheme}
+                    isLoading={isComposerMenuLoading}
+                    triggerKind={composerTriggerKind}
+                    groupSlashCommandSections={
+                      composerTrigger?.kind === "slash-command" &&
+                      composerTrigger.query.trim().length === 0
+                    }
+                    emptyStateText={composerMenuEmptyState}
+                    activeItemId={activeComposerMenuItem?.id ?? null}
+                    onHighlightedItemChange={onComposerMenuItemHighlighted}
+                    onSelect={onSelectComposerItem}
+                  />
+                </ComposerCommandMenuLayer>
               )}
 
-            {!isComposerCollapsedMobile &&
-              !isComposerApprovalState &&
-              pendingUserInputs.length === 0 &&
-              composerElementContexts.length > 0 && (
-                <ComposerPendingElementContexts
-                  contexts={composerElementContexts}
-                  onRemove={(contextId) =>
-                    removeComposerDraftElementContext(composerDraftTarget, contextId)
-                  }
-                  className="mb-3"
-                />
-              )}
+              {!isComposerCollapsedMobile &&
+                !isComposerApprovalState &&
+                pendingUserInputs.length === 0 &&
+                composerPreviewAnnotations.length > 0 && (
+                  <ComposerPreviewAnnotationCards
+                    annotations={composerPreviewAnnotations}
+                    images={composerImages}
+                    onRemove={(annotationId) =>
+                      removeComposerDraftPreviewAnnotation(composerDraftTarget, annotationId)
+                    }
+                    onExpandImage={(imageId) => {
+                      const preview = buildExpandedImagePreview(composerImages, imageId);
+                      if (preview) onExpandImage(preview);
+                    }}
+                    className="mb-3"
+                  />
+                )}
 
-            {!isComposerCollapsedMobile &&
-              !isComposerApprovalState &&
-              pendingUserInputs.length === 0 &&
-              composerImages.some(
-                (image) =>
-                  !composerPreviewAnnotations.some((annotation) => annotation.id === image.id),
-              ) && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {composerImages
-                    .filter(
-                      (image) =>
-                        !composerPreviewAnnotations.some(
-                          (annotation) => annotation.id === image.id,
-                        ),
-                    )
-                    .map((image) => (
-                      <div
-                        key={image.id}
-                        className="relative h-16 w-16 overflow-hidden rounded-lg border border-border/80 bg-background"
-                      >
-                        {image.previewUrl ? (
-                          <button
-                            type="button"
-                            className="h-full w-full cursor-zoom-in"
-                            aria-label={`Preview ${image.name}`}
-                            onClick={() => {
-                              const preview = buildExpandedImagePreview(composerImages, image.id);
-                              if (!preview) return;
-                              onExpandImage(preview);
-                            }}
-                          >
-                            <img
-                              src={image.previewUrl}
-                              alt={image.name}
-                              className="h-full w-full object-cover"
-                            />
-                          </button>
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground/70">
-                            {image.name}
-                          </div>
-                        )}
-                        {nonPersistedComposerImageIdSet.has(image.id) && (
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <span
-                                  role="img"
-                                  aria-label="Draft attachment may not persist"
-                                  className="absolute left-1 top-1 inline-flex items-center justify-center rounded bg-background/85 p-0.5 text-amber-600"
-                                >
-                                  <CircleAlertIcon className="size-3" />
-                                </span>
-                              }
-                            />
-                            <TooltipPopup
-                              side="top"
-                              className="max-w-64 whitespace-normal leading-tight"
-                            >
-                              Draft attachment could not be saved locally and may be lost on
-                              navigation.
-                            </TooltipPopup>
-                          </Tooltip>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          className="absolute right-1 top-1 bg-background/80 hover:bg-background/90"
-                          onClick={() => removeComposerImage(image.id)}
-                          aria-label={`Remove ${image.name}`}
+              {!isComposerCollapsedMobile &&
+                !isComposerApprovalState &&
+                pendingUserInputs.length === 0 &&
+                composerReviewComments.length > 0 && (
+                  <ComposerPendingReviewComments
+                    comments={composerReviewComments}
+                    onRemove={(commentId) =>
+                      removeComposerDraftReviewComment(composerDraftTarget, commentId)
+                    }
+                    className="mb-3"
+                  />
+                )}
+
+              {!isComposerCollapsedMobile &&
+                !isComposerApprovalState &&
+                pendingUserInputs.length === 0 &&
+                composerElementContexts.length > 0 && (
+                  <ComposerPendingElementContexts
+                    contexts={composerElementContexts}
+                    onRemove={(contextId) =>
+                      removeComposerDraftElementContext(composerDraftTarget, contextId)
+                    }
+                    className="mb-3"
+                  />
+                )}
+
+              {!isComposerCollapsedMobile &&
+                !isComposerApprovalState &&
+                pendingUserInputs.length === 0 &&
+                composerImages.some(
+                  (image) =>
+                    !composerPreviewAnnotations.some((annotation) => annotation.id === image.id),
+                ) && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {composerImages
+                      .filter(
+                        (image) =>
+                          !composerPreviewAnnotations.some(
+                            (annotation) => annotation.id === image.id,
+                          ),
+                      )
+                      .map((image) => (
+                        <div
+                          key={image.id}
+                          className="relative h-16 w-16 overflow-hidden rounded-lg border border-border/80 bg-background"
                         >
-                          <XIcon />
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-              )}
+                          {image.previewUrl ? (
+                            <button
+                              type="button"
+                              className="h-full w-full cursor-zoom-in"
+                              aria-label={`Preview ${image.name}`}
+                              onClick={() => {
+                                const preview = buildExpandedImagePreview(composerImages, image.id);
+                                if (!preview) return;
+                                onExpandImage(preview);
+                              }}
+                            >
+                              <img
+                                src={image.previewUrl}
+                                alt={image.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground/70">
+                              {image.name}
+                            </div>
+                          )}
+                          {nonPersistedComposerImageIdSet.has(image.id) && (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <span
+                                    role="img"
+                                    aria-label="Draft attachment may not persist"
+                                    className="absolute left-1 top-1 inline-flex items-center justify-center rounded bg-background/85 p-0.5 text-amber-600"
+                                  >
+                                    <CircleAlertIcon className="size-3" />
+                                  </span>
+                                }
+                              />
+                              <TooltipPopup
+                                side="top"
+                                className="max-w-64 whitespace-normal leading-tight"
+                              >
+                                Draft attachment could not be saved locally and may be lost on
+                                navigation.
+                              </TooltipPopup>
+                            </Tooltip>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            className="absolute right-1 top-1 bg-background/80 hover:bg-background/90"
+                            onClick={() => removeComposerImage(image.id)}
+                            aria-label={`Remove ${image.name}`}
+                          >
+                            <XIcon />
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
+                )}
 
-            {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-            <div className={cn("flex min-w-0", isComposerSlim ? "items-center gap-6" : "flex-col")}>
-              <div
-                ref={attachPromptElement}
-                data-fork-composer-prompt="true"
-                className="relative min-w-0 flex-1"
+              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+              <ComposerPromptRow
+                action={composerPrimaryActionSlot}
+                approvalPending={activePendingApproval !== null}
+                mobilePendingActionsVisible={showMobilePendingAnswerActions}
               >
                 {/* fork:end fork-composer-shell */}
                 <ComposerPromptEditor
@@ -3264,12 +3239,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                               : phase === "disconnected"
                                 ? "Ask for follow-up changes or attach images"
                                 : /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                                  // Absolute placeholder is invisible to the wrap latch. Slim shortens
-                                  // the hint so @/$/ stay discoverable instead of truncating them away.
-                                  isComposerSlim
-                                  ? "Ask anything, @tag, $skills, / commands"
-                                  : /* fork:end fork-composer-shell */
-                                    "Ask anything, @tag files/folders, $use skills, or / for commands"
+                                  "Ask anything,"
+                    /* fork:end fork-composer-shell */
                   }
                   disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
                 />
@@ -3301,99 +3272,26 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     />
                   </div>
                 ) : null}
-              </div>
-              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-              {/* Slim shell: the pills and the send button ride inline with the
-                  prompt rather than sitting on their own row beneath it. */}
-              {/* No `&& !activePendingApproval` here: an approval sets
-                  hasComposerHeader, which resolves density to tall, so the
-                  right conjunct can never be false when the left is true. */}
-              {isComposerSlim ? (
-                <div
-                  data-chat-composer-inline-actions="true"
-                  className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
-                >
-                  <div data-fork-composer-pills="true" className="flex min-w-0 items-center">
-                    {composerModelControls}
-                  </div>
-                  {composerPrimaryActionSlot}
-                </div>
-              ) : null}
-            </div>
-            {/* fork:end fork-composer-shell */}
-          </div>
-
-          {/* Bottom toolbar */}
-          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-          {/* The slim shell already rendered the pills and the send button
-              inline with the prompt. Skipping the row outright rather than
-              hiding it keeps a second data-chat-composer-actions="right" out of
-              the DOM — and `cn()` is tailwind-merge, so a conditional "hidden"
-              here would lose to the base "flex" that follows it anyway. An
-              approval always resolves to the tall shell, so that branch is
-              still reachable. */}
-          {composerDensity !== "tall" ? null : activePendingApproval ? (
-            /* fork:end fork-composer-shell */
-            <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
-              <ComposerPendingApprovalActions
-                requestId={activePendingApproval.requestId}
-                isResponding={respondingRequestIds.includes(activePendingApproval.requestId)}
-                onRespondToApproval={onRespondToApproval}
-              />
-            </div>
-          ) : (
-            <div
-              data-chat-composer-footer="true"
-              data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
-              className={cn(
-                /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-4 pb-4",
-                /* fork:end fork-composer-shell */
-                pendingUserInputs.length > 0 && "pt-2",
-                isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
-                showMobilePendingAnswerActions && "hidden sm:flex",
-              )}
-            >
-              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-              <div
-                data-fork-composer-pills="true"
-                className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              >
-                {composerModelControls}
-              </div>
-
-              {/* Right side: send / stop button */}
-              {composerPrimaryActionSlot}
+                {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+              </ComposerPromptRow>
               {/* fork:end fork-composer-shell */}
             </div>
-          )}
+
+            {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+            {activePendingApproval ? (
+              <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
+                <ComposerPendingApprovalActions
+                  requestId={activePendingApproval.requestId}
+                  isResponding={respondingRequestIds.includes(activePendingApproval.requestId)}
+                  onRespondToApproval={onRespondToApproval}
+                />
+              </div>
+            ) : null}
+            {/* fork:end fork-composer-shell */}
+          </div>
         </div>
-      </div>
-      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-      {/* The control row: run controls and the worktree/branch pair on one line
-          under the box, replacing both the in-box mode controls and the
-          separately-stitched context strip.
-
-          The row renders in every state, including collapsed — only its left
-          half is conditional. Two upstream behaviours depend on that:
-
-          Collapsed on mobile, upstream still rendered BranchToolbar (gated on
-          showComposerContextStrip alone, with its own MobileRunContextSelector
-          branch), so env mode and branch were switchable without focusing the
-          composer and raising the keyboard. Dropping the whole row took that
-          away. The mode controls stay hidden, which is what upstream did — its
-          footer was unmounted while collapsed.
-
-          During a pending approval, upstream replaced the entire footer with
-          ComposerPendingApprovalActions, unmounting the runtime-mode, Build/Plan
-          and plan-sidebar toggles. The in-box footer still swaps, but these
-          moved out here, so they need the same gate — otherwise the user can
-          flip modes for a run whose approval is still unresolved. BranchToolbar
-          is deliberately not gated on approval; upstream showed it too. */}
-      <ComposerControlRow
-        left={activePendingApproval ? null : composerRunControls}
-        {...(contextStrip ? { right: contextStrip } : {})}
-      />
+        {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      </ComposerShell>
       {/* fork:end fork-composer-shell */}
     </form>
   );
