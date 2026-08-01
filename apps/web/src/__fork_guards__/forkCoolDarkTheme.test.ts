@@ -14,10 +14,12 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   COOL_DARK_BACKGROUND,
+  COOL_DARK_LABEL,
   COOL_DARK_THEME,
+  FORK_PALETTE_STORAGE_KEY,
   FORK_THEME_ATTRIBUTE,
-  applyForkThemeAttribute,
-  toDesktopTheme,
+  applyForkPaletteAttribute,
+  resolveAppearanceOption,
 } from "../custom/forkTheme";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
@@ -30,9 +32,11 @@ const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
 const indexHtml = readSibling("../../index.html");
 const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
-const useThemeOverride = readSibling("../overrides/hooks/useTheme.ts");
 const forkTheme = readSibling("../custom/forkTheme.ts");
 const customizations = readSibling("../../../../.fork/customizations.yaml");
+const useThemeOverridePath = NodeURL.fileURLToPath(
+  new URL("../overrides/hooks/useTheme.ts", import.meta.url),
+);
 
 function blockFor(css: string, selectorParts: readonly string[]): string {
   const pattern = new RegExp(
@@ -80,33 +84,33 @@ const COOL_PANEL = [
 const DEFAULT_STAGE = [`${MARKER}.dark`];
 
 describe("fork guard: fork-cool-dark-theme", () => {
-  it("registers the customization and keeps the preference helpers", () => {
+  it("registers the customization as a separate palette, not a useTheme override", () => {
     expect(customizations).toContain("id: fork-cool-dark-theme");
+    expect(customizations).toContain("t3code:fork-theme");
+    expect(customizations).not.toContain("apps/web/src/overrides/hooks/useTheme.ts");
+    expect(customizations).not.toMatch(/shadows:\s*\n\s*- apps\/web\/src\/hooks\/useTheme\.ts/u);
+    expect(NodeFS.existsSync(useThemeOverridePath)).toBe(false);
     expect(forkTheme).toContain(`export const COOL_DARK_THEME = "${COOL_DARK_THEME}"`);
     expect(forkTheme).toContain(`export const COOL_DARK_BACKGROUND = "${COOL_DARK_BACKGROUND}"`);
-    expect(toDesktopTheme("cool-dark")).toBe("dark");
-    expect(toDesktopTheme("dark")).toBe("dark");
-    expect(toDesktopTheme("system")).toBe("system");
+    expect(forkTheme).toContain(`FORK_PALETTE_STORAGE_KEY = "${FORK_PALETTE_STORAGE_KEY}"`);
+    expect(forkTheme).toContain("useForkAppearance");
+    expect(resolveAppearanceOption("dark", "cool-dark")).toBe("cool-dark");
+    expect(resolveAppearanceOption("dark", null)).toBe("dark");
+    expect(resolveAppearanceOption("system", "cool-dark")).toBe("system");
   });
 
-  it("offers Cool Dark in Appearance and accepts it as a theme value", () => {
+  it("offers Cool Dark in Appearance via the fork palette adapter", () => {
     expect(settingsPanels).toContain('value: "cool-dark"');
-    expect(settingsPanels).toContain('label: "Cool Dark"');
-    expect(settingsPanels).toContain('value === "cool-dark"');
-    expect(settingsPanels).toContain('from "~/hooks/useTheme"');
+    expect(settingsPanels).toContain("COOL_DARK_LABEL");
+    expect(forkTheme).toContain(`export const COOL_DARK_LABEL = "${COOL_DARK_LABEL}"`);
+    expect(settingsPanels).toContain("useForkAppearance");
+    expect(settingsPanels).toContain("setAppearance");
+    expect(settingsPanels).toContain('from "../../hooks/useTheme"');
+    expect(settingsPanels).not.toContain('from "~/hooks/useTheme"');
     expect(settingsPanels).toContain("fork:begin fork-cool-dark-theme");
   });
 
-  it("overrides useTheme so cool-dark persists and maps to desktop dark", () => {
-    expect(useThemeOverride).toContain('"cool-dark"');
-    expect(useThemeOverride).toContain("applyForkThemeAttribute");
-    expect(useThemeOverride).toContain("toDesktopTheme");
-    expect(useThemeOverride).toContain(
-      'ThemePreference = Schema.Literals(["light", "dark", "cool-dark", "system"]',
-    );
-  });
-
-  it("stamps and clears the fork theme attribute", () => {
+  it("stamps and clears the fork theme attribute from the palette", () => {
     const attrs = new Map<string, string>();
     const root = {
       setAttribute(name: string, value: string) {
@@ -116,9 +120,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
         attrs.delete(name);
       },
     };
-    applyForkThemeAttribute(root, "cool-dark");
+    applyForkPaletteAttribute(root, "cool-dark");
     expect(attrs.get(FORK_THEME_ATTRIBUTE)).toBe(COOL_DARK_THEME);
-    applyForkThemeAttribute(root, "dark");
+    applyForkPaletteAttribute(root, null);
     expect(attrs.has(FORK_THEME_ATTRIBUTE)).toBe(false);
   });
 
@@ -158,12 +162,15 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
   });
 
-  it("pre-paints Cool Dark in index.html so the load flash matches the stage", () => {
+  it("pre-paints Cool Dark from the palette key so the load flash matches the stage", () => {
     expect(indexHtml).toContain(COOL_DARK_BACKGROUND);
-    expect(indexHtml).toContain('storedTheme === "cool-dark"');
+    expect(indexHtml).toContain('t3code:fork-theme"');
+    expect(indexHtml).toContain('forkPalette === "cool-dark"');
     expect(indexHtml).toContain(`data-fork-theme", "cool-dark"`);
     expect(indexHtml).toContain(`html.dark[${FORK_THEME_ATTRIBUTE}="cool-dark"] body`);
     expect(indexHtml).toContain("fork:begin fork-cool-dark-theme");
+    // Legacy migration still recognized, but cool-dark is not a live theme union member.
+    expect(indexHtml).toContain('storedTheme === "cool-dark"');
   });
 
   it("does not leak Cool Dark fills into light mode", () => {

@@ -812,17 +812,18 @@
 
 - id: fork-cool-dark-theme
   intent: >
-    Appearance offers Cool Dark as a fourth theme preference alongside System,
-    Light, and Dark. Cool Dark is a lighter, cool-gray dark palette (barely
-    cool, not blue-slate) that coexists with the default fork Dark — selecting
-    it must not replace or alter Dark's #191919 / #1e1e1e fills.
+    Appearance offers Cool Dark as a fourth option alongside System, Light, and
+    Dark. Cool Dark is a lighter, cool-gray dark palette (barely cool, not
+    blue-slate) that coexists with the default fork Dark — selecting it must
+    not replace or alter Dark's #191919 / #1e1e1e fills.
 
-    Persistence reuses the client-only t3code:theme localStorage key with the
-    value cool-dark. Applying Cool Dark still toggles the document .dark class
-    (so Tailwind and upstream dark tokens apply) and stamps
-    data-fork-theme="cool-dark" on :root; other preferences clear that
-    attribute. Desktop nativeTheme only accepts light|dark|system, so Cool Dark
-    maps to dark before bridge.setTheme.
+    Cool Dark is a fork palette overlay, not a widened upstream ThemePreference.
+    Upstream t3code:theme stays light|dark|system. The palette is persisted
+    separately in t3code:fork-theme (cool-dark | absent) by custom/forkTheme.ts.
+    Selecting Cool Dark sets upstream theme to dark and stamps
+    data-fork-theme="cool-dark" on :root; Light / Dark / System clear that
+    attribute. A legacy t3code:theme=cool-dark value migrates to theme=dark plus
+    the palette key. No useTheme override.
 
     The palette lives in theme.custom.css under
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
@@ -835,9 +836,6 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/theme.custom.css
-    - apps/web/src/overrides/hooks/useTheme.ts
-  shadows:
-    - apps/web/src/hooks/useTheme.ts
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html

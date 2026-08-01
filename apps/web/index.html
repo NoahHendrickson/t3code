@@ -22,28 +22,33 @@
         try {
           const storedTheme = window.localStorage.getItem("t3code:theme");
           /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+          // Cool Dark is a separate palette key; migrate legacy t3code:theme=cool-dark.
+          let forkPalette = window.localStorage.getItem("t3code:fork-theme");
+          if (storedTheme === "cool-dark") {
+            window.localStorage.setItem("t3code:theme", "dark");
+            window.localStorage.setItem("t3code:fork-theme", "cool-dark");
+            forkPalette = "cool-dark";
+          }
           const theme =
-            storedTheme === "light" ||
-            storedTheme === "dark" ||
-            storedTheme === "cool-dark" ||
-            storedTheme === "system"
-              ? storedTheme
-              : "system";
+            storedTheme === "cool-dark"
+              ? "dark"
+              : storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
+                ? storedTheme
+                : "system";
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          const isDark =
-            theme === "dark" || theme === "cool-dark" || (theme === "system" && prefersDark);
+          const isDark = theme === "dark" || (theme === "system" && prefersDark);
+          const isCoolDark = forkPalette === "cool-dark" && isDark;
           document.documentElement.classList.toggle("dark", isDark);
-          if (theme === "cool-dark") {
+          if (isCoolDark) {
             document.documentElement.setAttribute("data-fork-theme", "cool-dark");
           } else {
             document.documentElement.removeAttribute("data-fork-theme");
           }
-          const chromeColor =
-            theme === "cool-dark"
-              ? COOL_DARK_BACKGROUND
-              : isDark
-                ? DARK_BACKGROUND
-                : LIGHT_BACKGROUND;
+          const chromeColor = isCoolDark
+            ? COOL_DARK_BACKGROUND
+            : isDark
+              ? DARK_BACKGROUND
+              : LIGHT_BACKGROUND;
           /* fork:end fork-cool-dark-theme */
           document.documentElement.style.backgroundColor = chromeColor;
           themeColorMeta?.setAttribute("content", chromeColor);
