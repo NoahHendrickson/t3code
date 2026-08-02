@@ -910,6 +910,15 @@
     those imports to make a conflict go away, because nothing in the fork's
     copy references them any more.
 
+    Same spirit, opposite direction: Sidebar.logic.ts keeps upstream's
+    searchSidebarThreadsByTitle (and its tests) even though nothing in the
+    fork's copy of SidebarV2 renders it. Upstream's inline sidebar thread
+    search (#4769) lives in the chrome this customization replaced, so the
+    2026-08-02 sync deliberately did not adopt its UI; the pure helper stays
+    so a future port into SidebarV2ChromeRows is a design decision, not an
+    archaeology dig. It is an orphan on purpose — do not "clean it up", and
+    do not count its tests as coverage of a rendered path.
+
     The thread list pays for its own scroll gutter. scrollbar-gutter:stable
     reserves the scrollbar inside the list's padding box, so the symmetric px-2
     from Figma 113:3718 spends 8px of air on the left and 8 plus the scrollbar
@@ -1166,6 +1175,10 @@
   watch:
     - apps/web/src/index.css
     - apps/web/src/components/ThreadTerminalDrawer.tsx
+    # The fork deleted its own refit shim because the surface waits on
+    # document.fonts before measuring and re-measures on loadingdone. If
+    # upstream stops, the terminal silently measures against fallback metrics.
+    - apps/web/src/terminal/ghostty/surface.ts
     # No fence, but load-bearing: ships the resolved --font-sans / --font-mono
     # into the previewed page — see FORK-CUSTOMIZATION-DECISIONS.md.
     - apps/web/src/browser/annotationTheme.ts
