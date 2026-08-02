@@ -10,12 +10,13 @@ import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
-import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-// BRAND_ASSET_PATHS is no longer imported: the fork's desktop icons come from
-// FORK_DESKTOP_ICON_ASSETS below instead of upstream's per-channel art.
+// Packaged splash/favicon use FORK_WEB_ICON_ASSETS through the shared
+// applyWebIconOverrides / resolveWebIconOverridesFromSources path — no twin
+// copy pipeline in this file.
+import { applyWebIconOverrides } from "./apply-web-brand-assets.ts";
+import { resolveWebIconOverridesFromSources } from "./lib/brand-assets.ts";
 // fork:end fork-app-identity
-import { resolveWebAssetBrandForChannel, type WebAssetBrand } from "./lib/brand-assets.ts";
 import { getDefaultBuildArch } from "./lib/build-target-arch.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
 import { resolveCatalogDependencies } from "./lib/resolve-catalog.ts";
@@ -39,12 +40,18 @@ const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
 // Distinct bundle id so macOS treats a fork build as a different application
 // from an installed upstream release rather than a replacement for it.
 const DESKTOP_APP_ID = "com.t3tools.t3code.fork";
-// Fork-owned placeholder art (an "N" lettermark) generated into assets/fork,
-// consumed by resolveDesktopBuildIconAssets below.
+// Fork-owned green grid mark from Figma (t3-fork 157:4036 for web favicon;
+// desktop PNGs/ICO share the same mark family), kept in assets/fork.
 const FORK_DESKTOP_ICON_ASSETS = {
   macIconPng: "assets/fork/n3-macos-1024.png",
   linuxIconPng: "assets/fork/n3-universal-1024.png",
   windowsIconIco: "assets/fork/n3-windows.ico",
+} as const;
+export const FORK_WEB_ICON_ASSETS = {
+  faviconIco: "assets/fork/n3-web-favicon.ico",
+  favicon16Png: "assets/fork/n3-web-favicon-16x16.png",
+  favicon32Png: "assets/fork/n3-web-favicon-32x32.png",
+  appleTouchIconPng: "assets/fork/n3-web-apple-touch-180.png",
 } as const;
 // fork:end fork-app-identity
 const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/u;
@@ -1489,16 +1496,13 @@ export function resolveDesktopUpdateChannel(version: string): "latest" | "nightl
   return /-nightly\.\d{8}\.\d+$/.test(version) ? "nightly" : "latest";
 }
 
-export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
-  return resolveWebAssetBrandForChannel(resolveDesktopUpdateChannel(version));
-}
-
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-// Placeholder fork art: an "N" lettermark on every channel for now, so a fork
-// build is visually distinct from upstream in the Dock and /Applications.
-// Upstream's per-channel art stays untouched in assets/prod and assets/nightly
-// for clean merges; the version argument keeps upstream's call shape and goes
-// unused until the fork ships channel-specific art.
+// Fork green-grid art on every channel so a fork build is visually distinct
+// from upstream in the Dock and /Applications. Upstream's per-channel art
+// stays untouched in assets/prod and assets/nightly for clean merges; the
+// version argument keeps upstream's call shape and goes unused until the fork
+// ships channel-specific art. resolveDesktopWebAssetBrand was deleted — it
+// had no production caller after packaging switched to FORK_WEB_ICON_ASSETS.
 export function resolveDesktopBuildIconAssets(_version: string): DesktopBuildIconAssets {
   return FORK_DESKTOP_ICON_ASSETS;
 }
@@ -1849,9 +1853,13 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     });
   }
 
-  const webAssetBrand = resolveDesktopWebAssetBrand(appVersion);
-  yield* applyWebBrandAssets(webAssetBrand, "apps/server/dist/client");
-  yield* Effect.log(`[desktop-artifact] Applied ${webAssetBrand} web client branding.`);
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  // Splash + favicon ship the fork mark via the shared brand-assets copy path.
+  yield* applyWebIconOverrides(
+    resolveWebIconOverridesFromSources(FORK_WEB_ICON_ASSETS, "apps/server/dist/client"),
+  );
+  yield* Effect.log("[desktop-artifact] Applied fork web client branding.");
+  // fork:end fork-app-identity
   yield* validateBundledClientAssets(path.dirname(bundledClientEntry));
 
   yield* fs.makeDirectory(path.join(stageAppDir, "apps/desktop"), { recursive: true });

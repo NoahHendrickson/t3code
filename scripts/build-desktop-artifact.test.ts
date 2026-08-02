@@ -30,10 +30,10 @@ import {
   resolveDesktopRuntimeDependencies,
   resolveFffNativeDependencies,
   resolveBuildOptions,
+  FORK_WEB_ICON_ASSETS,
   resolveDesktopBuildIconAssets,
   resolveDesktopProductName,
   resolveDesktopUpdateChannel,
-  resolveDesktopWebAssetBrand,
   resolveResourceMonitorRustTargets,
   resourceMonitorExecutableName,
   resolveGitHubPublishConfig,
@@ -44,6 +44,7 @@ import {
   STAGE_INSTALL_ARGS,
   WINDOWS_ASAR_UNPACK,
 } from "./build-desktop-artifact.ts";
+import { resolveWebIconOverridesFromSources } from "./lib/brand-assets.ts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 
 function mockProcess(exitCode: number) {
@@ -96,7 +97,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     // fork:end fork-app-identity
   });
 
-  it("uses the fork's placeholder artwork for every channel", () => {
+  it("uses the fork's green-grid artwork for every channel", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
     const forkIconAssets = {
       macIconPng: "assets/fork/n3-macos-1024.png",
@@ -111,9 +112,38 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     // fork:end fork-app-identity
   });
 
-  it("switches the bundled splash and favicon branding for nightly versions", () => {
-    assert.equal(resolveDesktopWebAssetBrand("0.0.17"), "production");
-    assert.equal(resolveDesktopWebAssetBrand("0.0.17-nightly.20260413.42"), "nightly");
+  it("bundles the fork splash and favicon instead of upstream channel art", () => {
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    // Packaging always copies FORK_WEB_ICON_ASSETS through the shared brand
+    // override builder — no per-channel web brand selection.
+    assert.deepStrictEqual(FORK_WEB_ICON_ASSETS, {
+      faviconIco: "assets/fork/n3-web-favicon.ico",
+      favicon16Png: "assets/fork/n3-web-favicon-16x16.png",
+      favicon32Png: "assets/fork/n3-web-favicon-32x32.png",
+      appleTouchIconPng: "assets/fork/n3-web-apple-touch-180.png",
+    });
+    assert.deepStrictEqual(
+      resolveWebIconOverridesFromSources(FORK_WEB_ICON_ASSETS, "apps/server/dist/client"),
+      [
+        {
+          sourceRelativePath: "assets/fork/n3-web-favicon.ico",
+          targetRelativePath: "apps/server/dist/client/favicon.ico",
+        },
+        {
+          sourceRelativePath: "assets/fork/n3-web-favicon-16x16.png",
+          targetRelativePath: "apps/server/dist/client/favicon-16x16.png",
+        },
+        {
+          sourceRelativePath: "assets/fork/n3-web-favicon-32x32.png",
+          targetRelativePath: "apps/server/dist/client/favicon-32x32.png",
+        },
+        {
+          sourceRelativePath: "assets/fork/n3-web-apple-touch-180.png",
+          targetRelativePath: "apps/server/dist/client/apple-touch-icon.png",
+        },
+      ],
+    );
+    // fork:end fork-app-identity
   });
 
   it.effect("resolves GitHub desktop publish config from Effect config", () =>

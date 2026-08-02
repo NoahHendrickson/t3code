@@ -592,11 +592,21 @@
 /* Upstream nests the PR pill with the branch trigger at gap-1 (4px), while the
    strip itself is 8px between checkout and that pair — so checkout→PR reads
    loose and PR→branch reads tight. Same 8px on every direct flex child keeps
-   the three chips (and env→checkout when both show) evenly spaced. */
+   the three chips (and env→checkout when both show) evenly spaced.
+
+   Upstream also gives the checkout group and branch wrapper `flex-1`, and the
+   branch `justify-end` below `md` (plus `md:ml-auto`). That splits the strip
+   into halves and parks the branch at the end of its half — a large empty gap
+   while "Current checkout" truncates. The fork's chips sit in one packed
+   leading cluster; neutralize the grow/end alignment so gap stays 8px. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
   .chat-composer-context-strip
   > .flex {
+  flex: 0 1 auto;
+  justify-content: flex-start;
+  margin-inline-start: 0;
+  max-width: 100%;
   gap: 8px;
 }
 

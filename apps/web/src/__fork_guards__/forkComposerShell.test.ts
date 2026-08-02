@@ -8,6 +8,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX,
+  COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX,
+  shouldUseCompactComposerFooter,
+} from "../components/composerFooterLayout";
+import {
+  COMPOSER_MODEL_SLOT_COMPACT_BREAKPOINT_PX,
+  COMPOSER_MODEL_SLOT_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX,
+  shouldUseCompactComposerModelSlot,
+} from "../custom/composerModelSlotCompact";
+import {
   ComposerPromptRow,
   ComposerShell,
   getRuntimeModeChipStyle,
@@ -15,6 +25,9 @@ import {
 } from "../custom/ComposerShell";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
+
+/** Form ceiling from ChatComposer's `max-w-3xl` — keep compact thresholds below it. */
+const COMPOSER_FORM_MAX_WIDTH_PX = 768;
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -307,6 +320,43 @@ describe("fork guard: fork-composer-shell", () => {
     }
   });
 
+  it("keeps mode-row ⋯ collapse below the denser fork control-row widths", () => {
+    // Upstream is 620/780; those fire with a large empty gap on the fork row.
+    // Mode-row only — model-picker compaction stays at upstream 620/780.
+    expect(COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX).toBe(400);
+    expect(COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX).toBe(520);
+    expect(COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX).toBeLessThan(
+      COMPOSER_FORM_MAX_WIDTH_PX,
+    );
+    expect(shouldUseCompactComposerFooter(560)).toBe(false);
+    expect(
+      shouldUseCompactComposerFooter(560, {
+        hasWideActions: true,
+      }),
+    ).toBe(false);
+    // Wide-actions branch: expanded at/above 520, compact below.
+    expect(
+      shouldUseCompactComposerFooter(519, {
+        hasWideActions: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldUseCompactComposerFooter(520, {
+        hasWideActions: true,
+      }),
+    ).toBe(false);
+    expect(shouldUseCompactComposerFooter(399)).toBe(true);
+    expect(shouldUseCompactComposerFooter(400)).toBe(false);
+
+    // Model trigger stays on upstream widths; ChatComposer must wire both.
+    expect(COMPOSER_MODEL_SLOT_COMPACT_BREAKPOINT_PX).toBe(620);
+    expect(COMPOSER_MODEL_SLOT_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX).toBe(780);
+    expect(shouldUseCompactComposerModelSlot(560)).toBe(true);
+    expect(shouldUseCompactComposerModelSlot(620)).toBe(false);
+    expect(chatComposer).toContain("shouldUseCompactComposerModelSlot");
+    expect(chatComposer).toContain("compact={isComposerModelSlotCompact}");
+  });
+
   it("keeps primary actions out of ghost sizing", () => {
     expect(primaryActions).toContain('data-fork-composer-action="send"');
     expect(primaryActions).toContain('data-fork-composer-action="stop"');
@@ -342,7 +392,8 @@ describe("fork guard: fork-composer-shell", () => {
     expect(strip?.body).toMatch(/margin:\s*0/u);
     expect(strip?.body).toMatch(/gap:\s*8px/u);
     // Nested PR+branch (and env+checkout) wrappers keep upstream gap-1; the
-    // fork re-gaps them to 8px so checkout→PR→branch reads evenly.
+    // fork re-gaps them to 8px so checkout→PR→branch reads evenly, and drops
+    // flex-1 / justify-end / ml-auto so the cluster stays packed when narrow.
     const nested = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
@@ -350,5 +401,9 @@ describe("fork guard: fork-composer-shell", () => {
         (rule.selector.includes(">.flex") || rule.selector.includes("> .flex")),
     );
     expect(nested?.body).toMatch(/gap:\s*8px/u);
+    expect(nested?.body).toMatch(/flex:\s*0 1 auto/u);
+    expect(nested?.body).toMatch(/justify-content:\s*flex-start/u);
+    expect(nested?.body).toMatch(/margin-inline-start:\s*0/u);
+    expect(nested?.body).toMatch(/max-width:\s*100%/u);
   });
 });

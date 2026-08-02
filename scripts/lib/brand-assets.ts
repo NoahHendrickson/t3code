@@ -50,12 +50,16 @@ export interface IconOverride {
   readonly targetRelativePath: string;
 }
 
-const WEB_ICON_TARGET_FILENAMES = {
+export const WEB_ICON_TARGET_FILENAMES = {
   faviconIco: "favicon.ico",
   favicon16Png: "favicon-16x16.png",
   favicon32Png: "favicon-32x32.png",
   appleTouchIconPng: "apple-touch-icon.png",
 } as const;
+
+export type WebIconSourcePaths = {
+  readonly [K in keyof typeof WEB_ICON_TARGET_FILENAMES]: string;
+};
 
 const WEB_ICON_SOURCE_PATHS_BY_BRAND = {
   development: {
@@ -76,13 +80,13 @@ const WEB_ICON_SOURCE_PATHS_BY_BRAND = {
     favicon32Png: BRAND_ASSET_PATHS.productionWebFavicon32Png,
     appleTouchIconPng: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
   },
-} as const satisfies Record<WebAssetBrand, Record<keyof typeof WEB_ICON_TARGET_FILENAMES, string>>;
+} as const satisfies Record<WebAssetBrand, WebIconSourcePaths>;
 
-export function resolveWebIconOverrides(
-  brand: WebAssetBrand,
+/** Build favicon/splash copy pairs from an arbitrary source map into `targetDirectory`. */
+export function resolveWebIconOverridesFromSources(
+  sourcePaths: WebIconSourcePaths,
   targetDirectory: string,
 ): ReadonlyArray<IconOverride> {
-  const sourcePaths = WEB_ICON_SOURCE_PATHS_BY_BRAND[brand];
   return [
     {
       sourceRelativePath: sourcePaths.faviconIco,
@@ -101,6 +105,13 @@ export function resolveWebIconOverrides(
       targetRelativePath: `${targetDirectory}/${WEB_ICON_TARGET_FILENAMES.appleTouchIconPng}`,
     },
   ];
+}
+
+export function resolveWebIconOverrides(
+  brand: WebAssetBrand,
+  targetDirectory: string,
+): ReadonlyArray<IconOverride> {
+  return resolveWebIconOverridesFromSources(WEB_ICON_SOURCE_PATHS_BY_BRAND[brand], targetDirectory);
 }
 
 export const DEVELOPMENT_ICON_OVERRIDES = resolveWebIconOverrides("development", "dist/client");
