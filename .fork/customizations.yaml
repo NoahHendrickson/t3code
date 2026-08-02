@@ -1132,16 +1132,15 @@
     index.css. Routing through --fork-font-* keeps the values scoped under the
     fork marker while the fallbacks leave an unmarked build on DM Sans.
     The terminal's font logic lives in custom/terminalFont.ts rather than in
-    the drawer: xterm takes its font from a constructor option instead of the
-    cascade, so --font-mono has to be resolved by hand and the cell grid
-    re-measured once the webfont lands — xterm sizes columns at open(), and a
-    webfont can land after that. The drawer keeps two one-line call sites, and
-    the font-load probe is derived from the resolved stack rather than
-    hardcoded, so it cannot go stale on a face swap and an unmarked build
-    names a local system face and fetches nothing. The re-fit must also
-    propagate to the PTY via resizeTerminal — nothing in the drawer subscribes
-    to onResize, and a re-fit that corrects only xterm's local grid leaves the
-    PTY wrapping to the stale, fallback-measured width.
+    the drawer: the ghostty surface takes its font as a creation option
+    instead of from the cascade, so --font-mono has to be resolved by hand at
+    the mount site. The drawer keeps one one-line call site passing
+    font.family. Unlike the xterm era there is no fork refit shim: the
+    surface itself waits on document.fonts before measuring the cell grid and
+    re-measures on loadingdone, so the webfont-landing-late case is upstream's
+    to handle now. In an unmarked build the cascade read returns upstream's
+    stack and no Geist byte is fetched; the module's fallback only engages
+    when the read comes back empty.
     Geist Mono is listed AHEAD of SF Mono: upstream puts SF Mono first, which
     means on macOS its bundled mono webfont never renders at all. body / pre,
     code are re-declared under

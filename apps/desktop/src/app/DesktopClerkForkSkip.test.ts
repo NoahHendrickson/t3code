@@ -12,6 +12,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Logger from "effect/Logger";
 import { vi } from "vite-plus/test";
@@ -29,6 +30,7 @@ vi.mock("@clerk/electron/storage", () => ({
   storage: storageMock,
 }));
 
+import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as DesktopClerk from "./DesktopClerk.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 
@@ -36,10 +38,24 @@ const makeDesktopClerkLayer = () => {
   const environment = DesktopEnvironment.DesktopEnvironment.of({
     stateDir: "/tmp/t3-state",
     isDevelopment: false,
+    appDataDirectory: "/tmp/app-data",
+    userDataDirName: "t3code",
+    legacyUserDataDirName: "T3 Code (Alpha)",
+    path: { join: (...parts: ReadonlyArray<string>) => parts.join("/") },
   } as unknown as DesktopEnvironment.DesktopEnvironment["Service"]);
 
+  const electronApp = {
+    setPath: () => Effect.void,
+  } as unknown as ElectronApp.ElectronApp["Service"];
+
   return DesktopClerk.layer.pipe(
-    Layer.provide(Layer.succeed(DesktopEnvironment.DesktopEnvironment, environment)),
+    Layer.provide(
+      Layer.mergeAll(
+        Layer.succeed(DesktopEnvironment.DesktopEnvironment, environment),
+        Layer.succeed(ElectronApp.ElectronApp, electronApp),
+        FileSystem.layerNoop({ exists: () => Effect.succeed(false) }),
+      ),
+    ),
   );
 };
 

@@ -87,6 +87,7 @@ import {
   Eyedropper as PhEyedropper,
   File as PhFile,
   FileCode as PhFileCode,
+  FileMagnifyingGlass as PhFileMagnifyingGlass,
   Files as PhFiles,
   Flask as PhFlask,
   Folder as PhFolder,
@@ -114,6 +115,7 @@ import {
   Link as PhLink,
   LinkSimple as PhLinkSimple,
   ListChecks as PhListChecks,
+  ListMagnifyingGlass as PhListMagnifyingGlass,
   Lock as PhLock,
   LockOpen as PhLockOpen,
   MagnifyingGlass as PhMagnifyingGlass,
@@ -274,6 +276,10 @@ export const Files = icon("files", PhFiles, "duotone");
 export const FileDiff = icon("file-diff", PhGitDiff, "duotone");
 export const FileDiffIcon = icon("file-diff", PhGitDiff, "duotone");
 export const FileJsonIcon = icon("file-json", PhFileCode, "duotone");
+export const FileSearchIcon = icon("file-search", PhFileMagnifyingGlass, "duotone");
+// Text search — phosphor has no text-magnifier; the list-lines magnifier is
+// the closest read of "search within content".
+export const TextSearchIcon = icon("text-search", PhListMagnifyingGlass, "duotone");
 export const ClipboardList = icon("clipboard-list", PhClipboardText, "duotone");
 export const CopyIcon = icon("copy", PhCopy, "duotone");
 export const ArchiveIcon = icon("archive", PhArchive, "duotone");

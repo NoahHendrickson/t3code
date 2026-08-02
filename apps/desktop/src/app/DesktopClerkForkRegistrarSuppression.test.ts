@@ -55,7 +55,7 @@ describe("DesktopClerk keyed-build registrar suppression", () => {
   });
 
   it("suppresses the bridge's scheme re-registration, then restores the registrar", () => {
-    const bridge = { cleanup: vi.fn() };
+    const bridge = { cleanup: vi.fn(), isPrimaryInstance: true };
     createClerkBridgeMock.mockImplementation(() => {
       // What @clerk/electron does unconditionally when given a renderer.
       // Post-"ready" this throws in a real boot; suppression makes it a
