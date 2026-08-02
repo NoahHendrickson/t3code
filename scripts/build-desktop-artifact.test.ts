@@ -34,6 +34,7 @@ import {
   resolveDesktopProductName,
   resolveDesktopUpdateChannel,
   resolveDesktopWebAssetBrand,
+  resolveForkWebIconOverrides,
   resolveResourceMonitorRustTargets,
   resourceMonitorExecutableName,
   resolveGitHubPublishConfig,
@@ -96,7 +97,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     // fork:end fork-app-identity
   });
 
-  it("uses the fork's placeholder artwork for every channel", () => {
+  it("uses the fork's green-grid artwork for every channel", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
     const forkIconAssets = {
       macIconPng: "assets/fork/n3-macos-1024.png",
@@ -111,9 +112,31 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     // fork:end fork-app-identity
   });
 
-  it("switches the bundled splash and favicon branding for nightly versions", () => {
+  it("bundles the fork splash and favicon instead of upstream channel art", () => {
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    // resolveDesktopWebAssetBrand keeps upstream's nightly/production mapping
+    // for call-shape parity, but packaging copies FORK_WEB_ICON_ASSETS.
     assert.equal(resolveDesktopWebAssetBrand("0.0.17"), "production");
     assert.equal(resolveDesktopWebAssetBrand("0.0.17-nightly.20260413.42"), "nightly");
+    assert.deepStrictEqual(resolveForkWebIconOverrides("apps/server/dist/client"), [
+      {
+        sourceRelativePath: "assets/fork/n3-web-favicon.ico",
+        targetRelativePath: "apps/server/dist/client/favicon.ico",
+      },
+      {
+        sourceRelativePath: "assets/fork/n3-web-favicon-16x16.png",
+        targetRelativePath: "apps/server/dist/client/favicon-16x16.png",
+      },
+      {
+        sourceRelativePath: "assets/fork/n3-web-favicon-32x32.png",
+        targetRelativePath: "apps/server/dist/client/favicon-32x32.png",
+      },
+      {
+        sourceRelativePath: "assets/fork/n3-web-apple-touch-180.png",
+        targetRelativePath: "apps/server/dist/client/apple-touch-icon.png",
+      },
+    ]);
+    // fork:end fork-app-identity
   });
 
   it.effect("resolves GitHub desktop publish config from Effect config", () =>

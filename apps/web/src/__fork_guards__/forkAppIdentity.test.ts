@@ -99,13 +99,35 @@ describe("fork guard: fork-app-identity", () => {
   it("packages with the fork's own artwork", () => {
     // Upstream art would make a fork build indistinguishable from the real
     // app in the Dock and /Applications, exactly where the two must be
-    // tell-apart-able. All three platform icons come from assets/fork.
+    // tell-apart-able. Desktop icons and bundled splash/favicon come from
+    // assets/fork; packaging must not fall back to upstream channel art.
     const script = read(BUILD_SCRIPT);
     expect(script).toContain('"assets/fork/n3-macos-1024.png"');
     expect(script).toContain('"assets/fork/n3-universal-1024.png"');
     expect(script).toContain('"assets/fork/n3-windows.ico"');
+    expect(script).toContain('"assets/fork/n3-web-favicon.ico"');
+    expect(script).toContain("applyForkWebBrandAssets");
     expect(script).not.toContain("BRAND_ASSET_PATHS.productionMacIconPng");
     expect(script).not.toContain("BRAND_ASSET_PATHS.nightlyMacIconPng");
+    expect(script).not.toContain("applyWebBrandAssets(");
+
+    const launcher = read("apps/desktop/scripts/electron-launcher.mjs");
+    expect(launcher).toContain('"fork"');
+    expect(launcher).toContain('"n3-macos-1024.png"');
+    expect(launcher).not.toContain("blueprint-macos-1024.png");
+
+    // Dev (`vp run dev`) serves apps/web/public — keep it byte-identical to
+    // the fork sources so local tabs don't silently fall back to T3 blueprint.
+    for (const [source, target] of [
+      ["assets/fork/n3-web-favicon.ico", "apps/web/public/favicon.ico"],
+      ["assets/fork/n3-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
+      ["assets/fork/n3-web-favicon-32x32.png", "apps/web/public/favicon-32x32.png"],
+      ["assets/fork/n3-web-apple-touch-180.png", "apps/web/public/apple-touch-icon.png"],
+    ] as const) {
+      expect(NodeFS.readFileSync(NodePath.join(repoRoot, target))).toEqual(
+        NodeFS.readFileSync(NodePath.join(repoRoot, source)),
+      );
+    }
   });
 
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {

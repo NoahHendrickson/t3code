@@ -181,12 +181,12 @@
     database. legacyUserDataDirName is redirected too, so a fork build never
     adopts the legacy directory upstream migrates from.
     The fork presents as "no3y Code": bundle id com.t3tools.t3code.fork,
-    installs as "no3y Code.app", ships no3y-Code-* artifacts, packages
-    placeholder "N" lettermark art from assets/fork on all three platforms,
-    and keeps all filesystem state under ~/.t3-fork. The bundle id and the
-    base directory are the stable identities and must never change across
-    display renames; display strings are safe to rename precisely because
-    those two are held stable.
+    installs as "no3y Code.app", ships no3y-Code-* artifacts, packages the
+    green-grid mark from assets/fork on all three platforms (plus web splash
+    and favicon), and keeps all filesystem state under ~/.t3-fork. The bundle
+    id and the base directory are the stable identities and must never change
+    across display renames; display strings are safe to rename precisely
+    because those two are held stable.
     Isolation is forked at the base directory, not the "userdata" leaf,
     because the packaged app is two processes: the desktop resolves its own
     state directory and hands only baseDir (as bootstrap t3Home) to the
@@ -210,22 +210,29 @@
     The rendered app carries the name too: the sidebar brand reads
     APP_BASE_NAME and drops the T3 wordmark, and branding.ts's bridge-less
     fallback points at the fork's own constant instead of upstream's
-    "T3 Code". Deliberately shared or deferred: the t3code:// URL scheme stays
+    "T3 Code". Splash and favicon also ship from assets/fork (copied into
+    apps/web/public for local/dev and into the packaged client at build
+    time); resolveDesktopWebAssetBrand keeps upstream's nightly/production
+    mapping for call-shape parity but packaging no longer applies those
+    channel icons. Deliberately shared: the t3code:// URL scheme stays
     shared (it is the app's own internal origin, not just a deep-link
-    handler — two installed apps contend for it, untidy but not destructive);
-    splash, favicon and resolveDesktopWebAssetBrand still carry upstream's T3
-    art (images rather than strings; separate work). Known carve-out: the WSL
-    backend bootstrap deliberately omits t3Home, so WSL-side state is not
-    isolated by this customization.
+    handler — two installed apps contend for it, untidy but not destructive).
+    Known carve-out: the WSL backend bootstrap deliberately omits t3Home, so
+    WSL-side state is not isolated by this customization.
     History — the v0.1.1 leaf-rename incident, the N3→no3y rename, and the
     pre-a17cbc3b4 dev-state claim — is in
     .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 4
   files:
     - apps/web/src/custom/forkBranding.ts
+    - assets/fork/app-icon.svg
     - assets/fork/n3-macos-1024.png
     - assets/fork/n3-universal-1024.png
     - assets/fork/n3-windows.ico
+    - assets/fork/n3-web-apple-touch-180.png
+    - assets/fork/n3-web-favicon-16x16.png
+    - assets/fork/n3-web-favicon-32x32.png
+    - assets/fork/n3-web-favicon.ico
   shadows: []
   watch:
     - apps/desktop/src/main.ts
@@ -234,10 +241,18 @@
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/app/DesktopEnvironment.test.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
+    - apps/desktop/scripts/electron-launcher.mjs
     - apps/server/src/config.ts
     - apps/web/src/branding.ts
     - apps/web/src/branding.test.ts
     - apps/web/src/components/sidebar/SidebarChrome.tsx
+    - apps/web/public/apple-touch-icon.png
+    - apps/web/public/favicon-16x16.png
+    - apps/web/public/favicon-32x32.png
+    - apps/web/public/favicon.ico
+    - apps/desktop/resources/icon.png
+    - apps/desktop/resources/icon.ico
+    - apps/desktop/resources/icon.icns
     - packages/shared/src/devHome.ts
     - packages/shared/src/hostProcess.ts
     - scripts/build-desktop-artifact.ts
@@ -1262,7 +1277,12 @@
     worktree, PR, and branch chips sit above the surface as filled chips
     sharing one selected-surface fill with no hairline, 8px apart (matching
     the context row's pb-2 under the pills — including the nested PR+branch
-    pair that upstream keeps at gap-1), on the Auto chip's container at
+    pair that upstream keeps at gap-1). Upstream's strip children use flex-1
+    and the branch's justify-end / md:ml-auto, which opens a large empty gap
+    between checkout and branch at narrower widths while the checkout label
+    truncates; the fork forces those direct flex children to flex 0 1 auto,
+    justify-content flex-start, and margin-inline-start 0 so the chips stay a
+    packed leading cluster. Chips use the Auto chip's container at
     4px/6px inline padding (24px tall, 6px radius — extra 2px on the end so
     the trailing chevron clears the curve; branch combobox takes 6px start,
     workspace select 0 for its roomier folder glyph) at 12px type matching
@@ -1304,16 +1324,26 @@
     mode chip are 12px medium on 16px with 12px glyphs. The prompt wrapper
     owns the 12.5rem scroll cap so a one-line Lexical editor never paints a
     phantom scrollbar, and the placeholder/spacer overflow containment remains
-    in place. Attachment and pending-state content may add height above the
+    in place.     Attachment and pending-state content may add height above the
     base row, but ordinary composer height changes only when prompt content
     wraps. Pill styling stays narrowly scoped so pending-state primary actions
     retain their upstream geometry.
+
+    Compact ⋯ collapse for the below-surface mode row uses fork-lowered
+    form-width thresholds (400px normal / 520px with wide primary actions),
+    not upstream's 620/780. Upstream's numbers pack denser in-box footers;
+    here mode chips sit opposite the model picker on a dedicated row, so
+    those thresholds hide Full access / Build / Plan behind ⋯ while a large
+    empty gap remains. The wide-actions threshold must stay under the form's
+    max-w-3xl (768px) or the expanded row can never appear in that state.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
     - apps/web/src/custom/ComposerShell.css
     - apps/web/src/theme.custom.css
-  shadows: []
+    - apps/web/src/overrides/components/composerFooterLayout.ts
+  shadows:
+    - apps/web/src/components/composerFooterLayout.ts
   watch:
     # Carries the base row, the context/control rows, and contextStrip prop.
     - apps/web/src/components/chat/ChatComposer.tsx
