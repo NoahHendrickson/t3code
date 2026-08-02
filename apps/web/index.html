@@ -15,17 +15,41 @@
       (() => {
         const LIGHT_BACKGROUND = "#ffffff";
         const DARK_BACKGROUND = "#161616";
+        /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+        const COOL_DARK_BACKGROUND = "#1c1e20";
+        /* fork:end fork-cool-dark-theme */
         const themeColorMeta = document.querySelector('meta[name="theme-color"]');
         try {
           const storedTheme = window.localStorage.getItem("t3code:theme");
+          /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+          // Cool Dark is a separate palette key; migrate legacy t3code:theme=cool-dark.
+          let forkPalette = window.localStorage.getItem("t3code:fork-theme");
+          if (storedTheme === "cool-dark") {
+            window.localStorage.setItem("t3code:theme", "dark");
+            window.localStorage.setItem("t3code:fork-theme", "cool-dark");
+            forkPalette = "cool-dark";
+          }
           const theme =
-            storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
-              ? storedTheme
-              : "system";
+            storedTheme === "cool-dark"
+              ? "dark"
+              : storedTheme === "light" || storedTheme === "dark" || storedTheme === "system"
+                ? storedTheme
+                : "system";
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           const isDark = theme === "dark" || (theme === "system" && prefersDark);
+          const isCoolDark = forkPalette === "cool-dark" && theme === "dark";
           document.documentElement.classList.toggle("dark", isDark);
-          const chromeColor = isDark ? DARK_BACKGROUND : LIGHT_BACKGROUND;
+          if (isCoolDark) {
+            document.documentElement.setAttribute("data-fork-theme", "cool-dark");
+          } else {
+            document.documentElement.removeAttribute("data-fork-theme");
+          }
+          const chromeColor = isCoolDark
+            ? COOL_DARK_BACKGROUND
+            : isDark
+              ? DARK_BACKGROUND
+              : LIGHT_BACKGROUND;
+          /* fork:end fork-cool-dark-theme */
           document.documentElement.style.backgroundColor = chromeColor;
           themeColorMeta?.setAttribute("content", chromeColor);
         } catch {
@@ -61,6 +85,13 @@
         background: #161616;
         color: #f5f5f5;
       }
+
+      /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+      html.dark[data-fork-theme="cool-dark"] body {
+        background: #1c1e20;
+        color: #e9eaec;
+      }
+      /* fork:end fork-cool-dark-theme */
 
       #boot-shell {
         display: flex;

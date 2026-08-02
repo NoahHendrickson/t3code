@@ -86,7 +86,10 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
     expect(header).toContain('data-testid="sidebar-v2-project-group-collapse"');
     expect(header).toContain("aria-expanded={!props.collapsed}");
+    // Expanded rest → open folder; collapsed rest → closed (Figma 151:6742);
+    // hover either way → chevron.
     expect(header).toContain("FolderOpenIcon");
+    expect(header).toContain("FolderClosedIcon");
     expect(header).toContain("ChevronDownIcon");
     // Hover group is on the row; collapse is a behind-layer so the plus can
     // paint above it. A flex-1 collapse sibling was eating plus clicks.

@@ -94,7 +94,10 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
         )}
         <SelectValue />
       </SelectTrigger>
-      <SelectPopup>
+      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      {/* Open above the chip row so glass clears the branch pill. Base UI may
+          collision-flip on a short viewport; that re-overlap is accepted here. */}
+      <SelectPopup alignItemWithTrigger={false} side="top">
         <SelectGroup>
           <SelectGroupLabel>Workspace</SelectGroupLabel>
           <SelectItem value="local">
@@ -123,6 +126,7 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
           ) : null}
         </SelectGroup>
       </SelectPopup>
+      {/* fork:end fork-composer-shell */}
     </Select>
   );
 });

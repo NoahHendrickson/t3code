@@ -64,6 +64,9 @@ import {
 import { isElectron } from "../../env";
 import { buildHostedChannelSelectionUrl, type HostedAppChannel } from "../../hostedPairing";
 import { useTheme } from "../../hooks/useTheme";
+/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+import { COOL_DARK_LABEL, useForkAppearance } from "../../custom/forkTheme";
+/* fork:end fork-cool-dark-theme */
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
 import { useThreadActions } from "../../hooks/useThreadActions";
 import { useDesktopUpdateState } from "../../state/desktopUpdate";
@@ -152,6 +155,12 @@ const THEME_OPTIONS = [
     value: "dark",
     label: "Dark",
   },
+  /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+  {
+    value: "cool-dark",
+    label: COOL_DARK_LABEL,
+  },
+  /* fork:end fork-cool-dark-theme */
 ] as const;
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
@@ -557,6 +566,9 @@ function AboutVersionSection() {
 
 export function useSettingsRestore(onRestored?: () => void) {
   const { theme, setTheme } = useTheme();
+  /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+  const { appearance, setAppearance } = useForkAppearance(theme, setTheme);
+  /* fork:end fork-cool-dark-theme */
   const settings = usePrimarySettings();
   const updateSettings = useUpdatePrimarySettings();
 
@@ -568,7 +580,9 @@ export function useSettingsRestore(onRestored?: () => void) {
 
   const changedSettingLabels = useMemo(
     () => [
-      ...(theme !== "system" ? ["Theme"] : []),
+      /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+      ...(appearance !== "system" ? ["Theme"] : []),
+      /* fork:end fork-cool-dark-theme */
       ...(settings.glassOpacity !== DEFAULT_UNIFIED_SETTINGS.glassOpacity ? ["Glass opacity"] : []),
       ...(settings.environmentIdentificationMode !==
       DEFAULT_UNIFIED_SETTINGS.environmentIdentificationMode
@@ -635,7 +649,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.sidebarThreadPreviewCount,
       settings.timestampFormat,
       settings.wordWrap,
-      theme,
+      /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+      appearance,
+      /* fork:end fork-cool-dark-theme */
     ],
   );
 
@@ -649,7 +665,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     );
     if (!confirmed) return;
 
-    setTheme("system");
+    /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+    setAppearance("system");
+    /* fork:end fork-cool-dark-theme */
     updateSettings({
       timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
       wordWrap: DEFAULT_UNIFIED_SETTINGS.wordWrap,
@@ -673,7 +691,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
     });
     onRestored?.();
-  }, [changedSettingLabels, onRestored, setTheme, updateSettings]);
+    /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+  }, [changedSettingLabels, onRestored, setAppearance, updateSettings]);
+  /* fork:end fork-cool-dark-theme */
 
   return {
     changedSettingLabels,
@@ -949,6 +969,9 @@ function BackgroundActivityAdvancedDialog({
 
 export function AppearanceSettingsPanel() {
   const { theme, setTheme } = useTheme();
+  /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+  const { appearance, setAppearance } = useForkAppearance(theme, setTheme);
+  /* fork:end fork-cool-dark-theme */
   const settings = usePrimarySettings();
   const updateSettings = useUpdatePrimarySettings();
   const environmentStageLabel = useEnvironmentStageLabel();
@@ -968,22 +991,33 @@ export function AppearanceSettingsPanel() {
           title="Theme"
           description="Choose how T3 Code looks across the app."
           resetAction={
-            theme !== "system" ? (
-              <SettingResetButton label="theme" onClick={() => setTheme("system")} />
+            /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+            appearance !== "system" ? (
+              <SettingResetButton label="theme" onClick={() => setAppearance("system")} />
             ) : null
+            /* fork:end fork-cool-dark-theme */
           }
           control={
             <Select
-              value={theme}
+              /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+              value={appearance}
               onValueChange={(value) => {
-                if (value === "system" || value === "light" || value === "dark") {
-                  setTheme(value);
+                if (
+                  value === "system" ||
+                  value === "light" ||
+                  value === "dark" ||
+                  value === "cool-dark"
+                ) {
+                  setAppearance(value);
                 }
               }}
+              /* fork:end fork-cool-dark-theme */
             >
-              <SelectTrigger className="w-full sm:w-40" aria-label="Theme preference">
+              <SelectTrigger className="w-full sm:w-44" aria-label="Theme preference">
                 <SelectValue>
-                  {THEME_OPTIONS.find((option) => option.value === theme)?.label ?? "System"}
+                  {/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */}
+                  {THEME_OPTIONS.find((option) => option.value === appearance)?.label ?? "System"}
+                  {/* fork:end fork-cool-dark-theme */}
                 </SelectValue>
               </SelectTrigger>
               <SelectPopup align="end" alignItemWithTrigger={false}>

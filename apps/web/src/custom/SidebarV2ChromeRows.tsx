@@ -97,7 +97,9 @@ const TOUCH_TARGET =
   "pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden";
 
 const CHROME_CONTROL =
-  "h-7 gap-1 rounded-md border-0 bg-transparent px-1 text-xs font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
+  // Literal 0.875rem (14px): the panel remaps text-xs/text-sm to 13px for
+  // headers and slim shelves; Search / All projects stay a step larger.
+  "h-7 gap-1 rounded-md border-0 bg-transparent px-1 text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 
 export function SidebarV2SearchRow(props: {
   readonly commandPaletteShortcutLabel: string | null;
