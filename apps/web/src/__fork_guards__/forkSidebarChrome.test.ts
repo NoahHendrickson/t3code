@@ -149,13 +149,17 @@ describe("fork guard: fork-sidebar-chrome", () => {
   });
 
   it("keeps the search and project rows fork-owned", () => {
-    // ~150 lines of pure presentation. Fenced in place it left SidebarV2
-    // carrying the whole rewrite; here the fence is two call sites.
+    // Pure presentation. Fenced in place it left SidebarV2 carrying the whole
+    // rewrite; here the fence is two call sites (actions + projects filter).
     const sidebarV2 = readSibling("../components/SidebarV2.tsx");
-    expect(sidebarV2).toContain("<SidebarV2SearchRow");
+    expect(sidebarV2).toContain("<SidebarV2ChromeActionRows");
     expect(sidebarV2).toContain("<SidebarV2ProjectScopeRow");
     expect(sidebarV2).not.toContain('aria-label="Filter threads by project"');
     expect(sidebarV2).not.toContain('data-testid="command-palette-trigger"');
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    expect(rows).toContain("function SidebarV2SearchRow");
+    expect(rows).toContain("function SidebarV2NewThreadRow");
+    expect(rows).toContain("function SidebarV2AddProjectRow");
   });
 
   it("pays for the thread list's scroll gutter out of its own end padding", () => {
@@ -245,12 +249,25 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(rows.split("CHROME_ROW_ICON_TINT").length - 1).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps Search and All projects at 14px, outside the panel's 13px remap", () => {
+  it("keeps Search, New thread, and Add project at 14px, outside the panel's 13px remap", () => {
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
     const className = /const CHROME_CONTROL[\s\S]*?"([^"]+)"/u.exec(rows)?.[1];
     expect(className).toBeDefined();
     expect(className).toContain("text-[0.875rem]");
     expect(className).not.toMatch(/\btext-xs\b/u);
     expect(className).not.toMatch(/\btext-sm\b/u);
+  });
+
+  it("keeps Projects as a static label with the filter on the trailing funnel", () => {
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    expect(rows).toMatch(/>\s*Projects\s*</u);
+    expect(rows).toContain("ListFilterIcon");
+    expect(rows).toContain('aria-label="Filter threads by project"');
+    expect(rows).toContain("New thread");
+    expect(rows).toContain("Add project");
+    expect(rows).toContain("FolderPlusIcon");
+    // The label is not a menu trigger — the funnel owns the menu.
+    expect(rows).not.toContain("ChevronsUpDownIcon");
+    expect(rows).not.toContain("FolderOpenIcon");
   });
 });

@@ -1,31 +1,32 @@
 /**
- * The Sidebar V2 control rows — search, and the project scope filter — see
- * `.fork/customizations.yaml#fork-sidebar-chrome`.
+ * The Sidebar V2 control rows — search, new thread, add project, and the
+ * projects filter — see `.fork/customizations.yaml#fork-sidebar-chrome`.
  *
- * Metrics from Figma t3-fork node 113:3718: outer `ps-2 pe-3` (8/12), inner
- * control `px-1` + `gap-1`. Controls are 28px tall (h-7); the leading icon
- * still sits at 12px — the same axis as each card's status (list pad 8 +
+ * Metrics from Figma t3-fork node 149:6235: action rows use outer `ps-2 pe-3`
+ * (8/12); the Projects header uses symmetric `px-3` (no leading icon). Inner
+ * controls keep `px-1` + `gap-1`. Controls are 32px tall (h-8); the leading
+ * icon still sits at 12px — the same axis as each card's status (list pad 8 +
  * card `px-1`).
  *
- * Fork-owned rather than fenced in place: this is ~150 lines of pure
- * presentation, and leaving it inline meant `SidebarV2.tsx` carried the whole
- * rewrite while the manifest could only watch the file it sat in. Here the
- * fence upstream carries collapses to a call site.
+ * Fork-owned rather than fenced in place: this is pure presentation, and
+ * leaving it inline meant `SidebarV2.tsx` carried the whole rewrite while the
+ * manifest could only watch the file it sat in. Here the fence upstream
+ * carries collapses to call sites.
  *
  * The prop surface is wide because these rows are genuinely interactive — a
- * command palette trigger, a radio group, two buttons and a per-project
- * overflow action. It is all data and callbacks, though: no upstream state is
- * reached into, so an upstream refactor of how that state is produced cannot
- * break this file.
+ * command palette trigger, a radio group, two labeled actions and a
+ * per-project overflow action. It is all data and callbacks, though: no
+ * upstream state is reached into, so an upstream refactor of how that state
+ * is produced cannot break this file.
  */
 import type { EnvironmentId } from "@t3tools/contracts";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
 import {
-  ChevronsUpDownIcon,
   EllipsisIcon,
   FolderIcon,
-  FolderOpenIcon,
+  FolderPlusIcon,
+  ListFilterIcon,
   PlusCircleIcon,
   SearchIcon,
 } from "lucide-react";
@@ -41,7 +42,6 @@ import {
   MenuTrigger,
 } from "~/components/ui/menu";
 import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon } from "~/components/ProjectFavicon";
 import { cn } from "~/lib/utils";
 import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
@@ -72,7 +72,7 @@ export interface SidebarV2ChromeProjectGroup {
  *  once pushed its cards short of these rows by its reserved gutter; the list
  *  now gives that width back out of its own end padding, so a gutter term
  *  reappearing here would double-count it. */
-const CONTROL_ROW = cn("flex h-7 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
+const CONTROL_ROW = cn("flex h-8 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
 /** Displaces sidebarMenuButtonVariants' base icon pair (muted-foreground at
     opacity-60, upstream v0.0.30): parent-level [&>svg] selectors outweigh the
     icon's own class, so without this the fork's /80 tint on the glyph is dead
@@ -98,78 +98,116 @@ const TOUCH_TARGET =
 
 const CHROME_CONTROL =
   // Literal 0.875rem (14px): the panel remaps text-xs/text-sm to 13px for
-  // headers and slim shelves; Search / All projects stay a step larger.
-  "h-7 gap-1 rounded-md border-0 bg-transparent px-1 text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
+  // headers and slim shelves; Search / New thread / Add project stay a step
+  // larger.
+  "h-8 gap-1 rounded-md border-0 bg-transparent px-1 text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
 
-export function SidebarV2SearchRow(props: {
+const ACTION_GROUP = "ps-2 pe-3";
+
+/** Search + New thread + Add project share one group so Figma's stacked
+ *  action block (149:6235) does not pick up inter-group padding. */
+export function SidebarV2ChromeActionRows(props: {
   readonly commandPaletteShortcutLabel: string | null;
+  readonly newThreadShortcutLabel: string | null;
+  readonly newThreadDisabled: boolean;
+  readonly onNewThread: () => void;
+  readonly onAddProject: () => void;
+}) {
+  return (
+    <SidebarGroup className={cn(ACTION_GROUP, "gap-1 pt-4 pb-0")}>
+      <SidebarV2SearchRow commandPaletteShortcutLabel={props.commandPaletteShortcutLabel} />
+      <SidebarV2NewThreadRow
+        newThreadShortcutLabel={props.newThreadShortcutLabel}
+        newThreadDisabled={props.newThreadDisabled}
+        onNewThread={props.onNewThread}
+      />
+      <SidebarV2AddProjectRow onAddProject={props.onAddProject} />
+    </SidebarGroup>
+  );
+}
+
+export function SidebarV2SearchRow(props: { readonly commandPaletteShortcutLabel: string | null }) {
+  return (
+    // Figma 149:6235 — Search sits in the stacked action block; row padding
+    // was dropped so the three 32px controls pack without inter-row air.
+    <div className={CONTROL_ROW}>
+      <div className="min-w-0 flex-1">
+        <CommandDialogTrigger
+          render={
+            <SidebarMenuButton
+              size="sm"
+              type="button"
+              aria-label="Search threads and commands"
+              className={cn(CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
+              data-testid="command-palette-trigger"
+            />
+          }
+        >
+          <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
+          <div className="flex-1 truncate text-left">Search</div>
+          {props.commandPaletteShortcutLabel ? (
+            <Kbd className="h-5 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-0">
+              {props.commandPaletteShortcutLabel}
+            </Kbd>
+          ) : null}
+        </CommandDialogTrigger>
+      </div>
+    </div>
+  );
+}
+
+export function SidebarV2NewThreadRow(props: {
   readonly newThreadShortcutLabel: string | null;
   readonly newThreadDisabled: boolean;
   readonly onNewThread: () => void;
 }) {
   return (
-    // Figma 113:3718 — Search: pl-8 pr-12 pt-16 pb-4.
-    <SidebarGroup className="ps-2 pe-3 pt-4 pb-1">
-      <div className={CONTROL_ROW}>
-        <div className="min-w-0 flex-1">
-          <CommandDialogTrigger
-            render={
-              <SidebarMenuButton
-                size="sm"
-                type="button"
-                aria-label="Search threads and commands"
-                className={cn(CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
-                data-testid="command-palette-trigger"
-              />
-            }
-          >
-            <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-            <div className="flex-1 truncate text-left">Search</div>
-            {props.commandPaletteShortcutLabel ? (
-              <Kbd className="h-4 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-0">
-                {props.commandPaletteShortcutLabel}
-              </Kbd>
-            ) : null}
-          </CommandDialogTrigger>
-        </div>
-        <div className="shrink-0">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <SidebarMenuButton
-                  size="sm"
-                  type="button"
-                  className={TRAILING_BUTTON}
-                  onClick={props.onNewThread}
-                  disabled={props.newThreadDisabled}
-                  aria-label="New thread"
-                />
-              }
-            >
-              <PlusCircleIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-              <span className={TOUCH_TARGET} aria-hidden="true" />
-            </TooltipTrigger>
-            <TooltipPopup side="right">
-              {props.newThreadShortcutLabel
-                ? `New thread (${props.newThreadShortcutLabel})`
-                : "New thread"}
-            </TooltipPopup>
-          </Tooltip>
-        </div>
-      </div>
-    </SidebarGroup>
+    <div className={CONTROL_ROW}>
+      <SidebarMenuButton
+        size="sm"
+        type="button"
+        className={cn("min-w-0 flex-1", CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
+        onClick={props.onNewThread}
+        disabled={props.newThreadDisabled}
+        aria-label={
+          props.newThreadShortcutLabel
+            ? `New thread (${props.newThreadShortcutLabel})`
+            : "New thread"
+        }
+        data-testid="sidebar-v2-new-thread"
+      >
+        <PlusCircleIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
+        <span className="min-w-0 flex-1 truncate text-left">New thread</span>
+      </SidebarMenuButton>
+    </div>
+  );
+}
+
+export function SidebarV2AddProjectRow(props: { readonly onAddProject: () => void }) {
+  return (
+    <div className={CONTROL_ROW}>
+      <SidebarMenuButton
+        size="sm"
+        type="button"
+        className={cn("min-w-0 flex-1", CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
+        onClick={props.onAddProject}
+        aria-label="Add project"
+        data-testid="sidebar-v2-add-project"
+      >
+        <FolderPlusIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
+        <span className="min-w-0 flex-1 truncate text-left">Add project</span>
+      </SidebarMenuButton>
+    </div>
   );
 }
 
 export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProjectGroup>(props: {
   readonly projectGroups: ReadonlyArray<TProject>;
-  readonly scopedProjectGroup: TProject | null;
   readonly projectScopeKey: string | null;
   readonly onProjectScopeChange: (scopeKey: string | null) => void;
   readonly menuOpen: boolean;
   readonly onMenuOpenChange: (open: boolean) => void;
   readonly onProjectActions: (event: ReactMouseEvent<HTMLButtonElement>, project: TProject) => void;
-  readonly onAddProject: () => void;
   readonly groupByProject: boolean;
   readonly onGroupByProjectChange: (groupByProject: boolean) => void;
   /** Non-null disables the switch and says why — see the call site. */
@@ -178,26 +216,29 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   if (props.projectGroups.length === 0) return null;
 
   return (
-    // Figma 113:3718 — All projects: pl-8 pr-12 pt-8 pb-16.
-    <SidebarGroup className="ps-2 pe-3 pt-2 pb-4">
+    // Figma 149:6235 — Projects: static label + filter trigger, px-12 py-8.
+    // pt-2 is the 8px gap between the action block and this header.
+    <SidebarGroup className="px-3 pt-2 pb-2">
       <div className={CONTROL_ROW}>
+        <span className="min-w-0 flex-1 truncate text-left text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground">
+          Projects
+        </span>
         <Menu open={props.menuOpen} onOpenChange={props.onMenuOpenChange}>
           <MenuTrigger
-            aria-label="Filter threads by project"
-            className={cn(
-              "flex min-w-0 flex-1 cursor-pointer items-center outline-none",
-              CHROME_CONTROL,
-            )}
+            render={
+              <SidebarMenuButton
+                size="sm"
+                type="button"
+                className={TRAILING_BUTTON}
+                aria-label="Filter threads by project"
+                data-testid="sidebar-v2-project-filter"
+              />
+            }
           >
-            {/* Leading caret, no trailing chevron and no favicon: the design
-                puts the affordance where the eye enters the row, and the label
-                already names the project the favicon used to repeat. */}
-            <ChevronsUpDownIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-            <span className="min-w-0 flex-1 truncate text-left">
-              {props.scopedProjectGroup?.displayName ?? "All projects"}
-            </span>
+            <ListFilterIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
+            <span className={TOUCH_TARGET} aria-hidden="true" />
           </MenuTrigger>
-          <MenuPopup align="start" className="w-(--anchor-width)">
+          <MenuPopup align="end" className="min-w-56">
             {/* Above the scope list, not below it: with enough projects the
                 list scrolls, and a preference that decides how the whole
                 sidebar reads should not be the thing you have to scroll to.
@@ -270,26 +311,6 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
             </MenuRadioGroup>
           </MenuPopup>
         </Menu>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <SidebarMenuButton
-                size="sm"
-                className={TRAILING_BUTTON}
-                onClick={props.onAddProject}
-                type="button"
-                aria-label="New project"
-              />
-            }
-          >
-            {/* FolderOpen rather than FolderPlus, per the design. The action is
-                unchanged — it opens the palette to pick a folder to add — and
-                "open a folder" is the more literal reading of the click. */}
-            <FolderOpenIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-            <span className={TOUCH_TARGET} aria-hidden="true" />
-          </TooltipTrigger>
-          <TooltipPopup side="right">New project</TooltipPopup>
-        </Tooltip>
       </div>
     </SidebarGroup>
   );

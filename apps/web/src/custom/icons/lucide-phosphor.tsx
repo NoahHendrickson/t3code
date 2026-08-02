@@ -93,6 +93,7 @@ import {
   FolderDashed as PhFolderDashed,
   FolderOpen as PhFolderOpen,
   FolderPlus as PhFolderPlus,
+  FunnelSimple as PhFunnelSimple,
   Gauge as PhGauge,
   Gear as PhGear,
   GearSix as PhGearSix,
@@ -283,6 +284,8 @@ export const FolderIcon = icon("folder", PhFolder, "duotone");
 export const FolderClosedIcon = icon("folder-closed", PhFolder, "duotone");
 export const FolderOpenIcon = icon("folder-open", PhFolderOpen, "duotone");
 export const FolderPlusIcon = icon("folder-plus", PhFolderPlus, "duotone");
+// Figma FunnelSimple — lucide's ListFilter (three descending bars).
+export const ListFilterIcon = icon("list-filter", PhFunnelSimple, "bold");
 export const FolderGitIcon = icon("folder-git", PhFolderDashed, "duotone");
 export const FolderGit2Icon = icon("folder-git-2", PhFolderDashed, "duotone");
 export const FolderTree = icon("folder-tree", PhTreeStructure, "duotone");

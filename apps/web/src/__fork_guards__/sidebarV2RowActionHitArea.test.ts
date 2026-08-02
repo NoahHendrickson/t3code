@@ -172,7 +172,7 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // 16px icons, matching the marks they line up with. Asserted positively:
     // a negative on `size-5` is anchored to class order and walks straight
     // through `className="shrink-0 size-5"`.
-    for (const name of ["PlusCircleIcon", "FolderOpenIcon"]) {
+    for (const name of ["PlusCircleIcon", "FolderPlusIcon", "ListFilterIcon"]) {
       const tag = new RegExp(`<${name} className="([^"]*)"`, "u").exec(chromeRows)?.[1];
       expect(tag, `${name} is not rendered in the chrome rows`).toBeDefined();
       expect(tag).toMatch(/\bsize-4\b/u);

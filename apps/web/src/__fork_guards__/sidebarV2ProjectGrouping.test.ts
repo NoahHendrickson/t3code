@@ -31,7 +31,7 @@ const sidebar = readSibling("../components/SidebarV2.tsx");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 
 describe("fork guard: sidebar-v2-project-grouping", () => {
-  it("offers the switch from the project scope menu", () => {
+  it("offers the switch from the projects filter menu", () => {
     expect(chromeRows).toContain("Group by project");
     expect(chromeRows).toContain("onGroupByProjectChange");
     // Toggling a view preference must not dismiss the menu it lives in.

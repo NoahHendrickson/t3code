@@ -102,6 +102,17 @@ describe("fork guard: fork-surface-palette", () => {
     expect(blockFor(theme, STAGE)).toContain("--background: #191919");
   });
 
+  it("keeps dark primary and ring monochrome white", () => {
+    // Upstream's dark --primary / --ring are the same blue oklch. Focus
+    // underlines (border-ring on Search refs, etc.), switches, and primary
+    // fills must stay white in the fork — losing these drops blue accents
+    // back into an otherwise monochrome shell.
+    const stage = blockFor(theme, STAGE);
+    expect(stage).toContain("--primary: #ffffff");
+    expect(stage).toContain("--primary-foreground: #191919");
+    expect(stage).toContain("--ring: #ffffff");
+  });
+
   it("keeps the panel above the stage, as the intent names", () => {
     // Intent: fork-surface-palette. Assert the ordering, not only the
     // constants — a value tweak is fine, silently inverting the hierarchy is

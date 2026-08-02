@@ -72,12 +72,13 @@ describe("fork guard: fork-workspace-header", () => {
     expect(theme).toMatch(/--fork-pill-fg:\s*var\(--foreground\)/u);
   });
 
-  it("raises the topbar to 56px in both the default and WCO derivations", () => {
-    // Two declarations, and missing the second leaves Windows Controls Overlay
-    // builds 4px short of every other platform.
-    expect(upstreamCss).toMatch(/--workspace-topbar-height:\s*56px/u);
+  it("keeps the topbar at 52px in both the default and WCO derivations", () => {
+    // One token for sidebar header and workspace header — a drift between the
+    // two misaligns the seam. Missing the WCO fallback leaves Windows Controls
+    // Overlay builds on a different height than every other platform.
+    expect(upstreamCss).toMatch(/--workspace-topbar-height:\s*52px/u);
     expect(upstreamCss).toMatch(
-      /--workspace-topbar-height:\s*env\(titlebar-area-height,\s*56px\)/u,
+      /--workspace-topbar-height:\s*env\(titlebar-area-height,\s*52px\)/u,
     );
   });
 

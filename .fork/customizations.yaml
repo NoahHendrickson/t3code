@@ -516,7 +516,7 @@
 - id: sidebar-v2-project-grouping
   intent: >
     Sidebar V2's active cards can be grouped under project headers, from a
-    switch at the top of the fork's project scope row. Upstream's flat list
+    switch at the top of the fork's projects filter menu. Upstream's flat list
     stays the default, and the preference is device-local (localStorage) rather
     than a field in packages/contracts.
 
@@ -791,6 +791,11 @@
     surface grain: upstream's noise would compound unspecified drift onto every
     chrome surface this palette freezes.
 
+    Dark --primary and --ring are white (#ffffff), not upstream's blue oklch —
+    focus underlines (border-ring), switches, and primary fills stay
+    monochrome. --primary-foreground is the stage (#191919) so white primary
+    buttons keep contrast. Cool Dark inherits these unless it overrides them.
+
     Two blocks are required and the second is not redundant: upstream
     re-declares --background, --card, --border and the whole --sidebar-* family
     on the panel element itself, and a custom property set only at :root never
@@ -852,9 +857,9 @@
     Sidebar V2 body type is 0.8125rem (13px at the default root) for project
     headers and slim shelves. The panel remaps Tailwind's --text-xs and
     --text-sm (and their --line-height companions) to 0.8125rem / 1rem so those
-    share one size without rewriting each className. Search and All projects
-    opt out at 0.875rem (14px) via CHROME_CONTROL; card titles and the
-    repo/branch line opt out with literal rem sizes (0.875rem / 0.75rem — see
+    share one size without rewriting each className. Search, New thread, and
+    Add project opt out at 0.875rem (14px) via CHROME_CONTROL; card titles and
+    the repo/branch line opt out with literal rem sizes (0.875rem / 0.75rem — see
     sidebar-v2-card-rows) so the remap cannot flatten them. Rem, not px:
     a px pin would freeze the sidebar while h-4 and the rest of the app still
     honour the browser font-size setting. Line-height stays 1rem so the card's
@@ -925,21 +930,23 @@
     one leaves the other subtracting from a stale number, and the cards drift
     off the chrome icons' axis with nothing failing.
 
-    Chrome rows use ps-2 pe-3 with an inner px-1 control so their leading icon
-    also sits at 12px — matching card status and the group folder glyph. Search
-    and All projects controls are 28px tall (h-7), not Figma's 24, at 0.875rem
-    (14px) type — literal so the panel's 13px text-xs remap cannot shrink them.
+    Action rows (Search, New thread, Add project) use ps-2 pe-3 with an inner
+    px-1 control so their leading icon also sits at 12px — matching card status
+    and the group folder glyph. The Projects header uses symmetric px-3 (no
+    leading icon). Those controls are 32px tall (h-8), not Figma's 24, at
+    0.875rem (14px) type — literal so the panel's 13px text-xs remap cannot
+    shrink them.
 
     These rows' own trailing inset is then 4px, and that 4px belongs to
     sidebar-v2-row-action-hit-area, which owns the trailing glyph column's
     single axis. It is not a scrollbar term and must not become one again.
 
     The brand moves to the header's trailing edge, where it stops competing
-    with the toggle for the corner the eye starts at. The search and project
-    rows are 36px and 12px rather than 32px and 14px so they read as chrome
-    rather than as two more list items; the project row takes a leading
-    caret-up-down with no trailing chevron and no favicon, and its trailing
-    action is folder-open.
+    with the toggle for the corner the eye starts at. Search, New thread, and
+    Add project are labeled action rows; Projects is a static muted label
+    whose trailing ListFilter (FunnelSimple) opens the scope / group-by menu
+    that used to live on the clickable projects control. The filter glyph does
+    not change when a project scope is active.
 
     The Dev channel's header art is the designer's own dither PNG instead of
     upstream's blue blueprint, painted as a covering background rather than a
@@ -1012,12 +1019,12 @@
 
 - id: fork-workspace-header
   intent: >
-    The workspace topbar is 56px. One token drives both it and the sidebar
-    header; the design draws them at 56 and 52, but they sit side by side
-    across a 1px divider, so a 4px split would misalign the seam. Read as
-    unintentional and kept equal. The .wco rule re-derives the token from
-    env(titlebar-area-height), so on Windows with Controls Overlay the OS still
-    dictates the height and only the fallback moves.
+    The workspace topbar is 52px. One token (--workspace-topbar-height) drives
+    both it and the sidebar header so they stay seam-aligned across the
+    divider. Settings and DiffPanelShell already hardcode the same 52px. The
+    .wco rule re-derives the token from env(titlebar-area-height), so on
+    Windows with Controls Overlay the OS still dictates the height and only
+    the fallback moves.
 
     Project and title swap weight: the project is the fixed, repeating half, so
     it takes semibold and becomes the landmark you navigate to, while the title
