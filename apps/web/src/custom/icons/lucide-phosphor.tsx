@@ -93,6 +93,7 @@ import {
   FolderDashed as PhFolderDashed,
   FolderOpen as PhFolderOpen,
   FolderPlus as PhFolderPlus,
+  FunnelSimple as PhFunnelSimple,
   Gauge as PhGauge,
   Gear as PhGear,
   GearSix as PhGearSix,
@@ -355,6 +356,8 @@ export const MoreVertical = icon("more-vertical", PhDotsThreeVertical, "bold");
 export const PlayIcon = icon("play", PhPlay, "duotone");
 export const ListChecksIcon = icon("list-checks", PhListChecks, "duotone");
 export const ListTodoIcon = icon("list-todo", PhListChecks, "duotone");
+// Figma FunnelSimple — lucide's ListFilter (three descending bars).
+export const ListFilterIcon = icon("list-filter", PhFunnelSimple, "bold");
 export const Camera = icon("camera", PhCamera, "duotone");
 export const PipetteIcon = icon("pipette", PhEyedropper, "duotone");
 export const PaletteIcon = icon("palette", PhPalette, "duotone");

@@ -104,6 +104,13 @@
 :root[data-fork="noahhendrickson-t3code"].dark {
   --background: #191919;
   --border: #2d2e2e;
+  /* Upstream's dark --primary / --ring are the same blue oklch. Fork chrome
+     is monochrome: focus underlines (border-ring), switches, and primary
+     fills read as white. --primary-foreground is the stage so white buttons
+     keep contrast. */
+  --primary: #ffffff;
+  --primary-foreground: #191919;
+  --ring: #ffffff;
   /* Upstream lays a 0.035-opacity white noise over every chrome surface
      (`@utility surface-grain`, applied to the sidebar shell and the workspace
      inset). It was calibrated against a #000 shell. On these surfaces any

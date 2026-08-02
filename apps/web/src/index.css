@@ -84,15 +84,14 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --glass-saturation: 1.14;
   --desktop-window-right-resize-inset: 0px;
   /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
-     56px, up from 52px. One token drives both the workspace header and the
-     sidebar header; the design draws them at 56 and 52 respectively, but they
-     sit side by side across a 1px divider, so a 4px split would misalign the
-     seam every user sees. Read as unintentional and kept equal.
+     52px. One token drives both the workspace header and the sidebar header
+     so they stay seam-aligned across the divider. Settings and DiffPanelShell
+     already hardcode the same 52px.
 
      `.wco` below re-derives this from env(titlebar-area-height), so on Windows
      with Controls Overlay the OS still dictates the height and only the
      fallback moves. */
-  --workspace-topbar-height: 56px;
+  --workspace-topbar-height: 52px;
   /* fork:end fork-workspace-header */
   --workspace-controls-top: 0px;
   --workspace-controls-left: calc(env(safe-area-inset-left) + 0.75rem);
@@ -118,7 +117,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 
 .wco {
   /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */
-  --workspace-topbar-height: env(titlebar-area-height, 56px);
+  --workspace-topbar-height: env(titlebar-area-height, 52px);
   /* fork:end fork-workspace-header */
   --workspace-controls-top: env(titlebar-area-y, 0px);
   --workspace-controls-left: calc(env(titlebar-area-x, 0px) + 0.75rem);

@@ -149,13 +149,23 @@ describe("fork guard: fork-sidebar-chrome", () => {
   });
 
   it("keeps the search and project rows fork-owned", () => {
-    // ~150 lines of pure presentation. Fenced in place it left SidebarV2
-    // carrying the whole rewrite; here the fence is two call sites.
+    // Pure presentation. Fenced in place it left SidebarV2 carrying the whole
+    // rewrite; here the fence is two call sites (actions + projects filter).
     const sidebarV2 = readSibling("../components/SidebarV2.tsx");
-    expect(sidebarV2).toContain("<SidebarV2SearchRow");
+    expect(sidebarV2).toContain("<SidebarV2ChromeActionRows");
     expect(sidebarV2).toContain("<SidebarV2ProjectScopeRow");
-    expect(sidebarV2).not.toContain('aria-label="Filter threads by project"');
+    expect(sidebarV2).toContain("scopedProjectDisplayName=");
     expect(sidebarV2).not.toContain('data-testid="command-palette-trigger"');
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    // Composition / labels / testids — not internal row export names that a
+    // helper collapse is free to erase.
+    expect(rows).toContain("function ChromeLabeledAction");
+    expect(rows).toContain('data-testid="command-palette-trigger"');
+    expect(rows).toContain('testId="sidebar-v2-new-thread"');
+    expect(rows).toContain('testId="sidebar-v2-add-project"');
+    expect(rows).toContain('data-testid="sidebar-v2-project-filter"');
+    expect(rows).toContain("New thread");
+    expect(rows).toContain("Add project");
   });
 
   it("pays for the thread list's scroll gutter out of its own end padding", () => {
@@ -245,12 +255,30 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(rows.split("CHROME_ROW_ICON_TINT").length - 1).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps Search and All projects at 14px, outside the panel's 13px remap", () => {
+  it("keeps chrome type at 14px for actions and the Projects label", () => {
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
-    const className = /const CHROME_CONTROL[\s\S]*?"([^"]+)"/u.exec(rows)?.[1];
-    expect(className).toBeDefined();
-    expect(className).toContain("text-[0.875rem]");
-    expect(className).not.toMatch(/\btext-xs\b/u);
-    expect(className).not.toMatch(/\btext-sm\b/u);
+    const type = /const CHROME_TYPE\s*=\s*"([^"]+)"/u.exec(rows)?.[1];
+    expect(type).toBeDefined();
+    expect(type).toContain("text-[0.875rem]");
+    expect(type).not.toMatch(/\btext-xs\b/u);
+    expect(type).not.toMatch(/\btext-sm\b/u);
+    // Both the interactive control and the static Projects label read it.
+    expect(rows).toContain("CHROME_TYPE");
+    expect(rows.split("CHROME_TYPE").length - 1).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps Projects as a static label with an active-aware filter funnel", () => {
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    expect(rows).toMatch(/>\s*Projects\s*</u);
+    expect(rows).toContain("ListFilterIcon");
+    expect(rows).toContain("FolderPlusIcon");
+    // Scope on-state: glyph lifts and aria/tooltip name the active project.
+    expect(rows).toContain("data-active={isScoped");
+    expect(rows).toContain("scopedProjectDisplayName");
+    expect(rows).toContain("Filter threads by project — showing");
+    expect(rows).toContain("TooltipPopup");
+    // The label is not a menu trigger — the funnel owns the menu.
+    expect(rows).not.toContain("ChevronsUpDownIcon");
+    expect(rows).not.toContain("FolderOpenIcon");
   });
 });

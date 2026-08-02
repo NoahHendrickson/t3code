@@ -167,7 +167,7 @@ import {
   type SidebarV2DotTone,
 } from "~/custom/SidebarV2StatusIndicator";
 import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "~/custom/SidebarV2ThreadCardMeta";
-import { SidebarV2ProjectScopeRow, SidebarV2SearchRow } from "~/custom/SidebarV2ChromeRows";
+import { SidebarV2ChromeActionRows, SidebarV2ProjectScopeRow } from "~/custom/SidebarV2ChromeRows";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
@@ -2915,25 +2915,25 @@ export default function SidebarV2() {
       <SidebarChromeHeader isElectron={isElectron} />
       <SidebarContent className="gap-0">
         {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-            Both control rows are fork-owned; only these call sites live here.
+            Control rows are fork-owned; only these call sites live here.
             See custom/SidebarV2ChromeRows.tsx. */}
-        <SidebarV2SearchRow
+        <SidebarV2ChromeActionRows
           commandPaletteShortcutLabel={commandPaletteShortcutLabel}
           newThreadShortcutLabel={newThreadShortcutLabel}
           newThreadDisabled={projects.length === 0}
           onNewThread={handleNewThreadClick}
+          onAddProject={openAddProjectCommandPalette}
         />
         <SidebarV2ProjectScopeRow
           projectGroups={projectGroups}
-          scopedProjectGroup={scopedProjectGroup}
           projectScopeKey={projectScopeKey}
+          scopedProjectDisplayName={scopedProjectGroup?.displayName ?? null}
           onProjectScopeChange={setProjectScopeKey}
           menuOpen={projectScopeMenuOpen}
           onMenuOpenChange={setProjectScopeMenuOpen}
           onProjectActions={(event, project) => {
             void handleProjectActions(event, project);
           }}
-          onAddProject={openAddProjectCommandPalette}
           groupByProject={groupByProject}
           onGroupByProjectChange={setGroupByProject}
           // A switch that visibly does nothing teaches nothing. Where headers
