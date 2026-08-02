@@ -116,8 +116,7 @@ describe("fork guard: fork-app-identity", () => {
     expect(script).not.toContain("resolveForkWebIconOverrides");
 
     const launcher = read("apps/desktop/scripts/electron-launcher.mjs");
-    expect(launcher).toContain('"fork"');
-    expect(launcher).toContain('"n3-macos-1024.png"');
+    expect(launcher).toContain('"assets", "fork", "n3-macos-1024.png"');
     expect(launcher).not.toContain("blueprint-macos-1024.png");
 
     // Dev (`vp run dev`) serves apps/web/public — keep it byte-identical to

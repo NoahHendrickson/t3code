@@ -86,6 +86,7 @@ import {
 } from "../composerFooterLayout";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { shouldUseCompactComposerModelSlot } from "../../custom/composerModelSlotCompact";
 import {
   ComposerPromptRow,
   ComposerRuntimeModeTrigger,
@@ -983,6 +984,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
   const [isDragOverComposer, setIsDragOverComposer] = useState(false);
   const [isComposerFooterCompact, setIsComposerFooterCompact] = useState(false);
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  // Mode-row ⋯ uses the fork footer override; model trigger keeps upstream widths.
+  const [isComposerModelSlotCompact, setIsComposerModelSlotCompact] = useState(false);
+  /* fork:end fork-composer-shell */
   const [isComposerPrimaryActionsCompact, setIsComposerPrimaryActionsCompact] = useState(false);
   const [isComposerModelPickerOpen, setIsComposerModelPickerOpen] = useState(false);
   const [isComposerFocused, setIsComposerFocused] = useState(false);
@@ -1442,6 +1447,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       const footerCompact = shouldUseCompactComposerFooter(composerFormWidth, {
         hasWideActions: composerFooterHasWideActions,
       });
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+      const modelSlotCompact = shouldUseCompactComposerModelSlot(composerFormWidth, {
+        hasWideActions: composerFooterHasWideActions,
+      });
+      /* fork:end fork-composer-shell */
       const primaryActionsCompact =
         footerCompact &&
         shouldUseCompactComposerPrimaryActions(composerFormWidth, {
@@ -1450,12 +1460,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       return {
         primaryActionsCompact,
         footerCompact,
+        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+        modelSlotCompact,
+        /* fork:end fork-composer-shell */
       };
     };
 
     const initialCompactness = measureFooterCompactness();
     setIsComposerPrimaryActionsCompact(initialCompactness.primaryActionsCompact);
     setIsComposerFooterCompact(initialCompactness.footerCompact);
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    setIsComposerModelSlotCompact(initialCompactness.modelSlotCompact);
+    /* fork:end fork-composer-shell */
     if (typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => {
@@ -1468,6 +1484,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       setIsComposerFooterCompact((previous) =>
         previous === nextCompactness.footerCompact ? previous : nextCompactness.footerCompact,
       );
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+      setIsComposerModelSlotCompact((previous) =>
+        previous === nextCompactness.modelSlotCompact ? previous : nextCompactness.modelSlotCompact,
+      );
+      /* fork:end fork-composer-shell */
     });
 
     observer.observe(composerForm);
@@ -2674,10 +2695,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
   // The footer's three clusters, split by where the designs put them.
+  // Model compact uses upstream widths; traits stay with the mode-row ⋯ gate
+  // so they are never stranded when modes expand before the model slot does.
   const composerModelControls = noProviderAvailable ? null : (
     <>
       <ProviderModelPicker
-        compact={isComposerFooterCompact}
+        compact={isComposerModelSlotCompact}
         activeInstanceId={selectedInstanceId}
         model={selectedModelForPickerWithCustomFallback}
         lockedProvider={lockedProvider}
@@ -2696,7 +2719,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         getModelDisabledReason={getModelDisabledReason}
         onInstanceModelChange={onProviderModelSelect}
       />
-      {/* At compact widths the traits fold into CompactComposerControlsMenu. */}
+      {/* At compact mode-row widths the traits fold into CompactComposerControlsMenu. */}
       {!isComposerFooterCompact && providerTraitsPicker ? providerTraitsPicker : null}
     </>
   );

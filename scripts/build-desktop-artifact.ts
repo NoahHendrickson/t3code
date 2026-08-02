@@ -15,11 +15,7 @@ import serverPackageJson from "../apps/server/package.json" with { type: "json" 
 // applyWebIconOverrides / resolveWebIconOverridesFromSources path — no twin
 // copy pipeline in this file.
 import { applyWebIconOverrides } from "./apply-web-brand-assets.ts";
-import {
-  resolveWebAssetBrandForChannel,
-  resolveWebIconOverridesFromSources,
-  type WebAssetBrand,
-} from "./lib/brand-assets.ts";
+import { resolveWebIconOverridesFromSources } from "./lib/brand-assets.ts";
 // fork:end fork-app-identity
 import { getDefaultBuildArch } from "./lib/build-target-arch.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
@@ -1500,16 +1496,13 @@ export function resolveDesktopUpdateChannel(version: string): "latest" | "nightl
   return /-nightly\.\d{8}\.\d+$/.test(version) ? "nightly" : "latest";
 }
 
-export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
-  return resolveWebAssetBrandForChannel(resolveDesktopUpdateChannel(version));
-}
-
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
 // Fork green-grid art on every channel so a fork build is visually distinct
 // from upstream in the Dock and /Applications. Upstream's per-channel art
 // stays untouched in assets/prod and assets/nightly for clean merges; the
 // version argument keeps upstream's call shape and goes unused until the fork
-// ships channel-specific art.
+// ships channel-specific art. resolveDesktopWebAssetBrand was deleted — it
+// had no production caller after packaging switched to FORK_WEB_ICON_ASSETS.
 export function resolveDesktopBuildIconAssets(_version: string): DesktopBuildIconAssets {
   return FORK_DESKTOP_ICON_ASSETS;
 }

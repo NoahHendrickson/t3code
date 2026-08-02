@@ -13,6 +13,11 @@ import {
   shouldUseCompactComposerFooter,
 } from "../components/composerFooterLayout";
 import {
+  COMPOSER_MODEL_SLOT_COMPACT_BREAKPOINT_PX,
+  COMPOSER_MODEL_SLOT_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX,
+  shouldUseCompactComposerModelSlot,
+} from "../custom/composerModelSlotCompact";
+import {
   ComposerPromptRow,
   ComposerShell,
   getRuntimeModeChipStyle,
@@ -317,6 +322,7 @@ describe("fork guard: fork-composer-shell", () => {
 
   it("keeps mode-row ⋯ collapse below the denser fork control-row widths", () => {
     // Upstream is 620/780; those fire with a large empty gap on the fork row.
+    // Mode-row only — model-picker compaction stays at upstream 620/780.
     expect(COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX).toBe(400);
     expect(COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX).toBe(520);
     expect(COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX).toBeLessThan(
@@ -328,7 +334,27 @@ describe("fork guard: fork-composer-shell", () => {
         hasWideActions: true,
       }),
     ).toBe(false);
+    // Wide-actions branch: expanded at/above 520, compact below.
+    expect(
+      shouldUseCompactComposerFooter(519, {
+        hasWideActions: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldUseCompactComposerFooter(520, {
+        hasWideActions: true,
+      }),
+    ).toBe(false);
     expect(shouldUseCompactComposerFooter(399)).toBe(true);
+    expect(shouldUseCompactComposerFooter(400)).toBe(false);
+
+    // Model trigger stays on upstream widths; ChatComposer must wire both.
+    expect(COMPOSER_MODEL_SLOT_COMPACT_BREAKPOINT_PX).toBe(620);
+    expect(COMPOSER_MODEL_SLOT_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX).toBe(780);
+    expect(shouldUseCompactComposerModelSlot(560)).toBe(true);
+    expect(shouldUseCompactComposerModelSlot(620)).toBe(false);
+    expect(chatComposer).toContain("shouldUseCompactComposerModelSlot");
+    expect(chatComposer).toContain("compact={isComposerModelSlotCompact}");
   });
 
   it("keeps primary actions out of ghost sizing", () => {
@@ -378,5 +404,6 @@ describe("fork guard: fork-composer-shell", () => {
     expect(nested?.body).toMatch(/flex:\s*0 1 auto/u);
     expect(nested?.body).toMatch(/justify-content:\s*flex-start/u);
     expect(nested?.body).toMatch(/margin-inline-start:\s*0/u);
+    expect(nested?.body).toMatch(/max-width:\s*100%/u);
   });
 });

@@ -211,14 +211,26 @@
     APP_BASE_NAME and drops the T3 wordmark, and branding.ts's bridge-less
     fallback points at the fork's own constant instead of upstream's
     "T3 Code". Splash and favicon also ship from assets/fork (copied into
-    apps/web/public for local/dev and into the packaged client at build
-    time); resolveDesktopWebAssetBrand keeps upstream's nightly/production
-    mapping for call-shape parity but packaging no longer applies those
-    channel icons. Deliberately shared: the t3code:// URL scheme stays
-    shared (it is the app's own internal origin, not just a deep-link
-    handler — two installed apps contend for it, untidy but not destructive).
+    apps/web/public for local/dev and into the packaged desktop client at
+    build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
+    path). assets/fork/app-icon.svg is the Figma source of truth for the
+    green-grid mark (file t3-fork, node 157:4036); raster exports are
+    derived from that family. Filenames still say n3-* for path stability.
+    Deliberately shared: the t3code:// URL scheme stays shared (it is the
+    app's own internal origin, not just a deep-link handler — two installed
+    apps contend for it, untidy but not destructive).
     Known carve-out: the WSL backend bootstrap deliberately omits t3Home, so
     WSL-side state is not isolated by this customization.
+    Known carve-out: hosted web (`apps/web/vercel.ts`) still runs
+    apply-web-brand-assets.ts with the Vercel channel and stamps upstream
+    production/nightly icons over the fork public/ set at deploy time.
+    Known carve-out: `npx t3` publish (`apps/server/scripts/cli.ts`
+    preparePublishIcons) still resolves upstream icons via
+    resolveWebAssetBrandForPackageVersion into dist/client.
+    Known conflict: `pnpm icons:export` writes blueprint development art
+    into apps/web/public via DEVELOPMENT_PUBLIC_ICON_OVERRIDES; after a
+    brand export the fork public icons must be re-copied from assets/fork
+    (or icons:check will report them stale / the byte-equality guard fails).
     History — the v0.1.1 leaf-rename incident, the N3→no3y rename, and the
     pre-a17cbc3b4 dev-state claim — is in
     .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
@@ -261,6 +273,13 @@
     # FORK_WEB_ICON_ASSETS (no twin copy pipeline in the packaging script).
     - scripts/lib/brand-assets.ts
     - scripts/apply-web-brand-assets.ts
+    # icons:export can overwrite apps/web/public with blueprint art — see
+    # Known conflict in intent.
+    - scripts/export-brand-icons.ts
+    # Hosted-web / npx-t3 surfaces still stamp upstream channel icons — see
+    # Known carve-out lines in intent.
+    - apps/web/vercel.ts
+    - apps/server/scripts/cli.ts
     - scripts/dev-runner.ts
     - vite.config.ts
     - .vscode/settings.json
@@ -1340,10 +1359,17 @@
     those thresholds hide Full access / Build / Plan behind ⋯ while a large
     empty gap remains. The wide-actions threshold must stay under the form's
     max-w-3xl (768px) or the expanded row can never appear in that state.
+    Mode-row collapse and model-picker compaction are deliberately split:
+    the override drives only ⋯ vs ComposerFooterModeControls; the model
+    trigger keeps upstream's 620/780 via composerModelSlotCompact.ts so the
+    right slot does not grow in the newly expanded 400–620 band. Traits stay
+    gated with the mode row (inline when expanded, CompactComposerControlsMenu
+    when collapsed) so they are never stranded between the two thresholds.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
     - apps/web/src/custom/ComposerShell.css
+    - apps/web/src/custom/composerModelSlotCompact.ts
     - apps/web/src/theme.custom.css
     - apps/web/src/overrides/components/composerFooterLayout.ts
   shadows:

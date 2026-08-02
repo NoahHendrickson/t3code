@@ -1,12 +1,14 @@
 // Fork shadow of upstream composerFooterLayout — see
 // `.fork/customizations.yaml#fork-composer-shell`.
 //
-// Upstream's 620/780 thresholds were calibrated for packing mode + model into
-// one in-box footer. The fork's denser below-surface control row (20px chips,
-// text-only mode toggles, model on the opposite side) still has room well
-// below those widths, so the ⋯ menu was firing with a large empty gap. Keep
-// the wide-actions threshold under the form's max-w-3xl (768px) so the
-// expanded row remains reachable at the form's natural ceiling.
+// These constants drive mode-row ⋯ collapse only (ComposerFooterModeControls
+// vs CompactComposerControlsMenu). Upstream's 620/780 packed mode + model into
+// one in-box footer; the fork's denser below-surface mode chips still fit well
+// below those widths. Model-picker compaction stays on upstream's numbers via
+// `apps/web/src/custom/composerModelSlotCompact.ts` so one visual complaint
+// does not widen the right slot at the same time. Keep the wide-actions
+// threshold under the form's max-w-3xl (768px) so the expanded mode row remains
+// reachable at the form's natural ceiling.
 
 export const COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX = 400;
 export const COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX = 520;
