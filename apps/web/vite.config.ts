@@ -128,6 +128,7 @@ const allowedHosts = [".ts.net", ...configuredAllowedHosts];
 
 export default defineConfig(() => {
   return {
+    assetsInclude: ["**/*.wasm"],
     plugins: [
       // Fork-only: lets `src/overrides/**` shadow upstream modules so this
       // fork's UI changes live in files upstream never touches. Must come
