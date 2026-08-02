@@ -11,6 +11,7 @@ import {
   resolveWebAssetBrandForChannel,
   resolveWebIconOverrides,
   WEB_ASSET_CHANNELS,
+  type IconOverride,
   type WebAssetBrand,
 } from "./lib/brand-assets.ts";
 
@@ -20,16 +21,16 @@ const WEB_ASSET_BRANDS = [
   "production",
 ] as const satisfies ReadonlyArray<WebAssetBrand>;
 
-export const applyWebBrandAssets = Effect.fn("applyWebBrandAssets")(function* (
-  brand: WebAssetBrand,
-  targetDirectory: string,
+/** Copy an explicit list of web icon overrides into the repo-relative targets. */
+export const applyWebIconOverrides = Effect.fn("applyWebIconOverrides")(function* (
+  overrides: ReadonlyArray<IconOverride>,
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const repoRoot = yield* path.fromFileUrl(new URL("..", import.meta.url));
 
   yield* Effect.forEach(
-    resolveWebIconOverrides(brand, targetDirectory),
+    overrides,
     (override) =>
       fs.copyFile(
         path.join(repoRoot, override.sourceRelativePath),
@@ -37,6 +38,13 @@ export const applyWebBrandAssets = Effect.fn("applyWebBrandAssets")(function* (
       ),
     { concurrency: "unbounded" },
   );
+});
+
+export const applyWebBrandAssets = Effect.fn("applyWebBrandAssets")(function* (
+  brand: WebAssetBrand,
+  targetDirectory: string,
+) {
+  yield* applyWebIconOverrides(resolveWebIconOverrides(brand, targetDirectory));
 });
 
 export const applyWebBrandAssetsCommand = Command.make(

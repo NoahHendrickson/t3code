@@ -257,6 +257,10 @@
     - packages/shared/src/hostProcess.ts
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
+    # Shared web-icon override builder + apply path packaging reuses for
+    # FORK_WEB_ICON_ASSETS (no twin copy pipeline in the packaging script).
+    - scripts/lib/brand-assets.ts
+    - scripts/apply-web-brand-assets.ts
     - scripts/dev-runner.ts
     - vite.config.ts
     - .vscode/settings.json

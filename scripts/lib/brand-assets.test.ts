@@ -7,6 +7,7 @@ import {
   resolveWebAssetBrandForChannel,
   resolveWebAssetBrandForPackageVersion,
   resolveWebIconOverrides,
+  resolveWebIconOverridesFromSources,
 } from "./brand-assets.ts";
 
 describe("brand-assets", () => {
@@ -27,6 +28,37 @@ describe("brand-assets", () => {
       {
         sourceRelativePath: BRAND_ASSET_PATHS.productionWebAppleTouchIconPng,
         targetRelativePath: "dist/client/apple-touch-icon.png",
+      },
+    ]);
+  });
+
+  it("builds the same override list from an explicit source map", () => {
+    expect(
+      resolveWebIconOverridesFromSources(
+        {
+          faviconIco: "assets/fork/n3-web-favicon.ico",
+          favicon16Png: "assets/fork/n3-web-favicon-16x16.png",
+          favicon32Png: "assets/fork/n3-web-favicon-32x32.png",
+          appleTouchIconPng: "assets/fork/n3-web-apple-touch-180.png",
+        },
+        "apps/server/dist/client",
+      ),
+    ).toEqual([
+      {
+        sourceRelativePath: "assets/fork/n3-web-favicon.ico",
+        targetRelativePath: "apps/server/dist/client/favicon.ico",
+      },
+      {
+        sourceRelativePath: "assets/fork/n3-web-favicon-16x16.png",
+        targetRelativePath: "apps/server/dist/client/favicon-16x16.png",
+      },
+      {
+        sourceRelativePath: "assets/fork/n3-web-favicon-32x32.png",
+        targetRelativePath: "apps/server/dist/client/favicon-32x32.png",
+      },
+      {
+        sourceRelativePath: "assets/fork/n3-web-apple-touch-180.png",
+        targetRelativePath: "apps/server/dist/client/apple-touch-icon.png",
       },
     ]);
   });

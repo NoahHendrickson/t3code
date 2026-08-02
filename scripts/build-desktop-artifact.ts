@@ -11,10 +11,16 @@ import desktopPackageJson from "../apps/desktop/package.json" with { type: "json
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-// Upstream's applyWebBrandAssets / BRAND_ASSET_PATHS stay unused: desktop icons
-// and bundled splash/favicon come from FORK_* assets below instead.
+// Packaged splash/favicon use FORK_WEB_ICON_ASSETS through the shared
+// applyWebIconOverrides / resolveWebIconOverridesFromSources path — no twin
+// copy pipeline in this file.
+import { applyWebIconOverrides } from "./apply-web-brand-assets.ts";
+import {
+  resolveWebAssetBrandForChannel,
+  resolveWebIconOverridesFromSources,
+  type WebAssetBrand,
+} from "./lib/brand-assets.ts";
 // fork:end fork-app-identity
-import { resolveWebAssetBrandForChannel, type WebAssetBrand } from "./lib/brand-assets.ts";
 import { getDefaultBuildArch } from "./lib/build-target-arch.ts";
 import { loadRepoEnv } from "./lib/public-config.ts";
 import { resolveCatalogDependencies } from "./lib/resolve-catalog.ts";
@@ -39,14 +45,13 @@ const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
 // from an installed upstream release rather than a replacement for it.
 const DESKTOP_APP_ID = "com.t3tools.t3code.fork";
 // Fork-owned green grid mark from Figma (t3-fork 157:4036 for web favicon;
-// desktop PNGs/ICO share the same mark family), kept in assets/fork and
-// consumed by resolveDesktopBuildIconAssets / applyForkWebBrandAssets below.
+// desktop PNGs/ICO share the same mark family), kept in assets/fork.
 const FORK_DESKTOP_ICON_ASSETS = {
   macIconPng: "assets/fork/n3-macos-1024.png",
   linuxIconPng: "assets/fork/n3-universal-1024.png",
   windowsIconIco: "assets/fork/n3-windows.ico",
 } as const;
-const FORK_WEB_ICON_ASSETS = {
+export const FORK_WEB_ICON_ASSETS = {
   faviconIco: "assets/fork/n3-web-favicon.ico",
   favicon16Png: "assets/fork/n3-web-favicon-16x16.png",
   favicon32Png: "assets/fork/n3-web-favicon-32x32.png",
@@ -1508,48 +1513,6 @@ export function resolveDesktopWebAssetBrand(version: string): WebAssetBrand {
 export function resolveDesktopBuildIconAssets(_version: string): DesktopBuildIconAssets {
   return FORK_DESKTOP_ICON_ASSETS;
 }
-
-export function resolveForkWebIconOverrides(targetDirectory: string): ReadonlyArray<{
-  readonly sourceRelativePath: string;
-  readonly targetRelativePath: string;
-}> {
-  return [
-    {
-      sourceRelativePath: FORK_WEB_ICON_ASSETS.faviconIco,
-      targetRelativePath: `${targetDirectory}/favicon.ico`,
-    },
-    {
-      sourceRelativePath: FORK_WEB_ICON_ASSETS.favicon16Png,
-      targetRelativePath: `${targetDirectory}/favicon-16x16.png`,
-    },
-    {
-      sourceRelativePath: FORK_WEB_ICON_ASSETS.favicon32Png,
-      targetRelativePath: `${targetDirectory}/favicon-32x32.png`,
-    },
-    {
-      sourceRelativePath: FORK_WEB_ICON_ASSETS.appleTouchIconPng,
-      targetRelativePath: `${targetDirectory}/apple-touch-icon.png`,
-    },
-  ];
-}
-
-const applyForkWebBrandAssets = Effect.fn("applyForkWebBrandAssets")(function* (
-  targetDirectory: string,
-) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const repoRoot = yield* RepoRoot;
-
-  yield* Effect.forEach(
-    resolveForkWebIconOverrides(targetDirectory),
-    (override) =>
-      fs.copyFile(
-        path.join(repoRoot, override.sourceRelativePath),
-        path.join(repoRoot, override.targetRelativePath),
-      ),
-    { concurrency: "unbounded" },
-  );
-});
 // fork:end fork-app-identity
 
 export function resolveMockUpdateServerUrl(mockUpdateServerPort: number | undefined): string {
@@ -1898,8 +1861,10 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   }
 
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-  // Splash + favicon ship the fork mark, not upstream's per-channel T3 art.
-  yield* applyForkWebBrandAssets("apps/server/dist/client");
+  // Splash + favicon ship the fork mark via the shared brand-assets copy path.
+  yield* applyWebIconOverrides(
+    resolveWebIconOverridesFromSources(FORK_WEB_ICON_ASSETS, "apps/server/dist/client"),
+  );
   yield* Effect.log("[desktop-artifact] Applied fork web client branding.");
   // fork:end fork-app-identity
   yield* validateBundledClientAssets(path.dirname(bundledClientEntry));

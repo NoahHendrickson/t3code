@@ -106,10 +106,14 @@ describe("fork guard: fork-app-identity", () => {
     expect(script).toContain('"assets/fork/n3-universal-1024.png"');
     expect(script).toContain('"assets/fork/n3-windows.ico"');
     expect(script).toContain('"assets/fork/n3-web-favicon.ico"');
-    expect(script).toContain("applyForkWebBrandAssets");
+    expect(script).toContain("FORK_WEB_ICON_ASSETS");
+    expect(script).toContain("applyWebIconOverrides");
+    expect(script).toContain("resolveWebIconOverridesFromSources");
     expect(script).not.toContain("BRAND_ASSET_PATHS.productionMacIconPng");
     expect(script).not.toContain("BRAND_ASSET_PATHS.nightlyMacIconPng");
     expect(script).not.toContain("applyWebBrandAssets(");
+    expect(script).not.toContain("applyForkWebBrandAssets");
+    expect(script).not.toContain("resolveForkWebIconOverrides");
 
     const launcher = read("apps/desktop/scripts/electron-launcher.mjs");
     expect(launcher).toContain('"fork"');
