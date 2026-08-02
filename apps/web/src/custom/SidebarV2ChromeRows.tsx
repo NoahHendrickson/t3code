@@ -20,7 +20,7 @@
  * is produced cannot break this file.
  */
 import type { EnvironmentId } from "@t3tools/contracts";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { ComponentType, MouseEvent as ReactMouseEvent, ReactNode, SVGProps } from "react";
 
 import {
   EllipsisIcon,
@@ -42,6 +42,7 @@ import {
   MenuTrigger,
 } from "~/components/ui/menu";
 import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon } from "~/components/ProjectFavicon";
 import { cn } from "~/lib/utils";
 import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
@@ -81,6 +82,11 @@ const CONTROL_ROW = cn("flex h-8 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET
     button that renders an icon as a direct child; the guard asserts the merged
     outcome, so a base-selector change that stops displacing shows up red. */
 export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-muted-foreground/80 [&>svg]:opacity-100";
+/** Shared 14px type for Search / New thread / Add project / Projects — literal
+    so the panel's 13px text-xs remap cannot shrink them. Action controls and
+    the static Projects label both read this; retuning it once keeps them
+    aligned. */
+const CHROME_TYPE = "text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground";
 /** size-6 per the Figma chrome (24px boxes throughout the card-v2 design).
     That is the WCAG 2.5.8 floor for a fine pointer on an always-on control —
     deliberate and design-wide, not this button's private call; see the box
@@ -96,40 +102,50 @@ const TRAILING_BUTTON = cn(
 const TOUCH_TARGET =
   "pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden";
 
-const CHROME_CONTROL =
-  // Literal 0.875rem (14px): the panel remaps text-xs/text-sm to 13px for
-  // headers and slim shelves; Search / New thread / Add project stay a step
-  // larger.
-  "h-8 gap-1 rounded-md border-0 bg-transparent px-1 text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar";
+const CHROME_CONTROL = cn(
+  "h-8 gap-1 rounded-md border-0 bg-transparent px-1 hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+  CHROME_TYPE,
+);
 
 const ACTION_GROUP = "ps-2 pe-3";
 
-/** Search + New thread + Add project share one group so Figma's stacked
- *  action block (149:6235) does not pick up inter-group padding. */
-export function SidebarV2ChromeActionRows(props: {
-  readonly commandPaletteShortcutLabel: string | null;
-  readonly newThreadShortcutLabel: string | null;
-  readonly newThreadDisabled: boolean;
-  readonly onNewThread: () => void;
-  readonly onAddProject: () => void;
+type ChromeIcon = ComponentType<SVGProps<SVGSVGElement>>;
+
+/** New thread and Add project share one shape; Search keeps its own
+    (CommandDialogTrigger + Kbd). */
+function ChromeLabeledAction(props: {
+  readonly icon: ChromeIcon;
+  readonly label: string;
+  readonly ariaLabel: string;
+  readonly title?: string | undefined;
+  readonly testId: string;
+  readonly disabled?: boolean | undefined;
+  readonly onClick: () => void;
+  readonly trailing?: ReactNode;
 }) {
+  const Icon = props.icon;
   return (
-    <SidebarGroup className={cn(ACTION_GROUP, "gap-1 pt-4 pb-0")}>
-      <SidebarV2SearchRow commandPaletteShortcutLabel={props.commandPaletteShortcutLabel} />
-      <SidebarV2NewThreadRow
-        newThreadShortcutLabel={props.newThreadShortcutLabel}
-        newThreadDisabled={props.newThreadDisabled}
-        onNewThread={props.onNewThread}
-      />
-      <SidebarV2AddProjectRow onAddProject={props.onAddProject} />
-    </SidebarGroup>
+    <div className={CONTROL_ROW}>
+      <SidebarMenuButton
+        size="sm"
+        type="button"
+        className={cn("min-w-0 flex-1", CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
+        onClick={props.onClick}
+        disabled={props.disabled}
+        aria-label={props.ariaLabel}
+        title={props.title}
+        data-testid={props.testId}
+      >
+        <Icon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
+        <span className="min-w-0 flex-1 truncate text-left">{props.label}</span>
+        {props.trailing}
+      </SidebarMenuButton>
+    </div>
   );
 }
 
-export function SidebarV2SearchRow(props: { readonly commandPaletteShortcutLabel: string | null }) {
+function ChromeSearchRow(props: { readonly commandPaletteShortcutLabel: string | null }) {
   return (
-    // Figma 149:6235 — Search sits in the stacked action block; row padding
-    // was dropped so the three 32px controls pack without inter-row air.
     <div className={CONTROL_ROW}>
       <div className="min-w-0 flex-1">
         <CommandDialogTrigger
@@ -156,54 +172,59 @@ export function SidebarV2SearchRow(props: { readonly commandPaletteShortcutLabel
   );
 }
 
-export function SidebarV2NewThreadRow(props: {
+/** Search + New thread + Add project share one group so Figma's stacked
+ *  action block (149:6235) does not pick up inter-group padding. */
+export function SidebarV2ChromeActionRows(props: {
+  readonly commandPaletteShortcutLabel: string | null;
   readonly newThreadShortcutLabel: string | null;
   readonly newThreadDisabled: boolean;
   readonly onNewThread: () => void;
+  readonly onAddProject: () => void;
 }) {
+  const newThreadDisabledReason = props.newThreadDisabled
+    ? "Add a project to start a thread"
+    : undefined;
   return (
-    <div className={CONTROL_ROW}>
-      <SidebarMenuButton
-        size="sm"
-        type="button"
-        className={cn("min-w-0 flex-1", CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
-        onClick={props.onNewThread}
-        disabled={props.newThreadDisabled}
-        aria-label={
-          props.newThreadShortcutLabel
-            ? `New thread (${props.newThreadShortcutLabel})`
-            : "New thread"
+    <SidebarGroup className={cn(ACTION_GROUP, "gap-1 pt-4 pb-0")}>
+      <ChromeSearchRow commandPaletteShortcutLabel={props.commandPaletteShortcutLabel} />
+      <ChromeLabeledAction
+        icon={PlusCircleIcon}
+        label="New thread"
+        ariaLabel={
+          props.newThreadDisabled
+            ? newThreadDisabledReason!
+            : props.newThreadShortcutLabel
+              ? `New thread (${props.newThreadShortcutLabel})`
+              : "New thread"
         }
-        data-testid="sidebar-v2-new-thread"
-      >
-        <PlusCircleIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-        <span className="min-w-0 flex-1 truncate text-left">New thread</span>
-      </SidebarMenuButton>
-    </div>
-  );
-}
-
-export function SidebarV2AddProjectRow(props: { readonly onAddProject: () => void }) {
-  return (
-    <div className={CONTROL_ROW}>
-      <SidebarMenuButton
-        size="sm"
-        type="button"
-        className={cn("min-w-0 flex-1", CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
+        title={newThreadDisabledReason}
+        testId="sidebar-v2-new-thread"
+        disabled={props.newThreadDisabled}
+        onClick={props.onNewThread}
+        trailing={
+          props.newThreadShortcutLabel && !props.newThreadDisabled ? (
+            <Kbd className="h-5 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-0">
+              {props.newThreadShortcutLabel}
+            </Kbd>
+          ) : null
+        }
+      />
+      <ChromeLabeledAction
+        icon={FolderPlusIcon}
+        label="Add project"
+        ariaLabel="Add project"
+        testId="sidebar-v2-add-project"
         onClick={props.onAddProject}
-        aria-label="Add project"
-        data-testid="sidebar-v2-add-project"
-      >
-        <FolderPlusIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-        <span className="min-w-0 flex-1 truncate text-left">Add project</span>
-      </SidebarMenuButton>
-    </div>
+      />
+    </SidebarGroup>
   );
 }
 
 export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProjectGroup>(props: {
   readonly projectGroups: ReadonlyArray<TProject>;
   readonly projectScopeKey: string | null;
+  /** Display name for the active scope — null when showing all projects. */
+  readonly scopedProjectDisplayName: string | null;
   readonly onProjectScopeChange: (scopeKey: string | null) => void;
   readonly menuOpen: boolean;
   readonly onMenuOpenChange: (open: boolean) => void;
@@ -215,29 +236,59 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
 }) {
   if (props.projectGroups.length === 0) return null;
 
+  const isScoped = props.projectScopeKey !== null;
+  const filterAriaLabel = isScoped
+    ? `Filter threads by project — showing ${props.scopedProjectDisplayName ?? "one project"}. Opens project filter and group-by.`
+    : "Filter threads by project and group-by";
+  const filterTooltip = isScoped
+    ? `Showing ${props.scopedProjectDisplayName ?? "one project"}`
+    : "Filter projects";
+
   return (
     // Figma 149:6235 — Projects: static label + filter trigger, px-12 py-8.
     // pt-2 is the 8px gap between the action block and this header.
     <SidebarGroup className="px-3 pt-2 pb-2">
       <div className={CONTROL_ROW}>
-        <span className="min-w-0 flex-1 truncate text-left text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground">
+        <span
+          role="heading"
+          aria-level={2}
+          className={cn("min-w-0 flex-1 truncate text-left", CHROME_TYPE)}
+        >
           Projects
         </span>
         <Menu open={props.menuOpen} onOpenChange={props.onMenuOpenChange}>
-          <MenuTrigger
-            render={
-              <SidebarMenuButton
-                size="sm"
-                type="button"
-                className={TRAILING_BUTTON}
-                aria-label="Filter threads by project"
-                data-testid="sidebar-v2-project-filter"
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <MenuTrigger
+                  render={
+                    <SidebarMenuButton
+                      size="sm"
+                      type="button"
+                      className={cn(
+                        TRAILING_BUTTON,
+                        // Overrides CHROME_ROW_ICON_TINT's muted colour; opacity
+                        // stays at the shared 100 from that const.
+                        isScoped && "text-sidebar-foreground [&>svg]:text-sidebar-foreground",
+                      )}
+                      aria-label={filterAriaLabel}
+                      data-testid="sidebar-v2-project-filter"
+                      data-active={isScoped ? "true" : undefined}
+                    />
+                  }
+                />
+              }
+            >
+              <ListFilterIcon
+                className={cn(
+                  "size-4 shrink-0",
+                  isScoped ? "text-sidebar-foreground" : "text-sidebar-muted-foreground/80",
+                )}
               />
-            }
-          >
-            <ListFilterIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-            <span className={TOUCH_TARGET} aria-hidden="true" />
-          </MenuTrigger>
+              <span className={TOUCH_TARGET} aria-hidden="true" />
+            </TooltipTrigger>
+            <TooltipPopup side="right">{filterTooltip}</TooltipPopup>
+          </Tooltip>
           <MenuPopup align="end" className="min-w-56">
             {/* Above the scope list, not below it: with enough projects the
                 list scrolls, and a preference that decides how the whole

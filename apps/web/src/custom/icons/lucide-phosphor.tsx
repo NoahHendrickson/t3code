@@ -284,8 +284,6 @@ export const FolderIcon = icon("folder", PhFolder, "duotone");
 export const FolderClosedIcon = icon("folder-closed", PhFolder, "duotone");
 export const FolderOpenIcon = icon("folder-open", PhFolderOpen, "duotone");
 export const FolderPlusIcon = icon("folder-plus", PhFolderPlus, "duotone");
-// Figma FunnelSimple — lucide's ListFilter (three descending bars).
-export const ListFilterIcon = icon("list-filter", PhFunnelSimple, "bold");
 export const FolderGitIcon = icon("folder-git", PhFolderDashed, "duotone");
 export const FolderGit2Icon = icon("folder-git-2", PhFolderDashed, "duotone");
 export const FolderTree = icon("folder-tree", PhTreeStructure, "duotone");
@@ -358,6 +356,8 @@ export const MoreVertical = icon("more-vertical", PhDotsThreeVertical, "bold");
 export const PlayIcon = icon("play", PhPlay, "duotone");
 export const ListChecksIcon = icon("list-checks", PhListChecks, "duotone");
 export const ListTodoIcon = icon("list-todo", PhListChecks, "duotone");
+// Figma FunnelSimple — lucide's ListFilter (three descending bars).
+export const ListFilterIcon = icon("list-filter", PhFunnelSimple, "bold");
 export const Camera = icon("camera", PhCamera, "duotone");
 export const PipetteIcon = icon("pipette", PhEyedropper, "duotone");
 export const PaletteIcon = icon("palette", PhPalette, "duotone");

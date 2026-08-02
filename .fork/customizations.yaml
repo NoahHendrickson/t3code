@@ -857,9 +857,10 @@
     Sidebar V2 body type is 0.8125rem (13px at the default root) for project
     headers and slim shelves. The panel remaps Tailwind's --text-xs and
     --text-sm (and their --line-height companions) to 0.8125rem / 1rem so those
-    share one size without rewriting each className. Search, New thread, and
-    Add project opt out at 0.875rem (14px) via CHROME_CONTROL; card titles and
-    the repo/branch line opt out with literal rem sizes (0.875rem / 0.75rem — see
+    share one size without rewriting each className. Search, New thread, Add
+    project, and the Projects label opt out at 0.875rem (14px) via CHROME_TYPE;
+    card titles and the repo/branch line opt out with literal rem sizes
+    (0.875rem / 0.75rem — see
     sidebar-v2-card-rows) so the remap cannot flatten them. Rem, not px:
     a px pin would freeze the sidebar while h-4 and the rest of the app still
     honour the browser font-size setting. Line-height stays 1rem so the card's
@@ -945,8 +946,9 @@
     with the toggle for the corner the eye starts at. Search, New thread, and
     Add project are labeled action rows; Projects is a static muted label
     whose trailing ListFilter (FunnelSimple) opens the scope / group-by menu
-    that used to live on the clickable projects control. The filter glyph does
-    not change when a project scope is active.
+    that used to live on the clickable projects control. When a project scope
+    is active the funnel lifts to foreground (and names the scope in its
+    aria-label / tooltip) so a filtered list is never a silent mode.
 
     The Dev channel's header art is the designer's own dither PNG instead of
     upstream's blue blueprint, painted as a covering background rather than a

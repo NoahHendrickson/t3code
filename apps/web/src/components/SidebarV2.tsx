@@ -2927,6 +2927,7 @@ export default function SidebarV2() {
         <SidebarV2ProjectScopeRow
           projectGroups={projectGroups}
           projectScopeKey={projectScopeKey}
+          scopedProjectDisplayName={scopedProjectGroup?.displayName ?? null}
           onProjectScopeChange={setProjectScopeKey}
           menuOpen={projectScopeMenuOpen}
           onMenuOpenChange={setProjectScopeMenuOpen}
