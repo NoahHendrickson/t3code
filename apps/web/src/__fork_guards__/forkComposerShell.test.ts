@@ -118,6 +118,13 @@ describe("fork guard: fork-composer-shell", () => {
     expect(promptMarkup({ approvalPending: true })).not.toContain("data-test-primary-action");
   });
 
+  it("anchors the inline primary action to the bottom of the prompt row", () => {
+    const markup = promptMarkup({});
+    expect(markup).toContain("items-end");
+    expect(markup).toContain("self-end");
+    expect(markup).not.toContain("self-start");
+  });
+
   it("keeps one base shell without the removed density machinery", () => {
     expect(chatComposer).not.toContain("composerDensity");
     expect(chatComposer).not.toContain("data-fork-composer-density");

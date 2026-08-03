@@ -115,14 +115,14 @@ export const ComposerPromptRow = memo(function ComposerPromptRow({
   });
 
   return (
-    <div className="flex min-w-0 items-center gap-6">
+    <div className="flex min-w-0 items-end gap-6">
       <div data-fork-composer-prompt="true" className="relative min-w-0 flex-1">
         {children}
       </div>
       {showInlinePrimaryAction ? (
         <div
           data-chat-composer-inline-actions="true"
-          className="flex shrink-0 items-center self-start"
+          className="flex shrink-0 items-center self-end"
         >
           {action}
         </div>
