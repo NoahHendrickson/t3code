@@ -11,7 +11,7 @@ import {
 describe("sidebarV2ListAnimation", () => {
   it("makes add the reverse of remove with the same timing", () => {
     expect([...SIDEBAR_V2_LIST_ADD_KEYFRAMES]).toEqual(
-      [...SIDEBAR_V2_LIST_REMOVE_KEYFRAMES].reverse(),
+      SIDEBAR_V2_LIST_REMOVE_KEYFRAMES.toReversed(),
     );
     expect(SIDEBAR_V2_LIST_ANIMATION_DURATION_MS).toBe(150);
     expect(SIDEBAR_V2_LIST_ANIMATION_EASING).toBe("ease-out");
