@@ -1291,9 +1291,9 @@
     centered in the chat column, not stacked above the docked input. The base
     row is 40px tall: 8px padding around a one-line prompt and the 24px
     send/stop button. The prompt and action remain in that same row as text
-    wraps — the action pinned top-right, per the design's tall frame — so the
-    surface grows naturally with the editor; there is no tall/slim density
-    switch, resize observer, or wrap latch. Upstream's collapsed mobile tap
+    wraps — the action pinned bottom-right so it stays with the last line —
+    so the surface grows naturally with the editor; there is no tall/slim
+    density switch, resize observer, or wrap latch. Upstream's collapsed mobile tap
     target remains a separate functional state.
 
     Which controls sit where is the main design contract. BranchToolbar's
