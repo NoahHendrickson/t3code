@@ -666,6 +666,36 @@
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
 
+- id: sidebar-v2-list-animation
+  intent: >
+    Sidebar V2's thread list mounts `@formkit/auto-animate` so rows ease when
+    they leave or reflow. AutoAnimate's default *insert* path ignores the
+    `{ duration: 150, easing: "ease-out" }` options upstream passes: it holds
+    at opacity 0 for half of a 1.5× ease-in duration, while removals keep the
+    short ease-out scale/fade. Expanding a collapsed project group therefore
+    feels delayed and different from collapsing it, even though both are the
+    same list mutation.
+
+    The fork replaces that options object with a plugin whose add keyframes
+    are the reverse of remove (same duration, same easing, same scale/opacity
+    endpoints). Remain keeps AutoAnimate's FLIP, including the right/bottom-
+    anchored short-circuit. Plugins skip AutoAnimate's prefers-reduced-motion
+    gate, so the plugin itself collapses duration to 0 when that preference
+    is set.
+
+    One Tier-4 fence in SidebarV2.tsx carries the import and the
+    `autoAnimate(node, …)` call. A sync that restores the options object
+    silently brings the asymmetric open back.
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2ListAnimation.ts
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2ListAnimation.test.ts
+    - apps/web/src/custom/sidebarV2ListAnimation.test.ts
+
 - id: sidebar-v2-draft-rows
   intent: >
     New thread (project-header plus, chrome plus, shortcut) creates a
