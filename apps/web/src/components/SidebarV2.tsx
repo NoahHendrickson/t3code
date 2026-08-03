@@ -191,6 +191,9 @@ import {
   useSidebarV2GroupByProject,
 } from "~/custom/sidebarV2ProjectGrouping";
 /* fork:end sidebar-v2-project-grouping */
+/* fork:begin sidebar-v2-list-animation — see .fork/customizations.yaml#sidebar-v2-list-animation */
+import { sidebarV2ListAnimation } from "~/custom/sidebarV2ListAnimation";
+/* fork:end sidebar-v2-list-animation */
 /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
 import {
   draftIdByThreadKey as indexDraftIdsByThreadKey,
@@ -2842,7 +2845,13 @@ export default function SidebarV2() {
 
   const attachListAutoAnimateRef = useCallback((node: HTMLUListElement | null) => {
     if (!node) return;
-    autoAnimate(node, { duration: 150, easing: "ease-out" });
+    /* fork:begin sidebar-v2-list-animation — see .fork/customizations.yaml#sidebar-v2-list-animation */
+    // Default AutoAnimate inserts hold at opacity 0 for half of a 1.5×
+    // ease-in; removals keep the short ease-out. Expanding a project group
+    // then feels unlike collapsing it. The plugin makes add the reverse of
+    // remove so both directions share duration, easing, and scale/opacity.
+    autoAnimate(node, sidebarV2ListAnimation);
+    /* fork:end sidebar-v2-list-animation */
   }, []);
 
   // New thread defaults to the project you're in (active thread's project,
