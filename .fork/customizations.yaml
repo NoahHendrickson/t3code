@@ -1363,8 +1363,11 @@
     pending-answer cluster is visible, so only one answer action renders.
 
     Upstream's stitched glass-shell paint is disabled under the fork marker.
-    The prompt surface keeps its own translucent fill, inset hairline,
-    focus-border recolour, backdrop blur, and explicit drag-over outline.
+    The docked composer overlay paints an opaque page-colored floor (soft fade
+    over its top edge) so timeline rows cannot read through the floating
+    control row once that vessel is gone. The prompt surface keeps its own
+    translucent fill, inset hairline, focus-border recolour, backdrop blur,
+    and explicit drag-over outline.
     BranchToolbar's stitched-strip spacing is flattened in the named context
     row. Send and stop remain 24px square at 4px radius; dark builds without
     stage-channel art use a flat white send button with a black icon, while
