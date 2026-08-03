@@ -153,6 +153,7 @@ describe("fork guard: fork-composer-shell", () => {
     const composerRules = rules.filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer") ||
+        rule.selector.includes("data-chat-composer-overlay") ||
         rule.selector.includes("chat-composer-glass") ||
         rule.selector.includes("chat-composer-context-strip"),
     );
@@ -371,6 +372,25 @@ describe("fork guard: fork-composer-shell", () => {
         /data-chat-composer-(inline-actions|mobile-pending-actions)/u,
       );
     }
+  });
+
+  it("floors the docked composer overlay so timeline rows stop above it", () => {
+    const floor = rules.find(
+      (rule) =>
+        rule.selector.includes('[data-chat-composer-overlay="true"]::before') ||
+        rule.selector.includes("[data-chat-composer-overlay='true']::before"),
+    );
+    expect(floor?.body).toMatch(/background:\s*var\(--background\)/u);
+    expect(floor?.body).toMatch(
+      /mask-image:\s*linear-gradient\(to bottom,\s*transparent,\s*black 1\.25rem\)/u,
+    );
+    const stacking = rules.find(
+      (rule) =>
+        (rule.selector.includes('[data-chat-composer-overlay="true"] > *') ||
+          rule.selector.includes("[data-chat-composer-overlay='true'] > *")) &&
+        !rule.selector.includes("::before"),
+    );
+    expect(stacking?.body).toMatch(/z-index:\s*1/u);
   });
 
   it("switches off the stitched glass shell and flattens the context strip", () => {

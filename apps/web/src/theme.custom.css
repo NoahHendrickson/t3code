@@ -295,7 +295,11 @@
    painted pseudo-elements are switched off here and the box paints itself.
 
    The blur is not dropped with them — the drawn fill is 80% opaque, which only
-   works over a blurred backdrop — it just moves onto the box.
+   works over a blurred backdrop — it just moves onto the box. Without the
+   stitched shell, the floating control row (and the gap around the box) would
+   otherwise leave timeline rows readable underneath the docked composer, so the
+   overlay itself paints an opaque page-colored floor that fades in over its top
+   padding — messages end above the composer without bringing the vessel back.
 
    Everything below is dark-scoped: the designs are dark-only, and an unmarked
    or light build keeps upstream's shell untouched. */
@@ -307,6 +311,26 @@
 
 :root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-host {
   box-shadow: none;
+}
+
+/* Opaque floor for the absolutely-docked composer overlay. Timeline content
+   still scrolls the full column height behind it; this mask is what makes the
+   message area read as stopping above the composer once the glass vessel is
+   gone. Soften only the top padding so the edge is not a hard slab. */
+:root[data-fork="noahhendrickson-t3code"] [data-chat-composer-overlay="true"]::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--background);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 1.25rem);
+  mask-image: linear-gradient(to bottom, transparent, black 1.25rem);
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-chat-composer-overlay="true"] > * {
+  position: relative;
+  z-index: 1;
 }
 
 :root[data-fork="noahhendrickson-t3code"] {
