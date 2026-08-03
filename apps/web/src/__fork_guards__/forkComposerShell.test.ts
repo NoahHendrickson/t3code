@@ -377,20 +377,12 @@ describe("fork guard: fork-composer-shell", () => {
   it("floors the docked composer overlay so timeline rows stop above it", () => {
     const floor = rules.find(
       (rule) =>
-        rule.selector.includes('[data-chat-composer-overlay="true"]::before') ||
-        rule.selector.includes("[data-chat-composer-overlay='true']::before"),
+        rule.selector.includes('[data-chat-composer-overlay="true"]') ||
+        rule.selector.includes("[data-chat-composer-overlay='true']"),
     );
-    expect(floor?.body).toMatch(/background:\s*var\(--background\)/u);
     expect(floor?.body).toMatch(
-      /mask-image:\s*linear-gradient\(to bottom,\s*transparent,\s*black 1\.25rem\)/u,
+      /background:\s*linear-gradient\(to bottom,\s*transparent,\s*var\(--background\)\s*1\.25rem\)/u,
     );
-    const stacking = rules.find(
-      (rule) =>
-        (rule.selector.includes('[data-chat-composer-overlay="true"] > *') ||
-          rule.selector.includes("[data-chat-composer-overlay='true'] > *")) &&
-        !rule.selector.includes("::before"),
-    );
-    expect(stacking?.body).toMatch(/z-index:\s*1/u);
   });
 
   it("switches off the stitched glass shell and flattens the context strip", () => {

@@ -1334,7 +1334,7 @@
 
     Upstream's stitched glass-shell paint is disabled under the fork marker.
     The docked composer overlay paints an opaque page-colored floor (soft fade
-    across its top padding) so timeline rows cannot read through the floating
+    over its top edge) so timeline rows cannot read through the floating
     control row once that vessel is gone. The prompt surface keeps its own
     translucent fill, inset hairline, focus-border recolour, backdrop blur,
     and explicit drag-over outline.
