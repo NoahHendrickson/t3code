@@ -40,10 +40,9 @@ const LINUX_ICON_SIZES = [16, 22, 24, 32, 48, 64, 128, 256, 512] as const;
 // Distinct bundle id so macOS treats a fork build as a different application
 // from an installed upstream release rather than a replacement for it.
 const DESKTOP_APP_ID = "com.t3tools.t3code.fork";
-// Fork-owned green grid mark from Figma (t3-fork 157:4036 for web favicon;
-// desktop PNGs/ICO share the same mark family), kept in assets/fork.
+// Fork-owned Liquid Glass mark from Figma (t3-fork 168:6364), kept in assets/fork.
 const FORK_DESKTOP_ICON_ASSETS = {
-  macIconPng: "assets/fork/n3-macos-1024.png",
+  macIconPng: "assets/fork/n3-macos-dock.png",
   linuxIconPng: "assets/fork/n3-universal-1024.png",
   windowsIconIco: "assets/fork/n3-windows.ico",
 } as const;

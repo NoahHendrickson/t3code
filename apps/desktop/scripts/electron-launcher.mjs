@@ -23,7 +23,12 @@ const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
 const LAUNCHER_VERSION = 14;
 const defaultIconPath = NodePath.join(desktopDir, "resources", "icon.icns");
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-const developmentMacIconPngPath = NodePath.join(repoRoot, "assets", "fork", "n3-macos-1024.png");
+const developmentMacIconPngPath = NodePath.join(
+  repoRoot,
+  "assets",
+  "fork",
+  "n3-dev-macos-dock.png",
+);
 // fork:end fork-app-identity
 // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher script has no Effect runtime.
 const hostPlatform = NodeOS.platform();

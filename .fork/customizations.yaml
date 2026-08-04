@@ -214,9 +214,21 @@
     instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
     apps/web/public for local/dev and into the packaged desktop client at
     build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
-    path). assets/fork/app-icon.svg is the Figma source of truth for the
-    green-grid mark (file t3-fork, node 157:4036); raster exports are
-    derived from that family. Filenames still say n3-* for path stability.
+    path). The layered Icon Composer projects in assets/fork/app-icon.icon and
+    assets/fork/dev-app-icon.icon are the Figma source of truth (file t3-fork,
+    node 168:6364), so the surrounding tile receives the system Liquid Glass
+    treatment on macOS without rasterizing the mark. Production keeps the Figma
+    green background; development uses orange so installed variants remain
+    distinguishable in the Dock. Glass stays off on the mark layer itself so
+    the pixel grid remains crisp; the system treatment belongs to the
+    surrounding tile. The macOS Dock
+    exports add only a transparent outer canvas around the rendered artwork,
+    preserving the pixel art while matching the standard Mac icon footprint.
+    The local dev splash and favicons use the same orange family, while packaged
+    builds stamp the green production family. The Linux PNG and Windows ICO are
+    derived from the release 1024 render (the ICO embeds PNG entries at
+    16–256px), so every packaged channel carries the same artwork. Filenames
+    still say n3-* for path stability.
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
     app's own internal origin, not just a deep-link handler — two installed
     apps contend for it, untidy but not destructive).
@@ -238,10 +250,20 @@
   tier: 4
   files:
     - apps/web/src/custom/forkBranding.ts
-    - assets/fork/app-icon.svg
+    - assets/fork/app-icon.icon/Assets/mark.svg
+    - assets/fork/app-icon.icon/icon.json
+    - assets/fork/dev-app-icon.icon/Assets/mark.svg
+    - assets/fork/dev-app-icon.icon/icon.json
     - assets/fork/n3-macos-1024.png
+    - assets/fork/n3-macos-dock.png
+    - assets/fork/n3-dev-macos-1024.png
+    - assets/fork/n3-dev-macos-dock.png
     - assets/fork/n3-universal-1024.png
     - assets/fork/n3-windows.ico
+    - assets/fork/n3-dev-web-apple-touch-180.png
+    - assets/fork/n3-dev-web-favicon-16x16.png
+    - assets/fork/n3-dev-web-favicon-32x32.png
+    - assets/fork/n3-dev-web-favicon.ico
     - assets/fork/n3-web-apple-touch-180.png
     - assets/fork/n3-web-favicon-16x16.png
     - assets/fork/n3-web-favicon-32x32.png
