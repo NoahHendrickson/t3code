@@ -326,7 +326,9 @@ const make = Effect.fn("desktop.environment.make")(function* (
       path.join(resourcesPath, "resources", fileName),
       path.join(resourcesPath, fileName),
     ],
-    developmentDockIconPath: path.join(rootDir, "assets", "dev", "blueprint-macos-1024.png"),
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    developmentDockIconPath: path.join(rootDir, "assets", "fork", "n3-dev-macos-dock.png"),
+    // fork:end fork-app-identity
   });
 });
 

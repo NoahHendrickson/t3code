@@ -102,7 +102,7 @@ describe("fork guard: fork-app-identity", () => {
     // tell-apart-able. Desktop icons and bundled splash/favicon come from
     // assets/fork; packaging must not fall back to upstream channel art.
     const script = read(BUILD_SCRIPT);
-    expect(script).toContain('"assets/fork/n3-macos-1024.png"');
+    expect(script).toContain('"assets/fork/n3-macos-dock.png"');
     expect(script).toContain('"assets/fork/n3-universal-1024.png"');
     expect(script).toContain('"assets/fork/n3-windows.ico"');
     expect(script).toContain('"assets/fork/n3-web-favicon.ico"');
@@ -116,21 +116,68 @@ describe("fork guard: fork-app-identity", () => {
     expect(script).not.toContain("resolveForkWebIconOverrides");
 
     const launcher = read("apps/desktop/scripts/electron-launcher.mjs");
-    expect(launcher).toContain('"assets", "fork", "n3-macos-1024.png"');
+    expect(launcher).toContain('"n3-dev-macos-dock.png"');
     expect(launcher).not.toContain("blueprint-macos-1024.png");
 
-    // Dev (`vp run dev`) serves apps/web/public — keep it byte-identical to
-    // the fork sources so local tabs don't silently fall back to T3 blueprint.
+    const desktopEnvironment = read(DESKTOP_ENVIRONMENT);
+    expect(desktopEnvironment).toContain('"n3-dev-macos-dock.png"');
+    expect(desktopEnvironment).not.toContain('"blueprint-macos-1024.png"');
+
+    // Dev (`vp run dev`) serves apps/web/public — use the orange family there,
+    // while packaged builds stamp the green production family above.
     for (const [source, target] of [
-      ["assets/fork/n3-web-favicon.ico", "apps/web/public/favicon.ico"],
-      ["assets/fork/n3-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
-      ["assets/fork/n3-web-favicon-32x32.png", "apps/web/public/favicon-32x32.png"],
-      ["assets/fork/n3-web-apple-touch-180.png", "apps/web/public/apple-touch-icon.png"],
+      ["assets/fork/n3-dev-web-favicon.ico", "apps/web/public/favicon.ico"],
+      ["assets/fork/n3-dev-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
+      ["assets/fork/n3-dev-web-favicon-32x32.png", "apps/web/public/favicon-32x32.png"],
+      ["assets/fork/n3-dev-web-apple-touch-180.png", "apps/web/public/apple-touch-icon.png"],
     ] as const) {
       expect(NodeFS.readFileSync(NodePath.join(repoRoot, target))).toEqual(
         NodeFS.readFileSync(NodePath.join(repoRoot, source)),
       );
     }
+  });
+
+  it("uses the fork's layered Liquid Glass app icons on macOS", () => {
+    type IconComposerProject = {
+      fill: { solid: string };
+      groups: Array<{
+        layers: Array<{ glass?: boolean; "image-name": string }>;
+        translucency: { enabled: boolean };
+      }>;
+    };
+    const productionIcon = JSON.parse(
+      read("assets/fork/app-icon.icon/icon.json"),
+    ) as IconComposerProject;
+    const developmentIcon = JSON.parse(
+      read("assets/fork/dev-app-icon.icon/icon.json"),
+    ) as IconComposerProject;
+    expect(productionIcon.fill.solid).toBe("srgb:0.00000,1.00000,0.56471,1.00000");
+    expect(developmentIcon.fill.solid).toBe("srgb:1.00000,0.41569,0.00000,1.00000");
+    for (const icon of [productionIcon, developmentIcon]) {
+      expect(icon.groups[0]?.layers[0]).toMatchObject({
+        glass: false,
+        "image-name": "mark.svg",
+      });
+      expect(icon.groups[0]?.translucency.enabled).toBe(true);
+    }
+
+    const mark = read("assets/fork/app-icon.icon/Assets/mark.svg");
+    expect(mark).toContain('viewBox="0 0 1024 1024"');
+    expect(mark).toContain('transform="translate(112.0075 111.998) scale(1.3333333333)"');
+    expect(
+      NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/dev-app-icon.icon/Assets/mark.svg")),
+    ).toEqual(
+      NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/app-icon.icon/Assets/mark.svg")),
+    );
+
+    const pngDimensions = (relativePath: string) => {
+      const contents = NodeFS.readFileSync(NodePath.join(repoRoot, relativePath));
+      return [contents.readUInt32BE(16), contents.readUInt32BE(20)];
+    };
+    expect(pngDimensions("assets/fork/n3-dev-macos-1024.png")).toEqual([1024, 1024]);
+    expect(pngDimensions("assets/fork/n3-dev-macos-dock.png")).toEqual([1272, 1272]);
+    expect(pngDimensions("assets/fork/n3-macos-1024.png")).toEqual([1024, 1024]);
+    expect(pngDimensions("assets/fork/n3-macos-dock.png")).toEqual([1272, 1272]);
   });
 
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {
