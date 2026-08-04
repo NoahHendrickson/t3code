@@ -180,21 +180,6 @@
   --text-sm--line-height: 1rem;
 }
 
-/* The band is a solid header-height slab with a hard bottom edge, per the
-   mockup. Upstream draws it 80px tall and dissolves it into the panel with a
-   mask plus a gradient ::after, which suits art that is meant to bleed away;
-   this one is meant to end. Keyed on :has() so only the fork's own art is
-   affected and the Nightly sky keeps its dissolve. */
-:root[data-fork="noahhendrickson-t3code"] .sidebar-stage-backdrop:has(.stage-dither) {
-  height: var(--workspace-topbar-height);
-  mask-image: none;
-  -webkit-mask-image: none;
-}
-
-:root[data-fork="noahhendrickson-t3code"] .sidebar-stage-backdrop:has(.stage-dither)::after {
-  background: none;
-}
-
 /* ---------------------------------------------------------------------------
    Workspace header split pills — see
    `.fork/customizations.yaml#fork-workspace-header`.

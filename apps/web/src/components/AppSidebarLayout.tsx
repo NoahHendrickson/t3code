@@ -34,7 +34,11 @@ import {
 } from "./ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
-const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "90px";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+   A 28px trigger starting at x=80 centers its 20px glyph at x=84, exactly
+   16px after the native traffic-light group's 52px box. */
+const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px";
+/* fork:end fork-sidebar-chrome */
 
 function subscribeToViewportWidth(onChange: () => void): () => void {
   window.addEventListener("resize", onChange);
@@ -106,7 +110,10 @@ function SidebarControl() {
       <Tooltip>
         <TooltipTrigger
           render={
-            <SidebarTrigger className="pointer-events-auto" aria-label="Toggle main sidebar" />
+            <SidebarTrigger
+              className="pointer-events-auto [&_svg]:size-5!"
+              aria-label="Toggle main sidebar"
+            />
           }
         />
         <TooltipPopup side="bottom">

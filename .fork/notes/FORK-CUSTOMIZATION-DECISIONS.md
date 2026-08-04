@@ -92,13 +92,13 @@ Related deep-dives that predate this file and stay where they are:
 
 ## fork-sidebar-chrome
 
-- The Dev channel's header art was once regenerated as an 8x8 Bayer dither in SVG, which scaled to
+- The Dev channel's artwork was once regenerated as an 8x8 Bayer dither in SVG, which scaled to
   any width and re-themed from two variables — but could only approximate the designer's
   reference: a horizontal ramp cannot survive tiling, so the diagonal had to be flattened to a
   vertical one. The committed raster is the artwork as drawn. The tradeoff is that it cannot
-  re-theme and is a screenshot-quality source (~30% of its pixels are the two flat greens, the
-  rest resampling), so a higher-resolution export would be a straight swap of the file.
-- The art is painted as a covering background rather than a repeating tile because the artwork
+  re-theme and is a screenshot-quality source, so a higher-resolution export would be a straight
+  swap of the file.
+- Where the art remains, it is painted as a covering background rather than a repeating tile because it
   ramps diagonally from dark at the bottom-left to light at the top-right — any repeat butts a
   light edge against a dark one and draws a seam. Covering crops the extremes of the ramp on a
   short band and keeps the gradient continuous.

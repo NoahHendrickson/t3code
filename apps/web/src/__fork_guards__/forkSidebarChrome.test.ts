@@ -14,7 +14,6 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { cn } from "../lib/utils";
-import { resolveForkSidebarHeaderArt } from "../custom/SidebarHeaderBackdrop";
 import { CHROME_ROW_ICON_TINT } from "../custom/SidebarV2ChromeRows";
 
 function readSibling(relativePath: string): string {
@@ -23,6 +22,7 @@ function readSibling(relativePath: string): string {
 
 const layout = readSibling("../components/AppSidebarLayout.tsx");
 const chrome = readSibling("../components/sidebar/SidebarChrome.tsx");
+const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
 
 describe("fork guard: fork-sidebar-chrome", () => {
   it("still offers a toggle while the sidebar is collapsed", () => {
@@ -53,10 +53,16 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(trigger).not.toContain("md:hidden");
   });
 
-  it("clears the macOS traffic lights", () => {
-    // The floating control used this inset; the inline toggle inherits the same
-    // problem, and without it the button lands under the window buttons.
+  it("matches the macOS control geometry from the header design", () => {
     expect(chrome).toContain("pl-[var(--workspace-controls-left)]");
+    expect(layout).toContain('MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px"');
+    expect(desktopWindow).toContain("trafficLightPosition: { x: 16, y: 20 }");
+    const start = chrome.indexOf("<SidebarTrigger");
+    const trigger = chrome.slice(start, chrome.indexOf("/>", start));
+    expect(trigger).toContain("[&_svg]:size-5!");
+    expect(trigger).toContain("[&_svg]:text-sidebar-muted-foreground/80!");
+    expect(trigger).not.toContain("text-white");
+    expect(layout).toContain('className="pointer-events-auto [&_svg]:size-5!"');
   });
 
   it("draws the fork's dither on the Dev channel and leaves Nightly alone", () => {
@@ -69,16 +75,10 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(backdrop).not.toContain("stage-blueprint");
   });
 
-  it("gives the sidebar header artwork on every build, release included", () => {
-    // The point of the split: upstream renders header art only on a non-prod
-    // build. A regression here is invisible in dev — where art shows either way
-    // — and only surfaces as a bare header in the packaged app.
-    expect(chrome).toContain("<ForkSidebarHeaderBackdrop");
-    // Behaviour, not source text: "Alpha" is the label a packaged fork build
-    // carries, and upstream classifies it as no-art.
-    expect(resolveForkSidebarHeaderArt("Alpha")).toBe("release");
-    expect(resolveForkSidebarHeaderArt("Dev")).toBe("dev");
-    expect(resolveForkSidebarHeaderArt("Nightly")).toBe("nightly");
+  it("keeps the sidebar header flat on every build", () => {
+    expect(chrome).not.toContain("ForkSidebarHeaderBackdrop");
+    expect(chrome).not.toContain("<SidebarStageBackdrop");
+    expect(chrome).not.toContain("stage-dither");
   });
 
   it("leaves the send button and auth screen gated on the build channel", () => {
@@ -95,34 +95,17 @@ describe("fork guard: fork-sidebar-chrome", () => {
     }
   });
 
-  it("keeps the release and dev builds on different artwork", () => {
-    // The one thing this split exists for: telling a dev build from a release
-    // build at a glance. Both tones resolving to the same file still renders
-    // and still looks right in isolation, which is why it needs asserting.
-    const art = readSibling("../custom/SidebarStageDitherArt.tsx");
-    expect(art).toContain("release: releaseDitherUrl");
-    expect(art).toContain("dev: devDitherUrl");
-    for (const asset of ["sidebar-stage-dither.png", "sidebar-stage-dither-dev.png"]) {
-      expect(
-        NodeFS.existsSync(
-          NodeURL.fileURLToPath(new URL(`../custom/assets/${asset}`, import.meta.url)),
-        ),
-        `${asset} is missing`,
-      ).toBe(true);
-    }
-  });
-
-  it("paints the supplied artwork rather than regenerating it", () => {
+  it("keeps the supplied Dev artwork on the remaining channel cues", () => {
     // The art is the designer's own PNG. An earlier revision reproduced it as a
     // Bayer dither in SVG, which scaled better but flattened the reference's
     // diagonal ramp — so "it still renders and still looks green" is exactly
     // the failure this asserts against.
     const art = readSibling("../custom/SidebarStageDitherArt.tsx");
-    expect(art).toContain('from "./assets/sidebar-stage-dither.png"');
+    expect(art).toContain('from "./assets/sidebar-stage-dither-dev.png"');
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(
-          new URL("../custom/assets/sidebar-stage-dither.png", import.meta.url),
+          new URL("../custom/assets/sidebar-stage-dither-dev.png", import.meta.url),
         ),
       ),
     ).toBe(true);
@@ -134,18 +117,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const art = readSibling("../custom/SidebarStageDitherArt.tsx");
     expect(art).toContain("bg-cover");
     expect(art).toContain("bg-no-repeat");
-  });
-
-  it("ends the band on a hard edge instead of upstream's dissolve", () => {
-    // Upstream masks its art out and ramps a gradient ::after over it. Both
-    // have to be switched off for this variant, and only for this variant.
-    const theme = readSibling("../theme.custom.css");
-    expect(theme).toMatch(
-      /\.sidebar-stage-backdrop:has\(\.stage-dither\)[\s\S]{0,200}mask-image:\s*none/u,
-    );
-    expect(theme).toMatch(
-      /\.sidebar-stage-backdrop:has\(\.stage-dither\)::after\s*\{[^}]*background:\s*none/u,
-    );
+    expect(art).not.toMatch(/className="[^"]*\bstage-dither\b/u);
   });
 
   it("keeps the search and project rows fork-owned", () => {
@@ -206,27 +178,27 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).not.toMatch(/pe-\[[^\]]*--app-scrollbar-width/u);
   });
 
-  it("puts the brand on the header's trailing edge", () => {
+  it("puts the exact brand lockup on the header's trailing edge", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
+    expect(chrome).toMatch(/sidebar-brand[^"]*text-sidebar-foreground/u);
+    expect(chrome).toContain("size-6 shrink-0 [image-rendering:pixelated]");
+    expect(chrome).toContain("text-[0.875rem] leading-4 font-medium");
+    const mark = NodeFS.readFileSync(
+      NodeURL.fileURLToPath(new URL("../custom/assets/sidebar-brand-mark.png", import.meta.url)),
+    );
+    expect(mark.readUInt32BE(16)).toBe(24);
+    expect(mark.readUInt32BE(20)).toBe(24);
   });
 
-  it("ignores the identification setting for the art and honors it for the pill", () => {
-    // Upstream's environmentIdentificationMode gates its own header art; the
-    // fork's header art is brand chrome and must never consult it — a sync
-    // that re-adopts upstream's gate turns the packaged app's header bare
-    // whenever the setting isn't "artwork". The pill half is the converse:
-    // "Version pill" must actually produce a pill, and upstream only ever
-    // rendered one here, so if this header drops it the option does nothing
-    // anywhere and the setting's own description becomes false in the fork.
+  it("keeps the flat header independent of identification mode and honors the pill", () => {
     expect(chrome).not.toContain('=== "artwork"');
-    expect(chrome).not.toMatch(/\?\s*<ForkSidebarHeaderBackdrop/u);
     expect(chrome).toContain('environmentIdentificationMode === "pill"');
     expect(chrome).toContain('data-environment-identification="pill"');
-    // The pill sits on the art, so upstream's secondary-on-plain treatment
-    // would vanish into it; white-on-dark is the same rule the toggle follows.
     const pill = chrome.slice(chrome.indexOf("{pillLabel ? ("), chrome.indexOf("</Badge>"));
-    expect(pill).toContain("text-white");
+    expect(pill).toContain("bg-sidebar-control-surface");
+    expect(pill).toContain("text-sidebar-foreground");
+    expect(pill).not.toContain("text-white");
   });
 
   it("keeps the chrome-row icon tint displacing the menu button's base dim", () => {

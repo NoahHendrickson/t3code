@@ -208,9 +208,10 @@
     and from the four .repos exclusions in .vscode/settings.json, the way
     .repos already was.
     The rendered app carries the name too: the sidebar brand reads
-    APP_BASE_NAME and drops the T3 wordmark, and branding.ts's bridge-less
-    fallback points at the fork's own constant instead of upstream's
-    "T3 Code". Splash and favicon also ship from assets/fork (copied into
+    APP_BASE_NAME, drops the T3 wordmark, and pairs the name with the
+    designer-exported 24px pixel mark owned by fork-sidebar-chrome.
+    branding.ts's bridge-less fallback points at the fork's own constant
+    instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
     apps/web/public for local/dev and into the packaged desktop client at
     build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
     path). assets/fork/app-icon.svg is the Figma source of truth for the
@@ -1019,49 +1020,34 @@
     sidebar-v2-row-action-hit-area, which owns the trailing glyph column's
     single axis. It is not a scrollbar term and must not become one again.
 
-    The brand moves to the header's trailing edge, where it stops competing
-    with the toggle for the corner the eye starts at. Search, New thread, and
-    Add project are labeled action rows; Projects is a static muted label
-    whose trailing ListFilter (FunnelSimple) opens the scope / group-by menu
-    that used to live on the clickable projects control. When a project scope
-    is active the funnel lifts to foreground (and names the scope in its
-    aria-label / tooltip) so a filtered list is never a silent mode.
+    The header follows Figma node 157:4536. It is flat and transparent on every
+    build, so the panel surface shows through with no stage artwork. Its native
+    macOS traffic lights start at x=16, y=20; a 28px trigger starts at x=80 so
+    its exact 20px Phosphor SidebarSimple glyph begins at x=84 — 16px after the
+    traffic-light group's 52px box. Non-macOS surfaces keep the same safe-area
+    variable and place the glyph at the ordinary 16px edge inset.
 
-    The Dev channel's header art is the designer's own dither PNG instead of
-    upstream's blue blueprint, painted as a covering background rather than a
-    repeating tile (the diagonal ramp cannot survive tiling without drawing a
-    seam). Unlike upstream's art the band does not dissolve: it is a solid slab
-    the height of the topbar with a hard bottom edge, so the mask and gradient
-    ::after that upstream uses to fade its own art are switched off for this
-    variant alone, keyed on :has().
+    The brand stays on the trailing edge and ends 16px from it. It is the
+    designer-exported 24px pixel mark, a 4px gap, then APP_BASE_NAME at literal
+    0.875rem (14px), Geist Medium, with a 16px line-height. Literal type avoids
+    the sidebar-v2 13px text utility remap. Search, New thread, and Add project
+    remain labeled action rows; Projects remains a static muted label whose
+    trailing ListFilter (FunnelSimple) owns the scope / group-by menu.
+    Foreground, hover, pill, and focus treatments resolve through sidebar
+    tokens so the flat header remains legible in Light, Dark, and Cool Dark.
 
-    Upstream treats header art as a channel indicator — Dev and Nightly only,
-    nothing on a release build. The fork splits that in two. The sidebar header
-    always carries artwork, because here it is brand chrome rather than a build
-    cue: a release build gets the green dither where upstream gave it nothing,
-    and a dev build gets the orange variant of the same family — hue is what
-    replaces the channel cue the sidebar gave up by always carrying art. The
-    two other surfaces upstream paints with the same art, the composer send
-    button and the standalone auth screen, keep upstream's behaviour untouched
-    and still light up on Dev alone. Those two need no fork code: they already
-    gate on resolveSidebarStageBackdropVariant, which is null on a release
-    build. Nightly stays on upstream's night sky.
-
-    The raster-vs-SVG history and the reason Nightly is unreachable in practice
-    are in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+    The sidebar no longer carries a channel cue. The composer send button and
+    standalone auth screen retain the fork's designer-supplied Dev dither in
+    place of upstream's blueprint, and Nightly retains upstream's sky. Those
+    surfaces still gate on resolveSidebarStageBackdropVariant, so packaged
+    release builds remain plain.
 
     Upstream v0.0.30 layered an environmentIdentificationMode setting
-    (artwork / pill / none) over the same surfaces. The fork's header art
-    ignores it — brand chrome is not identification and must not gate on a
-    setting whose off states would strip the packaged app's header — but the
-    pill half is honored: "Version pill" renders upstream's badge in this
-    header, white-on-art rather than secondary-on-plain, because upstream only
-    ever drew the pill here and dropping it would make that option do nothing
-    anywhere. artwork/none keep governing the composer send button exactly as
-    upstream wrote it; the standalone auth screen never read the mode —
-    upstream gates that art on the build channel alone — so the setting's
-    only fork-visible effects are the composer button and this pill. The
-    same release also moved
+    (artwork / pill / none) over the same surfaces. The flat header ignores the
+    artwork choice, but the pill half is honored: "Version pill" still renders
+    upstream's badge here so the option does not become a no-op. artwork/none
+    keep governing the composer send button exactly as upstream wrote it; the
+    standalone auth screen still gates on the build channel alone. The same release also moved
     upstream's search/scope controls into SidebarContent's fixedHeader slot;
     the fork declines that mechanism — its own rows sit as siblings above the
     self-scrolling list group, which pins them identically — and a sync must
@@ -1072,15 +1058,14 @@
     APP_STAGE_LABEL fallback).
   tier: 4
   files:
-    - apps/web/src/custom/SidebarHeaderBackdrop.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/custom/useScrollGutterWidth.ts
     - apps/web/src/custom/SidebarStageDitherArt.tsx
+    - apps/web/src/custom/assets/sidebar-brand-mark.png
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
-    - apps/web/src/custom/assets/sidebar-stage-dither.png
-    - apps/web/src/theme.custom.css
   shadows: []
   watch:
+    - apps/desktop/src/window/DesktopWindow.ts
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx
     - apps/web/src/components/SidebarStageBackdrop.test.tsx
