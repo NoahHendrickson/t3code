@@ -89,6 +89,12 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
         case "drafts":
           store.setDraftCount(runtimeTabId, message.count);
           return;
+        case "tokens":
+          store.setTokens(runtimeTabId, {
+            colors: message.colors,
+            spacingBasePx: message.spacingBasePx,
+          });
+          return;
       }
     };
 

@@ -371,6 +371,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               onSelect={(v) => apply("text-align", v)}
             />
             <ColorField
+              tokens={tab.tokens}
               label="C"
               title="Text color"
               value={first.styles.color}
@@ -380,6 +381,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
 
           <PanelSection title="Fill" className="grid-cols-1">
             <ColorField
+              tokens={tab.tokens}
               label="Bg"
               title="Background color"
               value={first.styles["background-color"]}
@@ -414,6 +416,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               onEdit={(v) => apply("border-width", v)}
             />
             <ColorField
+              tokens={tab.tokens}
               label="C"
               title="Border color"
               value={first.styles["border-top-color"]}

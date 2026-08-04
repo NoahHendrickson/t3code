@@ -17,6 +17,7 @@ import { emitToHost } from "./bridge";
 import { HeadlessOverlay } from "./headlessOverlay";
 import { HeadlessDesignMode } from "./headlessMode";
 import { loadLifecycle } from "./vendor/lifecycle-store";
+import { readTheme, readTokens } from "./vendor/tokens";
 
 function existingHandle(): DesignModeGuestHandle | undefined {
   return (globalThis as Record<string, unknown>)[DESIGN_MODE_GLOBAL] as
@@ -37,7 +38,17 @@ function boot(): void {
 
   mode.onSelection = (elements) => emitToHost({ type: "selection", elements });
   mode.onDraftsCount = (count) => emitToHost({ type: "drafts", count });
-  mode.onStateChange = (active) => emitToHost({ type: "state", active });
+  // Theme tokens re-read on every activation (setActive resets the vendored token
+  // cache, so a CSS edit made while the tool was off is picked up here too).
+  const emitTokens = () => {
+    const tokens = readTokens();
+    const theme = readTheme();
+    emitToHost({ type: "tokens", colors: tokens.colors, spacingBasePx: theme.spacingBasePx });
+  };
+  mode.onStateChange = (active) => {
+    emitToHost({ type: "state", active });
+    if (active) emitTokens();
+  };
 
   const handle: DesignModeGuestHandle = {
     setActive: (on) => mode.setActive(on),

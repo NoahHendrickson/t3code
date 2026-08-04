@@ -81,6 +81,13 @@ export interface DesignModeElementSnapshot {
   readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
 }
 
+/** One theme color custom property from the previewed app's stylesheets ("red-500",
+ * "oklch(0.637 0.237 25.331)"). Values are raw CSS — the panel renders them directly. */
+export interface DesignModeColorToken {
+  readonly name: string;
+  readonly value: string;
+}
+
 export type DesignModeEngineMessage =
   /** Engine finished booting. `tagged` reports whether the page carries any
    * `data-dc-source` attributes (the forge-mode dev plugin's JSX tags) — without them
@@ -91,7 +98,15 @@ export type DesignModeEngineMessage =
   /** The in-page selection changed; empty array means deselected. */
   | { readonly type: "selection"; readonly elements: readonly DesignModeElementSnapshot[] }
   /** The draft count changed (emitted on change only, never per scrub tick). */
-  | { readonly type: "drafts"; readonly count: number };
+  | { readonly type: "drafts"; readonly count: number }
+  /** The previewed app's Tailwind theme tokens, read from its live stylesheets on every
+   * activation (theme edits between sessions are picked up). Empty colors + null spacing
+   * means "not a Tailwind project" — the panel hides token affordances. */
+  | {
+      readonly type: "tokens";
+      readonly colors: readonly DesignModeColorToken[];
+      readonly spacingBasePx: number | null;
+    };
 
 /** One element's worth of a built change request, compact enough for the composer's
  * attachment pill: "div · App.tsx:15" plus per-change deltas like
@@ -150,6 +165,13 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     sourceLabel: value.sourceLabel,
     styles: value.styles,
   };
+}
+
+function parseColorToken(value: unknown): DesignModeColorToken | null {
+  if (!isRecord(value) || typeof value.name !== "string" || typeof value.value !== "string") {
+    return null;
+  }
+  return { name: value.name, value: value.value };
 }
 
 function parseElementSummary(value: unknown): DesignChangeElementSummary | null {
@@ -211,6 +233,18 @@ export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMes
       }
       case "drafts":
         return isNonNegativeInteger(value.count) ? { type: "drafts", count: value.count } : null;
+      case "tokens": {
+        if (!Array.isArray(value.colors)) return null;
+        if (value.spacingBasePx !== null && typeof value.spacingBasePx !== "number") return null;
+        const colors = value.colors.map(parseColorToken);
+        return colors.some((token) => token === null)
+          ? null
+          : {
+              type: "tokens",
+              colors: colors.filter((token): token is DesignModeColorToken => token !== null),
+              spacingBasePx: value.spacingBasePx,
+            };
+      }
       default:
         return null;
     }

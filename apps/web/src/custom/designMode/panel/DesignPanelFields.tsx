@@ -2,6 +2,9 @@ import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent } 
 
 import { cn } from "~/lib/utils";
 
+import type { DesignModeTokens } from "../designModeStore";
+import { DesignColorPicker, rgbToHex } from "./DesignColorPicker";
+
 /** Formats a number for display/writeback without float noise (12, 12.5 — never 12.50001). */
 const formatNumber = (value: number, precision: number): string => {
   const factor = 10 ** precision;
@@ -124,28 +127,19 @@ export function ScrubField({
   );
 }
 
-/** "rgb(a, b, c)" / "rgba(a, b, c, d)" → "#rrggbb", or null for anything else. */
-export function rgbToHex(value: string): string | null {
-  const match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/u.exec(value.trim());
-  if (!match) return null;
-  const channel = (raw: string | undefined) =>
-    Math.min(255, Number.parseInt(raw ?? "0", 10))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${channel(match[1])}${channel(match[2])}${channel(match[3])}`;
-}
-
 interface ColorFieldProps {
   label: string;
   title: string;
   /** The computed CSS color (rgb/rgba). */
   value: string;
+  /** Previewed app's theme tokens — shown as swatches inside the picker popover. */
+  tokens?: DesignModeTokens | null;
   onEdit: (cssValue: string) => void;
 }
 
-/** Swatch + hex pair. Fully-transparent computed values display as "transparent" until a
- * color is picked. */
-export function ColorField({ label, title, value, onEdit }: ColorFieldProps) {
+/** Swatch (opens the picker popover) + hex pair. Fully-transparent computed values
+ * display as "transparent" until a color is picked. */
+export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldProps) {
   const isTransparent = /^rgba\(\d+,\s*\d+,\s*\d+,\s*0\)$/u.test(value.trim());
   const hex = rgbToHex(value);
   const [text, setText] = useState(isTransparent ? "transparent" : (hex ?? value));
@@ -163,12 +157,11 @@ export function ColorField({ label, title, value, onEdit }: ColorFieldProps) {
       <span className="w-7 shrink-0 select-none ps-1.5 text-[10px] font-medium text-muted-foreground">
         {label}
       </span>
-      <input
-        type="color"
-        value={hex ?? "#000000"}
-        onChange={(event) => commit(event.target.value)}
-        aria-label={`${title} swatch`}
-        className="size-4 shrink-0 cursor-pointer appearance-none border-none bg-transparent p-0"
+      <DesignColorPicker
+        value={value}
+        tokens={tokens ?? null}
+        onPick={commit}
+        triggerAriaLabel={`${title} swatch`}
       />
       <input
         value={text}
