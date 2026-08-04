@@ -61,14 +61,14 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
       <div className="flex items-center pl-[var(--workspace-controls-left)]">
         <SidebarTrigger
           aria-label="Toggle main sidebar"
-          className="[:hover,[data-pressed]]:bg-white/10 focus-visible:ring-white/90 focus-visible:ring-offset-transparent [&_svg]:size-5! [&_svg]:text-white/65! [&_svg]:opacity-100!"
+          className="[:hover,[data-pressed]]:bg-sidebar-row-hover focus-visible:ring-ring focus-visible:ring-offset-sidebar [&_svg]:size-5! [&_svg]:text-sidebar-muted-foreground/80! [&_svg]:opacity-100!"
         />
       </div>
       {/* Preserve the existing identification setting without changing the
           default header: only the explicit pill mode adds this badge. */}
       {pillLabel ? (
         <Badge
-          className="ml-1 rounded-full border-0 bg-white/10 px-1.5 text-white/90"
+          className="ml-1 rounded-full border-0 bg-sidebar-control-surface px-1.5 text-sidebar-foreground"
           data-environment-identification="pill"
           size="sm"
           variant="secondary"
@@ -86,7 +86,7 @@ function SidebarBrand() {
   return (
     <Link
       aria-label="Go to threads"
-      className="sidebar-brand ml-auto h-6 w-fit min-w-0 shrink-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-white outline-hidden ring-ring focus-visible:ring-2"
+      className="sidebar-brand ml-auto h-6 w-fit min-w-0 shrink-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2"
       to="/"
     >
       {/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity

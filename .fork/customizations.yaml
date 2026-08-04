@@ -208,9 +208,10 @@
     and from the four .repos exclusions in .vscode/settings.json, the way
     .repos already was.
     The rendered app carries the name too: the sidebar brand reads
-    APP_BASE_NAME and drops the T3 wordmark, and branding.ts's bridge-less
-    fallback points at the fork's own constant instead of upstream's
-    "T3 Code". Splash and favicon also ship from assets/fork (copied into
+    APP_BASE_NAME, drops the T3 wordmark, and pairs the name with the
+    designer-exported 24px pixel mark owned by fork-sidebar-chrome.
+    branding.ts's bridge-less fallback points at the fork's own constant
+    instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
     apps/web/public for local/dev and into the packaged desktop client at
     build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
     path). assets/fork/app-icon.svg is the Figma source of truth for the
@@ -1032,6 +1033,8 @@
     the sidebar-v2 13px text utility remap. Search, New thread, and Add project
     remain labeled action rows; Projects remains a static muted label whose
     trailing ListFilter (FunnelSimple) owns the scope / group-by menu.
+    Foreground, hover, pill, and focus treatments resolve through sidebar
+    tokens so the flat header remains legible in Light, Dark, and Cool Dark.
 
     The sidebar no longer carries a channel cue. The composer send button and
     standalone auth screen retain the fork's designer-supplied Dev dither in

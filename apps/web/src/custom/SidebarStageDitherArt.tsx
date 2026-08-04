@@ -24,7 +24,7 @@ export function SidebarStageDitherArt({ compact = false }: { compact?: boolean }
   return (
     <div
       aria-hidden
-      className="stage-dither h-full w-full bg-cover bg-no-repeat"
+      className="h-full w-full bg-cover bg-no-repeat"
       style={{
         backgroundImage: `url(${devDitherUrl})`,
         // The compact variant is drawn inside a small button rather than across

@@ -60,7 +60,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const start = chrome.indexOf("<SidebarTrigger");
     const trigger = chrome.slice(start, chrome.indexOf("/>", start));
     expect(trigger).toContain("[&_svg]:size-5!");
-    expect(trigger).toContain("[&_svg]:text-white/65!");
+    expect(trigger).toContain("[&_svg]:text-sidebar-muted-foreground/80!");
+    expect(trigger).not.toContain("text-white");
+    expect(layout).toContain('className="pointer-events-auto [&_svg]:size-5!"');
   });
 
   it("draws the fork's dither on the Dev channel and leaves Nightly alone", () => {
@@ -115,6 +117,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const art = readSibling("../custom/SidebarStageDitherArt.tsx");
     expect(art).toContain("bg-cover");
     expect(art).toContain("bg-no-repeat");
+    expect(art).not.toMatch(/className="[^"]*\bstage-dither\b/u);
   });
 
   it("keeps the search and project rows fork-owned", () => {
@@ -178,6 +181,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
   it("puts the exact brand lockup on the header's trailing edge", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
+    expect(chrome).toMatch(/sidebar-brand[^"]*text-sidebar-foreground/u);
     expect(chrome).toContain("size-6 shrink-0 [image-rendering:pixelated]");
     expect(chrome).toContain("text-[0.875rem] leading-4 font-medium");
     const mark = NodeFS.readFileSync(
@@ -192,7 +196,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(chrome).toContain('environmentIdentificationMode === "pill"');
     expect(chrome).toContain('data-environment-identification="pill"');
     const pill = chrome.slice(chrome.indexOf("{pillLabel ? ("), chrome.indexOf("</Badge>"));
-    expect(pill).toContain("text-white");
+    expect(pill).toContain("bg-sidebar-control-surface");
+    expect(pill).toContain("text-sidebar-foreground");
+    expect(pill).not.toContain("text-white");
   });
 
   it("keeps the chrome-row icon tint displacing the menu button's base dim", () => {
