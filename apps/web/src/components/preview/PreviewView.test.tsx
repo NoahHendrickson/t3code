@@ -157,13 +157,28 @@ vi.mock("./PreviewChromeRow", () => ({
     onPictureInPicture?: () => void;
     pictureInPicture?: boolean;
     trailingActions?: {
-      props: { onNativePictureInPicture?: () => void };
+      props: { onNativePictureInPicture?: () => void; children?: unknown };
     };
   }) => {
     mocks.submittedUrl = props.onSubmit;
     mocks.togglePictureInPicture = props.onPictureInPicture ?? null;
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+    // The fork wraps trailingActions in a fragment (Design toggle + more menu), so the
+    // menu's props are found on whichever fragment child carries them, falling back to
+    // upstream's direct-element shape.
+    const trailingProps = props.trailingActions?.props;
+    const fragmentMenu = Array.isArray(trailingProps?.children)
+      ? (
+          trailingProps.children as Array<{
+            props?: { onNativePictureInPicture?: () => void };
+          } | null>
+        ).find((child) => child?.props?.onNativePictureInPicture)
+      : undefined;
     mocks.toggleNativePictureInPicture =
-      props.trailingActions?.props.onNativePictureInPicture ?? null;
+      fragmentMenu?.props?.onNativePictureInPicture ??
+      trailingProps?.onNativePictureInPicture ??
+      null;
+    /* fork:end fork-design-mode */
     mocks.pictureInPicturePressed = props.pictureInPicture ?? false;
     return null;
   },

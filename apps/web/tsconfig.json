@@ -41,5 +41,13 @@
     "vercel.ts",
     "test",
     "../../scripts/lib/public-config.ts"
-  ]
+  ],
+  // fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+  // The design-mode engine is its own TS island with the vendored Forge code's laxer
+  // strictness (no noUncheckedIndexedAccess/exactOptionalPropertyTypes) — see
+  // src/custom/designMode/engine/tsconfig.json. Nothing in the web project imports
+  // from engine/ (only designMode/protocol.ts crosses, and it lives outside), so the
+  // exclusion removes the island completely rather than merely hiding its errors.
+  "exclude": ["src/custom/designMode/engine"]
+  // fork:end fork-design-mode
 }

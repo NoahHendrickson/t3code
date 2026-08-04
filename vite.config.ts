@@ -46,6 +46,11 @@ export default defineConfig({
       "apps/mobile/ios/**",
       "apps/web/public/mockServiceWorker.js",
       "apps/web/src/lib/vendor/qrcodegen.ts",
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      // Vendored from NoahHendrickson/the-forge — keeps that repo's formatting so
+      // future re-syncs diff cleanly, same treatment as qrcodegen.ts above.
+      "apps/web/src/custom/designMode/engine/vendor/**",
+      /* fork:end fork-design-mode */
       "apps/mobile/uniwind-types.d.ts",
       "*.icon/**",
     ],

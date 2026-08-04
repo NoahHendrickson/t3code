@@ -54,6 +54,9 @@ import {
   useActiveBrowserRecordingTabIds,
 } from "~/browser/browserRecording";
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { ForkPreviewDesignMode } from "~/custom/designMode/ForkPreviewDesignMode";
+/* fork:end fork-design-mode */
 
 interface Props {
   threadRef: ScopedThreadRef;
@@ -640,16 +643,24 @@ export function PreviewView({ threadRef, tabId: requestedTabId, configuredUrls, 
         }
         trailingActions={
           previewBridge ? (
-            <PreviewMoreMenu
-              tabId={runtimeTabId}
-              hasWebContents={desktopOverlay?.hasWebContents ?? false}
-              zoomFactor={desktopOverlay?.zoomFactor ?? 1}
-              colorScheme={desktopOverlay?.colorScheme ?? "system"}
-              deviceToolbarVisible={viewport._tag !== "fill"}
-              onToggleDeviceToolbar={handleToggleDeviceToolbar}
-              nativePictureInPicture={desktopOverlay?.pictureInPicture ?? false}
-              onNativePictureInPicture={handleNativePictureInPicture}
-            />
+            <>
+              {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
+              <ForkPreviewDesignMode
+                runtimeTabId={runtimeTabId}
+                disabled={!tabId || isUnreachable || !desktopOverlay?.hasWebContents}
+              />
+              {/* fork:end fork-design-mode */}
+              <PreviewMoreMenu
+                tabId={runtimeTabId}
+                hasWebContents={desktopOverlay?.hasWebContents ?? false}
+                zoomFactor={desktopOverlay?.zoomFactor ?? 1}
+                colorScheme={desktopOverlay?.colorScheme ?? "system"}
+                deviceToolbarVisible={viewport._tag !== "fill"}
+                onToggleDeviceToolbar={handleToggleDeviceToolbar}
+                nativePictureInPicture={desktopOverlay?.pictureInPicture ?? false}
+                onNativePictureInPicture={handleNativePictureInPicture}
+              />
+            </>
           ) : null
         }
       />
