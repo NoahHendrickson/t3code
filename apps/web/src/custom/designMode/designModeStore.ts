@@ -78,13 +78,15 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
     set((state) => {
       const current = state.byTabId[runtimeTabId] ?? EMPTY_TAB_STATE;
       if (current.enabled === enabled) return state;
-      // Toggling off keeps drafts alive in the guest but the panel's world view resets;
-      // fresh selection/layers messages rebuild it on the next activation.
+      // Toggling off keeps drafts alive in the guest but the panel's world view resets
+      // symmetrically — selection, layers AND tokens; the engine re-emits all three on
+      // the next activation, so nothing stale can survive tab reuse or navigations.
       return patchTab(state, runtimeTabId, {
         enabled,
         selection: [],
         comparing: false,
         layers: null,
+        tokens: null,
       });
     }),
   setTagged: (runtimeTabId, tagged) =>

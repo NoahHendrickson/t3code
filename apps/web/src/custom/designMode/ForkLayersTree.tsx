@@ -31,10 +31,10 @@ function LayerRow({
   const isSelected = selectedIds.has(node.id);
   return (
     <>
+      {/* Plain divs by design: role="tree"/"treeitem" would promise the ARIA keyboard
+          contract (arrow nav, focusable rows) this v1 doesn't implement — real keyboard
+          navigation is the follow-up that earns the roles back. */}
       <div
-        role="treeitem"
-        aria-selected={isSelected ? "true" : "false"}
-        aria-expanded={hasChildren ? (isExpanded ? "true" : "false") : undefined}
         className={cn(
           "flex h-6 cursor-pointer items-center gap-0.5 rounded pe-1 text-xs",
           isSelected
@@ -104,7 +104,6 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
         <span className="text-xs font-medium text-muted-foreground">Layers</span>
       </header>
       <div
-        role="tree"
         aria-label="Page layers"
         className="min-h-0 flex-1 overflow-y-auto p-1.5"
         onMouseLeave={() => designModeBridge.hoverElement(runtimeTabId, null)}
@@ -122,7 +121,7 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
         ))}
         {tab.layers.truncated ? (
           <p className="px-1.5 py-1 text-[10px] text-muted-foreground/70">
-            Tree truncated — showing the first 400 elements.
+            Tree truncated — deeper elements aren&apos;t shown.
           </p>
         ) : null}
       </div>

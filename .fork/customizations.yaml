@@ -1555,6 +1555,8 @@
     - apps/web/src/custom/designMode/engine/bridge.ts
     - apps/web/src/custom/designMode/engine/headlessOverlay.ts
     - apps/web/src/custom/designMode/engine/headlessMode.ts
+    - apps/web/src/custom/designMode/engine/idRegistry.ts
+    - apps/web/src/custom/designMode/engine/layersSession.ts
     - apps/web/src/custom/designMode/engine/snapshot.ts
     - apps/web/src/custom/designMode/engine/tsconfig.json
     # The reachable vendored Forge client leaves (one directory entry; the

@@ -24,15 +24,17 @@ export const DESIGN_MODE_CONSOLE_PREFIX = "__t3-design-mode__:";
 /** Name of the guest-global handle the engine installs: `window.__T3_DESIGN_MODE__`. */
 export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
 
-/** The computed-style properties the native panel renders, in section order. The guest
- * snapshot carries exactly these keys (engine/snapshot.ts); the panel reads them by name. */
+/** The computed-style properties the native panel renders (READ keys), in section
+ * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
+ * reads them by name. Writes may additionally target the shorthands below — the split
+ * keeps the snapshot honest (no write-only keys serialized per selection) while the
+ * writable union keeps every panel edit type-checked end to end. */
 export const DESIGN_MODE_STYLE_KEYS = [
   "display",
   "width",
   "height",
   "flex-direction",
   "flex-wrap",
-  "gap",
   "row-gap",
   "column-gap",
   "justify-content",
@@ -56,9 +58,6 @@ export const DESIGN_MODE_STYLE_KEYS = [
   "border-top-width",
   "border-top-style",
   "border-top-color",
-  "border-width",
-  "border-style",
-  "border-color",
   "font-size",
   "font-weight",
   "line-height",
@@ -70,6 +69,19 @@ export const DESIGN_MODE_STYLE_KEYS = [
 ] as const;
 
 export type DesignModeStyleKey = (typeof DESIGN_MODE_STYLE_KEYS)[number];
+
+/** WRITE-only shorthands: the panel reads longhands (border-top-width, row-gap) for
+ * display but writes the shorthand so the change-request builder collapses cleanly. */
+export const DESIGN_MODE_WRITE_ONLY_KEYS = [
+  "gap",
+  "border-width",
+  "border-style",
+  "border-color",
+] as const;
+
+export type DesignModeWritableKey =
+  | DesignModeStyleKey
+  | (typeof DESIGN_MODE_WRITE_ONLY_KEYS)[number];
 
 /** One selected element as the native panel sees it. `id` is minted by the guest engine
  * and is only meaningful for the current selection — commands referencing a stale id
@@ -147,7 +159,7 @@ export interface DesignModeGuestHandle {
   setActive(on: boolean): void;
   isActive(): boolean;
   /** Applies one CSS draft to every listed element id (multi-select edits fan out here). */
-  applyDraft(ids: readonly number[], property: string, value: string): void;
+  applyDraft(ids: readonly number[], property: DesignModeWritableKey, value: string): void;
   discardAll(): void;
   /** Flips every draft to its "before" (true) or "after" (false) rendering. */
   compareAll(on: boolean): void;

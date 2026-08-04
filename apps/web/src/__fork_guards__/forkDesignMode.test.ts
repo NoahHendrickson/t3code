@@ -199,6 +199,76 @@ describe("fork guard: design mode", () => {
     ).toBeNull();
   });
 
+  it("round-trips and rejects tokens messages", () => {
+    const tokens = {
+      type: "tokens",
+      colors: [{ name: "red-500", value: "oklch(0.637 0.237 25.331)" }],
+      spacingBasePx: 4,
+    };
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(tokens)}`),
+    ).toEqual(tokens);
+    // null spacing base = "not a Tailwind project" — a valid shape, not a rejection.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","colors":[],"spacingBasePx":null}`,
+      ),
+    ).toEqual({ type: "tokens", colors: [], spacingBasePx: null });
+    // Rejections: malformed token entry, stringly-typed base, missing colors.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","colors":[{"name":"red-500"}],"spacingBasePx":4}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","colors":[],"spacingBasePx":"4"}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","spacingBasePx":4}`,
+      ),
+    ).toBeNull();
+  });
+
+  it("round-trips and rejects layers messages, including the depth bound", () => {
+    const layers = {
+      type: "layers",
+      roots: [
+        {
+          id: 1,
+          tag: "div",
+          label: "Frame",
+          children: [{ id: 2, tag: "button", label: "Save", children: [] }],
+        },
+      ],
+      truncated: false,
+    };
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(layers)}`),
+    ).toEqual(layers);
+    // Rejections: missing label, missing truncated, one bad child poisons the message.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","children":[]}],"truncated":false}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[]}`),
+    ).toBeNull();
+    // Depth bound: a 40-deep chain exceeds the 32 guard and rejects rather than recursing.
+    let deep: Record<string, unknown> = { id: 40, tag: "div", label: "leaf", children: [] };
+    for (let index = 39; index >= 1; index -= 1) {
+      deep = { id: index, tag: "div", label: "Frame", children: [deep] };
+    }
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [deep], truncated: false })}`,
+      ),
+    ).toBeNull();
+  });
+
   it("decodes complete design-change payloads only", () => {
     const payload = {
       markdown: "Change button padding",

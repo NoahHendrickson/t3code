@@ -17,9 +17,11 @@ import type {
   DesignChangeRequestPayload,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
+  DesignModeWritableKey,
 } from "../protocol";
 import type { HeadlessOverlay } from "./headlessOverlay";
-import { buildLayerTree, type LayerNode } from "./vendor/layers";
+import { ElementIdRegistry } from "./idRegistry";
+import { LayersSession } from "./layersSession";
 import { basename, findTaggedElement, type TaggedElement } from "./vendor/source";
 import { DraftStore } from "./vendor/drafts";
 import { isEditable } from "./vendor/canvas";
@@ -38,14 +40,6 @@ import {
 
 /** Rapid edits (e.g. dragging a number field) within this window reuse the first snapshot. */
 const RIPPLE_DEBOUNCE_MS = 300;
-
-/** Quiet-window for MutationObserver-driven layers rebuilds — HMR re-renders land as
- * bursts (same rationale as the vendored LayersTree's REFRESH_DEBOUNCE_MS). */
-const LAYERS_DEBOUNCE_MS = 250;
-
-/** Serialization cap for one layers message — a deep page must not turn every mutation
- * into a multi-hundred-KB console line. The host renders a truncation note. */
-const LAYERS_NODE_CAP = 400;
 
 /** Arrow keys → the direction vocabulary MoveDrag speaks (P3 ratified #2). A lookup, not a
  * switch, so `ARROW_DIRS[e.key]` doubles as the "is this an arrow at all" test. */
@@ -76,32 +70,11 @@ export class HeadlessDesignMode {
   private handles: ResizeHandles;
   readonly drafts: DraftStore;
 
-  /** Selection-id registry for host commands. Ids are stable per element (WeakMap side),
-   * and `ids` is pruned to the live selection on every setSelection so detached elements
-   * cannot leak through the registry. `layerIds` is the layers tree's parallel registry,
-   * rebuilt per emit; both share the WeakMap so tree and panel agree on every id. */
-  private ids = new Map<number, TaggedElement>();
-  private layerIds = new Map<number, TaggedElement>();
-  private idOf = new WeakMap<TaggedElement, number>();
-  private nextId = 1;
-
-  private layersObserver: MutationObserver | null = null;
-  private layersTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastLayersJson = "";
-
-  private mintId(el: TaggedElement): number {
-    let id = this.idOf.get(el);
-    if (id === undefined) {
-      id = this.nextId++;
-      this.idOf.set(el, id);
-    }
-    return id;
-  }
-
-  private resolveId(id: number): TaggedElement | null {
-    const el = this.ids.get(id) ?? this.layerIds.get(id);
-    return el && el.isConnected ? el : null;
-  }
+  /** The one id space selection snapshots and layers nodes share — every host command
+   * resolves here, so tree, panel, and outlines can never disagree about an id. */
+  private readonly registry = new ElementIdRegistry();
+  /** The layers subsystem (observer, debounce, cap, change gate) — see layersSession.ts. */
+  private readonly layers = new LayersSession(this.registry);
 
   /** Emit-on-change guard for the drafts count — drafts.onChange fires per scrub tick, and
    * each console.log line crosses the webview boundary; the count itself changes rarely. */
@@ -166,6 +139,7 @@ export class HeadlessDesignMode {
       if (this.draftSyncTimer) clearTimeout(this.draftSyncTimer);
       this.draftSyncTimer = setTimeout(() => this.flushDraftSync(), RIPPLE_DEBOUNCE_MS);
     };
+    this.layers.onLayers = (roots, truncated) => this.onLayers?.(roots, truncated);
   }
 
   private emitDraftsCount(): void {
@@ -193,10 +167,10 @@ export class HeadlessDesignMode {
   /** Applies one CSS draft to every listed selection id — the native panel's edit path.
    * Ripple bookkeeping mirrors the in-page panel's before/after hooks so scrub bursts
    * keep their drag-start baselines. */
-  applyDraft(idList: readonly number[], property: string, value: string): void {
+  applyDraft(idList: readonly number[], property: DesignModeWritableKey, value: string): void {
     const els = idList
-      .map((id) => this.ids.get(id))
-      .filter((el): el is TaggedElement => el !== undefined && el.isConnected);
+      .map((id) => this.registry.resolve(id))
+      .filter((el): el is TaggedElement => el !== null);
     if (els.length === 0) return;
     for (const el of els) this.handleBeforeEdit(el);
     for (const el of els) this.drafts.apply(el, property, value);
@@ -264,16 +238,7 @@ export class HeadlessDesignMode {
       window.addEventListener("resize", this.onReflow, { passive: true });
       this.moveDrag.start();
       this.handles.start();
-      // Layers tree: observer exists only while active (zero idle overhead). It can never
-      // feed back on itself — the overlay hangs off documentElement, outside body.
-      // characterData included so our own inline text edits relabel their rows.
-      this.layersObserver = new MutationObserver(this.scheduleLayersEmit);
-      this.layersObserver.observe(document.body, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
-      this.emitLayers();
+      this.layers.start();
       this.persist();
     } else {
       this.textEdit.finish(); // commit any in-progress inline text edit before the listeners go
@@ -286,12 +251,7 @@ export class HeadlessDesignMode {
       window.removeEventListener("resize", this.onReflow);
       this.moveDrag.stop();
       this.handles.stop();
-      this.layersObserver?.disconnect();
-      this.layersObserver = null;
-      if (this.layersTimer) clearTimeout(this.layersTimer);
-      this.layersTimer = null;
-      this.layerIds.clear();
-      this.lastLayersJson = "";
+      this.layers.stop();
       this.clearNoDrop();
       if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
       if (this.reflowRaf) cancelAnimationFrame(this.reflowRaf);
@@ -469,66 +429,23 @@ export class HeadlessDesignMode {
   /** Mints/reuses ids for the live selection, prunes the registry to it, and pushes
    * fresh snapshots to the host — the native panel's whole world view. */
   private emitSelection(): void {
-    this.ids.clear();
-    const snapshots = this.selection.map((el) => {
-      const id = this.mintId(el);
-      this.ids.set(id, el);
-      return buildElementSnapshot(el, id);
-    });
+    this.registry.retainSelection(this.selection);
+    const snapshots = this.selection.map((el) => buildElementSnapshot(el, this.registry.mint(el)));
     this.onSelection?.(snapshots);
   }
 
-  // ── Layers tree ──────────────────────────────────────────────────────────────────────
-
-  private serializeLayers(nodes: LayerNode[], budget: { left: number }): DesignModeLayerNode[] {
-    const out: DesignModeLayerNode[] = [];
-    for (const node of nodes) {
-      if (budget.left <= 0) break;
-      budget.left -= 1;
-      const id = this.mintId(node.el);
-      this.layerIds.set(id, node.el);
-      out.push({
-        id,
-        tag: node.el.tagName.toLowerCase(),
-        label: node.label,
-        children: this.serializeLayers(node.children, budget),
-      });
-    }
-    return out;
-  }
-
-  /** Rebuilds + emits the curated layers tree; change-gated so mutation bursts that leave
-   * the tree's shape (and labels) identical cost one JSON compare, not a bridge message. */
-  private emitLayers(): void {
-    if (!this.active) return;
-    this.layerIds.clear();
-    const budget = { left: LAYERS_NODE_CAP };
-    const roots = this.serializeLayers(buildLayerTree(document.body), budget);
-    const truncated = budget.left <= 0;
-    const json = JSON.stringify(roots);
-    if (json === this.lastLayersJson) return;
-    this.lastLayersJson = json;
-    this.onLayers?.(roots, truncated);
-  }
-
-  private scheduleLayersEmit = (): void => {
-    if (this.layersTimer) clearTimeout(this.layersTimer);
-    this.layersTimer = setTimeout(() => {
-      this.layersTimer = null;
-      this.emitLayers();
-    }, LAYERS_DEBOUNCE_MS);
-  };
-
   /** Layers-row click — same selection funnel as a canvas click. */
   selectById(id: number): void {
-    const el = this.resolveId(id);
+    const el = this.registry.resolve(id);
     if (el) this.select(el);
   }
 
-  /** Layers-row hover — drives the same hover outline the pointer does. */
+  /** Layers-row hover — drives the same hover outline the pointer does, including the
+   * pointer path's rule that selected elements get no hover outline over their
+   * selection chrome. */
   hoverById(id: number | null): void {
-    const el = id === null ? null : this.resolveId(id);
-    if (el) this.overlay.showOutline(el.getBoundingClientRect());
+    const el = id === null ? null : this.registry.resolve(id);
+    if (el && !this.selection.includes(el)) this.overlay.showOutline(el.getBoundingClientRect());
     else this.overlay.hideOutline();
   }
 

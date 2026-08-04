@@ -7,7 +7,7 @@ import { toastManager } from "~/components/ui/toast";
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
-import type { DesignModeElementSnapshot, DesignModeStyleKey } from "../protocol";
+import type { DesignModeElementSnapshot, DesignModeWritableKey } from "../protocol";
 import { ColorField, PanelSection, ScrubField } from "./DesignPanelFields";
 import { AlignMatrix, SegmentField, SelectRow } from "./DesignPanelLayoutControls";
 
@@ -16,7 +16,7 @@ const DISPLAY_OPTIONS = ["block", "flex", "inline-flex", "grid", "inline-block"]
 const BORDER_STYLES = ["none", "solid", "dashed", "dotted"] as const;
 const ALIGN_SELF_OPTIONS = ["auto", "flex-start", "center", "flex-end", "stretch"] as const;
 
-type ApplyEdit = (property: DesignModeStyleKey, value: string) => void;
+type ApplyEdit = (property: DesignModeWritableKey, value: string) => void;
 
 /** Uniform radius plus an expandable per-corner grid — corner state resets with the
  * keyed fields container, like every other field-local state. */
@@ -81,6 +81,45 @@ function RadiusSection({
   );
 }
 
+const SIDES = [
+  ["T", "top"],
+  ["R", "right"],
+  ["B", "bottom"],
+  ["L", "left"],
+] as const;
+
+/** The four per-side scrubs of a box property — Padding and Margin share it, and the
+ * next TRBL-shaped section is a one-liner instead of another 4-field clone block. */
+function SideFields({
+  prefix,
+  styles,
+  apply,
+  tokenBasePx,
+  min,
+}: {
+  prefix: "padding" | "margin";
+  styles: DesignModeElementSnapshot["styles"];
+  apply: ApplyEdit;
+  tokenBasePx: number | null;
+  min?: number;
+}) {
+  const title = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+  return SIDES.map(([label, side]) => {
+    const key = `${prefix}-${side}` as const;
+    return (
+      <ScrubField
+        key={key}
+        label={label}
+        title={`${title} ${side}`}
+        tokenBasePx={tokenBasePx}
+        value={styles[key]}
+        {...(min !== undefined ? { min } : {})}
+        onEdit={(v) => apply(key, v)}
+      />
+    );
+  });
+}
+
 interface Props {
   runtimeTabId: string | null;
   threadRef: ScopedThreadRef;
@@ -100,7 +139,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
   const ids = tab.selection.map((element) => element.id);
 
   const apply = useCallback(
-    (property: DesignModeStyleKey, value: string) => {
+    (property: DesignModeWritableKey, value: string) => {
       if (!runtimeTabId || ids.length === 0) return;
       designModeBridge.applyDraft(runtimeTabId, ids, property, value);
     },
@@ -275,68 +314,21 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
           </PanelSection>
 
           <PanelSection title="Padding" className="grid-cols-2">
-            <ScrubField
-              label="T"
-              title="Padding top"
+            <SideFields
+              prefix="padding"
+              styles={first.styles}
+              apply={apply}
               tokenBasePx={spacingBase}
-              value={first.styles["padding-top"]}
               min={0}
-              onEdit={(v) => apply("padding-top", v)}
-            />
-            <ScrubField
-              label="R"
-              title="Padding right"
-              tokenBasePx={spacingBase}
-              value={first.styles["padding-right"]}
-              min={0}
-              onEdit={(v) => apply("padding-right", v)}
-            />
-            <ScrubField
-              label="B"
-              title="Padding bottom"
-              tokenBasePx={spacingBase}
-              value={first.styles["padding-bottom"]}
-              min={0}
-              onEdit={(v) => apply("padding-bottom", v)}
-            />
-            <ScrubField
-              label="L"
-              title="Padding left"
-              tokenBasePx={spacingBase}
-              value={first.styles["padding-left"]}
-              min={0}
-              onEdit={(v) => apply("padding-left", v)}
             />
           </PanelSection>
 
           <PanelSection title="Margin" className="grid-cols-2">
-            <ScrubField
-              label="T"
-              title="Margin top"
+            <SideFields
+              prefix="margin"
+              styles={first.styles}
+              apply={apply}
               tokenBasePx={spacingBase}
-              value={first.styles["margin-top"]}
-              onEdit={(v) => apply("margin-top", v)}
-            />
-            <ScrubField
-              label="R"
-              title="Margin right"
-              tokenBasePx={spacingBase}
-              value={first.styles["margin-right"]}
-              onEdit={(v) => apply("margin-right", v)}
-            />
-            <ScrubField
-              label="B"
-              title="Margin bottom"
-              tokenBasePx={spacingBase}
-              value={first.styles["margin-bottom"]}
-              onEdit={(v) => apply("margin-bottom", v)}
-            />
-            <ScrubField
-              label="L"
-              title="Margin left"
-              tokenBasePx={spacingBase}
-              value={first.styles["margin-left"]}
-              onEdit={(v) => apply("margin-left", v)}
             />
           </PanelSection>
 

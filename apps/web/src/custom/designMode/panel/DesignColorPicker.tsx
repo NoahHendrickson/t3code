@@ -16,6 +16,21 @@ export function rgbToHex(value: string): string | null {
   return `#${channel(match[1])}${channel(match[2])}${channel(match[3])}`;
 }
 
+/** Resolves ANY css color (oklch included — Tailwind v4's common emit) to "#rrggbb"
+ * via canvas fillStyle serialization, which normalizes into the canvas's sRGB space.
+ * Returns null for invalid colors and non-opaque results it can't reduce to hex. */
+export function cssColorToHex(value: string): string | null {
+  const direct = rgbToHex(value);
+  if (direct) return direct;
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return null;
+  ctx.fillStyle = "#000000";
+  ctx.fillStyle = value;
+  const serialized = ctx.fillStyle;
+  if (/^#[0-9a-f]{6}$/iu.test(serialized)) return serialized;
+  return rgbToHex(serialized);
+}
+
 interface Hsv {
   readonly h: number; // 0..360
   readonly s: number; // 0..1
@@ -108,7 +123,7 @@ interface Props {
  * at send time). Replaces the bare native color input.
  */
 export function DesignColorPicker({ value, tokens, onPick, triggerAriaLabel }: Props) {
-  const seededHex = rgbToHex(value) ?? (value.startsWith("#") ? value : null);
+  const seededHex = value.startsWith("#") ? value : cssColorToHex(value);
   const [hsv, setHsv] = useState<Hsv>(() => hexToHsv(seededHex ?? "") ?? { h: 0, s: 0, v: 0.5 });
   const [hexText, setHexText] = useState(seededHex ?? "#808080");
 
@@ -201,10 +216,13 @@ export function DesignColorPicker({ value, tokens, onPick, triggerAriaLabel }: P
                     title={token.name}
                     onClick={() => {
                       onPick(token.value);
-                      const hex = hexToHsv(token.value);
-                      if (hex) {
-                        setHsv(hex);
-                        setHexText(token.value);
+                      // Token values are commonly oklch() — resolve to hex so the SV
+                      // area, hue bar, and hex field follow the swatch that was picked.
+                      const resolvedHex = cssColorToHex(token.value);
+                      const resolvedHsv = resolvedHex ? hexToHsv(resolvedHex) : null;
+                      if (resolvedHex && resolvedHsv) {
+                        setHsv(resolvedHsv);
+                        setHexText(resolvedHex);
                       }
                     }}
                     className={cn(

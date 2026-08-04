@@ -101,6 +101,12 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
             truncated: message.truncated,
           });
           return;
+        default: {
+          // Exhaustiveness: a new DesignModeEngineMessage variant must fail to compile
+          // here instead of being silently dropped.
+          const _exhaustive: never = message;
+          return _exhaustive;
+        }
       }
     };
 
