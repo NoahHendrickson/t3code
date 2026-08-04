@@ -1,0 +1,125 @@
+/**
+ * The wire contract between the T3 web app (host) and the headless design-mode engine
+ * injected into the preview webview's guest page. Two channels, both fork-owned:
+ *
+ * - Guest → host: the engine `console.log`s one line per message, prefixed with
+ *   `DESIGN_MODE_CONSOLE_PREFIX` and carrying a JSON-encoded `DesignModeEngineMessage`.
+ *   The host listens on the webview element's `console-message` DOM event — event-driven,
+ *   no polling, and available to the renderer with no desktop-process changes.
+ * - Host → guest: `webview.executeJavaScript` against the `window.__T3_DESIGN_MODE__`
+ *   handle the engine installs at boot (`DESIGN_MODE_GLOBAL`, shape below). Commands are
+ *   fire-and-forget except `buildSend`, whose JSON-serializable return value rides the
+ *   executeJavaScript promise back to the host.
+ *
+ * The panel UI itself is NATIVE T3 React (custom/designMode/panel/) — the guest keeps only
+ * what must touch the page: selection chrome, inline-style drafts, gestures, inspection,
+ * and the change-request builder.
+ *
+ * This module is imported by BOTH the host React code (web tsconfig) and the engine bundle
+ * (engine tsconfig) — keep it dependency-free and strict-clean under both projects.
+ */
+
+export const DESIGN_MODE_CONSOLE_PREFIX = "__t3-design-mode__:";
+
+/** Name of the guest-global handle the engine installs: `window.__T3_DESIGN_MODE__`. */
+export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
+
+/** The computed-style properties the native panel renders, in section order. The guest
+ * snapshot carries exactly these keys (engine/snapshot.ts); the panel reads them by name. */
+export const DESIGN_MODE_STYLE_KEYS = [
+  "display",
+  "width",
+  "height",
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+  "margin-top",
+  "margin-right",
+  "margin-bottom",
+  "margin-left",
+  "border-radius",
+  "font-size",
+  "font-weight",
+  "line-height",
+  "color",
+  "background-color",
+  "opacity",
+] as const;
+
+export type DesignModeStyleKey = (typeof DESIGN_MODE_STYLE_KEYS)[number];
+
+/** One selected element as the native panel sees it. `id` is minted by the guest engine
+ * and is only meaningful for the current selection — commands referencing a stale id
+ * no-op. `sourceLabel` is "file.tsx:12" when the element carries a data-dc-source tag. */
+export interface DesignModeElementSnapshot {
+  readonly id: number;
+  readonly tag: string;
+  readonly sourceLabel: string | null;
+  readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
+}
+
+export type DesignModeEngineMessage =
+  /** Engine finished booting. `tagged` reports whether the page carries any
+   * `data-dc-source` attributes (the forge-mode dev plugin's JSX tags) — without them
+   * selection is inert and the host shows the setup hint instead. */
+  | { readonly type: "ready"; readonly tagged: boolean }
+  /** Mirrors every setActive transition (Esc inside the page exits too). */
+  | { readonly type: "state"; readonly active: boolean }
+  /** The in-page selection changed; empty array means deselected. */
+  | { readonly type: "selection"; readonly elements: readonly DesignModeElementSnapshot[] }
+  /** The draft count changed (emitted on change only, never per scrub tick). */
+  | { readonly type: "drafts"; readonly count: number };
+
+/** One element's worth of a built change request, compact enough for the composer's
+ * attachment pill: "div · App.tsx:15" plus per-change deltas like
+ * "padding-top 24px → 32px". */
+export interface DesignChangeElementSummary {
+  readonly tag: string;
+  readonly sourceLabel: string | null;
+  readonly deltas: readonly string[];
+}
+
+export interface DesignChangeRequestPayload {
+  readonly markdown: string;
+  readonly elementCount: number;
+  readonly elements: readonly DesignChangeElementSummary[];
+}
+
+/** The command surface `boot.ts` installs at `window.__T3_DESIGN_MODE__`. The host calls
+ * these through `webview.executeJavaScript` (designModeBridge.ts) — every argument and
+ * return value must stay JSON-serializable. */
+export interface DesignModeGuestHandle {
+  setActive(on: boolean): void;
+  isActive(): boolean;
+  /** Applies one CSS draft to every listed element id (multi-select edits fan out here). */
+  applyDraft(ids: readonly number[], property: string, value: string): void;
+  discardAll(): void;
+  /** Flips every draft to its "before" (true) or "after" (false) rendering. */
+  compareAll(on: boolean): void;
+  /** Builds the standalone change-request markdown plus pill summaries; null when there
+   * is nothing to send. */
+  buildSend(): DesignChangeRequestPayload | null;
+  destroy(): void;
+}
+
+/** Parses one console-message line; null when the line is not a design-mode message. */
+export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMessage | null {
+  if (!line.startsWith(DESIGN_MODE_CONSOLE_PREFIX)) return null;
+  try {
+    const value: unknown = JSON.parse(line.slice(DESIGN_MODE_CONSOLE_PREFIX.length));
+    if (typeof value !== "object" || value === null) return null;
+    const message = value as { readonly type?: unknown };
+    if (
+      message.type === "ready" ||
+      message.type === "state" ||
+      message.type === "selection" ||
+      message.type === "drafts"
+    ) {
+      return value as DesignModeEngineMessage;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

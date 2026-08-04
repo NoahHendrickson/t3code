@@ -78,6 +78,10 @@ import {
 import { useComposerPathSearch } from "../../lib/composerPathSearchState";
 import { type ElementContextDraft } from "../../lib/elementContext";
 import { ComposerPendingElementContexts } from "./ComposerPendingElementContexts";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { ForkComposerDesignChanges } from "~/custom/designMode/ForkComposerDesignChanges";
+import { useForkPendingDesignChangeCount } from "~/custom/designMode/designChangeDraftStore";
+/* fork:end fork-design-mode */
 import { ComposerPendingReviewComments } from "./ComposerPendingReviewComments";
 import { ComposerPreviewAnnotationCards } from "./ComposerPreviewAnnotationCards";
 import {
@@ -1034,6 +1038,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // ------------------------------------------------------------------
   // Derived: composer send state
   // ------------------------------------------------------------------
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+     Pending design-change attachments count toward sendability (like annotations), so a
+     pill-only message enables the send button. */
+  const forkPendingDesignChangeCount = useForkPendingDesignChangeCount(composerDraftTarget);
+  /* fork:end fork-design-mode */
   const composerSendState = useMemo(
     () =>
       deriveComposerSendState({
@@ -1043,7 +1052,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         elementContextCount:
           composerElementContexts.length +
           composerPreviewAnnotations.length +
-          composerReviewComments.length,
+          composerReviewComments.length +
+          /* fork:begin fork-design-mode */
+          forkPendingDesignChangeCount,
+        /* fork:end fork-design-mode */
       }),
     [
       composerElementContexts.length,
@@ -1051,6 +1063,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       composerPreviewAnnotations.length,
       composerReviewComments.length,
       composerTerminalContexts,
+      /* fork:begin fork-design-mode */
+      forkPendingDesignChangeCount,
+      /* fork:end fork-design-mode */
       prompt,
     ],
   );
@@ -3140,6 +3155,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     className="mb-3"
                   />
                 )}
+
+              {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
+              {!isComposerCollapsedMobile &&
+                !isComposerApprovalState &&
+                pendingUserInputs.length === 0 && (
+                  <ForkComposerDesignChanges target={composerDraftTarget} className="mb-3" />
+                )}
+              {/* fork:end fork-design-mode */}
 
               {!isComposerCollapsedMobile &&
                 !isComposerApprovalState &&

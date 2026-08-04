@@ -164,6 +164,9 @@ import {
   projectScriptIdFromCommand,
 } from "~/projectScripts";
 import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
+/* fork:end fork-design-mode */
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
 import { NO_PROVIDER_MODEL_SELECTION } from "../providerInstances";
 import { useClientSettings, useEnvironmentSettings } from "../hooks/useSettings";
@@ -4598,7 +4601,12 @@ function ChatViewContent(props: ChatViewProps) {
       elementContextCount:
         composerElementContexts.length +
         composerPreviewAnnotations.length +
-        composerReviewComments.length,
+        composerReviewComments.length +
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+           Pending design-change attachments make an otherwise-empty composer sendable,
+           same as annotations. */
+        forkDesignChanges.count({ environmentId, threadId: activeThread.id }),
+      /* fork:end fork-design-mode */
     });
     if (showPlanFollowUpPrompt && activeProposedPlan) {
       const followUp = resolvePlanFollowUpSubmission({
@@ -4706,6 +4714,15 @@ function ChatViewContent(props: ChatViewProps) {
       messageTextWithPreviewAnnotations,
       composerReviewCommentsSnapshot,
     );
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+       Design-change attachments append their full change-request markdown here (the
+       composer only ever showed the pill); cleared below once the turn start succeeds. */
+    const forkDesignChangeRef = { environmentId, threadId: threadIdForSend };
+    const messageTextForSendWithDesignChanges = forkDesignChanges.appendToPrompt(
+      forkDesignChangeRef,
+      messageTextForSend,
+    );
+    /* fork:end fork-design-mode */
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
     const outgoingMessageText = formatOutgoingPrompt({
@@ -4713,7 +4730,9 @@ function ChatViewContent(props: ChatViewProps) {
       model: ctxSelectedModel,
       models: ctxSelectedProviderModels,
       effort: ctxSelectedPromptEffort,
-      text: messageTextForSend || IMAGE_ONLY_BOOTSTRAP_PROMPT,
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      text: messageTextForSendWithDesignChanges || IMAGE_ONLY_BOOTSTRAP_PROMPT,
+      /* fork:end fork-design-mode */
     });
     const turnAttachmentsPromise = Promise.all(
       composerImagesSnapshot.map(async (image) => ({
@@ -4948,6 +4967,11 @@ function ChatViewContent(props: ChatViewProps) {
       );
       resetLocalDispatch();
     }
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+       The design-change attachments rode the sent message; a failed send keeps the
+       pills so nothing is lost. */
+    if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef);
+    /* fork:end fork-design-mode */
   };
 
   const onInterrupt = async () => {

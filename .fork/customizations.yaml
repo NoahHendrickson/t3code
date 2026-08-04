@@ -1494,3 +1494,90 @@
     - infra/relay/scripts/deploy.ts
   verify:
     - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts
+
+- id: fork-design-mode
+  intent: >
+    The in-app preview browser carries a Figma-style design mode, ported from
+    NoahHendrickson/the-forge, with a NATIVE properties panel. A Design
+    toggle in the preview chrome row (desktop only, next to the three-dot
+    menu) injects a self-contained HEADLESS engine bundle into the previewed
+    page via webview.executeJavaScript — the guest keeps only what must touch
+    the page (selection outlines, hover, inline-style drafts, structural
+    verbs: inline text edit, drag-to-reorder, 8-point resize, delete/nudge,
+    layout ripple, sessionStorage persistence) and pushes selection snapshots
+    (computed styles per protocol.ts DESIGN_MODE_STYLE_KEYS) up over
+    console-message lines prefixed __t3-design-mode__:. The panel is T3
+    React (panel/ForkDesignPanel.tsx), docked as a column beside the browser
+    surface inside PreviewView: size, padding, margin, radius, typography,
+    fill and opacity controls with scrub-to-edit fields, driving the guest
+    through the window.__T3_DESIGN_MODE__ command handle
+    (designModeBridge.ts, fire-and-forget except buildSend). Edits preview
+    as inline styles and never touch source. Send delivers as a composer
+    ATTACHMENT, never prompt text: the panel stores the built request in
+    designChangeDraftStore, the composer renders it as an inline pill
+    (element + compact delta, × to discard, tooltip shows the markdown),
+    pending pills count toward sendability so a pill-only message sends,
+    and ChatView's fenced send path appends the full deterministic
+    token-aware change-request markdown to the outgoing message inside
+    <design_change_request> blocks — cleared only when the turn start
+    succeeds (T3 threads ARE the delivery surface — the Forge's own chat
+    feed, embedded sessions, MCP queue, watcher, verifier and every
+    /__the-forge/* endpoint are deliberately not ported, and the engine
+    must stay free of network calls). The host re-injects on dom-ready
+    while the mode is on, so navigations and dev-server reloads keep the
+    engine and its drafts. Element→source mapping needs the
+    previewed project to run forge-mode's dev-only JSX tagging
+    (data-dc-source); untagged pages get a toast with a one-click "ask the
+    agent to set it up" handoff. engine/vendor/** is vendored Forge client
+    code: it keeps the Forge's own formatting (fmt-ignored at the root
+    config, same treatment as qrcodegen.ts), carries t3-fork-marked local
+    edits, and is excluded from the web TS project in favor of its own
+    tsconfig island; the engine is bundled to an injectable IIFE string by
+    the fork:design-mode-engine Vite plugin as virtual:fork-design-mode-engine.
+  tier: 4
+  files:
+    - apps/web/src/custom/designMode/protocol.ts
+    - apps/web/src/custom/designMode/designModeStore.ts
+    - apps/web/src/custom/designMode/designModeBridge.ts
+    - apps/web/src/custom/designMode/designChangeDraftStore.ts
+    - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
+    - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
+    - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
+    - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx
+    - apps/web/src/custom/designMode/engineVirtual.d.ts
+    - apps/web/src/custom/designMode/engine/boot.ts
+    - apps/web/src/custom/designMode/engine/bridge.ts
+    - apps/web/src/custom/designMode/engine/headlessMode.ts
+    - apps/web/src/custom/designMode/engine/snapshot.ts
+    - apps/web/src/custom/designMode/engine/tsconfig.json
+    # The vendored Forge client (one directory entry — ~40 modules; the
+    # custom/ directory walk already lints it, and its own tsconfig checks it).
+    - apps/web/src/custom/designMode/engine/vendor
+    - apps/web/fork/vitePluginForkDesignMode.ts
+  shadows: []
+  watch:
+    # The one UI mount: fenced import + <ForkPreviewDesignMode> in the chrome
+    # row's trailingActions slot.
+    - apps/web/src/components/preview/PreviewView.tsx
+    # Fenced mock adjustment: trailingActions is a fragment (toggle + menu)
+    # under the fork, so the mock finds the menu's props on a fragment child.
+    - apps/web/src/components/preview/PreviewView.test.tsx
+    # Fenced attachment-pill row (ForkComposerDesignChanges) beside the
+    # element-context chips. Also fenced under fork-composer-shell.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Three fenced hunks in onSend: pending design changes count toward
+    # sendability, their markdown is appended to the outgoing message text,
+    # and they clear only once the turn start succeeds.
+    - apps/web/src/components/ChatView.tsx
+    # Fenced plugin import + registration of fork:design-mode-engine.
+    - apps/web/vite.config.ts
+    # Fenced exclude of the engine TS island.
+    - apps/web/tsconfig.json
+    # Fenced fmt ignore for engine/vendor/** (keeps the Forge's formatting).
+    - vite.config.ts
+    # Unfenced (strict JSON): the esbuild devDependency the engine bundler
+    # plugin needs. An upstream lockfile/dep sweep dropping it breaks the
+    # bundle guard, not just the dev server.
+    - apps/web/package.json
+  verify:
+    - apps/web/src/__fork_guards__/forkDesignMode.test.ts

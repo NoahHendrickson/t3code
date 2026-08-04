@@ -12,6 +12,9 @@ import { DEV_PROXIED_PATH_PREFIXES } from "@t3tools/shared/devProxy";
 
 import { loadRepoEnv } from "../../scripts/lib/public-config";
 import { forkOverrides } from "./fork/vitePluginForkOverrides";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { forkDesignModeEngine } from "./fork/vitePluginForkDesignMode";
+/* fork:end fork-design-mode */
 
 const repoEnv = loadRepoEnv();
 Object.assign(process.env, repoEnv);
@@ -135,6 +138,15 @@ export default defineConfig(() => {
       // first — it claims `~/*` ahead of `resolve.tsconfigPaths`.
       // See `.fork/README.md` §3.
       forkOverrides({ srcDir: NodeURL.fileURLToPath(new URL("./src", import.meta.url)) }),
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      // Bundles the vendored design-mode engine into the injectable IIFE string served
+      // as `virtual:fork-design-mode-engine`.
+      forkDesignModeEngine({
+        entry: NodeURL.fileURLToPath(
+          new URL("./src/custom/designMode/engine/boot.ts", import.meta.url),
+        ),
+      }),
+      /* fork:end fork-design-mode */
       tanstackRouter(),
       react(),
       babel({

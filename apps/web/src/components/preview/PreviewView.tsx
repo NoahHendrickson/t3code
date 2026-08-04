@@ -54,6 +54,10 @@ import {
   useActiveBrowserRecordingTabIds,
 } from "~/browser/browserRecording";
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { ForkPreviewDesignMode } from "~/custom/designMode/ForkPreviewDesignMode";
+import { ForkDesignPanel } from "~/custom/designMode/panel/ForkDesignPanel";
+/* fork:end fork-design-mode */
 
 interface Props {
   threadRef: ScopedThreadRef;
@@ -640,63 +644,80 @@ export function PreviewView({ threadRef, tabId: requestedTabId, configuredUrls, 
         }
         trailingActions={
           previewBridge ? (
-            <PreviewMoreMenu
-              tabId={runtimeTabId}
-              hasWebContents={desktopOverlay?.hasWebContents ?? false}
-              zoomFactor={desktopOverlay?.zoomFactor ?? 1}
-              colorScheme={desktopOverlay?.colorScheme ?? "system"}
-              deviceToolbarVisible={viewport._tag !== "fill"}
-              onToggleDeviceToolbar={handleToggleDeviceToolbar}
-              nativePictureInPicture={desktopOverlay?.pictureInPicture ?? false}
-              onNativePictureInPicture={handleNativePictureInPicture}
-            />
+            <>
+              {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
+              <ForkPreviewDesignMode
+                runtimeTabId={runtimeTabId}
+                disabled={!tabId || isUnreachable || !desktopOverlay?.hasWebContents}
+              />
+              {/* fork:end fork-design-mode */}
+              <PreviewMoreMenu
+                tabId={runtimeTabId}
+                hasWebContents={desktopOverlay?.hasWebContents ?? false}
+                zoomFactor={desktopOverlay?.zoomFactor ?? 1}
+                colorScheme={desktopOverlay?.colorScheme ?? "system"}
+                deviceToolbarVisible={viewport._tag !== "fill"}
+                onToggleDeviceToolbar={handleToggleDeviceToolbar}
+                nativePictureInPicture={desktopOverlay?.pictureInPicture ?? false}
+                onNativePictureInPicture={handleNativePictureInPicture}
+              />
+            </>
           ) : null
         }
       />
 
-      <div className="relative min-h-0 flex-1 overflow-hidden">
-        {runtimeTabId && snapshot && !showEmptyState ? (
-          <BrowserSurfaceSlot
-            key={runtimeTabId}
-            tabId={runtimeTabId}
-            visible={visible && !isUnreachable}
-            className="absolute inset-0 h-full w-full"
-          />
-        ) : null}
-        {showEmptyState ? (
-          <PreviewEmptyState
-            environmentId={threadRef.environmentId}
-            configuredUrls={configuredUrls}
-            recentlySeenUrls={previewState.recentlySeenUrls}
-            onOpenUrl={(next) => void handleOpenServerUrl(next)}
-          />
-        ) : null}
-        {snapshot && desktopOverlay ? (
-          <ZoomIndicator zoomFactor={desktopOverlay.zoomFactor} />
-        ) : null}
-        {runtimeTabId && desktopOverlay && !showEmptyState && !isUnreachable ? (
-          <AgentBrowserCursor
-            tabId={runtimeTabId}
-            zoomFactor={desktopOverlay.zoomFactor}
-            controller={controller}
-          />
-        ) : null}
-        {controller !== "none" ? (
-          <div className="pointer-events-none absolute left-3 top-3 z-40 rounded-full border border-border/70 bg-background/90 px-2.5 py-1 text-[11px] font-medium shadow-sm backdrop-blur">
-            {controller === "agent" ? "Agent controlling browser" : "Human control"}
-          </div>
-        ) : null}
-        {navStatus._tag === "LoadFailed" ? (
-          <div className="absolute inset-0 z-10 bg-background">
-            <PreviewUnreachable
-              url={navStatus.url}
-              code={navStatus.code}
-              description={navStatus.description}
-              onReload={handleRefresh}
+      {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+          Flex wrapper so the native design panel docks as a column beside the browser
+          surface; the webview auto-shrinks because BrowserSurfaceSlot measures its slot. */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* fork:end fork-design-mode */}
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          {runtimeTabId && snapshot && !showEmptyState ? (
+            <BrowserSurfaceSlot
+              key={runtimeTabId}
+              tabId={runtimeTabId}
+              visible={visible && !isUnreachable}
+              className="absolute inset-0 h-full w-full"
             />
-          </div>
-        ) : null}
+          ) : null}
+          {showEmptyState ? (
+            <PreviewEmptyState
+              environmentId={threadRef.environmentId}
+              configuredUrls={configuredUrls}
+              recentlySeenUrls={previewState.recentlySeenUrls}
+              onOpenUrl={(next) => void handleOpenServerUrl(next)}
+            />
+          ) : null}
+          {snapshot && desktopOverlay ? (
+            <ZoomIndicator zoomFactor={desktopOverlay.zoomFactor} />
+          ) : null}
+          {runtimeTabId && desktopOverlay && !showEmptyState && !isUnreachable ? (
+            <AgentBrowserCursor
+              tabId={runtimeTabId}
+              zoomFactor={desktopOverlay.zoomFactor}
+              controller={controller}
+            />
+          ) : null}
+          {controller !== "none" ? (
+            <div className="pointer-events-none absolute left-3 top-3 z-40 rounded-full border border-border/70 bg-background/90 px-2.5 py-1 text-[11px] font-medium shadow-sm backdrop-blur">
+              {controller === "agent" ? "Agent controlling browser" : "Human control"}
+            </div>
+          ) : null}
+          {navStatus._tag === "LoadFailed" ? (
+            <div className="absolute inset-0 z-10 bg-background">
+              <PreviewUnreachable
+                url={navStatus.url}
+                code={navStatus.code}
+                description={navStatus.description}
+                onReload={handleRefresh}
+              />
+            </div>
+          ) : null}
+          {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
+        </div>
+        <ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} />
       </div>
+      {/* fork:end fork-design-mode */}
     </div>
   );
 }
