@@ -48,6 +48,9 @@ describe("fork guard: design mode", () => {
     expect(previewPanel).toContain(
       "<ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} />",
     );
+    // Layers rail docks in the same override, left of the untouched preview surface.
+    expect(previewPanel).toContain("<ForkLayersTree runtimeTabId={runtimeTabId} />");
+    expect(previewView).not.toContain("ForkLayersTree");
   });
 
   it("delivers design changes as composer attachments, not prompt text", () => {

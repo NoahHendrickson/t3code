@@ -53,6 +53,12 @@ export const designModeBridge = {
       .catch(() => null);
     return parseDesignChangeRequestPayload(result);
   },
+  selectElement(runtimeTabId: string, id: number): void {
+    fire(runtimeTabId, "selectElement", [id]);
+  },
+  hoverElement(runtimeTabId: string, id: number | null): void {
+    fire(runtimeTabId, "hoverElement", [id]);
+  },
   destroy(runtimeTabId: string): void {
     fire(runtimeTabId, "destroy", []);
   },

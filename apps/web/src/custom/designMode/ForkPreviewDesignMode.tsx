@@ -95,6 +95,12 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
             spacingBasePx: message.spacingBasePx,
           });
           return;
+        case "layers":
+          store.setLayers(runtimeTabId, {
+            roots: message.roots,
+            truncated: message.truncated,
+          });
+          return;
       }
     };
 

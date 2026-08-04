@@ -88,6 +88,16 @@ export interface DesignModeColorToken {
   readonly value: string;
 }
 
+/** One curated layers-tree node — a TAGGED element (untagged wrappers never mint nodes;
+ * svg subtrees are opaque, matching the Forge's ratified walk). Ids come from the same
+ * registry as selection snapshots, so tree ↔ panel selection stays consistent. */
+export interface DesignModeLayerNode {
+  readonly id: number;
+  readonly tag: string;
+  readonly label: string;
+  readonly children: readonly DesignModeLayerNode[];
+}
+
 export type DesignModeEngineMessage =
   /** Engine finished booting. `tagged` reports whether the page carries any
    * `data-dc-source` attributes (the forge-mode dev plugin's JSX tags) — without them
@@ -106,6 +116,13 @@ export type DesignModeEngineMessage =
       readonly type: "tokens";
       readonly colors: readonly DesignModeColorToken[];
       readonly spacingBasePx: number | null;
+    }
+  /** The curated layers tree; re-emitted (debounced, change-gated) as the page mutates.
+   * `truncated` reports the 400-node serialization cap being hit. */
+  | {
+      readonly type: "layers";
+      readonly roots: readonly DesignModeLayerNode[];
+      readonly truncated: boolean;
     };
 
 /** One element's worth of a built change request, compact enough for the composer's
@@ -137,6 +154,9 @@ export interface DesignModeGuestHandle {
   /** Builds the standalone change-request markdown plus pill summaries; null when there
    * is nothing to send. */
   buildSend(): DesignChangeRequestPayload | null;
+  /** Layers-tree interactions — ids from selection snapshots or layer nodes. */
+  selectElement(id: number): void;
+  hoverElement(id: number | null): void;
   destroy(): void;
 }
 
@@ -164,6 +184,28 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     tag: value.tag,
     sourceLabel: value.sourceLabel,
     styles: value.styles,
+  };
+}
+
+/** Depth-bounded (the emit cap keeps trees shallow; 32 guards a malicious payload). */
+function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | null {
+  if (
+    depth > 32 ||
+    !isRecord(value) ||
+    !isNonNegativeInteger(value.id) ||
+    typeof value.tag !== "string" ||
+    typeof value.label !== "string" ||
+    !Array.isArray(value.children)
+  ) {
+    return null;
+  }
+  const children = value.children.map((child) => parseLayerNode(child, depth + 1));
+  if (children.some((child) => child === null)) return null;
+  return {
+    id: value.id,
+    tag: value.tag,
+    label: value.label,
+    children: children.filter((child): child is DesignModeLayerNode => child !== null),
   };
 }
 
@@ -243,6 +285,17 @@ export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMes
               type: "tokens",
               colors: colors.filter((token): token is DesignModeColorToken => token !== null),
               spacingBasePx: value.spacingBasePx,
+            };
+      }
+      case "layers": {
+        if (!Array.isArray(value.roots) || typeof value.truncated !== "boolean") return null;
+        const roots = value.roots.map((root) => parseLayerNode(root, 0));
+        return roots.some((root) => root === null)
+          ? null
+          : {
+              type: "layers",
+              roots: roots.filter((root): root is DesignModeLayerNode => root !== null),
+              truncated: value.truncated,
             };
       }
       default:

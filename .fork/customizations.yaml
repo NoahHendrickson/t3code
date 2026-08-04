@@ -1544,6 +1544,7 @@
     - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
     - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkTranscriptDesignChanges.tsx
+    - apps/web/src/custom/designMode/ForkLayersTree.tsx
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx

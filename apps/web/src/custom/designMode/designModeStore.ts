@@ -1,6 +1,10 @@
 import { create } from "zustand";
 
-import type { DesignModeColorToken, DesignModeElementSnapshot } from "./protocol";
+import type {
+  DesignModeColorToken,
+  DesignModeElementSnapshot,
+  DesignModeLayerNode,
+} from "./protocol";
 
 export interface DesignModeTokens {
   readonly colors: readonly DesignModeColorToken[];
@@ -24,6 +28,11 @@ export interface DesignModeTabState {
   readonly comparing: boolean;
   /** The previewed app's theme tokens — null until the engine's tokens message lands. */
   readonly tokens: DesignModeTokens | null;
+  /** The curated layers tree — null until the engine's first layers message. */
+  readonly layers: {
+    readonly roots: readonly DesignModeLayerNode[];
+    readonly truncated: boolean;
+  } | null;
 }
 
 interface DesignModeStoreState {
@@ -37,6 +46,10 @@ interface DesignModeStoreState {
   readonly setDraftCount: (runtimeTabId: string, draftCount: number) => void;
   readonly setComparing: (runtimeTabId: string, comparing: boolean) => void;
   readonly setTokens: (runtimeTabId: string, tokens: DesignModeTokens) => void;
+  readonly setLayers: (
+    runtimeTabId: string,
+    layers: NonNullable<DesignModeTabState["layers"]>,
+  ) => void;
   readonly remove: (runtimeTabId: string) => void;
 }
 
@@ -47,6 +60,7 @@ const EMPTY_TAB_STATE: DesignModeTabState = {
   draftCount: 0,
   comparing: false,
   tokens: null,
+  layers: null,
 };
 
 const patchTab = (
@@ -65,8 +79,13 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
       const current = state.byTabId[runtimeTabId] ?? EMPTY_TAB_STATE;
       if (current.enabled === enabled) return state;
       // Toggling off keeps drafts alive in the guest but the panel's world view resets;
-      // a fresh selection message rebuilds it on the next activation.
-      return patchTab(state, runtimeTabId, { enabled, selection: [], comparing: false });
+      // fresh selection/layers messages rebuild it on the next activation.
+      return patchTab(state, runtimeTabId, {
+        enabled,
+        selection: [],
+        comparing: false,
+        layers: null,
+      });
     }),
   setTagged: (runtimeTabId, tagged) =>
     set((state) => {
@@ -85,6 +104,7 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
   setComparing: (runtimeTabId, comparing) =>
     set((state) => patchTab(state, runtimeTabId, { comparing })),
   setTokens: (runtimeTabId, tokens) => set((state) => patchTab(state, runtimeTabId, { tokens })),
+  setLayers: (runtimeTabId, layers) => set((state) => patchTab(state, runtimeTabId, { layers })),
   remove: (runtimeTabId) =>
     set((state) => {
       if (!(runtimeTabId in state.byTabId)) return state;
