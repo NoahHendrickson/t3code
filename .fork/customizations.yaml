@@ -1545,6 +1545,7 @@
     - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx
+    - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
     - apps/web/src/custom/designMode/engineVirtual.d.ts
     - apps/web/src/custom/designMode/engine/boot.ts
     - apps/web/src/custom/designMode/engine/bridge.ts
