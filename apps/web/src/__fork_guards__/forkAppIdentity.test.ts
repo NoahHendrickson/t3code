@@ -123,6 +123,27 @@ describe("fork guard: fork-app-identity", () => {
     expect(desktopEnvironment).toContain('"n3-dev-macos-dock.png"');
     expect(desktopEnvironment).not.toContain('"blueprint-macos-1024.png"');
 
+    // Linux and Windows have no runtime icon override, so their packaged
+    // rasters must themselves carry the current release artwork — a path
+    // string alone would stay green forever while the bytes go stale.
+    expect(
+      NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/n3-universal-1024.png")),
+    ).toEqual(NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/n3-macos-1024.png")));
+    const windowsIco = NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/n3-windows.ico"));
+    const icoEntryCount = windowsIco.readUInt16LE(4);
+    const icoSizes = Array.from({ length: icoEntryCount }, (_, index) => {
+      const width = windowsIco.readUInt8(6 + index * 16);
+      return width === 0 ? 256 : width;
+    });
+    expect(icoSizes).toEqual([16, 24, 32, 48, 64, 128, 256]);
+    const ico256Offset = windowsIco.readUInt32LE(6 + 6 * 16 + 12);
+    // Each entry embeds a PNG resampled from n3-macos-1024.png, so the 256px
+    // entry must decode as a PNG whose IHDR matches the declared size.
+    expect(windowsIco.subarray(ico256Offset, ico256Offset + 8)).toEqual(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+    expect(windowsIco.readUInt32BE(ico256Offset + 16)).toBe(256);
+
     // Dev (`vp run dev`) serves apps/web/public — use the orange family there,
     // while packaged builds stamp the green production family above.
     for (const [source, target] of [

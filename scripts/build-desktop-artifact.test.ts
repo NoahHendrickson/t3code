@@ -97,7 +97,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     // fork:end fork-app-identity
   });
 
-  it("uses the fork's green-grid artwork for every channel", () => {
+  it("uses the fork's release icon family for every channel", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
     const forkIconAssets = {
       macIconPng: "assets/fork/n3-macos-dock.png",

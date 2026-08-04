@@ -224,8 +224,10 @@
     exports add only a transparent outer canvas around the rendered artwork,
     preserving the pixel art while matching the standard Mac icon footprint.
     The local dev splash and favicons use the same orange family, while packaged
-    builds stamp the green production family. Filenames still say n3-* for path
-    stability.
+    builds stamp the green production family. The Linux PNG and Windows ICO are
+    derived from the release 1024 render (the ICO embeds PNG entries at
+    16–256px), so every packaged channel carries the same artwork. Filenames
+    still say n3-* for path stability.
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
     app's own internal origin, not just a deep-link handler — two installed
     apps contend for it, untidy but not destructive).
@@ -247,7 +249,6 @@
   tier: 4
   files:
     - apps/web/src/custom/forkBranding.ts
-    - assets/fork/app-icon.svg
     - assets/fork/app-icon.icon/Assets/mark.svg
     - assets/fork/app-icon.icon/icon.json
     - assets/fork/dev-app-icon.icon/Assets/mark.svg
