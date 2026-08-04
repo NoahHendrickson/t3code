@@ -19,6 +19,10 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  extractTrailingDesignChanges,
+  summarizeDesignChangeBlock,
+} from "../custom/designMode/designChangeTranscript";
+import {
   DESIGN_MODE_CONSOLE_PREFIX,
   DESIGN_MODE_GLOBAL,
   DESIGN_MODE_STYLE_KEYS,
@@ -69,6 +73,29 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain(
       "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef)",
     );
+  });
+
+  it("renders sent design changes as transcript chips, not raw markdown", () => {
+    const timeline = read("src/components/chat/MessagesTimeline.tsx");
+    expect(timeline).toContain(
+      'import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript"',
+    );
+    expect(timeline).toContain(
+      "const forkDesignChanges = extractTrailingDesignChanges(row.message.text)",
+    );
+    expect(timeline).toContain("<ForkTranscriptDesignChanges blocks={forkDesignChanges.blocks} />");
+    // Extraction round-trip: blocks are the outermost trailing run and strip cleanly,
+    // restoring the position the upstream element/terminal extractors rely on.
+    const markdown = "# Design change request\n\n## 1. <button> — src/App.tsx:5:3\n- x";
+    const prompt = `make it pop\n\n<design_change_request>\n${markdown}\n</design_change_request>`;
+    const extracted = extractTrailingDesignChanges(prompt);
+    expect(extracted.promptText).toBe("make it pop");
+    expect(extracted.blocks).toEqual([markdown]);
+    expect(summarizeDesignChangeBlock(markdown)).toEqual({
+      elementCount: 1,
+      firstLabel: "<button> — src/App.tsx:5:3",
+    });
+    expect(extractTrailingDesignChanges("no blocks here").blocks).toEqual([]);
   });
 
   it("registers the engine bundler plugin and serves the virtual module", () => {
