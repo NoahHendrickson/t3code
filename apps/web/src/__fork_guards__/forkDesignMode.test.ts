@@ -19,6 +19,10 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  extractTrailingDesignChanges,
+  summarizeDesignChangeBlock,
+} from "../custom/designMode/designChangeTranscript";
+import {
   DESIGN_MODE_CONSOLE_PREFIX,
   DESIGN_MODE_GLOBAL,
   DESIGN_MODE_STYLE_KEYS,
@@ -44,6 +48,9 @@ describe("fork guard: design mode", () => {
     expect(previewPanel).toContain(
       "<ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} />",
     );
+    // Layers rail docks in the same override, left of the untouched preview surface.
+    expect(previewPanel).toContain("<ForkLayersTree runtimeTabId={runtimeTabId} />");
+    expect(previewView).not.toContain("ForkLayersTree");
   });
 
   it("delivers design changes as composer attachments, not prompt text", () => {
@@ -69,6 +76,29 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain(
       "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef)",
     );
+  });
+
+  it("renders sent design changes as transcript chips, not raw markdown", () => {
+    const timeline = read("src/components/chat/MessagesTimeline.tsx");
+    expect(timeline).toContain(
+      'import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript"',
+    );
+    expect(timeline).toContain(
+      "const forkDesignChanges = extractTrailingDesignChanges(row.message.text)",
+    );
+    expect(timeline).toContain("<ForkTranscriptDesignChanges blocks={forkDesignChanges.blocks} />");
+    // Extraction round-trip: blocks are the outermost trailing run and strip cleanly,
+    // restoring the position the upstream element/terminal extractors rely on.
+    const markdown = "# Design change request\n\n## 1. <button> — src/App.tsx:5:3\n- x";
+    const prompt = `make it pop\n\n<design_change_request>\n${markdown}\n</design_change_request>`;
+    const extracted = extractTrailingDesignChanges(prompt);
+    expect(extracted.promptText).toBe("make it pop");
+    expect(extracted.blocks).toEqual([markdown]);
+    expect(summarizeDesignChangeBlock(markdown)).toEqual({
+      elementCount: 1,
+      firstLabel: "<button> — src/App.tsx:5:3",
+    });
+    expect(extractTrailingDesignChanges("no blocks here").blocks).toEqual([]);
   });
 
   it("registers the engine bundler plugin and serves the virtual module", () => {
@@ -166,6 +196,76 @@ describe("fork guard: design mode", () => {
     ).toBeNull();
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"drafts","count":"3"}`),
+    ).toBeNull();
+  });
+
+  it("round-trips and rejects tokens messages", () => {
+    const tokens = {
+      type: "tokens",
+      colors: [{ name: "red-500", value: "oklch(0.637 0.237 25.331)" }],
+      spacingBasePx: 4,
+    };
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(tokens)}`),
+    ).toEqual(tokens);
+    // null spacing base = "not a Tailwind project" — a valid shape, not a rejection.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","colors":[],"spacingBasePx":null}`,
+      ),
+    ).toEqual({ type: "tokens", colors: [], spacingBasePx: null });
+    // Rejections: malformed token entry, stringly-typed base, missing colors.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","colors":[{"name":"red-500"}],"spacingBasePx":4}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","colors":[],"spacingBasePx":"4"}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"tokens","spacingBasePx":4}`,
+      ),
+    ).toBeNull();
+  });
+
+  it("round-trips and rejects layers messages, including the depth bound", () => {
+    const layers = {
+      type: "layers",
+      roots: [
+        {
+          id: 1,
+          tag: "div",
+          label: "Frame",
+          children: [{ id: 2, tag: "button", label: "Save", children: [] }],
+        },
+      ],
+      truncated: false,
+    };
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(layers)}`),
+    ).toEqual(layers);
+    // Rejections: missing label, missing truncated, one bad child poisons the message.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","children":[]}],"truncated":false}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[]}`),
+    ).toBeNull();
+    // Depth bound: a 40-deep chain exceeds the 32 guard and rejects rather than recursing.
+    let deep: Record<string, unknown> = { id: 40, tag: "div", label: "leaf", children: [] };
+    for (let index = 39; index >= 1; index -= 1) {
+      deep = { id: index, tag: "div", label: "Frame", children: [deep] };
+    }
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [deep], truncated: false })}`,
+      ),
     ).toBeNull();
   });
 

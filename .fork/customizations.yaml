@@ -1528,13 +1528,20 @@
     - apps/web/src/custom/designMode/designChangeDraftStore.ts
     - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
     - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
+    - apps/web/src/custom/designMode/ForkTranscriptDesignChanges.tsx
+    - apps/web/src/custom/designMode/ForkLayersTree.tsx
+    - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx
+    - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
+    - apps/web/src/custom/designMode/panel/DesignColorPicker.tsx
     - apps/web/src/custom/designMode/engineVirtual.d.ts
     - apps/web/src/custom/designMode/engine/boot.ts
     - apps/web/src/custom/designMode/engine/bridge.ts
     - apps/web/src/custom/designMode/engine/headlessOverlay.ts
     - apps/web/src/custom/designMode/engine/headlessMode.ts
+    - apps/web/src/custom/designMode/engine/idRegistry.ts
+    - apps/web/src/custom/designMode/engine/layersSession.ts
     - apps/web/src/custom/designMode/engine/snapshot.ts
     - apps/web/src/custom/designMode/engine/tsconfig.json
     # The reachable vendored Forge client leaves (one directory entry; the
@@ -1558,6 +1565,9 @@
     # sendability, their markdown is appended to the outgoing message text,
     # and they clear only once the turn start succeeds.
     - apps/web/src/components/ChatView.tsx
+    # Fenced strip-first extraction + transcript chip render in
+    # UserTimelineRow, so sent design blocks show as chips.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
     # Fenced plugin import + registration of fork:design-mode-engine.
     - apps/web/vite.config.ts
     # Fenced exclude of the engine TS island.

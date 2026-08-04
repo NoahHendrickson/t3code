@@ -1,5 +1,5 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
@@ -7,10 +7,118 @@ import { toastManager } from "~/components/ui/toast";
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
-import type { DesignModeStyleKey } from "../protocol";
+import type { DesignModeElementSnapshot, DesignModeWritableKey } from "../protocol";
 import { ColorField, PanelSection, ScrubField } from "./DesignPanelFields";
+import { AlignMatrix, SegmentField, SelectRow } from "./DesignPanelLayoutControls";
 
 const FONT_WEIGHTS = ["100", "200", "300", "400", "500", "600", "700", "800", "900"] as const;
+const DISPLAY_OPTIONS = ["block", "flex", "inline-flex", "grid", "inline-block"] as const;
+const BORDER_STYLES = ["none", "solid", "dashed", "dotted"] as const;
+const ALIGN_SELF_OPTIONS = ["auto", "flex-start", "center", "flex-end", "stretch"] as const;
+
+type ApplyEdit = (property: DesignModeWritableKey, value: string) => void;
+
+/** Uniform radius plus an expandable per-corner grid — corner state resets with the
+ * keyed fields container, like every other field-local state. */
+function RadiusSection({
+  styles,
+  apply,
+}: {
+  styles: DesignModeElementSnapshot["styles"];
+  apply: ApplyEdit;
+}) {
+  const [corners, setCorners] = useState(false);
+  return (
+    <PanelSection title="Radius" className="grid-cols-2">
+      <ScrubField
+        label="R"
+        title="Corner radius (all corners)"
+        value={styles["border-radius"]}
+        min={0}
+        onEdit={(v) => apply("border-radius", v)}
+      />
+      <button
+        type="button"
+        onClick={() => setCorners((open) => !open)}
+        aria-pressed={corners ? "true" : "false"}
+        className="h-6 rounded bg-muted/40 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {corners ? "Uniform" : "Corners"}
+      </button>
+      {corners ? (
+        <>
+          <ScrubField
+            label="TL"
+            title="Top-left radius"
+            value={styles["border-top-left-radius"]}
+            min={0}
+            onEdit={(v) => apply("border-top-left-radius", v)}
+          />
+          <ScrubField
+            label="TR"
+            title="Top-right radius"
+            value={styles["border-top-right-radius"]}
+            min={0}
+            onEdit={(v) => apply("border-top-right-radius", v)}
+          />
+          <ScrubField
+            label="BL"
+            title="Bottom-left radius"
+            value={styles["border-bottom-left-radius"]}
+            min={0}
+            onEdit={(v) => apply("border-bottom-left-radius", v)}
+          />
+          <ScrubField
+            label="BR"
+            title="Bottom-right radius"
+            value={styles["border-bottom-right-radius"]}
+            min={0}
+            onEdit={(v) => apply("border-bottom-right-radius", v)}
+          />
+        </>
+      ) : null}
+    </PanelSection>
+  );
+}
+
+const SIDES = [
+  ["T", "top"],
+  ["R", "right"],
+  ["B", "bottom"],
+  ["L", "left"],
+] as const;
+
+/** The four per-side scrubs of a box property — Padding and Margin share it, and the
+ * next TRBL-shaped section is a one-liner instead of another 4-field clone block. */
+function SideFields({
+  prefix,
+  styles,
+  apply,
+  tokenBasePx,
+  min,
+}: {
+  prefix: "padding" | "margin";
+  styles: DesignModeElementSnapshot["styles"];
+  apply: ApplyEdit;
+  tokenBasePx: number | null;
+  min?: number;
+}) {
+  const title = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+  return SIDES.map(([label, side]) => {
+    const key = `${prefix}-${side}` as const;
+    return (
+      <ScrubField
+        key={key}
+        label={label}
+        title={`${title} ${side}`}
+        tokenBasePx={tokenBasePx}
+        value={styles[key]}
+        {...(min !== undefined ? { min } : {})}
+        onEdit={(v) => apply(key, v)}
+      />
+    );
+  });
+}
 
 interface Props {
   runtimeTabId: string | null;
@@ -31,7 +139,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
   const ids = tab.selection.map((element) => element.id);
 
   const apply = useCallback(
-    (property: DesignModeStyleKey, value: string) => {
+    (property: DesignModeWritableKey, value: string) => {
       if (!runtimeTabId || ids.length === 0) return;
       designModeBridge.applyDraft(runtimeTabId, ids, property, value);
     },
@@ -74,6 +182,8 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
     });
   }, [runtimeTabId, threadRef]);
 
+  const spacingBase = tab.tokens?.spacingBasePx ?? null;
+
   if (!runtimeTabId || !tab.enabled) return null;
 
   return (
@@ -108,6 +218,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="W"
               title="Width"
+              tokenBasePx={spacingBase}
               value={first.styles.width}
               min={0}
               onEdit={(v) => apply("width", v)}
@@ -115,79 +226,113 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="H"
               title="Height"
+              tokenBasePx={spacingBase}
               value={first.styles.height}
               min={0}
               onEdit={(v) => apply("height", v)}
             />
           </PanelSection>
 
+          <PanelSection title="Layout" className="grid-cols-2">
+            <SelectRow
+              label="Disp"
+              title="Display"
+              value={first.styles.display}
+              options={DISPLAY_OPTIONS}
+              onSelect={(v) => apply("display", v)}
+            />
+            {first.styles.display === "flex" || first.styles.display === "inline-flex" ? (
+              <>
+                <SegmentField
+                  options={[
+                    { value: "row", label: "→", title: "Direction: row" },
+                    { value: "column", label: "↓", title: "Direction: column" },
+                  ]}
+                  value={first.styles["flex-direction"].startsWith("column") ? "column" : "row"}
+                  onSelect={(v) => apply("flex-direction", v)}
+                />
+                <ScrubField
+                  label="Gap"
+                  title="Gap"
+                  tokenBasePx={spacingBase}
+                  value={first.styles["row-gap"]}
+                  min={0}
+                  onEdit={(v) => apply("gap", v)}
+                />
+                <SegmentField
+                  options={[
+                    { value: "nowrap", label: "No wrap", title: "Wrap: nowrap" },
+                    { value: "wrap", label: "Wrap", title: "Wrap: wrap" },
+                  ]}
+                  value={first.styles["flex-wrap"]}
+                  onSelect={(v) => apply("flex-wrap", v)}
+                />
+                <div className="col-span-2 flex items-start gap-2">
+                  <AlignMatrix
+                    direction={
+                      first.styles["flex-direction"].startsWith("column") ? "column" : "row"
+                    }
+                    justifyContent={first.styles["justify-content"]}
+                    alignItems={first.styles["align-items"]}
+                    onChange={(justify, align) => {
+                      apply("justify-content", justify);
+                      apply("align-items", align);
+                    }}
+                  />
+                  <div className="grid min-w-0 flex-1 gap-1">
+                    <SelectRow
+                      label="Self"
+                      title="Align self (this element within its parent)"
+                      value={first.styles["align-self"]}
+                      options={ALIGN_SELF_OPTIONS}
+                      onSelect={(v) => apply("align-self", v)}
+                    />
+                    <ScrubField
+                      label="Grow"
+                      title="Flex grow"
+                      value={first.styles["flex-grow"]}
+                      unit="none"
+                      min={0}
+                      step={0.1}
+                      precision={1}
+                      onEdit={(v) => apply("flex-grow", v)}
+                    />
+                    <ScrubField
+                      label="Shrk"
+                      title="Flex shrink"
+                      value={first.styles["flex-shrink"]}
+                      unit="none"
+                      min={0}
+                      step={0.1}
+                      precision={1}
+                      onEdit={(v) => apply("flex-shrink", v)}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </PanelSection>
+
           <PanelSection title="Padding" className="grid-cols-2">
-            <ScrubField
-              label="T"
-              title="Padding top"
-              value={first.styles["padding-top"]}
+            <SideFields
+              prefix="padding"
+              styles={first.styles}
+              apply={apply}
+              tokenBasePx={spacingBase}
               min={0}
-              onEdit={(v) => apply("padding-top", v)}
-            />
-            <ScrubField
-              label="R"
-              title="Padding right"
-              value={first.styles["padding-right"]}
-              min={0}
-              onEdit={(v) => apply("padding-right", v)}
-            />
-            <ScrubField
-              label="B"
-              title="Padding bottom"
-              value={first.styles["padding-bottom"]}
-              min={0}
-              onEdit={(v) => apply("padding-bottom", v)}
-            />
-            <ScrubField
-              label="L"
-              title="Padding left"
-              value={first.styles["padding-left"]}
-              min={0}
-              onEdit={(v) => apply("padding-left", v)}
             />
           </PanelSection>
 
           <PanelSection title="Margin" className="grid-cols-2">
-            <ScrubField
-              label="T"
-              title="Margin top"
-              value={first.styles["margin-top"]}
-              onEdit={(v) => apply("margin-top", v)}
-            />
-            <ScrubField
-              label="R"
-              title="Margin right"
-              value={first.styles["margin-right"]}
-              onEdit={(v) => apply("margin-right", v)}
-            />
-            <ScrubField
-              label="B"
-              title="Margin bottom"
-              value={first.styles["margin-bottom"]}
-              onEdit={(v) => apply("margin-bottom", v)}
-            />
-            <ScrubField
-              label="L"
-              title="Margin left"
-              value={first.styles["margin-left"]}
-              onEdit={(v) => apply("margin-left", v)}
+            <SideFields
+              prefix="margin"
+              styles={first.styles}
+              apply={apply}
+              tokenBasePx={spacingBase}
             />
           </PanelSection>
 
-          <PanelSection title="Radius">
-            <ScrubField
-              label="R"
-              title="Corner radius"
-              value={first.styles["border-radius"]}
-              min={0}
-              onEdit={(v) => apply("border-radius", v)}
-            />
-          </PanelSection>
+          <RadiusSection styles={first.styles} apply={apply} />
 
           <PanelSection title="Typography" className="grid-cols-2">
             <ScrubField
@@ -197,22 +342,13 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               min={1}
               onEdit={(v) => apply("font-size", v)}
             />
-            <label className="flex h-6 items-center gap-1 rounded bg-muted/40" title="Font weight">
-              <span className="w-7 shrink-0 select-none ps-1.5 text-[10px] font-medium text-muted-foreground">
-                Wt
-              </span>
-              <select
-                defaultValue={first.styles["font-weight"]}
-                onChange={(event) => apply("font-weight", event.target.value)}
-                className="h-full w-full min-w-0 appearance-none bg-transparent pe-1.5 text-xs text-foreground outline-none"
-              >
-                {FONT_WEIGHTS.map((weight) => (
-                  <option key={weight} value={weight}>
-                    {weight}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SelectRow
+              label="Wt"
+              title="Font weight"
+              value={first.styles["font-weight"]}
+              options={FONT_WEIGHTS}
+              onSelect={(v) => apply("font-weight", v)}
+            />
             <ScrubField
               label="Lh"
               title="Line height"
@@ -220,7 +356,27 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               min={0}
               onEdit={(v) => apply("line-height", v)}
             />
+            <ScrubField
+              label="Ls"
+              title="Letter spacing"
+              value={first.styles["letter-spacing"]}
+              step={0.1}
+              precision={1}
+              onEdit={(v) => apply("letter-spacing", v)}
+            />
+            <SegmentField
+              className="col-span-2"
+              options={[
+                { value: "left", label: "Left", title: "Align left" },
+                { value: "center", label: "Center", title: "Align center" },
+                { value: "right", label: "Right", title: "Align right" },
+                { value: "justify", label: "Just", title: "Justify" },
+              ]}
+              value={first.styles["text-align"] === "start" ? "left" : first.styles["text-align"]}
+              onSelect={(v) => apply("text-align", v)}
+            />
             <ColorField
+              tokens={tab.tokens}
               label="C"
               title="Text color"
               value={first.styles.color}
@@ -230,6 +386,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
 
           <PanelSection title="Fill" className="grid-cols-1">
             <ColorField
+              tokens={tab.tokens}
               label="Bg"
               title="Background color"
               value={first.styles["background-color"]}
@@ -245,6 +402,30 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               step={0.01}
               precision={2}
               onEdit={(v) => apply("opacity", v)}
+            />
+          </PanelSection>
+
+          <PanelSection title="Stroke" className="grid-cols-2">
+            <SelectRow
+              label="Sty"
+              title="Border style"
+              value={first.styles["border-top-style"]}
+              options={BORDER_STYLES}
+              onSelect={(v) => apply("border-style", v)}
+            />
+            <ScrubField
+              label="W"
+              title="Border width"
+              value={first.styles["border-top-width"]}
+              min={0}
+              onEdit={(v) => apply("border-width", v)}
+            />
+            <ColorField
+              tokens={tab.tokens}
+              label="C"
+              title="Border color"
+              value={first.styles["border-top-color"]}
+              onEdit={(v) => apply("border-color", v)}
             />
           </PanelSection>
         </div>

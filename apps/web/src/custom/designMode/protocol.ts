@@ -24,12 +24,24 @@ export const DESIGN_MODE_CONSOLE_PREFIX = "__t3-design-mode__:";
 /** Name of the guest-global handle the engine installs: `window.__T3_DESIGN_MODE__`. */
 export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
 
-/** The computed-style properties the native panel renders, in section order. The guest
- * snapshot carries exactly these keys (engine/snapshot.ts); the panel reads them by name. */
+/** The computed-style properties the native panel renders (READ keys), in section
+ * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
+ * reads them by name. Writes may additionally target the shorthands below — the split
+ * keeps the snapshot honest (no write-only keys serialized per selection) while the
+ * writable union keeps every panel edit type-checked end to end. */
 export const DESIGN_MODE_STYLE_KEYS = [
   "display",
   "width",
   "height",
+  "flex-direction",
+  "flex-wrap",
+  "row-gap",
+  "column-gap",
+  "justify-content",
+  "align-items",
+  "align-self",
+  "flex-grow",
+  "flex-shrink",
   "padding-top",
   "padding-right",
   "padding-bottom",
@@ -39,15 +51,37 @@ export const DESIGN_MODE_STYLE_KEYS = [
   "margin-bottom",
   "margin-left",
   "border-radius",
+  "border-top-left-radius",
+  "border-top-right-radius",
+  "border-bottom-right-radius",
+  "border-bottom-left-radius",
+  "border-top-width",
+  "border-top-style",
+  "border-top-color",
   "font-size",
   "font-weight",
   "line-height",
+  "letter-spacing",
+  "text-align",
   "color",
   "background-color",
   "opacity",
 ] as const;
 
 export type DesignModeStyleKey = (typeof DESIGN_MODE_STYLE_KEYS)[number];
+
+/** WRITE-only shorthands: the panel reads longhands (border-top-width, row-gap) for
+ * display but writes the shorthand so the change-request builder collapses cleanly. */
+export const DESIGN_MODE_WRITE_ONLY_KEYS = [
+  "gap",
+  "border-width",
+  "border-style",
+  "border-color",
+] as const;
+
+export type DesignModeWritableKey =
+  | DesignModeStyleKey
+  | (typeof DESIGN_MODE_WRITE_ONLY_KEYS)[number];
 
 /** One selected element as the native panel sees it. `id` is minted by the guest engine
  * and is only meaningful for the current selection — commands referencing a stale id
@@ -57,6 +91,23 @@ export interface DesignModeElementSnapshot {
   readonly tag: string;
   readonly sourceLabel: string | null;
   readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
+}
+
+/** One theme color custom property from the previewed app's stylesheets ("red-500",
+ * "oklch(0.637 0.237 25.331)"). Values are raw CSS — the panel renders them directly. */
+export interface DesignModeColorToken {
+  readonly name: string;
+  readonly value: string;
+}
+
+/** One curated layers-tree node — a TAGGED element (untagged wrappers never mint nodes;
+ * svg subtrees are opaque, matching the Forge's ratified walk). Ids come from the same
+ * registry as selection snapshots, so tree ↔ panel selection stays consistent. */
+export interface DesignModeLayerNode {
+  readonly id: number;
+  readonly tag: string;
+  readonly label: string;
+  readonly children: readonly DesignModeLayerNode[];
 }
 
 export type DesignModeEngineMessage =
@@ -69,7 +120,22 @@ export type DesignModeEngineMessage =
   /** The in-page selection changed; empty array means deselected. */
   | { readonly type: "selection"; readonly elements: readonly DesignModeElementSnapshot[] }
   /** The draft count changed (emitted on change only, never per scrub tick). */
-  | { readonly type: "drafts"; readonly count: number };
+  | { readonly type: "drafts"; readonly count: number }
+  /** The previewed app's Tailwind theme tokens, read from its live stylesheets on every
+   * activation (theme edits between sessions are picked up). Empty colors + null spacing
+   * means "not a Tailwind project" — the panel hides token affordances. */
+  | {
+      readonly type: "tokens";
+      readonly colors: readonly DesignModeColorToken[];
+      readonly spacingBasePx: number | null;
+    }
+  /** The curated layers tree; re-emitted (debounced, change-gated) as the page mutates.
+   * `truncated` reports the 400-node serialization cap being hit. */
+  | {
+      readonly type: "layers";
+      readonly roots: readonly DesignModeLayerNode[];
+      readonly truncated: boolean;
+    };
 
 /** One element's worth of a built change request, compact enough for the composer's
  * attachment pill: "div · App.tsx:15" plus per-change deltas like
@@ -93,13 +159,16 @@ export interface DesignModeGuestHandle {
   setActive(on: boolean): void;
   isActive(): boolean;
   /** Applies one CSS draft to every listed element id (multi-select edits fan out here). */
-  applyDraft(ids: readonly number[], property: string, value: string): void;
+  applyDraft(ids: readonly number[], property: DesignModeWritableKey, value: string): void;
   discardAll(): void;
   /** Flips every draft to its "before" (true) or "after" (false) rendering. */
   compareAll(on: boolean): void;
   /** Builds the standalone change-request markdown plus pill summaries; null when there
    * is nothing to send. */
   buildSend(): DesignChangeRequestPayload | null;
+  /** Layers-tree interactions — ids from selection snapshots or layer nodes. */
+  selectElement(id: number): void;
+  hoverElement(id: number | null): void;
   destroy(): void;
 }
 
@@ -128,6 +197,35 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     sourceLabel: value.sourceLabel,
     styles: value.styles,
   };
+}
+
+/** Depth-bounded (the emit cap keeps trees shallow; 32 guards a malicious payload). */
+function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | null {
+  if (
+    depth > 32 ||
+    !isRecord(value) ||
+    !isNonNegativeInteger(value.id) ||
+    typeof value.tag !== "string" ||
+    typeof value.label !== "string" ||
+    !Array.isArray(value.children)
+  ) {
+    return null;
+  }
+  const children = value.children.map((child) => parseLayerNode(child, depth + 1));
+  if (children.some((child) => child === null)) return null;
+  return {
+    id: value.id,
+    tag: value.tag,
+    label: value.label,
+    children: children.filter((child): child is DesignModeLayerNode => child !== null),
+  };
+}
+
+function parseColorToken(value: unknown): DesignModeColorToken | null {
+  if (!isRecord(value) || typeof value.name !== "string" || typeof value.value !== "string") {
+    return null;
+  }
+  return { name: value.name, value: value.value };
 }
 
 function parseElementSummary(value: unknown): DesignChangeElementSummary | null {
@@ -189,6 +287,29 @@ export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMes
       }
       case "drafts":
         return isNonNegativeInteger(value.count) ? { type: "drafts", count: value.count } : null;
+      case "tokens": {
+        if (!Array.isArray(value.colors)) return null;
+        if (value.spacingBasePx !== null && typeof value.spacingBasePx !== "number") return null;
+        const colors = value.colors.map(parseColorToken);
+        return colors.some((token) => token === null)
+          ? null
+          : {
+              type: "tokens",
+              colors: colors.filter((token): token is DesignModeColorToken => token !== null),
+              spacingBasePx: value.spacingBasePx,
+            };
+      }
+      case "layers": {
+        if (!Array.isArray(value.roots) || typeof value.truncated !== "boolean") return null;
+        const roots = value.roots.map((root) => parseLayerNode(root, 0));
+        return roots.some((root) => root === null)
+          ? null
+          : {
+              type: "layers",
+              roots: roots.filter((root): root is DesignModeLayerNode => root !== null),
+              truncated: value.truncated,
+            };
+      }
       default:
         return null;
     }

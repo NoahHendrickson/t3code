@@ -1,6 +1,15 @@
 import { create } from "zustand";
 
-import type { DesignModeElementSnapshot } from "./protocol";
+import type {
+  DesignModeColorToken,
+  DesignModeElementSnapshot,
+  DesignModeLayerNode,
+} from "./protocol";
+
+export interface DesignModeTokens {
+  readonly colors: readonly DesignModeColorToken[];
+  readonly spacingBasePx: number | null;
+}
 
 /** Per-preview-tab design-mode state, keyed by runtimeTabId (the globally-unique id the
  * browser layer already uses — server tab ids are only unique per server process). Lives in
@@ -17,6 +26,13 @@ export interface DesignModeTabState {
   readonly draftCount: number;
   /** Host-side compare toggle state (the guest holds the actual before/after rendering). */
   readonly comparing: boolean;
+  /** The previewed app's theme tokens — null until the engine's tokens message lands. */
+  readonly tokens: DesignModeTokens | null;
+  /** The curated layers tree — null until the engine's first layers message. */
+  readonly layers: {
+    readonly roots: readonly DesignModeLayerNode[];
+    readonly truncated: boolean;
+  } | null;
 }
 
 interface DesignModeStoreState {
@@ -29,6 +45,11 @@ interface DesignModeStoreState {
   ) => void;
   readonly setDraftCount: (runtimeTabId: string, draftCount: number) => void;
   readonly setComparing: (runtimeTabId: string, comparing: boolean) => void;
+  readonly setTokens: (runtimeTabId: string, tokens: DesignModeTokens) => void;
+  readonly setLayers: (
+    runtimeTabId: string,
+    layers: NonNullable<DesignModeTabState["layers"]>,
+  ) => void;
   readonly remove: (runtimeTabId: string) => void;
 }
 
@@ -38,6 +59,8 @@ const EMPTY_TAB_STATE: DesignModeTabState = {
   selection: [],
   draftCount: 0,
   comparing: false,
+  tokens: null,
+  layers: null,
 };
 
 const patchTab = (
@@ -55,9 +78,16 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
     set((state) => {
       const current = state.byTabId[runtimeTabId] ?? EMPTY_TAB_STATE;
       if (current.enabled === enabled) return state;
-      // Toggling off keeps drafts alive in the guest but the panel's world view resets;
-      // a fresh selection message rebuilds it on the next activation.
-      return patchTab(state, runtimeTabId, { enabled, selection: [], comparing: false });
+      // Toggling off keeps drafts alive in the guest but the panel's world view resets
+      // symmetrically — selection, layers AND tokens; the engine re-emits all three on
+      // the next activation, so nothing stale can survive tab reuse or navigations.
+      return patchTab(state, runtimeTabId, {
+        enabled,
+        selection: [],
+        comparing: false,
+        layers: null,
+        tokens: null,
+      });
     }),
   setTagged: (runtimeTabId, tagged) =>
     set((state) => {
@@ -75,6 +105,8 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
     }),
   setComparing: (runtimeTabId, comparing) =>
     set((state) => patchTab(state, runtimeTabId, { comparing })),
+  setTokens: (runtimeTabId, tokens) => set((state) => patchTab(state, runtimeTabId, { tokens })),
+  setLayers: (runtimeTabId, layers) => set((state) => patchTab(state, runtimeTabId, { layers })),
   remove: (runtimeTabId) =>
     set((state) => {
       if (!(runtimeTabId in state.byTabId)) return state;

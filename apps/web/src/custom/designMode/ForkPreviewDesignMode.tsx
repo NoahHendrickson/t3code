@@ -89,6 +89,24 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
         case "drafts":
           store.setDraftCount(runtimeTabId, message.count);
           return;
+        case "tokens":
+          store.setTokens(runtimeTabId, {
+            colors: message.colors,
+            spacingBasePx: message.spacingBasePx,
+          });
+          return;
+        case "layers":
+          store.setLayers(runtimeTabId, {
+            roots: message.roots,
+            truncated: message.truncated,
+          });
+          return;
+        default: {
+          // Exhaustiveness: a new DesignModeEngineMessage variant must fail to compile
+          // here instead of being silently dropped.
+          const _exhaustive: never = message;
+          return _exhaustive;
+        }
       }
     };
 

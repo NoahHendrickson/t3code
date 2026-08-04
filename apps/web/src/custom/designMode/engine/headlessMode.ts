@@ -13,8 +13,15 @@
  * Vendored why-comments are preserved verbatim where the logic came across unchanged.
  */
 import { buildElementSnapshot } from "./snapshot";
-import type { DesignChangeRequestPayload, DesignModeElementSnapshot } from "../protocol";
+import type {
+  DesignChangeRequestPayload,
+  DesignModeElementSnapshot,
+  DesignModeLayerNode,
+  DesignModeWritableKey,
+} from "../protocol";
 import type { HeadlessOverlay } from "./headlessOverlay";
+import { ElementIdRegistry } from "./idRegistry";
+import { LayersSession } from "./layersSession";
 import { basename, findTaggedElement, type TaggedElement } from "./vendor/source";
 import { DraftStore } from "./vendor/drafts";
 import { isEditable } from "./vendor/canvas";
@@ -51,6 +58,7 @@ export class HeadlessDesignMode {
   onSelection?: (elements: DesignModeElementSnapshot[]) => void;
   onDraftsCount?: (count: number) => void;
   onStateChange?: (active: boolean) => void;
+  onLayers?: (roots: DesignModeLayerNode[], truncated: boolean) => void;
 
   private moveRaf = 0;
   private reflowRaf = 0;
@@ -62,12 +70,11 @@ export class HeadlessDesignMode {
   private handles: ResizeHandles;
   readonly drafts: DraftStore;
 
-  /** Selection-id registry for host commands. Ids are stable per element for as long as it
-   * stays selected (WeakMap side), and `ids` is pruned to the live selection on every
-   * setSelection so detached elements cannot leak through the registry. */
-  private ids = new Map<number, TaggedElement>();
-  private idOf = new WeakMap<TaggedElement, number>();
-  private nextId = 1;
+  /** The one id space selection snapshots and layers nodes share — every host command
+   * resolves here, so tree, panel, and outlines can never disagree about an id. */
+  private readonly registry = new ElementIdRegistry();
+  /** The layers subsystem (observer, debounce, cap, change gate) — see layersSession.ts. */
+  private readonly layers = new LayersSession(this.registry);
 
   /** Emit-on-change guard for the drafts count — drafts.onChange fires per scrub tick, and
    * each console.log line crosses the webview boundary; the count itself changes rarely. */
@@ -132,6 +139,7 @@ export class HeadlessDesignMode {
       if (this.draftSyncTimer) clearTimeout(this.draftSyncTimer);
       this.draftSyncTimer = setTimeout(() => this.flushDraftSync(), RIPPLE_DEBOUNCE_MS);
     };
+    this.layers.onLayers = (roots, truncated) => this.onLayers?.(roots, truncated);
   }
 
   private emitDraftsCount(): void {
@@ -159,10 +167,10 @@ export class HeadlessDesignMode {
   /** Applies one CSS draft to every listed selection id — the native panel's edit path.
    * Ripple bookkeeping mirrors the in-page panel's before/after hooks so scrub bursts
    * keep their drag-start baselines. */
-  applyDraft(idList: readonly number[], property: string, value: string): void {
+  applyDraft(idList: readonly number[], property: DesignModeWritableKey, value: string): void {
     const els = idList
-      .map((id) => this.ids.get(id))
-      .filter((el): el is TaggedElement => el !== undefined && el.isConnected);
+      .map((id) => this.registry.resolve(id))
+      .filter((el): el is TaggedElement => el !== null);
     if (els.length === 0) return;
     for (const el of els) this.handleBeforeEdit(el);
     for (const el of els) this.drafts.apply(el, property, value);
@@ -230,6 +238,7 @@ export class HeadlessDesignMode {
       window.addEventListener("resize", this.onReflow, { passive: true });
       this.moveDrag.start();
       this.handles.start();
+      this.layers.start();
       this.persist();
     } else {
       this.textEdit.finish(); // commit any in-progress inline text edit before the listeners go
@@ -242,6 +251,7 @@ export class HeadlessDesignMode {
       window.removeEventListener("resize", this.onReflow);
       this.moveDrag.stop();
       this.handles.stop();
+      this.layers.stop();
       this.clearNoDrop();
       if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
       if (this.reflowRaf) cancelAnimationFrame(this.reflowRaf);
@@ -419,17 +429,24 @@ export class HeadlessDesignMode {
   /** Mints/reuses ids for the live selection, prunes the registry to it, and pushes
    * fresh snapshots to the host — the native panel's whole world view. */
   private emitSelection(): void {
-    this.ids.clear();
-    const snapshots = this.selection.map((el) => {
-      let id = this.idOf.get(el);
-      if (id === undefined) {
-        id = this.nextId++;
-        this.idOf.set(el, id);
-      }
-      this.ids.set(id, el);
-      return buildElementSnapshot(el, id);
-    });
+    this.registry.retainSelection(this.selection);
+    const snapshots = this.selection.map((el) => buildElementSnapshot(el, this.registry.mint(el)));
     this.onSelection?.(snapshots);
+  }
+
+  /** Layers-row click — same selection funnel as a canvas click. */
+  selectById(id: number): void {
+    const el = this.registry.resolve(id);
+    if (el) this.select(el);
+  }
+
+  /** Layers-row hover — drives the same hover outline the pointer does, including the
+   * pointer path's rule that selected elements get no hover outline over their
+   * selection chrome. */
+  hoverById(id: number | null): void {
+    const el = id === null ? null : this.registry.resolve(id);
+    if (el && !this.selection.includes(el)) this.overlay.showOutline(el.getBoundingClientRect());
+    else this.overlay.hideOutline();
   }
 
   /** Resize chrome follows the SELECT outline exactly — same rect, same rules. */

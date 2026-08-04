@@ -1,6 +1,24 @@
 import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
+import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
+
+import type { DesignModeTokens } from "../designModeStore";
+import { DesignColorPicker, rgbToHex } from "./DesignColorPicker";
+
+/** Tailwind's canonical numeric spacing ladder — token pickers offer these steps and the
+ * badge lights up when a value sits exactly on one (utility = step × --spacing base). */
+const TAILWIND_SPACING_STEPS = [
+  0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40, 44,
+  48, 52, 56, 60, 64, 72, 80, 96,
+] as const;
+
+/** The spacing step a px value sits on, or null when off-scale. */
+function spacingStepFor(px: number, basePx: number): number | null {
+  const step = px / basePx;
+  const match = TAILWIND_SPACING_STEPS.find((candidate) => Math.abs(candidate - step) < 0.001);
+  return match ?? null;
+}
 
 /** Formats a number for display/writeback without float noise (12, 12.5 — never 12.50001). */
 const formatNumber = (value: number, precision: number): string => {
@@ -22,6 +40,9 @@ interface ScrubFieldProps {
   /** Value change per dragged pixel (Shift multiplies by 10). */
   step?: number;
   precision?: number;
+  /** The previewed app's --spacing base (px). Enables the Tailwind step badge and the
+   * scale-ladder picker on spacing-shaped fields. */
+  tokenBasePx?: number | null;
   onEdit: (cssValue: string) => void;
 }
 
@@ -39,6 +60,7 @@ export function ScrubField({
   max,
   step = 1,
   precision = 0,
+  tokenBasePx,
   onEdit,
 }: ScrubFieldProps) {
   const parsed = Number.parseFloat(value);
@@ -118,21 +140,75 @@ export function ScrubField({
           if (Number.isFinite(v)) commit(v);
         }}
         spellCheck={false}
-        className="h-full w-full min-w-0 bg-transparent pe-1.5 text-xs text-foreground outline-none"
+        className="h-full w-full min-w-0 bg-transparent text-xs text-foreground outline-none"
       />
+      {tokenBasePx != null && tokenBasePx > 0 && unit === "px" ? (
+        <SpacingTokenAffordance
+          basePx={tokenBasePx}
+          currentPx={Number.parseFloat(text)}
+          onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx)}
+        />
+      ) : null}
     </label>
   );
 }
 
-/** "rgb(a, b, c)" / "rgba(a, b, c, d)" → "#rrggbb", or null for anything else. */
-export function rgbToHex(value: string): string | null {
-  const match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/u.exec(value.trim());
-  if (!match) return null;
-  const channel = (raw: string | undefined) =>
-    Math.min(255, Number.parseInt(raw ?? "0", 10))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${channel(match[1])}${channel(match[2])}${channel(match[3])}`;
+/** The token half of a spacing field: a badge with the matching Tailwind step (lit when
+ * the value sits exactly on the scale) that opens the scale-ladder picker. */
+function SpacingTokenAffordance({
+  basePx,
+  currentPx,
+  onPickStep,
+}: {
+  basePx: number;
+  currentPx: number;
+  onPickStep: (step: number) => void;
+}) {
+  const matched = Number.isFinite(currentPx) ? spacingStepFor(currentPx, basePx) : null;
+  return (
+    <Popover>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            title={
+              matched !== null
+                ? `On the spacing scale: ${matched} (${currentPx}px) — click for the ladder`
+                : "Pick from the spacing scale"
+            }
+            className={cn(
+              "me-1 shrink-0 rounded-[3px] px-1 font-mono text-[9px] leading-4 transition-colors",
+              matched !== null
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground/50 hover:text-foreground",
+            )}
+          >
+            {matched !== null ? matched : "{ }"}
+          </button>
+        }
+      />
+      <PopoverPopup className="w-32 p-1" data-fork-design-token-ladder>
+        <div className="max-h-48 overflow-y-auto">
+          {TAILWIND_SPACING_STEPS.map((scaleStep) => (
+            <button
+              key={scaleStep}
+              type="button"
+              onClick={() => onPickStep(scaleStep)}
+              className={cn(
+                "flex w-full items-center justify-between rounded px-1.5 py-0.5 text-xs",
+                scaleStep === matched
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              )}
+            >
+              <span className="font-mono">{scaleStep}</span>
+              <span className="text-[10px] text-muted-foreground/70">{scaleStep * basePx}px</span>
+            </button>
+          ))}
+        </div>
+      </PopoverPopup>
+    </Popover>
+  );
 }
 
 interface ColorFieldProps {
@@ -140,12 +216,14 @@ interface ColorFieldProps {
   title: string;
   /** The computed CSS color (rgb/rgba). */
   value: string;
+  /** Previewed app's theme tokens — shown as swatches inside the picker popover. */
+  tokens?: DesignModeTokens | null;
   onEdit: (cssValue: string) => void;
 }
 
-/** Swatch + hex pair. Fully-transparent computed values display as "transparent" until a
- * color is picked. */
-export function ColorField({ label, title, value, onEdit }: ColorFieldProps) {
+/** Swatch (opens the picker popover) + hex pair. Fully-transparent computed values
+ * display as "transparent" until a color is picked. */
+export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldProps) {
   const isTransparent = /^rgba\(\d+,\s*\d+,\s*\d+,\s*0\)$/u.test(value.trim());
   const hex = rgbToHex(value);
   const [text, setText] = useState(isTransparent ? "transparent" : (hex ?? value));
@@ -163,12 +241,11 @@ export function ColorField({ label, title, value, onEdit }: ColorFieldProps) {
       <span className="w-7 shrink-0 select-none ps-1.5 text-[10px] font-medium text-muted-foreground">
         {label}
       </span>
-      <input
-        type="color"
-        value={hex ?? "#000000"}
-        onChange={(event) => commit(event.target.value)}
-        aria-label={`${title} swatch`}
-        className="size-4 shrink-0 cursor-pointer appearance-none border-none bg-transparent p-0"
+      <DesignColorPicker
+        value={value}
+        tokens={tokens ?? null}
+        onPick={commit}
+        triggerAriaLabel={`${title} swatch`}
       />
       <input
         value={text}

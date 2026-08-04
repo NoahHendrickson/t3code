@@ -2,6 +2,7 @@ import {
   DESIGN_MODE_GLOBAL,
   parseDesignChangeRequestPayload,
   type DesignChangeRequestPayload,
+  type DesignModeWritableKey,
 } from "./protocol";
 
 /** The subset of Electron's webview element the design-mode host drives. Same shape the
@@ -36,7 +37,12 @@ export const designModeBridge = {
   setActive(runtimeTabId: string, on: boolean): void {
     fire(runtimeTabId, "setActive", [on]);
   },
-  applyDraft(runtimeTabId: string, ids: readonly number[], property: string, value: string): void {
+  applyDraft(
+    runtimeTabId: string,
+    ids: readonly number[],
+    property: DesignModeWritableKey,
+    value: string,
+  ): void {
     fire(runtimeTabId, "applyDraft", [ids, property, value]);
   },
   discardAll(runtimeTabId: string): void {
@@ -52,6 +58,12 @@ export const designModeBridge = {
       .executeJavaScript(handleCall("buildSend", []), false)
       .catch(() => null);
     return parseDesignChangeRequestPayload(result);
+  },
+  selectElement(runtimeTabId: string, id: number): void {
+    fire(runtimeTabId, "selectElement", [id]);
+  },
+  hoverElement(runtimeTabId: string, id: number | null): void {
+    fire(runtimeTabId, "hoverElement", [id]);
   },
   destroy(runtimeTabId: string): void {
     fire(runtimeTabId, "destroy", []);
