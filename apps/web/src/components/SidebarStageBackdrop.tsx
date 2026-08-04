@@ -51,11 +51,10 @@ export function useSidebarStageBackdropVariant(enabled = true): SidebarStageBack
 
 /** Stage-channel header art; palettes mirror the per-channel app icons in `assets/`.
  *
- * fork: no production call site — the sidebar header renders
- * `custom/SidebarHeaderBackdrop` instead, which wraps the same art in the same
- * class so it can show on release builds too. Kept rather than deleted because
- * it is upstream's own export and its test still covers it; do not "clean this
- * up" during a sync. See .fork/customizations.yaml#fork-sidebar-chrome. */
+ * fork: no production call site — the sidebar header intentionally stays flat
+ * and transparent to match its design. Kept because it is upstream's export and
+ * its test still covers it; do not "clean this up" during a sync. See
+ * .fork/customizations.yaml#fork-sidebar-chrome. */
 export function SidebarStageBackdrop({ variant }: { variant: SidebarStageBackdropVariant }) {
   return (
     <div
@@ -205,7 +204,7 @@ function NightlySkyArt({ compact = false }: { compact?: boolean }) {
 }
 
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-   The Dev channel's blueprint art is replaced by the fork's green ordered
+   The Dev channel's blueprint art is replaced by the fork's orange ordered
    dither. Upstream's dispatch and the Nightly sky are untouched, so the two
    channels still read apart. The name is kept so the two call sites above stay
    upstream's; the blueprint body it used to hold is gone rather than left
