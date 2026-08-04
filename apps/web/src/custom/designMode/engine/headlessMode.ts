@@ -14,7 +14,7 @@
  */
 import { buildElementSnapshot } from "./snapshot";
 import type { DesignChangeRequestPayload, DesignModeElementSnapshot } from "../protocol";
-import { Overlay } from "./vendor/overlay";
+import type { HeadlessOverlay } from "./headlessOverlay";
 import { basename, findTaggedElement, type TaggedElement } from "./vendor/source";
 import { DraftStore } from "./vendor/drafts";
 import { isEditable } from "./vendor/canvas";
@@ -101,7 +101,7 @@ export class HeadlessDesignMode {
    * instead of stomping what the user just chose. */
   private restoredSelection = new WeakSet<TaggedElement>();
 
-  constructor(private overlay: Overlay) {
+  constructor(private overlay: HeadlessOverlay) {
     this.drafts = new DraftStore();
     this.textEdit = new TextEditMode(this.drafts, {
       select: (el) => this.select(el),

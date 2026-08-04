@@ -12,20 +12,15 @@ not vendored — T3 threads are the delivery surface (see
 `shared/chat-constants`.
 
 Since the native-panel split, the injected bundle is HEADLESS: `engine/headlessMode.ts`
-(fork-authored, adapted from `index.ts` here) composes the vendored leaf modules and the
-in-page chrome UI modules (`panel*`, `dock`, `layers*`, `canvas*`, `controls`,
-`colorpicker`, `tokenpicker`, `ui/*`, and `index.ts` itself) are retained for reference
-and future re-syncs but tree-shaken out of the bundle — the properties panel is native T3
-React (`custom/designMode/panel/`).
+is the sole orchestrator, `engine/headlessOverlay.ts` owns only page-local outlines and
+gesture chrome, and this directory contains only the Forge leaf modules reachable from
+them. The old in-page panel, dock, layers, canvas chrome, controls, and Forge orchestrator
+are intentionally absent — the properties panel is native T3 React
+(`custom/designMode/panel/`).
 
 Local edits are marked with `t3-fork:` comments. The load-bearing ones:
 
-- `index.ts` — rewritten header: every fetch/queue/dispatch/verifier/feed wiring removed;
-  new host seams `onSendRequest` / `onStateChange` / `onDraftsChanged`, plus `buildSend()`
-  and `discardAll()`.
-- `overlay.ts` — `CHAT_CSS` concat replaced by `../send-bar-styles`'s `SEND_BAR_CSS`.
 - `lifecycle.ts` — `StageEvent`/`LifecycleStage` inlined (verifier.ts not vendored).
-- `panel.ts` — `promptButton` stays hidden (its chat-chip target does not exist here).
 - `./shared/` import paths (were `../shared/` upstream).
 - A handful of mechanical lint fixes (snapshot spreads → `Array.from`, `toReversed()`,
   `Set#has`, two unused imports) — style-only, no behavior change.

@@ -1508,7 +1508,7 @@
     (computed styles per protocol.ts DESIGN_MODE_STYLE_KEYS) up over
     console-message lines prefixed __t3-design-mode__:. The panel is T3
     React (panel/ForkDesignPanel.tsx), docked as a column beside the browser
-    surface inside PreviewView: size, padding, margin, radius, typography,
+    surface by the PreviewPanel override: size, padding, margin, radius, typography,
     fill and opacity controls with scrub-to-edit fields, driving the guest
     through the window.__T3_DESIGN_MODE__ command handle
     (designModeBridge.ts, fire-and-forget except buildSend). Edits preview
@@ -1528,12 +1528,13 @@
     engine and its drafts. Element→source mapping needs the
     previewed project to run forge-mode's dev-only JSX tagging
     (data-dc-source); untagged pages get a toast with a one-click "ask the
-    agent to set it up" handoff. engine/vendor/** is vendored Forge client
-    code: it keeps the Forge's own formatting (fmt-ignored at the root
-    config, same treatment as qrcodegen.ts), carries t3-fork-marked local
-    edits, and is excluded from the web TS project in favor of its own
-    tsconfig island; the engine is bundled to an injectable IIFE string by
-    the fork:design-mode-engine Vite plugin as virtual:fork-design-mode-engine.
+    agent to set it up" handoff. engine/vendor/** contains only the Forge leaf
+    modules reachable from the headless engine; they keep the Forge's own
+    formatting (fmt-ignored at the root config, same treatment as qrcodegen.ts),
+    carry t3-fork-marked local edits, and are excluded from the web TS project
+    in favor of their own tsconfig island; the engine is bundled to an
+    injectable IIFE string by the fork:design-mode-engine Vite plugin as
+    virtual:fork-design-mode-engine.
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
@@ -1547,17 +1548,20 @@
     - apps/web/src/custom/designMode/engineVirtual.d.ts
     - apps/web/src/custom/designMode/engine/boot.ts
     - apps/web/src/custom/designMode/engine/bridge.ts
+    - apps/web/src/custom/designMode/engine/headlessOverlay.ts
     - apps/web/src/custom/designMode/engine/headlessMode.ts
     - apps/web/src/custom/designMode/engine/snapshot.ts
     - apps/web/src/custom/designMode/engine/tsconfig.json
-    # The vendored Forge client (one directory entry — ~40 modules; the
+    # The reachable vendored Forge client leaves (one directory entry; the
     # custom/ directory walk already lints it, and its own tsconfig checks it).
     - apps/web/src/custom/designMode/engine/vendor
     - apps/web/fork/vitePluginForkDesignMode.ts
-  shadows: []
+    - apps/web/src/overrides/components/preview/PreviewPanel.tsx
+  shadows:
+    - apps/web/src/components/preview/PreviewPanel.tsx
   watch:
-    # The one UI mount: fenced import + <ForkPreviewDesignMode> in the chrome
-    # row's trailingActions slot.
+    # Thin fenced import + <ForkPreviewDesignMode> in the chrome row's
+    # trailingActions slot; the browser surface tree stays untouched.
     - apps/web/src/components/preview/PreviewView.tsx
     # Fenced mock adjustment: trailingActions is a fragment (toggle + menu)
     # under the fork, so the mock finds the menu's props on a fragment child.

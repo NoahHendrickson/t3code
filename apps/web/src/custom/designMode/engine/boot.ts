@@ -14,8 +14,8 @@
  */
 import { DESIGN_MODE_GLOBAL, type DesignModeGuestHandle } from "../protocol";
 import { emitToHost } from "./bridge";
+import { HeadlessOverlay } from "./headlessOverlay";
 import { HeadlessDesignMode } from "./headlessMode";
-import { Overlay } from "./vendor/overlay";
 import { loadLifecycle } from "./vendor/lifecycle-store";
 
 function existingHandle(): DesignModeGuestHandle | undefined {
@@ -31,12 +31,8 @@ function boot(): void {
     return;
   }
 
-  const overlay = new Overlay();
+  const overlay = new HeadlessOverlay();
   overlay.mount();
-  // No in-page chrome in headless mode: the T3 preview chrome owns activation and the
-  // native panel owns every control — the overlay contributes outlines/handles only.
-  overlay.toggle.hidden = true;
-  overlay.status.hidden = true;
   const mode = new HeadlessDesignMode(overlay);
 
   mode.onSelection = (elements) => emitToHost({ type: "selection", elements });
@@ -52,7 +48,7 @@ function boot(): void {
     buildSend: () => mode.buildSend(),
     destroy: () => {
       mode.setActive(false);
-      overlay.host.remove();
+      overlay.destroy();
       delete (globalThis as Record<string, unknown>)[DESIGN_MODE_GLOBAL];
     },
   };

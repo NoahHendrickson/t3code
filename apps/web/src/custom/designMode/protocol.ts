@@ -103,22 +103,95 @@ export interface DesignModeGuestHandle {
   destroy(): void;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isNonNegativeInteger = (value: unknown): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0;
+
+const isStyleMap = (value: unknown): value is Readonly<Record<DesignModeStyleKey, string>> =>
+  isRecord(value) && DESIGN_MODE_STYLE_KEYS.every((key) => typeof value[key] === "string");
+
+function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null {
+  if (
+    !isRecord(value) ||
+    !isNonNegativeInteger(value.id) ||
+    typeof value.tag !== "string" ||
+    (value.sourceLabel !== null && typeof value.sourceLabel !== "string") ||
+    !isStyleMap(value.styles)
+  ) {
+    return null;
+  }
+  return {
+    id: value.id,
+    tag: value.tag,
+    sourceLabel: value.sourceLabel,
+    styles: value.styles,
+  };
+}
+
+function parseElementSummary(value: unknown): DesignChangeElementSummary | null {
+  if (
+    !isRecord(value) ||
+    typeof value.tag !== "string" ||
+    (value.sourceLabel !== null && typeof value.sourceLabel !== "string") ||
+    !Array.isArray(value.deltas) ||
+    !value.deltas.every((delta): delta is string => typeof delta === "string")
+  ) {
+    return null;
+  }
+  return { tag: value.tag, sourceLabel: value.sourceLabel, deltas: value.deltas };
+}
+
+/** Decodes the result returned across Electron's executeJavaScript boundary. */
+export function parseDesignChangeRequestPayload(value: unknown): DesignChangeRequestPayload | null {
+  if (
+    !isRecord(value) ||
+    typeof value.markdown !== "string" ||
+    !isNonNegativeInteger(value.elementCount) ||
+    !Array.isArray(value.elements)
+  ) {
+    return null;
+  }
+  const elements = value.elements.map(parseElementSummary);
+  if (elements.some((element) => element === null) || value.elementCount !== elements.length) {
+    return null;
+  }
+  return {
+    markdown: value.markdown,
+    elementCount: value.elementCount,
+    elements: elements.filter((element): element is DesignChangeElementSummary => element !== null),
+  };
+}
+
 /** Parses one console-message line; null when the line is not a design-mode message. */
 export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMessage | null {
   if (!line.startsWith(DESIGN_MODE_CONSOLE_PREFIX)) return null;
   try {
     const value: unknown = JSON.parse(line.slice(DESIGN_MODE_CONSOLE_PREFIX.length));
-    if (typeof value !== "object" || value === null) return null;
-    const message = value as { readonly type?: unknown };
-    if (
-      message.type === "ready" ||
-      message.type === "state" ||
-      message.type === "selection" ||
-      message.type === "drafts"
-    ) {
-      return value as DesignModeEngineMessage;
+    if (!isRecord(value)) return null;
+    switch (value.type) {
+      case "ready":
+        return typeof value.tagged === "boolean" ? { type: "ready", tagged: value.tagged } : null;
+      case "state":
+        return typeof value.active === "boolean" ? { type: "state", active: value.active } : null;
+      case "selection": {
+        if (!Array.isArray(value.elements)) return null;
+        const elements = value.elements.map(parseElementSnapshot);
+        return elements.some((element) => element === null)
+          ? null
+          : {
+              type: "selection",
+              elements: elements.filter(
+                (element): element is DesignModeElementSnapshot => element !== null,
+              ),
+            };
+      }
+      case "drafts":
+        return isNonNegativeInteger(value.count) ? { type: "drafts", count: value.count } : null;
+      default:
+        return null;
     }
-    return null;
   } catch {
     return null;
   }

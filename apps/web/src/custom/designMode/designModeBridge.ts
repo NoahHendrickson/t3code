@@ -1,4 +1,8 @@
-import { DESIGN_MODE_GLOBAL, type DesignChangeRequestPayload } from "./protocol";
+import {
+  DESIGN_MODE_GLOBAL,
+  parseDesignChangeRequestPayload,
+  type DesignChangeRequestPayload,
+} from "./protocol";
 
 /** The subset of Electron's webview element the design-mode host drives. Same shape the
  * upstream automation host declares locally (PreviewAutomationHosts.tsx). */
@@ -47,17 +51,7 @@ export const designModeBridge = {
     const result = await webview
       .executeJavaScript(handleCall("buildSend", []), false)
       .catch(() => null);
-    if (typeof result !== "object" || result === null) return null;
-    const { markdown, elementCount, elements } = result as {
-      markdown?: unknown;
-      elementCount?: unknown;
-      elements?: unknown;
-    };
-    return typeof markdown === "string" &&
-      typeof elementCount === "number" &&
-      Array.isArray(elements)
-      ? ({ markdown, elementCount, elements } as DesignChangeRequestPayload)
-      : null;
+    return parseDesignChangeRequestPayload(result);
   },
   destroy(runtimeTabId: string): void {
     fire(runtimeTabId, "destroy", []);

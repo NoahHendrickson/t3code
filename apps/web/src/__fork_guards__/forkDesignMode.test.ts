@@ -3,7 +3,7 @@
  * Fork guard — see `.fork/README.md` §4b and `.fork/customizations.yaml#fork-design-mode`.
  *
  * The design mode's outcome contract, from the outside in:
- *   - the toggle is wired into the preview chrome (PreviewView fence intact);
+ *   - the toggle is wired into the preview chrome and the panel is docked by an override;
  *   - the engine bundler plugin is registered and the engine TS island stays excluded;
  *   - the engine bundles to one self-contained IIFE (proves the vendored module graph is
  *     complete after any upstream sync or Forge re-sync);
@@ -21,6 +21,8 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   DESIGN_MODE_CONSOLE_PREFIX,
   DESIGN_MODE_GLOBAL,
+  DESIGN_MODE_STYLE_KEYS,
+  parseDesignChangeRequestPayload,
   parseDesignModeConsoleMessage,
 } from "../custom/designMode/protocol";
 
@@ -30,14 +32,16 @@ const read = (relative: string) => NodeFS.readFileSync(NodePath.join(webRoot, re
 describe("fork guard: design mode", () => {
   it("mounts the Design toggle and the native panel in the preview pane", () => {
     const previewView = read("src/components/preview/PreviewView.tsx");
+    const previewPanel = read("src/overrides/components/preview/PreviewPanel.tsx");
     expect(previewView).toContain(
       'import { ForkPreviewDesignMode } from "~/custom/designMode/ForkPreviewDesignMode"',
     );
-    expect(previewView).toContain(
+    expect(previewView).toContain("<ForkPreviewDesignMode");
+    expect(previewView).not.toContain("ForkDesignPanel");
+    expect(previewPanel).toContain(
       'import { ForkDesignPanel } from "~/custom/designMode/panel/ForkDesignPanel"',
     );
-    expect(previewView).toContain("<ForkPreviewDesignMode");
-    expect(previewView).toContain(
+    expect(previewPanel).toContain(
       "<ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} />",
     );
   });
@@ -133,6 +137,7 @@ describe("fork guard: design mode", () => {
   });
 
   it("round-trips the console-message protocol", () => {
+    const styles = Object.fromEntries(DESIGN_MODE_STYLE_KEYS.map((key) => [key, `${key}-value`]));
     const selection = {
       type: "selection",
       elements: [
@@ -140,7 +145,7 @@ describe("fork guard: design mode", () => {
           id: 1,
           tag: "button",
           sourceLabel: "App.tsx:5",
-          styles: { width: "120px" },
+          styles,
         },
       ],
     };
@@ -154,5 +159,29 @@ describe("fork guard: design mode", () => {
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"nope"}`),
     ).toBeNull();
     expect(parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}not-json`)).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"selection","elements":[{"id":1}]}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"drafts","count":"3"}`),
+    ).toBeNull();
+  });
+
+  it("decodes complete design-change payloads only", () => {
+    const payload = {
+      markdown: "Change button padding",
+      elementCount: 1,
+      elements: [{ tag: "button", sourceLabel: "App.tsx:5", deltas: ["8px → 12px"] }],
+    };
+    expect(parseDesignChangeRequestPayload(payload)).toEqual(payload);
+    expect(parseDesignChangeRequestPayload({ ...payload, elementCount: 2 })).toBeNull();
+    expect(
+      parseDesignChangeRequestPayload({
+        ...payload,
+        elements: [{ ...payload.elements[0], deltas: [3] }],
+      }),
+    ).toBeNull();
   });
 });
