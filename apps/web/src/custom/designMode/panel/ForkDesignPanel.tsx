@@ -143,6 +143,8 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
     });
   }, [runtimeTabId, threadRef]);
 
+  const spacingBase = tab.tokens?.spacingBasePx ?? null;
+
   if (!runtimeTabId || !tab.enabled) return null;
 
   return (
@@ -177,6 +179,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="W"
               title="Width"
+              tokenBasePx={spacingBase}
               value={first.styles.width}
               min={0}
               onEdit={(v) => apply("width", v)}
@@ -184,6 +187,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="H"
               title="Height"
+              tokenBasePx={spacingBase}
               value={first.styles.height}
               min={0}
               onEdit={(v) => apply("height", v)}
@@ -211,6 +215,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
                 <ScrubField
                   label="Gap"
                   title="Gap"
+                  tokenBasePx={spacingBase}
                   value={first.styles["row-gap"]}
                   min={0}
                   onEdit={(v) => apply("gap", v)}
@@ -273,6 +278,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="T"
               title="Padding top"
+              tokenBasePx={spacingBase}
               value={first.styles["padding-top"]}
               min={0}
               onEdit={(v) => apply("padding-top", v)}
@@ -280,6 +286,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="R"
               title="Padding right"
+              tokenBasePx={spacingBase}
               value={first.styles["padding-right"]}
               min={0}
               onEdit={(v) => apply("padding-right", v)}
@@ -287,6 +294,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="B"
               title="Padding bottom"
+              tokenBasePx={spacingBase}
               value={first.styles["padding-bottom"]}
               min={0}
               onEdit={(v) => apply("padding-bottom", v)}
@@ -294,6 +302,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="L"
               title="Padding left"
+              tokenBasePx={spacingBase}
               value={first.styles["padding-left"]}
               min={0}
               onEdit={(v) => apply("padding-left", v)}
@@ -304,24 +313,28 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             <ScrubField
               label="T"
               title="Margin top"
+              tokenBasePx={spacingBase}
               value={first.styles["margin-top"]}
               onEdit={(v) => apply("margin-top", v)}
             />
             <ScrubField
               label="R"
               title="Margin right"
+              tokenBasePx={spacingBase}
               value={first.styles["margin-right"]}
               onEdit={(v) => apply("margin-right", v)}
             />
             <ScrubField
               label="B"
               title="Margin bottom"
+              tokenBasePx={spacingBase}
               value={first.styles["margin-bottom"]}
               onEdit={(v) => apply("margin-bottom", v)}
             />
             <ScrubField
               label="L"
               title="Margin left"
+              tokenBasePx={spacingBase}
               value={first.styles["margin-left"]}
               onEdit={(v) => apply("margin-left", v)}
             />
