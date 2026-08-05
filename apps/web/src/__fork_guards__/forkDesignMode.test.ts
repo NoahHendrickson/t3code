@@ -13,7 +13,7 @@
  */
 
 import { build } from "esbuild";
-import { Buffer as NodeBuffer } from "node:buffer";
+import * as NodeBuffer from "node:buffer";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
@@ -187,7 +187,7 @@ describe("fork guard: design mode", () => {
       logLevel: "silent",
     });
     const code = result.outputFiles[0]?.text ?? "";
-    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.from(code).toString("base64")}`;
+    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.Buffer.from(code).toString("base64")}`;
     const engine = (await import(moduleUrl)) as {
       seedFrom: (draft: string | null, measured: string) => number;
       buildLayerTree: (
