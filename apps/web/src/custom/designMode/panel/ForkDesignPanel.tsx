@@ -1,5 +1,11 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import { ArrowDownIcon, ArrowRightIcon, FoldHorizontalIcon, ScanIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  FoldHorizontalIcon,
+  Grid2x2Icon,
+  ScanIcon,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -261,7 +267,44 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             />
           </PanelSection>
 
-          <PanelSection title="Layout" className="grid-cols-2">
+          <PanelSection
+            title="Layout"
+            className="grid-cols-2"
+            action={
+              // The Figma header's auto-layout toggle: green while the element is a flex
+              // container. Turning it OFF previews as `display: block`, which the change
+              // request builder rewrites as "remove auto layout" intent for the agent.
+              <button
+                type="button"
+                onClick={() =>
+                  apply(
+                    "display",
+                    first.styles.display === "flex" || first.styles.display === "inline-flex"
+                      ? "block"
+                      : "flex",
+                  )
+                }
+                aria-pressed={
+                  first.styles.display === "flex" || first.styles.display === "inline-flex"
+                    ? "true"
+                    : "false"
+                }
+                title={
+                  first.styles.display === "flex" || first.styles.display === "inline-flex"
+                    ? "Remove auto layout"
+                    : "Add auto layout (flex)"
+                }
+                className={cn(
+                  "flex size-6 items-center justify-center rounded transition-colors",
+                  first.styles.display === "flex" || first.styles.display === "inline-flex"
+                    ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
+                    : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Grid2x2Icon className="size-4" />
+              </button>
+            }
+          >
             <SelectRow
               label="Disp"
               title="Display"

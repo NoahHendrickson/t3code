@@ -100,6 +100,7 @@ import {
   Gauge as PhGauge,
   Gear as PhGear,
   GearSix as PhGearSix,
+  GridFour as PhGridFour,
   GitBranch as PhGitBranch,
   GitCommit as PhGitCommit,
   GitDiff as PhGitDiff,
@@ -375,6 +376,7 @@ export const PaintbrushIcon = icon("paintbrush", PhPaintBrush, "duotone");
 // toggle); FoldHorizontal to ArrowsInLineHorizontal (the gap field's prefix).
 export const ScanIcon = icon("scan", PhCornersOut, "bold");
 export const FoldHorizontalIcon = icon("fold-horizontal", PhArrowsInLineHorizontal, "bold");
+export const Grid2x2Icon = icon("grid-2x2", PhGridFour, "duotone");
 export const Paintbrush = icon("paintbrush", PhPaintBrush, "duotone");
 export const PencilRulerIcon = icon("pencil-ruler", PhPencilRuler, "duotone");
 export const PenLineIcon = icon("pen-line", PhPencilSimpleLine, "duotone");
