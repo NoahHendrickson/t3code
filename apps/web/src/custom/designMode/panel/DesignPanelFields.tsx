@@ -161,6 +161,142 @@ export function ScrubField({
   );
 }
 
+interface PairFieldProps {
+  /** Accessible name and scrub handle when no icon is given. */
+  label: string;
+  icon?: React.ReactNode;
+  title: string;
+  /** Computed CSS for the pair, in write order (e.g. [padding-left, padding-right]). */
+  values: readonly [string, string];
+  min?: number;
+  tokenBasePx?: number | null;
+  /** Writes both halves. A single typed value lands on both. */
+  onEdit: (first: string, second: string) => void;
+}
+
+/** Renders a value pair the Figma way: "8" while both halves agree, "8, 16" when split. */
+function formatPair(first: number, second: number): string {
+  return first === second ? String(first) : `${first}, ${second}`;
+}
+
+/**
+ * The paired spacing control from the Figma design — one field drives two longhand
+ * properties (left/right or top/bottom padding). Typing "8" sets both; "8, 16" splits
+ * them (first value = left/top). Scrubbing the prefix cell moves BOTH halves by the
+ * drag delta, preserving an asymmetric split instead of collapsing it.
+ */
+export function PairField({
+  label,
+  icon,
+  title,
+  values,
+  min,
+  tokenBasePx,
+  onEdit,
+}: PairFieldProps) {
+  const parse = (value: string): number => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const current: [number, number] = [parse(values[0]), parse(values[1])];
+  const [text, setText] = useState(formatPair(current[0], current[1]));
+  const scrub = useRef<{ pointerId: number; startX: number; start: [number, number] } | null>(null);
+
+  const clamp = useCallback(
+    (v: number) => Math.max(min ?? Number.NEGATIVE_INFINITY, Math.round(v)),
+    [min],
+  );
+
+  const commit = useCallback(
+    (first: number, second: number) => {
+      const a = clamp(first);
+      const b = clamp(second);
+      setText(formatPair(a, b));
+      onEdit(`${a}px`, `${b}px`);
+    },
+    [clamp, onEdit],
+  );
+
+  /** "8" → both; "8, 16" (or "8 16") → first/second; anything unparsable reverts. */
+  const commitText = useCallback(() => {
+    const numbers = text
+      .split(/[,\s]+/u)
+      .filter(Boolean)
+      .map((part) => Number.parseFloat(part))
+      .filter((value) => Number.isFinite(value));
+    if (numbers.length === 0) {
+      setText(formatPair(current[0], current[1]));
+      return;
+    }
+    commit(numbers[0]!, numbers[1] ?? numbers[0]!);
+  }, [commit, current, text]);
+
+  const onLabelPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    scrub.current = { pointerId: event.pointerId, startX: event.clientX, start: current };
+  };
+
+  const onLabelPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
+    const active = scrub.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    const dx = (event.clientX - active.startX) * (event.shiftKey ? 10 : 1);
+    commit(active.start[0] + dx, active.start[1] + dx);
+  };
+
+  const onLabelPointerUp = (event: PointerEvent<HTMLSpanElement>) => {
+    if (scrub.current?.pointerId === event.pointerId) scrub.current = null;
+  };
+
+  const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      commitText();
+      event.currentTarget.blur();
+      return;
+    }
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const delta = (event.key === "ArrowUp" ? 1 : -1) * (event.shiftKey ? 10 : 1);
+      commit(current[0] + delta, current[1] + delta);
+    }
+  };
+
+  return (
+    <label
+      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
+      <span
+        aria-label={label}
+        className="flex size-6 shrink-0 cursor-ew-resize select-none items-center justify-center text-xs text-muted-foreground/70 [&_svg]:size-4"
+        onPointerDown={onLabelPointerDown}
+        onPointerMove={onLabelPointerMove}
+        onPointerUp={onLabelPointerUp}
+        onPointerCancel={onLabelPointerUp}
+      >
+        {icon ?? label}
+      </span>
+      <input
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={onInputKeyDown}
+        onBlur={commitText}
+        spellCheck={false}
+        className="h-full w-full min-w-0 bg-transparent text-xs text-foreground outline-none"
+      />
+      {tokenBasePx != null && tokenBasePx > 0 ? (
+        <SpacingTokenAffordance
+          basePx={tokenBasePx}
+          // Asymmetric pairs read as off-scale (NaN never matches a step); picking from
+          // the ladder collapses the pair onto the chosen step, like typing one value.
+          currentPx={current[0] === current[1] ? current[0] : Number.NaN}
+          onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx, scaleStep * tokenBasePx)}
+        />
+      ) : null}
+    </label>
+  );
+}
+
 /** The token half of a spacing field: a badge with the matching Tailwind step (lit when
  * the value sits exactly on the scale) that opens the scale-ladder picker. */
 function SpacingTokenAffordance({

@@ -8,10 +8,11 @@ import { cn } from "~/lib/utils";
 
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { CornerRadiusIcon } from "./CornerRadiusIcon";
+import { PaddingIcon } from "./PaddingIcon";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
 import type { DesignModeElementSnapshot, DesignModeWritableKey } from "../protocol";
-import { ColorField, PanelSection, ScrubField } from "./DesignPanelFields";
+import { ColorField, PairField, PanelSection, ScrubField } from "./DesignPanelFields";
 import { AlignMatrix, SegmentField, SelectRow } from "./DesignPanelLayoutControls";
 
 const FONT_WEIGHTS = ["100", "200", "300", "400", "500", "600", "700", "800", "900"] as const;
@@ -342,12 +343,29 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
           </PanelSection>
 
           <PanelSection title="Padding" className="grid-cols-2">
-            <SideFields
-              prefix="padding"
-              styles={first.styles}
-              apply={apply}
+            <PairField
+              label="LR"
+              icon={<PaddingIcon axis="inline" />}
+              title="Padding left / right — type one value for both, or two: 8, 16"
               tokenBasePx={spacingBase}
+              values={[first.styles["padding-left"], first.styles["padding-right"]]}
               min={0}
+              onEdit={(left, right) => {
+                apply("padding-left", left);
+                apply("padding-right", right);
+              }}
+            />
+            <PairField
+              label="TB"
+              icon={<PaddingIcon axis="block" />}
+              title="Padding top / bottom — type one value for both, or two: 8, 16"
+              tokenBasePx={spacingBase}
+              values={[first.styles["padding-top"], first.styles["padding-bottom"]]}
+              min={0}
+              onEdit={(top, bottom) => {
+                apply("padding-top", top);
+                apply("padding-bottom", bottom);
+              }}
             />
           </PanelSection>
 

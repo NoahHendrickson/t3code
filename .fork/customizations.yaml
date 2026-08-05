@@ -1564,6 +1564,7 @@
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/CornerRadiusIcon.tsx
+    - apps/web/src/custom/designMode/panel/PaddingIcon.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
     - apps/web/src/custom/designMode/panel/DesignColorPicker.tsx
