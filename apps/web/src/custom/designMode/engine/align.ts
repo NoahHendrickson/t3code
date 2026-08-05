@@ -54,7 +54,12 @@ function parentModel(el: TaggedElement, drafts: DraftStore): ParentModel {
 }
 
 export function alignCapsFor(el: TaggedElement, drafts: DraftStore): DesignModeAlignCaps {
-  const model = parentModel(el, drafts);
+  return capsFor(parentModel(el, drafts));
+}
+
+/** Split from alignCapsFor so the apply path can reuse the parent model it already built —
+ * two getComputedStyle pairs per click otherwise (PR #57 review). */
+function capsFor(model: ParentModel): DesignModeAlignCaps {
   switch (model.kind) {
     case "absolute":
     case "grid":
@@ -111,9 +116,9 @@ export function alignElement(
   value: DesignModeAlignValue,
   drafts: DraftStore,
 ): void {
-  const caps = alignCapsFor(el, drafts);
-  if (axis === "horizontal" ? !caps.horizontal : !caps.vertical) return;
   const model = parentModel(el, drafts);
+  const caps = capsFor(model);
+  if (axis === "horizontal" ? !caps.horizontal : !caps.vertical) return;
   switch (model.kind) {
     case "absolute":
       alignOutOfFlow(el, axis, value, drafts);

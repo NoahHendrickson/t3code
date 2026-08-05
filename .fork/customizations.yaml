@@ -1610,7 +1610,11 @@
     - apps/web/src/custom/designMode/layersTreeModel.test.ts
     - apps/web/src/custom/designMode/panel/LayerTypeIcon.tsx
     - apps/web/src/custom/designMode/designChangeTranscript.ts
+    - apps/web/src/custom/designMode/layersDrag.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
+    - apps/web/src/custom/designMode/panel/CanvasControls.tsx
+    # Every properties-panel section; ForkDesignPanel.tsx is wiring only.
+    - apps/web/src/custom/designMode/panel/sections
     - apps/web/src/custom/designMode/panel/CornerRadiusIcon.tsx
     - apps/web/src/custom/designMode/panel/PaddingIcon.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx

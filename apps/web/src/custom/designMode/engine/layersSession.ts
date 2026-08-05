@@ -16,6 +16,29 @@ const LAYERS_DEBOUNCE_MS = 250;
 const LAYERS_NODE_CAP = 400;
 
 /**
+ * Sibling rows in the order the CANVAS paints them, not the order the DOM lists them.
+ *
+ * A move draft previews as inline `order` and never touches the DOM, so a straight DOM walk
+ * leaves a just-dragged row exactly where it was — the gesture reads as a no-op on the very
+ * surface that started it (PR #57 review). The same applies to an app whose own CSS uses
+ * `order`: the rail was quietly disagreeing with the page.
+ *
+ * Sorting is confined to where `order` actually does anything: a sibling group that really
+ * does share one auto-layout parent. The curated walk hoists tagged descendants through
+ * untagged wrappers, so a group that doesn't is left in walk order rather than sorted by a
+ * property that means nothing to it. Array#sort is stable, so equal orders keep DOM order.
+ */
+function visualOrder(nodes: LayerNode[]): LayerNode[] {
+  if (nodes.length < 2) return nodes;
+  const parent = nodes[0]?.el.parentElement ?? null;
+  if (!parent || reorderAxisOf(parent) === null) return nodes;
+  if (!nodes.every((node) => node.el.parentElement === parent)) return nodes;
+  const orderOf = (node: LayerNode): number =>
+    Number.parseInt(getComputedStyle(node.el).order, 10) || 0;
+  return [...nodes].sort((a, b) => orderOf(a) - orderOf(b));
+}
+
+/**
  * Owns the layers subsystem end to end: the body MutationObserver (exists only between
  * start() and stop() — zero idle overhead), the debounced rebuild, serialization with
  * its node cap, the change gate, and the layers scope of the shared id registry.
@@ -72,7 +95,7 @@ export class LayersSession {
       if (nodes.length > 0) budget.truncated = true;
       return [];
     }
-    return nodes.map((node) => ({
+    return visualOrder(nodes).map((node) => ({
       id: this.registry.mintForLayers(node.el),
       tag: node.el.tagName.toLowerCase(),
       label: node.label,

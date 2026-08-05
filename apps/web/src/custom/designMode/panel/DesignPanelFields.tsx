@@ -28,6 +28,164 @@ const formatNumber = (value: number, precision: number): string => {
   return String(Math.round(value * factor) / factor);
 };
 
+/** Preserve in-progress typing until a fresh snapshot changes the displayed element value. */
+function useSyncedDraftText(display: string) {
+  const [text, setText] = useState(display);
+  const [lastDisplay, setLastDisplay] = useState(display);
+  if (display !== lastDisplay) {
+    setLastDisplay(display);
+    setText(display);
+  }
+  return [text, setText] as const;
+}
+
+/** The changed marker Figma puts on an overridden property, doubling as its reset: a dot in
+ * the field's trailing edge that reverts just this property to the page's own value. */
+function FieldRevert({ onRevert }: { onRevert: () => void }) {
+  return (
+    <button
+      type="button"
+      title="Revert this property to the page's own value"
+      aria-label="Revert this property"
+      onClick={(event) => {
+        // Inside a <label>: without this the click also focuses the input behind it.
+        event.preventDefault();
+        onRevert();
+      }}
+      className="flex size-4 shrink-0 items-center justify-center"
+    >
+      <span className="size-1.5 rounded-full bg-[var(--fork-design-accent)]" />
+    </button>
+  );
+}
+
+interface NumericChromeProps {
+  /** Short leading label ("W", "Size") — also the scrub handle, and the accessible name
+   * when an icon takes the prefix cell. */
+  label: string;
+  icon?: React.ReactNode;
+  title: string;
+  /** In-progress entry, owned by the field (which knows how to parse it). */
+  text: string;
+  onTextChange: (value: string) => void;
+  /** What the element actually has — a blur that didn't change it costs nothing. */
+  display: string;
+  mixed?: boolean;
+  readOnly?: boolean;
+  drafted?: boolean;
+  onRevert?: () => void;
+  /** Trailing controls: the spacing-token badge, then anything field-specific. */
+  token?: React.ReactNode;
+  suffix?: React.ReactNode;
+  /** Scrubbing: the chrome owns pointer capture and reports deltas; what a delta MEANS is
+   * the field's business (one value, or both halves of a pair). */
+  onScrubStart: () => void;
+  onScrubMove: (dx: number, shiftKey: boolean) => void;
+  onCommit: () => void;
+  onArrow: (direction: 1 | -1, shiftKey: boolean) => void;
+}
+
+/**
+ * The shell every numeric field in the panel wears: prefix cell doubling as the scrub
+ * handle, the input, the changed dot, the token badge, and Enter/blur/arrow plumbing.
+ *
+ * Extracted because ScrubField and PairField had grown two copies of all of it and this PR
+ * would have thickened both (PR #57 review). What legitimately differs between them is the
+ * commit strategy — one value versus two — and that is exactly what stays in the fields.
+ */
+function NumericFieldChrome({
+  label,
+  icon,
+  title,
+  text,
+  onTextChange,
+  display,
+  mixed = false,
+  readOnly = false,
+  drafted = false,
+  onRevert,
+  token,
+  suffix,
+  onScrubStart,
+  onScrubMove,
+  onCommit,
+  onArrow,
+}: NumericChromeProps) {
+  const scrub = useRef<{ pointerId: number; startX: number } | null>(null);
+
+  const onPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
+    if (readOnly) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    scrub.current = { pointerId: event.pointerId, startX: event.clientX };
+    onScrubStart();
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
+    const active = scrub.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    onScrubMove(event.clientX - active.startX, event.shiftKey);
+  };
+
+  const onPointerUp = (event: PointerEvent<HTMLSpanElement>) => {
+    if (scrub.current?.pointerId === event.pointerId) scrub.current = null;
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      onCommit();
+      event.currentTarget.blur();
+      return;
+    }
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      onArrow(event.key === "ArrowUp" ? 1 : -1, event.shiftKey);
+    }
+  };
+
+  return (
+    <label
+      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
+      <span
+        className={cn(
+          "flex h-6 min-w-6 shrink-0 select-none items-center justify-center px-1 text-xs text-muted-foreground/70 [&_svg]:size-4",
+          readOnly ? "cursor-default" : "cursor-ew-resize",
+        )}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        {/* sr-only beside an icon (not aria-label on the span) so the wrapping label's
+            accessible name comes from plain text content, not accname recursion. */}
+        {icon ? <span className="sr-only">{label}</span> : null}
+        {icon ?? label}
+      </span>
+      <input
+        value={text}
+        readOnly={readOnly}
+        placeholder={mixed ? "Mixed" : undefined}
+        onChange={(event) => onTextChange(event.target.value)}
+        onKeyDown={readOnly ? undefined : onKeyDown}
+        onBlur={() => {
+          if (readOnly || text === display) return;
+          onCommit();
+        }}
+        spellCheck={false}
+        className={cn(
+          "h-full w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50",
+          readOnly ? "text-muted-foreground/60" : "text-foreground",
+        )}
+      />
+      {drafted && onRevert ? <FieldRevert onRevert={onRevert} /> : null}
+      {readOnly ? null : token}
+      {suffix}
+    </label>
+  );
+}
+
 interface ScrubFieldProps {
   /** Short leading label ("W", "T", "Size") — also the scrub handle. */
   label: string;
@@ -66,41 +224,11 @@ interface ScrubFieldProps {
   onEdit: (cssValue: string) => void;
 }
 
-/** The changed marker Figma puts on an overridden property, doubling as its reset: a dot in
- * the field's trailing edge that reverts just this property to the page's own value. */
-function FieldRevert({ onRevert }: { onRevert: () => void }) {
-  return (
-    <button
-      type="button"
-      title="Revert this property to the page's own value"
-      aria-label="Revert this property"
-      onClick={(event) => {
-        // Inside a <label>: without this the click also focuses the input behind it.
-        event.preventDefault();
-        onRevert();
-      }}
-      className="flex size-4 shrink-0 items-center justify-center"
-    >
-      <span className="size-1.5 rounded-full bg-[var(--fork-design-accent)]" />
-    </button>
-  );
-}
-
-/** Preserve in-progress typing until a fresh snapshot changes the displayed element value. */
-function useSyncedDraftText(display: string) {
-  const [text, setText] = useState(display);
-  const [lastDisplay, setLastDisplay] = useState(display);
-  if (display !== lastDisplay) {
-    setLastDisplay(display);
-    setText(display);
-  }
-  return [text, setText] as const;
-}
-
 /**
- * The panel's numeric control: type a value, or drag the label to scrub it — the native
- * counterpart of the Forge's NumberField. Every change fires `onEdit` immediately; the
- * guest engine coalesces repaints, so live scrubbing over the bridge stays smooth.
+ * The panel's numeric control: type a value (or an expression), or drag the label to scrub
+ * it — the native counterpart of the Forge's NumberField. Every change fires `onEdit`
+ * immediately; the guest engine coalesces repaints, so live scrubbing over the bridge stays
+ * smooth.
  */
 export function ScrubField({
   label,
@@ -124,14 +252,14 @@ export function ScrubField({
   const parsed = Number.parseFloat(value);
   const numeric = Number.isFinite(parsed) ? parsed : null;
   const display = mixed ? "" : numeric === null ? value : formatNumber(numeric, precision);
-  const [text, setText] = useSyncedDraftText(display);
   // The guest re-emits snapshots for the SAME selection (a size-mode pick, Discard all, a
   // draft-sync flush), and the fields container is keyed by selection identity — so nothing
   // remounts and the field would keep showing a number the element no longer has, then
   // scrub/arrow from that stale base (PR #54/#55 review). Re-sync on the incoming DISPLAY
   // value, not on `text`: a half-typed entry is only replaced when the element actually
   // changed under it.
-  const scrub = useRef<{ pointerId: number; startX: number; startValue: number } | null>(null);
+  const [text, setText] = useSyncedDraftText(display);
+  const scrubBase = useRef(0);
 
   const clamp = useCallback(
     (v: number) => Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? -Infinity, v)),
@@ -141,34 +269,12 @@ export function ScrubField({
   const commit = useCallback(
     (v: number) => {
       const next = clamp(v);
-      const display = formatNumber(next, precision);
-      setText(display);
-      onEdit(unit === "px" ? `${display}px` : display);
+      const committed = formatNumber(next, precision);
+      setText(committed);
+      onEdit(unit === "px" ? `${committed}px` : committed);
     },
-    [clamp, onEdit, precision, unit],
+    [clamp, onEdit, precision, setText, unit],
   );
-
-  const onLabelPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
-    if (readOnly) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    scrub.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startValue: numeric ?? (Number.parseFloat(text) || 0),
-    };
-  };
-
-  const onLabelPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
-    const active = scrub.current;
-    if (!active || active.pointerId !== event.pointerId) return;
-    const dx = event.clientX - active.startX;
-    commit(active.startValue + dx * step * (event.shiftKey ? 10 : 1));
-  };
-
-  const onLabelPointerUp = (event: PointerEvent<HTMLSpanElement>) => {
-    if (scrub.current?.pointerId === event.pointerId) scrub.current = null;
-  };
 
   /** Enter/blur commit: a listed keyword ships verbatim, anything else goes through the
    * expression evaluator (so `100/2` and `*2` work), and an entry that resolves to neither
@@ -189,67 +295,39 @@ export function ScrubField({
     commit(evaluated);
   }, [commit, display, keywords, numeric, onEdit, setText, text]);
 
-  const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      commitText();
-      event.currentTarget.blur();
-      return;
-    }
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      const base = Number.parseFloat(text);
-      const start = Number.isFinite(base) ? base : (numeric ?? 0);
-      const delta = (event.key === "ArrowUp" ? 1 : -1) * (event.shiftKey ? 10 : 1) * step;
-      commit(start + delta);
-    }
-  };
-
   return (
-    <label
-      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+    <NumericFieldChrome
+      label={label}
+      {...(icon !== undefined ? { icon } : {})}
       title={title}
-    >
-      <span
-        className={cn(
-          "flex h-6 min-w-6 shrink-0 select-none items-center justify-center px-1 text-xs text-muted-foreground/70 [&_svg]:size-4",
-          readOnly ? "cursor-default" : "cursor-ew-resize",
-        )}
-        onPointerDown={onLabelPointerDown}
-        onPointerMove={onLabelPointerMove}
-        onPointerUp={onLabelPointerUp}
-        onPointerCancel={onLabelPointerUp}
-      >
-        {/* sr-only beside an icon (not aria-label on the span) so the wrapping label's
-            accessible name comes from plain text content, not accname recursion. */}
-        {icon ? <span className="sr-only">{label}</span> : null}
-        {icon ?? label}
-      </span>
-      <input
-        value={text}
-        readOnly={readOnly}
-        placeholder={mixed ? "Mixed" : undefined}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={readOnly ? undefined : onInputKeyDown}
-        onBlur={() => {
-          if (readOnly || text === display) return;
-          commitText();
-        }}
-        spellCheck={false}
-        className={cn(
-          "h-full w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50",
-          readOnly ? "text-muted-foreground/60" : "text-foreground",
-        )}
-      />
-      {drafted && onRevert ? <FieldRevert onRevert={onRevert} /> : null}
-      {!readOnly && tokenBasePx != null && tokenBasePx > 0 && unit === "px" ? (
-        <SpacingTokenAffordance
-          basePx={tokenBasePx}
-          currentPx={Number.parseFloat(text)}
-          onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx)}
-        />
-      ) : null}
-      {suffix}
-    </label>
+      text={text}
+      onTextChange={setText}
+      display={display}
+      mixed={mixed}
+      readOnly={readOnly}
+      drafted={drafted}
+      {...(onRevert ? { onRevert } : {})}
+      {...(suffix !== undefined ? { suffix } : {})}
+      token={
+        tokenBasePx != null && tokenBasePx > 0 && unit === "px" ? (
+          <SpacingTokenAffordance
+            basePx={tokenBasePx}
+            currentPx={Number.parseFloat(text)}
+            onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx)}
+          />
+        ) : null
+      }
+      onScrubStart={() => {
+        scrubBase.current = numeric ?? (Number.parseFloat(text) || 0);
+      }}
+      onScrubMove={(dx, shiftKey) => commit(scrubBase.current + dx * step * (shiftKey ? 10 : 1))}
+      onCommit={commitText}
+      onArrow={(direction, shiftKey) => {
+        const base = Number.parseFloat(text);
+        const start = Number.isFinite(base) ? base : (numeric ?? 0);
+        commit(start + direction * (shiftKey ? 10 : 1) * step);
+      }}
+    />
   );
 }
 
@@ -299,9 +377,9 @@ export function PairField({
   };
   const current: [number, number] = [parse(values[0]), parse(values[1])];
   const display = mixed ? "" : formatPair(current[0], current[1]);
-  const [text, setText] = useSyncedDraftText(display);
   // Same prop re-sync ScrubField documents — the pair goes stale on exactly the same paths.
-  const scrub = useRef<{ pointerId: number; startX: number; start: [number, number] } | null>(null);
+  const [text, setText] = useSyncedDraftText(display);
+  const scrubBase = useRef<[number, number]>([0, 0]);
 
   const clamp = useCallback(
     (v: number) => Math.max(min ?? Number.NEGATIVE_INFINITY, Math.round(v)),
@@ -315,91 +393,61 @@ export function PairField({
       setText(formatPair(a, b));
       onEdit(`${a}px`, `${b}px`);
     },
-    [clamp, onEdit],
+    [clamp, onEdit, setText],
   );
 
-  /** "8" → both; "8, 16" (or "8 16") → first/second; each half takes the same arithmetic
-   * ScrubField does ("100/2"), evaluated against that half's own current value. Anything
-   * unparsable reverts to what the element has. */
+  /** "8" → both halves; "8, 16" → first/second, comma-separated because spaces are legal
+   * INSIDE an expression. Each half takes the same arithmetic ScrubField does ("100/2"),
+   * evaluated against that half's own current value. A third value, or a half that resolves
+   * to nothing, reverts the whole entry — committing the first two of three silently drops
+   * what the user typed (PR #57 review). */
   const commitText = useCallback(() => {
     const parts = text.split(",").filter((part) => part.trim() !== "");
     const numbers = parts
       .map((part, index) => evaluateNumericInput(part, current[index === 0 ? 0 : 1]))
       .filter((value): value is number => value !== null);
-    if (numbers.length === 0 || numbers.length !== parts.length) {
+    if (parts.length > 2 || numbers.length === 0 || numbers.length !== parts.length) {
       setText(display);
       return;
     }
     commit(numbers[0]!, numbers[1] ?? numbers[0]!);
   }, [commit, current, display, setText, text]);
 
-  const onLabelPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    scrub.current = { pointerId: event.pointerId, startX: event.clientX, start: current };
-  };
-
-  const onLabelPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
-    const active = scrub.current;
-    if (!active || active.pointerId !== event.pointerId) return;
-    const dx = (event.clientX - active.startX) * (event.shiftKey ? 10 : 1);
-    commit(active.start[0] + dx, active.start[1] + dx);
-  };
-
-  const onLabelPointerUp = (event: PointerEvent<HTMLSpanElement>) => {
-    if (scrub.current?.pointerId === event.pointerId) scrub.current = null;
-  };
-
-  const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      commitText();
-      event.currentTarget.blur();
-      return;
-    }
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      const delta = (event.key === "ArrowUp" ? 1 : -1) * (event.shiftKey ? 10 : 1);
-      commit(current[0] + delta, current[1] + delta);
-    }
-  };
-
   return (
-    <label
-      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+    <NumericFieldChrome
+      label={label}
+      {...(icon !== undefined ? { icon } : {})}
       title={title}
-    >
-      <span
-        className="flex h-6 min-w-6 shrink-0 cursor-ew-resize select-none items-center justify-center px-1 text-xs text-muted-foreground/70 [&_svg]:size-4"
-        onPointerDown={onLabelPointerDown}
-        onPointerMove={onLabelPointerMove}
-        onPointerUp={onLabelPointerUp}
-        onPointerCancel={onLabelPointerUp}
-      >
-        {icon ? <span className="sr-only">{label}</span> : null}
-        {icon ?? label}
-      </span>
-      <input
-        value={text}
-        placeholder={mixed ? "Mixed" : undefined}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={onInputKeyDown}
-        onBlur={() => {
-          if (text !== display) commitText();
-        }}
-        spellCheck={false}
-        className="h-full w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
-      />
-      {drafted && onRevert ? <FieldRevert onRevert={onRevert} /> : null}
-      {tokenBasePx != null && tokenBasePx > 0 ? (
-        <SpacingTokenAffordance
-          basePx={tokenBasePx}
-          // Asymmetric pairs read as off-scale (NaN never matches a step); picking from
-          // the ladder collapses the pair onto the chosen step, like typing one value.
-          currentPx={current[0] === current[1] ? current[0] : Number.NaN}
-          onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx, scaleStep * tokenBasePx)}
-        />
-      ) : null}
-    </label>
+      text={text}
+      onTextChange={setText}
+      display={display}
+      mixed={mixed}
+      drafted={drafted}
+      {...(onRevert ? { onRevert } : {})}
+      token={
+        tokenBasePx != null && tokenBasePx > 0 ? (
+          <SpacingTokenAffordance
+            basePx={tokenBasePx}
+            // Asymmetric pairs read as off-scale (NaN never matches a step); picking from
+            // the ladder collapses the pair onto the chosen step, like typing one value.
+            currentPx={current[0] === current[1] ? current[0] : Number.NaN}
+            onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx, scaleStep * tokenBasePx)}
+          />
+        ) : null
+      }
+      onScrubStart={() => {
+        scrubBase.current = current;
+      }}
+      onScrubMove={(dx, shiftKey) => {
+        const delta = dx * (shiftKey ? 10 : 1);
+        commit(scrubBase.current[0] + delta, scrubBase.current[1] + delta);
+      }}
+      onCommit={commitText}
+      onArrow={(direction, shiftKey) => {
+        const delta = direction * (shiftKey ? 10 : 1);
+        commit(current[0] + delta, current[1] + delta);
+      }}
+    />
   );
 }
 
@@ -500,7 +548,7 @@ export function ColorField({
       setText(next);
       onEdit(next);
     },
-    [onEdit],
+    [onEdit, setText],
   );
 
   return (

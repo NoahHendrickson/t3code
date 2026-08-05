@@ -5,7 +5,7 @@ import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "./designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
-import { LayerTypeIcon } from "./panel/LayerTypeIcon";
+import { useLayersDrag, type DropEdge, type LayerDragHandlers } from "./layersDrag";
 import {
   ancestorsOf,
   flattenLayers,
@@ -13,9 +13,7 @@ import {
   matchingIds,
   type LayerRow,
 } from "./layersTreeModel";
-
-/** Where a drag would land relative to the hovered row. */
-type DropEdge = "before" | "after";
+import { LayerTypeIcon } from "./panel/LayerTypeIcon";
 
 function LayerRowView({
   row,
@@ -28,7 +26,6 @@ function LayerRowView({
   onFocusRow,
   onKeyDown,
   drag,
-  registerRef,
 }: {
   row: LayerRow;
   selected: boolean;
@@ -39,25 +36,20 @@ function LayerRowView({
   onHover: () => void;
   onFocusRow: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
-  drag: {
-    onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
-    onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
-    onDragLeave: () => void;
-    onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
-    onDragEnd: () => void;
-  };
-  registerRef: (element: HTMLDivElement | null) => void;
+  drag: LayerDragHandlers;
 }) {
   const { node, depth, expanded, hasChildren } = row;
   return (
     <div
-      ref={registerRef}
+      // Addressed by attribute rather than a ref callback: the rail re-renders on every
+      // layers re-emit, and a fresh per-row callback tears down and re-attaches every ref
+      // each time (PR #57 review).
+      data-layer-id={node.id}
       role="treeitem"
       aria-selected={selected}
       aria-level={depth + 1}
       {...(hasChildren ? { "aria-expanded": expanded } : {})}
       tabIndex={active ? 0 : -1}
-      draggable={node.reorderable}
       onFocus={onFocusRow}
       onKeyDown={onKeyDown}
       onMouseEnter={onHover}
@@ -115,17 +107,19 @@ function LayerRowView({
  * Figma's layers-panel behaviors, all of them going through the same shared ids: the rail
  * REVEALS whatever the canvas selects (expanding its ancestors and scrolling to it), it is
  * a real keyboard tree (arrows, Home/End, Shift to extend), it filters, and a row can be
- * dragged among its siblings when the parent is an auto-layout container.
- * See `.fork/customizations.yaml#fork-design-mode`.
+ * dragged among its siblings when the parent is an auto-layout container. The tree
+ * arithmetic lives in layersTreeModel.ts and the drag in layersDrag.ts, leaving this a
+ * renderer. See `.fork/customizations.yaml#fork-design-mode`.
  */
 export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }) {
   const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<number | null>(null);
-  const [drag, setDrag] = useState<{ id: number; overId: number; edge: DropEdge } | null>(null);
-  const rowRefs = useRef(new Map<number, HTMLDivElement>());
+  const listRef = useRef<HTMLDivElement>(null);
   const focusOnRender = useRef(false);
+  /** The selection this rail has already scrolled to — see the reveal effect. */
+  const revealed = useRef<number | null>(null);
 
   const roots = useMemo(() => tab.layers?.roots ?? [], [tab.layers]);
   const filter = useMemo(() => matchingIds(roots, query), [roots, query]);
@@ -135,12 +129,25 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
     [tab.selection],
   );
 
+  const rowElement = useCallback(
+    (id: number) => listRef.current?.querySelector<HTMLElement>(`[data-layer-id="${id}"]`) ?? null,
+    [],
+  );
+
   // Reveal: a selection made in the PAGE has to become visible here, which means expanding
-  // every ancestor and scrolling to the row. Keyed on the first selected id, so re-emitted
-  // snapshots for the same selection (a scrub tick, a discard) don't re-scroll the rail.
+  // every ancestor and scrolling to the row. Guarded on what was actually revealed rather
+  // than on the effect's deps: `roots` is a fresh array on every layers message, and the
+  // guest re-emits on every debounced DOM mutation — so without this, any repaint in the
+  // previewed page yanked the rail back to the selection mid-scroll and stomped the roving
+  // tabindex mid-keyboard-navigation (PR #57 review).
   const firstSelected = tab.selection[0]?.id ?? null;
   useEffect(() => {
-    if (firstSelected === null) return;
+    if (firstSelected === null) {
+      revealed.current = null;
+      return;
+    }
+    if (revealed.current === firstSelected) return;
+    revealed.current = firstSelected;
     const ancestors = ancestorsOf(roots, firstSelected);
     if (ancestors && ancestors.length > 0) {
       setExpanded((previous) => {
@@ -152,19 +159,29 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
     setActiveId(firstSelected);
     // After the expansion lands, not during it.
     const frame = requestAnimationFrame(() => {
-      rowRefs.current.get(firstSelected)?.scrollIntoView({ block: "nearest" });
+      rowElement(firstSelected)?.scrollIntoView({ block: "nearest" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [firstSelected, roots]);
+  }, [firstSelected, roots, rowElement]);
 
   // Focus follows the roving tabindex only when the keyboard moved it — never on a plain
   // canvas selection, which must not steal focus out of the page.
   useEffect(() => {
     if (!focusOnRender.current || activeId === null) return;
     focusOnRender.current = false;
-    rowRefs.current.get(activeId)?.focus({ preventScroll: true });
-    rowRefs.current.get(activeId)?.scrollIntoView({ block: "nearest" });
-  }, [activeId, rows]);
+    const element = rowElement(activeId);
+    element?.focus({ preventScroll: true });
+    element?.scrollIntoView({ block: "nearest" });
+  }, [activeId, rows, rowElement]);
+
+  // The tree needs exactly one tab stop at all times, or none of the keyboard handling below
+  // is reachable — `activeId` is null on a fresh mount, and goes stale whenever its row is
+  // filtered or collapsed away. Falling back to the first row keeps the rail enterable
+  // without ever stealing focus, since the focus effect above still keys on `activeId`.
+  const activeRowId =
+    activeId !== null && rows.some((row) => row.node.id === activeId)
+      ? activeId
+      : (rows[0]?.node.id ?? null);
 
   const select = useCallback(
     (id: number, additive: boolean) => {
@@ -183,6 +200,19 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
     },
     [runtimeTabId, select],
   );
+
+  const onReorder = useCallback(
+    (id: number, beforeId: number | null) => {
+      if (runtimeTabId) designModeBridge.reorderElement(runtimeTabId, id, beforeId);
+    },
+    [runtimeTabId],
+  );
+
+  const { dropEdgeFor, handlersFor } = useLayersDrag({
+    rows,
+    filtering: filter !== null,
+    onReorder,
+  });
 
   const onRowKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>, row: LayerRow, index: number) => {
@@ -242,15 +272,12 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
 
   if (!runtimeTabId || !tab.enabled || !tab.layers) return null;
 
-  const dropTargetFor = (row: LayerRow, edge: DropEdge): number | null =>
-    edge === "before" ? row.node.id : row.nextSiblingId;
-
   return (
     <div
       className="flex w-52 shrink-0 flex-col border-r border-border bg-background"
       data-fork-design-layers
     >
-      <header className="flex h-9 shrink-0 items-center gap-1 border-b border-border ps-3 pe-1.5">
+      <header className="flex h-9 shrink-0 items-center gap-1 border-b border-border pe-1.5 ps-3">
         <SearchIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
         <input
           value={query}
@@ -286,6 +313,7 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
         )}
       </header>
       <div
+        ref={listRef}
         // The ARIA tree contract this rail now actually implements: roving tabindex, arrow
         // navigation, expand/collapse and Shift-extend (PR #50's comment deferred the roles
         // until exactly that existed).
@@ -300,12 +328,9 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
             key={row.node.id}
             row={row}
             selected={selectedIds.has(row.node.id)}
-            active={activeId === row.node.id}
-            dropEdge={drag && drag.overId === row.node.id ? drag.edge : null}
-            registerRef={(element) => {
-              if (element) rowRefs.current.set(row.node.id, element);
-              else rowRefs.current.delete(row.node.id);
-            }}
+            active={activeRowId === row.node.id}
+            dropEdge={dropEdgeFor(row.node.id)}
+            drag={handlersFor(row)}
             onToggle={() =>
               setExpanded((state) => ({
                 ...state,
@@ -319,49 +344,6 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
             onHover={() => designModeBridge.hoverElement(runtimeTabId, row.node.id)}
             onFocusRow={() => setActiveId(row.node.id)}
             onKeyDown={(event) => onRowKeyDown(event, row, index)}
-            drag={{
-              onDragStart: (event) => {
-                event.dataTransfer.effectAllowed = "move";
-                // Firefox needs data set for a drag to start at all; the payload is unused.
-                event.dataTransfer.setData("text/plain", String(row.node.id));
-                setDrag({ id: row.node.id, overId: row.node.id, edge: "before" });
-              },
-              onDragOver: (event) => {
-                if (!drag) return;
-                const dragged = rows.find((candidate) => candidate.node.id === drag.id);
-                // Same parent only — the move draft can reorder siblings, not reparent, and
-                // an accepted drop that quietly did nothing would be the worse answer.
-                if (
-                  !dragged ||
-                  dragged.parentId !== row.parentId ||
-                  dragged.node.id === row.node.id
-                ) {
-                  event.dataTransfer.dropEffect = "none";
-                  return;
-                }
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                const bounds = event.currentTarget.getBoundingClientRect();
-                const edge: DropEdge =
-                  event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
-                if (drag.overId !== row.node.id || drag.edge !== edge) {
-                  setDrag({ ...drag, overId: row.node.id, edge });
-                }
-              },
-              onDragLeave: () => {
-                if (drag?.overId === row.node.id) setDrag({ ...drag, overId: -1 });
-              },
-              onDrop: (event) => {
-                event.preventDefault();
-                if (!drag) return;
-                const beforeId = dropTargetFor(row, drag.edge);
-                if (beforeId !== drag.id) {
-                  designModeBridge.reorderElement(runtimeTabId, drag.id, beforeId);
-                }
-                setDrag(null);
-              },
-              onDragEnd: () => setDrag(null),
-            }}
           />
         ))}
         {rows.length === 0 ? (

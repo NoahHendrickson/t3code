@@ -241,42 +241,53 @@ export class HeadlessDesignMode {
       .filter((el): el is TaggedElement => el !== null);
   }
 
-  /** Applies one CSS draft to every listed selection id — the native panel's edit path.
-   * Ripple bookkeeping mirrors the in-page panel's before/after hooks so scrub bursts
-   * keep their drag-start baselines. */
-  applyDraft(idList: readonly number[], property: DesignModeWritableKey, value: string): void {
-    const els = this.resolveIds(idList);
+  /**
+   * THE edit loop every host verb runs: resolve ids, take the ripple baselines, mutate, then
+   * repaint once. Only two things vary and both are options — which elements the verb applies
+   * to (`only`, for X/Y's editability gate) and whether it re-emits the selection.
+   *
+   * `emitSelection` is the discrete-vs-scrubbable distinction: a menu pick or a toggle changes
+   * what the panel can even render (size modes, X/Y editability, align capabilities) and must
+   * answer immediately, while a scrubbable property rides the draft-sync debounce instead of
+   * putting a snapshot on the bridge per drag frame.
+   */
+  private editMany(
+    idList: readonly number[],
+    mutate: (el: TaggedElement) => void,
+    options: { emitSelection?: boolean; only?: (el: TaggedElement) => boolean } = {},
+  ): void {
+    const resolved = this.resolveIds(idList);
+    const els = options.only ? resolved.filter(options.only) : resolved;
     if (els.length === 0) return;
     for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) {
+    for (const el of els) mutate(el);
+    this.handleEdited();
+    if (options.emitSelection) this.emitSelection();
+  }
+
+  /** Applies one CSS draft to every listed selection id — the native panel's edit path.
+   * Scrubbable, so no immediate re-emit: the draft-sync debounce answers with a snapshot
+   * once the burst settles. */
+  applyDraft(idList: readonly number[], property: DesignModeWritableKey, value: string): void {
+    this.editMany(idList, (el) => {
       prepareWrite(el, property, this.drafts);
       this.drafts.apply(el, property, value);
-    }
-    this.handleEdited();
+    });
   }
 
   /** Applies a Figma sizing mode (fixed/hug/fill) to one axis — the mode's coordinated
-   * multi-property write lives in engine/sizeMode.ts. Discrete (a menu pick, never a
-   * scrub tick), so the fresh snapshot goes out immediately, like discardAll. */
+   * multi-property write lives in engine/sizeMode.ts. */
   setSizeMode(idList: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void {
-    const els = this.resolveIds(idList);
-    if (els.length === 0) return;
-    for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) applySizeMode(el, axis, mode, this.drafts);
-    this.handleEdited();
-    this.emitSelection();
+    this.editMany(idList, (el) => applySizeMode(el, axis, mode, this.drafts), {
+      emitSelection: true,
+    });
   }
 
   /** Figma's absolute-position toggle — a structural draft ("position this absolutely"),
    * never a bare inset delta. Re-emits immediately: this one write flips X/Y between
    * read-only and editable, and the align row's capabilities with it. */
   setAbsolute(idList: readonly number[], on: boolean): void {
-    const els = this.resolveIds(idList);
-    if (els.length === 0) return;
-    for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) this.drafts.applyAbsolute(el, on);
-    this.handleEdited();
-    this.emitSelection();
+    this.editMany(idList, (el) => this.drafts.applyAbsolute(el, on), { emitSelection: true });
   }
 
   /** One axis of the panel's X/Y pair. The commit is POSITION_ROWS' own — draft inset while
@@ -288,11 +299,10 @@ export class HeadlessDesignMode {
     const write = row.write;
     const editable = row.editable;
     if (!write || !editable) return;
-    const els = this.resolveIds(idList).filter((el) => editable(el, this.drafts));
-    if (els.length === 0) return;
-    for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) write(el, px, this.drafts);
-    this.handleEdited();
+    this.editMany(idList, (el) => write(el, px, this.drafts), {
+      only: (el) => editable(el, this.drafts),
+      // Scrubbable like any other numeric field, so the debounce owns the re-emit.
+    });
   }
 
   /** Figma's align row — each element moves within its OWN parent (engine/align.ts). */
@@ -301,32 +311,28 @@ export class HeadlessDesignMode {
     axis: DesignModeAlignAxis,
     value: DesignModeAlignValue,
   ): void {
-    const els = this.resolveIds(idList);
-    if (els.length === 0) return;
-    for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) alignElement(el, axis, value, this.drafts);
-    this.handleEdited();
-    this.emitSelection();
+    this.editMany(idList, (el) => alignElement(el, axis, value, this.drafts), {
+      emitSelection: true,
+    });
   }
 
   /** The aspect-ratio link beside W/H: on pins the element's current proportion, off releases
    * it. Measured through the same basis the W/H fields display (sizeMode.ts), so locking never
    * quietly re-sizes the element. */
   setAspectLock(idList: readonly number[], on: boolean): void {
-    const els = this.resolveIds(idList);
-    if (els.length === 0) return;
-    for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) {
-      if (!on) {
-        this.drafts.apply(el, "aspect-ratio", "auto");
-        continue;
-      }
-      const width = Math.round(measuredSize(el, "width", this.drafts));
-      const height = Math.round(measuredSize(el, "height", this.drafts));
-      if (width > 0 && height > 0) this.drafts.apply(el, "aspect-ratio", `${width} / ${height}`);
-    }
-    this.handleEdited();
-    this.emitSelection();
+    this.editMany(
+      idList,
+      (el) => {
+        if (!on) {
+          this.drafts.apply(el, "aspect-ratio", "auto");
+          return;
+        }
+        const width = Math.round(measuredSize(el, "width", this.drafts));
+        const height = Math.round(measuredSize(el, "height", this.drafts));
+        if (width > 0 && height > 0) this.drafts.apply(el, "aspect-ratio", `${width} / ${height}`);
+      },
+      { emitSelection: true },
+    );
   }
 
   /** Per-field revert: drops these properties' drafts and puts the page's own values back.
@@ -733,7 +739,11 @@ export class HeadlessDesignMode {
       // "before" it is one step earlier than the reference's current index.
       target = from < referenceIndex ? referenceIndex - 1 : referenceIndex;
     }
-    if (target === from) return;
+    // Deliberately NO `target === from` guard: the move preview writes inline `order` and
+    // leaves the DOM alone, so `from` reads the same before and after a draft exists —
+    // dragging a row back where it started always looks like a no-op from here. applyMove is
+    // the only place that can tell the difference, and its `to === fromIndex` arm is exactly
+    // the undo (drop the draft), so the decision belongs there (PR #57 review).
     this.handleBeforeEdit(el);
     this.drafts.applyMove(el, target);
     this.handleEdited();
