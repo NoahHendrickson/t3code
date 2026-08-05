@@ -1,4 +1,4 @@
-import type { DesignModeLayerNode } from "../protocol";
+import { DESIGN_MODE_LAYERS_MAX_DEPTH, type DesignModeLayerNode } from "../protocol";
 import type { ElementIdRegistry } from "./idRegistry";
 import { hasForgeTags } from "./nativeSource";
 import { buildLayerTree, type LayerBudget, type LayerNode } from "./vendor/layers";
@@ -63,13 +63,20 @@ export class LayersSession {
     }, LAYERS_DEBOUNCE_MS);
   };
 
-  /** Mints host ids for the (already budget-capped) tree. */
-  private serialize(nodes: LayerNode[]): DesignModeLayerNode[] {
+  /** Mints host ids for the (already budget-capped) tree, stopping at the protocol's depth
+   * bound. The walk's budget caps BREADTH; nothing capped depth, and the host parser rejects
+   * a whole layers message one node past the bound — so a page nesting deeper than this used
+   * to make the rail vanish entirely rather than truncate (PR #52/#54 review). */
+  private serialize(nodes: LayerNode[], budget: LayerBudget, depth = 0): DesignModeLayerNode[] {
+    if (depth > DESIGN_MODE_LAYERS_MAX_DEPTH) {
+      if (nodes.length > 0) budget.truncated = true;
+      return [];
+    }
     return nodes.map((node) => ({
       id: this.registry.mintForLayers(node.el),
       tag: node.el.tagName.toLowerCase(),
       label: node.label,
-      children: this.serialize(node.children),
+      children: this.serialize(node.children, budget, depth + 1),
     }));
   }
 
@@ -82,7 +89,7 @@ export class LayersSession {
     // Re-read per emit (cost: one querySelector) so a framework that mounts its tagged
     // tree after the first emit flips the mode without a restart. Synthesized tags are
     // excluded by hasForgeTags, so T3's own lazy tagging can never collapse the tree.
-    const roots = this.serialize(buildLayerTree(document.body, !hasForgeTags(), budget));
+    const roots = this.serialize(buildLayerTree(document.body, !hasForgeTags(), budget), budget);
     const json = JSON.stringify(roots);
     if (json === this.lastJson) return;
     this.lastJson = json;

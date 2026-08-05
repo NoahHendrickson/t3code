@@ -25,6 +25,7 @@ import {
 import {
   DESIGN_MODE_CONSOLE_PREFIX,
   DESIGN_MODE_GLOBAL,
+  DESIGN_MODE_LAYERS_MAX_DEPTH,
   DESIGN_MODE_STYLE_KEYS,
   parseDesignChangeRequestPayload,
   parseDesignModeConsoleMessage,
@@ -361,16 +362,22 @@ describe("fork guard: design mode", () => {
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[]}`),
     ).toBeNull();
-    // Depth bound: a 40-deep chain exceeds the 32 guard and rejects rather than recursing.
-    let deep: Record<string, unknown> = { id: 40, tag: "div", label: "leaf", children: [] };
-    for (let index = 39; index >= 1; index -= 1) {
-      deep = { id: index, tag: "div", label: "Frame", children: [deep] };
-    }
-    expect(
-      parseDesignModeConsoleMessage(
-        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [deep], truncated: false })}`,
-      ),
-    ).toBeNull();
+    // Depth bound: a chain one level past the shared bound rejects rather than recursing.
+    const chain = (levels: number) => {
+      let node: Record<string, unknown> = { id: levels, tag: "div", label: "leaf", children: [] };
+      for (let index = levels - 1; index >= 1; index -= 1) {
+        node = { id: index, tag: "div", label: "Frame", children: [node] };
+      }
+      return `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [node], truncated: false })}`;
+    };
+    // Roots are depth 0, so the bound admits MAX_DEPTH + 1 levels and rejects one more.
+    expect(parseDesignModeConsoleMessage(chain(DESIGN_MODE_LAYERS_MAX_DEPTH + 1))).not.toBeNull();
+    expect(parseDesignModeConsoleMessage(chain(DESIGN_MODE_LAYERS_MAX_DEPTH + 2))).toBeNull();
+    // The GUEST serializer must stop at the same bound, or a deep page emits a tree the host
+    // rejects wholesale and the layers rail silently never appears (PR #52/#54 review).
+    expect(read("src/custom/designMode/engine/layersSession.ts")).toContain(
+      "DESIGN_MODE_LAYERS_MAX_DEPTH",
+    );
   });
 
   it("decodes complete design-change payloads only", () => {

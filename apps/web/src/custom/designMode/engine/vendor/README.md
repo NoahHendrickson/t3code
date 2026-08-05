@@ -31,11 +31,11 @@ Local edits are marked with `t3-fork:` comments. The load-bearing ones:
     instead of `findTaggedElement`.
   - `lifecycle-store.ts` — persisted selection/draft entries carry an optional
     `selector` css path (synthesized tags don't survive reloads; Forge tags do).
-  - `layers.ts` — `buildLayerTree(root, includeUntagged, budget?)` walks every visible
-    element on pages with no project tags (`NOISE_TAGS` skipped, svg still opaque),
-    stops minting at the host's `LayerBudget` cap so an untagged deep page costs
-    O(cap), not O(DOM), per rebuild, and `layerLabel` prefers an element id over the
-    generic tag vocabulary.
+  - `layers.ts` — `buildLayerTree(root, includeUntagged, budget?)` walks every rendered
+    element on pages with no project tags (`NOISE_TAGS` and `display: none` subtrees
+    skipped, svg still opaque), stops minting at the host's `LayerBudget` cap so an
+    untagged deep page costs O(cap), not O(DOM), per rebuild, and `layerLabel` prefers
+    an element id over the generic tag vocabulary.
 
 Formatting is the Forge's own (`vendor/**` is fmt-ignored at the root vite config) so a
 future re-sync diffs cleanly against that repo. When re-syncing, port these edits rather

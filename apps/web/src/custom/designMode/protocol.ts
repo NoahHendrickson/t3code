@@ -124,6 +124,13 @@ export interface DesignModeLayerNode {
   readonly children: readonly DesignModeLayerNode[];
 }
 
+/** Deepest node index the layers protocol carries (roots are 0, so 33 levels). The parser
+ * bounds its own recursion here against a hostile payload, and the GUEST serializer stops
+ * at the same number so an honestly-deep page can never emit a message the host rejects
+ * wholesale — the node budget caps breadth, and nothing capped depth until untagged pages
+ * started minting a node per DOM element (PR #52/#54 review). One constant, both sides. */
+export const DESIGN_MODE_LAYERS_MAX_DEPTH = 32;
+
 /** How the engine maps elements to source on this page. `forge`: the project runs
  * forge-mode's JSX tagger — exact pre-compile tags, the most precise mapping. `native-react`:
  * no tags, but the desktop preload's react-grab resolver is present, so React development
@@ -242,10 +249,11 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
   };
 }
 
-/** Depth-bounded (the emit cap keeps trees shallow; 32 guards a malicious payload). */
+/** Depth-bounded against a malicious payload — the guest serializer stops at the same
+ * DESIGN_MODE_LAYERS_MAX_DEPTH, so a real page's tree never trips this. */
 function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | null {
   if (
-    depth > 32 ||
+    depth > DESIGN_MODE_LAYERS_MAX_DEPTH ||
     !isRecord(value) ||
     !isNonNegativeInteger(value.id) ||
     typeof value.tag !== "string" ||

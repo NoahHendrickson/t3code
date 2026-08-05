@@ -21,6 +21,17 @@ const OPAQUE_TAGS = new Set(['svg'])
 /* t3-fork: native-source mode — non-visual noise skipped entirely by the untagged walk. */
 const NOISE_TAGS = new Set(['script', 'style', 'link', 'meta', 'template', 'noscript', 'title'])
 
+/* t3-fork: `display: none` is the untagged walk's other noise filter. A closed dialog or a
+ * portal root full of unmounted-but-rendered chrome would otherwise fill the rail with rows
+ * the user cannot see AND spend the host's node budget before the visible page is reached
+ * (PR #54 review). display:none hides the whole SUBTREE, so skipping it here is both correct
+ * and cheaper than walking it. Deliberately not `visibility`/`opacity`/off-screen: those
+ * still occupy layout, a designer can legitimately want them, and only display:none is
+ * subtree-wide. getComputedStyle (not checkVisibility) so the walk stays testable in jsdom. */
+function isDisplayNone(el: Element): boolean {
+  return getComputedStyle(el).display === 'none'
+}
+
 /* t3-fork: the host's serialization cap, threaded into the walk so it stops MINTING at
  * the cap instead of allocating (and labelling) a whole-DOM tree the serializer would
  * drop anyway — the untagged walk mints per element, so on a deep page the difference is
@@ -40,8 +51,10 @@ export interface LayerBudget {
  * documentElement and walks start at body.
  *
  * t3-fork: `includeUntagged` is native-source mode's walk — on a page with no project
- * Forge tags there is no designer structure to curate, so every visible element (minus
- * NOISE_TAGS; svg still opaque) mints a node. Tagged pages keep the curated walk exactly.
+ * Forge tags there is no designer structure to curate, so every rendered element (minus
+ * NOISE_TAGS and `display: none` subtrees; svg still opaque) mints a node. Tagged pages keep
+ * the curated walk exactly, hidden nodes included: a Forge tag is the project's own claim
+ * that the element is part of the design, and the curated tree is small either way.
  */
 export function buildLayerTree(
   root: Element,
@@ -55,6 +68,7 @@ export function buildLayerTree(
     const tag = child.tagName.toLowerCase()
     const opaque = OPAQUE_TAGS.has(tag)
     if (NOISE_TAGS.has(tag)) continue
+    if (includeUntagged && !el.dataset?.dcSource && isDisplayNone(child)) continue
     const mints =
       Boolean(el.dataset?.dcSource) ||
       (includeUntagged && (child instanceof HTMLElement || child instanceof SVGElement))
