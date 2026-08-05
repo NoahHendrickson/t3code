@@ -73,6 +73,9 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
             truncated: message.truncated,
           });
           return;
+        case "canvas":
+          store.setCanvas(runtimeTabId, { on: message.on, scalePercent: message.scalePercent });
+          return;
         default: {
           // Exhaustiveness: a new DesignModeEngineMessage variant must fail to compile
           // here instead of being silently dropped.

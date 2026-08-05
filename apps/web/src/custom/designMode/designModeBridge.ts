@@ -2,6 +2,7 @@ import {
   DESIGN_MODE_GLOBAL,
   parseDesignChangeRequestPayload,
   type DesignChangeRequestPayload,
+  type DesignModeCanvasCommand,
   type DesignModeSizeMode,
   type DesignModeWritableKey,
 } from "./protocol";
@@ -73,6 +74,12 @@ export const designModeBridge = {
   },
   hoverElement(runtimeTabId: string, id: number | null): void {
     fire(runtimeTabId, "hoverElement", [id]);
+  },
+  setCanvas(runtimeTabId: string, on: boolean): void {
+    fire(runtimeTabId, "setCanvas", [on]);
+  },
+  canvasCommand(runtimeTabId: string, action: DesignModeCanvasCommand): void {
+    fire(runtimeTabId, "canvasCommand", [action]);
   },
   destroy(runtimeTabId: string): void {
     fire(runtimeTabId, "destroy", []);

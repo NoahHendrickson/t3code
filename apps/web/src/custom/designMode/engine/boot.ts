@@ -40,6 +40,7 @@ function boot(): void {
   mode.onSelection = (elements) => emitToHost({ type: "selection", elements });
   mode.onDraftsCount = (count) => emitToHost({ type: "drafts", count });
   mode.onLayers = (roots, truncated) => emitToHost({ type: "layers", roots, truncated });
+  mode.onCanvas = (on, scalePercent) => emitToHost({ type: "canvas", on, scalePercent });
   // Theme tokens re-read on every activation (setActive resets the vendored token
   // cache, so a CSS edit made while the tool was off is picked up here too).
   const emitTokens = () => {
@@ -62,6 +63,8 @@ function boot(): void {
     buildSend: () => mode.buildSend(),
     selectElement: (id) => mode.selectById(id),
     hoverElement: (id) => mode.hoverById(id),
+    setCanvas: (on) => mode.setCanvas(on),
+    canvasCommand: (action) => mode.runCanvasCommand(action),
     destroy: () => {
       mode.setActive(false);
       overlay.destroy();

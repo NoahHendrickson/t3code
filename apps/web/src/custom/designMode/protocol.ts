@@ -133,9 +133,32 @@ export type DesignModeSourceMode = "forge" | "native-react" | "selector-only";
 
 const SOURCE_MODES: readonly DesignModeSourceMode[] = ["forge", "native-react", "selector-only"];
 
+/** Host-triggered canvas verbs beyond on/off — the guest's CanvasMode owns the math
+ * (vendored Forge canvas: cursor-anchored zoom, powers-of-2 ladder, fit, selection). */
+export type DesignModeCanvasCommand =
+  | "zoom-in"
+  | "zoom-out"
+  | "zoom-fit"
+  | "zoom-selection"
+  | "zoom-100";
+
+const CANVAS_COMMANDS: readonly DesignModeCanvasCommand[] = [
+  "zoom-in",
+  "zoom-out",
+  "zoom-fit",
+  "zoom-selection",
+  "zoom-100",
+];
+
+export const isDesignModeCanvasCommand = (value: unknown): value is DesignModeCanvasCommand =>
+  CANVAS_COMMANDS.some((command) => command === value);
+
 export type DesignModeEngineMessage =
   /** Engine finished booting; reports how source mapping works on this page. */
   | { readonly type: "ready"; readonly sourceMode: DesignModeSourceMode }
+  /** Canvas (zoom/pan artboard) state — emitted on toggle and, debounced, as gestures
+   * move the zoom. `scalePercent` is a whole number (100 = 1:1). */
+  | { readonly type: "canvas"; readonly on: boolean; readonly scalePercent: number }
   /** Mirrors every setActive transition (Esc inside the page exits too). */
   | { readonly type: "state"; readonly active: boolean }
   /** The in-page selection changed; empty array means deselected. */
@@ -194,6 +217,10 @@ export interface DesignModeGuestHandle {
   /** Layers-tree interactions — ids from selection snapshots or layer nodes. */
   selectElement(id: number): void;
   hoverElement(id: number | null): void;
+  /** Canvas mode: turn the page into a pannable/zoomable artboard (Figma-style). */
+  setCanvas(on: boolean): void;
+  /** Discrete canvas zoom verbs; no-ops while canvas is off. */
+  canvasCommand(action: DesignModeCanvasCommand): void;
   destroy(): void;
 }
 
@@ -303,6 +330,12 @@ export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMes
         const sourceMode = SOURCE_MODES.find((mode) => mode === value.sourceMode);
         return sourceMode ? { type: "ready", sourceMode } : null;
       }
+      case "canvas":
+        return typeof value.on === "boolean" &&
+          typeof value.scalePercent === "number" &&
+          Number.isFinite(value.scalePercent)
+          ? { type: "canvas", on: value.on, scalePercent: value.scalePercent }
+          : null;
       case "state":
         return typeof value.active === "boolean" ? { type: "state", active: value.active } : null;
       case "selection": {
