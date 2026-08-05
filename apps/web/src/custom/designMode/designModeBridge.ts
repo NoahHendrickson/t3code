@@ -2,7 +2,10 @@ import {
   DESIGN_MODE_GLOBAL,
   parseDesignChangeRequestPayload,
   type DesignChangeRequestPayload,
+  type DesignModeAlignAxis,
+  type DesignModeAlignValue,
   type DesignModeCanvasCommand,
+  type DesignModeSelectMode,
   type DesignModeSizeMode,
   type DesignModeWritableKey,
 } from "./protocol";
@@ -55,6 +58,26 @@ export const designModeBridge = {
   ): void {
     fire(runtimeTabId, "setSizeMode", [ids, axis, mode]);
   },
+  setAbsolute(runtimeTabId: string, ids: readonly number[], on: boolean): void {
+    fire(runtimeTabId, "setAbsolute", [ids, on]);
+  },
+  setInset(runtimeTabId: string, ids: readonly number[], axis: "x" | "y", px: number): void {
+    fire(runtimeTabId, "setInset", [ids, axis, px]);
+  },
+  alignSelection(
+    runtimeTabId: string,
+    ids: readonly number[],
+    axis: DesignModeAlignAxis,
+    value: DesignModeAlignValue,
+  ): void {
+    fire(runtimeTabId, "alignSelection", [ids, axis, value]);
+  },
+  setAspectLock(runtimeTabId: string, ids: readonly number[], on: boolean): void {
+    fire(runtimeTabId, "setAspectLock", [ids, on]);
+  },
+  revertDraft(runtimeTabId: string, ids: readonly number[], properties: readonly string[]): void {
+    fire(runtimeTabId, "revertDraft", [ids, properties]);
+  },
   discardAll(runtimeTabId: string): void {
     fire(runtimeTabId, "discardAll", []);
   },
@@ -69,11 +92,14 @@ export const designModeBridge = {
       .catch(() => null);
     return parseDesignChangeRequestPayload(result);
   },
-  selectElement(runtimeTabId: string, id: number): void {
-    fire(runtimeTabId, "selectElement", [id]);
+  selectElement(runtimeTabId: string, id: number, mode: DesignModeSelectMode = "replace"): void {
+    fire(runtimeTabId, "selectElement", [id, mode]);
   },
   hoverElement(runtimeTabId: string, id: number | null): void {
     fire(runtimeTabId, "hoverElement", [id]);
+  },
+  reorderElement(runtimeTabId: string, id: number, beforeId: number | null): void {
+    fire(runtimeTabId, "reorderElement", [id, beforeId]);
   },
   setCanvas(runtimeTabId: string, on: boolean): void {
     fire(runtimeTabId, "setCanvas", [on]);

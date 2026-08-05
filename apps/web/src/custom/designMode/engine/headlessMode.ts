@@ -18,11 +18,15 @@
 import { buildElementSnapshot } from "./snapshot";
 import type {
   DesignChangeRequestPayload,
+  DesignModeAlignAxis,
+  DesignModeAlignValue,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
+  DesignModeSelectMode,
   DesignModeSizeMode,
   DesignModeWritableKey,
 } from "../protocol";
+import { alignElement } from "./align";
 import type { HeadlessOverlay } from "./headlessOverlay";
 import { CanvasSession } from "./canvasSession";
 import { ElementIdRegistry } from "./idRegistry";
@@ -35,12 +39,12 @@ import {
   resolveAndTag,
   sourceContextTargets,
 } from "./nativeSource";
-import { applySizeMode } from "./sizeMode";
+import { applySizeMode, measuredSize } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
-import { defeatFillIfGrowing, draftSolidIfNone } from "./vendor/panel-specs";
+import { defeatFillIfGrowing, draftSolidIfNone, POSITION_ROWS } from "./vendor/panel-specs";
 import { isEditable, unionClientRect } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
-import { MoveDrag } from "./vendor/move-drag";
+import { MoveDrag, reorderAxisOf } from "./vendor/move-drag";
 import { ResizeHandles } from "./vendor/resize";
 import {
   buildChangeRequestWithElements,
@@ -229,33 +233,116 @@ export class HeadlessDesignMode {
 
   // ── Host commands (driven by the native panel through the guest handle) ──────────────
 
-  /** Applies one CSS draft to every listed selection id — the native panel's edit path.
-   * Ripple bookkeeping mirrors the in-page panel's before/after hooks so scrub bursts
-   * keep their drag-start baselines. */
-  applyDraft(idList: readonly number[], property: DesignModeWritableKey, value: string): void {
-    const els = idList
+  /** Live elements for a host id list — ids the page has since replaced simply drop out, so
+   * every command below degrades to "fewer targets" rather than throwing on a stale id. */
+  private resolveIds(idList: readonly number[]): TaggedElement[] {
+    return idList
       .map((id) => this.registry.resolve(id))
       .filter((el): el is TaggedElement => el !== null);
+  }
+
+  /**
+   * THE edit loop every host verb runs: resolve ids, take the ripple baselines, mutate, then
+   * repaint once. Only two things vary and both are options — which elements the verb applies
+   * to (`only`, for X/Y's editability gate) and whether it re-emits the selection.
+   *
+   * `emitSelection` is the discrete-vs-scrubbable distinction: a menu pick or a toggle changes
+   * what the panel can even render (size modes, X/Y editability, align capabilities) and must
+   * answer immediately, while a scrubbable property rides the draft-sync debounce instead of
+   * putting a snapshot on the bridge per drag frame.
+   */
+  private editMany(
+    idList: readonly number[],
+    mutate: (el: TaggedElement) => void,
+    options: { emitSelection?: boolean; only?: (el: TaggedElement) => boolean } = {},
+  ): void {
+    const resolved = this.resolveIds(idList);
+    const els = options.only ? resolved.filter(options.only) : resolved;
     if (els.length === 0) return;
     for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) {
+    for (const el of els) mutate(el);
+    this.handleEdited();
+    if (options.emitSelection) this.emitSelection();
+  }
+
+  /** Applies one CSS draft to every listed selection id — the native panel's edit path.
+   * Scrubbable, so no immediate re-emit: the draft-sync debounce answers with a snapshot
+   * once the burst settles. */
+  applyDraft(idList: readonly number[], property: DesignModeWritableKey, value: string): void {
+    this.editMany(idList, (el) => {
       prepareWrite(el, property, this.drafts);
       this.drafts.apply(el, property, value);
-    }
-    this.handleEdited();
+    });
   }
 
   /** Applies a Figma sizing mode (fixed/hug/fill) to one axis — the mode's coordinated
-   * multi-property write lives in engine/sizeMode.ts. Discrete (a menu pick, never a
-   * scrub tick), so the fresh snapshot goes out immediately, like discardAll. */
+   * multi-property write lives in engine/sizeMode.ts. */
   setSizeMode(idList: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void {
-    const els = idList
-      .map((id) => this.registry.resolve(id))
-      .filter((el): el is TaggedElement => el !== null);
-    if (els.length === 0) return;
-    for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) applySizeMode(el, axis, mode, this.drafts);
-    this.handleEdited();
+    this.editMany(idList, (el) => applySizeMode(el, axis, mode, this.drafts), {
+      emitSelection: true,
+    });
+  }
+
+  /** Figma's absolute-position toggle — a structural draft ("position this absolutely"),
+   * never a bare inset delta. Re-emits immediately: this one write flips X/Y between
+   * read-only and editable, and the align row's capabilities with it. */
+  setAbsolute(idList: readonly number[], on: boolean): void {
+    this.editMany(idList, (el) => this.drafts.applyAbsolute(el, on), { emitSelection: true });
+  }
+
+  /** One axis of the panel's X/Y pair. The commit is POSITION_ROWS' own — draft inset while
+   * an absolute draft owns the element, plain left/top css when the app's CSS already places
+   * it — and `editable` is the same live gate the panel greys the field with, so an in-flow
+   * element can never be drafted a `left` it wouldn't honor. */
+  setInset(idList: readonly number[], axis: "x" | "y", px: number): void {
+    const row = axis === "x" ? POSITION_ROWS[0] : POSITION_ROWS[1];
+    const write = row.write;
+    const editable = row.editable;
+    if (!write || !editable) return;
+    this.editMany(idList, (el) => write(el, px, this.drafts), {
+      only: (el) => editable(el, this.drafts),
+      // Scrubbable like any other numeric field, so the debounce owns the re-emit.
+    });
+  }
+
+  /** Figma's align row — each element moves within its OWN parent (engine/align.ts). */
+  alignSelection(
+    idList: readonly number[],
+    axis: DesignModeAlignAxis,
+    value: DesignModeAlignValue,
+  ): void {
+    this.editMany(idList, (el) => alignElement(el, axis, value, this.drafts), {
+      emitSelection: true,
+    });
+  }
+
+  /** The aspect-ratio link beside W/H: on pins the element's current proportion, off releases
+   * it. Measured through the same basis the W/H fields display (sizeMode.ts), so locking never
+   * quietly re-sizes the element. */
+  setAspectLock(idList: readonly number[], on: boolean): void {
+    this.editMany(
+      idList,
+      (el) => {
+        if (!on) {
+          this.drafts.apply(el, "aspect-ratio", "auto");
+          return;
+        }
+        const width = Math.round(measuredSize(el, "width", this.drafts));
+        const height = Math.round(measuredSize(el, "height", this.drafts));
+        if (width > 0 && height > 0) this.drafts.apply(el, "aspect-ratio", `${width} / ${height}`);
+      },
+      { emitSelection: true },
+    );
+  }
+
+  /** Per-field revert: drops these properties' drafts and puts the page's own values back.
+   * Targeted discard is css-only by DraftStore's contract, so a structural draft on the same
+   * element (a delete, a move) survives — reverting a padding must not un-delete anything. */
+  revertDraft(idList: readonly number[], properties: readonly string[]): void {
+    const els = this.resolveIds(idList);
+    if (els.length === 0 || properties.length === 0) return;
+    for (const el of els) this.drafts.discard(el, [...properties]);
+    this.remeasure();
     this.emitSelection();
   }
 
@@ -618,10 +705,48 @@ export class HeadlessDesignMode {
     this.onSelection?.(snapshots);
   }
 
-  /** Layers-row click — same selection funnel as a canvas click. */
-  selectById(id: number): void {
+  /** Layers-row click — same selection funnel as a canvas click, including its Shift-click
+   * toggle, so the rail and the page can never build the selection by different rules. */
+  selectById(id: number, mode: DesignModeSelectMode = "replace"): void {
     const el = this.registry.resolve(id);
-    if (el) this.select(el);
+    if (!el) return;
+    if (mode === "toggle") this.toggleSelection(el);
+    else this.select(el);
+  }
+
+  /** Layers-row drag — moves the element to sit before `beforeId` (null: last). The index
+   * math lives here because only the guest can see the real sibling list: the curated tree
+   * hoists tagged descendants through untagged wrappers, so two rows that look like siblings
+   * in the rail may not be. Every other rule (auto-layout parents only, one structural draft
+   * per element, the tombstone-aware basis) is the vendored move draft's, unchanged. */
+  reorderById(id: number, beforeId: number | null): void {
+    const el = this.registry.resolve(id);
+    const parent = el?.parentElement;
+    if (!el || !parent || reorderAxisOf(parent) === null) return;
+    const structural = this.drafts.structuralOf(el);
+    if (structural && structural.kind !== "move") return;
+    const siblings = this.drafts.reorderBasis(parent);
+    const from = siblings.indexOf(el);
+    if (from === -1 || siblings.length < 2) return;
+
+    let target = siblings.length - 1;
+    if (beforeId !== null) {
+      const reference = this.registry.resolve(beforeId);
+      if (!reference || reference.parentElement !== parent) return;
+      const referenceIndex = siblings.indexOf(reference);
+      if (referenceIndex === -1) return;
+      // Dragging downwards, the element vacates a slot above the reference first, so landing
+      // "before" it is one step earlier than the reference's current index.
+      target = from < referenceIndex ? referenceIndex - 1 : referenceIndex;
+    }
+    // Deliberately NO `target === from` guard: the move preview writes inline `order` and
+    // leaves the DOM alone, so `from` reads the same before and after a draft exists —
+    // dragging a row back where it started always looks like a no-op from here. applyMove is
+    // the only place that can tell the difference, and its `to === fromIndex` arm is exactly
+    // the undo (drop the draft), so the decision belongs there (PR #57 review).
+    this.handleBeforeEdit(el);
+    this.drafts.applyMove(el, target);
+    this.handleEdited();
   }
 
   /** Layers-row hover — drives the same hover outline the pointer does, including the

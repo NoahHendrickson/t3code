@@ -12,7 +12,11 @@
  * host can always inject the full bundle without probing first. A page navigation wipes
  * the guest's globals, and the host re-injects on the webview's `dom-ready`.
  */
-import { DESIGN_MODE_GLOBAL, type DesignModeGuestHandle } from "../protocol";
+import {
+  DESIGN_MODE_GLOBAL,
+  DESIGN_MODE_PROTOCOL_VERSION,
+  type DesignModeGuestHandle,
+} from "../protocol";
 import { emitToHost } from "./bridge";
 import { HeadlessOverlay } from "./headlessOverlay";
 import { HeadlessDesignMode } from "./headlessMode";
@@ -29,8 +33,20 @@ function existingHandle(): DesignModeGuestHandle | undefined {
 function boot(): void {
   const existing = existingHandle();
   if (existing) {
-    existing.setActive(true);
-    return;
+    // Same contract: re-activate the live engine rather than double-mounting. A DIFFERENT
+    // one (a host update while the webview kept its engine, the common HMR case) must be
+    // torn down instead — reusing it fails silently, since new verbs throw into the
+    // bridge's catch and its older snapshots are rejected wholesale by the stricter parser,
+    // leaving the panel frozen with nothing to explain it (PR #57 review).
+    if (existing.version === DESIGN_MODE_PROTOCOL_VERSION) {
+      existing.setActive(true);
+      return;
+    }
+    try {
+      existing.destroy();
+    } catch {
+      delete (globalThis as Record<string, unknown>)[DESIGN_MODE_GLOBAL];
+    }
   }
 
   const overlay = new HeadlessOverlay();
@@ -59,15 +75,22 @@ function boot(): void {
   };
 
   const handle: DesignModeGuestHandle = {
+    version: DESIGN_MODE_PROTOCOL_VERSION,
     setActive: (on) => mode.setActive(on),
     isActive: () => mode.active,
     applyDraft: (ids, property, value) => mode.applyDraft(ids, property, value),
     setSizeMode: (ids, axis, sizeMode) => mode.setSizeMode(ids, axis, sizeMode),
+    setAbsolute: (ids, on) => mode.setAbsolute(ids, on),
+    setInset: (ids, axis, px) => mode.setInset(ids, axis, px),
+    alignSelection: (ids, axis, value) => mode.alignSelection(ids, axis, value),
+    setAspectLock: (ids, on) => mode.setAspectLock(ids, on),
+    revertDraft: (ids, properties) => mode.revertDraft(ids, properties),
     discardAll: () => mode.discardAll(),
     compareAll: (on) => mode.compareAll(on),
     buildSend: () => mode.buildSend(),
-    selectElement: (id) => mode.selectById(id),
+    selectElement: (id, selectMode) => mode.selectById(id, selectMode),
     hoverElement: (id) => mode.hoverById(id),
+    reorderElement: (id, beforeId) => mode.reorderById(id, beforeId),
     setCanvas: (on) => mode.canvas.setOn(on),
     canvasCommand: (action) => mode.canvas.run(action),
     destroy: () => {

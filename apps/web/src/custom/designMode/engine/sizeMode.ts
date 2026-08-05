@@ -64,7 +64,7 @@ function currentValue(el: TaggedElement, prop: string, drafts: DraftStore): stri
  * literal `auto`, while Fill can draft `100%`; neither intent may be reinterpreted as px
  * (PR #54/#55/#56 review).
  */
-function measuredSize(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): number {
+export function measuredSize(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): number {
   return seedFrom(drafts.current(el, axis), getComputedStyle(el).getPropertyValue(axis));
 }
 

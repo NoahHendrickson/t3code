@@ -1,272 +1,25 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  FoldHorizontalIcon,
-  Frame,
-  Grid2x2Icon,
-  Maximize2Icon,
-  Minimize2Icon,
-  MinusIcon,
-  PlusIcon,
-  ScanIcon,
-} from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
-import { cn } from "~/lib/utils";
 
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
-import { CornerRadiusIcon } from "./CornerRadiusIcon";
-import { PaddingIcon } from "./PaddingIcon";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
 import type {
-  DesignModeElementSnapshot,
+  DesignModeAlignAxis,
+  DesignModeAlignValue,
   DesignModeSizeMode,
   DesignModeWritableKey,
 } from "../protocol";
-import { ColorField, PairField, PanelSection, ScrubField } from "./DesignPanelFields";
-import { AlignMatrix, SegmentField, SelectRow } from "./DesignPanelLayoutControls";
-
-const FONT_WEIGHTS = ["100", "200", "300", "400", "500", "600", "700", "800", "900"] as const;
-const DISPLAY_OPTIONS = ["block", "flex", "inline-flex", "grid", "inline-block"] as const;
-const BORDER_STYLES = ["none", "solid", "dashed", "dotted"] as const;
-const ALIGN_SELF_OPTIONS = ["auto", "flex-start", "center", "flex-end", "stretch"] as const;
-
-type ApplyEdit = (property: DesignModeWritableKey, value: string) => void;
-
-/** The Figma "Appearance" group: opacity, uniform radius, and an expandable per-corner
- * grid behind the corners toggle (green while open, like the design's accent buttons).
- * Corner state resets with the keyed fields container, like every other field-local
- * state. */
-function AppearanceSection({
-  styles,
-  apply,
-}: {
-  styles: DesignModeElementSnapshot["styles"];
-  apply: ApplyEdit;
-}) {
-  const [corners, setCorners] = useState(false);
-  return (
-    <PanelSection title="Appearance" className="grid-cols-[1fr_1fr_auto]">
-      <ScrubField
-        label="Op"
-        title="Opacity"
-        value={styles.opacity}
-        unit="none"
-        min={0}
-        max={1}
-        step={0.01}
-        precision={2}
-        onEdit={(v) => apply("opacity", v)}
-      />
-      <ScrubField
-        label="R"
-        title="Corner radius (all corners)"
-        value={styles["border-radius"]}
-        min={0}
-        onEdit={(v) => apply("border-radius", v)}
-      />
-      <button
-        type="button"
-        onClick={() => setCorners((open) => !open)}
-        aria-pressed={corners ? "true" : "false"}
-        title={corners ? "Uniform radius" : "Per-corner radius"}
-        className={cn(
-          "flex size-6 items-center justify-center rounded transition-colors",
-          corners
-            ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
-            : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <ScanIcon className="size-4" />
-      </button>
-      {corners ? (
-        <>
-          <ScrubField
-            label="TL"
-            icon={<CornerRadiusIcon corner="tl" />}
-            title="Top-left radius"
-            value={styles["border-top-left-radius"]}
-            min={0}
-            onEdit={(v) => apply("border-top-left-radius", v)}
-          />
-          <ScrubField
-            label="TR"
-            icon={<CornerRadiusIcon corner="tr" />}
-            title="Top-right radius"
-            value={styles["border-top-right-radius"]}
-            min={0}
-            onEdit={(v) => apply("border-top-right-radius", v)}
-          />
-          <div className="size-6" />
-          <ScrubField
-            label="BL"
-            icon={<CornerRadiusIcon corner="bl" />}
-            title="Bottom-left radius"
-            value={styles["border-bottom-left-radius"]}
-            min={0}
-            onEdit={(v) => apply("border-bottom-left-radius", v)}
-          />
-          <ScrubField
-            label="BR"
-            icon={<CornerRadiusIcon corner="br" />}
-            title="Bottom-right radius"
-            value={styles["border-bottom-right-radius"]}
-            min={0}
-            onEdit={(v) => apply("border-bottom-right-radius", v)}
-          />
-        </>
-      ) : null}
-    </PanelSection>
-  );
-}
-
-const SIDES = [
-  ["T", "top"],
-  ["R", "right"],
-  ["B", "bottom"],
-  ["L", "left"],
-] as const;
-
-/** The four per-side scrubs of a box property — Padding and Margin share it, and the
- * next TRBL-shaped section is a one-liner instead of another 4-field clone block. */
-function SideFields({
-  prefix,
-  styles,
-  apply,
-  tokenBasePx,
-  min,
-}: {
-  prefix: "padding" | "margin";
-  styles: DesignModeElementSnapshot["styles"];
-  apply: ApplyEdit;
-  tokenBasePx: number | null;
-  min?: number;
-}) {
-  const title = prefix.charAt(0).toUpperCase() + prefix.slice(1);
-  return SIDES.map(([label, side]) => {
-    const key = `${prefix}-${side}` as const;
-    return (
-      <ScrubField
-        key={key}
-        label={label}
-        title={`${title} ${side}`}
-        tokenBasePx={tokenBasePx}
-        value={styles[key]}
-        {...(min !== undefined ? { min } : {})}
-        onEdit={(v) => apply(key, v)}
-      />
-    );
-  });
-}
-
-const SIZE_MODE_OPTIONS = [
-  ["fixed", "Fixed"],
-  ["hug", "Hug"],
-  ["fill", "Fill"],
-] as const;
-
-/** Figma's per-axis sizing menu, docked at the right edge of the W/H fields. The guest
- * owns the coordinated write (engine/sizeMode.ts) and answers with a fresh snapshot. */
-function SizeModeSelect({
-  axis,
-  mode,
-  onPick,
-}: {
-  axis: "width" | "height";
-  mode: DesignModeSizeMode;
-  onPick: (mode: DesignModeSizeMode) => void;
-}) {
-  return (
-    <select
-      aria-label={`${axis === "width" ? "Width" : "Height"} sizing mode`}
-      value={mode}
-      onChange={(event) => {
-        const picked = SIZE_MODE_OPTIONS.find(([value]) => value === event.target.value);
-        if (picked) onPick(picked[0]);
-      }}
-      className="h-full shrink-0 cursor-pointer appearance-none bg-transparent pe-1.5 text-[10px] text-muted-foreground outline-none hover:text-foreground"
-    >
-      {SIZE_MODE_OPTIONS.map(([value, label]) => (
-        <option key={value} value={value}>
-          {label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-/** The canvas strip: a Figma-frame toggle that hands the page to the guest's vendored
- * CanvasMode (space-drag pan, cursor-anchored wheel/pinch zoom, the powers-of-2 ladder),
- * plus discrete zoom verbs and the settled zoom readout while it's on. */
-function CanvasControls({
-  runtimeTabId,
-  canvas,
-}: {
-  runtimeTabId: string;
-  canvas: { on: boolean; scalePercent: number };
-}) {
-  const zoomButton =
-    "flex size-6 items-center justify-center rounded bg-[var(--fork-design-field)] text-muted-foreground transition-colors hover:text-foreground [&_svg]:size-3.5";
-  return (
-    <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
-      <button
-        type="button"
-        onClick={() => designModeBridge.setCanvas(runtimeTabId, !canvas.on)}
-        aria-pressed={canvas.on ? "true" : "false"}
-        title={canvas.on ? "Exit canvas (restores page scroll)" : "Canvas — pan and zoom the page"}
-        className={cn(
-          "flex h-6 items-center gap-1.5 rounded px-1.5 text-xs transition-colors [&_svg]:size-4",
-          canvas.on
-            ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
-            : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
-        )}
-      >
-        <Frame />
-        Canvas
-      </button>
-      {canvas.on ? (
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            title="Zoom out"
-            className={zoomButton}
-            onClick={() => designModeBridge.canvasCommand(runtimeTabId, "zoom-out")}
-          >
-            <MinusIcon />
-          </button>
-          <button
-            type="button"
-            title="Reset to 100%"
-            className="h-6 min-w-10 rounded bg-[var(--fork-design-field)] px-1 text-center font-mono text-[11px] text-foreground"
-            onClick={() => designModeBridge.canvasCommand(runtimeTabId, "zoom-100")}
-          >
-            {canvas.scalePercent}%
-          </button>
-          <button
-            type="button"
-            title="Zoom in"
-            className={zoomButton}
-            onClick={() => designModeBridge.canvasCommand(runtimeTabId, "zoom-in")}
-          >
-            <PlusIcon />
-          </button>
-          <button
-            type="button"
-            title="Zoom to fit"
-            className={zoomButton}
-            onClick={() => designModeBridge.canvasCommand(runtimeTabId, "zoom-fit")}
-          >
-            <Maximize2Icon />
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
+import { CanvasControls } from "./CanvasControls";
+import { AppearanceSection } from "./sections/AppearanceSection";
+import { LayoutSection } from "./sections/LayoutSection";
+import { FillSection, MarginSection, StrokeSection } from "./sections/PaintSections";
+import { PositionSection } from "./sections/PositionSection";
+import { TypographySection } from "./sections/TypographySection";
+import { fieldStateFor, type FieldStateFor } from "./selectionValues";
 
 interface Props {
   runtimeTabId: string | null;
@@ -275,32 +28,77 @@ interface Props {
 
 /**
  * The native design panel — a column docked inside the preview pane while Design mode is
- * on for the active tab. Renders the guest's selection snapshots (designModeStore, fed by
- * the console-message bridge) with T3-native controls, and drives edits back through
- * designModeBridge. Send builds the Forge's change-request markdown in the guest and
- * inserts it into the thread composer. See `.fork/customizations.yaml#fork-design-mode`.
+ * on for the active tab. This module is the wiring: it reads the guest's selection
+ * snapshots (designModeStore, fed by the console-message bridge), turns panel intent into
+ * designModeBridge commands, and composes the sections — every section itself lives in
+ * `panel/sections/`.
+ *
+ * Section order and field chrome follow the fork's own Figma spec (t3-fork file, page V2,
+ * node 193:9686): Position, Layout, Appearance — with the controls that spec doesn't draw
+ * (margins, per-side spacing, min/max, the raw display select) kept behind disclosures
+ * rather than dropped. Send builds the Forge's change-request markdown in the guest and
+ * attaches it to the thread composer.
+ * See `.fork/customizations.yaml#fork-design-mode`.
  */
 export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
   const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
 
   const first = tab.selection[0];
   const ids = tab.selection.map((element) => element.id);
+  /** Every verb below is a no-op without a tab and a selection — one gate, not six. */
+  const target = runtimeTabId !== null && ids.length > 0 ? runtimeTabId : null;
 
   const apply = useCallback(
     (property: DesignModeWritableKey, value: string) => {
-      if (!runtimeTabId || ids.length === 0) return;
-      designModeBridge.applyDraft(runtimeTabId, ids, property, value);
+      if (target) designModeBridge.applyDraft(target, ids, property, value);
     },
     // ids is rebuilt per render but changes only with the selection snapshot array.
-    [runtimeTabId, tab.selection],
+    [target, tab.selection],
   );
 
   const setSizeMode = useCallback(
     (axis: "width" | "height", mode: DesignModeSizeMode) => {
-      if (!runtimeTabId || ids.length === 0) return;
-      designModeBridge.setSizeMode(runtimeTabId, ids, axis, mode);
+      if (target) designModeBridge.setSizeMode(target, ids, axis, mode);
     },
-    [runtimeTabId, tab.selection],
+    [target, tab.selection],
+  );
+
+  const onAlign = useCallback(
+    (axis: DesignModeAlignAxis, value: DesignModeAlignValue) => {
+      if (target) designModeBridge.alignSelection(target, ids, axis, value);
+    },
+    [target, tab.selection],
+  );
+
+  const onInset = useCallback(
+    (axis: "x" | "y", px: number) => {
+      if (target && Number.isFinite(px)) designModeBridge.setInset(target, ids, axis, px);
+    },
+    [target, tab.selection],
+  );
+
+  const onAbsolute = useCallback(
+    (on: boolean) => {
+      if (target) designModeBridge.setAbsolute(target, ids, on);
+    },
+    [target, tab.selection],
+  );
+
+  const onAspectLock = useCallback(
+    (on: boolean) => {
+      if (target) designModeBridge.setAspectLock(target, ids, on);
+    },
+    [target, tab.selection],
+  );
+
+  // Per-field mixed/changed state plus its revert — one helper the sections spread onto
+  // every field (`{...field("width")}`), so a new field can't quietly skip either.
+  const field = useCallback(
+    (...args: Parameters<FieldStateFor>) =>
+      fieldStateFor(tab.selection, (properties) => {
+        if (target) designModeBridge.revertDraft(target, ids, properties);
+      })(...args),
+    [target, tab.selection],
   );
 
   const onCompare = useCallback(() => {
@@ -347,9 +145,14 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
     }
   }, [runtimeTabId, sending, threadRef]);
 
-  const spacingBase = tab.tokens?.spacingBasePx ?? null;
-
   if (!runtimeTabId || !tab.enabled) return null;
+
+  const sectionProps = {
+    selection: tab.selection,
+    apply,
+    spacingBase: tab.tokens?.spacingBasePx ?? null,
+    field,
+  };
 
   return (
     <div
@@ -379,282 +182,26 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
         // Keyed by selection identity so field-local input state resets per selection.
         <div
           key={`${first.id}:${tab.selection.length}`}
-          className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4"
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4"
         >
-          <PanelSection title="Size" className="grid-cols-2">
-            <ScrubField
-              label="W"
-              title="Width"
-              tokenBasePx={spacingBase}
-              value={first.styles.width}
-              min={0}
-              suffix={
-                <SizeModeSelect
-                  axis="width"
-                  mode={first.sizeModes.width}
-                  onPick={(mode) => setSizeMode("width", mode)}
-                />
-              }
-              onEdit={(v) => apply("width", v)}
-            />
-            <ScrubField
-              label="H"
-              title="Height"
-              tokenBasePx={spacingBase}
-              value={first.styles.height}
-              min={0}
-              suffix={
-                <SizeModeSelect
-                  axis="height"
-                  mode={first.sizeModes.height}
-                  onPick={(mode) => setSizeMode("height", mode)}
-                />
-              }
-              onEdit={(v) => apply("height", v)}
-            />
-          </PanelSection>
-
-          <PanelSection
-            title="Layout"
-            className="grid-cols-2"
-            action={
-              // The Figma header's auto-layout toggle: green while the element is a flex
-              // container. Turning it OFF previews as `display: block`, which the change
-              // request builder rewrites as "remove auto layout" intent for the agent.
-              <button
-                type="button"
-                onClick={() =>
-                  apply(
-                    "display",
-                    first.styles.display === "flex" || first.styles.display === "inline-flex"
-                      ? "block"
-                      : "flex",
-                  )
-                }
-                aria-pressed={
-                  first.styles.display === "flex" || first.styles.display === "inline-flex"
-                    ? "true"
-                    : "false"
-                }
-                title={
-                  first.styles.display === "flex" || first.styles.display === "inline-flex"
-                    ? "Remove auto layout"
-                    : "Add auto layout (flex)"
-                }
-                className={cn(
-                  "flex size-6 items-center justify-center rounded transition-colors",
-                  first.styles.display === "flex" || first.styles.display === "inline-flex"
-                    ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
-                    : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Grid2x2Icon className="size-4" />
-              </button>
-            }
-          >
-            <SelectRow
-              label="Disp"
-              title="Display"
-              value={first.styles.display}
-              options={DISPLAY_OPTIONS}
-              onSelect={(v) => apply("display", v)}
-            />
-            {first.styles.display === "flex" || first.styles.display === "inline-flex" ? (
-              <>
-                <SegmentField
-                  options={[
-                    { value: "row", label: <ArrowRightIcon />, title: "Direction: row" },
-                    { value: "column", label: <ArrowDownIcon />, title: "Direction: column" },
-                  ]}
-                  value={first.styles["flex-direction"].startsWith("column") ? "column" : "row"}
-                  onSelect={(v) => apply("flex-direction", v)}
-                />
-                <ScrubField
-                  label="Gap"
-                  icon={<FoldHorizontalIcon />}
-                  title="Gap"
-                  tokenBasePx={spacingBase}
-                  value={first.styles["row-gap"]}
-                  min={0}
-                  onEdit={(v) => apply("gap", v)}
-                />
-                <SegmentField
-                  options={[
-                    { value: "nowrap", label: "No wrap", title: "Wrap: nowrap" },
-                    { value: "wrap", label: "Wrap", title: "Wrap: wrap" },
-                  ]}
-                  value={first.styles["flex-wrap"]}
-                  onSelect={(v) => apply("flex-wrap", v)}
-                />
-                <div className="col-span-2 flex items-start gap-2">
-                  <AlignMatrix
-                    direction={
-                      first.styles["flex-direction"].startsWith("column") ? "column" : "row"
-                    }
-                    justifyContent={first.styles["justify-content"]}
-                    alignItems={first.styles["align-items"]}
-                    onChange={(justify, align) => {
-                      apply("justify-content", justify);
-                      apply("align-items", align);
-                    }}
-                  />
-                  <div className="grid min-w-0 flex-1 gap-1">
-                    <SelectRow
-                      label="Self"
-                      title="Align self (this element within its parent)"
-                      value={first.styles["align-self"]}
-                      options={ALIGN_SELF_OPTIONS}
-                      onSelect={(v) => apply("align-self", v)}
-                    />
-                    <ScrubField
-                      label="Grow"
-                      icon={<Maximize2Icon />}
-                      title="Flex grow"
-                      value={first.styles["flex-grow"]}
-                      unit="none"
-                      min={0}
-                      step={0.1}
-                      precision={1}
-                      onEdit={(v) => apply("flex-grow", v)}
-                    />
-                    <ScrubField
-                      label="Shrink"
-                      icon={<Minimize2Icon />}
-                      title="Flex shrink"
-                      value={first.styles["flex-shrink"]}
-                      unit="none"
-                      min={0}
-                      step={0.1}
-                      precision={1}
-                      onEdit={(v) => apply("flex-shrink", v)}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : null}
-          </PanelSection>
-
-          <PanelSection title="Padding" className="grid-cols-2">
-            <PairField
-              label="LR"
-              icon={<PaddingIcon axis="inline" />}
-              title="Padding left / right — type one value for both, or two: 8, 16"
-              tokenBasePx={spacingBase}
-              values={[first.styles["padding-left"], first.styles["padding-right"]]}
-              min={0}
-              onEdit={(left, right) => {
-                apply("padding-left", left);
-                apply("padding-right", right);
-              }}
-            />
-            <PairField
-              label="TB"
-              icon={<PaddingIcon axis="block" />}
-              title="Padding top / bottom — type one value for both, or two: 8, 16"
-              tokenBasePx={spacingBase}
-              values={[first.styles["padding-top"], first.styles["padding-bottom"]]}
-              min={0}
-              onEdit={(top, bottom) => {
-                apply("padding-top", top);
-                apply("padding-bottom", bottom);
-              }}
-            />
-          </PanelSection>
-
-          <PanelSection title="Margin" className="grid-cols-2">
-            <SideFields
-              prefix="margin"
-              styles={first.styles}
-              apply={apply}
-              tokenBasePx={spacingBase}
-            />
-          </PanelSection>
-
-          <AppearanceSection styles={first.styles} apply={apply} />
-
-          <PanelSection title="Typography" className="grid-cols-2">
-            <ScrubField
-              label="Sz"
-              title="Font size"
-              value={first.styles["font-size"]}
-              min={1}
-              onEdit={(v) => apply("font-size", v)}
-            />
-            <SelectRow
-              label="Wt"
-              title="Font weight"
-              value={first.styles["font-weight"]}
-              options={FONT_WEIGHTS}
-              onSelect={(v) => apply("font-weight", v)}
-            />
-            <ScrubField
-              label="Lh"
-              title="Line height"
-              value={first.styles["line-height"]}
-              min={0}
-              onEdit={(v) => apply("line-height", v)}
-            />
-            <ScrubField
-              label="Ls"
-              title="Letter spacing"
-              value={first.styles["letter-spacing"]}
-              step={0.1}
-              precision={1}
-              onEdit={(v) => apply("letter-spacing", v)}
-            />
-            <SegmentField
-              className="col-span-2"
-              options={[
-                { value: "left", label: "Left", title: "Align left" },
-                { value: "center", label: "Center", title: "Align center" },
-                { value: "right", label: "Right", title: "Align right" },
-                { value: "justify", label: "Just", title: "Justify" },
-              ]}
-              value={first.styles["text-align"] === "start" ? "left" : first.styles["text-align"]}
-              onSelect={(v) => apply("text-align", v)}
-            />
-            <ColorField
-              tokens={tab.tokens}
-              label="C"
-              title="Text color"
-              value={first.styles.color}
-              onEdit={(v) => apply("color", v)}
-            />
-          </PanelSection>
-
-          <PanelSection title="Fill" className="grid-cols-1">
-            <ColorField
-              tokens={tab.tokens}
-              label="Bg"
-              title="Background color"
-              value={first.styles["background-color"]}
-              onEdit={(v) => apply("background-color", v)}
-            />
-          </PanelSection>
-
-          <PanelSection title="Stroke" className="grid-cols-2">
-            <SelectRow
-              label="Sty"
-              title="Border style"
-              value={first.styles["border-top-style"]}
-              options={BORDER_STYLES}
-              onSelect={(v) => apply("border-style", v)}
-            />
-            <ScrubField
-              label="W"
-              title="Border width"
-              value={first.styles["border-top-width"]}
-              min={0}
-              onEdit={(v) => apply("border-width", v)}
-            />
-            <ColorField
-              tokens={tab.tokens}
-              label="C"
-              title="Border color"
-              value={first.styles["border-top-color"]}
-              onEdit={(v) => apply("border-color", v)}
-            />
-          </PanelSection>
+          <PositionSection
+            element={first}
+            selection={tab.selection}
+            onAlign={onAlign}
+            onInset={onInset}
+            onAbsolute={onAbsolute}
+          />
+          <LayoutSection
+            element={first}
+            {...sectionProps}
+            onSizeMode={setSizeMode}
+            onAspectLock={onAspectLock}
+          />
+          <MarginSection element={first} {...sectionProps} />
+          <AppearanceSection element={first} {...sectionProps} />
+          <TypographySection element={first} {...sectionProps} tokens={tab.tokens} />
+          <FillSection element={first} {...sectionProps} tokens={tab.tokens} />
+          <StrokeSection element={first} {...sectionProps} tokens={tab.tokens} />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center px-4 text-center">

@@ -2,6 +2,16 @@ import type { ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
 
+import type { DesignModeAlignAxis, DesignModeAlignCaps, DesignModeAlignValue } from "../protocol";
+import {
+  AlignHCenterIcon,
+  AlignHEndIcon,
+  AlignHStartIcon,
+  AlignVCenterIcon,
+  AlignVEndIcon,
+  AlignVStartIcon,
+} from "./PanelIcons";
+
 interface SegmentOption {
   readonly value: string;
   readonly label: ReactNode;
@@ -14,69 +24,154 @@ interface SegmentOption {
 export function SegmentField({
   options,
   value,
+  mixed = false,
   onSelect,
   className,
 }: {
   options: readonly SegmentOption[];
   value: string;
+  /** The selection disagrees — no segment lifts, rather than claiming the first element's. */
+  mixed?: boolean;
   onSelect: (value: string) => void;
   className?: string;
 }) {
   return (
     <div className={cn("flex h-6 items-center rounded bg-[var(--fork-design-field)]", className)}>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          title={option.title}
-          aria-pressed={value === option.value ? "true" : "false"}
-          onClick={() => onSelect(option.value)}
-          className={cn(
-            "flex h-full flex-1 items-center justify-center rounded px-1 text-xs transition-colors [&_svg]:size-4",
-            value === option.value
-              ? "border border-border bg-[var(--fork-design-selected)] text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
+      {options.map((option) => {
+        const selected = !mixed && value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            title={option.title}
+            aria-pressed={selected ? "true" : "false"}
+            onClick={() => onSelect(option.value)}
+            className={cn(
+              "flex h-full flex-1 items-center justify-center rounded px-1 text-xs transition-colors [&_svg]:size-4",
+              selected
+                ? "border border-border bg-[var(--fork-design-selected)] text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-/** Labelled native select in the panel's field chrome — display, border style, align-self. */
+const ALIGN_BUTTONS: ReadonlyArray<{
+  axis: DesignModeAlignAxis;
+  value: DesignModeAlignValue;
+  title: string;
+  Icon: (props: { className?: string }) => ReactNode;
+}> = [
+  { axis: "horizontal", value: "start", title: "Align left", Icon: AlignHStartIcon },
+  {
+    axis: "horizontal",
+    value: "center",
+    title: "Align horizontal centers",
+    Icon: AlignHCenterIcon,
+  },
+  { axis: "horizontal", value: "end", title: "Align right", Icon: AlignHEndIcon },
+  { axis: "vertical", value: "start", title: "Align top", Icon: AlignVStartIcon },
+  { axis: "vertical", value: "center", title: "Align vertical centers", Icon: AlignVCenterIcon },
+  { axis: "vertical", value: "end", title: "Align bottom", Icon: AlignVEndIcon },
+];
+
+/**
+ * Figma's align row: two groups of three, horizontal then vertical. These are VERBS, not
+ * state — CSS has no single property they read back from — so no button ever lights up.
+ * An axis the element can't honor (engine/align.ts's caps: no vertical answer for a block
+ * child, no main axis for an auto-layout child, exactly as Figma disables them) greys out
+ * with the reason in its tooltip instead of writing something inert.
+ */
+export function AlignRow({
+  caps,
+  onAlign,
+}: {
+  caps: DesignModeAlignCaps;
+  onAlign: (axis: DesignModeAlignAxis, value: DesignModeAlignValue) => void;
+}) {
+  const reason = "No alignment on this axis — the element's parent lays it out";
+  return (
+    <div className="col-span-2 grid grid-cols-2 gap-2" role="group" aria-label="Align in parent">
+      {(["horizontal", "vertical"] as const).map((axis) => {
+        const enabled = axis === "horizontal" ? caps.horizontal : caps.vertical;
+        return (
+          <div key={axis} className="flex h-6 items-center rounded bg-[var(--fork-design-field)]">
+            {ALIGN_BUTTONS.filter((button) => button.axis === axis).map(
+              ({ value, title, Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={!enabled}
+                  title={enabled ? title : reason}
+                  aria-label={title}
+                  onClick={() => onAlign(axis, value)}
+                  className={cn(
+                    "flex h-full flex-1 items-center justify-center rounded transition-colors [&_svg]:size-4",
+                    enabled
+                      ? "text-muted-foreground hover:bg-[var(--fork-design-selected)] hover:text-foreground"
+                      : "text-muted-foreground/30",
+                  )}
+                >
+                  <Icon />
+                </button>
+              ),
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Labelled native select in the panel's field chrome — display, border style, align-self,
+ * font weight. `optionValue` lets an option read as design vocabulary while committing CSS
+ * ("500 Medium" → `500`); without it the option IS the value. */
 export function SelectRow({
   label,
+  icon,
   title,
   value,
   options,
+  optionValue,
+  mixed = false,
   onSelect,
 }: {
   label: string;
+  icon?: ReactNode;
   title: string;
   value: string;
   options: readonly string[];
+  optionValue?: (option: string) => string;
+  /** The selection disagrees — the menu reads Mixed until a pick unifies them. */
+  mixed?: boolean;
   onSelect: (value: string) => void;
 }) {
+  const valueOf = optionValue ?? ((option: string) => option);
+  const selected = mixed ? undefined : options.find((option) => valueOf(option) === value);
   return (
     <label
       className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
       title={title}
     >
-      <span className="flex h-6 shrink-0 select-none items-center px-1.5 text-xs text-muted-foreground/70">
-        {label}
+      <span className="flex h-6 min-w-6 shrink-0 select-none items-center justify-center px-1 text-xs text-muted-foreground/70 [&_svg]:size-4">
+        {icon ? <span className="sr-only">{label}</span> : null}
+        {icon ?? label}
       </span>
       <select
         // Controlled, NOT defaultValue: the guest re-emits snapshots for the same selection
         // (Discard all, the draft-sync flush, the Layout header's auto-layout toggle) and
         // the fields container is keyed by selection identity, so an uncontrolled select
         // kept showing a value the element no longer had (PR #50/#52 review).
-        value={options.includes(value) ? value : ""}
-        onChange={(event) => onSelect(event.target.value)}
+        value={selected ?? ""}
+        onChange={(event) => onSelect(valueOf(event.target.value))}
         className="h-full w-full min-w-0 appearance-none bg-transparent pe-1.5 text-xs text-foreground outline-none"
       >
-        {!options.includes(value) ? <option value="">{value || "—"}</option> : null}
+        {selected === undefined ? <option value="">{mixed ? "Mixed" : value || "—"}</option> : null}
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -105,15 +200,18 @@ export function AlignMatrix({
   direction,
   justifyContent,
   alignItems,
+  mixed = false,
   onChange,
 }: {
   direction: "row" | "column";
   justifyContent: string;
   alignItems: string;
+  /** The selection disagrees — no dot lights, the same as a distribution value. */
+  mixed?: boolean;
   onChange: (justifyContent: string, alignItems: string) => void;
 }) {
-  const justify = normalizeAxisValue(justifyContent);
-  const align = normalizeAxisValue(alignItems);
+  const justify = mixed ? "" : normalizeAxisValue(justifyContent);
+  const align = mixed ? "" : normalizeAxisValue(alignItems);
   return (
     <div
       className="grid grid-cols-3 grid-rows-3 rounded bg-[var(--fork-design-field)]"

@@ -24,15 +24,33 @@ export const DESIGN_MODE_CONSOLE_PREFIX = "__t3-design-mode__:";
 /** Name of the guest-global handle the engine installs: `window.__T3_DESIGN_MODE__`. */
 export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
 
+/**
+ * Bumped whenever this contract changes in a way an older injected engine can't satisfy.
+ * `boot()` compares it against a live handle's own stamp and rebuilds on a mismatch instead
+ * of reusing it: a host update while the webview keeps its engine used to fail SILENTLY —
+ * new verbs threw into `fire`'s catch, and the old engine's snapshots (missing whatever the
+ * contract had grown) were rejected wholesale by the stricter parser, so selection simply
+ * stopped updating with nothing in the UI to say why (PR #57 review).
+ */
+export const DESIGN_MODE_PROTOCOL_VERSION = 2;
+
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
  * reads them by name. Writes may additionally target the shorthands below — the split
  * keeps the snapshot honest (no write-only keys serialized per selection) while the
  * writable union keeps every panel edit type-checked end to end. */
 export const DESIGN_MODE_STYLE_KEYS = [
+  "position",
+  "top",
+  "left",
   "display",
   "width",
   "height",
+  "min-width",
+  "max-width",
+  "min-height",
+  "max-height",
+  "aspect-ratio",
   "flex-direction",
   "flex-wrap",
   "row-gap",
@@ -56,8 +74,12 @@ export const DESIGN_MODE_STYLE_KEYS = [
   "border-bottom-right-radius",
   "border-bottom-left-radius",
   "border-top-width",
+  "border-right-width",
+  "border-bottom-width",
+  "border-left-width",
   "border-top-style",
   "border-top-color",
+  "font-family",
   "font-size",
   "font-weight",
   "line-height",
@@ -78,11 +100,17 @@ export const DESIGN_MODE_WRITE_ONLY_KEYS = [
   "border-style",
   "border-color",
   "flex-basis",
+  /** Written by the align row on grid children (engine/align.ts); nothing displays it. */
+  "justify-self",
 ] as const;
 
 export type DesignModeWritableKey =
   | DesignModeStyleKey
   | (typeof DESIGN_MODE_WRITE_ONLY_KEYS)[number];
+
+/** How a layers-row click lands: replace the selection (plain click) or add/remove this one
+ * element from it (Cmd/Shift-click), matching the canvas's own Shift-click. */
+export type DesignModeSelectMode = "replace" | "toggle";
 
 /** Figma's sizing vocabulary for one axis: explicit px / size-to-content / take the
  * available space. Read by the guest (draft-first — computed px can't distinguish an
@@ -94,6 +122,29 @@ const SIZE_MODES: readonly DesignModeSizeMode[] = ["fixed", "hug", "fill"];
 const parseSizeMode = (value: unknown): DesignModeSizeMode | null =>
   SIZE_MODES.find((mode) => mode === value) ?? null;
 
+/** What owns this element's placement right now (engine/vendor/panel-specs.ts
+ * `positionStateOf`). `draft`: an absolute-position draft is previewing it, so X/Y edits move
+ * that draft's inset. `code`: the app's own CSS already places it absolutely, so X/Y are plain
+ * left/top drafts. `flow`: in normal flow — X/Y are read-only offsets. Three states, not two:
+ * an absolute draft with `on: false` is the absolute→flow direction and reads `flow`. */
+export type DesignModePositionState = "draft" | "code" | "flow";
+
+const POSITION_STATES: readonly DesignModePositionState[] = ["draft", "code", "flow"];
+
+/** The two axes of Figma's align row. */
+export type DesignModeAlignAxis = "horizontal" | "vertical";
+
+/** Where the element lands on that axis within its parent. */
+export type DesignModeAlignValue = "start" | "center" | "end";
+
+/** Which halves of the align row have an honest CSS mapping for this element (engine/align.ts
+ * decides; a block child has no vertical answer, so the panel disables those three buttons
+ * rather than writing something that does nothing). */
+export interface DesignModeAlignCaps {
+  readonly horizontal: boolean;
+  readonly vertical: boolean;
+}
+
 /** One selected element as the native panel sees it. `id` is minted by the guest engine
  * and is only meaningful for the current selection — commands referencing a stale id
  * no-op. `sourceLabel` is "file.tsx:12" when the element carries a data-dc-source tag. */
@@ -104,6 +155,16 @@ export interface DesignModeElementSnapshot {
   readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
   /** Current W/H sizing modes (engine/sizeMode.ts) — drives the panel's per-axis menu. */
   readonly sizeModes: { readonly width: DesignModeSizeMode; readonly height: DesignModeSizeMode };
+  /** The panel's X/Y readout, in the same basis those fields WRITE (margin edge once out of
+   * flow, offsetParent-relative in flow) — offsets aren't computed-style properties, so they
+   * ride the snapshot rather than `styles`. */
+  readonly offsets: { readonly x: number; readonly y: number };
+  readonly positionState: DesignModePositionState;
+  readonly alignCaps: DesignModeAlignCaps;
+  /** CSS properties this element currently carries a draft for — the panel marks those
+   * fields as changed and offers the per-property revert. Property names, not values: the
+   * values are already visible through `styles` (computed styles include live drafts). */
+  readonly drafted: readonly string[];
 }
 
 /** One theme color custom property from the previewed app's stylesheets ("red-500",
@@ -121,6 +182,16 @@ export interface DesignModeLayerNode {
   readonly id: number;
   readonly tag: string;
   readonly label: string;
+  /** Whether a drag can reorder this row among its siblings. The vendored move op previews
+   * as inline `order`, which only auto-layout (flex/grid) parents honor — so the rail refuses
+   * the drop everywhere else instead of accepting a gesture the guest would drop. */
+  readonly reorderable: boolean;
+  /** Identifies this node's DOM parent within one layers message. Two rows can only be
+   * reordered against each other when these match — the curated walk hoists tagged
+   * descendants through untagged wrappers, so rows that look like siblings in the TREE
+   * routinely aren't in the DOM, and the guest refuses those (PR #57 review). Only equality
+   * is meaningful; the numbers are per-message and mean nothing across two. */
+  readonly siblingGroup: number;
   readonly children: readonly DesignModeLayerNode[];
 }
 
@@ -193,12 +264,31 @@ export interface DesignChangeRequestPayload {
  * these through `webview.executeJavaScript` (designModeBridge.ts) — every argument and
  * return value must stay JSON-serializable. */
 export interface DesignModeGuestHandle {
+  /** DESIGN_MODE_PROTOCOL_VERSION as of the injection that installed this handle. */
+  readonly version: number;
   setActive(on: boolean): void;
   isActive(): boolean;
   /** Applies one CSS draft to every listed element id (multi-select edits fan out here). */
   applyDraft(ids: readonly number[], property: DesignModeWritableKey, value: string): void;
   /** Applies a Figma sizing mode (fixed/hug/fill) to one axis of every listed element. */
   setSizeMode(ids: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void;
+  /** Figma's absolute-position toggle — drafts the element out of (or back into) flow. */
+  setAbsolute(ids: readonly number[], on: boolean): void;
+  /** Writes one axis of the X/Y pair; routed by position state (draft inset vs left/top css).
+   * A no-op on elements still in flow, where the fields are read-only. */
+  setInset(ids: readonly number[], axis: "x" | "y", px: number): void;
+  /** Aligns each element within its own parent (engine/align.ts picks the CSS mapping). */
+  alignSelection(
+    ids: readonly number[],
+    axis: DesignModeAlignAxis,
+    value: DesignModeAlignValue,
+  ): void;
+  /** Figma's aspect-ratio link beside W/H: on pins `aspect-ratio` to the element's current
+   * proportion, off releases it. */
+  setAspectLock(ids: readonly number[], on: boolean): void;
+  /** Drops the drafts for exactly these properties, restoring the page's own values —
+   * the per-field revert behind a changed marker. Structural drafts are untouched. */
+  revertDraft(ids: readonly number[], properties: readonly string[]): void;
   discardAll(): void;
   /** Flips every draft to its "before" (true) or "after" (false) rendering. */
   compareAll(on: boolean): void;
@@ -207,9 +297,16 @@ export interface DesignModeGuestHandle {
    * bounded grace before falling back to selector context — the promise rides Electron's
    * executeJavaScript back to the host either way. */
   buildSend(): Promise<DesignChangeRequestPayload | null>;
-  /** Layers-tree interactions — ids from selection snapshots or layer nodes. */
-  selectElement(id: number): void;
+  /** Layers-tree interactions — ids from selection snapshots or layer nodes. `toggle` is
+   * the rail's Cmd/Shift-click, adding or removing the row from the current selection. */
+  selectElement(id: number, mode?: DesignModeSelectMode): void;
   hoverElement(id: number | null): void;
+  /** Moves `id` to sit immediately before `beforeId` among its siblings; null means "to the
+   * end" (rail drag-and-drop). Sibling-relative rather than index-based on purpose: the
+   * curated layers tree hoists tagged descendants through untagged wrappers, so a row's
+   * position in the TREE is not its position in the DOM — only the guest can turn "before
+   * this element" into an index. Refused when the two don't share a parent. */
+  reorderElement(id: number, beforeId: number | null): void;
   /** Canvas mode: turn the page into a pannable/zoomable artboard (Figma-style). */
   setCanvas(on: boolean): void;
   /** Discrete canvas zoom verbs; no-ops while canvas is off. */
@@ -226,6 +323,9 @@ const isNonNegativeInteger = (value: unknown): value is number =>
 const isStyleMap = (value: unknown): value is Readonly<Record<DesignModeStyleKey, string>> =>
   isRecord(value) && DESIGN_MODE_STYLE_KEYS.every((key) => typeof value[key] === "string");
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
 function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null {
   if (
     !isRecord(value) ||
@@ -233,19 +333,35 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     typeof value.tag !== "string" ||
     (value.sourceLabel !== null && typeof value.sourceLabel !== "string") ||
     !isStyleMap(value.styles) ||
-    !isRecord(value.sizeModes)
+    !isRecord(value.sizeModes) ||
+    !isRecord(value.offsets) ||
+    !isFiniteNumber(value.offsets.x) ||
+    !isFiniteNumber(value.offsets.y) ||
+    !isRecord(value.alignCaps) ||
+    typeof value.alignCaps.horizontal !== "boolean" ||
+    typeof value.alignCaps.vertical !== "boolean" ||
+    !Array.isArray(value.drafted) ||
+    !value.drafted.every((property): property is string => typeof property === "string")
   ) {
     return null;
   }
   const width = parseSizeMode(value.sizeModes.width);
   const height = parseSizeMode(value.sizeModes.height);
-  if (width === null || height === null) return null;
+  const positionState = POSITION_STATES.find((state) => state === value.positionState);
+  if (width === null || height === null || !positionState) return null;
   return {
     id: value.id,
     tag: value.tag,
     sourceLabel: value.sourceLabel,
     styles: value.styles,
     sizeModes: { width, height },
+    offsets: { x: value.offsets.x, y: value.offsets.y },
+    positionState,
+    alignCaps: {
+      horizontal: value.alignCaps.horizontal,
+      vertical: value.alignCaps.vertical,
+    },
+    drafted: value.drafted,
   };
 }
 
@@ -258,6 +374,8 @@ function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | nu
     !isNonNegativeInteger(value.id) ||
     typeof value.tag !== "string" ||
     typeof value.label !== "string" ||
+    typeof value.reorderable !== "boolean" ||
+    !isNonNegativeInteger(value.siblingGroup) ||
     !Array.isArray(value.children)
   ) {
     return null;
@@ -268,6 +386,8 @@ function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | nu
     id: value.id,
     tag: value.tag,
     label: value.label,
+    reorderable: value.reorderable,
+    siblingGroup: value.siblingGroup,
     children: children.filter((child): child is DesignModeLayerNode => child !== null),
   };
 }

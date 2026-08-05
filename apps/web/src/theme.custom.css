@@ -1462,8 +1462,16 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
-  --fork-design-surface: #232527;
-  --fork-design-field: #303234;
+  /* Surface and field follow the THEME, not the palette the Figma file happened to be
+     drawn in: the panel docks inside the workspace, so a pinned #232527 read as a lighter
+     slab bolted onto it — and drifted further with every alternate theme (Cool Dark's
+     background is #1c1e20). Deriving them means the panel matches whatever surface it is
+     sitting on, including themes that don't exist yet. */
+  --fork-design-surface: var(--background);
+  --fork-design-field: var(--muted);
+  /* Deliberately NOT var(--accent): in this theme --accent and --muted are the same value,
+     so a selected segment would vanish into the field it sits on. A translucent lift works
+     against any surface, which is the whole job of this token. */
   --fork-design-selected: rgb(255 255 255 / 8%);
   --fork-design-accent: #45ff96;
   --fork-design-accent-bg: rgb(69 255 150 / 16%);

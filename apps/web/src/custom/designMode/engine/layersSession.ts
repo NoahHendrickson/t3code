@@ -2,6 +2,7 @@ import { DESIGN_MODE_LAYERS_MAX_DEPTH, type DesignModeLayerNode } from "../proto
 import type { ElementIdRegistry } from "./idRegistry";
 import { hasForgeTags } from "./nativeSource";
 import { buildLayerTree, type LayerBudget, type LayerNode } from "./vendor/layers";
+import { reorderAxisOf } from "./vendor/move-drag";
 
 /** Quiet-window for MutationObserver-driven layers rebuilds — HMR re-renders land as
  * bursts (same rationale as the Forge's LayersTree REFRESH_DEBOUNCE_MS). */
@@ -13,6 +14,52 @@ const LAYERS_DEBOUNCE_MS = 250;
  * rebuild instead of building the whole tree first (PR #54 review). The host renders a
  * truncation note. */
 const LAYERS_NODE_CAP = 400;
+
+/** What every node under one DOM parent shares. Computed once per parent per emit: a
+ * `getComputedStyle` per CHILD to ask the same question about the same parent is exactly the
+ * churn a 400-node rebuild every 250ms can't afford (PR #57 review). */
+interface ParentFacts {
+  /** Identifies the DOM parent within this emit — see DesignModeLayerNode.siblingGroup. */
+  readonly group: number;
+  /** Its children can be reordered (auto-layout container). */
+  readonly reorderable: boolean;
+}
+
+const DETACHED: ParentFacts = { group: -1, reorderable: false };
+
+/**
+ * Sibling rows in the order the CANVAS paints them — but ONLY when the `order` in play is
+ * our own move preview.
+ *
+ * A move draft previews as inline `order` and never touches the DOM, so a straight DOM walk
+ * leaves a just-dragged row exactly where it was: the gesture reads as a no-op on the very
+ * surface that started it. Reading INLINE order rather than computed is what keeps the two
+ * halves of reordering honest (PR #57 review): the vendored preview writes inline `order` on
+ * every sibling, while an app's own `order` arrives through a stylesheet — and `reorderById`
+ * computes its indices in DOM order, which only stays coherent while nothing but our preview
+ * is permuting the group. So an app that authors `order` keeps its rail in DOM order (as it
+ * was before this feature) instead of getting a rail whose drops land one slot off.
+ *
+ * Reading `style.order` is also free where `getComputedStyle` in a sort comparator was not.
+ * Array#sort is stable, so equal orders keep DOM order.
+ */
+function visualOrder(
+  nodes: LayerNode[],
+  parent: Element | null,
+  reorderable: boolean,
+): LayerNode[] {
+  if (nodes.length < 2 || !parent || !reorderable) return nodes;
+  if (!nodes.every((node) => node.el.parentElement === parent)) return nodes;
+  const inlineOrder = (node: LayerNode): string =>
+    node.el instanceof HTMLElement || node.el instanceof SVGElement ? node.el.style.order : "";
+  if (!nodes.some((node) => inlineOrder(node) !== "")) return nodes;
+  const decorated = nodes.map((node) => ({
+    node,
+    order: Number.parseInt(inlineOrder(node), 10) || 0,
+  }));
+  decorated.sort((a, b) => a.order - b.order);
+  return decorated.map((entry) => entry.node);
+}
 
 /**
  * Owns the layers subsystem end to end: the body MutationObserver (exists only between
@@ -26,6 +73,8 @@ export class LayersSession {
   private observer: MutationObserver | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastJson = "";
+  /** Per-emit memo — cleared at the top of every emit, never held across one. */
+  private parents = new Map<Element, ParentFacts>();
 
   constructor(private readonly registry: ElementIdRegistry) {}
 
@@ -52,6 +101,7 @@ export class LayersSession {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.registry.clearLayersScope();
+    this.parents.clear();
     this.lastJson = "";
   }
 
@@ -63,6 +113,18 @@ export class LayersSession {
     }, LAYERS_DEBOUNCE_MS);
   };
 
+  private factsFor(parent: Element | null): ParentFacts {
+    if (!parent) return DETACHED;
+    const known = this.parents.get(parent);
+    if (known) return known;
+    const facts: ParentFacts = {
+      group: this.parents.size,
+      reorderable: reorderAxisOf(parent) !== null,
+    };
+    this.parents.set(parent, facts);
+    return facts;
+  }
+
   /** Mints host ids for the already budget/depth-capped tree, retaining a defensive protocol
    * depth check. The host parser rejects a whole layers message one node past the bound, so a
    * page nesting deeper than this used to make the rail vanish rather than truncate. */
@@ -71,18 +133,29 @@ export class LayersSession {
       if (nodes.length > 0) budget.truncated = true;
       return [];
     }
-    return nodes.map((node) => ({
-      id: this.registry.mintForLayers(node.el),
-      tag: node.el.tagName.toLowerCase(),
-      label: node.label,
-      children: this.serialize(node.children, budget, depth + 1),
-    }));
+    // The curated walk hoists tagged descendants through untagged wrappers, so a "sibling
+    // group" in the tree can span several DOM parents — hence facts per node, from one memo.
+    const parent = nodes[0]?.el.parentElement ?? null;
+    const shared = this.factsFor(parent);
+    return visualOrder(nodes, parent, shared.reorderable).map((node) => {
+      const facts =
+        node.el.parentElement === parent ? shared : this.factsFor(node.el.parentElement);
+      return {
+        id: this.registry.mintForLayers(node.el),
+        tag: node.el.tagName.toLowerCase(),
+        label: node.label,
+        reorderable: facts.reorderable,
+        siblingGroup: facts.group,
+        children: this.serialize(node.children, budget, depth + 1),
+      };
+    });
   }
 
   /** Rebuilds + emits the curated layers tree; change-gated so mutation bursts that leave
    * the tree's shape (and labels) identical cost one JSON compare, not a bridge message. */
   private emit = (): void => {
     this.registry.clearLayersScope();
+    this.parents.clear();
     const budget: LayerBudget = { left: LAYERS_NODE_CAP, truncated: false };
     // Untagged pages get the full-DOM walk; any PROJECT Forge tag keeps the curated one.
     // Re-read per emit (cost: one querySelector) so a framework that mounts its tagged
