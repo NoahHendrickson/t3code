@@ -88,6 +88,17 @@ export class CanvasSession {
     this.canvas.resume();
   }
 
+  /** Unconditional state report, bypassing the change gate. Activation calls this AFTER
+   * the `state` message goes out: the host wipes its canvas mirror symmetrically on every
+   * enabled flip (store setEnabled), and resume()'s own emit lands BEFORE `state` — so
+   * without this re-assert the wipe wins, the panel shows Canvas off over a live
+   * artboard, and the toggle dead-ends (CanvasMode.setOn no-ops on an equal pref while
+   * the gate still holds the pre-wipe key). */
+  reassert(): void {
+    this.lastEmit = "";
+    this.emit();
+  }
+
   /** Design mode turned off — undo every canvas page mutation (transform, artboard
    * chrome, listeners) but keep the preference; the next activation resumes the view. */
   suspend(): void {
