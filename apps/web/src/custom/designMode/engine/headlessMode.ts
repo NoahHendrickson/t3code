@@ -178,6 +178,12 @@ export class HeadlessDesignMode {
     // HMR remount replaced before projecting state to sessionStorage (PR #44 review).
     this.drafts.healStructural();
     this.persist();
+    // Edits change the selection's COMPUTED values, and a fresh snapshot is how the
+    // panel finds out — the same rule discardAll already follows. Without this, a draft
+    // that changes what the panel renders structurally (display: flex reveals the whole
+    // auto-layout group) stayed invisible until a reselect. Riding the debounce keeps
+    // scrub bursts at zero extra bridge traffic.
+    if (this.active && this.selection.length > 0) this.emitSelection();
   }
 
   // ── Host commands (driven by the native panel through the guest handle) ──────────────
