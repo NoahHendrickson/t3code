@@ -31,7 +31,7 @@ Local edits are marked with `t3-fork:` comments. The load-bearing ones:
     instead of `findTaggedElement`.
   - `lifecycle-store.ts` — persisted selection/draft entries carry an optional
     `selector` css path (synthesized tags don't survive reloads; Forge tags do).
-  - `layers.ts` — `buildLayerTree(root, includeUntagged, budget?)` walks every rendered
+  - `layers.ts` — `buildLayerTree(root, includeUntagged, budget?, maxDepth?)` walks every rendered
     element on pages with no project tags (`NOISE_TAGS` and `display: none` subtrees
     skipped, svg still opaque), stops minting at the host's `LayerBudget` cap so an
     untagged deep page costs O(cap), not O(DOM), per rebuild, and `layerLabel` prefers

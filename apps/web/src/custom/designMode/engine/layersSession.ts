@@ -63,10 +63,9 @@ export class LayersSession {
     }, LAYERS_DEBOUNCE_MS);
   };
 
-  /** Mints host ids for the (already budget-capped) tree, stopping at the protocol's depth
-   * bound. The walk's budget caps BREADTH; nothing capped depth, and the host parser rejects
-   * a whole layers message one node past the bound — so a page nesting deeper than this used
-   * to make the rail vanish entirely rather than truncate (PR #52/#54 review). */
+  /** Mints host ids for the already budget/depth-capped tree, retaining a defensive protocol
+   * depth check. The host parser rejects a whole layers message one node past the bound, so a
+   * page nesting deeper than this used to make the rail vanish rather than truncate. */
   private serialize(nodes: LayerNode[], budget: LayerBudget, depth = 0): DesignModeLayerNode[] {
     if (depth > DESIGN_MODE_LAYERS_MAX_DEPTH) {
       if (nodes.length > 0) budget.truncated = true;
@@ -89,7 +88,10 @@ export class LayersSession {
     // Re-read per emit (cost: one querySelector) so a framework that mounts its tagged
     // tree after the first emit flips the mode without a restart. Synthesized tags are
     // excluded by hasForgeTags, so T3's own lazy tagging can never collapse the tree.
-    const roots = this.serialize(buildLayerTree(document.body, !hasForgeTags(), budget), budget);
+    const roots = this.serialize(
+      buildLayerTree(document.body, !hasForgeTags(), budget, DESIGN_MODE_LAYERS_MAX_DEPTH),
+      budget,
+    );
     const json = JSON.stringify(roots);
     if (json === this.lastJson) return;
     this.lastJson = json;

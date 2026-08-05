@@ -26,7 +26,8 @@
 import type { DesignModeSizeMode } from "../protocol";
 import type { DraftStore } from "./vendor/drafts";
 import { isFlex, mainAxisProp, normalizeAlign } from "./vendor/panel-readers";
-import { defeatFillIfGrowing } from "./vendor/panel-specs";
+import { defeatFillIfGrowing, isEffectivelyAbsolute } from "./vendor/panel-specs";
+import { seedFrom } from "./vendor/resize";
 import type { TaggedElement } from "./vendor/source";
 
 export type SizeAxis = "width" | "height";
@@ -38,7 +39,10 @@ interface AxisContext {
   role: "main" | "cross" | null;
 }
 
-function axisContext(el: TaggedElement, axis: SizeAxis): AxisContext {
+function axisContext(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): AxisContext {
+  // Out-of-flow children do not participate in their parent's flex sizing. Treat them like
+  // non-flex children in both the reader and writer so Hug and Fill round-trip consistently.
+  if (isEffectivelyAbsolute(el, drafts)) return { role: null };
   const parent = el.parentElement;
   if (!parent || !isFlex(parent as TaggedElement)) return { role: null };
   const direction = getComputedStyle(parent).flexDirection.startsWith("column") ? "column" : "row";
@@ -56,14 +60,12 @@ function currentValue(el: TaggedElement, prop: string, drafts: DraftStore): stri
  * the whole page through a `<body>` transform, so a 50% artboard would pin HALF the real
  * size) and always border-box (which mis-sizes a content-box element that has padding or
  * border). This is resize.ts's `startBoxOf`/`seedFrom` basis and the value the panel's own
- * W/H fields display. A draft wins only when it is numeric: Hug drafts the literal `auto`,
- * and `parseFloat('auto')` would pin a zero-size box (PR #54/#55 review).
+ * W/H fields display. A draft wins only when it is an explicit px value: Hug drafts the
+ * literal `auto`, while Fill can draft `100%`; neither intent may be reinterpreted as px
+ * (PR #54/#55/#56 review).
  */
 function measuredSize(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): number {
-  const drafted = Number.parseFloat(drafts.current(el, axis) ?? "");
-  if (Number.isFinite(drafted)) return drafted;
-  const computed = Number.parseFloat(getComputedStyle(el).getPropertyValue(axis));
-  return Number.isFinite(computed) ? computed : 0;
+  return seedFrom(drafts.current(el, axis), getComputedStyle(el).getPropertyValue(axis));
 }
 
 export function readSizeMode(
@@ -80,7 +82,7 @@ export function readSizeMode(
   // Fill is checked BEFORE the hug keywords, because applySizeMode's fill releases the axis
   // to `auto` too — grow/stretch is the only thing that tells the two apart, and reading the
   // keyword first made every Fill snap back to Hug in the panel's menu (PR #54/#55 review).
-  const { role } = axisContext(el, axis);
+  const { role } = axisContext(el, axis, drafts);
   if (!sized && role === "main") {
     const grow = Number.parseFloat(currentValue(el, "flex-grow", drafts));
     if (Number.isFinite(grow) && grow >= 1) return "fill";
@@ -108,7 +110,7 @@ export function applySizeMode(
   mode: DesignModeSizeMode,
   drafts: DraftStore,
 ): void {
-  const { role } = axisContext(el, axis);
+  const { role } = axisContext(el, axis, drafts);
   switch (mode) {
     case "fixed": {
       // Freeze the size the element has RIGHT NOW, then pin it — measure before the

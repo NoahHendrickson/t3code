@@ -13,6 +13,7 @@
  */
 
 import { build } from "esbuild";
+import { Buffer as NodeBuffer } from "node:buffer";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
@@ -165,6 +166,66 @@ describe("fork guard: design mode", () => {
     expect(code).toContain(DESIGN_MODE_GLOBAL);
     // The delivery layer must not ride along in any form.
     expect(code).not.toContain("/__the-forge/");
+  });
+
+  it("preserves px sizing intent and skips over-depth layers before spending budget", async () => {
+    const result = await build({
+      stdin: {
+        contents: [
+          'export { seedFrom } from "./src/custom/designMode/engine/vendor/resize";',
+          'export { buildLayerTree } from "./src/custom/designMode/engine/vendor/layers";',
+        ].join("\n"),
+        resolveDir: webRoot,
+        sourcefile: "design-mode-engine-guard.ts",
+        loader: "ts",
+      },
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "es2022",
+      write: false,
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]?.text ?? "";
+    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.from(code).toString("base64")}`;
+    const engine = (await import(moduleUrl)) as {
+      seedFrom: (draft: string | null, measured: string) => number;
+      buildLayerTree: (
+        root: Element,
+        includeUntagged: boolean,
+        budget: { left: number; truncated: boolean; exhausted?: boolean },
+        maxDepth: number,
+      ) => Array<{ el: { id: string }; children: unknown[] }>;
+    };
+
+    expect(engine.seedFrom("240px", "600px")).toBe(240);
+    expect(engine.seedFrom("100%", "600px")).toBe(600);
+    expect(engine.seedFrom("auto", "600px")).toBe(600);
+
+    type FakeElement = {
+      tagName: string;
+      dataset: { dcSource: string };
+      id: string;
+      children: FakeElement[];
+      childNodes: never[];
+    };
+    const element = (id: string, children: FakeElement[] = []): FakeElement => ({
+      tagName: "DIV",
+      dataset: { dcSource: id },
+      id,
+      children,
+      childNodes: [],
+    });
+    const tooDeep = element("too-deep");
+    const root = {
+      children: [element("deep-root", [element("deep-child", [tooDeep])]), element("later-peer")],
+    } as unknown as Element;
+    const budget = { left: 10, truncated: false };
+    const layers = engine.buildLayerTree(root, false, budget, 1);
+
+    expect(layers.map((node) => node.el.id)).toEqual(["deep-root", "later-peer"]);
+    expect(layers[0]?.children).toHaveLength(1);
+    expect(budget).toEqual({ left: 7, truncated: true });
   });
 
   it("keeps the native source bridge contract aligned across preload and engine", () => {

@@ -40,6 +40,8 @@ function isDisplayNone(el: Element): boolean {
 export interface LayerBudget {
   left: number
   truncated: boolean
+  /** Internal stop signal for node-cap exhaustion. Depth truncation must not stop siblings. */
+  exhausted?: boolean
 }
 
 /**
@@ -60,10 +62,12 @@ export function buildLayerTree(
   root: Element,
   includeUntagged = false,
   budget?: LayerBudget,
+  maxDepth?: number,
+  depth = 0,
 ): LayerNode[] {
   const out: LayerNode[] = []
   for (const child of root.children) {
-    if (budget?.truncated) break
+    if (budget?.exhausted) break
     const el = child as TaggedElement
     const tag = child.tagName.toLowerCase()
     const opaque = OPAQUE_TAGS.has(tag)
@@ -73,18 +77,27 @@ export function buildLayerTree(
       Boolean(el.dataset?.dcSource) ||
       (includeUntagged && (child instanceof HTMLElement || child instanceof SVGElement))
     if (mints) {
+      // The host counts only minted layer nodes, not transparent DOM wrappers. Skip the whole
+      // over-depth subtree before spending budget or computing labels, then keep walking peers.
+      if (maxDepth !== undefined && depth > maxDepth) {
+        if (budget) budget.truncated = true
+        continue
+      }
       if (budget && budget.left <= 0) {
         budget.truncated = true
+        budget.exhausted = true
         break
       }
       if (budget) budget.left -= 1
       out.push({
         el,
         label: layerLabel(el),
-        children: opaque ? [] : buildLayerTree(child, includeUntagged, budget),
+        children: opaque
+          ? []
+          : buildLayerTree(child, includeUntagged, budget, maxDepth, depth + 1),
       })
     } else if (!opaque) {
-      out.push(...buildLayerTree(child, includeUntagged, budget))
+      out.push(...buildLayerTree(child, includeUntagged, budget, maxDepth, depth))
     }
   }
   return out
