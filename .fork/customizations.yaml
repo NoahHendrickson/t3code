@@ -1579,6 +1579,7 @@
     - apps/web/src/custom/designMode/engineVirtual.d.ts
     - apps/web/src/custom/designMode/engine/boot.ts
     - apps/web/src/custom/designMode/engine/bridge.ts
+    - apps/web/src/custom/designMode/engine/canvasSession.ts
     - apps/web/src/custom/designMode/engine/headlessOverlay.ts
     - apps/web/src/custom/designMode/engine/headlessMode.ts
     - apps/web/src/custom/designMode/engine/idRegistry.ts

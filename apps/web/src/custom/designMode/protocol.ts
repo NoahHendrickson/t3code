@@ -133,25 +133,11 @@ export type DesignModeSourceMode = "forge" | "native-react" | "selector-only";
 
 const SOURCE_MODES: readonly DesignModeSourceMode[] = ["forge", "native-react", "selector-only"];
 
-/** Host-triggered canvas verbs beyond on/off — the guest's CanvasMode owns the math
- * (vendored Forge canvas: cursor-anchored zoom, powers-of-2 ladder, fit, selection). */
-export type DesignModeCanvasCommand =
-  | "zoom-in"
-  | "zoom-out"
-  | "zoom-fit"
-  | "zoom-selection"
-  | "zoom-100";
-
-const CANVAS_COMMANDS: readonly DesignModeCanvasCommand[] = [
-  "zoom-in",
-  "zoom-out",
-  "zoom-fit",
-  "zoom-selection",
-  "zoom-100",
-];
-
-export const isDesignModeCanvasCommand = (value: unknown): value is DesignModeCanvasCommand =>
-  CANVAS_COMMANDS.some((command) => command === value);
+/** Host-triggered canvas verbs beyond on/off — exactly the verbs the panel's zoom strip
+ * fires; the guest's CanvasMode owns the math (vendored Forge canvas: cursor-anchored
+ * zoom, powers-of-2 ladder, fit). Zoom-to-selection exists only as the guest's own
+ * Shift+2 shortcut — no host verb until a panel control sends one. */
+export type DesignModeCanvasCommand = "zoom-in" | "zoom-out" | "zoom-fit" | "zoom-100";
 
 export type DesignModeEngineMessage =
   /** Engine finished booting; reports how source mapping works on this page. */

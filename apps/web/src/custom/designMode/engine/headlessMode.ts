@@ -4,24 +4,27 @@
  * Adapted from the vendored DesignMode (vendor/index.ts, itself pruned from the Forge):
  * this keeps everything that must physically live in the page — selection chrome, hover,
  * keyboard verbs, inline-style drafts, structural verbs (delete/move/text/resize), the
- * layout ripple, draft persistence — and drops every piece of in-page chrome UI (panel,
- * dock, layers tree, canvas, status strip). In their place: three host hooks
- * (`onSelection` / `onDraftsCount` / `onStateChange`) that boot.ts forwards over the
- * console-message bridge, and the command surface the native T3 panel drives through
- * `window.__T3_DESIGN_MODE__` (protocol.ts `DesignModeGuestHandle`).
+ * layout ripple, the pan/zoom artboard, draft persistence — and drops every piece of
+ * in-page chrome UI (panel, dock, layers tree, status strip); all controls are native T3
+ * chrome. Subsystems with their own lifecycle live in sibling sessions this class only
+ * wires: layersSession.ts (tree observer) and canvasSession.ts (artboard + zoom readout).
+ * Host hooks (`onSelection` / `onDraftsCount` / `onStateChange` / `onLayers`, plus the
+ * sessions' own) forward over the console-message bridge via boot.ts, which also installs
+ * the command surface the native T3 panel drives through `window.__T3_DESIGN_MODE__`
+ * (protocol.ts `DesignModeGuestHandle`).
  *
  * Vendored why-comments are preserved verbatim where the logic came across unchanged.
  */
 import { buildElementSnapshot } from "./snapshot";
 import type {
   DesignChangeRequestPayload,
-  DesignModeCanvasCommand,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
   DesignModeSizeMode,
   DesignModeWritableKey,
 } from "../protocol";
 import type { HeadlessOverlay } from "./headlessOverlay";
+import { CanvasSession } from "./canvasSession";
 import { ElementIdRegistry } from "./idRegistry";
 import { LayersSession } from "./layersSession";
 import { basename, findSelectableElement, type TaggedElement } from "./vendor/source";
@@ -34,7 +37,7 @@ import {
 } from "./nativeSource";
 import { applySizeMode } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
-import { CanvasMode, isEditable, unionClientRect } from "./vendor/canvas";
+import { isEditable, unionClientRect } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
 import { MoveDrag } from "./vendor/move-drag";
 import { ResizeHandles } from "./vendor/resize";
@@ -81,7 +84,6 @@ export class HeadlessDesignMode {
   onDraftsCount?: (count: number) => void;
   onStateChange?: (active: boolean) => void;
   onLayers?: (roots: DesignModeLayerNode[], truncated: boolean) => void;
-  onCanvas?: (on: boolean, scalePercent: number) => void;
 
   private moveRaf = 0;
   private reflowRaf = 0;
@@ -131,24 +133,18 @@ export class HeadlessDesignMode {
    * instead of stomping what the user just chose. */
   private restoredSelection = new WeakSet<TaggedElement>();
 
-  /** The vendored Forge canvas (pan/zoom artboard). Constructed BEFORE the gesture
-   * modules so their scale() hooks can reference it. Its listeners exist only while
-   * applied — idle-zero holds. */
-  private readonly canvas: CanvasMode;
+  /** The canvas subsystem (vendored pan/zoom artboard, command dispatch, debounced
+   * settled emit, change gate) — see canvasSession.ts. Public: boot.ts wires its host
+   * hook and the setCanvas/canvasCommand handle verbs straight to it. Constructed
+   * BEFORE the gesture modules so their scale() hooks can reference it. */
+  readonly canvas: CanvasSession;
 
   constructor(private overlay: HeadlessOverlay) {
-    this.canvas = new CanvasMode({
-      // The properties panel is NATIVE T3 chrome, outside the guest page entirely —
-      // nothing overlays the viewport, so the fit math gets no panel inset.
-      dock: { mode: () => "floating", width: () => 0 },
-      onCanvasActive: () => this.emitCanvas(),
+    this.canvas = new CanvasSession({
       hostContains: (t) => this.overlay.containsDeep(t),
-      // Fires per pan/zoom tick: chrome re-measures through the same rAF coalescer
-      // scroll/resize use, and the (debounced) zoom readout heads to the host.
-      onChange: () => {
-        this.onReflow();
-        this.scheduleCanvasEmit();
-      },
+      // Per pan/zoom tick: chrome re-measures through the same rAF coalescer
+      // scroll/resize use.
+      onReflow: () => this.onReflow(),
       selectionRect: () => unionClientRect(this.selection.filter((el) => el.isConnected)),
     });
     this.drafts = new DraftStore();
@@ -159,12 +155,12 @@ export class HeadlessDesignMode {
       edited: () => this.handleEdited(),
       hideHover: () => this.overlay.hideOutline(),
     });
-    // scale() reads the canvas transform while it is APPLIED (CanvasMode keeps its last
-    // state after unapply, so isApplied gates the read); the preview's own zoom happens
-    // at the Electron compositor, outside the guest's CSS coordinate space.
+    // scale() reads the live canvas transform (1 while the artboard is off); the
+    // preview's own zoom happens at the Electron compositor, outside the guest's CSS
+    // coordinate space.
     this.moveDrag = new MoveDrag({
       drafts: this.drafts,
-      scale: () => this.canvasScale(),
+      scale: () => this.canvas.scale(),
       blocked: () => this.textEdit.active,
       overlayContains: (t) => this.overlay.containsDeep(t),
       onSelect: (el) => this.select(el),
@@ -172,7 +168,7 @@ export class HeadlessDesignMode {
     });
     this.handles = new ResizeHandles({
       drafts: this.drafts,
-      scale: () => this.canvasScale(),
+      scale: () => this.canvas.scale(),
       onEdited: () => this.handleEdited(),
     });
     this.overlay.attach(this.moveDrag.root);
@@ -290,64 +286,6 @@ export class HeadlessDesignMode {
     };
   }
 
-  // ── Canvas (pan/zoom artboard) ───────────────────────────────────────────────────────
-
-  private canvasEmitTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastCanvasEmit = "";
-
-  private canvasScale(): number {
-    return this.canvas.isApplied() ? this.canvas.scale() : 1;
-  }
-
-  /** Host command — toggles the artboard. All gesture handling lives in CanvasMode. */
-  setCanvas(on: boolean): void {
-    this.canvas.setOn(on);
-  }
-
-  /** Host command — discrete zoom verbs (panel buttons). No-ops while canvas is off:
-   * zooming a page that isn't an artboard would write a transform onto the raw page. */
-  runCanvasCommand(action: DesignModeCanvasCommand): void {
-    if (!this.canvas.isApplied()) return;
-    switch (action) {
-      case "zoom-in":
-        this.canvas.zoomStep(1);
-        return;
-      case "zoom-out":
-        this.canvas.zoomStep(-1);
-        return;
-      case "zoom-fit":
-        this.canvas.zoomToFit();
-        return;
-      case "zoom-selection":
-        this.canvas.zoomToSelection();
-        return;
-      case "zoom-100":
-        this.canvas.setZoomCentered(1);
-        return;
-    }
-  }
-
-  /** Change-gated canvas state emit — (on, whole-percent) rarely changes relative to the
-   * per-tick onChange stream, so most gesture ticks cost one string compare. */
-  private emitCanvas(): void {
-    const on = this.canvas.isApplied();
-    const scalePercent = Math.round(this.canvasScale() * 100);
-    const key = `${on}:${scalePercent}`;
-    if (key === this.lastCanvasEmit) return;
-    this.lastCanvasEmit = key;
-    this.onCanvas?.(on, scalePercent);
-  }
-
-  /** Continuous gestures (wheel/pinch/drag) funnel here: trailing debounce so the readout
-   * settles once per gesture lull instead of one console line per tick. */
-  private scheduleCanvasEmit(): void {
-    if (this.canvasEmitTimer) clearTimeout(this.canvasEmitTimer);
-    this.canvasEmitTimer = setTimeout(() => {
-      this.canvasEmitTimer = null;
-      this.emitCanvas();
-    }, 150);
-  }
-
   // ── Lifecycle ────────────────────────────────────────────────────────────────────────
 
   setActive(on: boolean): void {
@@ -373,11 +311,9 @@ export class HeadlessDesignMode {
       this.persist();
     } else {
       this.textEdit.finish(); // commit any in-progress inline text edit before the listeners go
-      // Undo every canvas page mutation (transform, artboard chrome, listeners) but keep
-      // the preference — the next activation resumes the same view.
+      // Undo every canvas page mutation but keep the preference — the next activation
+      // resumes the same view.
       this.canvas.suspend();
-      if (this.canvasEmitTimer) clearTimeout(this.canvasEmitTimer);
-      this.canvasEmitTimer = null;
       document.removeEventListener("mousemove", this.onMove, true);
       document.removeEventListener("click", this.onClick, true);
       document.removeEventListener("dblclick", this.onDblClick, true);
