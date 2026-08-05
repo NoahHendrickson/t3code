@@ -328,6 +328,17 @@ export class HeadlessDesignMode {
     this.emitSelection();
   }
 
+  /** Per-field revert: drops these properties' drafts and puts the page's own values back.
+   * Targeted discard is css-only by DraftStore's contract, so a structural draft on the same
+   * element (a delete, a move) survives — reverting a padding must not un-delete anything. */
+  revertDraft(idList: readonly number[], properties: readonly string[]): void {
+    const els = this.resolveIds(idList);
+    if (els.length === 0 || properties.length === 0) return;
+    for (const el of els) this.drafts.discard(el, [...properties]);
+    this.remeasure();
+    this.emitSelection();
+  }
+
   /** The one discard-everything verb. Re-emits the selection afterwards: computed values
    * changed under the panel, and a fresh snapshot is how it finds out. */
   discardAll(): void {

@@ -45,5 +45,6 @@ export function buildElementSnapshot(
     offsets: readOffsets(el),
     positionState: positionStateOf(el, drafts),
     alignCaps: alignCapsFor(el, drafts),
+    drafted: [...(drafts.entries().get(el)?.keys() ?? [])],
   };
 }

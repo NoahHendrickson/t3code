@@ -339,6 +339,7 @@ describe("fork guard: design mode", () => {
       offsets: { x: 24, y: -8 },
       positionState: "flow",
       alignCaps: { horizontal: true, vertical: false },
+      drafted: ["padding-top", "gap"],
     };
     const selection = { type: "selection", elements: [element] };
     const line = `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(selection)}`;
@@ -353,7 +354,7 @@ describe("fork guard: design mode", () => {
         elements: [rest],
       })}`;
     };
-    for (const key of ["sizeModes", "offsets", "positionState", "alignCaps"] as const) {
+    for (const key of ["sizeModes", "offsets", "positionState", "alignCaps", "drafted"] as const) {
       expect(parseDesignModeConsoleMessage(withoutKey(key))).toBeNull();
     }
     const withPatch = (patch: Record<string, unknown>) =>
@@ -370,6 +371,7 @@ describe("fork guard: design mode", () => {
     expect(
       parseDesignModeConsoleMessage(withPatch({ alignCaps: { horizontal: true } })),
     ).toBeNull();
+    expect(parseDesignModeConsoleMessage(withPatch({ drafted: [1, 2] }))).toBeNull();
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"drafts","count":3}`),
     ).toEqual({ type: "drafts", count: 3 });

@@ -24,33 +24,39 @@ interface SegmentOption {
 export function SegmentField({
   options,
   value,
+  mixed = false,
   onSelect,
   className,
 }: {
   options: readonly SegmentOption[];
   value: string;
+  /** The selection disagrees — no segment lifts, rather than claiming the first element's. */
+  mixed?: boolean;
   onSelect: (value: string) => void;
   className?: string;
 }) {
   return (
     <div className={cn("flex h-6 items-center rounded bg-[var(--fork-design-field)]", className)}>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          title={option.title}
-          aria-pressed={value === option.value ? "true" : "false"}
-          onClick={() => onSelect(option.value)}
-          className={cn(
-            "flex h-full flex-1 items-center justify-center rounded px-1 text-xs transition-colors [&_svg]:size-4",
-            value === option.value
-              ? "border border-border bg-[var(--fork-design-selected)] text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
+      {options.map((option) => {
+        const selected = !mixed && value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            title={option.title}
+            aria-pressed={selected ? "true" : "false"}
+            onClick={() => onSelect(option.value)}
+            className={cn(
+              "flex h-full flex-1 items-center justify-center rounded px-1 text-xs transition-colors [&_svg]:size-4",
+              selected
+                ? "border border-border bg-[var(--fork-design-selected)] text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -132,6 +138,7 @@ export function SelectRow({
   value,
   options,
   optionValue,
+  mixed = false,
   onSelect,
 }: {
   label: string;
@@ -140,10 +147,12 @@ export function SelectRow({
   value: string;
   options: readonly string[];
   optionValue?: (option: string) => string;
+  /** The selection disagrees — the menu reads Mixed until a pick unifies them. */
+  mixed?: boolean;
   onSelect: (value: string) => void;
 }) {
   const valueOf = optionValue ?? ((option: string) => option);
-  const selected = options.find((option) => valueOf(option) === value);
+  const selected = mixed ? undefined : options.find((option) => valueOf(option) === value);
   return (
     <label
       className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
@@ -162,7 +171,7 @@ export function SelectRow({
         onChange={(event) => onSelect(valueOf(event.target.value))}
         className="h-full w-full min-w-0 appearance-none bg-transparent pe-1.5 text-xs text-foreground outline-none"
       >
-        {selected === undefined ? <option value="">{value || "—"}</option> : null}
+        {selected === undefined ? <option value="">{mixed ? "Mixed" : value || "—"}</option> : null}
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -191,15 +200,18 @@ export function AlignMatrix({
   direction,
   justifyContent,
   alignItems,
+  mixed = false,
   onChange,
 }: {
   direction: "row" | "column";
   justifyContent: string;
   alignItems: string;
+  /** The selection disagrees — no dot lights, the same as a distribution value. */
+  mixed?: boolean;
   onChange: (justifyContent: string, alignItems: string) => void;
 }) {
-  const justify = normalizeAxisValue(justifyContent);
-  const align = normalizeAxisValue(alignItems);
+  const justify = mixed ? "" : normalizeAxisValue(justifyContent);
+  const align = mixed ? "" : normalizeAxisValue(alignItems);
   return (
     <div
       className="grid grid-cols-3 grid-rows-3 rounded bg-[var(--fork-design-field)]"

@@ -147,6 +147,10 @@ export interface DesignModeElementSnapshot {
   readonly offsets: { readonly x: number; readonly y: number };
   readonly positionState: DesignModePositionState;
   readonly alignCaps: DesignModeAlignCaps;
+  /** CSS properties this element currently carries a draft for — the panel marks those
+   * fields as changed and offers the per-property revert. Property names, not values: the
+   * values are already visible through `styles` (computed styles include live drafts). */
+  readonly drafted: readonly string[];
 }
 
 /** One theme color custom property from the previewed app's stylesheets ("red-500",
@@ -256,6 +260,9 @@ export interface DesignModeGuestHandle {
   /** Figma's aspect-ratio link beside W/H: on pins `aspect-ratio` to the element's current
    * proportion, off releases it. */
   setAspectLock(ids: readonly number[], on: boolean): void;
+  /** Drops the drafts for exactly these properties, restoring the page's own values —
+   * the per-field revert behind a changed marker. Structural drafts are untouched. */
+  revertDraft(ids: readonly number[], properties: readonly string[]): void;
   discardAll(): void;
   /** Flips every draft to its "before" (true) or "after" (false) rendering. */
   compareAll(on: boolean): void;
@@ -299,7 +306,9 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     !isFiniteNumber(value.offsets.y) ||
     !isRecord(value.alignCaps) ||
     typeof value.alignCaps.horizontal !== "boolean" ||
-    typeof value.alignCaps.vertical !== "boolean"
+    typeof value.alignCaps.vertical !== "boolean" ||
+    !Array.isArray(value.drafted) ||
+    !value.drafted.every((property): property is string => typeof property === "string")
   ) {
     return null;
   }
@@ -319,6 +328,7 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
       horizontal: value.alignCaps.horizontal,
       vertical: value.alignCaps.vertical,
     },
+    drafted: value.drafted,
   };
 }
 

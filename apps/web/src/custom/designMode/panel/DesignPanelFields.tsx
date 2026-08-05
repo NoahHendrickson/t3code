@@ -6,6 +6,7 @@ import { cn } from "~/lib/utils";
 
 import type { DesignModeTokens } from "../designModeStore";
 import { DesignColorPicker, rgbToHex } from "./DesignColorPicker";
+import { evaluateNumericInput } from "./numericExpression";
 
 /** Tailwind's canonical numeric spacing ladder — token pickers offer these steps and the
  * badge lights up when a value sits exactly on one (utility = step × --spacing base). */
@@ -53,7 +54,36 @@ interface ScrubFieldProps {
    * (an in-flow element's X/Y). Scrub and typing are both inert, and the field greys out
    * rather than disappearing, so the reading stays available. */
   readOnly?: boolean;
+  /** The selected elements disagree on this property (Figma's "Mixed"). The field shows no
+   * value; any edit unifies them, which is exactly what typing into Figma's mixed field does. */
+  mixed?: boolean;
+  /** CSS keywords this field accepts verbatim instead of parsing as a number ("auto" on
+   * W/H and line-height). Typed keywords ship as intent — never a measured px. */
+  keywords?: readonly string[];
+  /** Draft state for the property (or properties) this field writes — see FieldRevert. */
+  drafted?: boolean;
+  onRevert?: () => void;
   onEdit: (cssValue: string) => void;
+}
+
+/** The changed marker Figma puts on an overridden property, doubling as its reset: a dot in
+ * the field's trailing edge that reverts just this property to the page's own value. */
+function FieldRevert({ onRevert }: { onRevert: () => void }) {
+  return (
+    <button
+      type="button"
+      title="Revert this property to the page's own value"
+      aria-label="Revert this property"
+      onClick={(event) => {
+        // Inside a <label>: without this the click also focuses the input behind it.
+        event.preventDefault();
+        onRevert();
+      }}
+      className="flex size-4 shrink-0 items-center justify-center"
+    >
+      <span className="size-1.5 rounded-full bg-[var(--fork-design-accent)]" />
+    </button>
+  );
 }
 
 /** Preserve in-progress typing until a fresh snapshot changes the displayed element value. */
@@ -85,11 +115,15 @@ export function ScrubField({
   tokenBasePx,
   suffix,
   readOnly = false,
+  mixed = false,
+  keywords,
+  drafted = false,
+  onRevert,
   onEdit,
 }: ScrubFieldProps) {
   const parsed = Number.parseFloat(value);
   const numeric = Number.isFinite(parsed) ? parsed : null;
-  const display = numeric === null ? value : formatNumber(numeric, precision);
+  const display = mixed ? "" : numeric === null ? value : formatNumber(numeric, precision);
   const [text, setText] = useSyncedDraftText(display);
   // The guest re-emits snapshots for the SAME selection (a size-mode pick, Discard all, a
   // draft-sync flush), and the fields container is keyed by selection identity — so nothing
@@ -136,17 +170,35 @@ export function ScrubField({
     if (scrub.current?.pointerId === event.pointerId) scrub.current = null;
   };
 
+  /** Enter/blur commit: a listed keyword ships verbatim, anything else goes through the
+   * expression evaluator (so `100/2` and `*2` work), and an entry that resolves to neither
+   * snaps the field back to what the element actually has rather than committing a guess. */
+  const commitText = useCallback(() => {
+    const entry = text.trim();
+    const keyword = keywords?.find((candidate) => candidate === entry.toLowerCase());
+    if (keyword) {
+      setText(keyword);
+      onEdit(keyword);
+      return;
+    }
+    const evaluated = evaluateNumericInput(entry, numeric ?? 0);
+    if (evaluated === null) {
+      setText(display);
+      return;
+    }
+    commit(evaluated);
+  }, [commit, display, keywords, numeric, onEdit, setText, text]);
+
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
-      const v = Number.parseFloat(text);
-      if (Number.isFinite(v)) commit(v);
+      commitText();
       event.currentTarget.blur();
       return;
     }
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
       const base = Number.parseFloat(text);
-      const start = Number.isFinite(base) ? base : 0;
+      const start = Number.isFinite(base) ? base : (numeric ?? 0);
       const delta = (event.key === "ArrowUp" ? 1 : -1) * (event.shiftKey ? 10 : 1) * step;
       commit(start + delta);
     }
@@ -175,19 +227,20 @@ export function ScrubField({
       <input
         value={text}
         readOnly={readOnly}
+        placeholder={mixed ? "Mixed" : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={readOnly ? undefined : onInputKeyDown}
         onBlur={() => {
-          if (readOnly) return;
-          const v = Number.parseFloat(text);
-          if (Number.isFinite(v)) commit(v);
+          if (readOnly || text === display) return;
+          commitText();
         }}
         spellCheck={false}
         className={cn(
-          "h-full w-full min-w-0 bg-transparent text-xs outline-none",
+          "h-full w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50",
           readOnly ? "text-muted-foreground/60" : "text-foreground",
         )}
       />
+      {drafted && onRevert ? <FieldRevert onRevert={onRevert} /> : null}
       {!readOnly && tokenBasePx != null && tokenBasePx > 0 && unit === "px" ? (
         <SpacingTokenAffordance
           basePx={tokenBasePx}
@@ -209,6 +262,10 @@ interface PairFieldProps {
   values: readonly [string, string];
   min?: number;
   tokenBasePx?: number | null;
+  /** The selected elements disagree — see ScrubField's own `mixed`. */
+  mixed?: boolean;
+  drafted?: boolean;
+  onRevert?: () => void;
   /** Writes both halves. A single typed value lands on both. */
   onEdit: (first: string, second: string) => void;
 }
@@ -231,6 +288,9 @@ export function PairField({
   values,
   min,
   tokenBasePx,
+  mixed = false,
+  drafted = false,
+  onRevert,
   onEdit,
 }: PairFieldProps) {
   const parse = (value: string): number => {
@@ -238,7 +298,7 @@ export function PairField({
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const current: [number, number] = [parse(values[0]), parse(values[1])];
-  const display = formatPair(current[0], current[1]);
+  const display = mixed ? "" : formatPair(current[0], current[1]);
   const [text, setText] = useSyncedDraftText(display);
   // Same prop re-sync ScrubField documents — the pair goes stale on exactly the same paths.
   const scrub = useRef<{ pointerId: number; startX: number; start: [number, number] } | null>(null);
@@ -258,19 +318,20 @@ export function PairField({
     [clamp, onEdit],
   );
 
-  /** "8" → both; "8, 16" (or "8 16") → first/second; anything unparsable reverts. */
+  /** "8" → both; "8, 16" (or "8 16") → first/second; each half takes the same arithmetic
+   * ScrubField does ("100/2"), evaluated against that half's own current value. Anything
+   * unparsable reverts to what the element has. */
   const commitText = useCallback(() => {
-    const numbers = text
-      .split(/[,\s]+/u)
-      .filter(Boolean)
-      .map((part) => Number.parseFloat(part))
-      .filter((value) => Number.isFinite(value));
-    if (numbers.length === 0) {
-      setText(formatPair(current[0], current[1]));
+    const parts = text.split(",").filter((part) => part.trim() !== "");
+    const numbers = parts
+      .map((part, index) => evaluateNumericInput(part, current[index === 0 ? 0 : 1]))
+      .filter((value): value is number => value !== null);
+    if (numbers.length === 0 || numbers.length !== parts.length) {
+      setText(display);
       return;
     }
     commit(numbers[0]!, numbers[1] ?? numbers[0]!);
-  }, [commit, current, text]);
+  }, [commit, current, display, setText, text]);
 
   const onLabelPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
     event.preventDefault();
@@ -319,12 +380,16 @@ export function PairField({
       </span>
       <input
         value={text}
+        placeholder={mixed ? "Mixed" : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={onInputKeyDown}
-        onBlur={commitText}
+        onBlur={() => {
+          if (text !== display) commitText();
+        }}
         spellCheck={false}
-        className="h-full w-full min-w-0 bg-transparent text-xs text-foreground outline-none"
+        className="h-full w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
       />
+      {drafted && onRevert ? <FieldRevert onRevert={onRevert} /> : null}
       {tokenBasePx != null && tokenBasePx > 0 ? (
         <SpacingTokenAffordance
           basePx={tokenBasePx}
@@ -405,15 +470,29 @@ interface ColorFieldProps {
   value: string;
   /** Previewed app's theme tokens — shown as swatches inside the picker popover. */
   tokens?: DesignModeTokens | null;
+  /** The selected elements disagree — see ScrubField's own `mixed`. */
+  mixed?: boolean;
+  drafted?: boolean;
+  onRevert?: () => void;
   onEdit: (cssValue: string) => void;
 }
 
 /** Swatch (opens the picker popover) + hex pair. Fully-transparent computed values
  * display as "transparent" until a color is picked. */
-export function ColorField({ label, icon, title, value, tokens, onEdit }: ColorFieldProps) {
+export function ColorField({
+  label,
+  icon,
+  title,
+  value,
+  tokens,
+  mixed = false,
+  drafted = false,
+  onRevert,
+  onEdit,
+}: ColorFieldProps) {
   const isTransparent = /^rgba\(\d+,\s*\d+,\s*\d+,\s*0\)$/u.test(value.trim());
   const hex = rgbToHex(value);
-  const display = isTransparent ? "transparent" : (hex ?? value);
+  const display = mixed ? "" : isTransparent ? "transparent" : (hex ?? value);
   const [text, setText] = useSyncedDraftText(display);
 
   const commit = useCallback(
@@ -441,6 +520,7 @@ export function ColorField({ label, icon, title, value, tokens, onEdit }: ColorF
       />
       <input
         value={text}
+        placeholder={mixed ? "Mixed" : undefined}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -448,12 +528,14 @@ export function ColorField({ label, icon, title, value, tokens, onEdit }: ColorF
             event.currentTarget.blur();
           }
         }}
+        spellCheck={false}
         onBlur={() => {
           if (text && text !== display) commit(text);
         }}
-        spellCheck={false}
-        className="h-full w-full min-w-0 bg-transparent pe-1.5 text-xs text-foreground outline-none"
+        className="h-full w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
       />
+      {drafted && onRevert ? <FieldRevert onRevert={onRevert} /> : null}
+      <span className="w-1.5 shrink-0" />
     </label>
   );
 }

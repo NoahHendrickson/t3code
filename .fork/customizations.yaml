@@ -1534,8 +1534,16 @@
     auto-layout child's CROSS axis only — Figma disables the main axis too —
     justify-self/align-self in grid, margin-auto for a block child with slack)
     and reports capabilities per axis in the snapshot so the panel disables what
-    it cannot honor instead of writing something inert. Edits preview
-    as inline styles and never touch source. Send delivers as a composer
+    it cannot honor instead of writing something inert. Fields behave the way a
+    designer expects: a multi-select shows Mixed rather than the first element's
+    value (panel/selectionValues.ts) and any edit unifies it, numeric fields take
+    arithmetic through a hand-rolled parser and never eval
+    (panel/numericExpression.ts), sizing fields accept keywords (auto,
+    fit-content, none) so the request ships intent instead of a measured px, and
+    a property with a live draft carries a changed dot that reverts JUST that
+    property (snapshot `drafted` + the revertDraft verb over the vendored
+    DraftStore.discard, which is css-only so a structural draft survives).
+    Edits preview as inline styles and never touch source. Send delivers as a composer
     ATTACHMENT, never prompt text: the panel stores the built request in
     designChangeDraftStore, the composer renders it as an inline pill
     (element + compact delta, × to discard, tooltip shows the markdown),
@@ -1593,6 +1601,10 @@
     - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
     - apps/web/src/custom/designMode/panel/DesignColorPicker.tsx
     - apps/web/src/custom/designMode/panel/PanelIcons.tsx
+    - apps/web/src/custom/designMode/panel/numericExpression.ts
+    - apps/web/src/custom/designMode/panel/numericExpression.test.ts
+    - apps/web/src/custom/designMode/panel/selectionValues.ts
+    - apps/web/src/custom/designMode/panel/selectionValues.test.ts
     - apps/web/src/custom/designMode/engineVirtual.d.ts
     - apps/web/src/custom/designMode/engine/align.ts
     - apps/web/src/custom/designMode/engine/boot.ts

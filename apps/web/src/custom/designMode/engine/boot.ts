@@ -67,6 +67,7 @@ function boot(): void {
     setInset: (ids, axis, px) => mode.setInset(ids, axis, px),
     alignSelection: (ids, axis, value) => mode.alignSelection(ids, axis, value),
     setAspectLock: (ids, on) => mode.setAspectLock(ids, on),
+    revertDraft: (ids, properties) => mode.revertDraft(ids, properties),
     discardAll: () => mode.discardAll(),
     compareAll: (on) => mode.compareAll(on),
     buildSend: () => mode.buildSend(),

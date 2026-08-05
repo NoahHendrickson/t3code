@@ -74,6 +74,9 @@ export const designModeBridge = {
   setAspectLock(runtimeTabId: string, ids: readonly number[], on: boolean): void {
     fire(runtimeTabId, "setAspectLock", [ids, on]);
   },
+  revertDraft(runtimeTabId: string, ids: readonly number[], properties: readonly string[]): void {
+    fire(runtimeTabId, "revertDraft", [ids, properties]);
+  },
   discardAll(runtimeTabId: string): void {
     fire(runtimeTabId, "discardAll", []);
   },
