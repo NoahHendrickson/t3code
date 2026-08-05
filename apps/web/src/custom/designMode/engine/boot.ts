@@ -40,6 +40,7 @@ function boot(): void {
   mode.onSelection = (elements) => emitToHost({ type: "selection", elements });
   mode.onDraftsCount = (count) => emitToHost({ type: "drafts", count });
   mode.onLayers = (roots, truncated) => emitToHost({ type: "layers", roots, truncated });
+  mode.canvas.onCanvas = (on, scalePercent) => emitToHost({ type: "canvas", on, scalePercent });
   // Theme tokens re-read on every activation (setActive resets the vendored token
   // cache, so a CSS edit made while the tool was off is picked up here too).
   const emitTokens = () => {
@@ -49,7 +50,12 @@ function boot(): void {
   };
   mode.onStateChange = (active) => {
     emitToHost({ type: "state", active });
-    if (active) emitTokens();
+    // Tokens and canvas ride AFTER `state`: the host resets its per-tab world view on
+    // every enabled flip, so anything emitted before `state` would be wiped by it.
+    if (active) {
+      emitTokens();
+      mode.canvas.reassert();
+    }
   };
 
   const handle: DesignModeGuestHandle = {
@@ -62,6 +68,8 @@ function boot(): void {
     buildSend: () => mode.buildSend(),
     selectElement: (id) => mode.selectById(id),
     hoverElement: (id) => mode.hoverById(id),
+    setCanvas: (on) => mode.canvas.setOn(on),
+    canvasCommand: (action) => mode.canvas.run(action),
     destroy: () => {
       mode.setActive(false);
       overlay.destroy();

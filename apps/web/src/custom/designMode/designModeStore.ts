@@ -35,6 +35,9 @@ export interface DesignModeTabState {
     readonly roots: readonly DesignModeLayerNode[];
     readonly truncated: boolean;
   } | null;
+  /** Canvas (pan/zoom artboard) state — the guest owns the transform; this mirrors its
+   * on/off + settled zoom readout for the panel controls. */
+  readonly canvas: { readonly on: boolean; readonly scalePercent: number };
 }
 
 interface DesignModeStoreState {
@@ -52,6 +55,7 @@ interface DesignModeStoreState {
     runtimeTabId: string,
     layers: NonNullable<DesignModeTabState["layers"]>,
   ) => void;
+  readonly setCanvas: (runtimeTabId: string, canvas: DesignModeTabState["canvas"]) => void;
   readonly remove: (runtimeTabId: string) => void;
 }
 
@@ -63,6 +67,7 @@ const EMPTY_TAB_STATE: DesignModeTabState = {
   comparing: false,
   tokens: null,
   layers: null,
+  canvas: { on: false, scalePercent: 100 },
 };
 
 const patchTab = (
@@ -81,14 +86,17 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
       const current = state.byTabId[runtimeTabId] ?? EMPTY_TAB_STATE;
       if (current.enabled === enabled) return state;
       // Toggling off keeps drafts alive in the guest but the panel's world view resets
-      // symmetrically — selection, layers AND tokens; the engine re-emits all three on
-      // the next activation, so nothing stale can survive tab reuse or navigations.
+      // symmetrically — selection, layers, tokens AND canvas; the engine re-emits all
+      // four on the next activation (tokens and canvas explicitly after `state`, since
+      // this reset runs on the `state` flip), so nothing stale survives tab reuse or
+      // navigations.
       return patchTab(state, runtimeTabId, {
         enabled,
         selection: [],
         comparing: false,
         layers: null,
         tokens: null,
+        canvas: EMPTY_TAB_STATE.canvas,
       });
     }),
   setSourceMode: (runtimeTabId, sourceMode) =>
@@ -109,6 +117,14 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
     set((state) => patchTab(state, runtimeTabId, { comparing })),
   setTokens: (runtimeTabId, tokens) => set((state) => patchTab(state, runtimeTabId, { tokens })),
   setLayers: (runtimeTabId, layers) => set((state) => patchTab(state, runtimeTabId, { layers })),
+  setCanvas: (runtimeTabId, canvas) =>
+    set((state) => {
+      const current = state.byTabId[runtimeTabId] ?? EMPTY_TAB_STATE;
+      if (current.canvas.on === canvas.on && current.canvas.scalePercent === canvas.scalePercent) {
+        return state;
+      }
+      return patchTab(state, runtimeTabId, { canvas });
+    }),
   remove: (runtimeTabId) =>
     set((state) => {
       if (!(runtimeTabId in state.byTabId)) return state;

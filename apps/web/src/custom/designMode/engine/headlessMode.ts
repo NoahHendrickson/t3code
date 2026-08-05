@@ -4,11 +4,14 @@
  * Adapted from the vendored DesignMode (vendor/index.ts, itself pruned from the Forge):
  * this keeps everything that must physically live in the page — selection chrome, hover,
  * keyboard verbs, inline-style drafts, structural verbs (delete/move/text/resize), the
- * layout ripple, draft persistence — and drops every piece of in-page chrome UI (panel,
- * dock, layers tree, canvas, status strip). In their place: three host hooks
- * (`onSelection` / `onDraftsCount` / `onStateChange`) that boot.ts forwards over the
- * console-message bridge, and the command surface the native T3 panel drives through
- * `window.__T3_DESIGN_MODE__` (protocol.ts `DesignModeGuestHandle`).
+ * layout ripple, the pan/zoom artboard, draft persistence — and drops every piece of
+ * in-page chrome UI (panel, dock, layers tree, status strip); all controls are native T3
+ * chrome. Subsystems with their own lifecycle live in sibling sessions this class only
+ * wires: layersSession.ts (tree observer) and canvasSession.ts (artboard + zoom readout).
+ * Host hooks (`onSelection` / `onDraftsCount` / `onStateChange` / `onLayers`, plus the
+ * sessions' own) forward over the console-message bridge via boot.ts, which also installs
+ * the command surface the native T3 panel drives through `window.__T3_DESIGN_MODE__`
+ * (protocol.ts `DesignModeGuestHandle`).
  *
  * Vendored why-comments are preserved verbatim where the logic came across unchanged.
  */
@@ -21,6 +24,7 @@ import type {
   DesignModeWritableKey,
 } from "../protocol";
 import type { HeadlessOverlay } from "./headlessOverlay";
+import { CanvasSession } from "./canvasSession";
 import { ElementIdRegistry } from "./idRegistry";
 import { LayersSession } from "./layersSession";
 import { basename, findSelectableElement, type TaggedElement } from "./vendor/source";
@@ -33,7 +37,7 @@ import {
 } from "./nativeSource";
 import { applySizeMode } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
-import { isEditable } from "./vendor/canvas";
+import { isEditable, unionClientRect } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
 import { MoveDrag } from "./vendor/move-drag";
 import { ResizeHandles } from "./vendor/resize";
@@ -129,7 +133,20 @@ export class HeadlessDesignMode {
    * instead of stomping what the user just chose. */
   private restoredSelection = new WeakSet<TaggedElement>();
 
+  /** The canvas subsystem (vendored pan/zoom artboard, command dispatch, debounced
+   * settled emit, change gate) — see canvasSession.ts. Public: boot.ts wires its host
+   * hook and the setCanvas/canvasCommand handle verbs straight to it. Constructed
+   * BEFORE the gesture modules so their scale() hooks can reference it. */
+  readonly canvas: CanvasSession;
+
   constructor(private overlay: HeadlessOverlay) {
+    this.canvas = new CanvasSession({
+      hostContains: (t) => this.overlay.containsDeep(t),
+      // Per pan/zoom tick: chrome re-measures through the same rAF coalescer
+      // scroll/resize use.
+      onReflow: () => this.onReflow(),
+      selectionRect: () => unionClientRect(this.selection.filter((el) => el.isConnected)),
+    });
     this.drafts = new DraftStore();
     this.textEdit = new TextEditMode(this.drafts, {
       select: (el) => this.select(el),
@@ -138,11 +155,12 @@ export class HeadlessDesignMode {
       edited: () => this.handleEdited(),
       hideHover: () => this.overlay.hideOutline(),
     });
-    // scale() is 1 — headless mode has no canvas transform; the preview's own zoom happens
-    // at the Electron compositor, outside the guest's CSS coordinate space.
+    // scale() reads the live canvas transform (1 while the artboard is off); the
+    // preview's own zoom happens at the Electron compositor, outside the guest's CSS
+    // coordinate space.
     this.moveDrag = new MoveDrag({
       drafts: this.drafts,
-      scale: () => 1,
+      scale: () => this.canvas.scale(),
       blocked: () => this.textEdit.active,
       overlayContains: (t) => this.overlay.containsDeep(t),
       onSelect: (el) => this.select(el),
@@ -150,7 +168,7 @@ export class HeadlessDesignMode {
     });
     this.handles = new ResizeHandles({
       drafts: this.drafts,
-      scale: () => 1,
+      scale: () => this.canvas.scale(),
       onEdited: () => this.handleEdited(),
     });
     this.overlay.attach(this.moveDrag.root);
@@ -288,9 +306,14 @@ export class HeadlessDesignMode {
       this.moveDrag.start();
       this.handles.start();
       this.layers.start();
+      // Re-enter the artboard if this session had canvas on (CanvasMode's own pref).
+      this.canvas.resume();
       this.persist();
     } else {
       this.textEdit.finish(); // commit any in-progress inline text edit before the listeners go
+      // Undo every canvas page mutation but keep the preference — the next activation
+      // resumes the same view.
+      this.canvas.suspend();
       document.removeEventListener("mousemove", this.onMove, true);
       document.removeEventListener("click", this.onClick, true);
       document.removeEventListener("dblclick", this.onDblClick, true);

@@ -1544,7 +1544,15 @@
     data-t3-native-source so it is never mistaken for a project tag).
     Elements whose source never resolves stay fully editable and send
     with selector/text/style context; no install prompt, warning toast,
-    or Forge handoff exists anymore. engine/vendor/** contains only the Forge leaf
+    or Forge handoff exists anymore. Canvas mode (the Forge's vendored
+    CanvasMode, engine/vendor/canvas.ts) turns the page into a
+    pannable/zoomable artboard — space-drag/middle-drag pan,
+    cursor-anchored wheel and pinch zoom, the powers-of-2 ladder,
+    zoom-to-fit/selection — toggled from a strip in the native panel over
+    setCanvas/canvasCommand handle calls, with a change-gated canvas
+    message carrying the settled zoom readout back; the gesture modules'
+    scale() hooks read the live canvas scale so drags stay accurate while
+    zoomed. engine/vendor/** contains only the Forge leaf
     modules reachable from the headless engine; they keep the Forge's own
     formatting (fmt-ignored at the root config, same treatment as qrcodegen.ts),
     carry t3-fork-marked local edits, and are excluded from the web TS project
@@ -1571,6 +1579,7 @@
     - apps/web/src/custom/designMode/engineVirtual.d.ts
     - apps/web/src/custom/designMode/engine/boot.ts
     - apps/web/src/custom/designMode/engine/bridge.ts
+    - apps/web/src/custom/designMode/engine/canvasSession.ts
     - apps/web/src/custom/designMode/engine/headlessOverlay.ts
     - apps/web/src/custom/designMode/engine/headlessMode.ts
     - apps/web/src/custom/designMode/engine/idRegistry.ts

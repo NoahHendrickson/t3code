@@ -218,6 +218,32 @@ describe("fork guard: design mode", () => {
     ).toBeNull();
   });
 
+  it("round-trips and rejects canvas messages", () => {
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"canvas","on":true,"scalePercent":125}`,
+      ),
+    ).toEqual({ type: "canvas", on: true, scalePercent: 125 });
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"canvas","on":false,"scalePercent":100}`,
+      ),
+    ).toEqual({ type: "canvas", on: false, scalePercent: 100 });
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"canvas","on":"yes","scalePercent":100}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"canvas","on":true}`),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"canvas","on":true,"scalePercent":null}`,
+      ),
+    ).toBeNull();
+  });
+
   it("round-trips the console-message protocol", () => {
     const styles = Object.fromEntries(DESIGN_MODE_STYLE_KEYS.map((key) => [key, `${key}-value`]));
     const selection = {
