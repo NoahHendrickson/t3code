@@ -24,6 +24,16 @@ Local edits are marked with `t3-fork:` comments. The load-bearing ones:
 - `./shared/` import paths (were `../shared/` upstream).
 - A handful of mechanical lint fixes (snapshot spreads → `Array.from`, `toReversed()`,
   `Set#has`, two unused imports) — style-only, no behavior change.
+- Native-source mode (2026-08-04, `engine/nativeSource.ts` is the fork-owned core):
+  - `source.ts` — `findSelectableElement`: a tagged ancestor still wins, but untagged
+    elements are selectable themselves (svg internals climb to the outermost `<svg>`).
+  - `text-edit.ts` / `move-drag.ts` — gesture gates call `findSelectableElement`
+    instead of `findTaggedElement`.
+  - `lifecycle-store.ts` — persisted selection/draft entries carry an optional
+    `selector` css path (synthesized tags don't survive reloads; Forge tags do).
+  - `layers.ts` — `buildLayerTree(root, includeUntagged)` walks every visible element
+    on pages with no project tags (`NOISE_TAGS` skipped, svg still opaque), and
+    `layerLabel` prefers an element id over the generic tag vocabulary.
 
 Formatting is the Forge's own (`vendor/**` is fmt-ignored at the root vite config) so a
 future re-sync diffs cleanly against that repo. When re-syncing, port these edits rather

@@ -100,9 +100,10 @@ export interface DesignModeColorToken {
   readonly value: string;
 }
 
-/** One curated layers-tree node — a TAGGED element (untagged wrappers never mint nodes;
- * svg subtrees are opaque, matching the Forge's ratified walk). Ids come from the same
- * registry as selection snapshots, so tree ↔ panel selection stays consistent. */
+/** One layers-tree node. Forge-tagged pages keep the curated walk (untagged wrappers
+ * never mint nodes); untagged pages mint every visible element instead. Svg subtrees are
+ * opaque in both walks. Ids come from the same registry as selection snapshots, so
+ * tree ↔ panel selection stays consistent. */
 export interface DesignModeLayerNode {
   readonly id: number;
   readonly tag: string;
@@ -110,11 +111,18 @@ export interface DesignModeLayerNode {
   readonly children: readonly DesignModeLayerNode[];
 }
 
+/** How the engine maps elements to source on this page. `forge`: the project runs
+ * forge-mode's JSX tagger — exact pre-compile tags, the most precise mapping. `native-react`:
+ * no tags, but the desktop preload's react-grab resolver is present, so React development
+ * metadata recovers file:line:col lazily. `selector-only`: neither — everything stays
+ * editable and sends describe elements by selector/text/style context. */
+export type DesignModeSourceMode = "forge" | "native-react" | "selector-only";
+
+const SOURCE_MODES: readonly DesignModeSourceMode[] = ["forge", "native-react", "selector-only"];
+
 export type DesignModeEngineMessage =
-  /** Engine finished booting. `tagged` reports whether the page carries any
-   * `data-dc-source` attributes (the forge-mode dev plugin's JSX tags) — without them
-   * selection is inert and the host shows the setup hint instead. */
-  | { readonly type: "ready"; readonly tagged: boolean }
+  /** Engine finished booting; reports how source mapping works on this page. */
+  | { readonly type: "ready"; readonly sourceMode: DesignModeSourceMode }
   /** Mirrors every setActive transition (Esc inside the page exits too). */
   | { readonly type: "state"; readonly active: boolean }
   /** The in-page selection changed; empty array means deselected. */
@@ -164,8 +172,10 @@ export interface DesignModeGuestHandle {
   /** Flips every draft to its "before" (true) or "after" (false) rendering. */
   compareAll(on: boolean): void;
   /** Builds the standalone change-request markdown plus pill summaries; null when there
-   * is nothing to send. */
-  buildSend(): DesignChangeRequestPayload | null;
+   * is nothing to send. Async: the engine grants in-flight native source resolution a
+   * bounded grace before falling back to selector context — the promise rides Electron's
+   * executeJavaScript back to the host either way. */
+  buildSend(): Promise<DesignChangeRequestPayload | null>;
   /** Layers-tree interactions — ids from selection snapshots or layer nodes. */
   selectElement(id: number): void;
   hoverElement(id: number | null): void;
@@ -269,8 +279,10 @@ export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMes
     const value: unknown = JSON.parse(line.slice(DESIGN_MODE_CONSOLE_PREFIX.length));
     if (!isRecord(value)) return null;
     switch (value.type) {
-      case "ready":
-        return typeof value.tagged === "boolean" ? { type: "ready", tagged: value.tagged } : null;
+      case "ready": {
+        const sourceMode = SOURCE_MODES.find((mode) => mode === value.sourceMode);
+        return sourceMode ? { type: "ready", sourceMode } : null;
+      }
       case "state":
         return typeof value.active === "boolean" ? { type: "state", active: value.active } : null;
       case "selection": {

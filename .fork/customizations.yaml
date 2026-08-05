@@ -1532,10 +1532,19 @@
     /__the-forge/* endpoint are deliberately not ported, and the engine
     must stay free of network calls). The host re-injects on dom-ready
     while the mode is on, so navigations and dev-server reloads keep the
-    engine and its drafts. Element→source mapping needs the
-    previewed project to run forge-mode's dev-only JSX tagging
-    (data-dc-source); untagged pages get a toast with a one-click "ask the
-    agent to set it up" handoff. engine/vendor/** contains only the Forge leaf
+    engine and its drafts. Element→source mapping works WITHOUT any
+    project setup: project-authored forge-mode JSX tags (data-dc-source)
+    remain the most precise source and always win per element, but on
+    untagged React pages the desktop preload's react-grab-backed resolver
+    (a frozen __T3_DESIGN_SOURCE_RESOLVER_V1__ page global installed by
+    src/preview/DesignSourceResolver.ts beside the element picker, reached
+    through the fenced import in preview-pick-preload.ts) recovers
+    file:line:col lazily — on hover dwell, selection, and send — and the
+    engine synthesizes a canonical data-dc-source (marked
+    data-t3-native-source so it is never mistaken for a project tag).
+    Elements whose source never resolves stay fully editable and send
+    with selector/text/style context; no install prompt, warning toast,
+    or Forge handoff exists anymore. engine/vendor/** contains only the Forge leaf
     modules reachable from the headless engine; they keep the Forge's own
     formatting (fmt-ignored at the root config, same treatment as qrcodegen.ts),
     carry t3-fork-marked local edits, and are excluded from the web TS project
@@ -1554,6 +1563,7 @@
     - apps/web/src/custom/designMode/ForkLayersTree.tsx
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
+    - apps/web/src/custom/designMode/panel/CornerRadiusIcon.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx
     - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
     - apps/web/src/custom/designMode/panel/DesignColorPicker.tsx
@@ -1564,8 +1574,14 @@
     - apps/web/src/custom/designMode/engine/headlessMode.ts
     - apps/web/src/custom/designMode/engine/idRegistry.ts
     - apps/web/src/custom/designMode/engine/layersSession.ts
+    - apps/web/src/custom/designMode/engine/nativeSource.ts
     - apps/web/src/custom/designMode/engine/snapshot.ts
     - apps/web/src/custom/designMode/engine/tsconfig.json
+    # The desktop half of native source recovery: the preload-installed page
+    # global the engine's nativeSource.ts consumes.
+    - apps/desktop/src/preview/DesignSourceResolver.ts
+    - apps/desktop/src/preview/DesignSourceResult.ts
+    - apps/desktop/src/preview/DesignSourceResolver.test.ts
     # The reachable vendored Forge client leaves (one directory entry; the
     # custom/ directory walk already lints it, and its own tsconfig checks it).
     - apps/web/src/custom/designMode/engine/vendor
@@ -1574,6 +1590,10 @@
   shadows:
     - apps/web/src/components/preview/PreviewPanel.tsx
   watch:
+    # Fenced import of the DesignSourceResolver preload module beside the
+    # upstream PickPreload entry — the whole desktop half of native source
+    # recovery hangs off this one line.
+    - apps/desktop/src/preview-pick-preload.ts
     # Thin fenced import + <ForkPreviewDesignMode> in the chrome row's
     # trailingActions slot; the browser surface tree stays untouched.
     - apps/web/src/components/preview/PreviewView.tsx

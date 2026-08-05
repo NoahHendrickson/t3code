@@ -1,25 +1,14 @@
-import { PencilRulerIcon } from "lucide-react";
+import { PaintbrushIcon } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { toastManager } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
-import { useComposerHandleContext } from "~/composerHandleContext";
 
 import { parseDesignModeConsoleMessage } from "./protocol";
 import { designModeBridge, findPreviewWebview } from "./designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
-
-/** Sent to the thread when the previewed app has no `data-dc-source` tags — setting up the
- * tagging transform is itself a task for the agent (the Forge's SETUP.md is written for one). */
-const FORGE_SETUP_PROMPT =
-  "Set up forge-mode's dev-only JSX tagging in this project so T3 Code's Design mode can " +
-  "map clicked elements to source. Follow the plugin-wiring steps in " +
-  "https://github.com/NoahHendrickson/the-forge/blob/main/SETUP.md (`npx forge-mode init` " +
-  "does most of it). Only the Vite/Next plugin matters here — skip mounting " +
-  "<ForgeDesignMode /> and every MCP/agent-delivery step; T3 Code provides the design " +
-  "panel and delivery itself.";
 
 interface Props {
   runtimeTabId: string | null;
@@ -36,7 +25,6 @@ interface Props {
  */
 export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
   const tabState = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
-  const composerHandleRef = useComposerHandleContext();
   const enabledRef = useRef(false);
   enabledRef.current = tabState.enabled;
 
@@ -46,14 +34,6 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
     const { default: engineCode } = await import("virtual:fork-design-mode-engine");
     await webview.executeJavaScript(engineCode, false);
   }, []);
-
-  const insertSetupPrompt = useCallback(() => {
-    // No focusAtEnd after insert — a synchronous focus makes the still-stale editor echo
-    // its pre-insert content over the store (see ForkDesignPanel's onSend comment).
-    composerHandleRef?.current?.insertTextAtEnd(FORGE_SETUP_PROMPT, {
-      ensureLeadingBoundary: true,
-    });
-  }, [composerHandleRef]);
 
   // Bridge + re-injection listeners live on the webview element itself (it outlives this
   // component's mounts). Attached only while the chrome row is mounted for this tab.
@@ -68,17 +48,9 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
       if (!message) return;
       switch (message.type) {
         case "ready":
-          store.setTagged(runtimeTabId, message.tagged);
-          if (!message.tagged) {
-            toastManager.add({
-              type: "warning",
-              title: "This app isn't tagged for Design mode",
-              description:
-                "Selection needs forge-mode's dev plugin in the previewed project. " +
-                "Ask the agent to set up tagging to edit elements.",
-              actionProps: { children: "Ask agent", onClick: insertSetupPrompt },
-            });
-          }
+          // Selection works in every mode — selector-only pages just get a soft note in
+          // the panel's empty state instead of a warning toast (they remain editable).
+          store.setSourceMode(runtimeTabId, message.sourceMode);
           return;
         case "state":
           store.setEnabled(runtimeTabId, message.active);
@@ -145,7 +117,7 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
         webview.removeEventListener("dom-ready", onDomReady);
       }
     };
-  }, [injectEngine, insertSetupPrompt, runtimeTabId]);
+  }, [injectEngine, runtimeTabId]);
 
   const handleToggle = useCallback(() => {
     if (!runtimeTabId) return;
@@ -185,7 +157,7 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
           />
         }
       >
-        <PencilRulerIcon className={cn(tabState.enabled && "text-primary")} />
+        <PaintbrushIcon className={cn(tabState.enabled && "text-primary")} />
       </TooltipTrigger>
       <TooltipPopup>
         {disabled

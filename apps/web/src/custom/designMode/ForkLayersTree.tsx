@@ -84,9 +84,10 @@ function LayerRow({
 }
 
 /**
- * The native layers rail — a Figma-style tree of the previewed page's tagged elements,
- * docked left of the browser surface while Design mode is on. The guest owns the walk
- * (vendored curated-walk rules: untagged wrappers descended through, svg opaque) and
+ * The native layers rail — a Figma-style tree of the previewed page's elements, docked
+ * left of the browser surface while Design mode is on. The guest owns the walk: on
+ * Forge-tagged pages the vendored curated rules (untagged wrappers descended through,
+ * svg opaque); on untagged pages every visible element, minus non-visual noise. It
  * re-emits on DOM mutation; hover and click drive the same outline/selection funnels the
  * pointer does, over shared element ids. See `.fork/customizations.yaml#fork-design-mode`.
  */

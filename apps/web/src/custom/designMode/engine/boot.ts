@@ -16,6 +16,7 @@ import { DESIGN_MODE_GLOBAL, type DesignModeGuestHandle } from "../protocol";
 import { emitToHost } from "./bridge";
 import { HeadlessOverlay } from "./headlessOverlay";
 import { HeadlessDesignMode } from "./headlessMode";
+import { hasForgeTags, hasNativeResolver } from "./nativeSource";
 import { loadLifecycle } from "./vendor/lifecycle-store";
 import { readTheme, readTokens } from "./vendor/tokens";
 
@@ -68,7 +69,13 @@ function boot(): void {
   };
   (globalThis as Record<string, unknown>)[DESIGN_MODE_GLOBAL] = handle;
 
-  emitToHost({ type: "ready", tagged: document.querySelector("[data-dc-source]") !== null });
+  // Project Forge tags are the most precise mapping and always win per element; the
+  // native resolver (desktop preload) recovers untagged React elements lazily; with
+  // neither, everything stays editable and sends fall back to selector/text context.
+  emitToHost({
+    type: "ready",
+    sourceMode: hasForgeTags() ? "forge" : hasNativeResolver() ? "native-react" : "selector-only",
+  });
 
   // Drafts survive the full reloads dev servers legitimately do (non-HMR-able edits) AND
   // host-side off/on toggles (destroy() persists designModeOn:false, but the host injecting

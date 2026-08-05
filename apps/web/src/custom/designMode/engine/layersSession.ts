@@ -1,5 +1,6 @@
 import type { DesignModeLayerNode } from "../protocol";
 import type { ElementIdRegistry } from "./idRegistry";
+import { hasForgeTags } from "./nativeSource";
 import { buildLayerTree, type LayerNode } from "./vendor/layers";
 
 /** Quiet-window for MutationObserver-driven layers rebuilds — HMR re-renders land as
@@ -89,7 +90,11 @@ export class LayersSession {
   private emit = (): void => {
     this.registry.clearLayersScope();
     const budget: SerializeBudget = { left: LAYERS_NODE_CAP, truncated: false };
-    const roots = this.serialize(buildLayerTree(document.body), budget);
+    // Untagged pages get the full-DOM walk; any PROJECT Forge tag keeps the curated one.
+    // Re-read per emit (cost: one querySelector) so a framework that mounts its tagged
+    // tree after the first emit flips the mode without a restart. Synthesized tags are
+    // excluded by hasForgeTags, so T3's own lazy tagging can never collapse the tree.
+    const roots = this.serialize(buildLayerTree(document.body, !hasForgeTags()), budget);
     const json = JSON.stringify(roots);
     if (json === this.lastJson) return;
     this.lastJson = json;

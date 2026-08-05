@@ -20,11 +20,21 @@ export interface PersistedSentElement {
   change: ElementChange
 }
 
+/* t3-fork: `selector` rode in with native-source mode. A T3-synthesized data-dc-source
+ * (engine/nativeSource.ts) does not survive a reload the way a Forge tag re-rendered by
+ * the project's own transform does, so entries carrying one (or no tag at all —
+ * dcSource '') also persist a bounded css path; the restore drain falls back to it and
+ * re-synthesizes the tag. Optional so pre-existing v:1 snapshots load unchanged. */
 export interface PersistedLifecycle {
   v: 1
   designModeOn: boolean
-  selection: Array<{ dcSource: string; index: number }>
-  drafts: Array<{ dcSource: string; index: number; props: Array<[prop: string, value: string]> }>
+  selection: Array<{ dcSource: string; index: number; selector?: string }>
+  drafts: Array<{
+    dcSource: string
+    index: number
+    props: Array<[prop: string, value: string]>
+    selector?: string
+  }>
   sent: Array<{ id: string; elements: PersistedSentElement[] }>
 }
 
@@ -74,13 +84,21 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null
 }
 
-function isValidSelectionEntry(v: unknown): v is { dcSource: string; index: number } {
-  return isRecord(v) && typeof v.dcSource === 'string' && typeof v.index === 'number'
+/* t3-fork: optional `selector` must be a string when present (see PersistedLifecycle). */
+function isValidSelectorField(v: Record<string, unknown>): boolean {
+  return v.selector === undefined || typeof v.selector === 'string'
+}
+
+function isValidSelectionEntry(v: unknown): v is PersistedLifecycle['selection'][number] {
+  return (
+    isRecord(v) && typeof v.dcSource === 'string' && typeof v.index === 'number' && isValidSelectorField(v)
+  )
 }
 
 function isValidDraftEntry(v: unknown): v is PersistedLifecycle['drafts'][number] {
   if (!isRecord(v)) return false
   if (typeof v.dcSource !== 'string' || typeof v.index !== 'number') return false
+  if (!isValidSelectorField(v)) return false
   if (!Array.isArray(v.props)) return false
   return v.props.every(
     (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string' && typeof p[1] === 'string'
