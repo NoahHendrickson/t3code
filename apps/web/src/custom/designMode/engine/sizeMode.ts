@@ -112,9 +112,12 @@ export function applySizeMode(
   switch (mode) {
     case "fixed": {
       // Freeze the size the element has RIGHT NOW, then pin it — measure before the
-      // defeat, or releasing a fill would first collapse the element and pin that.
+      // defeat, or releasing a fill would first collapse the element and pin that
+      // (defeatFillIfGrowing writes inline styles synchronously, and measuredSize's
+      // computed-style fallback would read the collapsed box).
+      const measured = Math.round(measuredSize(el, axis, drafts));
       defeatFillIfGrowing(el, axis, drafts);
-      drafts.apply(el, axis, `${Math.round(measuredSize(el, axis, drafts))}px`);
+      drafts.apply(el, axis, `${measured}px`);
       return;
     }
     case "hug": {
