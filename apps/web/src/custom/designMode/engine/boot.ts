@@ -56,6 +56,7 @@ function boot(): void {
     setActive: (on) => mode.setActive(on),
     isActive: () => mode.active,
     applyDraft: (ids, property, value) => mode.applyDraft(ids, property, value),
+    setSizeMode: (ids, axis, sizeMode) => mode.setSizeMode(ids, axis, sizeMode),
     discardAll: () => mode.discardAll(),
     compareAll: (on) => mode.compareAll(on),
     buildSend: () => mode.buildSend(),

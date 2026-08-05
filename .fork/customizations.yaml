@@ -1576,6 +1576,7 @@
     - apps/web/src/custom/designMode/engine/idRegistry.ts
     - apps/web/src/custom/designMode/engine/layersSession.ts
     - apps/web/src/custom/designMode/engine/nativeSource.ts
+    - apps/web/src/custom/designMode/engine/sizeMode.ts
     - apps/web/src/custom/designMode/engine/snapshot.ts
     - apps/web/src/custom/designMode/engine/tsconfig.json
     # The desktop half of native source recovery: the preload-installed page

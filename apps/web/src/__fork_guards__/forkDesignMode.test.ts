@@ -228,11 +228,37 @@ describe("fork guard: design mode", () => {
           tag: "button",
           sourceLabel: "App.tsx:5",
           styles,
+          sizeModes: { width: "fixed", height: "hug" },
         },
       ],
     };
     const line = `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(selection)}`;
     expect(parseDesignModeConsoleMessage(line)).toEqual(selection);
+    // A snapshot without size modes (or with an unknown mode) rejects rather than half-parses.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
+          type: "selection",
+          elements: [{ id: 1, tag: "button", sourceLabel: null, styles }],
+        })}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
+          type: "selection",
+          elements: [
+            {
+              id: 1,
+              tag: "button",
+              sourceLabel: null,
+              styles,
+              sizeModes: { width: "stretchy", height: "hug" },
+            },
+          ],
+        })}`,
+      ),
+    ).toBeNull();
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"drafts","count":3}`),
     ).toEqual({ type: "drafts", count: 3 });

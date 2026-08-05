@@ -17,7 +17,11 @@ import { CornerRadiusIcon } from "./CornerRadiusIcon";
 import { PaddingIcon } from "./PaddingIcon";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
-import type { DesignModeElementSnapshot, DesignModeWritableKey } from "../protocol";
+import type {
+  DesignModeElementSnapshot,
+  DesignModeSizeMode,
+  DesignModeWritableKey,
+} from "../protocol";
 import { ColorField, PairField, PanelSection, ScrubField } from "./DesignPanelFields";
 import { AlignMatrix, SegmentField, SelectRow } from "./DesignPanelLayoutControls";
 
@@ -154,6 +158,42 @@ function SideFields({
   });
 }
 
+const SIZE_MODE_OPTIONS = [
+  ["fixed", "Fixed"],
+  ["hug", "Hug"],
+  ["fill", "Fill"],
+] as const;
+
+/** Figma's per-axis sizing menu, docked at the right edge of the W/H fields. The guest
+ * owns the coordinated write (engine/sizeMode.ts) and answers with a fresh snapshot. */
+function SizeModeSelect({
+  axis,
+  mode,
+  onPick,
+}: {
+  axis: "width" | "height";
+  mode: DesignModeSizeMode;
+  onPick: (mode: DesignModeSizeMode) => void;
+}) {
+  return (
+    <select
+      aria-label={`${axis === "width" ? "Width" : "Height"} sizing mode`}
+      value={mode}
+      onChange={(event) => {
+        const picked = SIZE_MODE_OPTIONS.find(([value]) => value === event.target.value);
+        if (picked) onPick(picked[0]);
+      }}
+      className="h-full shrink-0 cursor-pointer appearance-none bg-transparent pe-1.5 text-[10px] text-muted-foreground outline-none hover:text-foreground"
+    >
+      {SIZE_MODE_OPTIONS.map(([value, label]) => (
+        <option key={value} value={value}>
+          {label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 interface Props {
   runtimeTabId: string | null;
   threadRef: ScopedThreadRef;
@@ -178,6 +218,14 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
       designModeBridge.applyDraft(runtimeTabId, ids, property, value);
     },
     // ids is rebuilt per render but changes only with the selection snapshot array.
+    [runtimeTabId, tab.selection],
+  );
+
+  const setSizeMode = useCallback(
+    (axis: "width" | "height", mode: DesignModeSizeMode) => {
+      if (!runtimeTabId || ids.length === 0) return;
+      designModeBridge.setSizeMode(runtimeTabId, ids, axis, mode);
+    },
     [runtimeTabId, tab.selection],
   );
 
@@ -255,6 +303,13 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               tokenBasePx={spacingBase}
               value={first.styles.width}
               min={0}
+              suffix={
+                <SizeModeSelect
+                  axis="width"
+                  mode={first.sizeModes.width}
+                  onPick={(mode) => setSizeMode("width", mode)}
+                />
+              }
               onEdit={(v) => apply("width", v)}
             />
             <ScrubField
@@ -263,6 +318,13 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               tokenBasePx={spacingBase}
               value={first.styles.height}
               min={0}
+              suffix={
+                <SizeModeSelect
+                  axis="height"
+                  mode={first.sizeModes.height}
+                  onPick={(mode) => setSizeMode("height", mode)}
+                />
+              }
               onEdit={(v) => apply("height", v)}
             />
           </PanelSection>

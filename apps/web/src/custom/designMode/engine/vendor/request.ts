@@ -133,6 +133,9 @@ export const KEYWORD_PASSTHROUGH = new Set([
   'solid',
   'dashed',
   'dotted',
+  /* t3-fork: size-mode Fill outside a flex parent drafts `100%` — the percentage IS the
+   * intent (fill the container), and measuring it would freeze a viewport-dependent size. */
+  '100%',
 ])
 
 export const REMOVE_AUTO_LAYOUT_INTENT = 'remove auto layout (flexbox) from this element; remove flex/inline-flex/flex-row/flex-col/flex-wrap/gap-*/justify-*/items-* classes rather than adding `display: block`'

@@ -77,11 +77,22 @@ export const DESIGN_MODE_WRITE_ONLY_KEYS = [
   "border-width",
   "border-style",
   "border-color",
+  "flex-basis",
 ] as const;
 
 export type DesignModeWritableKey =
   | DesignModeStyleKey
   | (typeof DESIGN_MODE_WRITE_ONLY_KEYS)[number];
+
+/** Figma's sizing vocabulary for one axis: explicit px / size-to-content / take the
+ * available space. Read by the guest (draft-first — computed px can't distinguish an
+ * authored `auto` from an authored `240px`); written through `setSizeMode`. */
+export type DesignModeSizeMode = "fixed" | "hug" | "fill";
+
+const SIZE_MODES: readonly DesignModeSizeMode[] = ["fixed", "hug", "fill"];
+
+const parseSizeMode = (value: unknown): DesignModeSizeMode | null =>
+  SIZE_MODES.find((mode) => mode === value) ?? null;
 
 /** One selected element as the native panel sees it. `id` is minted by the guest engine
  * and is only meaningful for the current selection — commands referencing a stale id
@@ -91,6 +102,8 @@ export interface DesignModeElementSnapshot {
   readonly tag: string;
   readonly sourceLabel: string | null;
   readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
+  /** Current W/H sizing modes (engine/sizeMode.ts) — drives the panel's per-axis menu. */
+  readonly sizeModes: { readonly width: DesignModeSizeMode; readonly height: DesignModeSizeMode };
 }
 
 /** One theme color custom property from the previewed app's stylesheets ("red-500",
@@ -168,6 +181,8 @@ export interface DesignModeGuestHandle {
   isActive(): boolean;
   /** Applies one CSS draft to every listed element id (multi-select edits fan out here). */
   applyDraft(ids: readonly number[], property: DesignModeWritableKey, value: string): void;
+  /** Applies a Figma sizing mode (fixed/hug/fill) to one axis of every listed element. */
+  setSizeMode(ids: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void;
   discardAll(): void;
   /** Flips every draft to its "before" (true) or "after" (false) rendering. */
   compareAll(on: boolean): void;
@@ -197,15 +212,20 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     !isNonNegativeInteger(value.id) ||
     typeof value.tag !== "string" ||
     (value.sourceLabel !== null && typeof value.sourceLabel !== "string") ||
-    !isStyleMap(value.styles)
+    !isStyleMap(value.styles) ||
+    !isRecord(value.sizeModes)
   ) {
     return null;
   }
+  const width = parseSizeMode(value.sizeModes.width);
+  const height = parseSizeMode(value.sizeModes.height);
+  if (width === null || height === null) return null;
   return {
     id: value.id,
     tag: value.tag,
     sourceLabel: value.sourceLabel,
     styles: value.styles,
+    sizeModes: { width, height },
   };
 }
 

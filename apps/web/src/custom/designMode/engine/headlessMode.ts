@@ -17,6 +17,7 @@ import type {
   DesignChangeRequestPayload,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
+  DesignModeSizeMode,
   DesignModeWritableKey,
 } from "../protocol";
 import type { HeadlessOverlay } from "./headlessOverlay";
@@ -29,6 +30,7 @@ import {
   markSynthesizedSource,
   resolveAndTag,
 } from "./nativeSource";
+import { applySizeMode } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
 import { isEditable } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
@@ -199,6 +201,20 @@ export class HeadlessDesignMode {
     for (const el of els) this.handleBeforeEdit(el);
     for (const el of els) this.drafts.apply(el, property, value);
     this.handleEdited();
+  }
+
+  /** Applies a Figma sizing mode (fixed/hug/fill) to one axis — the mode's coordinated
+   * multi-property write lives in engine/sizeMode.ts. Discrete (a menu pick, never a
+   * scrub tick), so the fresh snapshot goes out immediately, like discardAll. */
+  setSizeMode(idList: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void {
+    const els = idList
+      .map((id) => this.registry.resolve(id))
+      .filter((el): el is TaggedElement => el !== null);
+    if (els.length === 0) return;
+    for (const el of els) this.handleBeforeEdit(el);
+    for (const el of els) applySizeMode(el, axis, mode, this.drafts);
+    this.handleEdited();
+    this.emitSelection();
   }
 
   /** The one discard-everything verb. Re-emits the selection afterwards: computed values
@@ -559,7 +575,9 @@ export class HeadlessDesignMode {
    * fresh snapshots to the host — the native panel's whole world view. */
   private emitSelection(): void {
     this.registry.retainSelection(this.selection);
-    const snapshots = this.selection.map((el) => buildElementSnapshot(el, this.registry.mint(el)));
+    const snapshots = this.selection.map((el) =>
+      buildElementSnapshot(el, this.registry.mint(el), this.drafts),
+    );
     this.onSelection?.(snapshots);
   }
 

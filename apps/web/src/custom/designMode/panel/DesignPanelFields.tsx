@@ -46,6 +46,8 @@ interface ScrubFieldProps {
   /** The previewed app's --spacing base (px). Enables the Tailwind step badge and the
    * scale-ladder picker on spacing-shaped fields. */
   tokenBasePx?: number | null;
+  /** Optional trailing control docked at the field's right edge (the W/H size-mode menu). */
+  suffix?: React.ReactNode;
   onEdit: (cssValue: string) => void;
 }
 
@@ -65,6 +67,7 @@ export function ScrubField({
   step = 1,
   precision = 0,
   tokenBasePx,
+  suffix,
   onEdit,
 }: ScrubFieldProps) {
   const parsed = Number.parseFloat(value);
@@ -157,6 +160,7 @@ export function ScrubField({
           onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx)}
         />
       ) : null}
+      {suffix}
     </label>
   );
 }
