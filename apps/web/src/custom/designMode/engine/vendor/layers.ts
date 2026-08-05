@@ -21,6 +21,17 @@ const OPAQUE_TAGS = new Set(['svg'])
 /* t3-fork: native-source mode — non-visual noise skipped entirely by the untagged walk. */
 const NOISE_TAGS = new Set(['script', 'style', 'link', 'meta', 'template', 'noscript', 'title'])
 
+/* t3-fork: `display: none` is the untagged walk's other noise filter. A closed dialog or a
+ * portal root full of unmounted-but-rendered chrome would otherwise fill the rail with rows
+ * the user cannot see AND spend the host's node budget before the visible page is reached
+ * (PR #54 review). display:none hides the whole SUBTREE, so skipping it here is both correct
+ * and cheaper than walking it. Deliberately not `visibility`/`opacity`/off-screen: those
+ * still occupy layout, a designer can legitimately want them, and only display:none is
+ * subtree-wide. getComputedStyle (not checkVisibility) so the walk stays testable in jsdom. */
+function isDisplayNone(el: Element): boolean {
+  return getComputedStyle(el).display === 'none'
+}
+
 /* t3-fork: the host's serialization cap, threaded into the walk so it stops MINTING at
  * the cap instead of allocating (and labelling) a whole-DOM tree the serializer would
  * drop anyway — the untagged walk mints per element, so on a deep page the difference is
@@ -29,6 +40,8 @@ const NOISE_TAGS = new Set(['script', 'style', 'link', 'meta', 'template', 'nosc
 export interface LayerBudget {
   left: number
   truncated: boolean
+  /** Internal stop signal for node-cap exhaustion. Depth truncation must not stop siblings. */
+  exhausted?: boolean
 }
 
 /**
@@ -40,37 +53,51 @@ export interface LayerBudget {
  * documentElement and walks start at body.
  *
  * t3-fork: `includeUntagged` is native-source mode's walk — on a page with no project
- * Forge tags there is no designer structure to curate, so every visible element (minus
- * NOISE_TAGS; svg still opaque) mints a node. Tagged pages keep the curated walk exactly.
+ * Forge tags there is no designer structure to curate, so every rendered element (minus
+ * NOISE_TAGS and `display: none` subtrees; svg still opaque) mints a node. Tagged pages keep
+ * the curated walk exactly, hidden nodes included: a Forge tag is the project's own claim
+ * that the element is part of the design, and the curated tree is small either way.
  */
 export function buildLayerTree(
   root: Element,
   includeUntagged = false,
   budget?: LayerBudget,
+  maxDepth?: number,
+  depth = 0,
 ): LayerNode[] {
   const out: LayerNode[] = []
   for (const child of root.children) {
-    if (budget?.truncated) break
+    if (budget?.exhausted) break
     const el = child as TaggedElement
     const tag = child.tagName.toLowerCase()
     const opaque = OPAQUE_TAGS.has(tag)
     if (NOISE_TAGS.has(tag)) continue
+    if (includeUntagged && !el.dataset?.dcSource && isDisplayNone(child)) continue
     const mints =
       Boolean(el.dataset?.dcSource) ||
       (includeUntagged && (child instanceof HTMLElement || child instanceof SVGElement))
     if (mints) {
+      // The host counts only minted layer nodes, not transparent DOM wrappers. Skip the whole
+      // over-depth subtree before spending budget or computing labels, then keep walking peers.
+      if (maxDepth !== undefined && depth > maxDepth) {
+        if (budget) budget.truncated = true
+        continue
+      }
       if (budget && budget.left <= 0) {
         budget.truncated = true
+        budget.exhausted = true
         break
       }
       if (budget) budget.left -= 1
       out.push({
         el,
         label: layerLabel(el),
-        children: opaque ? [] : buildLayerTree(child, includeUntagged, budget),
+        children: opaque
+          ? []
+          : buildLayerTree(child, includeUntagged, budget, maxDepth, depth + 1),
       })
     } else if (!opaque) {
-      out.push(...buildLayerTree(child, includeUntagged, budget))
+      out.push(...buildLayerTree(child, includeUntagged, budget, maxDepth, depth))
     }
   }
   return out

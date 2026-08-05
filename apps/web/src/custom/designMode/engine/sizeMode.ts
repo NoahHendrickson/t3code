@@ -26,7 +26,8 @@
 import type { DesignModeSizeMode } from "../protocol";
 import type { DraftStore } from "./vendor/drafts";
 import { isFlex, mainAxisProp, normalizeAlign } from "./vendor/panel-readers";
-import { defeatFillIfGrowing } from "./vendor/panel-specs";
+import { defeatFillIfGrowing, isEffectivelyAbsolute } from "./vendor/panel-specs";
+import { seedFrom } from "./vendor/resize";
 import type { TaggedElement } from "./vendor/source";
 
 export type SizeAxis = "width" | "height";
@@ -38,7 +39,10 @@ interface AxisContext {
   role: "main" | "cross" | null;
 }
 
-function axisContext(el: TaggedElement, axis: SizeAxis): AxisContext {
+function axisContext(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): AxisContext {
+  // Out-of-flow children do not participate in their parent's flex sizing. Treat them like
+  // non-flex children in both the reader and writer so Hug and Fill round-trip consistently.
+  if (isEffectivelyAbsolute(el, drafts)) return { role: null };
   const parent = el.parentElement;
   if (!parent || !isFlex(parent as TaggedElement)) return { role: null };
   const direction = getComputedStyle(parent).flexDirection.startsWith("column") ? "column" : "row";
@@ -50,24 +54,43 @@ function currentValue(el: TaggedElement, prop: string, drafts: DraftStore): stri
   return drafts.current(el, prop) ?? getComputedStyle(el).getPropertyValue(prop);
 }
 
+/**
+ * The element's size on `axis` in the SAME real-CSS-px space the drafted W/H values live in
+ * — deliberately NOT `getBoundingClientRect()`, which is viewport space (canvas mode scales
+ * the whole page through a `<body>` transform, so a 50% artboard would pin HALF the real
+ * size) and always border-box (which mis-sizes a content-box element that has padding or
+ * border). This is resize.ts's `startBoxOf`/`seedFrom` basis and the value the panel's own
+ * W/H fields display. A draft wins only when it is an explicit px value: Hug drafts the
+ * literal `auto`, while Fill can draft `100%`; neither intent may be reinterpreted as px
+ * (PR #54/#55/#56 review).
+ */
+function measuredSize(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): number {
+  return seedFrom(drafts.current(el, axis), getComputedStyle(el).getPropertyValue(axis));
+}
+
 export function readSizeMode(
   el: TaggedElement,
   axis: SizeAxis,
   drafts: DraftStore,
 ): DesignModeSizeMode {
   const draft = drafts.current(el, axis);
-  if (draft !== null) {
-    if (HUG_KEYWORDS.has(draft)) return "hug";
-    if (draft === "100%") return "fill";
-  }
-  const { role } = axisContext(el, axis);
-  if (role === "main") {
+  if (draft === "100%") return "fill";
+  // An explicit px draft is Fixed intent outright: it is the one value that can be neither
+  // hug nor fill, and it must out-rank the flex signals below (an unstyled flex child's
+  // cross axis stretches by DEFAULT, so a typed width would otherwise read Fill).
+  const sized = draft !== null && !HUG_KEYWORDS.has(draft);
+  // Fill is checked BEFORE the hug keywords, because applySizeMode's fill releases the axis
+  // to `auto` too — grow/stretch is the only thing that tells the two apart, and reading the
+  // keyword first made every Fill snap back to Hug in the panel's menu (PR #54/#55 review).
+  const { role } = axisContext(el, axis, drafts);
+  if (!sized && role === "main") {
     const grow = Number.parseFloat(currentValue(el, "flex-grow", drafts));
     if (Number.isFinite(grow) && grow >= 1) return "fill";
   }
-  if (role === "cross" && draft === null) {
+  if (!sized && role === "cross") {
     if (normalizeAlign(currentValue(el, "align-self", drafts)) === "stretch") return "fill";
   }
+  if (draft !== null && HUG_KEYWORDS.has(draft)) return "hug";
   return "fixed";
 }
 
@@ -87,12 +110,14 @@ export function applySizeMode(
   mode: DesignModeSizeMode,
   drafts: DraftStore,
 ): void {
-  const { role } = axisContext(el, axis);
+  const { role } = axisContext(el, axis, drafts);
   switch (mode) {
     case "fixed": {
       // Freeze the size the element has RIGHT NOW, then pin it — measure before the
-      // defeat, or releasing a fill would first collapse the element and pin that.
-      const measured = Math.round(el.getBoundingClientRect()[axis]);
+      // defeat, or releasing a fill would first collapse the element and pin that
+      // (defeatFillIfGrowing writes inline styles synchronously, and measuredSize's
+      // computed-style fallback would read the collapsed box).
+      const measured = Math.round(measuredSize(el, axis, drafts));
       defeatFillIfGrowing(el, axis, drafts);
       drafts.apply(el, axis, `${measured}px`);
       return;

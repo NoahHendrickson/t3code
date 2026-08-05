@@ -116,20 +116,24 @@ function startBoxOf(el: TaggedElement, drafts: DraftStore): Box {
 }
 
 /**
- * One seed value: a draft wins ONLY when it is numeric, otherwise the measurement does — the
+ * One seed value: a draft wins ONLY when it is explicit px, otherwise the measurement does — the
  * `??`-then-parseFloat shape this replaces was PR #46 review finding 3 (MAJOR). Hug mode drafts
  * the literal keyword `auto` (panel-layout.ts's onSizeModeChange), so `drafts.current` returned a
  * non-null 'auto', `??` never fell through to the computed measurement, and
  * `parseFloat('auto') || 0` seeded a ZERO-size box: set W to Hug, drag the E handle +10px, and the
  * element snapped from its natural width to `10px`. Fixed-mode conversion already solved exactly
  * this (panel-layout's `isAutoNow`, which measures the computed size whenever the draft isn't a
- * number) — this is the same treatment, applied to every seed here rather than just width, since
- * `left: auto`/`height: auto` are just as legal a css draft as `width: auto`. Non-finite on BOTH
- * sides (jsdom, which computes no layout at all) still falls back to 0.
+ * px number) — this is the same treatment, applied to every seed here rather than just width,
+ * since `left: auto`/`height: auto` are just as legal a css draft as `width: auto`, and a percent
+ * is intent rather than a px measurement. Non-finite on BOTH sides (jsdom, which computes no
+ * layout at all) still falls back to 0.
  */
-function seedFrom(draft: string | null, measured: string): number {
-  const drafted = draft === null ? Number.NaN : Number.parseFloat(draft)
-  if (Number.isFinite(drafted)) return drafted
+export function seedFrom(draft: string | null, measured: string): number {
+  // Drafted dimensions/insets live in real CSS px. Parsing any merely numeric prefix would
+  // turn a percentage intent such as `width: 100%` into `100px` on the next resize/freeze.
+  const drafted = draft?.trim().match(/^(-?(?:\d+(?:\.\d+)?|\.\d+))px$/)?.[1]
+  const draftedPx = drafted === undefined ? Number.NaN : Number.parseFloat(drafted)
+  if (Number.isFinite(draftedPx)) return draftedPx
   const fallback = Number.parseFloat(measured)
   return Number.isFinite(fallback) ? fallback : 0
 }

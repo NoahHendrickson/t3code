@@ -13,6 +13,7 @@
  */
 
 import { build } from "esbuild";
+import * as NodeBuffer from "node:buffer";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
@@ -25,6 +26,7 @@ import {
 import {
   DESIGN_MODE_CONSOLE_PREFIX,
   DESIGN_MODE_GLOBAL,
+  DESIGN_MODE_LAYERS_MAX_DEPTH,
   DESIGN_MODE_STYLE_KEYS,
   parseDesignChangeRequestPayload,
   parseDesignModeConsoleMessage,
@@ -164,6 +166,66 @@ describe("fork guard: design mode", () => {
     expect(code).toContain(DESIGN_MODE_GLOBAL);
     // The delivery layer must not ride along in any form.
     expect(code).not.toContain("/__the-forge/");
+  });
+
+  it("preserves px sizing intent and skips over-depth layers before spending budget", async () => {
+    const result = await build({
+      stdin: {
+        contents: [
+          'export { seedFrom } from "./src/custom/designMode/engine/vendor/resize";',
+          'export { buildLayerTree } from "./src/custom/designMode/engine/vendor/layers";',
+        ].join("\n"),
+        resolveDir: webRoot,
+        sourcefile: "design-mode-engine-guard.ts",
+        loader: "ts",
+      },
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "es2022",
+      write: false,
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]?.text ?? "";
+    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.Buffer.from(code).toString("base64")}`;
+    const engine = (await import(moduleUrl)) as {
+      seedFrom: (draft: string | null, measured: string) => number;
+      buildLayerTree: (
+        root: Element,
+        includeUntagged: boolean,
+        budget: { left: number; truncated: boolean; exhausted?: boolean },
+        maxDepth: number,
+      ) => Array<{ el: { id: string }; children: unknown[] }>;
+    };
+
+    expect(engine.seedFrom("240px", "600px")).toBe(240);
+    expect(engine.seedFrom("100%", "600px")).toBe(600);
+    expect(engine.seedFrom("auto", "600px")).toBe(600);
+
+    type FakeElement = {
+      tagName: string;
+      dataset: { dcSource: string };
+      id: string;
+      children: FakeElement[];
+      childNodes: never[];
+    };
+    const element = (id: string, children: FakeElement[] = []): FakeElement => ({
+      tagName: "DIV",
+      dataset: { dcSource: id },
+      id,
+      children,
+      childNodes: [],
+    });
+    const tooDeep = element("too-deep");
+    const root = {
+      children: [element("deep-root", [element("deep-child", [tooDeep])]), element("later-peer")],
+    } as unknown as Element;
+    const budget = { left: 10, truncated: false };
+    const layers = engine.buildLayerTree(root, false, budget, 1);
+
+    expect(layers.map((node) => node.el.id)).toEqual(["deep-root", "later-peer"]);
+    expect(layers[0]?.children).toHaveLength(1);
+    expect(budget).toEqual({ left: 7, truncated: true });
   });
 
   it("keeps the native source bridge contract aligned across preload and engine", () => {
@@ -361,16 +423,22 @@ describe("fork guard: design mode", () => {
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[]}`),
     ).toBeNull();
-    // Depth bound: a 40-deep chain exceeds the 32 guard and rejects rather than recursing.
-    let deep: Record<string, unknown> = { id: 40, tag: "div", label: "leaf", children: [] };
-    for (let index = 39; index >= 1; index -= 1) {
-      deep = { id: index, tag: "div", label: "Frame", children: [deep] };
-    }
-    expect(
-      parseDesignModeConsoleMessage(
-        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [deep], truncated: false })}`,
-      ),
-    ).toBeNull();
+    // Depth bound: a chain one level past the shared bound rejects rather than recursing.
+    const chain = (levels: number) => {
+      let node: Record<string, unknown> = { id: levels, tag: "div", label: "leaf", children: [] };
+      for (let index = levels - 1; index >= 1; index -= 1) {
+        node = { id: index, tag: "div", label: "Frame", children: [node] };
+      }
+      return `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [node], truncated: false })}`;
+    };
+    // Roots are depth 0, so the bound admits MAX_DEPTH + 1 levels and rejects one more.
+    expect(parseDesignModeConsoleMessage(chain(DESIGN_MODE_LAYERS_MAX_DEPTH + 1))).not.toBeNull();
+    expect(parseDesignModeConsoleMessage(chain(DESIGN_MODE_LAYERS_MAX_DEPTH + 2))).toBeNull();
+    // The GUEST serializer must stop at the same bound, or a deep page emits a tree the host
+    // rejects wholesale and the layers rail silently never appears (PR #52/#54 review).
+    expect(read("src/custom/designMode/engine/layersSession.ts")).toContain(
+      "DESIGN_MODE_LAYERS_MAX_DEPTH",
+    );
   });
 
   it("decodes complete design-change payloads only", () => {

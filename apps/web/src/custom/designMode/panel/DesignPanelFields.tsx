@@ -51,6 +51,17 @@ interface ScrubFieldProps {
   onEdit: (cssValue: string) => void;
 }
 
+/** Preserve in-progress typing until a fresh snapshot changes the displayed element value. */
+function useSyncedDraftText(display: string) {
+  const [text, setText] = useState(display);
+  const [lastDisplay, setLastDisplay] = useState(display);
+  if (display !== lastDisplay) {
+    setLastDisplay(display);
+    setText(display);
+  }
+  return [text, setText] as const;
+}
+
 /**
  * The panel's numeric control: type a value, or drag the label to scrub it — the native
  * counterpart of the Forge's NumberField. Every change fires `onEdit` immediately; the
@@ -72,7 +83,14 @@ export function ScrubField({
 }: ScrubFieldProps) {
   const parsed = Number.parseFloat(value);
   const numeric = Number.isFinite(parsed) ? parsed : null;
-  const [text, setText] = useState(numeric === null ? value : formatNumber(numeric, precision));
+  const display = numeric === null ? value : formatNumber(numeric, precision);
+  const [text, setText] = useSyncedDraftText(display);
+  // The guest re-emits snapshots for the SAME selection (a size-mode pick, Discard all, a
+  // draft-sync flush), and the fields container is keyed by selection identity — so nothing
+  // remounts and the field would keep showing a number the element no longer has, then
+  // scrub/arrow from that stale base (PR #54/#55 review). Re-sync on the incoming DISPLAY
+  // value, not on `text`: a half-typed entry is only replaced when the element actually
+  // changed under it.
   const scrub = useRef<{ pointerId: number; startX: number; startValue: number } | null>(null);
 
   const clamp = useCallback(
@@ -205,7 +223,9 @@ export function PairField({
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const current: [number, number] = [parse(values[0]), parse(values[1])];
-  const [text, setText] = useState(formatPair(current[0], current[1]));
+  const display = formatPair(current[0], current[1]);
+  const [text, setText] = useSyncedDraftText(display);
+  // Same prop re-sync ScrubField documents — the pair goes stale on exactly the same paths.
   const scrub = useRef<{ pointerId: number; startX: number; start: [number, number] } | null>(null);
 
   const clamp = useCallback(
@@ -376,7 +396,8 @@ interface ColorFieldProps {
 export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldProps) {
   const isTransparent = /^rgba\(\d+,\s*\d+,\s*\d+,\s*0\)$/u.test(value.trim());
   const hex = rgbToHex(value);
-  const [text, setText] = useState(isTransparent ? "transparent" : (hex ?? value));
+  const display = isTransparent ? "transparent" : (hex ?? value);
+  const [text, setText] = useSyncedDraftText(display);
 
   const commit = useCallback(
     (next: string) => {
@@ -410,7 +431,7 @@ export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldPr
           }
         }}
         onBlur={() => {
-          if (text && text !== (isTransparent ? "transparent" : (hex ?? value))) commit(text);
+          if (text && text !== display) commit(text);
         }}
         spellCheck={false}
         className="h-full w-full min-w-0 bg-transparent pe-1.5 text-xs text-foreground outline-none"
