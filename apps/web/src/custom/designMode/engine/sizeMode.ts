@@ -50,24 +50,45 @@ function currentValue(el: TaggedElement, prop: string, drafts: DraftStore): stri
   return drafts.current(el, prop) ?? getComputedStyle(el).getPropertyValue(prop);
 }
 
+/**
+ * The element's size on `axis` in the SAME real-CSS-px space the drafted W/H values live in
+ * — deliberately NOT `getBoundingClientRect()`, which is viewport space (canvas mode scales
+ * the whole page through a `<body>` transform, so a 50% artboard would pin HALF the real
+ * size) and always border-box (which mis-sizes a content-box element that has padding or
+ * border). This is resize.ts's `startBoxOf`/`seedFrom` basis and the value the panel's own
+ * W/H fields display. A draft wins only when it is numeric: Hug drafts the literal `auto`,
+ * and `parseFloat('auto')` would pin a zero-size box (PR #54/#55 review).
+ */
+function measuredSize(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): number {
+  const drafted = Number.parseFloat(drafts.current(el, axis) ?? "");
+  if (Number.isFinite(drafted)) return drafted;
+  const computed = Number.parseFloat(getComputedStyle(el).getPropertyValue(axis));
+  return Number.isFinite(computed) ? computed : 0;
+}
+
 export function readSizeMode(
   el: TaggedElement,
   axis: SizeAxis,
   drafts: DraftStore,
 ): DesignModeSizeMode {
   const draft = drafts.current(el, axis);
-  if (draft !== null) {
-    if (HUG_KEYWORDS.has(draft)) return "hug";
-    if (draft === "100%") return "fill";
-  }
+  if (draft === "100%") return "fill";
+  // An explicit px draft is Fixed intent outright: it is the one value that can be neither
+  // hug nor fill, and it must out-rank the flex signals below (an unstyled flex child's
+  // cross axis stretches by DEFAULT, so a typed width would otherwise read Fill).
+  const sized = draft !== null && !HUG_KEYWORDS.has(draft);
+  // Fill is checked BEFORE the hug keywords, because applySizeMode's fill releases the axis
+  // to `auto` too — grow/stretch is the only thing that tells the two apart, and reading the
+  // keyword first made every Fill snap back to Hug in the panel's menu (PR #54/#55 review).
   const { role } = axisContext(el, axis);
-  if (role === "main") {
+  if (!sized && role === "main") {
     const grow = Number.parseFloat(currentValue(el, "flex-grow", drafts));
     if (Number.isFinite(grow) && grow >= 1) return "fill";
   }
-  if (role === "cross" && draft === null) {
+  if (!sized && role === "cross") {
     if (normalizeAlign(currentValue(el, "align-self", drafts)) === "stretch") return "fill";
   }
+  if (draft !== null && HUG_KEYWORDS.has(draft)) return "hug";
   return "fixed";
 }
 
@@ -92,9 +113,8 @@ export function applySizeMode(
     case "fixed": {
       // Freeze the size the element has RIGHT NOW, then pin it — measure before the
       // defeat, or releasing a fill would first collapse the element and pin that.
-      const measured = Math.round(el.getBoundingClientRect()[axis]);
       defeatFillIfGrowing(el, axis, drafts);
-      drafts.apply(el, axis, `${measured}px`);
+      drafts.apply(el, axis, `${Math.round(measuredSize(el, axis, drafts))}px`);
       return;
     }
     case "hug": {
