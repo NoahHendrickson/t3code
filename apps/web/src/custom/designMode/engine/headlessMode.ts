@@ -37,6 +37,7 @@ import {
 } from "./nativeSource";
 import { applySizeMode } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
+import { defeatFillIfGrowing, draftSolidIfNone } from "./vendor/panel-specs";
 import { isEditable, unionClientRect } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
 import { MoveDrag } from "./vendor/move-drag";
@@ -74,6 +75,25 @@ const ARROW_DIRS: Record<string, "left" | "right" | "up" | "down" | undefined> =
   ArrowUp: "up",
   ArrowDown: "down",
 };
+
+/**
+ * The `onBeforeApply` hooks the Forge's own W/H and border-width rows carried (panel-specs'
+ * RowSpecs). The native panel replaced that panel, so its one edit path owes the same
+ * preparation — without it a width typed on a `flex-1` element is a silent no-op (basis 0%
+ * + grow still win the main axis) and a border width on a `border-style: none` element
+ * drafts and ships a border that never paints (PR #50/#52 review). The drag handles
+ * (resize.ts) and the size-mode menu (sizeMode.ts) already call the first of these.
+ */
+function prepareWrite(
+  el: TaggedElement,
+  property: DesignModeWritableKey,
+  drafts: DraftStore,
+): void {
+  if (property === "width" || property === "height") defeatFillIfGrowing(el, property, drafts);
+  else if (property.startsWith("border") && property.endsWith("-width")) {
+    draftSolidIfNone(el, property, drafts);
+  }
+}
 
 export class HeadlessDesignMode {
   active = false;
@@ -218,7 +238,10 @@ export class HeadlessDesignMode {
       .filter((el): el is TaggedElement => el !== null);
     if (els.length === 0) return;
     for (const el of els) this.handleBeforeEdit(el);
-    for (const el of els) this.drafts.apply(el, property, value);
+    for (const el of els) {
+      prepareWrite(el, property, this.drafts);
+      this.drafts.apply(el, property, value);
+    }
     this.handleEdited();
   }
 
