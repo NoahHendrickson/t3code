@@ -1,10 +1,13 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
+import { ArrowDownIcon, ArrowRightIcon, FoldHorizontalIcon, ScanIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
+import { cn } from "~/lib/utils";
 
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
+import { CornerRadiusIcon } from "./CornerRadiusIcon";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
 import type { DesignModeElementSnapshot, DesignModeWritableKey } from "../protocol";
@@ -18,9 +21,11 @@ const ALIGN_SELF_OPTIONS = ["auto", "flex-start", "center", "flex-end", "stretch
 
 type ApplyEdit = (property: DesignModeWritableKey, value: string) => void;
 
-/** Uniform radius plus an expandable per-corner grid — corner state resets with the
- * keyed fields container, like every other field-local state. */
-function RadiusSection({
+/** The Figma "Appearance" group: opacity, uniform radius, and an expandable per-corner
+ * grid behind the corners toggle (green while open, like the design's accent buttons).
+ * Corner state resets with the keyed fields container, like every other field-local
+ * state. */
+function AppearanceSection({
   styles,
   apply,
 }: {
@@ -29,7 +34,18 @@ function RadiusSection({
 }) {
   const [corners, setCorners] = useState(false);
   return (
-    <PanelSection title="Radius" className="grid-cols-2">
+    <PanelSection title="Appearance" className="grid-cols-[1fr_1fr_auto]">
+      <ScrubField
+        label="Op"
+        title="Opacity"
+        value={styles.opacity}
+        unit="none"
+        min={0}
+        max={1}
+        step={0.01}
+        precision={2}
+        onEdit={(v) => apply("opacity", v)}
+      />
       <ScrubField
         label="R"
         title="Corner radius (all corners)"
@@ -41,14 +57,21 @@ function RadiusSection({
         type="button"
         onClick={() => setCorners((open) => !open)}
         aria-pressed={corners ? "true" : "false"}
-        className="h-6 rounded bg-muted/40 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        title={corners ? "Uniform radius" : "Per-corner radius"}
+        className={cn(
+          "flex size-6 items-center justify-center rounded transition-colors",
+          corners
+            ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
+            : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
+        )}
       >
-        {corners ? "Uniform" : "Corners"}
+        <ScanIcon className="size-4" />
       </button>
       {corners ? (
         <>
           <ScrubField
             label="TL"
+            icon={<CornerRadiusIcon corner="tl" />}
             title="Top-left radius"
             value={styles["border-top-left-radius"]}
             min={0}
@@ -56,13 +79,16 @@ function RadiusSection({
           />
           <ScrubField
             label="TR"
+            icon={<CornerRadiusIcon corner="tr" />}
             title="Top-right radius"
             value={styles["border-top-right-radius"]}
             min={0}
             onEdit={(v) => apply("border-top-right-radius", v)}
           />
+          <div className="size-6" />
           <ScrubField
             label="BL"
+            icon={<CornerRadiusIcon corner="bl" />}
             title="Bottom-left radius"
             value={styles["border-bottom-left-radius"]}
             min={0}
@@ -70,6 +96,7 @@ function RadiusSection({
           />
           <ScrubField
             label="BR"
+            icon={<CornerRadiusIcon corner="br" />}
             title="Bottom-right radius"
             value={styles["border-bottom-right-radius"]}
             min={0}
@@ -188,19 +215,19 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
 
   return (
     <div
-      className="flex w-60 shrink-0 flex-col border-l border-border bg-background"
+      className="flex w-[325px] shrink-0 flex-col border-l border-border bg-[var(--fork-design-surface)]"
       data-fork-design-panel
     >
-      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
+      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-4">
         {first ? (
           <>
-            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+            <span className="rounded bg-[var(--fork-design-field)] px-1.5 py-0.5 font-mono text-[11px] text-foreground">
               {first.tag}
             </span>
             <span className="truncate font-mono text-[11px] text-muted-foreground">
               {tab.selection.length > 1
                 ? `${tab.selection.length} selected`
-                : (first.sourceLabel ?? "untagged")}
+                : (first.sourceLabel ?? "no source")}
             </span>
           </>
         ) : (
@@ -212,7 +239,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
         // Keyed by selection identity so field-local input state resets per selection.
         <div
           key={`${first.id}:${tab.selection.length}`}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3"
+          className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4"
         >
           <PanelSection title="Size" className="grid-cols-2">
             <ScrubField
@@ -245,14 +272,15 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               <>
                 <SegmentField
                   options={[
-                    { value: "row", label: "→", title: "Direction: row" },
-                    { value: "column", label: "↓", title: "Direction: column" },
+                    { value: "row", label: <ArrowRightIcon />, title: "Direction: row" },
+                    { value: "column", label: <ArrowDownIcon />, title: "Direction: column" },
                   ]}
                   value={first.styles["flex-direction"].startsWith("column") ? "column" : "row"}
                   onSelect={(v) => apply("flex-direction", v)}
                 />
                 <ScrubField
                   label="Gap"
+                  icon={<FoldHorizontalIcon />}
                   title="Gap"
                   tokenBasePx={spacingBase}
                   value={first.styles["row-gap"]}
@@ -332,7 +360,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             />
           </PanelSection>
 
-          <RadiusSection styles={first.styles} apply={apply} />
+          <AppearanceSection styles={first.styles} apply={apply} />
 
           <PanelSection title="Typography" className="grid-cols-2">
             <ScrubField
@@ -392,17 +420,6 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               value={first.styles["background-color"]}
               onEdit={(v) => apply("background-color", v)}
             />
-            <ScrubField
-              label="Op"
-              title="Opacity"
-              value={first.styles.opacity}
-              unit="none"
-              min={0}
-              max={1}
-              step={0.01}
-              precision={2}
-              onEdit={(v) => apply("opacity", v)}
-            />
           </PanelSection>
 
           <PanelSection title="Stroke" className="grid-cols-2">
@@ -432,14 +449,14 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
       ) : (
         <div className="flex min-h-0 flex-1 items-center px-4 text-center">
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {tab.tagged === false
-              ? "This app isn't tagged for Design mode — ask the agent to set up forge-mode's dev plugin."
+            {tab.sourceMode === "selector-only"
+              ? "Click an element in the preview to edit it. Source mapping isn't available on this page, so changes are sent with selector and text context instead of file locations."
               : "Click an element in the preview to edit it. Shift-click adds to the selection; double-click edits text."}
           </p>
         </div>
       )}
 
-      <footer className="shrink-0 space-y-1.5 border-t border-border px-3 py-2">
+      <footer className="shrink-0 space-y-1.5 border-t border-border px-4 py-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground">
             {tab.draftCount === 0

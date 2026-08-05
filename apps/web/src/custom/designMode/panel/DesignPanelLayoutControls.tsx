@@ -8,7 +8,9 @@ interface SegmentOption {
   readonly title: string;
 }
 
-/** Compact segmented control — flex direction, wrap, text-align. */
+/** Compact segmented control — flex direction, wrap, text-align. Figma's tab strip:
+ * a field-surface track whose selected segment lifts on a white/8% fill with a
+ * hairline border (see the design tokens in theme.custom.css). */
 export function SegmentField({
   options,
   value,
@@ -21,7 +23,7 @@ export function SegmentField({
   className?: string;
 }) {
   return (
-    <div className={cn("flex h-6 items-center gap-0.5 rounded bg-muted/40 p-0.5", className)}>
+    <div className={cn("flex h-6 items-center rounded bg-[var(--fork-design-field)]", className)}>
       {options.map((option) => (
         <button
           key={option.value}
@@ -30,9 +32,9 @@ export function SegmentField({
           aria-pressed={value === option.value ? "true" : "false"}
           onClick={() => onSelect(option.value)}
           className={cn(
-            "h-full flex-1 rounded-[3px] px-1 text-[10px] font-medium transition-colors",
+            "flex h-full flex-1 items-center justify-center rounded px-1 text-xs transition-colors [&_svg]:size-4",
             value === option.value
-              ? "bg-background text-foreground shadow-sm"
+              ? "border border-border bg-[var(--fork-design-selected)] text-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -58,8 +60,11 @@ export function SelectRow({
   onSelect: (value: string) => void;
 }) {
   return (
-    <label className="flex h-6 items-center gap-1 rounded bg-muted/40" title={title}>
-      <span className="w-7 shrink-0 select-none ps-1.5 text-[10px] font-medium text-muted-foreground">
+    <label
+      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
+      <span className="flex h-6 shrink-0 select-none items-center px-1.5 text-xs text-muted-foreground/70">
         {label}
       </span>
       <select
@@ -109,7 +114,7 @@ export function AlignMatrix({
   const align = normalizeAxisValue(alignItems);
   return (
     <div
-      className="grid size-[66px] grid-cols-3 grid-rows-3 gap-0.5 rounded bg-muted/40 p-1"
+      className="grid grid-cols-3 grid-rows-3 rounded bg-[var(--fork-design-field)]"
       role="group"
       aria-label="Alignment"
     >
@@ -125,14 +130,14 @@ export function AlignMatrix({
               title={`justify ${cellJustify} · align ${cellAlign}`}
               aria-pressed={active ? "true" : "false"}
               onClick={() => onChange(cellJustify, cellAlign)}
-              className="group flex items-center justify-center rounded-[3px] hover:bg-background/60"
+              className="group flex size-6 items-center justify-center rounded"
             >
               <span
                 className={cn(
-                  "rounded-full transition-all",
+                  "size-1 rounded-full transition-all",
                   active
-                    ? "size-2 bg-primary"
-                    : "size-1.5 bg-muted-foreground/40 group-hover:bg-muted-foreground/70",
+                    ? "bg-[var(--fork-design-accent)] shadow-[0_0_6px_1px_var(--fork-design-accent-bg),0_0_2px_var(--fork-design-accent)]"
+                    : "bg-muted-foreground/40 group-hover:bg-muted-foreground/70",
                 )}
               />
             </button>

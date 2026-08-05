@@ -29,6 +29,9 @@ const formatNumber = (value: number, precision: number): string => {
 interface ScrubFieldProps {
   /** Short leading label ("W", "T", "Size") — also the scrub handle. */
   label: string;
+  /** Optional icon rendered in the prefix cell instead of the text label (the label
+   * stays as the accessible name and scrub handle either way). */
+  icon?: React.ReactNode;
   title: string;
   /** The computed CSS value ("16px", "auto", "1.5"). Non-numeric values display as-is
    * and scrub from 0. */
@@ -53,6 +56,7 @@ interface ScrubFieldProps {
  */
 export function ScrubField({
   label,
+  icon,
   title,
   value,
   unit = "px",
@@ -121,15 +125,19 @@ export function ScrubField({
   };
 
   return (
-    <label className="flex h-6 items-center gap-1 rounded bg-muted/40" title={title}>
+    <label
+      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
       <span
-        className="w-7 shrink-0 cursor-ew-resize select-none ps-1.5 text-[10px] font-medium text-muted-foreground"
+        aria-label={label}
+        className="flex size-6 shrink-0 cursor-ew-resize select-none items-center justify-center text-xs text-muted-foreground/70 [&_svg]:size-4"
         onPointerDown={onLabelPointerDown}
         onPointerMove={onLabelPointerMove}
         onPointerUp={onLabelPointerUp}
         onPointerCancel={onLabelPointerUp}
       >
-        {label}
+        {icon ?? label}
       </span>
       <input
         value={text}
@@ -237,8 +245,11 @@ export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldPr
   );
 
   return (
-    <label className="flex h-6 items-center gap-1 rounded bg-muted/40" title={title}>
-      <span className="w-7 shrink-0 select-none ps-1.5 text-[10px] font-medium text-muted-foreground">
+    <label
+      className="flex h-6 items-center gap-1 overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
+      <span className="flex size-6 shrink-0 select-none items-center justify-center text-xs text-muted-foreground/70">
         {label}
       </span>
       <DesignColorPicker
@@ -268,19 +279,23 @@ export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldPr
 
 export function PanelSection({
   title,
+  action,
   children,
   className,
 }: {
   title: string;
+  /** Optional header-right accessory (the Figma layouts hang toggles there). */
+  action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <section className="space-y-1.5">
-      <h3 className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      <div className={cn("grid gap-1", className)}>{children}</div>
+    <section className="space-y-2">
+      <div className="flex min-h-5 items-center justify-between">
+        <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+        {action}
+      </div>
+      <div className={cn("grid gap-2", className)}>{children}</div>
     </section>
   );
 }
