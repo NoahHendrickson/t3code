@@ -6,8 +6,6 @@ const VALID = {
   filePath: "/src/components/Button.tsx",
   lineNumber: 12,
   columnNumber: 4,
-  componentName: "SubmitButton",
-  selector: "button.primary",
 };
 
 describe("normalizeResolvedSource", () => {
@@ -16,8 +14,6 @@ describe("normalizeResolvedSource", () => {
       file: "/src/components/Button.tsx",
       line: 12,
       column: 4,
-      componentName: "SubmitButton",
-      selector: "button.primary",
     });
   });
 
@@ -25,26 +21,13 @@ describe("normalizeResolvedSource", () => {
     expect(normalizeResolvedSource({ ...VALID, columnNumber: 0 })?.column).toBe(1);
   });
 
-  it("nulls missing optional labels rather than fabricating them", () => {
+  it("carries only the source location — extra react-grab context never crosses", () => {
     const result = normalizeResolvedSource({
-      filePath: "/src/App.tsx",
-      lineNumber: 1,
-      columnNumber: 1,
-      componentName: null,
-      selector: undefined,
-    });
-    expect(result).toEqual({
-      file: "/src/App.tsx",
-      line: 1,
-      column: 1,
-      componentName: null,
-      selector: null,
-    });
-  });
-
-  it("caps oversized optional labels", () => {
-    const result = normalizeResolvedSource({ ...VALID, componentName: "x".repeat(1000) });
-    expect(result?.componentName).toHaveLength(256);
+      ...VALID,
+      componentName: "SubmitButton",
+      selector: "button.primary",
+    } as typeof VALID);
+    expect(result).toEqual({ file: VALID.filePath, line: 12, column: 4 });
   });
 
   it("rejects contexts without a usable source location", () => {

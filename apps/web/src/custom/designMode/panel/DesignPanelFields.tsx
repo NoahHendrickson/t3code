@@ -133,13 +133,15 @@ export function ScrubField({
       title={title}
     >
       <span
-        aria-label={label}
         className="flex size-6 shrink-0 cursor-ew-resize select-none items-center justify-center text-xs text-muted-foreground/70 [&_svg]:size-4"
         onPointerDown={onLabelPointerDown}
         onPointerMove={onLabelPointerMove}
         onPointerUp={onLabelPointerUp}
         onPointerCancel={onLabelPointerUp}
       >
+        {/* sr-only beside an icon (not aria-label on the span) so the wrapping label's
+            accessible name comes from plain text content, not accname recursion. */}
+        {icon ? <span className="sr-only">{label}</span> : null}
         {icon ?? label}
       </span>
       <input
@@ -271,13 +273,13 @@ export function PairField({
       title={title}
     >
       <span
-        aria-label={label}
         className="flex size-6 shrink-0 cursor-ew-resize select-none items-center justify-center text-xs text-muted-foreground/70 [&_svg]:size-4"
         onPointerDown={onLabelPointerDown}
         onPointerMove={onLabelPointerMove}
         onPointerUp={onLabelPointerUp}
         onPointerCancel={onLabelPointerUp}
       >
+        {icon ? <span className="sr-only">{label}</span> : null}
         {icon ?? label}
       </span>
       <input

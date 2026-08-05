@@ -9,9 +9,9 @@
  * the same property react-grab already depends on for the element picker.
  *
  * The surface is deliberately tiny: one frozen object with one async `resolve`
- * method returning validated scalars (`file`/`line`/`column` plus optional
- * `componentName`/`selector`) or null. No Electron object, IPC function, Node
- * capability, React Fiber, or raw react-grab context ever crosses this boundary.
+ * method returning validated scalars (`file`/`line`/`column`) or null. No Electron
+ * object, IPC function, Node capability, React Fiber, or raw react-grab context
+ * ever crosses this boundary.
  */
 import { getElementContext } from "react-grab/primitives";
 
@@ -34,18 +34,27 @@ async function acquireSlot(): Promise<void> {
     activeResolutions += 1;
     return;
   }
+  // The slot is handed over by releaseSlot, not re-acquired here — decrementing and
+  // re-incrementing would open a microtask window where a fresh synchronous caller
+  // takes the fast path and the gate overshoots its cap (PR #54 review).
   await new Promise<void>((resolve) => waiters.push(resolve));
-  activeResolutions += 1;
 }
 
 function releaseSlot(): void {
-  activeResolutions -= 1;
-  waiters.shift()?.();
+  const next = waiters.shift();
+  if (next) next();
+  else activeResolutions -= 1;
 }
 
 /** Settled AND in-flight results share one promise per element — concurrent callers
- * (hover prefetch racing a click promotion) never trigger duplicate react-grab work. */
+ * (hover prefetch racing a click promotion) never trigger duplicate react-grab work.
+ * Successes cache for the element's lifetime; null results expire after a short TTL so
+ * an element resolved before React mounted its dev metadata (hydration, a lazy chunk)
+ * can succeed on a later ask instead of staying selector-only forever (PR #54 review).
+ * The TTL also bounds retry cost: at most one react-grab attempt per element per TTL. */
 const resolutionCache = new WeakMap<Element, Promise<DesignSourceResult | null>>();
+
+const NULL_RESULT_TTL_MS = 5000;
 
 async function resolveElement(element: Element): Promise<DesignSourceResult | null> {
   await acquireSlot();
@@ -71,6 +80,12 @@ function resolve(element: unknown): Promise<DesignSourceResult | null> {
   if (cached) return cached;
   const resolution = resolveElement(element);
   resolutionCache.set(element, resolution);
+  void resolution.then((result) => {
+    if (result !== null) return;
+    window.setTimeout(() => {
+      if (resolutionCache.get(element) === resolution) resolutionCache.delete(element);
+    }, NULL_RESULT_TTL_MS);
+  });
   return resolution;
 }
 

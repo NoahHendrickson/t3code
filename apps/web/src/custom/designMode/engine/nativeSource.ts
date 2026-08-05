@@ -14,8 +14,10 @@
  * Results are treated as untrusted input (the resolver global lives on a page-shared
  * globalThis): validated here, and later sanitized again by the request builder like any
  * other page-controlled `data-dc-source`. Failures — no resolver (web/mobile hosts, old
- * preloads), no React metadata, hostile shapes — cache as a per-element null so pointer
- * traffic can never retry-storm, and the element simply stays selector-addressed.
+ * preloads), no React metadata, hostile shapes — leave the element selector-addressed but
+ * are retryable: a later hover/selection/send asks again, and the preload's own cache
+ * (which holds a settled null for a short TTL) absorbs the repeats, so pointer traffic
+ * still can't retry-storm react-grab.
  */
 import type { TaggedElement } from "./vendor/source";
 
@@ -74,9 +76,26 @@ export function normalizeNativeSource(value: unknown): string | null {
   return `${v.file}:${v.line}:${Math.max(1, v.column)}`;
 }
 
-/** One attempt per element for the element's lifetime — success, failure, and in-flight
- * all share the promise, so hover/click/send callers coalesce for free. */
+/** One attempt per element at a time — success and in-flight share the promise, so
+ * hover/click/send callers coalesce for free. Failures are dropped on settle so a later
+ * ask can retry (an element hovered before React's dev metadata mounts should not stay
+ * selector-only forever); the preload's short-TTL null cache bounds the retry cost. */
 const attempts = new WeakMap<TaggedElement, Promise<boolean>>();
+
+/** The elements a send or selection actually names: each element itself plus the parent
+ * and adjacent siblings the structural asks (move/absolute) reference. One helper for
+ * BOTH the send barrier and selection promotion so the two fan-outs never drift. */
+export function sourceContextTargets(els: Iterable<TaggedElement>): Set<TaggedElement> {
+  const targets = new Set<TaggedElement>();
+  for (const el of els) {
+    if (!el.isConnected) continue;
+    targets.add(el);
+    for (const context of [el.parentElement, el.previousElementSibling, el.nextElementSibling]) {
+      if (context instanceof HTMLElement || context instanceof SVGElement) targets.add(context);
+    }
+  }
+  return targets;
+}
 
 /** Resolves `el`'s source through the native bridge and, on success, synthesizes the
  * canonical tag. Resolves true when the element ends up tagged (either way), false when
@@ -104,6 +123,9 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
     return true;
   })();
   attempts.set(el, attempt);
+  void attempt.then((tagged) => {
+    if (!tagged && attempts.get(el) === attempt) attempts.delete(el);
+  });
   return attempt;
 }
 
@@ -115,8 +137,15 @@ export async function awaitResolutions(
 ): Promise<void> {
   const pending = els.filter((el) => !el.dataset?.dcSource).map((el) => resolveAndTag(el));
   if (pending.length === 0) return;
-  await Promise.race([
-    Promise.allSettled(pending),
-    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
-  ]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.allSettled(pending),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }

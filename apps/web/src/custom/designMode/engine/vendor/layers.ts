@@ -21,6 +21,16 @@ const OPAQUE_TAGS = new Set(['svg'])
 /* t3-fork: native-source mode — non-visual noise skipped entirely by the untagged walk. */
 const NOISE_TAGS = new Set(['script', 'style', 'link', 'meta', 'template', 'noscript', 'title'])
 
+/* t3-fork: the host's serialization cap, threaded into the walk so it stops MINTING at
+ * the cap instead of allocating (and labelling) a whole-DOM tree the serializer would
+ * drop anyway — the untagged walk mints per element, so on a deep page the difference is
+ * O(cap) vs O(DOM) per rebuild (PR #54 review). `truncated` means a mintable node was
+ * actually dropped: a tree of exactly the cap's size exhausts `left` without setting it. */
+export interface LayerBudget {
+  left: number
+  truncated: boolean
+}
+
 /**
  * Curated tree walk (Figma pivot P2, spec §5): a node per tagged element under `root`;
  * untagged elements contribute nothing but are descended THROUGH, so their tagged
@@ -33,9 +43,14 @@ const NOISE_TAGS = new Set(['script', 'style', 'link', 'meta', 'template', 'nosc
  * Forge tags there is no designer structure to curate, so every visible element (minus
  * NOISE_TAGS; svg still opaque) mints a node. Tagged pages keep the curated walk exactly.
  */
-export function buildLayerTree(root: Element, includeUntagged = false): LayerNode[] {
+export function buildLayerTree(
+  root: Element,
+  includeUntagged = false,
+  budget?: LayerBudget,
+): LayerNode[] {
   const out: LayerNode[] = []
   for (const child of root.children) {
+    if (budget?.truncated) break
     const el = child as TaggedElement
     const tag = child.tagName.toLowerCase()
     const opaque = OPAQUE_TAGS.has(tag)
@@ -44,13 +59,18 @@ export function buildLayerTree(root: Element, includeUntagged = false): LayerNod
       Boolean(el.dataset?.dcSource) ||
       (includeUntagged && (child instanceof HTMLElement || child instanceof SVGElement))
     if (mints) {
+      if (budget && budget.left <= 0) {
+        budget.truncated = true
+        break
+      }
+      if (budget) budget.left -= 1
       out.push({
         el,
         label: layerLabel(el),
-        children: opaque ? [] : buildLayerTree(child, includeUntagged),
+        children: opaque ? [] : buildLayerTree(child, includeUntagged, budget),
       })
     } else if (!opaque) {
-      out.push(...buildLayerTree(child, includeUntagged))
+      out.push(...buildLayerTree(child, includeUntagged, budget))
     }
   }
   return out

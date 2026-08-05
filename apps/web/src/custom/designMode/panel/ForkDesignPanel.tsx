@@ -4,6 +4,8 @@ import {
   ArrowRightIcon,
   FoldHorizontalIcon,
   Grid2x2Icon,
+  Maximize2Icon,
+  Minimize2Icon,
   ScanIcon,
 } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -242,27 +244,36 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
     useDesignModeStore.getState().setComparing(runtimeTabId, false);
   }, [runtimeTabId]);
 
+  // buildSend can block up to the guest's native-source grace (~1.5s) — the flag both
+  // shows the wait honestly on the button and makes a double-click during it a no-op
+  // instead of a duplicate attachment pill.
+  const [sending, setSending] = useState(false);
   const onSend = useCallback(async () => {
-    if (!runtimeTabId) return;
-    const result = await designModeBridge.buildSend(runtimeTabId);
-    if (!result) {
-      toastManager.add({ type: "info", title: "No changes to send" });
-      return;
+    if (!runtimeTabId || sending) return;
+    setSending(true);
+    try {
+      const result = await designModeBridge.buildSend(runtimeTabId);
+      if (!result) {
+        toastManager.add({ type: "info", title: "No changes to send" });
+        return;
+      }
+      // Attachment-style delivery: the request lands as a composer pill
+      // (ForkComposerDesignChanges) rather than as prompt text — the full markdown is
+      // appended to the outgoing message by ChatView's fenced send path, so the composer
+      // stays readable while the agent still gets the complete deterministic request.
+      useDesignChangeDraftStore.getState().add(threadRef, result);
+      toastManager.add({
+        type: "success",
+        title:
+          result.elementCount === 1
+            ? "Design change attached"
+            : `Design changes for ${result.elementCount} elements attached`,
+        description: "It rides along with your next message — add a comment or just press Enter.",
+      });
+    } finally {
+      setSending(false);
     }
-    // Attachment-style delivery: the request lands as a composer pill
-    // (ForkComposerDesignChanges) rather than as prompt text — the full markdown is
-    // appended to the outgoing message by ChatView's fenced send path, so the composer
-    // stays readable while the agent still gets the complete deterministic request.
-    useDesignChangeDraftStore.getState().add(threadRef, result);
-    toastManager.add({
-      type: "success",
-      title:
-        result.elementCount === 1
-          ? "Design change attached"
-          : `Design changes for ${result.elementCount} elements attached`,
-      description: "It rides along with your next message — add a comment or just press Enter.",
-    });
-  }, [runtimeTabId, threadRef]);
+  }, [runtimeTabId, sending, threadRef]);
 
   const spacingBase = tab.tokens?.spacingBasePx ?? null;
 
@@ -423,6 +434,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
                     />
                     <ScrubField
                       label="Grow"
+                      icon={<Maximize2Icon />}
                       title="Flex grow"
                       value={first.styles["flex-grow"]}
                       unit="none"
@@ -432,7 +444,8 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
                       onEdit={(v) => apply("flex-grow", v)}
                     />
                     <ScrubField
-                      label="Shrk"
+                      label="Shrink"
+                      icon={<Minimize2Icon />}
                       title="Flex shrink"
                       value={first.styles["flex-shrink"]}
                       unit="none"
@@ -615,11 +628,11 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
           size="sm"
           className="w-full"
           onClick={() => void onSend()}
-          disabled={tab.draftCount === 0}
+          disabled={tab.draftCount === 0 || sending}
           type="button"
           data-fork-design-panel-send
         >
-          Send to chat
+          {sending ? "Preparing…" : "Send to chat"}
         </Button>
       </footer>
     </div>

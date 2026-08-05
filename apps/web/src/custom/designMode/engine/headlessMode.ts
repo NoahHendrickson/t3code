@@ -29,6 +29,7 @@ import {
   isSynthesizedSource,
   markSynthesizedSource,
   resolveAndTag,
+  sourceContextTargets,
 } from "./nativeSource";
 import { applySizeMode } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
@@ -240,17 +241,10 @@ export class HeadlessDesignMode {
     // element, plus the parent/sibling context the structural asks name, and give the
     // batch a bounded wait. A send moments after a fast click usually still gets its
     // file:line:col; past the cap each unresolved element ships selector/text context.
-    const sourceTargets = new Set<TaggedElement>();
-    for (const el of this.drafts.draftedElements()) {
-      if (!el.isConnected) continue;
-      sourceTargets.add(el);
-      for (const context of [el.parentElement, el.previousElementSibling, el.nextElementSibling]) {
-        if (context instanceof HTMLElement || context instanceof SVGElement) {
-          sourceTargets.add(context);
-        }
-      }
-    }
-    await awaitResolutions([...sourceTargets], SEND_SOURCE_WAIT_MS);
+    await awaitResolutions(
+      [...sourceContextTargets(this.drafts.draftedElements())],
+      SEND_SOURCE_WAIT_MS,
+    );
     const { request } = buildChangeRequestWithElements(this.drafts);
     if (request.elements.length === 0) return null;
     const opLabels: Record<string, string> = {
@@ -404,7 +398,10 @@ export class HeadlessDesignMode {
   /** Source-first, selector-fallback locate for restored entries. A Forge tag re-renders
    * after a reload; a T3-synthesized one does not — its entry carries a css path instead,
    * and a selector hit re-earns its synthesized tag so every downstream consumer sees the
-   * canonical address again. */
+   * canonical address again. The selector is trusted only when it matches exactly one
+   * element: cssPath is depth-capped and unanchored — a pattern, not an address — and
+   * restoring onto the wrong element would silently draft (and stamp a synthesized
+   * source on) some other node. A missed restore is recoverable; a wrong one isn't. */
   private locatePersisted(entry: {
     dcSource: string;
     index: number;
@@ -417,7 +414,9 @@ export class HeadlessDesignMode {
     if (!entry.selector) return null;
     let candidate: Element | null = null;
     try {
-      candidate = document.querySelector(entry.selector);
+      const hits = document.querySelectorAll(entry.selector);
+      if (hits.length !== 1) return null;
+      candidate = hits[0] ?? null;
     } catch {
       return null; // a malformed persisted selector must not break the drain
     }
@@ -526,15 +525,7 @@ export class HeadlessDesignMode {
    * element gaining its source re-emits the snapshot (panel label) and upgrades the
    * persisted address; context elements resolve silently. */
   private promoteSourceResolution(els: readonly TaggedElement[]): void {
-    const targets = new Set<TaggedElement>();
-    for (const el of els) {
-      if (!el.isConnected) continue;
-      targets.add(el);
-      for (const context of [el.parentElement, el.previousElementSibling, el.nextElementSibling]) {
-        if (context instanceof HTMLElement || context instanceof SVGElement) targets.add(context);
-      }
-    }
-    for (const target of targets) {
+    for (const target of sourceContextTargets(els)) {
       if (target.dataset?.dcSource) continue;
       void resolveAndTag(target).then((tagged) => {
         if (!tagged || !this.active || !this.selection.includes(target)) return;

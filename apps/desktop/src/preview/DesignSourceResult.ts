@@ -10,18 +10,14 @@
 export const DESIGN_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
 
 const MAX_FILE_LENGTH = 4096;
-const MAX_LABEL_LENGTH = 256;
 
+/** Exactly what the engine consumes — it synthesizes a canonical `file:line:col` tag and
+ * derives labels/selectors itself, so nothing else crosses the bridge (PR #54 review). */
 export interface DesignSourceResult {
   file: string;
   line: number;
   column: number;
-  componentName: string | null;
-  selector: string | null;
 }
-
-const boundedLabel = (value: unknown): string | null =>
-  typeof value === "string" && value.length > 0 ? value.slice(0, MAX_LABEL_LENGTH) : null;
 
 /**
  * Validates and normalizes a react-grab element context into the resolver's result
@@ -36,8 +32,6 @@ export function normalizeResolvedSource(
     filePath?: unknown;
     lineNumber?: unknown;
     columnNumber?: unknown;
-    componentName?: unknown;
-    selector?: unknown;
   } | null,
 ): DesignSourceResult | null {
   if (!value || typeof value !== "object") return null;
@@ -57,7 +51,5 @@ export function normalizeResolvedSource(
     file: filePath,
     line: lineNumber,
     column: Math.max(1, columnNumber),
-    componentName: boundedLabel(value.componentName),
-    selector: boundedLabel(value.selector),
   };
 }
