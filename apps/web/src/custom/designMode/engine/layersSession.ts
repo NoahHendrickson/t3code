@@ -1,19 +1,18 @@
 import type { DesignModeLayerNode } from "../protocol";
 import type { ElementIdRegistry } from "./idRegistry";
-import { buildLayerTree, type LayerNode } from "./vendor/layers";
+import { hasForgeTags } from "./nativeSource";
+import { buildLayerTree, type LayerBudget, type LayerNode } from "./vendor/layers";
 
 /** Quiet-window for MutationObserver-driven layers rebuilds — HMR re-renders land as
  * bursts (same rationale as the Forge's LayersTree REFRESH_DEBOUNCE_MS). */
 const LAYERS_DEBOUNCE_MS = 250;
 
-/** Serialization cap for one layers message — a deep page must not turn every mutation
- * into a multi-hundred-KB console line. The host renders a truncation note. */
+/** Node cap for one layers message — a deep page must not turn every mutation into a
+ * multi-hundred-KB console line. Enforced inside the WALK (buildLayerTree's budget), so
+ * an untagged page's full-DOM walk also allocates and labels at most this many nodes per
+ * rebuild instead of building the whole tree first (PR #54 review). The host renders a
+ * truncation note. */
 const LAYERS_NODE_CAP = 400;
-
-interface SerializeBudget {
-  left: number;
-  truncated: boolean;
-}
 
 /**
  * Owns the layers subsystem end to end: the body MutationObserver (exists only between
@@ -64,32 +63,26 @@ export class LayersSession {
     }, LAYERS_DEBOUNCE_MS);
   };
 
-  private serialize(nodes: LayerNode[], budget: SerializeBudget): DesignModeLayerNode[] {
-    const out: DesignModeLayerNode[] = [];
-    for (const node of nodes) {
-      // Truncation means nodes were actually DROPPED — a tree of exactly the cap's size
-      // consumes the whole budget but never takes this branch, so it reports complete.
-      if (budget.left <= 0) {
-        budget.truncated = true;
-        break;
-      }
-      budget.left -= 1;
-      out.push({
-        id: this.registry.mintForLayers(node.el),
-        tag: node.el.tagName.toLowerCase(),
-        label: node.label,
-        children: this.serialize(node.children, budget),
-      });
-    }
-    return out;
+  /** Mints host ids for the (already budget-capped) tree. */
+  private serialize(nodes: LayerNode[]): DesignModeLayerNode[] {
+    return nodes.map((node) => ({
+      id: this.registry.mintForLayers(node.el),
+      tag: node.el.tagName.toLowerCase(),
+      label: node.label,
+      children: this.serialize(node.children),
+    }));
   }
 
   /** Rebuilds + emits the curated layers tree; change-gated so mutation bursts that leave
    * the tree's shape (and labels) identical cost one JSON compare, not a bridge message. */
   private emit = (): void => {
     this.registry.clearLayersScope();
-    const budget: SerializeBudget = { left: LAYERS_NODE_CAP, truncated: false };
-    const roots = this.serialize(buildLayerTree(document.body), budget);
+    const budget: LayerBudget = { left: LAYERS_NODE_CAP, truncated: false };
+    // Untagged pages get the full-DOM walk; any PROJECT Forge tag keeps the curated one.
+    // Re-read per emit (cost: one querySelector) so a framework that mounts its tagged
+    // tree after the first emit flips the mode without a restart. Synthesized tags are
+    // excluded by hasForgeTags, so T3's own lazy tagging can never collapse the tree.
+    const roots = this.serialize(buildLayerTree(document.body, !hasForgeTags(), budget));
     const json = JSON.stringify(roots);
     if (json === this.lastJson) return;
     this.lastJson = json;

@@ -2,6 +2,7 @@ import {
   DESIGN_MODE_GLOBAL,
   parseDesignChangeRequestPayload,
   type DesignChangeRequestPayload,
+  type DesignModeSizeMode,
   type DesignModeWritableKey,
 } from "./protocol";
 
@@ -44,6 +45,14 @@ export const designModeBridge = {
     value: string,
   ): void {
     fire(runtimeTabId, "applyDraft", [ids, property, value]);
+  },
+  setSizeMode(
+    runtimeTabId: string,
+    ids: readonly number[],
+    axis: "width" | "height",
+    mode: DesignModeSizeMode,
+  ): void {
+    fire(runtimeTabId, "setSizeMode", [ids, axis, mode]);
   },
   discardAll(runtimeTabId: string): void {
     fire(runtimeTabId, "discardAll", []);

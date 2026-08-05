@@ -18,6 +18,19 @@ export interface LayerNode {
  * Icon row. Figma treats an icon as one leaf layer; so do we (PR #45 review). */
 const OPAQUE_TAGS = new Set(['svg'])
 
+/* t3-fork: native-source mode — non-visual noise skipped entirely by the untagged walk. */
+const NOISE_TAGS = new Set(['script', 'style', 'link', 'meta', 'template', 'noscript', 'title'])
+
+/* t3-fork: the host's serialization cap, threaded into the walk so it stops MINTING at
+ * the cap instead of allocating (and labelling) a whole-DOM tree the serializer would
+ * drop anyway — the untagged walk mints per element, so on a deep page the difference is
+ * O(cap) vs O(DOM) per rebuild (PR #54 review). `truncated` means a mintable node was
+ * actually dropped: a tree of exactly the cap's size exhausts `left` without setting it. */
+export interface LayerBudget {
+  left: number
+  truncated: boolean
+}
+
 /**
  * Curated tree walk (Figma pivot P2, spec §5): a node per tagged element under `root`;
  * untagged elements contribute nothing but are descended THROUGH, so their tagged
@@ -25,16 +38,39 @@ const OPAQUE_TAGS = new Set(['svg'])
  * designer's structure, not the DOM's wrapper noise (panel-patterns anti-pattern: a raw
  * DOM tree as a layers panel). The overlay host can never appear: it mounts on
  * documentElement and walks start at body.
+ *
+ * t3-fork: `includeUntagged` is native-source mode's walk — on a page with no project
+ * Forge tags there is no designer structure to curate, so every visible element (minus
+ * NOISE_TAGS; svg still opaque) mints a node. Tagged pages keep the curated walk exactly.
  */
-export function buildLayerTree(root: Element): LayerNode[] {
+export function buildLayerTree(
+  root: Element,
+  includeUntagged = false,
+  budget?: LayerBudget,
+): LayerNode[] {
   const out: LayerNode[] = []
   for (const child of root.children) {
+    if (budget?.truncated) break
     const el = child as TaggedElement
-    const opaque = OPAQUE_TAGS.has(child.tagName.toLowerCase())
-    if (el.dataset?.dcSource) {
-      out.push({ el, label: layerLabel(el), children: opaque ? [] : buildLayerTree(child) })
+    const tag = child.tagName.toLowerCase()
+    const opaque = OPAQUE_TAGS.has(tag)
+    if (NOISE_TAGS.has(tag)) continue
+    const mints =
+      Boolean(el.dataset?.dcSource) ||
+      (includeUntagged && (child instanceof HTMLElement || child instanceof SVGElement))
+    if (mints) {
+      if (budget && budget.left <= 0) {
+        budget.truncated = true
+        break
+      }
+      if (budget) budget.left -= 1
+      out.push({
+        el,
+        label: layerLabel(el),
+        children: opaque ? [] : buildLayerTree(child, includeUntagged, budget),
+      })
     } else if (!opaque) {
-      out.push(...buildLayerTree(child))
+      out.push(...buildLayerTree(child, includeUntagged, budget))
     }
   }
   return out
@@ -82,6 +118,9 @@ function directText(el: Element): string {
 export function layerLabel(el: TaggedElement): string {
   const t = directText(el)
   if (t) return t.length > LABEL_CAP ? `${t.slice(0, LABEL_CAP)}…` : t
+  /* t3-fork: an id beats the generic tag vocabulary — most valuable on untagged pages,
+   * where it is often the only human-authored name a wrapper has. */
+  if (el.id) return el.id.length > LABEL_CAP ? `#${el.id.slice(0, LABEL_CAP)}…` : `#${el.id}`
   const tag = el.tagName.toLowerCase()
   return TAG_LABELS[tag] ?? tag
 }

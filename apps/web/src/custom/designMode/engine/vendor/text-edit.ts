@@ -1,7 +1,8 @@
 import type { DraftStore } from './drafts'
 import { isEditable } from './canvas'
 import { isTextLeaf } from './panel-readers'
-import { findTaggedElement, type TaggedElement } from './source'
+/* t3-fork: findSelectableElement (was findTaggedElement) — untagged elements are editable in native-source mode. */
+import { findSelectableElement, type TaggedElement } from './source'
 
 /** What TextEditMode needs from its host (DesignMode) — selection, the ripple hooks, and
  * hover chrome. Injected so the mode stays free of DesignMode/Overlay imports. */
@@ -54,7 +55,7 @@ export class TextEditMode {
     // selectNodeContents range, and the first keystroke deletes it from the live DOM
     // (PR #44 review).
     if (isEditable(target)) return null
-    const el = findTaggedElement(target as Element)
+    const el = findSelectableElement(target as Element)
     // isTextLeaf, NOT hasDirectText: the flat-textContent draft model destroys element
     // children of mixed-content elements — see panel-readers.ts (PR #44 review).
     if (!el || !isTextLeaf(el)) return null

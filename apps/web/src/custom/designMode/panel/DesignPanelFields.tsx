@@ -29,6 +29,9 @@ const formatNumber = (value: number, precision: number): string => {
 interface ScrubFieldProps {
   /** Short leading label ("W", "T", "Size") — also the scrub handle. */
   label: string;
+  /** Optional icon rendered in the prefix cell instead of the text label (the label
+   * stays as the accessible name and scrub handle either way). */
+  icon?: React.ReactNode;
   title: string;
   /** The computed CSS value ("16px", "auto", "1.5"). Non-numeric values display as-is
    * and scrub from 0. */
@@ -43,6 +46,8 @@ interface ScrubFieldProps {
   /** The previewed app's --spacing base (px). Enables the Tailwind step badge and the
    * scale-ladder picker on spacing-shaped fields. */
   tokenBasePx?: number | null;
+  /** Optional trailing control docked at the field's right edge (the W/H size-mode menu). */
+  suffix?: React.ReactNode;
   onEdit: (cssValue: string) => void;
 }
 
@@ -53,6 +58,7 @@ interface ScrubFieldProps {
  */
 export function ScrubField({
   label,
+  icon,
   title,
   value,
   unit = "px",
@@ -61,6 +67,7 @@ export function ScrubField({
   step = 1,
   precision = 0,
   tokenBasePx,
+  suffix,
   onEdit,
 }: ScrubFieldProps) {
   const parsed = Number.parseFloat(value);
@@ -121,15 +128,21 @@ export function ScrubField({
   };
 
   return (
-    <label className="flex h-6 items-center gap-1 rounded bg-muted/40" title={title}>
+    <label
+      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
       <span
-        className="w-7 shrink-0 cursor-ew-resize select-none ps-1.5 text-[10px] font-medium text-muted-foreground"
+        className="flex size-6 shrink-0 cursor-ew-resize select-none items-center justify-center text-xs text-muted-foreground/70 [&_svg]:size-4"
         onPointerDown={onLabelPointerDown}
         onPointerMove={onLabelPointerMove}
         onPointerUp={onLabelPointerUp}
         onPointerCancel={onLabelPointerUp}
       >
-        {label}
+        {/* sr-only beside an icon (not aria-label on the span) so the wrapping label's
+            accessible name comes from plain text content, not accname recursion. */}
+        {icon ? <span className="sr-only">{label}</span> : null}
+        {icon ?? label}
       </span>
       <input
         value={text}
@@ -147,6 +160,143 @@ export function ScrubField({
           basePx={tokenBasePx}
           currentPx={Number.parseFloat(text)}
           onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx)}
+        />
+      ) : null}
+      {suffix}
+    </label>
+  );
+}
+
+interface PairFieldProps {
+  /** Accessible name and scrub handle when no icon is given. */
+  label: string;
+  icon?: React.ReactNode;
+  title: string;
+  /** Computed CSS for the pair, in write order (e.g. [padding-left, padding-right]). */
+  values: readonly [string, string];
+  min?: number;
+  tokenBasePx?: number | null;
+  /** Writes both halves. A single typed value lands on both. */
+  onEdit: (first: string, second: string) => void;
+}
+
+/** Renders a value pair the Figma way: "8" while both halves agree, "8, 16" when split. */
+function formatPair(first: number, second: number): string {
+  return first === second ? String(first) : `${first}, ${second}`;
+}
+
+/**
+ * The paired spacing control from the Figma design — one field drives two longhand
+ * properties (left/right or top/bottom padding). Typing "8" sets both; "8, 16" splits
+ * them (first value = left/top). Scrubbing the prefix cell moves BOTH halves by the
+ * drag delta, preserving an asymmetric split instead of collapsing it.
+ */
+export function PairField({
+  label,
+  icon,
+  title,
+  values,
+  min,
+  tokenBasePx,
+  onEdit,
+}: PairFieldProps) {
+  const parse = (value: string): number => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const current: [number, number] = [parse(values[0]), parse(values[1])];
+  const [text, setText] = useState(formatPair(current[0], current[1]));
+  const scrub = useRef<{ pointerId: number; startX: number; start: [number, number] } | null>(null);
+
+  const clamp = useCallback(
+    (v: number) => Math.max(min ?? Number.NEGATIVE_INFINITY, Math.round(v)),
+    [min],
+  );
+
+  const commit = useCallback(
+    (first: number, second: number) => {
+      const a = clamp(first);
+      const b = clamp(second);
+      setText(formatPair(a, b));
+      onEdit(`${a}px`, `${b}px`);
+    },
+    [clamp, onEdit],
+  );
+
+  /** "8" → both; "8, 16" (or "8 16") → first/second; anything unparsable reverts. */
+  const commitText = useCallback(() => {
+    const numbers = text
+      .split(/[,\s]+/u)
+      .filter(Boolean)
+      .map((part) => Number.parseFloat(part))
+      .filter((value) => Number.isFinite(value));
+    if (numbers.length === 0) {
+      setText(formatPair(current[0], current[1]));
+      return;
+    }
+    commit(numbers[0]!, numbers[1] ?? numbers[0]!);
+  }, [commit, current, text]);
+
+  const onLabelPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    scrub.current = { pointerId: event.pointerId, startX: event.clientX, start: current };
+  };
+
+  const onLabelPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
+    const active = scrub.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    const dx = (event.clientX - active.startX) * (event.shiftKey ? 10 : 1);
+    commit(active.start[0] + dx, active.start[1] + dx);
+  };
+
+  const onLabelPointerUp = (event: PointerEvent<HTMLSpanElement>) => {
+    if (scrub.current?.pointerId === event.pointerId) scrub.current = null;
+  };
+
+  const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      commitText();
+      event.currentTarget.blur();
+      return;
+    }
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const delta = (event.key === "ArrowUp" ? 1 : -1) * (event.shiftKey ? 10 : 1);
+      commit(current[0] + delta, current[1] + delta);
+    }
+  };
+
+  return (
+    <label
+      className="flex h-6 items-center overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
+      <span
+        className="flex size-6 shrink-0 cursor-ew-resize select-none items-center justify-center text-xs text-muted-foreground/70 [&_svg]:size-4"
+        onPointerDown={onLabelPointerDown}
+        onPointerMove={onLabelPointerMove}
+        onPointerUp={onLabelPointerUp}
+        onPointerCancel={onLabelPointerUp}
+      >
+        {icon ? <span className="sr-only">{label}</span> : null}
+        {icon ?? label}
+      </span>
+      <input
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={onInputKeyDown}
+        onBlur={commitText}
+        spellCheck={false}
+        className="h-full w-full min-w-0 bg-transparent text-xs text-foreground outline-none"
+      />
+      {tokenBasePx != null && tokenBasePx > 0 ? (
+        <SpacingTokenAffordance
+          basePx={tokenBasePx}
+          // Asymmetric pairs read as off-scale (NaN never matches a step); picking from
+          // the ladder collapses the pair onto the chosen step, like typing one value.
+          currentPx={current[0] === current[1] ? current[0] : Number.NaN}
+          onPickStep={(scaleStep) => commit(scaleStep * tokenBasePx, scaleStep * tokenBasePx)}
         />
       ) : null}
     </label>
@@ -237,8 +387,11 @@ export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldPr
   );
 
   return (
-    <label className="flex h-6 items-center gap-1 rounded bg-muted/40" title={title}>
-      <span className="w-7 shrink-0 select-none ps-1.5 text-[10px] font-medium text-muted-foreground">
+    <label
+      className="flex h-6 items-center gap-1 overflow-hidden rounded bg-[var(--fork-design-field)]"
+      title={title}
+    >
+      <span className="flex size-6 shrink-0 select-none items-center justify-center text-xs text-muted-foreground/70">
         {label}
       </span>
       <DesignColorPicker
@@ -268,19 +421,23 @@ export function ColorField({ label, title, value, tokens, onEdit }: ColorFieldPr
 
 export function PanelSection({
   title,
+  action,
   children,
   className,
 }: {
   title: string;
+  /** Optional header-right accessory (the Figma layouts hang toggles there). */
+  action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <section className="space-y-1.5">
-      <h3 className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      <div className={cn("grid gap-1", className)}>{children}</div>
+    <section className="space-y-2">
+      <div className="flex min-h-5 items-center justify-between">
+        <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+        {action}
+      </div>
+      <div className={cn("grid gap-2", className)}>{children}</div>
     </section>
   );
 }

@@ -1,14 +1,30 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  FoldHorizontalIcon,
+  Grid2x2Icon,
+  Maximize2Icon,
+  Minimize2Icon,
+  ScanIcon,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
+import { cn } from "~/lib/utils";
 
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
+import { CornerRadiusIcon } from "./CornerRadiusIcon";
+import { PaddingIcon } from "./PaddingIcon";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
-import type { DesignModeElementSnapshot, DesignModeWritableKey } from "../protocol";
-import { ColorField, PanelSection, ScrubField } from "./DesignPanelFields";
+import type {
+  DesignModeElementSnapshot,
+  DesignModeSizeMode,
+  DesignModeWritableKey,
+} from "../protocol";
+import { ColorField, PairField, PanelSection, ScrubField } from "./DesignPanelFields";
 import { AlignMatrix, SegmentField, SelectRow } from "./DesignPanelLayoutControls";
 
 const FONT_WEIGHTS = ["100", "200", "300", "400", "500", "600", "700", "800", "900"] as const;
@@ -18,9 +34,11 @@ const ALIGN_SELF_OPTIONS = ["auto", "flex-start", "center", "flex-end", "stretch
 
 type ApplyEdit = (property: DesignModeWritableKey, value: string) => void;
 
-/** Uniform radius plus an expandable per-corner grid — corner state resets with the
- * keyed fields container, like every other field-local state. */
-function RadiusSection({
+/** The Figma "Appearance" group: opacity, uniform radius, and an expandable per-corner
+ * grid behind the corners toggle (green while open, like the design's accent buttons).
+ * Corner state resets with the keyed fields container, like every other field-local
+ * state. */
+function AppearanceSection({
   styles,
   apply,
 }: {
@@ -29,7 +47,18 @@ function RadiusSection({
 }) {
   const [corners, setCorners] = useState(false);
   return (
-    <PanelSection title="Radius" className="grid-cols-2">
+    <PanelSection title="Appearance" className="grid-cols-[1fr_1fr_auto]">
+      <ScrubField
+        label="Op"
+        title="Opacity"
+        value={styles.opacity}
+        unit="none"
+        min={0}
+        max={1}
+        step={0.01}
+        precision={2}
+        onEdit={(v) => apply("opacity", v)}
+      />
       <ScrubField
         label="R"
         title="Corner radius (all corners)"
@@ -41,14 +70,21 @@ function RadiusSection({
         type="button"
         onClick={() => setCorners((open) => !open)}
         aria-pressed={corners ? "true" : "false"}
-        className="h-6 rounded bg-muted/40 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        title={corners ? "Uniform radius" : "Per-corner radius"}
+        className={cn(
+          "flex size-6 items-center justify-center rounded transition-colors",
+          corners
+            ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
+            : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
+        )}
       >
-        {corners ? "Uniform" : "Corners"}
+        <ScanIcon className="size-4" />
       </button>
       {corners ? (
         <>
           <ScrubField
             label="TL"
+            icon={<CornerRadiusIcon corner="tl" />}
             title="Top-left radius"
             value={styles["border-top-left-radius"]}
             min={0}
@@ -56,13 +92,16 @@ function RadiusSection({
           />
           <ScrubField
             label="TR"
+            icon={<CornerRadiusIcon corner="tr" />}
             title="Top-right radius"
             value={styles["border-top-right-radius"]}
             min={0}
             onEdit={(v) => apply("border-top-right-radius", v)}
           />
+          <div className="size-6" />
           <ScrubField
             label="BL"
+            icon={<CornerRadiusIcon corner="bl" />}
             title="Bottom-left radius"
             value={styles["border-bottom-left-radius"]}
             min={0}
@@ -70,6 +109,7 @@ function RadiusSection({
           />
           <ScrubField
             label="BR"
+            icon={<CornerRadiusIcon corner="br" />}
             title="Bottom-right radius"
             value={styles["border-bottom-right-radius"]}
             min={0}
@@ -120,6 +160,42 @@ function SideFields({
   });
 }
 
+const SIZE_MODE_OPTIONS = [
+  ["fixed", "Fixed"],
+  ["hug", "Hug"],
+  ["fill", "Fill"],
+] as const;
+
+/** Figma's per-axis sizing menu, docked at the right edge of the W/H fields. The guest
+ * owns the coordinated write (engine/sizeMode.ts) and answers with a fresh snapshot. */
+function SizeModeSelect({
+  axis,
+  mode,
+  onPick,
+}: {
+  axis: "width" | "height";
+  mode: DesignModeSizeMode;
+  onPick: (mode: DesignModeSizeMode) => void;
+}) {
+  return (
+    <select
+      aria-label={`${axis === "width" ? "Width" : "Height"} sizing mode`}
+      value={mode}
+      onChange={(event) => {
+        const picked = SIZE_MODE_OPTIONS.find(([value]) => value === event.target.value);
+        if (picked) onPick(picked[0]);
+      }}
+      className="h-full shrink-0 cursor-pointer appearance-none bg-transparent pe-1.5 text-[10px] text-muted-foreground outline-none hover:text-foreground"
+    >
+      {SIZE_MODE_OPTIONS.map(([value, label]) => (
+        <option key={value} value={value}>
+          {label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 interface Props {
   runtimeTabId: string | null;
   threadRef: ScopedThreadRef;
@@ -147,6 +223,14 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
     [runtimeTabId, tab.selection],
   );
 
+  const setSizeMode = useCallback(
+    (axis: "width" | "height", mode: DesignModeSizeMode) => {
+      if (!runtimeTabId || ids.length === 0) return;
+      designModeBridge.setSizeMode(runtimeTabId, ids, axis, mode);
+    },
+    [runtimeTabId, tab.selection],
+  );
+
   const onCompare = useCallback(() => {
     if (!runtimeTabId) return;
     const next = !tab.comparing;
@@ -160,27 +244,36 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
     useDesignModeStore.getState().setComparing(runtimeTabId, false);
   }, [runtimeTabId]);
 
+  // buildSend can block up to the guest's native-source grace (~1.5s) — the flag both
+  // shows the wait honestly on the button and makes a double-click during it a no-op
+  // instead of a duplicate attachment pill.
+  const [sending, setSending] = useState(false);
   const onSend = useCallback(async () => {
-    if (!runtimeTabId) return;
-    const result = await designModeBridge.buildSend(runtimeTabId);
-    if (!result) {
-      toastManager.add({ type: "info", title: "No changes to send" });
-      return;
+    if (!runtimeTabId || sending) return;
+    setSending(true);
+    try {
+      const result = await designModeBridge.buildSend(runtimeTabId);
+      if (!result) {
+        toastManager.add({ type: "info", title: "No changes to send" });
+        return;
+      }
+      // Attachment-style delivery: the request lands as a composer pill
+      // (ForkComposerDesignChanges) rather than as prompt text — the full markdown is
+      // appended to the outgoing message by ChatView's fenced send path, so the composer
+      // stays readable while the agent still gets the complete deterministic request.
+      useDesignChangeDraftStore.getState().add(threadRef, result);
+      toastManager.add({
+        type: "success",
+        title:
+          result.elementCount === 1
+            ? "Design change attached"
+            : `Design changes for ${result.elementCount} elements attached`,
+        description: "It rides along with your next message — add a comment or just press Enter.",
+      });
+    } finally {
+      setSending(false);
     }
-    // Attachment-style delivery: the request lands as a composer pill
-    // (ForkComposerDesignChanges) rather than as prompt text — the full markdown is
-    // appended to the outgoing message by ChatView's fenced send path, so the composer
-    // stays readable while the agent still gets the complete deterministic request.
-    useDesignChangeDraftStore.getState().add(threadRef, result);
-    toastManager.add({
-      type: "success",
-      title:
-        result.elementCount === 1
-          ? "Design change attached"
-          : `Design changes for ${result.elementCount} elements attached`,
-      description: "It rides along with your next message — add a comment or just press Enter.",
-    });
-  }, [runtimeTabId, threadRef]);
+  }, [runtimeTabId, sending, threadRef]);
 
   const spacingBase = tab.tokens?.spacingBasePx ?? null;
 
@@ -188,19 +281,19 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
 
   return (
     <div
-      className="flex w-60 shrink-0 flex-col border-l border-border bg-background"
+      className="flex w-[325px] shrink-0 flex-col border-l border-border bg-[var(--fork-design-surface)]"
       data-fork-design-panel
     >
-      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
+      <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-4">
         {first ? (
           <>
-            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+            <span className="rounded bg-[var(--fork-design-field)] px-1.5 py-0.5 font-mono text-[11px] text-foreground">
               {first.tag}
             </span>
             <span className="truncate font-mono text-[11px] text-muted-foreground">
               {tab.selection.length > 1
                 ? `${tab.selection.length} selected`
-                : (first.sourceLabel ?? "untagged")}
+                : (first.sourceLabel ?? "no source")}
             </span>
           </>
         ) : (
@@ -212,7 +305,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
         // Keyed by selection identity so field-local input state resets per selection.
         <div
           key={`${first.id}:${tab.selection.length}`}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3"
+          className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4"
         >
           <PanelSection title="Size" className="grid-cols-2">
             <ScrubField
@@ -221,6 +314,13 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               tokenBasePx={spacingBase}
               value={first.styles.width}
               min={0}
+              suffix={
+                <SizeModeSelect
+                  axis="width"
+                  mode={first.sizeModes.width}
+                  onPick={(mode) => setSizeMode("width", mode)}
+                />
+              }
               onEdit={(v) => apply("width", v)}
             />
             <ScrubField
@@ -229,11 +329,55 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               tokenBasePx={spacingBase}
               value={first.styles.height}
               min={0}
+              suffix={
+                <SizeModeSelect
+                  axis="height"
+                  mode={first.sizeModes.height}
+                  onPick={(mode) => setSizeMode("height", mode)}
+                />
+              }
               onEdit={(v) => apply("height", v)}
             />
           </PanelSection>
 
-          <PanelSection title="Layout" className="grid-cols-2">
+          <PanelSection
+            title="Layout"
+            className="grid-cols-2"
+            action={
+              // The Figma header's auto-layout toggle: green while the element is a flex
+              // container. Turning it OFF previews as `display: block`, which the change
+              // request builder rewrites as "remove auto layout" intent for the agent.
+              <button
+                type="button"
+                onClick={() =>
+                  apply(
+                    "display",
+                    first.styles.display === "flex" || first.styles.display === "inline-flex"
+                      ? "block"
+                      : "flex",
+                  )
+                }
+                aria-pressed={
+                  first.styles.display === "flex" || first.styles.display === "inline-flex"
+                    ? "true"
+                    : "false"
+                }
+                title={
+                  first.styles.display === "flex" || first.styles.display === "inline-flex"
+                    ? "Remove auto layout"
+                    : "Add auto layout (flex)"
+                }
+                className={cn(
+                  "flex size-6 items-center justify-center rounded transition-colors",
+                  first.styles.display === "flex" || first.styles.display === "inline-flex"
+                    ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
+                    : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Grid2x2Icon className="size-4" />
+              </button>
+            }
+          >
             <SelectRow
               label="Disp"
               title="Display"
@@ -245,14 +389,15 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               <>
                 <SegmentField
                   options={[
-                    { value: "row", label: "→", title: "Direction: row" },
-                    { value: "column", label: "↓", title: "Direction: column" },
+                    { value: "row", label: <ArrowRightIcon />, title: "Direction: row" },
+                    { value: "column", label: <ArrowDownIcon />, title: "Direction: column" },
                   ]}
                   value={first.styles["flex-direction"].startsWith("column") ? "column" : "row"}
                   onSelect={(v) => apply("flex-direction", v)}
                 />
                 <ScrubField
                   label="Gap"
+                  icon={<FoldHorizontalIcon />}
                   title="Gap"
                   tokenBasePx={spacingBase}
                   value={first.styles["row-gap"]}
@@ -289,6 +434,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
                     />
                     <ScrubField
                       label="Grow"
+                      icon={<Maximize2Icon />}
                       title="Flex grow"
                       value={first.styles["flex-grow"]}
                       unit="none"
@@ -298,7 +444,8 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
                       onEdit={(v) => apply("flex-grow", v)}
                     />
                     <ScrubField
-                      label="Shrk"
+                      label="Shrink"
+                      icon={<Minimize2Icon />}
                       title="Flex shrink"
                       value={first.styles["flex-shrink"]}
                       unit="none"
@@ -314,12 +461,29 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
           </PanelSection>
 
           <PanelSection title="Padding" className="grid-cols-2">
-            <SideFields
-              prefix="padding"
-              styles={first.styles}
-              apply={apply}
+            <PairField
+              label="LR"
+              icon={<PaddingIcon axis="inline" />}
+              title="Padding left / right — type one value for both, or two: 8, 16"
               tokenBasePx={spacingBase}
+              values={[first.styles["padding-left"], first.styles["padding-right"]]}
               min={0}
+              onEdit={(left, right) => {
+                apply("padding-left", left);
+                apply("padding-right", right);
+              }}
+            />
+            <PairField
+              label="TB"
+              icon={<PaddingIcon axis="block" />}
+              title="Padding top / bottom — type one value for both, or two: 8, 16"
+              tokenBasePx={spacingBase}
+              values={[first.styles["padding-top"], first.styles["padding-bottom"]]}
+              min={0}
+              onEdit={(top, bottom) => {
+                apply("padding-top", top);
+                apply("padding-bottom", bottom);
+              }}
             />
           </PanelSection>
 
@@ -332,7 +496,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
             />
           </PanelSection>
 
-          <RadiusSection styles={first.styles} apply={apply} />
+          <AppearanceSection styles={first.styles} apply={apply} />
 
           <PanelSection title="Typography" className="grid-cols-2">
             <ScrubField
@@ -392,17 +556,6 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
               value={first.styles["background-color"]}
               onEdit={(v) => apply("background-color", v)}
             />
-            <ScrubField
-              label="Op"
-              title="Opacity"
-              value={first.styles.opacity}
-              unit="none"
-              min={0}
-              max={1}
-              step={0.01}
-              precision={2}
-              onEdit={(v) => apply("opacity", v)}
-            />
           </PanelSection>
 
           <PanelSection title="Stroke" className="grid-cols-2">
@@ -432,14 +585,14 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
       ) : (
         <div className="flex min-h-0 flex-1 items-center px-4 text-center">
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {tab.tagged === false
-              ? "This app isn't tagged for Design mode — ask the agent to set up forge-mode's dev plugin."
+            {tab.sourceMode === "selector-only"
+              ? "Click an element in the preview to edit it. Source mapping isn't available on this page, so changes are sent with selector and text context instead of file locations."
               : "Click an element in the preview to edit it. Shift-click adds to the selection; double-click edits text."}
           </p>
         </div>
       )}
 
-      <footer className="shrink-0 space-y-1.5 border-t border-border px-3 py-2">
+      <footer className="shrink-0 space-y-1.5 border-t border-border px-4 py-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground">
             {tab.draftCount === 0
@@ -475,11 +628,11 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
           size="sm"
           className="w-full"
           onClick={() => void onSend()}
-          disabled={tab.draftCount === 0}
+          disabled={tab.draftCount === 0 || sending}
           type="button"
           data-fork-design-panel-send
         >
-          Send to chat
+          {sending ? "Preparing…" : "Send to chat"}
         </Button>
       </footer>
     </div>

@@ -1,13 +1,7 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import { PencilRulerIcon, X } from "lucide-react";
+import { PaintbrushIcon, X } from "lucide-react";
 
 import type { DraftId } from "~/composerDraftStore";
-import {
-  COMPOSER_INLINE_CHIP_CLASS_NAME,
-  COMPOSER_INLINE_CHIP_DISMISS_BUTTON_CLASS_NAME,
-  COMPOSER_INLINE_CHIP_ICON_CLASS_NAME,
-  COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME,
-} from "~/components/composerInlineChip";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
@@ -25,12 +19,34 @@ interface Props {
   className?: string;
 }
 
+/** The t3-fork Figma chip palette (node 157:4660): translucent color fills cycling per
+ * chip so simultaneous changes read apart at a glance. The blue and purple are the
+ * design's own; green and orange extend the family with the same value pattern. Static
+ * class strings so Tailwind's scanner sees them. */
+const CHIP_FILLS = [
+  "bg-[rgba(81,139,255,0.5)]",
+  "bg-[rgba(223,81,255,0.5)]",
+  "bg-[rgba(81,255,139,0.5)]",
+  "bg-[rgba(255,161,81,0.5)]",
+] as const;
+
+/** Stable fill per chip — keyed off the entry id, not the render index, so removing one
+ * chip never recolors its neighbors. */
+function chipFill(id: string): string {
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return CHIP_FILLS[hash % CHIP_FILLS.length]!;
+}
+
 function chipLabel(entry: PendingDesignChange): string {
   const first = entry.elements[0];
-  if (entry.elements.length === 1 && first) {
-    return first.sourceLabel ? `${first.tag} · ${first.sourceLabel}` : first.tag;
-  }
+  if (entry.elements.length === 1 && first) return first.tag;
   return `${entry.elementCount} elements`;
+}
+
+function chipSource(entry: PendingDesignChange): string | null {
+  const first = entry.elements[0];
+  return entry.elements.length === 1 && first ? first.sourceLabel : null;
 }
 
 function chipSummary(entry: PendingDesignChange): string | null {
@@ -47,22 +63,27 @@ function DesignChangeChip({
   entry: PendingDesignChange;
   onRemove: () => void;
 }) {
+  const source = chipSource(entry);
   const summary = chipSummary(entry);
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          <span className={cn(COMPOSER_INLINE_CHIP_CLASS_NAME, "pr-1")}>
-            <PencilRulerIcon className={cn(COMPOSER_INLINE_CHIP_ICON_CLASS_NAME, "size-3.5")} />
-            <span className={COMPOSER_INLINE_CHIP_LABEL_CLASS_NAME}>{chipLabel(entry)}</span>
-            {summary ? (
-              <span className="select-none truncate text-[10px] font-normal leading-tight text-muted-foreground/85">
-                {summary}
-              </span>
-            ) : null}
+          <span
+            className={cn(
+              "inline-flex h-8 max-w-full items-center gap-2 overflow-hidden rounded-full py-2 pl-1 pr-1.5 text-sm text-foreground",
+              chipFill(entry.id),
+            )}
+          >
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-black/16">
+              <PaintbrushIcon className="size-4" />
+            </span>
+            <span className="shrink-0">{chipLabel(entry)}</span>
+            {source ? <span className="shrink-0">{source}</span> : null}
+            {summary ? <span className="truncate">{summary}</span> : null}
             <button
               type="button"
-              className={COMPOSER_INLINE_CHIP_DISMISS_BUTTON_CLASS_NAME}
+              className="flex size-5 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/16"
               onClick={(event) => {
                 event.stopPropagation();
                 onRemove();
@@ -94,7 +115,7 @@ export function ForkComposerDesignChanges({ target, className }: Props) {
   const pending = useForkPendingDesignChanges(target);
   if (!threadRef || pending.length === 0) return null;
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)} data-fork-design-changes>
+    <div className={cn("flex flex-wrap items-center gap-2", className)} data-fork-design-changes>
       {pending.map((entry) => (
         <DesignChangeChip
           key={entry.id}

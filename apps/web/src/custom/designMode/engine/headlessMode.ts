@@ -17,18 +17,31 @@ import type {
   DesignChangeRequestPayload,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
+  DesignModeSizeMode,
   DesignModeWritableKey,
 } from "../protocol";
 import type { HeadlessOverlay } from "./headlessOverlay";
 import { ElementIdRegistry } from "./idRegistry";
 import { LayersSession } from "./layersSession";
-import { basename, findTaggedElement, type TaggedElement } from "./vendor/source";
+import { basename, findSelectableElement, type TaggedElement } from "./vendor/source";
+import {
+  awaitResolutions,
+  isSynthesizedSource,
+  markSynthesizedSource,
+  resolveAndTag,
+  sourceContextTargets,
+} from "./nativeSource";
+import { applySizeMode } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
 import { isEditable } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
 import { MoveDrag } from "./vendor/move-drag";
 import { ResizeHandles } from "./vendor/resize";
-import { buildChangeRequestWithElements, renderStandaloneMarkdown } from "./vendor/request";
+import {
+  buildChangeRequestWithElements,
+  cssPath,
+  renderStandaloneMarkdown,
+} from "./vendor/request";
 import { snapshotRects, diffRects } from "./vendor/ripple";
 import { resetTokensCache } from "./vendor/tokens";
 import {
@@ -40,6 +53,14 @@ import {
 
 /** Rapid edits (e.g. dragging a number field) within this window reuse the first snapshot. */
 const RIPPLE_DEBOUNCE_MS = 300;
+
+/** Hover dwell before prefetching an untagged element's native source — a moving cursor
+ * cancels before any resolver work starts, so pointer traffic costs nothing. */
+const HOVER_RESOLVE_DELAY_MS = 75;
+
+/** Send-time grace for in-flight native source resolution. Past this cap the request
+ * ships with per-element selector/text fallback instead of blocking the send. */
+const SEND_SOURCE_WAIT_MS = 1500;
 
 /** Arrow keys → the direction vocabulary MoveDrag speaks (P3 ratified #2). A lookup, not a
  * switch, so `ARROW_DIRS[e.key]` doubles as the "is this an arrow at all" test. */
@@ -160,6 +181,12 @@ export class HeadlessDesignMode {
     // HMR remount replaced before projecting state to sessionStorage (PR #44 review).
     this.drafts.healStructural();
     this.persist();
+    // Edits change the selection's COMPUTED values, and a fresh snapshot is how the
+    // panel finds out — the same rule discardAll already follows. Without this, a draft
+    // that changes what the panel renders structurally (display: flex reveals the whole
+    // auto-layout group) stayed invisible until a reselect. Riding the debounce keeps
+    // scrub bursts at zero extra bridge traffic.
+    if (this.active && this.selection.length > 0) this.emitSelection();
   }
 
   // ── Host commands (driven by the native panel through the guest handle) ──────────────
@@ -175,6 +202,20 @@ export class HeadlessDesignMode {
     for (const el of els) this.handleBeforeEdit(el);
     for (const el of els) this.drafts.apply(el, property, value);
     this.handleEdited();
+  }
+
+  /** Applies a Figma sizing mode (fixed/hug/fill) to one axis — the mode's coordinated
+   * multi-property write lives in engine/sizeMode.ts. Discrete (a menu pick, never a
+   * scrub tick), so the fresh snapshot goes out immediately, like discardAll. */
+  setSizeMode(idList: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void {
+    const els = idList
+      .map((id) => this.registry.resolve(id))
+      .filter((el): el is TaggedElement => el !== null);
+    if (els.length === 0) return;
+    for (const el of els) this.handleBeforeEdit(el);
+    for (const el of els) applySizeMode(el, axis, mode, this.drafts);
+    this.handleEdited();
+    this.emitSelection();
   }
 
   /** The one discard-everything verb. Re-emits the selection afterwards: computed values
@@ -194,8 +235,16 @@ export class HeadlessDesignMode {
    * per-element summaries the composer's attachment pill renders. Returns null when
    * every draft is a no-op. Drafts stay applied as previews; the user discards them once
    * the agent's edit lands and the page hot-reloads. */
-  buildSend(): DesignChangeRequestPayload | null {
+  async buildSend(): Promise<DesignChangeRequestPayload | null> {
     this.flushDraftSync();
+    // Native-source grace: kick (or join) resolution for every still-untagged drafted
+    // element, plus the parent/sibling context the structural asks name, and give the
+    // batch a bounded wait. A send moments after a fast click usually still gets its
+    // file:line:col; past the cap each unresolved element ships selector/text context.
+    await awaitResolutions(
+      [...sourceContextTargets(this.drafts.draftedElements())],
+      SEND_SOURCE_WAIT_MS,
+    );
     const { request } = buildChangeRequestWithElements(this.drafts);
     if (request.elements.length === 0) return null;
     const opLabels: Record<string, string> = {
@@ -261,6 +310,9 @@ export class HeadlessDesignMode {
       this.rippleRaf = 0;
       this.clearRippleState();
       this.lastMove = null;
+      if (this.hoverResolveTimer) clearTimeout(this.hoverResolveTimer);
+      this.hoverResolveTimer = null;
+      this.hoverResolveTarget = null;
       this.setSelection([]);
       // A session the user turned off must not keep restoring in the background.
       if (this.restoreTimer) clearTimeout(this.restoreTimer);
@@ -295,7 +347,7 @@ export class HeadlessDesignMode {
 
     const remainingDrafts: PersistedLifecycle["drafts"] = [];
     for (const d of pending.drafts) {
-      const el = locateBySource(d.dcSource, d.index);
+      const el = this.locatePersisted(d);
       if (!el) {
         remainingDrafts.push(d);
         continue;
@@ -310,7 +362,7 @@ export class HeadlessDesignMode {
     if (restoreOwnsSelection) {
       const additions: TaggedElement[] = [];
       for (const sel of pending.selection) {
-        const el = locateBySource(sel.dcSource, sel.index);
+        const el = this.locatePersisted(sel);
         if (el) additions.push(el);
         else remainingSelection.push(sel);
       }
@@ -343,35 +395,83 @@ export class HeadlessDesignMode {
     }, 300);
   }
 
+  /** Source-first, selector-fallback locate for restored entries. A Forge tag re-renders
+   * after a reload; a T3-synthesized one does not — its entry carries a css path instead,
+   * and a selector hit re-earns its synthesized tag so every downstream consumer sees the
+   * canonical address again. The selector is trusted only when it matches exactly one
+   * element: cssPath is depth-capped and unanchored — a pattern, not an address — and
+   * restoring onto the wrong element would silently draft (and stamp a synthesized
+   * source on) some other node. A missed restore is recoverable; a wrong one isn't. */
+  private locatePersisted(entry: {
+    dcSource: string;
+    index: number;
+    selector?: string;
+  }): TaggedElement | null {
+    if (entry.dcSource) {
+      const bySource = locateBySource(entry.dcSource, entry.index);
+      if (bySource) return bySource;
+    }
+    if (!entry.selector) return null;
+    let candidate: Element | null = null;
+    try {
+      const hits = document.querySelectorAll(entry.selector);
+      if (hits.length !== 1) return null;
+      candidate = hits[0] ?? null;
+    } catch {
+      return null; // a malformed persisted selector must not break the drain
+    }
+    if (!(candidate instanceof HTMLElement || candidate instanceof SVGElement)) return null;
+    if (entry.dcSource && !candidate.dataset.dcSource) {
+      markSynthesizedSource(candidate, entry.dcSource);
+    }
+    return candidate;
+  }
+
+  /** The persisted address of one live element: (dcSource, index-among-matches) so list
+   * items sharing one source location survive a reload individually, plus a css-path
+   * selector whenever the tag is synthesized or absent (see locatePersisted). Null when
+   * the element is unaddressable either way — preview-only, not persisted. */
+  private persistedAddress(
+    el: TaggedElement,
+  ): { dcSource: string; index: number; selector?: string } | null {
+    const dcSource = el.dataset?.dcSource ?? "";
+    const selector = !dcSource || isSynthesizedSource(el) ? cssPath(el) : undefined;
+    if (!dcSource && !selector) return null;
+    return {
+      dcSource,
+      index: dcSource ? sourceIndex(el, dcSource) : 0,
+      ...(selector ? { selector } : {}),
+    };
+  }
+
   /** Serializes the full lifecycle to sessionStorage. Called only from state-change hooks
-   * while the tool is in use. Elements are addressed as (dcSource, index-among-matches)
-   * so list items sharing one source location survive a reload individually. */
+   * while the tool is in use. */
   private persist(): void {
+    const persistKey = (e: { dcSource: string; index: number; selector?: string }): string =>
+      e.dcSource ? `${e.dcSource}#${e.index}` : `sel:${e.selector ?? ""}`;
     const drafts: PersistedLifecycle["drafts"] = [];
     const liveKeys = new Set<string>();
     for (const [el, props] of this.drafts.entries()) {
-      const dcSource = (el as TaggedElement).dataset?.dcSource;
-      if (!dcSource) continue; // untagged elements can't be re-located — preview-only, not persisted
-      const index = sourceIndex(el as TaggedElement, dcSource);
-      liveKeys.add(`${dcSource}#${index}`);
+      const address = this.persistedAddress(el as TaggedElement);
+      if (!address) continue;
+      liveKeys.add(persistKey(address));
       drafts.push({
-        dcSource,
-        index,
+        ...address,
         props: [...props.entries()].map(([p, d]) => [p, d.value] as [string, string]),
       });
     }
     // Merge in still-unresolved restore work so a reload mid-retry-window doesn't lose it.
     if (this.pendingRestore) {
       for (const d of this.pendingRestore.drafts) {
-        if (!liveKeys.has(`${d.dcSource}#${d.index}`)) drafts.push(d);
+        if (!liveKeys.has(persistKey(d))) drafts.push(d);
       }
     }
     const selection =
       this.selection.length === 0 && this.pendingRestore && this.pendingRestore.selection.length > 0
         ? this.pendingRestore.selection
         : this.selection.flatMap((el) => {
-            const dcSource = el.dataset?.dcSource;
-            return dcSource ? [{ dcSource, index: sourceIndex(el, dcSource) }] : [];
+            const address = this.persistedAddress(el);
+            return address ? [address] : [];
           });
     saveLifecycle({
       v: 1,
@@ -400,6 +500,41 @@ export class HeadlessDesignMode {
     this.setSelection(next);
   }
 
+  // ── Native source resolution (untagged elements) ─────────────────────────────────────
+
+  private hoverResolveTimer: ReturnType<typeof setTimeout> | null = null;
+  private hoverResolveTarget: TaggedElement | null = null;
+
+  /** Dwell prefetch: an untagged element hovered for HOVER_RESOLVE_DELAY_MS warms its
+   * source lookup so the click that follows usually finds the label already resolved.
+   * Same-target moves are free; leaving the element cancels the pending timer. */
+  private scheduleHoverResolve(el: TaggedElement | null): void {
+    if (el === this.hoverResolveTarget) return;
+    if (this.hoverResolveTimer) clearTimeout(this.hoverResolveTimer);
+    this.hoverResolveTimer = null;
+    this.hoverResolveTarget = el;
+    if (!el || el.dataset?.dcSource) return;
+    this.hoverResolveTimer = setTimeout(() => {
+      this.hoverResolveTimer = null;
+      if (this.active && this.hoverResolveTarget === el) void resolveAndTag(el);
+    }, HOVER_RESOLVE_DELAY_MS);
+  }
+
+  /** Selection promotes resolution to the front: the selected elements themselves plus
+   * the parent and adjacent siblings the structural asks (move/absolute) name. A selected
+   * element gaining its source re-emits the snapshot (panel label) and upgrades the
+   * persisted address; context elements resolve silently. */
+  private promoteSourceResolution(els: readonly TaggedElement[]): void {
+    for (const target of sourceContextTargets(els)) {
+      if (target.dataset?.dcSource) continue;
+      void resolveAndTag(target).then((tagged) => {
+        if (!tagged || !this.active || !this.selection.includes(target)) return;
+        this.emitSelection();
+        this.persist();
+      });
+    }
+  }
+
   private setSelection(next: TaggedElement[]): void {
     // wasSingle: read BEFORE the assignment — a single→single hop is the one case the
     // outline tweens (multi-select and first-selection always snap).
@@ -424,13 +559,16 @@ export class HeadlessDesignMode {
     this.placeHandles();
     this.emitSelection();
     this.persist();
+    this.promoteSourceResolution(next);
   }
 
   /** Mints/reuses ids for the live selection, prunes the registry to it, and pushes
    * fresh snapshots to the host — the native panel's whole world view. */
   private emitSelection(): void {
     this.registry.retainSelection(this.selection);
-    const snapshots = this.selection.map((el) => buildElementSnapshot(el, this.registry.mint(el)));
+    const snapshots = this.selection.map((el) =>
+      buildElementSnapshot(el, this.registry.mint(el), this.drafts),
+    );
     this.onSelection?.(snapshots);
   }
 
@@ -543,9 +681,10 @@ export class HeadlessDesignMode {
       this.moveRaf = 0;
       const ev = this.lastMove;
       if (!this.active || !ev || this.overlay.contains(ev.target)) return;
-      const el = findTaggedElement(ev.target as Element);
+      const el = findSelectableElement(ev.target as Element);
       if (el && !this.selection.includes(el)) this.overlay.showOutline(el.getBoundingClientRect());
       else this.overlay.hideOutline();
+      this.scheduleHoverResolve(el);
     });
   };
 
@@ -555,7 +694,7 @@ export class HeadlessDesignMode {
     if (this.textEdit.handleClick(e) === "shielded") return;
     e.preventDefault();
     e.stopPropagation();
-    const el = findTaggedElement(e.target as Element);
+    const el = findSelectableElement(e.target as Element);
     if (el && e.shiftKey) this.toggleSelection(el);
     else if (el) this.select(el);
     else this.deselect();
@@ -623,7 +762,7 @@ export class HeadlessDesignMode {
   private onPointerDown = (e: PointerEvent): void => {
     if (e.button !== 0 || this.textEdit.active) return;
     if (this.overlay.containsDeep(e.composedPath()[0] ?? e.target)) return;
-    const el = findTaggedElement(e.target as Element);
+    const el = findSelectableElement(e.target as Element);
     if (!el || this.drafts.structuralOf(el)?.kind === "delete") return;
     // The gate IS MoveDrag's own plan, not a copy of its conditions (PR #46 review).
     if (this.moveDrag.wouldDrag(el)) return; // a real drag target — MoveDrag has it

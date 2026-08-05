@@ -37,3 +37,23 @@ export function findTaggedElement(start: Element | null): TaggedElement | null {
   }
   return null
 }
+
+/* t3-fork: native-source mode — selection no longer requires a data-dc-source ancestor. */
+
+/** Tags that are never a design target: the document scaffold plus non-visual metadata. */
+const NONSELECTABLE_TAGS = new Set(['html', 'body', 'head', 'script', 'style', 'link', 'meta', 'template', 'noscript', 'title'])
+
+/** The one selection-eligibility rule. A tagged ancestor still wins outright (Forge pages
+ * behave exactly as before); without one, the pointer's own element is the target — the
+ * native resolver (engine/nativeSource.ts) recovers its source lazily, and untagged
+ * elements stay editable either way. SVG internals are opaque, matching the layers walk:
+ * a click on a <path> selects its outermost <svg>. */
+export function findSelectableElement(start: Element | null): TaggedElement | null {
+  const tagged = findTaggedElement(start)
+  if (tagged) return tagged
+  let el: Element | null = start
+  while (el instanceof SVGElement && el.ownerSVGElement) el = el.ownerSVGElement
+  if (!(el instanceof HTMLElement || el instanceof SVGElement)) return null
+  if (NONSELECTABLE_TAGS.has(el.tagName.toLowerCase())) return null
+  return el
+}

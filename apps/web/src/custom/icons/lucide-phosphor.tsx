@@ -46,6 +46,7 @@ import {
   ArrowUp as PhArrowUp,
   ArrowsClockwise as PhArrowsClockwise,
   ArrowsDownUp as PhArrowsDownUp,
+  ArrowsInLineHorizontal as PhArrowsInLineHorizontal,
   ArrowsInLineVertical as PhArrowsInLineVertical,
   ArrowsInSimple as PhArrowsInSimple,
   ArrowsOutSimple as PhArrowsOutSimple,
@@ -74,6 +75,7 @@ import {
   Code as PhCode,
   Columns as PhColumns,
   Copy as PhCopy,
+  CornersOut as PhCornersOut,
   Cpu as PhCpu,
   Cursor as PhCursor,
   CursorClick as PhCursorClick,
@@ -98,6 +100,7 @@ import {
   Gauge as PhGauge,
   Gear as PhGear,
   GearSix as PhGearSix,
+  GridFour as PhGridFour,
   GitBranch as PhGitBranch,
   GitCommit as PhGitCommit,
   GitDiff as PhGitDiff,
@@ -368,6 +371,12 @@ export const Camera = icon("camera", PhCamera, "duotone");
 export const PipetteIcon = icon("pipette", PhEyedropper, "duotone");
 export const PaletteIcon = icon("palette", PhPalette, "duotone");
 export const PaintbrushIcon = icon("paintbrush", PhPaintBrush, "duotone");
+// Design-mode panel (fork-design-mode): stroke-only glyphs pinned to bold, like the
+// other arrows/carets. Scan maps to Phosphor's CornersOut (the Figma spec's corner
+// toggle); FoldHorizontal to ArrowsInLineHorizontal (the gap field's prefix).
+export const ScanIcon = icon("scan", PhCornersOut, "bold");
+export const FoldHorizontalIcon = icon("fold-horizontal", PhArrowsInLineHorizontal, "bold");
+export const Grid2x2Icon = icon("grid-2x2", PhGridFour, "duotone");
 export const Paintbrush = icon("paintbrush", PhPaintBrush, "duotone");
 export const PencilRulerIcon = icon("pencil-ruler", PhPencilRuler, "duotone");
 export const PenLineIcon = icon("pen-line", PhPencilSimpleLine, "duotone");

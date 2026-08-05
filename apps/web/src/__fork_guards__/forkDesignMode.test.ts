@@ -166,6 +166,58 @@ describe("fork guard: design mode", () => {
     expect(code).not.toContain("/__the-forge/");
   });
 
+  it("keeps the native source bridge contract aligned across preload and engine", () => {
+    // The desktop preload installs the resolver global; the engine consumes it by the
+    // same name. A drifted literal on either side silently degrades every untagged React
+    // page to selector-only — fail here instead.
+    const resolverGlobal = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
+    const desktopRoot = NodePath.join(webRoot, "../desktop");
+    const preloadResult = NodeFS.readFileSync(
+      NodePath.join(desktopRoot, "src/preview/DesignSourceResult.ts"),
+      "utf8",
+    );
+    const engineNativeSource = read("src/custom/designMode/engine/nativeSource.ts");
+    expect(preloadResult).toContain(`"${resolverGlobal}"`);
+    expect(engineNativeSource).toContain(`"${resolverGlobal}"`);
+
+    // The preload entry must keep the fenced resolver import — an upstream sync that
+    // reverts the entry file to its one-line upstream form drops the whole bridge.
+    const preloadEntry = NodeFS.readFileSync(
+      NodePath.join(desktopRoot, "src/preview-pick-preload.ts"),
+      "utf8",
+    );
+    expect(preloadEntry).toContain("fork:begin fork-design-mode");
+    expect(preloadEntry).toContain('import "./preview/DesignSourceResolver.ts"');
+
+    // react-grab stays a desktop-preload dependency only — never bundled into the web app.
+    const webPackage = read("package.json");
+    expect(webPackage).not.toContain("react-grab");
+
+    // The Forge-install handoff is gone: every page is editable without project setup.
+    const designModeToggle = read("src/custom/designMode/ForkPreviewDesignMode.tsx");
+    expect(designModeToggle).not.toContain("forge-mode init");
+    expect(designModeToggle).not.toContain("SETUP.md");
+  });
+
+  it("round-trips and rejects ready messages (source modes)", () => {
+    for (const sourceMode of ["forge", "native-react", "selector-only"]) {
+      expect(
+        parseDesignModeConsoleMessage(
+          `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"ready","sourceMode":"${sourceMode}"}`,
+        ),
+      ).toEqual({ type: "ready", sourceMode });
+    }
+    // The retired tagged shape and unknown modes reject rather than half-parse.
+    expect(
+      parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"ready","tagged":true}`),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"ready","sourceMode":"psychic"}`,
+      ),
+    ).toBeNull();
+  });
+
   it("round-trips the console-message protocol", () => {
     const styles = Object.fromEntries(DESIGN_MODE_STYLE_KEYS.map((key) => [key, `${key}-value`]));
     const selection = {
@@ -176,11 +228,37 @@ describe("fork guard: design mode", () => {
           tag: "button",
           sourceLabel: "App.tsx:5",
           styles,
+          sizeModes: { width: "fixed", height: "hug" },
         },
       ],
     };
     const line = `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(selection)}`;
     expect(parseDesignModeConsoleMessage(line)).toEqual(selection);
+    // A snapshot without size modes (or with an unknown mode) rejects rather than half-parses.
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
+          type: "selection",
+          elements: [{ id: 1, tag: "button", sourceLabel: null, styles }],
+        })}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
+          type: "selection",
+          elements: [
+            {
+              id: 1,
+              tag: "button",
+              sourceLabel: null,
+              styles,
+              sizeModes: { width: "stretchy", height: "hug" },
+            },
+          ],
+        })}`,
+      ),
+    ).toBeNull();
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"drafts","count":3}`),
     ).toEqual({ type: "drafts", count: 3 });

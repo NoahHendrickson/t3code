@@ -1,4 +1,5 @@
-import { findTaggedElement, type TaggedElement } from './source'
+/* t3-fork: findSelectableElement (was findTaggedElement) — untagged elements are draggable in native-source mode. */
+import { findSelectableElement, type TaggedElement } from './source'
 import type { DraftStore } from './drafts'
 import { marginEdgeOffsets } from './panel-readers'
 
@@ -567,7 +568,7 @@ export class MoveDrag {
     if (this.opts.blocked()) return
     const target = realTarget(e)
     if (this.opts.overlayContains(target)) return
-    const el = findTaggedElement(target instanceof Element ? target : null)
+    const el = findSelectableElement(target instanceof Element ? target : null)
     if (!el) return
     // ONE gesture in flight at a time (PR #46 review, minor 6). There is a single `dragTeardown`
     // slot per instance, so a second pointer's press used to OVERWRITE the first gesture's teardown

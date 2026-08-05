@@ -4,6 +4,7 @@ import type {
   DesignModeColorToken,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
+  DesignModeSourceMode,
 } from "./protocol";
 
 export interface DesignModeTokens {
@@ -19,9 +20,10 @@ export interface DesignModeTokens {
  * console-message bridge (ForkPreviewDesignMode) and read by the native panel. */
 export interface DesignModeTabState {
   readonly enabled: boolean;
-  /** Whether the guest page carries forge-mode's `data-dc-source` JSX tags — null until the
-   * engine's ready message reports it. Untagged pages get the setup hint. */
-  readonly tagged: boolean | null;
+  /** How the engine maps elements to source on this page (protocol.ts
+   * DesignModeSourceMode) — null until the engine's ready message reports it. Every mode
+   * stays fully editable; `selector-only` gets a soft note in the panel's empty state. */
+  readonly sourceMode: DesignModeSourceMode | null;
   readonly selection: readonly DesignModeElementSnapshot[];
   readonly draftCount: number;
   /** Host-side compare toggle state (the guest holds the actual before/after rendering). */
@@ -38,7 +40,7 @@ export interface DesignModeTabState {
 interface DesignModeStoreState {
   readonly byTabId: Record<string, DesignModeTabState>;
   readonly setEnabled: (runtimeTabId: string, enabled: boolean) => void;
-  readonly setTagged: (runtimeTabId: string, tagged: boolean) => void;
+  readonly setSourceMode: (runtimeTabId: string, sourceMode: DesignModeSourceMode) => void;
   readonly setSelection: (
     runtimeTabId: string,
     selection: readonly DesignModeElementSnapshot[],
@@ -55,7 +57,7 @@ interface DesignModeStoreState {
 
 const EMPTY_TAB_STATE: DesignModeTabState = {
   enabled: false,
-  tagged: null,
+  sourceMode: null,
   selection: [],
   draftCount: 0,
   comparing: false,
@@ -89,11 +91,11 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
         tokens: null,
       });
     }),
-  setTagged: (runtimeTabId, tagged) =>
+  setSourceMode: (runtimeTabId, sourceMode) =>
     set((state) => {
       const current = state.byTabId[runtimeTabId] ?? EMPTY_TAB_STATE;
-      if (current.tagged === tagged) return state;
-      return patchTab(state, runtimeTabId, { tagged });
+      if (current.sourceMode === sourceMode) return state;
+      return patchTab(state, runtimeTabId, { sourceMode });
     }),
   setSelection: (runtimeTabId, selection) =>
     set((state) => patchTab(state, runtimeTabId, { selection })),

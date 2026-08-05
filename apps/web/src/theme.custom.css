@@ -1445,3 +1445,26 @@
     opacity: 0.135;
   }
 }
+
+/* ── Design mode panel surfaces (fork-design-mode) ─────────────────────────────
+   The Figma redesign (t3-fork file, node 193:9686) draws the panel on lifted
+   opaque surfaces with a green accent that is deliberately NOT --primary (fork
+   primary is white in dark mode). Scoped custom properties so the panel/layers
+   components can reference them semantically; light mode falls back to the
+   app's own surface tokens so the panel stays legible outside the dark theme
+   the design was authored in. */
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-design-surface: var(--background);
+  --fork-design-field: var(--muted);
+  --fork-design-selected: var(--accent);
+  --fork-design-accent: #0a7d3e;
+  --fork-design-accent-bg: rgb(69 255 150 / 16%);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-design-surface: #232527;
+  --fork-design-field: #303234;
+  --fork-design-selected: rgb(255 255 255 / 8%);
+  --fork-design-accent: #45ff96;
+  --fork-design-accent-bg: rgb(69 255 150 / 16%);
+}
