@@ -72,7 +72,19 @@ export function ScrubField({
 }: ScrubFieldProps) {
   const parsed = Number.parseFloat(value);
   const numeric = Number.isFinite(parsed) ? parsed : null;
-  const [text, setText] = useState(numeric === null ? value : formatNumber(numeric, precision));
+  const display = numeric === null ? value : formatNumber(numeric, precision);
+  const [text, setText] = useState(display);
+  // The guest re-emits snapshots for the SAME selection (a size-mode pick, Discard all, a
+  // draft-sync flush), and the fields container is keyed by selection identity — so nothing
+  // remounts and the field would keep showing a number the element no longer has, then
+  // scrub/arrow from that stale base (PR #54/#55 review). Re-sync on the incoming DISPLAY
+  // value, not on `text`: a half-typed entry is only replaced when the element actually
+  // changed under it.
+  const [lastDisplay, setLastDisplay] = useState(display);
+  if (display !== lastDisplay) {
+    setLastDisplay(display);
+    setText(display);
+  }
   const scrub = useRef<{ pointerId: number; startX: number; startValue: number } | null>(null);
 
   const clamp = useCallback(
@@ -205,7 +217,14 @@ export function PairField({
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const current: [number, number] = [parse(values[0]), parse(values[1])];
-  const [text, setText] = useState(formatPair(current[0], current[1]));
+  const display = formatPair(current[0], current[1]);
+  const [text, setText] = useState(display);
+  // Same prop re-sync ScrubField documents — the pair goes stale on exactly the same paths.
+  const [lastDisplay, setLastDisplay] = useState(display);
+  if (display !== lastDisplay) {
+    setLastDisplay(display);
+    setText(display);
+  }
   const scrub = useRef<{ pointerId: number; startX: number; start: [number, number] } | null>(null);
 
   const clamp = useCallback(

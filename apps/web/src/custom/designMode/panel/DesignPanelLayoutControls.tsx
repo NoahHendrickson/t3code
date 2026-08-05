@@ -68,9 +68,11 @@ export function SelectRow({
         {label}
       </span>
       <select
-        // defaultValue (uncontrolled) — the fields container remounts per selection
-        // (keyed in ForkDesignPanel), matching the ScrubField reset model.
-        defaultValue={options.includes(value) ? value : ""}
+        // Controlled, NOT defaultValue: the guest re-emits snapshots for the same selection
+        // (Discard all, the draft-sync flush, the Layout header's auto-layout toggle) and
+        // the fields container is keyed by selection identity, so an uncontrolled select
+        // kept showing a value the element no longer had (PR #50/#52 review).
+        value={options.includes(value) ? value : ""}
         onChange={(event) => onSelect(event.target.value)}
         className="h-full w-full min-w-0 appearance-none bg-transparent pe-1.5 text-xs text-foreground outline-none"
       >
