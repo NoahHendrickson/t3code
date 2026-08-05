@@ -182,13 +182,25 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
     expect(chrome).toMatch(/sidebar-brand[^"]*text-sidebar-foreground/u);
-    expect(chrome).toContain("size-6 shrink-0 [image-rendering:pixelated]");
+    expect(chrome).toContain("size-6 shrink-0");
     expect(chrome).toContain("text-[0.875rem] leading-4 font-medium");
+    // The mark's art is a 23x23 pixel grid drawn at a 24px slot. A bitmap can
+    // only get there by resampling 23 cells onto 24 pixels, which blends every
+    // cell into its neighbours — the blur the vector mark replaced. Keep it
+    // vector, keep the viewBox on the 23-unit grid, and keep crispEdges so the
+    // cells stay hard-edged at every DPR instead of antialiasing back to mush.
     const mark = NodeFS.readFileSync(
-      NodeURL.fileURLToPath(new URL("../custom/assets/sidebar-brand-mark.png", import.meta.url)),
+      NodeURL.fileURLToPath(new URL("../custom/assets/sidebar-brand-mark.svg", import.meta.url)),
+      "utf8",
     );
-    expect(mark.readUInt32BE(16)).toBe(24);
-    expect(mark.readUInt32BE(20)).toBe(24);
+    expect(mark).toContain('viewBox="0 0 23 23"');
+    expect(mark).toContain('shape-rendering="crispEdges"');
+    expect(mark).not.toMatch(/image-rendering|<image\b/u);
+    // Every cell edge must land on the integer grid; a fractional coordinate is
+    // the same smearing defect re-entering through the asset.
+    for (const coord of mark.matchAll(/\s(?:x|y|width|height)="([^"]+)"/gu)) {
+      expect(coord[1]).toMatch(/^\d+$/u);
+    }
   });
 
   it("keeps the flat header independent of identification mode and honors the pill", () => {

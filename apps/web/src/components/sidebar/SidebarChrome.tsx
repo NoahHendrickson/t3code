@@ -11,7 +11,7 @@ import {
 } from "../SidebarStageBackdrop";
 import { Badge } from "../ui/badge";
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
-import sidebarBrandMarkUrl from "~/custom/assets/sidebar-brand-mark.png";
+import sidebarBrandMarkUrl from "~/custom/assets/sidebar-brand-mark.svg";
 /* fork:end fork-sidebar-chrome */
 import {
   SidebarFooter,
@@ -92,12 +92,11 @@ function SidebarBrand() {
       {/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
           The borrowed T3 wordmark stays gone. The fork's own exported mark and
           APP_BASE_NAME form the exact 24px / 4px / 14px lockup from the design,
-          while the injected desktop name and bridge-less fallback still agree. */}
-      <img
-        alt=""
-        className="size-6 shrink-0 [image-rendering:pixelated]"
-        src={sidebarBrandMarkUrl}
-      />
+          while the injected desktop name and bridge-less fallback still agree.
+          The mark is vector: its art is a 23x23 pixel grid, which no bitmap can
+          resample into a 24px box without smearing every cell. crispEdges lives
+          in the asset, so the grid stays hard-edged at any size or DPR. */}
+      <img alt="" className="size-6 shrink-0" src={sidebarBrandMarkUrl} />
       <span className="truncate text-[0.875rem] leading-4 font-medium">{APP_BASE_NAME}</span>
       {/* fork:end fork-app-identity */}
     </Link>

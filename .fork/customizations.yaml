@@ -1083,7 +1083,7 @@
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/custom/useScrollGutterWidth.ts
     - apps/web/src/custom/SidebarStageDitherArt.tsx
-    - apps/web/src/custom/assets/sidebar-brand-mark.png
+    - apps/web/src/custom/assets/sidebar-brand-mark.svg
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
   shadows: []
   watch:
