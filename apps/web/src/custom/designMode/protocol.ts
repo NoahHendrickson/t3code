@@ -98,6 +98,10 @@ export type DesignModeWritableKey =
   | DesignModeStyleKey
   | (typeof DESIGN_MODE_WRITE_ONLY_KEYS)[number];
 
+/** How a layers-row click lands: replace the selection (plain click) or add/remove this one
+ * element from it (Cmd/Shift-click), matching the canvas's own Shift-click. */
+export type DesignModeSelectMode = "replace" | "toggle";
+
 /** Figma's sizing vocabulary for one axis: explicit px / size-to-content / take the
  * available space. Read by the guest (draft-first — computed px can't distinguish an
  * authored `auto` from an authored `240px`); written through `setSizeMode`. */
@@ -168,6 +172,10 @@ export interface DesignModeLayerNode {
   readonly id: number;
   readonly tag: string;
   readonly label: string;
+  /** Whether a drag can reorder this row among its siblings. The vendored move op previews
+   * as inline `order`, which only auto-layout (flex/grid) parents honor — so the rail refuses
+   * the drop everywhere else instead of accepting a gesture the guest would drop. */
+  readonly reorderable: boolean;
   readonly children: readonly DesignModeLayerNode[];
 }
 
@@ -271,9 +279,16 @@ export interface DesignModeGuestHandle {
    * bounded grace before falling back to selector context — the promise rides Electron's
    * executeJavaScript back to the host either way. */
   buildSend(): Promise<DesignChangeRequestPayload | null>;
-  /** Layers-tree interactions — ids from selection snapshots or layer nodes. */
-  selectElement(id: number): void;
+  /** Layers-tree interactions — ids from selection snapshots or layer nodes. `toggle` is
+   * the rail's Cmd/Shift-click, adding or removing the row from the current selection. */
+  selectElement(id: number, mode?: DesignModeSelectMode): void;
   hoverElement(id: number | null): void;
+  /** Moves `id` to sit immediately before `beforeId` among its siblings; null means "to the
+   * end" (rail drag-and-drop). Sibling-relative rather than index-based on purpose: the
+   * curated layers tree hoists tagged descendants through untagged wrappers, so a row's
+   * position in the TREE is not its position in the DOM — only the guest can turn "before
+   * this element" into an index. Refused when the two don't share a parent. */
+  reorderElement(id: number, beforeId: number | null): void;
   /** Canvas mode: turn the page into a pannable/zoomable artboard (Figma-style). */
   setCanvas(on: boolean): void;
   /** Discrete canvas zoom verbs; no-ops while canvas is off. */
@@ -341,6 +356,7 @@ function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | nu
     !isNonNegativeInteger(value.id) ||
     typeof value.tag !== "string" ||
     typeof value.label !== "string" ||
+    typeof value.reorderable !== "boolean" ||
     !Array.isArray(value.children)
   ) {
     return null;
@@ -351,6 +367,7 @@ function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | nu
     id: value.id,
     tag: value.tag,
     label: value.label,
+    reorderable: value.reorderable,
     children: children.filter((child): child is DesignModeLayerNode => child !== null),
   };
 }

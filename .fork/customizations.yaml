@@ -1543,6 +1543,19 @@
     a property with a live draft carries a changed dot that reverts JUST that
     property (snapshot `drafted` + the revertDraft verb over the vendored
     DraftStore.discard, which is css-only so a structural draft survives).
+    The layers rail is Figma's layers panel, not a static tree: it REVEALS the
+    canvas selection (expanding ancestors and scrolling to the row), implements
+    the ARIA tree contract for real (roving tabindex, arrows, expand/collapse,
+    Home/End, Shift to extend), filters by label/tag with matches unfolded,
+    shows a type glyph per row, and drags a row among its siblings. Reorder is
+    sibling-relative over the wire (`reorderElement(id, beforeId)`) because the
+    curated tree hoists tagged descendants through untagged wrappers — a row's
+    position in the TREE is not its position in the DOM, so only the guest can
+    turn "before this element" into an index; rows whose parent is not an
+    auto-layout container report `reorderable: false` and refuse the drop,
+    since the vendored move draft previews as inline `order`. No hide/lock
+    toggles: hiding an element in CSS-land IS "remove this element", which the
+    delete draft already says honestly from the canvas.
     Edits preview as inline styles and never touch source. Send delivers as a composer
     ATTACHMENT, never prompt text: the panel stores the built request in
     designChangeDraftStore, the composer renders it as an inline pill
@@ -1593,6 +1606,9 @@
     - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkTranscriptDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkLayersTree.tsx
+    - apps/web/src/custom/designMode/layersTreeModel.ts
+    - apps/web/src/custom/designMode/layersTreeModel.test.ts
+    - apps/web/src/custom/designMode/panel/LayerTypeIcon.tsx
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/CornerRadiusIcon.tsx

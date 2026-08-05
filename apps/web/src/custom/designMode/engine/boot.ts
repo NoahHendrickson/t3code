@@ -71,8 +71,9 @@ function boot(): void {
     discardAll: () => mode.discardAll(),
     compareAll: (on) => mode.compareAll(on),
     buildSend: () => mode.buildSend(),
-    selectElement: (id) => mode.selectById(id),
+    selectElement: (id, selectMode) => mode.selectById(id, selectMode),
     hoverElement: (id) => mode.hoverById(id),
+    reorderElement: (id, beforeId) => mode.reorderById(id, beforeId),
     setCanvas: (on) => mode.canvas.setOn(on),
     canvasCommand: (action) => mode.canvas.run(action),
     destroy: () => {

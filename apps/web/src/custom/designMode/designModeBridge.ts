@@ -5,6 +5,7 @@ import {
   type DesignModeAlignAxis,
   type DesignModeAlignValue,
   type DesignModeCanvasCommand,
+  type DesignModeSelectMode,
   type DesignModeSizeMode,
   type DesignModeWritableKey,
 } from "./protocol";
@@ -91,11 +92,14 @@ export const designModeBridge = {
       .catch(() => null);
     return parseDesignChangeRequestPayload(result);
   },
-  selectElement(runtimeTabId: string, id: number): void {
-    fire(runtimeTabId, "selectElement", [id]);
+  selectElement(runtimeTabId: string, id: number, mode: DesignModeSelectMode = "replace"): void {
+    fire(runtimeTabId, "selectElement", [id, mode]);
   },
   hoverElement(runtimeTabId: string, id: number | null): void {
     fire(runtimeTabId, "hoverElement", [id]);
+  },
+  reorderElement(runtimeTabId: string, id: number, beforeId: number | null): void {
+    fire(runtimeTabId, "reorderElement", [id, beforeId]);
   },
   setCanvas(runtimeTabId: string, on: boolean): void {
     fire(runtimeTabId, "setCanvas", [on]);

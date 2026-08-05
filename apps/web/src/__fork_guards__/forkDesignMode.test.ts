@@ -431,7 +431,8 @@ describe("fork guard: design mode", () => {
           id: 1,
           tag: "div",
           label: "Frame",
-          children: [{ id: 2, tag: "button", label: "Save", children: [] }],
+          reorderable: false,
+          children: [{ id: 2, tag: "button", label: "Save", reorderable: true, children: [] }],
         },
       ],
       truncated: false,
@@ -439,10 +440,16 @@ describe("fork guard: design mode", () => {
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(layers)}`),
     ).toEqual(layers);
-    // Rejections: missing label, missing truncated, one bad child poisons the message.
+    // Rejections: missing label, missing reorderable, missing truncated, one bad child
+    // poisons the message.
     expect(
       parseDesignModeConsoleMessage(
-        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","children":[]}],"truncated":false}`,
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","reorderable":false,"children":[]}],"truncated":false}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","label":"Frame","children":[]}],"truncated":false}`,
       ),
     ).toBeNull();
     expect(
@@ -450,9 +457,15 @@ describe("fork guard: design mode", () => {
     ).toBeNull();
     // Depth bound: a chain one level past the shared bound rejects rather than recursing.
     const chain = (levels: number) => {
-      let node: Record<string, unknown> = { id: levels, tag: "div", label: "leaf", children: [] };
+      let node: Record<string, unknown> = {
+        id: levels,
+        tag: "div",
+        label: "leaf",
+        reorderable: false,
+        children: [],
+      };
       for (let index = levels - 1; index >= 1; index -= 1) {
-        node = { id: index, tag: "div", label: "Frame", children: [node] };
+        node = { id: index, tag: "div", label: "Frame", reorderable: false, children: [node] };
       }
       return `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [node], truncated: false })}`;
     };

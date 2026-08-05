@@ -2,6 +2,7 @@ import { DESIGN_MODE_LAYERS_MAX_DEPTH, type DesignModeLayerNode } from "../proto
 import type { ElementIdRegistry } from "./idRegistry";
 import { hasForgeTags } from "./nativeSource";
 import { buildLayerTree, type LayerBudget, type LayerNode } from "./vendor/layers";
+import { reorderAxisOf } from "./vendor/move-drag";
 
 /** Quiet-window for MutationObserver-driven layers rebuilds — HMR re-renders land as
  * bursts (same rationale as the Forge's LayersTree REFRESH_DEBOUNCE_MS). */
@@ -75,6 +76,10 @@ export class LayersSession {
       id: this.registry.mintForLayers(node.el),
       tag: node.el.tagName.toLowerCase(),
       label: node.label,
+      // The move op previews as inline `order`, so only an auto-layout parent can honor a
+      // reorder — reorderAxisOf is the same predicate the pointer drag and the arrow keys
+      // gate on, never a second copy of the rule.
+      reorderable: reorderAxisOf(node.el.parentElement) !== null,
       children: this.serialize(node.children, budget, depth + 1),
     }));
   }

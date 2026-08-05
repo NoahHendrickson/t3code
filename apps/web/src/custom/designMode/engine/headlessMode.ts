@@ -22,6 +22,7 @@ import type {
   DesignModeAlignValue,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
+  DesignModeSelectMode,
   DesignModeSizeMode,
   DesignModeWritableKey,
 } from "../protocol";
@@ -43,7 +44,7 @@ import { DraftStore } from "./vendor/drafts";
 import { defeatFillIfGrowing, draftSolidIfNone, POSITION_ROWS } from "./vendor/panel-specs";
 import { isEditable, unionClientRect } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
-import { MoveDrag } from "./vendor/move-drag";
+import { MoveDrag, reorderAxisOf } from "./vendor/move-drag";
 import { ResizeHandles } from "./vendor/resize";
 import {
   buildChangeRequestWithElements,
@@ -698,10 +699,44 @@ export class HeadlessDesignMode {
     this.onSelection?.(snapshots);
   }
 
-  /** Layers-row click — same selection funnel as a canvas click. */
-  selectById(id: number): void {
+  /** Layers-row click — same selection funnel as a canvas click, including its Shift-click
+   * toggle, so the rail and the page can never build the selection by different rules. */
+  selectById(id: number, mode: DesignModeSelectMode = "replace"): void {
     const el = this.registry.resolve(id);
-    if (el) this.select(el);
+    if (!el) return;
+    if (mode === "toggle") this.toggleSelection(el);
+    else this.select(el);
+  }
+
+  /** Layers-row drag — moves the element to sit before `beforeId` (null: last). The index
+   * math lives here because only the guest can see the real sibling list: the curated tree
+   * hoists tagged descendants through untagged wrappers, so two rows that look like siblings
+   * in the rail may not be. Every other rule (auto-layout parents only, one structural draft
+   * per element, the tombstone-aware basis) is the vendored move draft's, unchanged. */
+  reorderById(id: number, beforeId: number | null): void {
+    const el = this.registry.resolve(id);
+    const parent = el?.parentElement;
+    if (!el || !parent || reorderAxisOf(parent) === null) return;
+    const structural = this.drafts.structuralOf(el);
+    if (structural && structural.kind !== "move") return;
+    const siblings = this.drafts.reorderBasis(parent);
+    const from = siblings.indexOf(el);
+    if (from === -1 || siblings.length < 2) return;
+
+    let target = siblings.length - 1;
+    if (beforeId !== null) {
+      const reference = this.registry.resolve(beforeId);
+      if (!reference || reference.parentElement !== parent) return;
+      const referenceIndex = siblings.indexOf(reference);
+      if (referenceIndex === -1) return;
+      // Dragging downwards, the element vacates a slot above the reference first, so landing
+      // "before" it is one step earlier than the reference's current index.
+      target = from < referenceIndex ? referenceIndex - 1 : referenceIndex;
+    }
+    if (target === from) return;
+    this.handleBeforeEdit(el);
+    this.drafts.applyMove(el, target);
+    this.handleEdited();
   }
 
   /** Layers-row hover — drives the same hover outline the pointer does, including the
