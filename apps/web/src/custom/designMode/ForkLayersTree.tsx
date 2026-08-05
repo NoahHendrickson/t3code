@@ -1,11 +1,11 @@
 import { ChevronDownIcon, ChevronRight, ChevronsDownUpIcon, SearchIcon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "./designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
-import { useLayersDrag, type DropEdge, type LayerDragHandlers } from "./layersDrag";
+import { useLayersDrag, type DropEdge } from "./layersDrag";
 import {
   ancestorsOf,
   flattenLayers,
@@ -15,46 +15,42 @@ import {
 } from "./layersTreeModel";
 import { LayerTypeIcon } from "./panel/LayerTypeIcon";
 
-function LayerRowView({
+/** Marks the disclosure caret so the delegated click handler can tell "expand this" from
+ * "select this" without a per-row closure. */
+const TOGGLE_ATTRIBUTE = "data-layer-toggle";
+
+/**
+ * One row. Memoized on purpose: every interaction on this rail is delegated to the
+ * container, so a row's props are its own id, three booleans and a string — which means a
+ * drag crossing rows, or a keyboard walk, re-renders the two rows that changed rather than
+ * all 400 of them (PR #57 review).
+ */
+const LayerRowView = memo(function LayerRowView({
   row,
   selected,
   active,
+  draggable,
   dropEdge,
-  onToggle,
-  onSelect,
-  onHover,
-  onFocusRow,
-  onKeyDown,
-  drag,
 }: {
   row: LayerRow;
   selected: boolean;
   active: boolean;
+  draggable: boolean;
   dropEdge: DropEdge | null;
-  onToggle: () => void;
-  onSelect: (additive: boolean) => void;
-  onHover: () => void;
-  onFocusRow: () => void;
-  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
-  drag: LayerDragHandlers;
 }) {
   const { node, depth, expanded, hasChildren } = row;
   return (
     <div
       // Addressed by attribute rather than a ref callback: the rail re-renders on every
       // layers re-emit, and a fresh per-row callback tears down and re-attaches every ref
-      // each time (PR #57 review).
+      // each time. The delegated handlers read the same attribute.
       data-layer-id={node.id}
       role="treeitem"
       aria-selected={selected}
       aria-level={depth + 1}
       {...(hasChildren ? { "aria-expanded": expanded } : {})}
       tabIndex={active ? 0 : -1}
-      onFocus={onFocusRow}
-      onKeyDown={onKeyDown}
-      onMouseEnter={onHover}
-      onClick={(event) => onSelect(event.shiftKey || event.metaKey || event.ctrlKey)}
-      {...drag}
+      draggable={draggable}
       className={cn(
         "relative flex h-6 cursor-pointer items-center gap-0.5 rounded pe-1 text-xs outline-none",
         selected
@@ -75,18 +71,14 @@ function LayerRowView({
         />
       ) : null}
       {hasChildren ? (
-        <button
-          type="button"
-          tabIndex={-1}
+        <span
+          {...{ [TOGGLE_ATTRIBUTE]: "" }}
+          role="button"
           aria-label={expanded ? "Collapse" : "Expand"}
           className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground/70 hover:text-foreground"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggle();
-          }}
         >
           {expanded ? <ChevronDownIcon className="size-3" /> : <ChevronRight className="size-3" />}
-        </button>
+        </span>
       ) : (
         <span className="size-4 shrink-0" />
       )}
@@ -94,7 +86,7 @@ function LayerRowView({
       <span className="truncate">{node.label}</span>
     </div>
   );
-}
+});
 
 /**
  * The native layers rail — a Figma-style tree of the previewed page's elements, docked
@@ -107,9 +99,10 @@ function LayerRowView({
  * Figma's layers-panel behaviors, all of them going through the same shared ids: the rail
  * REVEALS whatever the canvas selects (expanding its ancestors and scrolling to it), it is
  * a real keyboard tree (arrows, Home/End, Shift to extend), it filters, and a row can be
- * dragged among its siblings when the parent is an auto-layout container. The tree
- * arithmetic lives in layersTreeModel.ts and the drag in layersDrag.ts, leaving this a
- * renderer. See `.fork/customizations.yaml#fork-design-mode`.
+ * dragged among its DOM siblings when the parent is an auto-layout container. Tree
+ * arithmetic lives in layersTreeModel.ts and the drag in layersDrag.ts; every interaction is
+ * delegated from the container here, so rows stay memoizable.
+ * See `.fork/customizations.yaml#fork-design-mode`.
  */
 export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }) {
   const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
@@ -138,8 +131,8 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
   // every ancestor and scrolling to the row. Guarded on what was actually revealed rather
   // than on the effect's deps: `roots` is a fresh array on every layers message, and the
   // guest re-emits on every debounced DOM mutation — so without this, any repaint in the
-  // previewed page yanked the rail back to the selection mid-scroll and stomped the roving
-  // tabindex mid-keyboard-navigation (PR #57 review).
+  // previewed page yanked the rail back to the selection and stomped the roving tabindex
+  // mid-keyboard-navigation (PR #57 review).
   const firstSelected = tab.selection[0]?.id ?? null;
   useEffect(() => {
     if (firstSelected === null) {
@@ -147,9 +140,14 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
       return;
     }
     if (revealed.current === firstSelected) return;
-    revealed.current = firstSelected;
     const ancestors = ancestorsOf(roots, firstSelected);
-    if (ancestors && ancestors.length > 0) {
+    // Not in the tree YET: selection snapshots arrive immediately while layers are debounced
+    // 250ms, so the first selection after enabling the mode routinely lands before its rows
+    // exist. Stamping "revealed" here would burn the reveal for exactly that case (PR #57
+    // review) — leave it unstamped and let the next layers message run it.
+    if (!ancestors) return;
+    revealed.current = firstSelected;
+    if (ancestors.length > 0) {
       setExpanded((previous) => {
         const missing = ancestors.filter((id, index) => !isExpanded(previous, id, index));
         if (missing.length === 0) return previous;
@@ -191,6 +189,10 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
     [runtimeTabId],
   );
 
+  const toggle = useCallback((id: number, depth: number) => {
+    setExpanded((state) => ({ ...state, [id]: !isExpanded(state, id, depth) }));
+  }, []);
+
   const moveActive = useCallback(
     (id: number, additive: boolean) => {
       focusOnRender.current = true;
@@ -208,14 +210,30 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
     [runtimeTabId],
   );
 
-  const { dropEdgeFor, handlersFor } = useLayersDrag({
+  const { dropTarget, canDrag, containerHandlers } = useLayersDrag({
     rows,
     filtering: filter !== null,
     onReorder,
   });
 
-  const onRowKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>, row: LayerRow, index: number) => {
+  /** The row an event happened in, plus its index — the delegated handlers' one lookup. */
+  const rowFromEvent = useCallback(
+    (target: EventTarget | null): { row: LayerRow; index: number } | null => {
+      const host = (target as HTMLElement | null)?.closest?.("[data-layer-id]");
+      const id = Number.parseInt(host?.getAttribute("data-layer-id") ?? "", 10);
+      if (!Number.isFinite(id)) return null;
+      const index = rows.findIndex((candidate) => candidate.node.id === id);
+      const row = rows[index];
+      return row ? { row, index } : null;
+    },
+    [rows],
+  );
+
+  const onListKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      const found = rowFromEvent(event.target);
+      if (!found) return;
+      const { row, index } = found;
       const { node } = row;
       switch (event.key) {
         case "ArrowDown": {
@@ -229,20 +247,16 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
           break;
         }
         case "ArrowRight": {
-          if (row.hasChildren && !row.expanded) {
-            setExpanded((state) => ({ ...state, [node.id]: true }));
-          } else if (row.hasChildren) {
+          if (row.hasChildren && !row.expanded) toggle(node.id, row.depth);
+          else if (row.hasChildren) {
             const child = rows[index + 1];
             if (child) moveActive(child.node.id, false);
           }
           break;
         }
         case "ArrowLeft": {
-          if (row.hasChildren && row.expanded) {
-            setExpanded((state) => ({ ...state, [node.id]: false }));
-          } else if (row.parentId !== null) {
-            moveActive(row.parentId, false);
-          }
+          if (row.hasChildren && row.expanded) toggle(node.id, row.depth);
+          else if (row.parentId !== null) moveActive(row.parentId, false);
           break;
         }
         case "Home": {
@@ -267,7 +281,7 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
       event.preventDefault();
       event.stopPropagation();
     },
-    [moveActive, rows, select],
+    [moveActive, rowFromEvent, rows, select, toggle],
   );
 
   if (!runtimeTabId || !tab.enabled || !tab.layers) return null;
@@ -316,34 +330,41 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
         ref={listRef}
         // The ARIA tree contract this rail now actually implements: roving tabindex, arrow
         // navigation, expand/collapse and Shift-extend (PR #50's comment deferred the roles
-        // until exactly that existed).
+        // until exactly that existed). Every handler is delegated from here — see LayerRowView.
         role="tree"
         aria-label="Page layers"
         aria-multiselectable
         className="min-h-0 flex-1 overflow-y-auto p-1.5"
+        onKeyDown={onListKeyDown}
+        onFocus={(event) => {
+          const found = rowFromEvent(event.target);
+          if (found) setActiveId(found.row.node.id);
+        }}
+        onClick={(event) => {
+          const found = rowFromEvent(event.target);
+          if (!found) return;
+          if ((event.target as HTMLElement).closest(`[${TOGGLE_ATTRIBUTE}]`)) {
+            toggle(found.row.node.id, found.row.depth);
+            return;
+          }
+          setActiveId(found.row.node.id);
+          select(found.row.node.id, event.shiftKey || event.metaKey || event.ctrlKey);
+        }}
+        onMouseOver={(event) => {
+          const found = rowFromEvent(event.target);
+          designModeBridge.hoverElement(runtimeTabId, found?.row.node.id ?? null);
+        }}
         onMouseLeave={() => designModeBridge.hoverElement(runtimeTabId, null)}
+        {...containerHandlers}
       >
-        {rows.map((row, index) => (
+        {rows.map((row) => (
           <LayerRowView
             key={row.node.id}
             row={row}
             selected={selectedIds.has(row.node.id)}
             active={activeRowId === row.node.id}
-            dropEdge={dropEdgeFor(row.node.id)}
-            drag={handlersFor(row)}
-            onToggle={() =>
-              setExpanded((state) => ({
-                ...state,
-                [row.node.id]: !isExpanded(state, row.node.id, row.depth),
-              }))
-            }
-            onSelect={(additive) => {
-              setActiveId(row.node.id);
-              select(row.node.id, additive);
-            }}
-            onHover={() => designModeBridge.hoverElement(runtimeTabId, row.node.id)}
-            onFocusRow={() => setActiveId(row.node.id)}
-            onKeyDown={(event) => onRowKeyDown(event, row, index)}
+            draggable={canDrag(row)}
+            dropEdge={dropTarget?.overId === row.node.id ? dropTarget.edge : null}
           />
         ))}
         {rows.length === 0 ? (

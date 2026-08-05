@@ -432,7 +432,17 @@ describe("fork guard: design mode", () => {
           tag: "div",
           label: "Frame",
           reorderable: false,
-          children: [{ id: 2, tag: "button", label: "Save", reorderable: true, children: [] }],
+          siblingGroup: 0,
+          children: [
+            {
+              id: 2,
+              tag: "button",
+              label: "Save",
+              reorderable: true,
+              siblingGroup: 1,
+              children: [],
+            },
+          ],
         },
       ],
       truncated: false,
@@ -440,16 +450,21 @@ describe("fork guard: design mode", () => {
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(layers)}`),
     ).toEqual(layers);
-    // Rejections: missing label, missing reorderable, missing truncated, one bad child
-    // poisons the message.
+    // Rejections: missing label, missing reorderable, missing siblingGroup (the rail's
+    // DOM-sibling drop gate), missing truncated, one bad child poisons the message.
     expect(
       parseDesignModeConsoleMessage(
-        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","reorderable":false,"children":[]}],"truncated":false}`,
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","reorderable":false,"siblingGroup":0,"children":[]}],"truncated":false}`,
       ),
     ).toBeNull();
     expect(
       parseDesignModeConsoleMessage(
-        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","label":"Frame","children":[]}],"truncated":false}`,
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","label":"Frame","siblingGroup":0,"children":[]}],"truncated":false}`,
+      ),
+    ).toBeNull();
+    expect(
+      parseDesignModeConsoleMessage(
+        `${DESIGN_MODE_CONSOLE_PREFIX}{"type":"layers","roots":[{"id":1,"tag":"div","label":"Frame","reorderable":false,"children":[]}],"truncated":false}`,
       ),
     ).toBeNull();
     expect(
@@ -462,10 +477,18 @@ describe("fork guard: design mode", () => {
         tag: "div",
         label: "leaf",
         reorderable: false,
+        siblingGroup: 0,
         children: [],
       };
       for (let index = levels - 1; index >= 1; index -= 1) {
-        node = { id: index, tag: "div", label: "Frame", reorderable: false, children: [node] };
+        node = {
+          id: index,
+          tag: "div",
+          label: "Frame",
+          reorderable: false,
+          siblingGroup: 0,
+          children: [node],
+        };
       }
       return `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({ type: "layers", roots: [node], truncated: false })}`;
     };

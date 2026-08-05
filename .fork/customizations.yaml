@@ -1553,9 +1553,18 @@
     position in the TREE is not its position in the DOM, so only the guest can
     turn "before this element" into an index; rows whose parent is not an
     auto-layout container report `reorderable: false` and refuse the drop,
-    since the vendored move draft previews as inline `order`. No hide/lock
-    toggles: hiding an element in CSS-land IS "remove this element", which the
-    delete draft already says honestly from the canvas.
+    since the vendored move draft previews as inline `order`. Rows also carry a
+    siblingGroup identifying their DOM parent, because tree siblings are not
+    always DOM siblings and the drop gate must enforce the same rule the guest
+    does. Rail rows serialize in visual order ONLY when the `order` in play is
+    our own preview (read from inline style, never computed): an app that
+    authors `order` keeps its rail in DOM order, because reorderById computes
+    indices in DOM order and the two halves must agree. No hide/lock toggles:
+    hiding an element in CSS-land IS "remove this element", which the delete
+    draft already says honestly from the canvas. The guest handle carries
+    DESIGN_MODE_PROTOCOL_VERSION and boot() rebuilds rather than reusing a
+    handle stamped with a different one — a stale engine otherwise fails
+    silently, its snapshots rejected wholesale by a stricter parser.
     Edits preview as inline styles and never touch source. Send delivers as a composer
     ATTACHMENT, never prompt text: the panel stores the built request in
     designChangeDraftStore, the composer renders it as an inline pill

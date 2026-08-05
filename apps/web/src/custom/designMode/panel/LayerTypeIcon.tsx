@@ -17,6 +17,8 @@ import {
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
 
+import { glyph } from "./PanelIcons";
+
 const BY_TAG: Record<string, PhosphorIcon> = {
   a: Link,
   article: Article,
@@ -41,7 +43,19 @@ const BY_TAG: Record<string, PhosphorIcon> = {
   video: ImageIcon,
 };
 
+/** One wrapper per distinct glyph, built once — `glyph()` pins the panel's weight, and
+ * memoizing here keeps the row from minting a component type per render. */
+const WRAPPED = new Map<PhosphorIcon, ReturnType<typeof glyph>>();
+
+function wrapped(Base: PhosphorIcon): ReturnType<typeof glyph> {
+  const known = WRAPPED.get(Base);
+  if (known) return known;
+  const made = glyph(Base);
+  WRAPPED.set(Base, made);
+  return made;
+}
+
 export function LayerTypeIcon({ tag, className }: { tag: string; className?: string }) {
-  const Glyph = BY_TAG[tag] ?? Square;
-  return <Glyph weight="regular" className={className} aria-hidden />;
+  const Glyph = wrapped(BY_TAG[tag] ?? Square);
+  return <Glyph className={className} aria-hidden />;
 }

@@ -25,6 +25,20 @@ describe("evaluateNumericInput", () => {
     expect(evaluateNumericInput("/4", 16)).toBe(4);
   });
 
+  it("binds a unary sign to its operand, not as a subtraction from zero", () => {
+    // Rewriting `-x` as `0 - x` inherits additive precedence, so these silently committed
+    // the right-hand operand alone (PR #57 review).
+    expect(evaluateNumericInput("16*-1", 0)).toBe(-16);
+    expect(evaluateNumericInput("2*-3", 0)).toBe(-6);
+    expect(evaluateNumericInput("*-2", 16)).toBe(-32);
+    expect(evaluateNumericInput("2--3", 0)).toBe(5);
+    expect(evaluateNumericInput("8/-2", 0)).toBe(-4);
+    expect(evaluateNumericInput("-(2+3)", 0)).toBe(-5);
+    expect(evaluateNumericInput("2*-(3+1)", 0)).toBe(-8);
+    expect(evaluateNumericInput("+(2+3)", 0)).toBe(5);
+    expect(evaluateNumericInput("-2*-3", 0)).toBe(6);
+  });
+
   it("rejects anything it can't resolve rather than guessing", () => {
     expect(evaluateNumericInput("", 10)).toBeNull();
     expect(evaluateNumericInput("auto", 10)).toBeNull();

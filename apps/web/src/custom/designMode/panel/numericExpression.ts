@@ -38,16 +38,44 @@ function tokenize(input: string): Token[] | null {
   return tokens;
 }
 
-/** Unary minus/plus — rewritten to a binary op against 0 so the evaluator stays one shape. */
+/**
+ * Rewrites unary minus/plus into something the binary evaluator can run.
+ *
+ * NOT as `0 - x`: that inherits additive precedence, so `2*-3` parsed as `(2*0)-3` and
+ * committed -3 (PR #57 review, caught by execution). A sign belongs to the operand, so it
+ * folds INTO the number it precedes — and before a parenthesis it becomes `-1 *`, which
+ * carries multiplicative precedence and binds the same way.
+ */
 function normalizeUnary(tokens: Token[]): Token[] {
   const out: Token[] = [];
-  for (const [index, token] of tokens.entries()) {
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === undefined) continue;
     const previous = tokens[index - 1];
     const isUnary =
       token.kind === "op" &&
       (token.value === "-" || token.value === "+") &&
+      // A sign is unary at the start, or after any operator except a closing paren (which
+      // ends an operand, so what follows it is binary).
       (previous === undefined || (previous.kind === "op" && previous.value !== ")"));
-    if (isUnary) out.push({ kind: "number", value: 0 });
+    if (!isUnary) {
+      out.push(token);
+      continue;
+    }
+    const next = tokens[index + 1];
+    if (next?.kind === "number") {
+      out.push({ kind: "number", value: token.value === "-" ? -next.value : next.value });
+      index += 1;
+      continue;
+    }
+    if (next?.kind === "op" && next.value === "(") {
+      // `-(2+3)` → `-1 * (2+3)`; a unary plus before a group is simply dropped.
+      if (token.value === "-") {
+        out.push({ kind: "number", value: -1 }, { kind: "op", value: "*" });
+      }
+      continue;
+    }
+    // A sign with no operand at all ("8+", "*") — leave it for the evaluator to reject.
     out.push(token);
   }
   return out;

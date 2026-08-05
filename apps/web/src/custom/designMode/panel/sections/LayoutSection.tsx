@@ -15,10 +15,13 @@ import {
   WrapIcon,
 } from "../PanelIcons";
 import { isMixed } from "../selectionValues";
-import { Expando, SideFields, isFlexDisplay, type SectionProps } from "./section";
+import { Expando, PADDING_KEYS, SideFields, isFlexDisplay, type SectionProps } from "./section";
 
-/** Keywords the sizing fields take verbatim — typing one ships the INTENT ("hug the
- * content", "drop the constraint") instead of whatever px it currently measures. */
+/** Keywords the W/H fields accept. Typing one is HUG INTENT, and hug is a coordinated write
+ * the engine owns (applySizeMode defeats a flex grow, pins the cross axis, and picks
+ * fit-content vs auto by axis role) — so these route through the sizing menu's own verb
+ * rather than drafting a bare `width: auto` that a growing flex child ignores while the menu
+ * reads back Fill (PR #57 review). */
 const SIZE_KEYWORDS = ["auto", "fit-content", "min-content", "max-content"] as const;
 const CONSTRAINT_KEYWORDS = ["auto", "none"] as const;
 
@@ -85,9 +88,21 @@ export function LayoutSection({
   const mixedDirection = isMixed(selection, "flex-direction");
   const flex = selection.every((item) => isFlexDisplay(item.styles.display));
   const column = styles["flex-direction"].startsWith("column");
-  const aspectLocked = selection.every(
-    (item) => item.styles["aspect-ratio"] !== "auto" && item.styles["aspect-ratio"] !== "",
-  );
+  // "auto 800 / 600" is what Chromium computes for an <img> carrying width/height attributes:
+  // an intrinsic-ratio HINT, not a lock. Treating it as locked rendered the toggle pressed on
+  // every plain image, and the first click "unlocked" by drafting `aspect-ratio: auto` —
+  // shipping a request to strip a ratio nobody set (PR #57 review).
+  const aspectLocked = selection.every((item) => {
+    const ratio = item.styles["aspect-ratio"];
+    return ratio !== "" && !ratio.startsWith("auto");
+  });
+  /** One path per intent: a typed sizing keyword IS the Hug menu pick, anything else is an
+   * ordinary css draft. */
+  const editSize = (axis: "width" | "height", value: string) => {
+    if ((SIZE_KEYWORDS as readonly string[]).includes(value)) onSizeMode(axis, "hug");
+    else apply(axis, value);
+  };
+
   const sizeMode = (axis: "width" | "height") =>
     selection.every((item) => item.sizeModes[axis] === element.sizeModes[axis])
       ? element.sizeModes[axis]
@@ -123,7 +138,7 @@ export function LayoutSection({
             onPick={(mode) => onSizeMode("width", mode)}
           />
         }
-        onEdit={(v) => apply("width", v)}
+        onEdit={(v) => editSize("width", v)}
       />
       <ScrubField
         label="H"
@@ -140,7 +155,7 @@ export function LayoutSection({
             onPick={(mode) => onSizeMode("height", mode)}
           />
         }
-        onEdit={(v) => apply("height", v)}
+        onEdit={(v) => editSize("height", v)}
       />
       <PanelToggle
         pressed={aspectLocked}
@@ -275,7 +290,8 @@ export function LayoutSection({
 
       <Expando label="Padding per side">
         <SideFields
-          prefix="padding"
+          keys={PADDING_KEYS}
+          title={(side) => `Padding ${side}`}
           styles={styles}
           apply={apply}
           field={field}

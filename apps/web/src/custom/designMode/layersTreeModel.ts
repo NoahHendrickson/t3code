@@ -42,8 +42,10 @@ export function matchingIds(
     const path = [...ancestors, node.id];
     const self =
       node.label.toLowerCase().includes(needle) || node.tag.toLowerCase().includes(needle);
-    // Walk every child even after a hit: a matching parent must not hide a matching child's
-    // own path, and the subtree of a match stays browsable.
+    // Walk every child even after a hit, so a matching parent can't hide a matching child's
+    // own path. A match's non-matching descendants are still filtered out — the rail shows
+    // what matched and how to get to it, not a subtree to browse (PR #57 review: the comment
+    // used to promise browsable subtrees, which is not what flattenLayers does).
     const childHit = node.children.map((child) => walk(child, path)).some(Boolean);
     if (self || childHit) for (const id of path) keep.add(id);
     return self || childHit;

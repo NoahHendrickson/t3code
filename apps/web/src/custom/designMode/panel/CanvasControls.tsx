@@ -1,8 +1,7 @@
-import { Frame, Maximize2Icon, MinusIcon, PlusIcon } from "lucide-react";
-
 import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "../designModeBridge";
+import { CanvasIcon, ZoomFitIcon, ZoomInIcon, ZoomOutIcon } from "./PanelIcons";
 
 /** The canvas strip: a Figma-frame toggle that hands the page to the guest's vendored
  * CanvasMode (space-drag pan, cursor-anchored wheel/pinch zoom, the powers-of-2 ladder),
@@ -30,7 +29,7 @@ export function CanvasControls({
             : "bg-[var(--fork-design-field)] text-muted-foreground hover:text-foreground",
         )}
       >
-        <Frame />
+        <CanvasIcon />
         Canvas
       </button>
       {canvas.on ? (
@@ -41,7 +40,7 @@ export function CanvasControls({
             className={zoomButton}
             onClick={() => designModeBridge.canvasCommand(runtimeTabId, "zoom-out")}
           >
-            <MinusIcon />
+            <ZoomOutIcon />
           </button>
           <button
             type="button"
@@ -57,7 +56,7 @@ export function CanvasControls({
             className={zoomButton}
             onClick={() => designModeBridge.canvasCommand(runtimeTabId, "zoom-in")}
           >
-            <PlusIcon />
+            <ZoomInIcon />
           </button>
           <button
             type="button"
@@ -65,7 +64,7 @@ export function CanvasControls({
             className={zoomButton}
             onClick={() => designModeBridge.canvasCommand(runtimeTabId, "zoom-fit")}
           >
-            <Maximize2Icon />
+            <ZoomFitIcon />
           </button>
         </div>
       ) : null}

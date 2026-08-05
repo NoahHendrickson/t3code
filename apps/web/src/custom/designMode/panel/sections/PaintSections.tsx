@@ -3,18 +3,9 @@ import { ColorField, PanelSection, ScrubField } from "../DesignPanelFields";
 import { SelectRow } from "../DesignPanelLayoutControls";
 import { FillIcon, StrokeColorIcon, StrokeStyleIcon, StrokeWidthIcon } from "../PanelIcons";
 import { isMixed } from "../selectionValues";
-import { Expando, SideFields, type SectionProps } from "./section";
+import { BORDER_WIDTH_KEYS, Expando, MARGIN_KEYS, SideFields, type SectionProps } from "./section";
 
 const BORDER_STYLES = ["none", "solid", "dashed", "dotted"] as const;
-
-const BORDER_WIDTH_KEYS = [
-  "border-top-width",
-  "border-right-width",
-  "border-bottom-width",
-  "border-left-width",
-] as const;
-
-const SIDE_LABELS = ["T", "R", "B", "L"] as const;
 
 /** Figma's Fill. One background colour today — a fill LIST (multiple layers, per-fill
  * opacity and visibility) is the next thing this section grows, and it grows here. */
@@ -80,17 +71,14 @@ export function StrokeSection({
       />
       <div />
       <Expando label="Stroke per side">
-        {BORDER_WIDTH_KEYS.map((key, index) => (
-          <ScrubField
-            key={key}
-            label={SIDE_LABELS[index] ?? key}
-            title={`Border ${key.split("-")[1]} width`}
-            value={styles[key]}
-            min={0}
-            {...field(key)}
-            onEdit={(v) => apply(key, v)}
-          />
-        ))}
+        <SideFields
+          keys={BORDER_WIDTH_KEYS}
+          title={(side) => `Border ${side} width`}
+          styles={styles}
+          apply={apply}
+          field={field}
+          min={0}
+        />
       </Expando>
     </PanelSection>
   );
@@ -102,7 +90,8 @@ export function MarginSection({ element, apply, spacingBase, field }: SectionPro
   return (
     <PanelSection title="Margin" className="grid-cols-2" defaultOpen={false}>
       <SideFields
-        prefix="margin"
+        keys={MARGIN_KEYS}
+        title={(side) => `Margin ${side}`}
         styles={element.styles}
         apply={apply}
         field={field}

@@ -35,7 +35,10 @@ import {
   LinkSimpleBreak,
   PaintBrush,
   PaintBucket,
+  Minus,
+  Plus,
   PushPin,
+  Selection,
   TextAa,
   TextAlignCenter,
   TextAlignJustify,
@@ -47,8 +50,10 @@ import {
   type IconProps,
 } from "@phosphor-icons/react";
 
-/** Pins the panel's weight while leaving size to the caller's `size-*` class. */
-function glyph(Base: PhosphorIcon) {
+/** Pins the panel's weight while leaving size to the caller's `size-*` class. Exported so
+ * every fork surface that draws design-mode chrome (the layers rail's type glyphs, the
+ * canvas strip) pins the same weight instead of re-deriving it. */
+export function glyph(Base: PhosphorIcon) {
   const Wrapped = (props: IconProps) => <Base weight="regular" {...props} />;
   Wrapped.displayName = `Panel(${Base.displayName ?? "Icon"})`;
   return Wrapped;
@@ -90,6 +95,13 @@ export const TextAlignLeftIcon = glyph(TextAlignLeft);
 export const TextAlignCenterIcon = glyph(TextAlignCenter);
 export const TextAlignRightIcon = glyph(TextAlignRight);
 export const TextAlignJustifyIcon = glyph(TextAlignJustify);
+
+// Canvas strip. Not through the lucide→duotone shim: the strip sits inside the panel, and
+// mixing weights there reads as two different toolbars (PR #57 review).
+export const CanvasIcon = glyph(Selection);
+export const ZoomOutIcon = glyph(Minus);
+export const ZoomInIcon = glyph(Plus);
+export const ZoomFitIcon = glyph(ArrowsOut);
 
 // Fill and stroke.
 export const FillIcon = glyph(PaintBucket);

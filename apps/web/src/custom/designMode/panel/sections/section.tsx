@@ -7,7 +7,11 @@
  */
 import { useState } from "react";
 
-import type { DesignModeElementSnapshot, DesignModeWritableKey } from "../../protocol";
+import type {
+  DesignModeElementSnapshot,
+  DesignModeStyleKey,
+  DesignModeWritableKey,
+} from "../../protocol";
 import { ScrubField } from "../DesignPanelFields";
 import type { FieldStateFor } from "../selectionValues";
 
@@ -50,39 +54,43 @@ export function Expando({ label, children }: { label: string; children: React.Re
   );
 }
 
-const SIDES = [
-  ["T", "top"],
-  ["R", "right"],
-  ["B", "bottom"],
-  ["L", "left"],
-] as const;
+const SIDE_LABELS: Record<string, string> = { top: "T", right: "R", bottom: "B", left: "L" };
 
-/** The four per-side scrubs of a box property — Padding and Margin share it, and the
- * next TRBL-shaped section is a one-liner instead of another 4-field clone block. */
+/** The side a TRBL-shaped property names: `padding-top` and `border-top-width` both say
+ * "top", so one component can serve every block of four. */
+const sideOf = (key: string): string => /(top|right|bottom|left)/u.exec(key)?.[1] ?? key;
+
+/**
+ * The four per-side scrubs of a box property. Padding, margin and stroke width all take it:
+ * the keys carry the sides, so a TRBL-shaped section really is a one-liner rather than
+ * another zip-two-parallel-arrays block (PR #57 review).
+ */
 export function SideFields({
-  prefix,
+  keys,
+  title,
   styles,
   apply,
   field,
   tokenBasePx,
   min,
 }: {
-  prefix: "padding" | "margin";
+  keys: readonly DesignModeStyleKey[];
+  /** Reads the field's tooltip from the side ("Padding top", "Border top width"). */
+  title: (side: string) => string;
   styles: DesignModeElementSnapshot["styles"];
   apply: ApplyEdit;
   field: FieldStateFor;
-  tokenBasePx: number | null;
+  tokenBasePx?: number | null;
   min?: number;
 }) {
-  const title = prefix.charAt(0).toUpperCase() + prefix.slice(1);
-  return SIDES.map(([label, side]) => {
-    const key = `${prefix}-${side}` as const;
+  return keys.map((key) => {
+    const side = sideOf(key);
     return (
       <ScrubField
         key={key}
-        label={label}
-        title={`${title} ${side}`}
-        tokenBasePx={tokenBasePx}
+        label={SIDE_LABELS[side] ?? side}
+        title={title(side)}
+        {...(tokenBasePx !== undefined ? { tokenBasePx } : {})}
         value={styles[key]}
         {...(min !== undefined ? { min } : {})}
         {...field(key)}
@@ -91,3 +99,20 @@ export function SideFields({
     );
   });
 }
+
+/** The TRBL key sets the panel edits, spelled once. */
+export const PADDING_KEYS = [
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+] as const;
+
+export const MARGIN_KEYS = ["margin-top", "margin-right", "margin-bottom", "margin-left"] as const;
+
+export const BORDER_WIDTH_KEYS = [
+  "border-top-width",
+  "border-right-width",
+  "border-bottom-width",
+  "border-left-width",
+] as const;

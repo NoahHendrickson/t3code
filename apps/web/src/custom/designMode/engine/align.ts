@@ -50,7 +50,15 @@ function parentModel(el: TaggedElement, drafts: DraftStore): ParentModel {
   if (display === "grid" || display === "inline-grid") return { kind: "grid" };
   const blockLevel = BLOCK_LEVEL.has(getComputedStyle(el).display);
   const width = el instanceof HTMLElement ? el.offsetWidth : 0;
-  return { kind: "block", alignable: blockLevel && width > 0 && width < parent.clientWidth };
+  // Slack is measured against the parent's CONTENT box: clientWidth includes its padding, so
+  // a padded parent (`px-4`, the common case) reported room a width-auto child doesn't have,
+  // enabling buttons whose margin-auto draft then moved nothing — the theatre this predicate
+  // exists to prevent, with an inert draft shipping in the request (PR #57 review).
+  const padding =
+    (Number.parseFloat(parentStyle.paddingLeft) || 0) +
+    (Number.parseFloat(parentStyle.paddingRight) || 0);
+  const available = parent.clientWidth - padding;
+  return { kind: "block", alignable: blockLevel && width > 0 && width < available };
 }
 
 export function alignCapsFor(el: TaggedElement, drafts: DraftStore): DesignModeAlignCaps {

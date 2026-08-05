@@ -24,6 +24,16 @@ export const DESIGN_MODE_CONSOLE_PREFIX = "__t3-design-mode__:";
 /** Name of the guest-global handle the engine installs: `window.__T3_DESIGN_MODE__`. */
 export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
 
+/**
+ * Bumped whenever this contract changes in a way an older injected engine can't satisfy.
+ * `boot()` compares it against a live handle's own stamp and rebuilds on a mismatch instead
+ * of reusing it: a host update while the webview keeps its engine used to fail SILENTLY —
+ * new verbs threw into `fire`'s catch, and the old engine's snapshots (missing whatever the
+ * contract had grown) were rejected wholesale by the stricter parser, so selection simply
+ * stopped updating with nothing in the UI to say why (PR #57 review).
+ */
+export const DESIGN_MODE_PROTOCOL_VERSION = 2;
+
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
  * reads them by name. Writes may additionally target the shorthands below — the split
@@ -176,6 +186,12 @@ export interface DesignModeLayerNode {
    * as inline `order`, which only auto-layout (flex/grid) parents honor — so the rail refuses
    * the drop everywhere else instead of accepting a gesture the guest would drop. */
   readonly reorderable: boolean;
+  /** Identifies this node's DOM parent within one layers message. Two rows can only be
+   * reordered against each other when these match — the curated walk hoists tagged
+   * descendants through untagged wrappers, so rows that look like siblings in the TREE
+   * routinely aren't in the DOM, and the guest refuses those (PR #57 review). Only equality
+   * is meaningful; the numbers are per-message and mean nothing across two. */
+  readonly siblingGroup: number;
   readonly children: readonly DesignModeLayerNode[];
 }
 
@@ -248,6 +264,8 @@ export interface DesignChangeRequestPayload {
  * these through `webview.executeJavaScript` (designModeBridge.ts) — every argument and
  * return value must stay JSON-serializable. */
 export interface DesignModeGuestHandle {
+  /** DESIGN_MODE_PROTOCOL_VERSION as of the injection that installed this handle. */
+  readonly version: number;
   setActive(on: boolean): void;
   isActive(): boolean;
   /** Applies one CSS draft to every listed element id (multi-select edits fan out here). */
@@ -357,6 +375,7 @@ function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | nu
     typeof value.tag !== "string" ||
     typeof value.label !== "string" ||
     typeof value.reorderable !== "boolean" ||
+    !isNonNegativeInteger(value.siblingGroup) ||
     !Array.isArray(value.children)
   ) {
     return null;
@@ -368,6 +387,7 @@ function parseLayerNode(value: unknown, depth: number): DesignModeLayerNode | nu
     tag: value.tag,
     label: value.label,
     reorderable: value.reorderable,
+    siblingGroup: value.siblingGroup,
     children: children.filter((child): child is DesignModeLayerNode => child !== null),
   };
 }

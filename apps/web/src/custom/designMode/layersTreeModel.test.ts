@@ -8,7 +8,7 @@ const node = (
   label: string,
   children: DesignModeLayerNode[] = [],
   tag = "div",
-): DesignModeLayerNode => ({ id, tag, label, reorderable: false, children });
+): DesignModeLayerNode => ({ id, tag, label, reorderable: false, siblingGroup: 0, children });
 
 //  1 Page
 //  ├─ 2 Header
