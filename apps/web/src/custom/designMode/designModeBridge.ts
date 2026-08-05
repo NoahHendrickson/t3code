@@ -2,6 +2,8 @@ import {
   DESIGN_MODE_GLOBAL,
   parseDesignChangeRequestPayload,
   type DesignChangeRequestPayload,
+  type DesignModeAlignAxis,
+  type DesignModeAlignValue,
   type DesignModeCanvasCommand,
   type DesignModeSizeMode,
   type DesignModeWritableKey,
@@ -54,6 +56,23 @@ export const designModeBridge = {
     mode: DesignModeSizeMode,
   ): void {
     fire(runtimeTabId, "setSizeMode", [ids, axis, mode]);
+  },
+  setAbsolute(runtimeTabId: string, ids: readonly number[], on: boolean): void {
+    fire(runtimeTabId, "setAbsolute", [ids, on]);
+  },
+  setInset(runtimeTabId: string, ids: readonly number[], axis: "x" | "y", px: number): void {
+    fire(runtimeTabId, "setInset", [ids, axis, px]);
+  },
+  alignSelection(
+    runtimeTabId: string,
+    ids: readonly number[],
+    axis: DesignModeAlignAxis,
+    value: DesignModeAlignValue,
+  ): void {
+    fire(runtimeTabId, "alignSelection", [ids, axis, value]);
+  },
+  setAspectLock(runtimeTabId: string, ids: readonly number[], on: boolean): void {
+    fire(runtimeTabId, "setAspectLock", [ids, on]);
   },
   discardAll(runtimeTabId: string): void {
     fire(runtimeTabId, "discardAll", []);

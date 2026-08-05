@@ -18,11 +18,14 @@
 import { buildElementSnapshot } from "./snapshot";
 import type {
   DesignChangeRequestPayload,
+  DesignModeAlignAxis,
+  DesignModeAlignValue,
   DesignModeElementSnapshot,
   DesignModeLayerNode,
   DesignModeSizeMode,
   DesignModeWritableKey,
 } from "../protocol";
+import { alignElement } from "./align";
 import type { HeadlessOverlay } from "./headlessOverlay";
 import { CanvasSession } from "./canvasSession";
 import { ElementIdRegistry } from "./idRegistry";
@@ -35,9 +38,9 @@ import {
   resolveAndTag,
   sourceContextTargets,
 } from "./nativeSource";
-import { applySizeMode } from "./sizeMode";
+import { applySizeMode, measuredSize } from "./sizeMode";
 import { DraftStore } from "./vendor/drafts";
-import { defeatFillIfGrowing, draftSolidIfNone } from "./vendor/panel-specs";
+import { defeatFillIfGrowing, draftSolidIfNone, POSITION_ROWS } from "./vendor/panel-specs";
 import { isEditable, unionClientRect } from "./vendor/canvas";
 import { TextEditMode } from "./vendor/text-edit";
 import { MoveDrag } from "./vendor/move-drag";
@@ -229,13 +232,19 @@ export class HeadlessDesignMode {
 
   // ── Host commands (driven by the native panel through the guest handle) ──────────────
 
+  /** Live elements for a host id list — ids the page has since replaced simply drop out, so
+   * every command below degrades to "fewer targets" rather than throwing on a stale id. */
+  private resolveIds(idList: readonly number[]): TaggedElement[] {
+    return idList
+      .map((id) => this.registry.resolve(id))
+      .filter((el): el is TaggedElement => el !== null);
+  }
+
   /** Applies one CSS draft to every listed selection id — the native panel's edit path.
    * Ripple bookkeeping mirrors the in-page panel's before/after hooks so scrub bursts
    * keep their drag-start baselines. */
   applyDraft(idList: readonly number[], property: DesignModeWritableKey, value: string): void {
-    const els = idList
-      .map((id) => this.registry.resolve(id))
-      .filter((el): el is TaggedElement => el !== null);
+    const els = this.resolveIds(idList);
     if (els.length === 0) return;
     for (const el of els) this.handleBeforeEdit(el);
     for (const el of els) {
@@ -249,12 +258,72 @@ export class HeadlessDesignMode {
    * multi-property write lives in engine/sizeMode.ts. Discrete (a menu pick, never a
    * scrub tick), so the fresh snapshot goes out immediately, like discardAll. */
   setSizeMode(idList: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void {
-    const els = idList
-      .map((id) => this.registry.resolve(id))
-      .filter((el): el is TaggedElement => el !== null);
+    const els = this.resolveIds(idList);
     if (els.length === 0) return;
     for (const el of els) this.handleBeforeEdit(el);
     for (const el of els) applySizeMode(el, axis, mode, this.drafts);
+    this.handleEdited();
+    this.emitSelection();
+  }
+
+  /** Figma's absolute-position toggle — a structural draft ("position this absolutely"),
+   * never a bare inset delta. Re-emits immediately: this one write flips X/Y between
+   * read-only and editable, and the align row's capabilities with it. */
+  setAbsolute(idList: readonly number[], on: boolean): void {
+    const els = this.resolveIds(idList);
+    if (els.length === 0) return;
+    for (const el of els) this.handleBeforeEdit(el);
+    for (const el of els) this.drafts.applyAbsolute(el, on);
+    this.handleEdited();
+    this.emitSelection();
+  }
+
+  /** One axis of the panel's X/Y pair. The commit is POSITION_ROWS' own — draft inset while
+   * an absolute draft owns the element, plain left/top css when the app's CSS already places
+   * it — and `editable` is the same live gate the panel greys the field with, so an in-flow
+   * element can never be drafted a `left` it wouldn't honor. */
+  setInset(idList: readonly number[], axis: "x" | "y", px: number): void {
+    const row = axis === "x" ? POSITION_ROWS[0] : POSITION_ROWS[1];
+    const write = row.write;
+    const editable = row.editable;
+    if (!write || !editable) return;
+    const els = this.resolveIds(idList).filter((el) => editable(el, this.drafts));
+    if (els.length === 0) return;
+    for (const el of els) this.handleBeforeEdit(el);
+    for (const el of els) write(el, px, this.drafts);
+    this.handleEdited();
+  }
+
+  /** Figma's align row — each element moves within its OWN parent (engine/align.ts). */
+  alignSelection(
+    idList: readonly number[],
+    axis: DesignModeAlignAxis,
+    value: DesignModeAlignValue,
+  ): void {
+    const els = this.resolveIds(idList);
+    if (els.length === 0) return;
+    for (const el of els) this.handleBeforeEdit(el);
+    for (const el of els) alignElement(el, axis, value, this.drafts);
+    this.handleEdited();
+    this.emitSelection();
+  }
+
+  /** The aspect-ratio link beside W/H: on pins the element's current proportion, off releases
+   * it. Measured through the same basis the W/H fields display (sizeMode.ts), so locking never
+   * quietly re-sizes the element. */
+  setAspectLock(idList: readonly number[], on: boolean): void {
+    const els = this.resolveIds(idList);
+    if (els.length === 0) return;
+    for (const el of els) this.handleBeforeEdit(el);
+    for (const el of els) {
+      if (!on) {
+        this.drafts.apply(el, "aspect-ratio", "auto");
+        continue;
+      }
+      const width = Math.round(measuredSize(el, "width", this.drafts));
+      const height = Math.round(measuredSize(el, "height", this.drafts));
+      if (width > 0 && height > 0) this.drafts.apply(el, "aspect-ratio", `${width} / ${height}`);
+    }
     this.handleEdited();
     this.emitSelection();
   }

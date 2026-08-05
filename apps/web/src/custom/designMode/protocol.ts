@@ -30,9 +30,17 @@ export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
  * keeps the snapshot honest (no write-only keys serialized per selection) while the
  * writable union keeps every panel edit type-checked end to end. */
 export const DESIGN_MODE_STYLE_KEYS = [
+  "position",
+  "top",
+  "left",
   "display",
   "width",
   "height",
+  "min-width",
+  "max-width",
+  "min-height",
+  "max-height",
+  "aspect-ratio",
   "flex-direction",
   "flex-wrap",
   "row-gap",
@@ -56,8 +64,12 @@ export const DESIGN_MODE_STYLE_KEYS = [
   "border-bottom-right-radius",
   "border-bottom-left-radius",
   "border-top-width",
+  "border-right-width",
+  "border-bottom-width",
+  "border-left-width",
   "border-top-style",
   "border-top-color",
+  "font-family",
   "font-size",
   "font-weight",
   "line-height",
@@ -78,6 +90,8 @@ export const DESIGN_MODE_WRITE_ONLY_KEYS = [
   "border-style",
   "border-color",
   "flex-basis",
+  /** Written by the align row on grid children (engine/align.ts); nothing displays it. */
+  "justify-self",
 ] as const;
 
 export type DesignModeWritableKey =
@@ -94,6 +108,29 @@ const SIZE_MODES: readonly DesignModeSizeMode[] = ["fixed", "hug", "fill"];
 const parseSizeMode = (value: unknown): DesignModeSizeMode | null =>
   SIZE_MODES.find((mode) => mode === value) ?? null;
 
+/** What owns this element's placement right now (engine/vendor/panel-specs.ts
+ * `positionStateOf`). `draft`: an absolute-position draft is previewing it, so X/Y edits move
+ * that draft's inset. `code`: the app's own CSS already places it absolutely, so X/Y are plain
+ * left/top drafts. `flow`: in normal flow — X/Y are read-only offsets. Three states, not two:
+ * an absolute draft with `on: false` is the absolute→flow direction and reads `flow`. */
+export type DesignModePositionState = "draft" | "code" | "flow";
+
+const POSITION_STATES: readonly DesignModePositionState[] = ["draft", "code", "flow"];
+
+/** The two axes of Figma's align row. */
+export type DesignModeAlignAxis = "horizontal" | "vertical";
+
+/** Where the element lands on that axis within its parent. */
+export type DesignModeAlignValue = "start" | "center" | "end";
+
+/** Which halves of the align row have an honest CSS mapping for this element (engine/align.ts
+ * decides; a block child has no vertical answer, so the panel disables those three buttons
+ * rather than writing something that does nothing). */
+export interface DesignModeAlignCaps {
+  readonly horizontal: boolean;
+  readonly vertical: boolean;
+}
+
 /** One selected element as the native panel sees it. `id` is minted by the guest engine
  * and is only meaningful for the current selection — commands referencing a stale id
  * no-op. `sourceLabel` is "file.tsx:12" when the element carries a data-dc-source tag. */
@@ -104,6 +141,12 @@ export interface DesignModeElementSnapshot {
   readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
   /** Current W/H sizing modes (engine/sizeMode.ts) — drives the panel's per-axis menu. */
   readonly sizeModes: { readonly width: DesignModeSizeMode; readonly height: DesignModeSizeMode };
+  /** The panel's X/Y readout, in the same basis those fields WRITE (margin edge once out of
+   * flow, offsetParent-relative in flow) — offsets aren't computed-style properties, so they
+   * ride the snapshot rather than `styles`. */
+  readonly offsets: { readonly x: number; readonly y: number };
+  readonly positionState: DesignModePositionState;
+  readonly alignCaps: DesignModeAlignCaps;
 }
 
 /** One theme color custom property from the previewed app's stylesheets ("red-500",
@@ -199,6 +242,20 @@ export interface DesignModeGuestHandle {
   applyDraft(ids: readonly number[], property: DesignModeWritableKey, value: string): void;
   /** Applies a Figma sizing mode (fixed/hug/fill) to one axis of every listed element. */
   setSizeMode(ids: readonly number[], axis: "width" | "height", mode: DesignModeSizeMode): void;
+  /** Figma's absolute-position toggle — drafts the element out of (or back into) flow. */
+  setAbsolute(ids: readonly number[], on: boolean): void;
+  /** Writes one axis of the X/Y pair; routed by position state (draft inset vs left/top css).
+   * A no-op on elements still in flow, where the fields are read-only. */
+  setInset(ids: readonly number[], axis: "x" | "y", px: number): void;
+  /** Aligns each element within its own parent (engine/align.ts picks the CSS mapping). */
+  alignSelection(
+    ids: readonly number[],
+    axis: DesignModeAlignAxis,
+    value: DesignModeAlignValue,
+  ): void;
+  /** Figma's aspect-ratio link beside W/H: on pins `aspect-ratio` to the element's current
+   * proportion, off releases it. */
+  setAspectLock(ids: readonly number[], on: boolean): void;
   discardAll(): void;
   /** Flips every draft to its "before" (true) or "after" (false) rendering. */
   compareAll(on: boolean): void;
@@ -226,6 +283,9 @@ const isNonNegativeInteger = (value: unknown): value is number =>
 const isStyleMap = (value: unknown): value is Readonly<Record<DesignModeStyleKey, string>> =>
   isRecord(value) && DESIGN_MODE_STYLE_KEYS.every((key) => typeof value[key] === "string");
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
 function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null {
   if (
     !isRecord(value) ||
@@ -233,19 +293,32 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     typeof value.tag !== "string" ||
     (value.sourceLabel !== null && typeof value.sourceLabel !== "string") ||
     !isStyleMap(value.styles) ||
-    !isRecord(value.sizeModes)
+    !isRecord(value.sizeModes) ||
+    !isRecord(value.offsets) ||
+    !isFiniteNumber(value.offsets.x) ||
+    !isFiniteNumber(value.offsets.y) ||
+    !isRecord(value.alignCaps) ||
+    typeof value.alignCaps.horizontal !== "boolean" ||
+    typeof value.alignCaps.vertical !== "boolean"
   ) {
     return null;
   }
   const width = parseSizeMode(value.sizeModes.width);
   const height = parseSizeMode(value.sizeModes.height);
-  if (width === null || height === null) return null;
+  const positionState = POSITION_STATES.find((state) => state === value.positionState);
+  if (width === null || height === null || !positionState) return null;
   return {
     id: value.id,
     tag: value.tag,
     sourceLabel: value.sourceLabel,
     styles: value.styles,
     sizeModes: { width, height },
+    offsets: { x: value.offsets.x, y: value.offsets.y },
+    positionState,
+    alignCaps: {
+      horizontal: value.alignCaps.horizontal,
+      vertical: value.alignCaps.vertical,
+    },
   };
 }
 

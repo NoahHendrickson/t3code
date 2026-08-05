@@ -55,6 +55,28 @@ describe("fork guard: design mode", () => {
     expect(previewView).not.toContain("ForkLayersTree");
   });
 
+  it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
+    // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
+    // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no
+    // way for the panel to call it at all). Both halves have to move with the contract.
+    const protocol = read("src/custom/designMode/protocol.ts");
+    const body = /export interface DesignModeGuestHandle \{([\s\S]*?)\n\}/u.exec(protocol)?.[1];
+    expect(body).toBeDefined();
+    const verbs = [...(body ?? "").matchAll(/^ {2}(\w+)[(<]/gmu)].map((match) => match[1]);
+    expect(verbs).toContain("alignSelection");
+    expect(verbs.length).toBeGreaterThan(10);
+
+    const boot = read("src/custom/designMode/engine/boot.ts");
+    const bridge = read("src/custom/designMode/designModeBridge.ts");
+    // `isActive` is the guest's own predicate — the host tracks enablement in its store.
+    const guestOnly = new Set(["isActive"]);
+    for (const verb of verbs) {
+      expect(boot, `boot.ts installs ${verb}`).toContain(`${verb}:`);
+      if (guestOnly.has(verb ?? "")) continue;
+      expect(bridge, `designModeBridge.ts calls ${verb}`).toContain(`"${verb}"`);
+    }
+  });
+
   it("delivers design changes as composer attachments, not prompt text", () => {
     const chatComposer = read("src/components/chat/ChatComposer.tsx");
     expect(chatComposer).toContain(
@@ -308,44 +330,45 @@ describe("fork guard: design mode", () => {
 
   it("round-trips the console-message protocol", () => {
     const styles = Object.fromEntries(DESIGN_MODE_STYLE_KEYS.map((key) => [key, `${key}-value`]));
-    const selection = {
-      type: "selection",
-      elements: [
-        {
-          id: 1,
-          tag: "button",
-          sourceLabel: "App.tsx:5",
-          styles,
-          sizeModes: { width: "fixed", height: "hug" },
-        },
-      ],
+    const element = {
+      id: 1,
+      tag: "button",
+      sourceLabel: "App.tsx:5",
+      styles,
+      sizeModes: { width: "fixed", height: "hug" },
+      offsets: { x: 24, y: -8 },
+      positionState: "flow",
+      alignCaps: { horizontal: true, vertical: false },
     };
+    const selection = { type: "selection", elements: [element] };
     const line = `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify(selection)}`;
     expect(parseDesignModeConsoleMessage(line)).toEqual(selection);
-    // A snapshot without size modes (or with an unknown mode) rejects rather than half-parses.
+    // Every snapshot half is required: a missing or malformed one rejects the whole message
+    // rather than half-parsing into a panel that would then read `undefined` as a value.
+    const withoutKey = (key: keyof typeof element) => {
+      const rest: Record<string, unknown> = { ...element };
+      delete rest[key];
+      return `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
+        type: "selection",
+        elements: [rest],
+      })}`;
+    };
+    for (const key of ["sizeModes", "offsets", "positionState", "alignCaps"] as const) {
+      expect(parseDesignModeConsoleMessage(withoutKey(key))).toBeNull();
+    }
+    const withPatch = (patch: Record<string, unknown>) =>
+      `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
+        type: "selection",
+        elements: [{ ...element, ...patch }],
+      })}`;
     expect(
-      parseDesignModeConsoleMessage(
-        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
-          type: "selection",
-          elements: [{ id: 1, tag: "button", sourceLabel: null, styles }],
-        })}`,
-      ),
+      parseDesignModeConsoleMessage(withPatch({ sizeModes: { width: "stretchy", height: "hug" } })),
     ).toBeNull();
+    expect(parseDesignModeConsoleMessage(withPatch({ positionState: "floating" }))).toBeNull();
+    expect(parseDesignModeConsoleMessage(withPatch({ offsets: { x: 1 } }))).toBeNull();
+    expect(parseDesignModeConsoleMessage(withPatch({ offsets: { x: 1, y: "2" } }))).toBeNull();
     expect(
-      parseDesignModeConsoleMessage(
-        `${DESIGN_MODE_CONSOLE_PREFIX}${JSON.stringify({
-          type: "selection",
-          elements: [
-            {
-              id: 1,
-              tag: "button",
-              sourceLabel: null,
-              styles,
-              sizeModes: { width: "stretchy", height: "hug" },
-            },
-          ],
-        })}`,
-      ),
+      parseDesignModeConsoleMessage(withPatch({ alignCaps: { horizontal: true } })),
     ).toBeNull();
     expect(
       parseDesignModeConsoleMessage(`${DESIGN_MODE_CONSOLE_PREFIX}{"type":"drafts","count":3}`),
