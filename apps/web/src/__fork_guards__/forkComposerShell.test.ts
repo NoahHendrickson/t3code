@@ -410,6 +410,12 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(strip?.body).toMatch(/margin:\s*0/u);
     expect(strip?.body).toMatch(/gap:\s*8px/u);
+    // Flattening the wrapper must not let the strip shrink-to-fit: upstream's
+    // label-collapse heuristic measures the strip's own clientWidth as the
+    // space available, so a content-sized strip reads as full once the labels
+    // are hidden and never expands the chips back out of icon-only.
+    expect(strip?.body).toMatch(/flex:\s*1 1 auto/u);
+    expect(strip?.body).toMatch(/min-width:\s*0/u);
     // Nested PR+branch (and env+checkout) wrappers keep upstream gap-1; the
     // fork re-gaps them to 8px so checkout→PR→branch reads evenly, and drops
     // flex-1 / justify-end / ml-auto so the cluster stays packed when narrow.
