@@ -55,6 +55,51 @@ describe("fork guard: design mode", () => {
     expect(previewView).not.toContain("ForkLayersTree");
   });
 
+  it("keeps a way back out of the collapsed layers rail", () => {
+    // A one-way door is the failure mode: collapsed, the rail renders nothing, so the only
+    // control that reopens it would go with it. It moves to the chrome row's leading slot
+    // instead — which means the flag has to be shared state, not the rail's own.
+    const rail = read("src/custom/designMode/ForkLayersTree.tsx");
+    const toggle = read("src/custom/designMode/ForkPreviewLayersToggle.tsx");
+    const shared = read("src/custom/designMode/layersCollapsed.ts");
+    expect(/const LAYERS_COLLAPSED_STORAGE_KEY = "([^"]+)"/u.exec(shared)?.[1]).toMatch(
+      /^t3code:fork:[a-z-]+:v\d+$/u,
+    );
+    // Both halves read the same hook; a local useState in either would desync them.
+    for (const source of [rail, toggle]) {
+      expect(source).toContain('from "./layersCollapsed"');
+      expect(source).not.toContain("useState(false)");
+    }
+    // The two always-mounted readers select a PRIMITIVE. The tab object's identity churns on
+    // every selection/layers/tokens patch — up to ~4/s while an agent edits the page — and
+    // both of these care about one transition. (The inner LayersRail does take the whole
+    // tab, correctly: it renders it, and only exists while the rail is open.)
+    // One availability predicate, not two: the copies had already drifted (the toggle's was
+    // missing the runtimeTabId half, harmless only by accident of the empty-tab default).
+    for (const source of [rail, toggle]) expect(source).toContain("layersRailAvailable(");
+    // Each half unmounts ITSELF on activation, so each hands focus to its counterpart —
+    // otherwise a keyboard user lands on <body> and tabs in from the top of the document.
+    expect(rail).toContain("focusLayersControl(LAYERS_SHOW_BUTTON)");
+    expect(toggle).toContain("focusLayersControl(LAYERS_HIDE_BUTTON)");
+    // A disclosure pair: both point aria-controls at the rail they govern.
+    for (const source of [rail, toggle]) expect(source).toContain("aria-controls={LAYERS_RAIL_ID}");
+    // A gate component, not an early return inside the body: the rail's flatten/filter/
+    // reveal machinery re-runs on every debounced layers re-emit, and hiding its output
+    // while leaving it subscribed would burn that work for a rail the user closed.
+    expect(rail).toContain("if (collapsed || !available || !runtimeTabId) return null;");
+    expect(rail).toContain("function LayersRail(");
+    expect(rail).toContain('aria-label="Hide layers"');
+    expect(toggle).toContain('aria-label="Show layers"');
+    expect(toggle).toContain("setCollapsed(false)");
+    // ...and the slot it mounts into exists on the chrome row and is actually passed.
+    const chromeRow = read("src/components/preview/PreviewChromeRow.tsx");
+    expect(chromeRow).toContain("leadingActions?: ReactNode;");
+    expect(chromeRow).toContain("{leadingActions}");
+    expect(read("src/components/preview/PreviewView.tsx")).toContain(
+      "leadingActions={<ForkPreviewLayersToggle runtimeTabId={runtimeTabId} />}",
+    );
+  });
+
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
     // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
     // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no

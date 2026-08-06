@@ -59,6 +59,14 @@ interface Props {
    * to mount the three-dot menu (hard reload, devtools, zoom, clear data).
    */
   trailingActions?: ReactNode;
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+  /**
+   * Leading slot rendered before the navigation group. The fork mounts the
+   * "show layers" button here when the design-mode layers rail is collapsed —
+   * collapsed, the rail renders nothing, so its reopen control lives out here.
+   */
+  leadingActions?: ReactNode;
+  /* fork:end fork-design-mode */
 }
 
 const NOOP = () => {};
@@ -89,6 +97,9 @@ export function PreviewChromeRow({
   pickDisabled,
   pickDisabledReason,
   trailingActions,
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+  leadingActions,
+  /* fork:end fork-design-mode */
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [draft, setDraft] = useState(url);
@@ -112,6 +123,9 @@ export function PreviewChromeRow({
   return (
     <div className="relative">
       <form onSubmit={submit} className="surface-subheader gap-1 px-2" data-surface-subheader>
+        {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
+        {leadingActions}
+        {/* fork:end fork-design-mode */}
         <div className="flex items-center gap-0.5" role="group" aria-label="Navigation">
           <Tooltip>
             <TooltipTrigger
