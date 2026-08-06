@@ -138,6 +138,7 @@ import {
   PlusCircle as PhPlusCircle,
   Pulse as PhPulse,
   PushPin as PhPushPin,
+  PushPinSlash as PhPushPinSlash,
   QrCode as PhQrCode,
   Robot as PhRobot,
   Rows as PhRows,
@@ -239,6 +240,7 @@ export const CheckIcon = icon("check", PhCheck, "bold");
 export const CircleCheckIcon = icon("circle-check", PhCheckCircle, "duotone");
 export const CheckCircle2Icon = icon("check-circle-2", PhCheckCircle, "duotone");
 export const PinIcon = icon("pin", PhPushPin, "duotone");
+export const PinOffIcon = icon("pin-off", PhPushPinSlash, "duotone");
 export const PlusIcon = icon("plus", PhPlus, "bold");
 // lucide renamed PlusCircle -> CirclePlus; both names still resolve there, so
 // both are exported here.

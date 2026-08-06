@@ -42,6 +42,11 @@ import { XIcon } from "lucide-react";
 // binding. Out here the fence survives and the parser stays honest.
 import { Globe2Icon } from "lucide-react";
 /* fork:end sidebar-v2-dev-server-pulse */
+/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+// Own statement for the same phosphor-guard reason as XIcon / Globe2Icon
+// above. PinIcon stays in upstream's list — upstream imports it itself.
+import { PinOffIcon } from "lucide-react";
+/* fork:end sidebar-v2-row-action-hit-area */
 import {
   memo,
   useCallback,
@@ -496,9 +501,16 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
   snoozeSupported: boolean;
   // Renders the pin glyph. Pinned cards keep the full settle/snooze quick
   // actions: settling clears the pin server-side, and snoozing hides the
-  // card until wake with the pin intact underneath. Pin/unpin themselves
-  // live in the context menu only.
+  // card until wake with the pin intact underneath.
   isPinned: boolean;
+  /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+  // Same capability contract as settle/snooze, for the card's hover pin
+  // action (leading the cell, before snooze). Pin/unpin also stay in the
+  // context menu, which is the only surface slim rows offer them on.
+  pinningSupported: boolean;
+  onPin: (threadRef: ScopedThreadRef) => void;
+  onUnpin: (threadRef: ScopedThreadRef) => void;
+  /* fork:end sidebar-v2-row-action-hit-area */
   // Compact wake countdown ("2h") for rows in the snoozed shelf.
   snoozeWakeLabelText: string | null;
   // When a snooze ended (timer or early wake); drives the Woke pill until
@@ -543,12 +555,18 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
     onDiscardDraft,
     /* fork:end sidebar-v2-draft-rows */
+    /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+    onPin,
+    /* fork:end sidebar-v2-row-action-hit-area */
     onRenameTitleChange,
     onSettle,
     onSnooze,
     onStartRename,
     onThreadActivate,
     onThreadClick,
+    /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+    onUnpin,
+    /* fork:end sidebar-v2-row-action-hit-area */
     onUnsettle,
     onUnsnooze,
     renamingTitle,
@@ -803,6 +821,24 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     },
     [onSettle, threadRef],
   );
+  /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+  const handlePinClick = useCallback(
+    (event: ReactMouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onPin(threadRef);
+    },
+    [onPin, threadRef],
+  );
+  const handleUnpinClick = useCallback(
+    (event: ReactMouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onUnpin(threadRef);
+    },
+    [onUnpin, threadRef],
+  );
+  /* fork:end sidebar-v2-row-action-hit-area */
   /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
   const handleDiscardDraftClick = useCallback(
     (event: ReactMouseEvent) => {
@@ -845,7 +881,8 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     props.snoozeSupported && canSnooze(thread, { now: new Date().toISOString() });
   /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
   // After showSnoozeButton — using it above its declaration fails typecheck.
-  const hasHoverActions = props.settlementSupported || showSnoozeButton || showDiscardDraft;
+  const hasHoverActions =
+    props.settlementSupported || props.pinningSupported || showSnoozeButton || showDiscardDraft;
   /* fork:end sidebar-v2-draft-rows */
   // If the thread becomes blocked while the popover is open, the button
   // unmounts without firing onOpenChange(false). Deriving the flag keeps a
@@ -1257,6 +1294,32 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                         snoozeMenuOpen && "w-auto opacity-100",
                       )}
                     >
+                      {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                          Pin leads the cell, ahead of snooze: the two literal
+                          labels are separate branches on purpose — the hit-area
+                          guard counts each label's call sites. */}
+                      {props.pinningSupported ? (
+                        props.isPinned ? (
+                          <button
+                            type="button"
+                            aria-label="Unpin thread"
+                            onClick={handleUnpinClick}
+                            className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                          >
+                            <PinOffIcon className="size-3" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label="Pin thread"
+                            onClick={handlePinClick}
+                            className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                          >
+                            <PinIcon className="size-3" />
+                          </button>
+                        )
+                      ) : null}
+                      {/* fork:end sidebar-v2-row-action-hit-area */}
                       {showSnoozeButton ? (
                         <SnoozePopoverButton
                           open={snoozeMenuOpen}
@@ -2359,6 +2422,11 @@ export default function SidebarV2() {
   const attemptPin = useCallback(
     (threadRef: ScopedThreadRef) => {
       void (async () => {
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        // Drafts are not on the server yet — same belt-and-braces check the
+        // settle/snooze attempts carry.
+        if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
+        /* fork:end sidebar-v2-draft-rows */
         const result = await pinThread(threadRef);
         if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
           const error = squashAtomCommandFailure(result);
@@ -2377,6 +2445,9 @@ export default function SidebarV2() {
   const attemptUnpin = useCallback(
     (threadRef: ScopedThreadRef) => {
       void (async () => {
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
+        /* fork:end sidebar-v2-draft-rows */
         const result = await unpinThread(threadRef);
         if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
           const error = squashAtomCommandFailure(result);
@@ -3156,6 +3227,18 @@ export default function SidebarV2() {
                           .threadSnooze === true
                       }
                       isPinned={section === "pinned"}
+                      /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+                      pinningSupported={
+                        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                        draftCaps.canPin &&
+                        /* fork:end sidebar-v2-draft-rows */
+                        isCard &&
+                        serverConfigs.get(thread.environmentId)?.environment.capabilities
+                          .threadPinning === true
+                      }
+                      onPin={attemptPin}
+                      onUnpin={attemptUnpin}
+                      /* fork:end sidebar-v2-row-action-hit-area */
                       snoozeWakeLabelText={
                         section === "snoozed" && thread.snoozedUntil != null
                           ? snoozeWakeLabel(thread.snoozedUntil, {

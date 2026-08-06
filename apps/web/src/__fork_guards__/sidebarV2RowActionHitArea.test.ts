@@ -34,6 +34,10 @@ const groupHeader = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
  * has lost its button; one that appears more often has grown a call site this
  * guard has never seen. */
 const ROW_ACTIONS: ReadonlyArray<readonly [label: string, count: number]> = [
+  // Pin and Unpin are one slot with two literal labels: the card renders one
+  // branch per state so each label stays greppable here.
+  ["Pin thread", 1],
+  ["Unpin thread", 1],
   ["Snooze thread", 1],
   ["Settle thread", 2],
   ["Un-settle thread", 1],
@@ -42,7 +46,7 @@ const ROW_ACTIONS: ReadonlyArray<readonly [label: string, count: number]> = [
 
 /** The opening tag can't be sliced on its first `>` — the snooze trigger's
  * `onClick={(event) => …}` sits between the label and the class. A fixed window
- * comfortably covers the longest of the five. */
+ * comfortably covers the longest of the set. */
 const TAG_WINDOW = 400;
 
 function openingTags(label: string): string[] {
@@ -68,7 +72,7 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // 24px is the WCAG 2.5.8 floor exactly. The row actions are hover-gated so
     // never meet a coarse pointer, but the project header's plus is always
     // rendered — hence the 44px expansion ui/button and the chrome rows'
-    // trailing buttons already carry, spent here once for all five.
+    // trailing buttons already carry, spent here once for the whole set.
     expect(declaration).toContain("pointer-coarse:after:min-h-11");
     expect(declaration).toContain("pointer-coarse:after:min-w-11");
     // The expansion is an ::after, so the box has to be a containing block.
@@ -96,9 +100,22 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     expect(groupHeader).toContain("SIDEBAR_V2_ICON_BUTTON_CLASS");
   });
 
-  it("keeps all five actions on screen", () => {
+  it("keeps every row action on screen", () => {
     const found = ROW_ACTIONS.map(([label]) => [label, openingTags(label).length] as const);
     expect(found).toEqual(ROW_ACTIONS.map(([label, count]) => [label, count]));
+  });
+
+  it("leads the card's hover cell with pin, ahead of snooze", () => {
+    // The manifest claims placement, so the guard has to see sibling order:
+    // both pin branches render before the SnoozePopoverButton in the same
+    // actions cell. Source order is render order inside one flex row.
+    const pin = sidebarV2.indexOf('aria-label="Pin thread"');
+    const unpin = sidebarV2.indexOf('aria-label="Unpin thread"');
+    const snooze = sidebarV2.indexOf("<SnoozePopoverButton");
+    expect(pin).toBeGreaterThanOrEqual(0);
+    expect(unpin).toBeGreaterThanOrEqual(0);
+    expect(snooze).toBeGreaterThan(pin);
+    expect(snooze).toBeGreaterThan(unpin);
   });
 
   it("lets no action re-grow padding of its own", () => {

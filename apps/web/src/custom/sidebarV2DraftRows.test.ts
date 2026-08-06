@@ -144,12 +144,14 @@ describe("sidebarDraftRowCapabilities", () => {
     expect(sidebarDraftRowCapabilities(true)).toEqual({
       canSettle: false,
       canSnooze: false,
+      canPin: false,
       canRename: false,
       showDiscard: true,
     });
     expect(sidebarDraftRowCapabilities(false)).toEqual({
       canSettle: true,
       canSnooze: true,
+      canPin: true,
       canRename: true,
       showDiscard: false,
     });
