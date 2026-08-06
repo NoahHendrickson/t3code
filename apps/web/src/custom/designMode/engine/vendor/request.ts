@@ -406,7 +406,9 @@ export function buildChangeRequestWithElements(
         else el.style.removeProperty('transition')
       }
 
-      const className = typeof el.className === 'string' ? el.className : [...el.classList].join(' ')
+      // t3-fork: the class list is derived once inside the compare window as `probeClassName`
+      // (the probe needs it there anyway); this loop no longer reads it at all now that the
+      // dead findExistingUtility fallback is gone.
       for (const [property, v] of collapsed) {
         // A draft scrubbed back to its original value survives in the DraftStore (apply() keeps
         // it), so it reaches here as a genuine no-op. Dropping it HERE — not just its markdown
