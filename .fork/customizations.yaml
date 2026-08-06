@@ -1511,11 +1511,11 @@
     tree's mention-drag channel untouched. Only drags carrying files are
     claimed. Membership is hit-tested per event against the marker attribute
     on ChatView's chat column, so the region survives layout changes as long
-    as the marker rides the column. Enter and leave are counted rather than
-    latched, counting only crossings inside the zone so the same number
-    answers "is the pointer over the chat"; that count ignores
-    defaultPrevented so it stays balanced across nested targets, and dragover
-    re-anchors it to the pointer.
+    as the marker rides the column. No drag state accumulates: every handler
+    writes whether the pointer is over the chat right now, read off the
+    element the event names, with the leave reading relatedTarget — the
+    element being entered — because a drag leaving the window is the one
+    transition no enter or over reports.
 
     Drags outside the zone are still preventDefault-ed on both dragover and
     drop and then discarded, because a drop that is never handled is one the

@@ -10,12 +10,16 @@
  * chat column answers for every file released over it, and everywhere else
  * the drop is caught and discarded so that navigation can never happen.
  *
- * The handlers are event-shaped rather than DOM-bound so the counting and
- * hit-testing rules are testable without a drag simulation. `useChatFileDrop`
- * binds them to `window` in the bubble phase, which is what keeps this
- * additive: anything nested — the composer's own file drop, the file tree's
- * mention channel — sees the event first, and a nested target that claimed it
- * (`defaultPrevented`) is left to finish the job alone.
+ * The handlers are event-shaped rather than DOM-bound so the hit-testing rules
+ * are testable without a drag simulation. `useChatFileDrop` binds them to
+ * `window` in the bubble phase, which is what keeps this additive: anything
+ * nested — the composer's own file drop, the file tree's mention channel —
+ * sees the event first, and a nested target that claimed it
+ * (`defaultPrevented`) is left to finish the job alone. Running last is also
+ * what lets the drag-over highlight be shared with upstream's composer
+ * handlers rather than duplicated: both write one boolean, these handlers
+ * write the geometric truth after upstream has had its say, and React batches
+ * the pair into a single render.
  */
 import { useEffect, useRef } from "react";
 
@@ -36,6 +40,8 @@ export interface ChatFileDragTransfer {
 export interface ChatFileDragEvent {
   readonly dataTransfer: ChatFileDragTransfer | null;
   readonly target: EventTarget | null;
+  /** On a leave, the element being entered — null when the drag leaves the window. */
+  readonly relatedTarget: EventTarget | null;
   readonly defaultPrevented: boolean;
   preventDefault(): void;
 }
@@ -69,26 +75,18 @@ export function isInsideChatFileDropZone(target: EventTarget | null): boolean {
 }
 
 export function makeChatFileDropHandlers(host: ChatFileDropHost): ChatFileDropHandlers {
-  // dragenter and dragleave fire once per element the pointer crosses, so a
-  // plain boolean drops the highlight every time the drag passes between two
-  // children of the chat column. Counting entries against leaves is the
-  // standard fix; counting only the ones inside the zone makes the same number
-  // answer "is the pointer over the chat", since the enter of the element
-  // being entered fires before the leave of the one being left.
+  // Every handler writes the same thing: whether the pointer is over the chat
+  // right now, read off the element the event names. No drag state is
+  // accumulated — nothing to fall out of balance when a nested target claims
+  // one event of a pair, and nothing to re-anchor when a portalled overlay
+  // takes a crossing.
   //
-  // The count deliberately ignores `defaultPrevented`, unlike the effects
-  // below: enter and leave have to be counted on the same rule or the pair
-  // stops balancing — a nested target that claims the enter but not the leave
-  // would drive the count negative and drop the highlight mid-drag.
-  let depth = 0;
-  const publish = () => host.setDragActive(depth > 0);
-
+  // The one transition an enter or an over can never report is the drag
+  // leaving the window: no element is entered, so only the leave fires.
   return {
     onDragEnter(event) {
       if (!carriesFiles(event.dataTransfer)) return;
-      if (!host.isInsideDropZone(event.target)) return;
-      depth += 1;
-      publish();
+      host.setDragActive(host.isInsideDropZone(event.target));
     },
 
     onDragOver(event) {
@@ -103,24 +101,20 @@ export function makeChatFileDropHandlers(host: ChatFileDropHost): ChatFileDropHa
       // that nothing will be attached there.
       event.preventDefault();
       event.dataTransfer.dropEffect = inside ? "copy" : "none";
-      // Re-anchors the count on the pointer: a drag already in flight when
-      // these listeners mount never fired its enter here, and a portalled
-      // overlay can take a crossing the zone never sees.
-      depth = inside ? Math.max(depth, 1) : 0;
-      publish();
+      host.setDragActive(inside);
     },
 
     onDragLeave(event) {
       if (!carriesFiles(event.dataTransfer)) return;
-      if (!host.isInsideDropZone(event.target)) return;
-      depth = Math.max(0, depth - 1);
-      publish();
+      // Fires for crossings between two elements inside the column as well as
+      // for the drag leaving it, and relatedTarget — the element being entered
+      // — is what tells them apart. Null means the window itself was left.
+      host.setDragActive(host.isInsideDropZone(event.relatedTarget));
     },
 
     onDrop(event) {
       if (!carriesFiles(event.dataTransfer)) return;
-      depth = 0;
-      publish();
+      host.setDragActive(false);
       // A nested target that took the drop has already added the files.
       if (event.defaultPrevented) return;
       event.preventDefault();
@@ -133,8 +127,7 @@ export function makeChatFileDropHandlers(host: ChatFileDropHost): ChatFileDropHa
     onDragEnd() {
       // An in-page drag cancelled with Escape can end without a matching
       // leave, which would strand the highlight.
-      depth = 0;
-      publish();
+      host.setDragActive(false);
     },
   };
 }

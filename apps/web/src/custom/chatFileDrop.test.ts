@@ -8,11 +8,12 @@ import {
 
 /** Stand in for "inside the chat column" without a DOM: the target is the answer. */
 const INSIDE = { name: "inside-chat" } as unknown as EventTarget;
+const OTHER_INSIDE = { name: "also-inside-chat" } as unknown as EventTarget;
 const OUTSIDE = { name: "outside-chat" } as unknown as EventTarget;
 
 function makeHost() {
   const host = {
-    isInsideDropZone: (target: EventTarget | null) => target === INSIDE,
+    isInsideDropZone: (target: EventTarget | null) => target === INSIDE || target === OTHER_INSIDE,
     onFiles: vi.fn(),
     setDragActive: vi.fn(),
   } satisfies ChatFileDropHost;
@@ -22,6 +23,7 @@ function makeHost() {
 function dragEvent(
   input: {
     target?: EventTarget;
+    relatedTarget?: EventTarget | null;
     types?: ReadonlyArray<string>;
     files?: ReadonlyArray<File>;
     defaultPrevented?: boolean;
@@ -44,6 +46,7 @@ function dragEvent(
             },
           },
     target: input.target ?? INSIDE,
+    relatedTarget: input.relatedTarget ?? null,
     defaultPrevented: input.defaultPrevented ?? false,
     preventDefault: vi.fn(() => {
       Object.assign(event, { defaultPrevented: true });
@@ -68,6 +71,7 @@ describe("makeChatFileDropHandlers", () => {
     handlers.onDragOver(over);
     expect(over.preventDefault).toHaveBeenCalled();
     expect(over.dropEffect).toBe("copy");
+    expect(host.setDragActive).toHaveBeenLastCalledWith(true);
   });
 
   it("ignores drags that carry no files", () => {
@@ -76,6 +80,7 @@ describe("makeChatFileDropHandlers", () => {
     const mention = dragEvent({ types: ["application/x-t3code-composer-mention"] });
     handlers.onDragEnter(mention);
     handlers.onDragOver(mention);
+    handlers.onDragLeave(mention);
     handlers.onDrop(mention);
 
     expect(host.setDragActive).not.toHaveBeenCalled();
@@ -86,15 +91,21 @@ describe("makeChatFileDropHandlers", () => {
   it("holds the drag state while the pointer crosses nested chat elements", () => {
     const { host, handlers } = makeHost();
 
-    // dragenter on the element being entered fires before dragleave on the one
-    // being left, so the count never bottoms out mid-column.
     handlers.onDragEnter(dragEvent());
-    handlers.onDragEnter(dragEvent());
-    handlers.onDragLeave(dragEvent());
+    // Leaving one child of the column for another fires a leave too; the
+    // element being entered is what says the drag is still over the chat.
+    handlers.onDragLeave(dragEvent({ target: INSIDE, relatedTarget: OTHER_INSIDE }));
 
     expect(host.setDragActive).toHaveBeenLastCalledWith(true);
+  });
 
-    handlers.onDragLeave(dragEvent());
+  it("clears the drag state when the drag leaves the window", () => {
+    const { host, handlers } = makeHost();
+
+    handlers.onDragEnter(dragEvent());
+    // No element is entered, so this leave is the only event that reports it.
+    handlers.onDragLeave(dragEvent({ target: INSIDE, relatedTarget: null }));
+
     expect(host.setDragActive).toHaveBeenLastCalledWith(false);
   });
 
@@ -137,15 +148,15 @@ describe("makeChatFileDropHandlers", () => {
     expect(host.onFiles).not.toHaveBeenCalled();
   });
 
-  it("drops the highlight when the pointer leaves the chat column mid-drag", () => {
+  it("follows the pointer out of the chat column mid-drag", () => {
     const { host, handlers } = makeHost();
 
     handlers.onDragEnter(dragEvent());
-    // The pointer crossed onto something portalled over the column; the enter
-    // and leave pair never reached the zone, so dragover has to re-anchor.
-    handlers.onDragOver(dragEvent({ target: OUTSIDE }));
-
+    handlers.onDragEnter(dragEvent({ target: OUTSIDE }));
     expect(host.setDragActive).toHaveBeenLastCalledWith(false);
+
+    handlers.onDragOver(dragEvent({ target: INSIDE }));
+    expect(host.setDragActive).toHaveBeenLastCalledWith(true);
   });
 
   it("leaves a drop a nested target already claimed alone", () => {
@@ -168,20 +179,9 @@ describe("makeChatFileDropHandlers", () => {
     expect(over.dropEffect).toBe("none");
   });
 
-  it("lights a drag that was already in flight when it started listening", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragOver(dragEvent());
-    expect(host.setDragActive).toHaveBeenLastCalledWith(true);
-
-    handlers.onDragLeave(dragEvent());
-    expect(host.setDragActive).toHaveBeenLastCalledWith(false);
-  });
-
   it("clears the drag state when a drag ends without a leave", () => {
     const { host, handlers } = makeHost();
 
-    handlers.onDragEnter(dragEvent());
     handlers.onDragEnter(dragEvent());
     handlers.onDragEnd();
 
