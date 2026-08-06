@@ -1722,13 +1722,22 @@
 
     First, a css bullet may only say "change `px-2.5` -> `px-1`" once
     cssOrigin.ts has PROVED that class is the lever, by removing it and
-    re-measuring while the element shows its original cascade. The probe cannot
-    decide a TIE — if something else declares the same value, removing the
-    class moves nothing, and "inert" and "wins but shadowed" look identical —
-    so that case is reported as ambiguous and names BOTH rather than guessing.
-    When the class provably is not the lever the bullet names the winning rule
-    and its file (Vite's data-vite-dev-id is what still carries the authored
-    filename). Ranking is layer-aware: unlayered beats layered above
+    re-measuring while the element shows its original cascade. Removal alone
+    cannot decide a TIE — if something else declares the same value, removing
+    the class moves nothing — so a tie gets a second probe: the utility's own
+    declared value is applied inline and re-measured, which resolves
+    `calc(var(--spacing) * N)` in the element's context. A declared value that
+    computes to something OTHER than the measured one means the utility
+    provably lost (the motivating `px-2.5`-is-10px-but-measured-8px case is
+    decided, not hedged); only a genuine same-value tie is reported as
+    ambiguous and names BOTH. Culprit naming excludes exactly ONE selector —
+    the probed utility's own single-class rule, a tautology — and nothing
+    broader: a plain-CSS project's `.composer-chip` is the likeliest culprit
+    there even though the element carries the class, and a competing utility on
+    the element is a finding. When the class provably is not the lever the
+    bullet names the winning rule and its file (Vite's data-vite-dev-id is what
+    still carries the authored filename). Ranking is layer-aware: unlayered
+    beats layered above
     specificity, because Tailwind v4 utilities are in `@layer utilities` and an
     unlayered fork rule of trivial specificity beats them. Two CSSOM traps are
     load-bearing here: since CSS Nesting a CSSStyleRule HAS a (truthy, empty)

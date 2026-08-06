@@ -1,10 +1,11 @@
 // @effect-diagnostics nodeBuiltinImport:off
 /** Fork guard — see `.fork/customizations.yaml#fork-design-mode`.
  *
- * Covers the DOM-free half of cssOrigin.ts. The probe itself (remove the class, re-measure)
- * and the CSSOM walk need a live browser and are exercised by design mode in the preview
- * webview; this suite pins the parts that decide what the agent is ultimately TOLD — which
- * selectors are dismissed as utilities, and which rule gets named as the culprit.
+ * Covers the DOM-free half of cssOrigin.ts. The probes (remove the class / apply the declared
+ * value, re-measure) and the CSSOM walk need a live browser and are exercised by design mode
+ * in the preview webview; this suite pins the parts that decide what the agent is ultimately
+ * TOLD — which selector counts as the probed utility's own rule, and which rule gets named as
+ * the culprit.
  */
 import { describe, expect, it } from "vite-plus/test";
 
@@ -12,9 +13,9 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 
 import {
-  isTautologicalSelector,
   pickCulprit,
   roughSpecificity,
+  singleClassName,
   type OriginCandidate,
 } from "../custom/designMode/cssOrigin";
 
@@ -28,42 +29,31 @@ const candidate = (over: Partial<OriginCandidate>): OriginCandidate => ({
   ...over,
 });
 
-/** Stand-in for the element's own class list — the only thing the tautology test consults. */
-const classes = (...names: string[]): DOMTokenList =>
-  ({ contains: (name: string) => names.includes(name) }) as DOMTokenList;
-
 describe("fork guard: design-mode css origin", () => {
-  describe("isTautologicalSelector", () => {
-    it("dismisses a single class the element already carries", () => {
-      // Naming `.px-1` as the culprit for a padding change is a tautology, not a lead.
-      expect(isTautologicalSelector(".px-1", classes("px-1"))).toBe(true);
-      expect(isTautologicalSelector("  .px-1  ", classes("px-1"))).toBe(true);
+  // Culprit exclusion is scoped to the PROBED utility's own rule, matched by this parse: any
+  // broader dismissal (every carried class, every "utility-looking" selector) silenced the
+  // plain-CSS `.composer-chip` culprit and competing-utility findings.
+  describe("singleClassName", () => {
+    it("extracts a lone class selector", () => {
+      expect(singleClassName(".px-1")).toBe("px-1");
+      expect(singleClassName("  .px-1  ")).toBe("px-1");
     });
 
-    it("unescapes before comparing, so escaped utilities are still dismissed", () => {
-      expect(isTautologicalSelector(".px-2\\.5", classes("px-2.5"))).toBe(true);
+    it("unescapes, so the parsed name matches its class-list form", () => {
+      expect(singleClassName(".px-2\\.5")).toBe("px-2.5");
     });
 
-    it("keeps a single-class rule the element does NOT carry", () => {
-      // A plain-CSS guest project's `.composer-chip { padding: 8px }` is the likeliest culprit
-      // there; dismissing every single-class selector hid exactly that case.
-      expect(isTautologicalSelector(".composer-chip", classes("px-1"))).toBe(false);
+    it("returns null for compound and pseudo-class selectors", () => {
+      // These genuinely outrank a utility and must stay nameable as culprits.
+      expect(singleClassName(".composer.compact")).toBeNull();
+      expect(singleClassName(".chip:hover")).toBeNull();
+      expect(singleClassName(".card .title")).toBeNull();
     });
 
-    it("keeps compound and pseudo-class selectors even when the element has both classes", () => {
-      // These genuinely outrank a utility. The previous regex let unescaped `.` and `:` into
-      // its character class, so it swallowed them as "bare".
-      expect(isTautologicalSelector(".composer.compact", classes("composer", "compact"))).toBe(
-        false,
-      );
-      expect(isTautologicalSelector(".chip:hover", classes("chip"))).toBe(false);
-      expect(isTautologicalSelector(".card .title", classes("card", "title"))).toBe(false);
-    });
-
-    it("keeps anything that is not a lone class selector", () => {
-      expect(isTautologicalSelector("[data-fork-composer-mode-chip]", classes())).toBe(false);
-      expect(isTautologicalSelector("button.primary", classes("primary"))).toBe(false);
-      expect(isTautologicalSelector("#id", classes())).toBe(false);
+    it("returns null for anything that is not a lone class selector", () => {
+      expect(singleClassName("[data-fork-composer-mode-chip]")).toBeNull();
+      expect(singleClassName("button.primary")).toBeNull();
+      expect(singleClassName("#id")).toBeNull();
     });
   });
 

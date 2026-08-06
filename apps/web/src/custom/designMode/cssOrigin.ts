@@ -14,9 +14,13 @@
  * 1. "Does the utility class control this property?" — answered EMPIRICALLY, by removing the
  *    class and re-measuring. That is ground truth for the cases it can decide: no cascade
  *    emulation to get wrong, and it accounts for layers, `!important` and specificity at once.
- *    It cannot decide a TIE — if another declaration carries the same value, removing the class
- *    moves nothing, and "the class is inert" and "the class wins but is shadowed" look
- *    identical. That case is reported as ambiguous rather than guessed at.
+ *    Removal alone cannot decide a TIE — if another declaration carries the same value,
+ *    removing the class moves nothing — so a tie gets a second probe: the utility's own
+ *    declared value, read from its rule, is applied inline and re-measured. Resolving it on
+ *    the element is what makes `calc(var(--spacing) * 2.5)` comparable to a measured `8px`.
+ *    When it computes to something OTHER than the measured value, the utility provably lost
+ *    (the motivating case above: `px-2.5` is 10px, the measured 8px came from the rule) and
+ *    is reported as overridden; only a genuine same-value tie is reported as ambiguous.
  * 2. "Then what else declares it?" — answered by walking the stylesheets for matching rules.
  *    Used to name a culprit, and to turn a tie into an honest "both of these declare it".
  *
@@ -40,9 +44,12 @@ export interface OriginRule {
 export interface DeclarationOrigin {
   /** The probe proved `utilityClass` is what resolves this property. */
   utilityWins: boolean;
-  /** The probe could not tell: removing the class did not move the value, which happens both
-   * when the class is inert AND when something else declares the same value. Callers must not
-   * claim the utility is overridden on this basis. */
+  /** The probes could not tell: removing the class did not move the value, and the utility's
+   * own declared value (where a rule for it was found) computes to the measured one — at least
+   * two declarations genuinely carry the same value, and which wins was not established.
+   * Callers must not claim the utility is overridden on this basis. A tie whose declared value
+   * DIFFERS from the measured one is not ambiguous: the utility provably lost, and the culprit
+   * carries the overridden claim. */
   ambiguous: boolean;
   /** The probed class, echoed back so callers need not re-derive it. Null when no class on the
    * element looked relevant — in which case no probe ran and `utilityWins` is meaningless. */
@@ -118,22 +125,20 @@ function stylesheetLabel(sheet: CSSStyleSheet): string {
 const SINGLE_CLASS_SELECTOR = /^\.((?:[^\\.:[\s>+~,()]|\\.)+)$/;
 
 /**
- * Whether a selector is a tautology for this element: a single class that the element already
- * carries, i.e. one of its own utilities. Naming `.px-1` as the culprit for a padding change
- * tells the agent nothing it did not already have.
+ * The class name when the selector is exactly one class (`.px-2\.5` → `px-2.5`), else null.
  *
- * Deliberately narrower than "looks like a utility". A plain-CSS guest project's
- * `.composer-chip { padding: 8px }` is a single-class selector AND the most likely culprit
- * there, so it must survive — it is only dismissed when the class is the element's own. And
- * `.a.b` / `.a:hover` are not single-class at all: they genuinely outrank a utility and were
- * previously discarded by a regex whose character class let unescaped `.` and `:` through.
+ * Used for two things, both scoped to the PROBED utility class: excluding that class's own
+ * rule from culprit naming (naming `.px-1` as the culprit for a padding change tells the agent
+ * nothing), and finding that rule so a tie can be decided by its declared value. Every other
+ * single-class rule stays nameable — a plain-CSS guest project's `.composer-chip` is the
+ * likeliest culprit there even though the element carries the class, and a COMPETING utility
+ * on the element is a finding, not a tautology. Dismissing any carried class was too broad and
+ * silenced exactly those. `.a.b` / `.a:hover` are not single-class at all: they genuinely
+ * outrank a utility.
  */
-export function isTautologicalSelector(selectorText: string, classList: DOMTokenList): boolean {
-  const match = SINGLE_CLASS_SELECTOR.exec(selectorText.trim());
-  if (!match) return false;
-  const raw = match[1];
-  if (raw === undefined) return false;
-  return classList.contains(raw.replace(/\\(.)/g, "$1"));
+export function singleClassName(selectorText: string): string | null {
+  const raw = SINGLE_CLASS_SELECTOR.exec(selectorText.trim())?.[1];
+  return raw === undefined ? null : raw.replace(/\\(.)/g, "$1");
 }
 
 /** A matched rule before selection. Split out so the choice can be tested without a DOM:
@@ -184,10 +189,11 @@ function mediaMatches(condition: string, cache: MediaCache): boolean {
  * needed to rank it. ONE walk per element serves every changed property — the walk, not the
  * per-property filtering, is what costs on a 30k-rule dev sheet.
  */
-function collectMatchingRules(el: Element): Array<OriginCandidate & { style: CSSStyleDeclaration }> {
+function collectMatchingRules(
+  el: Element,
+): Array<OriginCandidate & { style: CSSStyleDeclaration }> {
   const found: Array<OriginCandidate & { style: CSSStyleDeclaration }> = [];
   const mediaCache: MediaCache = new Map();
-  const classList = el.classList;
   let order = 0;
 
   const visit = (rules: CSSRuleList, sheet: CSSStyleSheet, layered: boolean): void => {
@@ -203,9 +209,9 @@ function collectMatchingRules(el: Element): Array<OriginCandidate & { style: CSS
       // into for their nested children.
       if (rule instanceof CSSStyleRule) {
         const selectorText = rule.selectorText;
-        // Cheapest rejects first: string work and a classList lookup before any CSSOM read,
-        // and `matches()` — the expensive one — only for rules that survive.
-        if (typeof selectorText === "string" && !isTautologicalSelector(selectorText, classList)) {
+        // The element's own single-class rules are collected too — the probed utility's rule is
+        // excluded from culprit naming per property, but its declared value decides ties.
+        if (typeof selectorText === "string") {
           let matched = false;
           try {
             matched = el.matches(selectorText);
@@ -242,7 +248,8 @@ function collectMatchingRules(el: Element): Array<OriginCandidate & { style: CSS
       }
       if (rule instanceof CSSGroupingRule) {
         const nowLayered =
-          layered || (typeof CSSLayerBlockRule !== "undefined" && rule instanceof CSSLayerBlockRule);
+          layered ||
+          (typeof CSSLayerBlockRule !== "undefined" && rule instanceof CSSLayerBlockRule);
         visit(rule.cssRules, sheet, nowLayered);
       }
     }
@@ -285,6 +292,67 @@ function classMovesProperty(
   }
 }
 
+interface UtilityDeclaration {
+  property: string;
+  value: string;
+}
+
+/** The probed utility's own declaration for `property` (directly or via a shorthand), read
+ * from the highest-ranked matching rule whose selector is exactly that class. Null when no
+ * accessible sheet declares it — such a tie cannot be value-compared and stays ambiguous. */
+function utilityDeclaration(
+  declaring: ReadonlyArray<OriginCandidate & { style: CSSStyleDeclaration }>,
+  utilityClass: string,
+  property: string,
+): UtilityDeclaration | null {
+  let best: (OriginCandidate & { style: CSSStyleDeclaration }) | null = null;
+  for (const candidate of declaring) {
+    if (singleClassName(candidate.selectorText) !== utilityClass) continue;
+    if (best === null || outranks(candidate, best)) best = candidate;
+  }
+  if (best === null) return null;
+  const direct = best.style.getPropertyValue(property);
+  if (direct !== "") return { property, value: direct };
+  for (const shorthand of SHORTHANDS[property] ?? []) {
+    const value = best.style.getPropertyValue(shorthand);
+    if (value !== "") return { property: shorthand, value };
+  }
+  return null;
+}
+
+/** Whether the utility's declared value, resolved on this element, computes to the measured
+ * value. This is what makes a removal-probe tie decidable: "the utility wins and something
+ * backs it at the same value" and "the utility declares a DIFFERENT value and lost" measure
+ * identically under removal, but only the first survives applying the declared value inline
+ * (with `!important`, so it beats whatever actually won) and re-measuring. Applying rather
+ * than string-comparing is deliberate — `calc(var(--spacing) * 2.5)` only becomes comparable
+ * to a measured `8px` by resolving it in the element's own context. Same self-defence
+ * transition suppression as classMovesProperty. */
+function declaredValueMatchesMeasured(
+  el: Element,
+  declared: UtilityDeclaration,
+  property: string,
+  before: string,
+): boolean {
+  const style = (el as HTMLElement).style;
+  if (!style) return true;
+  const prevValue = style.getPropertyValue(declared.property);
+  const prevPriority = style.getPropertyPriority(declared.property);
+  const inlineTransition = style.getPropertyValue("transition");
+  style.setProperty("transition", "none");
+  try {
+    style.setProperty(declared.property, declared.value, "important");
+    return getComputedStyle(el).getPropertyValue(property) === before;
+  } catch {
+    return true;
+  } finally {
+    if (prevValue) style.setProperty(declared.property, prevValue, prevPriority);
+    else style.removeProperty(declared.property);
+    if (inlineTransition) style.setProperty("transition", inlineTransition);
+    else style.removeProperty("transition");
+  }
+}
+
 /**
  * Resolves what controls each of `properties` on `el`, in one CSSOM walk.
  *
@@ -305,21 +373,40 @@ export function resolveDeclarationOrigins(
   for (const property of properties) {
     const utilityClass = utilityFor(property);
     const before = measured.get(property) ?? getComputedStyle(el).getPropertyValue(property);
+    const inlineValue = inline?.getPropertyValue(property);
+    const inlineStyle = inlineValue !== "" && inlineValue !== undefined;
     const canProbe = utilityClass !== null && el.classList.contains(utilityClass);
     const moved = canProbe && classMovesProperty(el, property, utilityClass, before);
 
-    const candidates = matching
+    const declaring = matching
       .filter((candidate) => declaresProperty(candidate.style, property))
       .map((candidate) => ({ ...candidate, important: isImportant(candidate.style, property) }));
 
+    // Only a probe that ran and did not move the value is a tie. No probe at all is not
+    // ambiguity — it is simply the absence of a utility to talk about. An inline-style
+    // property skips the value comparison: inline already outranks both contenders, and the
+    // caller reports it as `inlineStyle` regardless.
+    let ambiguous = canProbe && !moved;
+    if (ambiguous && !inlineStyle && utilityClass !== null) {
+      const declared = utilityDeclaration(declaring, utilityClass, property);
+      if (declared !== null && !declaredValueMatchesMeasured(el, declared, property, before)) {
+        ambiguous = false; // the utility declares a different value: it provably lost
+      }
+    }
+
+    // The probed utility's own rule never counts as a culprit — naming it back at the agent is
+    // a tautology. Every OTHER rule stays eligible, including other single-class rules.
+    const culpritPool =
+      utilityClass === null
+        ? declaring
+        : declaring.filter((candidate) => singleClassName(candidate.selectorText) !== utilityClass);
+
     out.set(property, {
       utilityWins: moved,
-      // Only a probe that ran and did not move the value is ambiguous. No probe at all is not
-      // ambiguity — it is simply the absence of a utility to talk about.
-      ambiguous: canProbe && !moved,
+      ambiguous,
       utilityClass,
-      inlineStyle: inline?.getPropertyValue(property) !== "" && inline?.getPropertyValue(property) !== undefined,
-      culprit: moved ? null : pickCulprit(candidates),
+      inlineStyle,
+      culprit: moved ? null : pickCulprit(culpritPool),
     });
   }
   return out;
