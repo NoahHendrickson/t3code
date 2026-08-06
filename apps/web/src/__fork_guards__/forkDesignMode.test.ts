@@ -70,7 +70,17 @@ describe("fork guard: design mode", () => {
       expect(source).toContain('from "./layersCollapsed"');
       expect(source).not.toContain("useState(false)");
     }
-    expect(rail).toContain("if (collapsed) return null;");
+    // The two always-mounted readers select a PRIMITIVE. The tab object's identity churns on
+    // every selection/layers/tokens patch — up to ~4/s while an agent edits the page — and
+    // both of these care about one transition. (The inner LayersRail does take the whole
+    // tab, correctly: it renders it, and only exists while the rail is open.)
+    expect(toggle).toContain("return tab.enabled && tab.layers !== null;");
+    expect(rail).toContain("return tab.enabled && tab.layers !== null;");
+    // A gate component, not an early return inside the body: the rail's flatten/filter/
+    // reveal machinery re-runs on every debounced layers re-emit, and hiding its output
+    // while leaving it subscribed would burn that work for a rail the user closed.
+    expect(rail).toContain("if (collapsed || !mounted || !runtimeTabId) return null;");
+    expect(rail).toContain("function LayersRail(");
     expect(rail).toContain('aria-label="Hide layers"');
     expect(toggle).toContain('aria-label="Show layers"');
     expect(toggle).toContain("setCollapsed(false)");

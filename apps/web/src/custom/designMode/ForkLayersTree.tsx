@@ -112,12 +112,29 @@ const LayerRowView = memo(function LayerRowView({
  * delegated from the container here, so rows stay memoizable.
  * See `.fork/customizations.yaml#fork-design-mode`.
  */
+/**
+ * A gate, so a collapsed rail costs nothing. Everything below it — the flatten, the filter,
+ * the selection Set, the reveal effect — re-runs on every debounced layers re-emit, which is
+ * up to once every 250ms while an agent edits the previewed page. Returning null from inside
+ * the body would keep all of that subscribed and running for a component the user
+ * deliberately hid; unmounting it stops the work instead of hiding its output.
+ */
 export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }) {
+  const [collapsed] = useLayersCollapsed();
+  const mounted = useDesignModeStore((state) => {
+    const tab = selectDesignModeTab(state.byTabId, runtimeTabId);
+    return tab.enabled && tab.layers !== null;
+  });
+  if (collapsed || !mounted || !runtimeTabId) return null;
+  return <LayersRail runtimeTabId={runtimeTabId} />;
+}
+
+function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
   const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<number | null>(null);
-  const [collapsed, setCollapsed] = useLayersCollapsed();
+  const [, setCollapsed] = useLayersCollapsed();
   const listRef = useRef<HTMLDivElement>(null);
   const focusOnRender = useRef(false);
   /** The selection this rail has already scrolled to — see the reveal effect. */
@@ -293,17 +310,13 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
     [moveActive, rowFromEvent, rows, select, toggle],
   );
 
-  if (!runtimeTabId || !tab.enabled || !tab.layers) return null;
-
-  // Collapsed gives the space back entirely — no stub rail. The control that reopens it
-  // lives in the preview chrome row (ForkPreviewLayersToggle), which is why the flag is
-  // shared state rather than local to this component.
-  if (collapsed) return null;
+  // The gate above guarantees enabled + layers; this narrows the optional for the render.
+  if (!tab.layers) return null;
 
   return (
     <div
       className="flex w-52 shrink-0 flex-col border-r border-border bg-background"
-      data-fork-design-layers="expanded"
+      data-fork-design-layers
     >
       <header className="flex h-9 shrink-0 items-center gap-1 border-b border-border pe-1.5 ps-3">
         <SearchIcon className="size-3.5 shrink-0 text-muted-foreground/70" />

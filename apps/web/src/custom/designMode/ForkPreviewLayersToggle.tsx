@@ -16,10 +16,16 @@ import { useLayersCollapsed } from "./layersCollapsed";
  * here would just be chrome. See `.fork/customizations.yaml#fork-design-mode`.
  */
 export function ForkPreviewLayersToggle({ runtimeTabId }: { runtimeTabId: string | null }) {
-  const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
+  // A primitive, not the tab object: that identity changes on every selection, layers and
+  // tokens patch — up to ~4/s while an agent edits the page — and this button is mounted in
+  // the always-rendered chrome row. It only cares about one transition.
+  const railWouldRender = useDesignModeStore((state) => {
+    const tab = selectDesignModeTab(state.byTabId, runtimeTabId);
+    return tab.enabled && tab.layers !== null;
+  });
   const [collapsed, setCollapsed] = useLayersCollapsed();
 
-  if (!collapsed || !tab.enabled || !tab.layers) return null;
+  if (!collapsed || !railWouldRender) return null;
 
   return (
     <Tooltip>
