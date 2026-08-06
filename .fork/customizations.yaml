@@ -1551,8 +1551,14 @@
     rail collapses away (device-local localStorage flag, like the sidebar's own
     collapse prefs); since nothing of it is left to click, the control that
     reopens it lives in the preview chrome row's fenced leadingActions slot
-    (ForkPreviewLayersToggle), and the flag is shared through
-    layersCollapsed.ts so the two halves cannot disagree. Reorder is
+    (ForkPreviewLayersToggle), and the flag, the availability predicate and the
+    focus handoff are shared through layersCollapsed.ts so the two halves
+    cannot disagree — each unmounts ITSELF on activation, so each hands focus
+    to its counterpart rather than dropping it to <body>. Collapsing UNMOUNTS
+    the rail rather than hiding it, so a hidden rail costs nothing while the
+    guest re-emits layers; the accepted price is that the rail's view state
+    (filter text, hand-folded rows, active row) starts over on reopen, with the
+    reveal effect re-expanding the selection's ancestors. Reorder is
     sibling-relative over the wire (`reorderElement(id, beforeId)`) because the
     curated tree hoists tagged descendants through untagged wrappers — a row's
     position in the TREE is not its position in the DOM, so only the guest can

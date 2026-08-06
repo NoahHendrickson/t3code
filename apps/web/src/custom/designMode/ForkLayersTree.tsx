@@ -12,7 +12,13 @@ import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "./designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
-import { useLayersCollapsed } from "./layersCollapsed";
+import {
+  LAYERS_RAIL_ID,
+  LAYERS_SHOW_BUTTON,
+  focusLayersControl,
+  layersRailAvailable,
+  useLayersCollapsed,
+} from "./layersCollapsed";
 import { useLayersDrag, type DropEdge } from "./layersDrag";
 import {
   ancestorsOf,
@@ -110,22 +116,22 @@ const LayerRowView = memo(function LayerRowView({
  * dragged among its DOM siblings when the parent is an auto-layout container. Tree
  * arithmetic lives in layersTreeModel.ts and the drag in layersDrag.ts; every interaction is
  * delegated from the container here, so rows stay memoizable.
+ *
+ * This outer component is only a gate, so a collapsed rail costs nothing: everything in
+ * LayersRail below — the flatten, the filter, the selection Set, the reveal effect — re-runs
+ * on every debounced layers re-emit, up to once every 250ms while an agent edits the
+ * previewed page. Returning null from inside the body would keep all of that subscribed and
+ * running for a rail the user deliberately hid. Unmounting stops the work rather than hiding
+ * its output — at the price of the rail's view state (filter, hand-folded rows, active row),
+ * which a fresh mount starts over; the reveal effect re-expands the selection's ancestors.
  * See `.fork/customizations.yaml#fork-design-mode`.
- */
-/**
- * A gate, so a collapsed rail costs nothing. Everything below it — the flatten, the filter,
- * the selection Set, the reveal effect — re-runs on every debounced layers re-emit, which is
- * up to once every 250ms while an agent edits the previewed page. Returning null from inside
- * the body would keep all of that subscribed and running for a component the user
- * deliberately hid; unmounting it stops the work instead of hiding its output.
  */
 export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }) {
   const [collapsed] = useLayersCollapsed();
-  const mounted = useDesignModeStore((state) => {
-    const tab = selectDesignModeTab(state.byTabId, runtimeTabId);
-    return tab.enabled && tab.layers !== null;
-  });
-  if (collapsed || !mounted || !runtimeTabId) return null;
+  const available = useDesignModeStore((state) =>
+    layersRailAvailable(selectDesignModeTab(state.byTabId, runtimeTabId), runtimeTabId),
+  );
+  if (collapsed || !available || !runtimeTabId) return null;
   return <LayersRail runtimeTabId={runtimeTabId} />;
 }
 
@@ -315,6 +321,7 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
 
   return (
     <div
+      id={LAYERS_RAIL_ID}
       className="flex w-52 shrink-0 flex-col border-r border-border bg-background"
       data-fork-design-layers
     >
@@ -357,7 +364,13 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
           title="Hide layers"
           aria-label="Hide layers"
           aria-expanded={true}
-          onClick={() => setCollapsed(true)}
+          aria-controls={LAYERS_RAIL_ID}
+          data-fork-design-layers-hide
+          onClick={() => {
+            setCollapsed(true);
+            // This button goes with the rail — hand focus to the control that brings it back.
+            focusLayersControl(LAYERS_SHOW_BUTTON);
+          }}
           className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
         >
           <PanelLeftCloseIcon />

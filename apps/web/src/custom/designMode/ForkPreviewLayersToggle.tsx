@@ -4,7 +4,13 @@ import { Button } from "~/components/ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
-import { useLayersCollapsed } from "./layersCollapsed";
+import {
+  LAYERS_HIDE_BUTTON,
+  LAYERS_RAIL_ID,
+  focusLayersControl,
+  layersRailAvailable,
+  useLayersCollapsed,
+} from "./layersCollapsed";
 
 /**
  * The way back into a collapsed layers rail, mounted at the head of the preview chrome row
@@ -19,10 +25,9 @@ export function ForkPreviewLayersToggle({ runtimeTabId }: { runtimeTabId: string
   // A primitive, not the tab object: that identity changes on every selection, layers and
   // tokens patch — up to ~4/s while an agent edits the page — and this button is mounted in
   // the always-rendered chrome row. It only cares about one transition.
-  const railWouldRender = useDesignModeStore((state) => {
-    const tab = selectDesignModeTab(state.byTabId, runtimeTabId);
-    return tab.enabled && tab.layers !== null;
-  });
+  const railWouldRender = useDesignModeStore((state) =>
+    layersRailAvailable(selectDesignModeTab(state.byTabId, runtimeTabId), runtimeTabId),
+  );
   const [collapsed, setCollapsed] = useLayersCollapsed();
 
   if (!collapsed || !railWouldRender) return null;
@@ -34,9 +39,14 @@ export function ForkPreviewLayersToggle({ runtimeTabId }: { runtimeTabId: string
           <Button
             variant="ghost"
             size="icon-xs"
-            onClick={() => setCollapsed(false)}
+            onClick={() => {
+              setCollapsed(false);
+              // This button unmounts itself — hand focus to the rail's own hide control.
+              focusLayersControl(LAYERS_HIDE_BUTTON);
+            }}
             aria-label="Show layers"
             aria-expanded={false}
+            aria-controls={LAYERS_RAIL_ID}
             type="button"
             data-fork-design-layers-toggle
           />
