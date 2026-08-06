@@ -2510,11 +2510,13 @@ function ChatViewContent(props: ChatViewProps) {
   // `isGitRepo` describes the status cwd, which is the thread's worktree when
   // it has one — and a worktree whose directory is gone answers "not a repo"
   // rather than failing. Gating on that alone unmounted the whole strip,
-  // taking the workspace chip with it: the one control that could point the
-  // thread back at the project checkout. Since only a git project can hold a
-  // worktree in the first place, a worktree path in play is its own proof the
-  // strip belongs here. A project that is genuinely not a repo has none, so
-  // upstream's rule still hides the strip there.
+  // taking the workspace chip with it — the control a draft uses to point
+  // itself back at the project checkout, and the only way out of a dead tree.
+  // (A started thread's workspace is pinned regardless, so its strip comes
+  // back read-only.) Since only a git project can hold a worktree in the first
+  // place, a worktree path in play is its own proof the strip belongs here. A
+  // project that is genuinely not a repo has none, so upstream's rule still
+  // hides the strip there.
   const showComposerContextStrip =
     (isGitRepo || activeThreadWorktreePath !== null) && activeProject !== null;
   /* fork:end fork-composer-shell */

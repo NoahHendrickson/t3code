@@ -1379,7 +1379,9 @@
     holds a worktree path, rather than only when the status cwd reports a git
     repo: a worktree whose directory has been deleted answers not-a-repo for
     itself, and hiding the strip on that answer took away the workspace chip —
-    the only control that could point the thread back out of the dead tree.
+    the control a draft uses to point itself back out of the dead tree, and its
+    only way out. A started thread's workspace is pinned either way, so its
+    strip returns read-only.
     Chips use the Auto chip's container at
     4px/6px inline padding (24px tall, 6px radius — extra 2px on the end so
     the trailing chevron clears the curve; branch combobox takes 6px start,
