@@ -1404,13 +1404,18 @@
     the drawn 10px), and the composer's effort trigger joins its trait labels
     with a plain space ("High 1M") while Settings keeps upstream's " · "
     separator. The runtime-mode chip and the composer's model and effort
-    triggers tighten to 4px inline padding so the row reads as a packed
-    cluster. The chip's padding lives in ComposerShell.css alongside its 20px
-    height (that rule outranks any Tailwind px-* utility on the trigger, so
-    the class is not the lever there); the model and effort triggers take it
-    per call site via triggerClassName rather than through
-    composerControlClassName, so the Build/Plan toggles and the Settings model
-    and traits pickers keep upstream's padding.
+    triggers sit at 4px inline padding, tighter than the mode group's 8px, so
+    the right side of the row reads as one packed cluster. Both are CSS-only
+    changes, because the fork's own stylesheets — not the call sites — own this
+    geometry: theme.custom.css styles every ghost control under the mode and
+    model groups, ComposerShell.css styles the mode chip it excludes, and both
+    are imported unlayered while Tailwind's utilities live in `@layer
+    utilities`. Unlayered beats layered regardless of specificity, so a `px-*`
+    class passed at a call site cannot move these controls at all; the model
+    group takes its 4px from its own rule in theme.custom.css, split from the
+    shared ghost-control rule so the left (mode) slot keeps 8px. The Build/Plan
+    toggles are in that left slot and stay on the fork's 8px — not upstream's
+    px-2.5, which no control in this row has ever rendered.
     The branch strip is still passed into ChatComposer as
     the memoised contextStrip element, preserving ChatComposer's memo boundary
     and keeping branch controls reachable while mobile is collapsed. It also

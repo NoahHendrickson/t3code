@@ -1286,8 +1286,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onPromptChange: setPromptFromTraits,
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
     triggerLabelSeparator: " ",
-    // Composer-only tightening; the settings call sites keep upstream padding.
-    triggerClassName: "px-1",
     /* fork:end fork-composer-shell */
   });
   const pendingPrimaryAction = useMemo(
@@ -2756,10 +2754,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         onOpenChange={(open) => {
           setIsComposerModelPickerOpen(open);
         }}
-        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-        /* Composer-only tightening; the settings call sites keep upstream padding. */
-        triggerClassName="px-1"
-        /* fork:end fork-composer-shell */
         getModelDisabledReason={getModelDisabledReason}
         onInstanceModelChange={onProviderModelSelect}
       />
