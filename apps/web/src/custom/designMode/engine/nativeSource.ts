@@ -28,7 +28,34 @@ export const NATIVE_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
  * module state while the page DOM (and its synthesized tags) lives on. */
 export const NATIVE_SOURCE_MARKER_ATTR = "data-t3-native-source";
 
+/** The React component that rendered the element, when the host could name one. Written
+ * INDEPENDENTLY of `data-dc-source`: the host rejects a location it could not symbolicate, and
+ * that is exactly when knowing "this is a `ComposerSelectControl`" saves the agent the hunt. */
+export const COMPONENT_NAME_ATTR = "data-t3-component";
+
+/** The authored file, when the host could name one but could NOT resolve a position inside it.
+ * Never written alongside `data-dc-source` — a real tag already carries the file. */
+export const SOURCE_FILE_ATTR = "data-t3-source-file";
+
+const COMPONENT_NAME_PATTERN = /^[A-Za-z_$][\w$.]{0,63}$/;
 const MAX_FILE_LENGTH = 4096;
+
+/** Same posture as readComponentName: re-validated rather than trusted from the preload. */
+function readSourceFile(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return null;
+  const file = (value as { file?: unknown }).file;
+  if (typeof file !== "string" || file.length === 0 || file.length > MAX_FILE_LENGTH) return null;
+  // eslint-disable-next-line no-control-regex
+  return /[\u0000-\u001f\u007f]/.test(file) ? null : file;
+}
+
+/** Page-controlled like every other resolver field, and it lands in the agent's request text —
+ * re-validated here rather than trusted from the preload (same posture as normalizeNativeSource). */
+function readComponentName(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return null;
+  const name = (value as { componentName?: unknown }).componentName;
+  return typeof name === "string" && COMPONENT_NAME_PATTERN.test(name) ? name : null;
+}
 
 interface NativeSourceResolver {
   resolve(element: Element): Promise<unknown>;
@@ -117,7 +144,20 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
     const source = normalizeNativeSource(raw);
     // Recheck after the await: a node replaced by HMR must not be tagged post-mortem,
     // and a tag that appeared meanwhile (restore re-synthesis) must not be overwritten.
-    if (!source || !el.isConnected) return false;
+    if (!el.isConnected) return false;
+    // Before the source gate on purpose — a component name is most valuable precisely when
+    // there is no location to pair it with.
+    const componentName = readComponentName(raw);
+    if (componentName && !el.hasAttribute(COMPONENT_NAME_ATTR)) {
+      el.setAttribute(COMPONENT_NAME_ATTR, componentName);
+    }
+    if (!source) {
+      // No position, but the file survived the host's symbolication check — worth carrying,
+      // since "which file" is most of what the address was for.
+      const file = readSourceFile(raw);
+      if (file && !el.hasAttribute(SOURCE_FILE_ATTR)) el.setAttribute(SOURCE_FILE_ATTR, file);
+      return false;
+    }
     if (el.dataset.dcSource) return true;
     markSynthesizedSource(el, source);
     return true;

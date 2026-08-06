@@ -1715,9 +1715,34 @@
     in favor of their own tsconfig island; the engine is bundled to an
     injectable IIFE string by the fork:design-mode-engine Vite plugin as
     virtual:fork-design-mode-engine.
+
+    Two accuracy rules govern what a change request is allowed to assert, both
+    added after a request cost more time than doing the edit by hand. First, a
+    css bullet may only say "change `px-2.5` -> `px-1`" once cssOrigin.ts has
+    PROVED that class is the lever, by removing it and re-measuring while the
+    element shows its original cascade; when a stylesheet rule outranks the
+    utility instead, the bullet names that rule and its file (Vite's
+    data-vite-dev-id is what still carries the authored filename) and drops the
+    utility suggestion, because editing an overridden class is a silent no-op.
+    Second, a source location is only forwarded when react-grab reports the
+    frame as symbolicated: an unsymbolicated frame carries GENERATED
+    coordinates, which look authoritative and point into a line the authored
+    file may not even have. Rejection costs the LINE, not the file:
+    `data-t3-source-file` still carries the authored path (react-grab reads it
+    off the fiber's module, so only the position inside it needed
+    symbolication) and `data-t3-component` carries the fiber's component name,
+    which together read as "Rendered by `<X>` in path (line not resolvable)" —
+    usually the faster address anyway. Relatedly, the NO_PREVIEW guardrail must
+    not promise upstream's automatic verification while this fork has not
+    vendored client/verifier.ts.
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
+    # Outside engine/ on purpose: like protocol.ts it crosses the TS-island fence
+    # (the engine tsconfig includes it by path) so the web project can type-check
+    # and unit-test it, which files under engine/ cannot be.
+    - apps/web/src/custom/designMode/cssOrigin.ts
+    - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
     - apps/web/src/custom/designMode/designModeStore.ts
     - apps/web/src/custom/designMode/designModeBridge.ts
     - apps/web/src/custom/designMode/designChangeDraftStore.ts

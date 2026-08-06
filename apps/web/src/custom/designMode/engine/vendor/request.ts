@@ -3,6 +3,8 @@ import { draftToOps } from './ops'
 import { parseSourceAttr, type SourceLocation, type TaggedElement } from './source'
 import { readTheme, readTokens, suggestUtility, findExistingUtility, type Theme } from './tokens'
 import { isStructuralOpKind, type StructuralOpKind } from './shared/structural-kinds'
+// t3-fork: see ../../cssOrigin.ts — proves whether the named utility is really the lever.
+import { resolveDeclarationOrigin, type DeclarationOrigin } from '../../cssOrigin'
 
 export interface ChangeItem {
   property: string
@@ -13,6 +15,10 @@ export interface ChangeItem {
   tokenExact: boolean
   /** Optional plain-language instruction overriding the literal before→after reading — set by the BUILDER (policy lives at construction), rendered generically. */
   intent?: string
+  /** t3-fork: the rule that actually resolves this property, named ONLY when the element's
+   * utility class provably does not (cssOrigin.ts probes by removing the class). Its presence
+   * is what suppresses `beforeUtility`, so the agent is never told to edit an inert class. */
+  origin?: { selectorText: string; stylesheet: string }
 }
 
 /** A Figma-pivot structural design op (spec 2026-07-22 §2-3), anchored at its ElementChange's
@@ -88,6 +94,11 @@ export interface ElementChange {
   className: string
   text: string
   selector: string
+  /** t3-fork: the React component that rendered this element, when the host named one. Carries
+   * the "where do I edit?" answer that a rejected/absent source location cannot. */
+  component?: string
+  /** t3-fork: the authored file, when it was known but no position inside it was. */
+  sourceFile?: string
   changes: ChangeItem[]
   /** Omitted (never []) when the element has no structural ops — keeps existing JSON stable. */
   ops?: StructuralOp[]
@@ -270,6 +281,13 @@ function elementContext(el: TaggedElement, changes: ChangeItem[]): ElementChange
     className: sanitizeInline(className),
     text: contextText(el.textContent ?? ''),
     selector: sanitizeInline(cssPath(el)),
+    // t3-fork: written by nativeSource.ts's COMPONENT_NAME_ATTR, independently of the source tag.
+    ...(el.getAttribute('data-t3-component')
+      ? { component: sanitizeInline(el.getAttribute('data-t3-component')!) }
+      : {}),
+    ...(el.getAttribute('data-t3-source-file')
+      ? { sourceFile: sanitizeInline(el.getAttribute('data-t3-source-file')!) }
+      : {}),
     changes,
   }
 }
@@ -340,6 +358,12 @@ export function buildChangeRequestWithElements(
       el.style.setProperty('transition', 'none')
 
       let raw: Map<string, { beforeCss: string; afterCss: string }>
+      // t3-fork: collapsed here rather than at the bullet loop below, because origin probing
+      // has to run against the property names the bullets actually use (`padding-inline`, not
+      // the `padding-left`/`padding-right` drafts it collapses from) AND while the original
+      // cascade is still showing.
+      let collapsed: Map<string, { beforeCss: string; afterCss: string }>
+      const origins = new Map<string, DeclarationOrigin>()
       try {
         // measure "after" (drafted) computed values
         if (wasComparing) drafts.compare(el, false)
@@ -364,6 +388,18 @@ export function buildChangeRequestWithElements(
             afterCss: isKeyword ? draft.value : afterCss.get(prop)!,
           })
         }
+        // t3-fork: still inside `compare(el, true)` — the element is showing its ORIGINAL
+        // cascade, which is the only state where "does this class control the property?"
+        // has the right answer. Probing after the draft is restored would measure the draft
+        // (applied inline, so it outranks every class) and call every utility inert.
+        collapsed = collapse(raw)
+        const probeClassName =
+          typeof el.className === 'string' ? el.className : [...el.classList].join(' ')
+        for (const [property, v] of collapsed) {
+          if (v.beforeCss === v.afterCss) continue
+          const guess = theme.spacingBasePx === null ? null : findExistingUtility(probeClassName, property)
+          origins.set(property, resolveDeclarationOrigin(el, property, guess))
+        }
         drafts.compare(el, wasComparing)
       } finally {
         if (inlineTransition) el.style.setProperty('transition', inlineTransition)
@@ -371,20 +407,30 @@ export function buildChangeRequestWithElements(
       }
 
       const className = typeof el.className === 'string' ? el.className : [...el.classList].join(' ')
-      for (const [property, v] of collapse(raw)) {
+      for (const [property, v] of collapsed) {
         // A draft scrubbed back to its original value survives in the DraftStore (apply() keeps
         // it), so it reaches here as a genuine no-op. Dropping it HERE — not just its markdown
         // bullet — keeps empty sections out of the agent's request and lets the caller skip the
         // send entirely when nothing actually changed.
         if (v.beforeCss === v.afterCss) continue
         const suggestion = suggestUtility(property, v.afterCss, theme, tokens)
+        // t3-fork: the probe replaces the class-list scan as the source of `beforeUtility`.
+        // A scan only proves a prefix-matching class is present; the probe proves it is the
+        // lever. Unprobed properties (no origin entry) keep the original scan behaviour.
+        const origin = origins.get(property)
         const item: ChangeItem = {
           property,
           beforeCss: v.beforeCss,
           afterCss: v.afterCss,
-          beforeUtility: theme.spacingBasePx === null ? null : findExistingUtility(className, property),
+          beforeUtility: origin
+            ? (origin.utilityWins ? origin.utilityClass : null)
+            : theme.spacingBasePx === null ? null : findExistingUtility(className, property),
           afterUtility: suggestion?.utility ?? null,
           tokenExact: suggestion?.tokenExact ?? false,
+        }
+        if (origin && !origin.utilityWins && origin.rules.length > 0) {
+          const winner = origin.rules[origin.rules.length - 1]!
+          item.origin = { selectorText: winner.selectorText, stylesheet: winner.stylesheet }
         }
         // 'display: flex → block' is never the literal ask — it is the panel's deterministic
         // preview of REMOVING auto layout. Stamp the intent here at construction so the agent
@@ -538,6 +584,12 @@ export function renderMarkdown(req: ChangeRequest, theme: Theme = readTheme()): 
     // so the whole request arrived unanchored. Tagged elements skip it: the file:line:col
     // is the better address, and a second one is noise.
     if (!el.source && el.selector) lines.push(`Selector: \`${el.selector}\``)
+    // t3-fork: printed before text/classes — when the location was rejected this is the
+    // strongest address the request carries, and the agent should read it first.
+    if (el.component || el.sourceFile) {
+      const where = el.sourceFile ? ` in ${el.sourceFile} (line not resolvable)` : ''
+      lines.push(`Rendered by: ${el.component ? `\`<${el.component}>\`` : 'unknown component'}${where}`)
+    }
     if (el.text) lines.push(`Text: "${el.text}"`)
     if (el.className) lines.push(`Current classes: \`${el.className}\``)
     lines.push('')
@@ -547,7 +599,11 @@ export function renderMarkdown(req: ChangeRequest, theme: Theme = readTheme()): 
       // a no-op bullet must never reach the agent regardless of who built the request.
       if (c.beforeCss === c.afterCss) continue
       let line = `- ${c.property}: ${c.beforeCss} → ${c.afterCss}`
-      if (c.afterUtility) {
+      // t3-fork: a named origin means the class layer provably is NOT the lever here — say so
+      // and point at the rule, instead of suggesting a utility edit that resolves to nothing.
+      if (c.origin) {
+        line += ` — set by \`${c.origin.selectorText}\` in ${c.origin.stylesheet}, which outranks this element's utility classes; edit that rule`
+      } else if (c.afterUtility) {
         line += c.beforeUtility
           ? ` — change \`${c.beforeUtility}\` → \`${c.afterUtility}\``
           : ` — add \`${c.afterUtility}\``

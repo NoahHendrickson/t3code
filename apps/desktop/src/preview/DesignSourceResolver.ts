@@ -17,9 +17,14 @@ import { getElementContext } from "react-grab/primitives";
 
 import {
   DESIGN_SOURCE_RESOLVER_GLOBAL,
-  normalizeResolvedSource,
+  describeResolvedSource,
   type DesignSourceResult,
 } from "./DesignSourceResult.ts";
+
+/** What `resolve` actually puts on the wire: a full location, or — when react-grab could not
+ * symbolicate — just the component name, which the engine uses to label an otherwise
+ * selector-addressed element. Reading only the location fields yields the original contract. */
+type ResolvedPayload = Partial<DesignSourceResult> & { componentName?: string };
 
 /** react-grab resolution symbolicates through source maps — cap concurrent work so a
  * scrubbing cursor can't queue dozens of expensive lookups at once. */
@@ -52,15 +57,15 @@ function releaseSlot(): void {
  * an element resolved before React mounted its dev metadata (hydration, a lazy chunk)
  * can succeed on a later ask instead of staying selector-only forever (PR #54 review).
  * The TTL also bounds retry cost: at most one react-grab attempt per element per TTL. */
-const resolutionCache = new WeakMap<Element, Promise<DesignSourceResult | null>>();
+const resolutionCache = new WeakMap<Element, Promise<ResolvedPayload | null>>();
 
 const NULL_RESULT_TTL_MS = 5000;
 
-async function resolveElement(element: Element): Promise<DesignSourceResult | null> {
+async function resolveElement(element: Element): Promise<ResolvedPayload | null> {
   await acquireSlot();
   try {
     const context = await getElementContext(element);
-    const normalized = normalizeResolvedSource(context);
+    const normalized = describeResolvedSource(context);
     // Recheck after the await — an element replaced mid-resolution must not hand the
     // engine a location for a node that no longer exists.
     if (!normalized || !element.isConnected || element.ownerDocument !== document) return null;
@@ -72,7 +77,7 @@ async function resolveElement(element: Element): Promise<DesignSourceResult | nu
   }
 }
 
-function resolve(element: unknown): Promise<DesignSourceResult | null> {
+function resolve(element: unknown): Promise<ResolvedPayload | null> {
   if (!(element instanceof Element) || element.ownerDocument !== document || !element.isConnected) {
     return Promise.resolve(null);
   }
