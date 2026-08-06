@@ -414,23 +414,24 @@ export function buildChangeRequestWithElements(
         // send entirely when nothing actually changed.
         if (v.beforeCss === v.afterCss) continue
         const suggestion = suggestUtility(property, v.afterCss, theme, tokens)
-        // t3-fork: the probe replaces the class-list scan as the source of `beforeUtility`.
-        // A scan only proves a prefix-matching class is present; the probe proves it is the
-        // lever. Unprobed properties (no origin entry) keep the original scan behaviour.
-        const origin = origins.get(property)
+        // t3-fork: the probe replaces the class-list scan as the source of `beforeUtility` —
+        // a scan only proves a prefix-matching class is present, the probe proves it is the
+        // lever. Every property reaching here was probed above under the same no-op skip, so
+        // there is no unprobed path to fall back for.
+        const origin = origins.get(property)!
         const item: ChangeItem = {
           property,
           beforeCss: v.beforeCss,
           afterCss: v.afterCss,
-          beforeUtility: origin
-            ? (origin.utilityWins ? origin.utilityClass : null)
-            : theme.spacingBasePx === null ? null : findExistingUtility(className, property),
+          beforeUtility: origin.utilityWins ? origin.utilityClass : null,
           afterUtility: suggestion?.utility ?? null,
           tokenExact: suggestion?.tokenExact ?? false,
         }
-        if (origin && !origin.utilityWins && origin.rules.length > 0) {
-          const winner = origin.rules[origin.rules.length - 1]!
-          item.origin = { selectorText: winner.selectorText, stylesheet: winner.stylesheet }
+        if (origin.culprit) {
+          item.origin = {
+            selectorText: origin.culprit.selectorText,
+            stylesheet: origin.culprit.stylesheet,
+          }
         }
         // 'display: flex → block' is never the literal ask — it is the panel's deterministic
         // preview of REMOVING auto layout. Stamp the intent here at construction so the agent

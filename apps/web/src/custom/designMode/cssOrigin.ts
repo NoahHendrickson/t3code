@@ -36,8 +36,10 @@ export interface DeclarationOrigin {
   utilityWins: boolean;
   /** The probed class, echoed back so callers need not re-derive it. */
   utilityClass: string | null;
-  /** Best-effort culprits, most-likely-winner last. Empty when nothing could be named. */
-  rules: OriginRule[];
+  /** The one rule worth naming when the utility does not win. Null when the utility wins, or
+   * when nothing could be named — the request renders a single hint, and the empirical probe
+   * above, not this, is what decides the phrasing. */
+  culprit: OriginRule | null;
 }
 
 /** Longhands a rule may declare through a shorthand instead. Only the shorthands whose
@@ -107,28 +109,34 @@ export function isBareClassSelector(selectorText: string): boolean {
   return /^\.[\w\\.:%[\]/-]+$/.test(selectorText.trim());
 }
 
-/** A matched rule before ranking. Split out so the ordering contract can be tested without a
- * DOM: everything above this point needs live CSSOM, everything below is arithmetic. */
+/** A matched rule before selection. Split out so the choice can be tested without a DOM:
+ * everything above this point needs live CSSOM, everything below is arithmetic. */
 export interface OriginCandidate extends OriginRule {
   order: number;
   specificity: number;
 }
 
-/** Ranks candidates the way the report reads them: most-likely winner LAST, since that is the
- * one `request.ts` names. `!important` dominates, then approximate specificity, then document
- * order — the cascade's own tiebreak sequence. */
-export function rankOriginRules(candidates: readonly OriginCandidate[]): OriginRule[] {
-  return [...candidates]
-    .sort(
-      (a, b) =>
-        Number(a.important) - Number(b.important) ||
-        a.specificity - b.specificity ||
-        a.order - b.order,
-    )
-    .map(({ selectorText, stylesheet, important }) => ({ selectorText, stylesheet, important }));
+/** True when `a` outranks `b` by the cascade's tiebreak sequence: `!important` first, then
+ * approximate specificity, then document order. */
+function outranks(a: OriginCandidate, b: OriginCandidate): boolean {
+  if (a.important !== b.important) return a.important;
+  if (a.specificity !== b.specificity) return a.specificity > b.specificity;
+  return a.order > b.order;
 }
 
-function collectMatchingRules(el: Element, property: string): OriginRule[] {
+/** The single most likely winner among candidates, or null when there are none. Exported in
+ * its own right because it is the only part of culprit selection testable without a DOM. */
+export function pickCulprit(candidates: readonly OriginCandidate[]): OriginRule | null {
+  let best: OriginCandidate | null = null;
+  for (const candidate of candidates) {
+    if (best === null || outranks(candidate, best)) best = candidate;
+  }
+  if (best === null) return null;
+  const { selectorText, stylesheet, important } = best;
+  return { selectorText, stylesheet, important };
+}
+
+function collectCulprit(el: Element, property: string): OriginRule | null {
   const found: OriginCandidate[] = [];
   let order = 0;
 
@@ -180,7 +188,7 @@ function collectMatchingRules(el: Element, property: string): OriginRule[] {
     }
   }
 
-  return rankOriginRules(found);
+  return pickCulprit(found);
 }
 
 /** Whether removing `utilityClass` changes the property's computed value. Transitions are
@@ -217,6 +225,6 @@ export function resolveDeclarationOrigin(
     utilityClass !== null &&
     el.classList.contains(utilityClass) &&
     classControlsProperty(el, property, utilityClass);
-  if (utilityWins) return { utilityWins: true, utilityClass, rules: [] };
-  return { utilityWins: false, utilityClass, rules: collectMatchingRules(el, property) };
+  if (utilityWins) return { utilityWins: true, utilityClass, culprit: null };
+  return { utilityWins: false, utilityClass, culprit: collectCulprit(el, property) };
 }

@@ -40,7 +40,10 @@ export const SOURCE_FILE_ATTR = "data-t3-source-file";
 const COMPONENT_NAME_PATTERN = /^[A-Za-z_$][\w$.]{0,63}$/;
 const MAX_FILE_LENGTH = 4096;
 
-/** Same posture as readComponentName: re-validated rather than trusted from the preload. */
+/** Same posture as readComponentName: re-validated rather than trusted from the preload.
+ * TWIN of `normalizeFilePath` in apps/desktop/src/preview/DesignSourceResult.ts — deliberate
+ * duplication across the trust boundary, not a shared helper, because each side must hold on
+ * its own. Loosen one and loosen the other, or the boundary stops meaning anything. */
 function readSourceFile(value: unknown): string | null {
   if (typeof value !== "object" || value === null) return null;
   const file = (value as { file?: unknown }).file;
@@ -50,7 +53,9 @@ function readSourceFile(value: unknown): string | null {
 }
 
 /** Page-controlled like every other resolver field, and it lands in the agent's request text —
- * re-validated here rather than trusted from the preload (same posture as normalizeNativeSource). */
+ * re-validated here rather than trusted from the preload (same posture as normalizeNativeSource).
+ * TWIN of `normalizeComponentName` in apps/desktop/src/preview/DesignSourceResult.ts; keep the
+ * two patterns identical. */
 function readComponentName(value: unknown): string | null {
   if (typeof value !== "object" || value === null) return null;
   const name = (value as { componentName?: unknown }).componentName;

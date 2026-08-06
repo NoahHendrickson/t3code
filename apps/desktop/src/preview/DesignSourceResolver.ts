@@ -18,13 +18,8 @@ import { getElementContext } from "react-grab/primitives";
 import {
   DESIGN_SOURCE_RESOLVER_GLOBAL,
   describeResolvedSource,
-  type DesignSourceResult,
+  type ResolvedDesignSource,
 } from "./DesignSourceResult.ts";
-
-/** What `resolve` actually puts on the wire: a full location, or — when react-grab could not
- * symbolicate — just the component name, which the engine uses to label an otherwise
- * selector-addressed element. Reading only the location fields yields the original contract. */
-type ResolvedPayload = Partial<DesignSourceResult> & { componentName?: string };
 
 /** react-grab resolution symbolicates through source maps — cap concurrent work so a
  * scrubbing cursor can't queue dozens of expensive lookups at once. */
@@ -57,11 +52,11 @@ function releaseSlot(): void {
  * an element resolved before React mounted its dev metadata (hydration, a lazy chunk)
  * can succeed on a later ask instead of staying selector-only forever (PR #54 review).
  * The TTL also bounds retry cost: at most one react-grab attempt per element per TTL. */
-const resolutionCache = new WeakMap<Element, Promise<ResolvedPayload | null>>();
+const resolutionCache = new WeakMap<Element, Promise<ResolvedDesignSource | null>>();
 
 const NULL_RESULT_TTL_MS = 5000;
 
-async function resolveElement(element: Element): Promise<ResolvedPayload | null> {
+async function resolveElement(element: Element): Promise<ResolvedDesignSource | null> {
   await acquireSlot();
   try {
     const context = await getElementContext(element);
@@ -77,7 +72,7 @@ async function resolveElement(element: Element): Promise<ResolvedPayload | null>
   }
 }
 
-function resolve(element: unknown): Promise<ResolvedPayload | null> {
+function resolve(element: unknown): Promise<ResolvedDesignSource | null> {
   if (!(element instanceof Element) || element.ownerDocument !== document || !element.isConnected) {
     return Promise.resolve(null);
   }

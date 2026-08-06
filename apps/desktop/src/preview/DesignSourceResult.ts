@@ -68,7 +68,9 @@ export function normalizeResolvedSource(
   };
 }
 
-/** A usable development file path, or null. Page-controlled: length-capped, and rejected
+/** A usable development file path, or null. TWIN of `readSourceFile` in
+ * apps/web/src/custom/designMode/engine/nativeSource.ts, which re-checks this on the far side
+ * of the page-shared global — keep the two in step. Page-controlled: length-capped, and rejected
  * outright when it carries control characters (a newline-bearing "path" could otherwise inject
  * instruction lines into the agent's request). */
 export function normalizeFilePath(value: unknown): string | null {
@@ -80,7 +82,8 @@ export function normalizeFilePath(value: unknown): string | null {
 }
 
 /** Identifier-shaped display names only — the value is page-controlled and ends up inside the
- * agent's request text. */
+ * agent's request text. TWIN of `readComponentName` in nativeSource.ts; keep the patterns
+ * identical. */
 const COMPONENT_NAME_PATTERN = /^[A-Za-z_$][\w$.]{0,63}$/;
 
 export function normalizeComponentName(value: unknown): string | null {
@@ -108,14 +111,31 @@ export function isSymbolicated(stack: unknown, filePath: unknown): boolean {
 }
 
 /**
- * The full payload the resolver puts on the wire: the validated location when there is one,
- * plus the component name, which comes off the fiber and stays correct even when the location
- * is rejected. Additive by design — an engine reading only `file`/`line`/`column` sees exactly
- * what it saw before, and a host that predates this still satisfies that engine.
+ * What survives when the host could not trust the location: the file (if it was well-formed)
+ * and the component name, and NEVER a position. `line`/`column` are typed `never` rather than
+ * omitted so the two arms of `ResolvedDesignSource` cannot be confused — a hint carrying a
+ * line would be exactly the bug this whole path exists to prevent, and it now fails to compile
+ * instead of relying on a comment to hold the invariant.
+ */
+export interface DesignSourceHint {
+  file?: string;
+  componentName?: string;
+  line?: never;
+  column?: never;
+}
+
+/** The two discrete shapes the resolver puts on the wire. Additive: an engine reading only
+ * `file`/`line`/`column` sees exactly what it saw before, and a host predating this still
+ * satisfies that engine. */
+export type ResolvedDesignSource = DesignSourceResult | DesignSourceHint;
+
+/**
+ * The payload the resolver puts on the wire: the validated location when there is one,
+ * otherwise the hint. The component name comes off the fiber and stays correct either way.
  */
 export function describeResolvedSource(
   value: Parameters<typeof normalizeResolvedSource>[0],
-): (Partial<DesignSourceResult> & { componentName?: string }) | null {
+): ResolvedDesignSource | null {
   const source = normalizeResolvedSource(value);
   if (source) return source;
   // The line was untrustworthy; the FILE was not. react-grab reads the path off the fiber's
