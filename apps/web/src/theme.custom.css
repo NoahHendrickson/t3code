@@ -562,11 +562,22 @@
 /* BranchToolbar still ships the wrapper that hung it off the composer's
    underside — a negative top margin, a fixed inset width, and the padding that
    cleared the stitched outline. Inside the control row it is just the row's
-   right-hand group, so the wrapper flattens to nothing. */
+   right-hand group, so the wrapper flattens to nothing.
+
+   It must still span the row. Upstream collapses the chip labels to icons by
+   comparing the width its content needs against the strip's own clientWidth,
+   which only reports the space available while the strip is stretched by
+   something other than that content. Left shrink-to-fit, the strip measures
+   its collapsed self: it reads as full the moment the labels are hidden, so
+   the first compact pass — a narrow window, a long branch name — latches
+   icon-only forever. flex-1 hands the measurement the row's width back;
+   min-width 0 keeps the chips shrinking rather than overflowing it. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
   .chat-composer-context-strip {
+  flex: 1 1 auto;
   width: auto;
+  min-width: 0;
   max-width: none;
   margin: 0;
   padding: 0;
@@ -594,6 +605,23 @@
   margin-inline-start: 0;
   max-width: 100%;
   gap: 8px;
+}
+
+/* The packing above only reaches children that are literally `.flex`, which
+   the desktop group and the branch wrapper are. Below `md` the workspace slot
+   is a Button (`inline-flex`) or, once locked, a bare `inline-flex` span —
+   neither matches, so upstream's `flex-1` survived on both. That was invisible
+   while the strip shrank to fit, because there was no free space to grow into;
+   a strip that spans the row hands it 48% to claim, opening a gap before the
+   branch chip. Pin every direct child instead of enumerating them, so the next
+   one added is packed by default. Flex only: the wrapper rule's gap and
+   max-width are wrapper business, and applying them here would fight the
+   chips' own 6px gap and cap. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  .chat-composer-context-strip
+  > * {
+  flex: 0 1 auto;
 }
 
 /* The context chips are the filled controls above the surface (checkout /

@@ -1375,7 +1375,16 @@
     between checkout and branch at narrower widths while the checkout label
     truncates; the fork forces those direct flex children to flex 0 1 auto,
     justify-content flex-start, and margin-inline-start 0 so the chips stay a
-    packed leading cluster. Chips use the Auto chip's container at
+    packed leading cluster. The strip itself still spans the row (flex-1,
+    min-width 0) rather than shrinking to its chips: upstream collapses the
+    chip labels to icons by comparing the width they need against the strip's
+    own clientWidth, and a shrink-to-fit strip measures its collapsed self, so
+    one compact pass would latch the chips icon-only for good. Because a strip
+    that spans the row has free space to hand out, the flex-1 neutralization
+    covers every direct child rather than only the ones carrying `.flex` —
+    below `md` the workspace slot is an inline-flex Button or span, and left to
+    upstream's flex-1 it would claim that space and gap the cluster open.
+    Chips use the Auto chip's container at
     4px/6px inline padding (24px tall, 6px radius — extra 2px on the end so
     the trailing chevron clears the curve; branch combobox takes 6px start,
     workspace select 0 for its roomier folder glyph) at 12px type matching

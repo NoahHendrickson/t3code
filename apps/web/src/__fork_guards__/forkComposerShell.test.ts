@@ -405,11 +405,16 @@ describe("fork guard: fork-composer-shell", () => {
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.selector.includes(".chat-composer-context-strip") &&
-        !rule.selector.includes(">.flex") &&
-        !rule.selector.includes("> .flex"),
+        !/>\s*(?:\.flex|\*)/u.test(rule.selector),
     );
     expect(strip?.body).toMatch(/margin:\s*0/u);
     expect(strip?.body).toMatch(/gap:\s*8px/u);
+    // Flattening the wrapper must not let the strip shrink-to-fit: upstream's
+    // label-collapse heuristic measures the strip's own clientWidth as the
+    // space available, so a content-sized strip reads as full once the labels
+    // are hidden and never expands the chips back out of icon-only.
+    expect(strip?.body).toMatch(/flex:\s*1 1 auto/u);
+    expect(strip?.body).toMatch(/min-width:\s*0/u);
     // Nested PR+branch (and env+checkout) wrappers keep upstream gap-1; the
     // fork re-gaps them to 8px so checkout→PR→branch reads evenly, and drops
     // flex-1 / justify-end / ml-auto so the cluster stays packed when narrow.
@@ -424,5 +429,19 @@ describe("fork guard: fork-composer-shell", () => {
     expect(nested?.body).toMatch(/justify-content:\s*flex-start/u);
     expect(nested?.body).toMatch(/margin-inline-start:\s*0/u);
     expect(nested?.body).toMatch(/max-width:\s*100%/u);
+    // A stretched strip has free space, so packing has to reach EVERY direct
+    // child, not just the ones that happen to carry `.flex`. Below `md` the
+    // workspace slot is an `inline-flex` Button or span and keeps upstream's
+    // flex-1 otherwise, which claims that space and gaps the cluster open.
+    const everyChild = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes(".chat-composer-context-strip") &&
+        rule.selector.trim().endsWith("> *"),
+    );
+    expect(everyChild?.body).toMatch(/flex:\s*0 1 auto/u);
+    // Flex only — the wrapper rule's gap and max-width would fight the chips'
+    // own 6px gap and the mobile slot's 48% cap.
+    expect(everyChild?.body).not.toMatch(/gap:|max-width:/u);
   });
 });
