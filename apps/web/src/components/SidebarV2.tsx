@@ -25,7 +25,6 @@ import {
   GitBranchIcon,
   MessageSquareIcon,
   PinIcon,
-  PinOffIcon,
   PlusIcon,
   ServerIcon,
   TerminalIcon,
@@ -43,6 +42,11 @@ import { XIcon } from "lucide-react";
 // binding. Out here the fence survives and the parser stays honest.
 import { Globe2Icon } from "lucide-react";
 /* fork:end sidebar-v2-dev-server-pulse */
+/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+// Own statement for the same phosphor-guard reason as XIcon / Globe2Icon
+// above. PinIcon stays in upstream's list — upstream imports it itself.
+import { PinOffIcon } from "lucide-react";
+/* fork:end sidebar-v2-row-action-hit-area */
 import {
   memo,
   useCallback,
@@ -551,14 +555,18 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
     onDiscardDraft,
     /* fork:end sidebar-v2-draft-rows */
+    /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
     onPin,
+    /* fork:end sidebar-v2-row-action-hit-area */
     onRenameTitleChange,
     onSettle,
     onSnooze,
     onStartRename,
     onThreadActivate,
     onThreadClick,
+    /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
     onUnpin,
+    /* fork:end sidebar-v2-row-action-hit-area */
     onUnsettle,
     onUnsnooze,
     renamingTitle,
@@ -2414,6 +2422,11 @@ export default function SidebarV2() {
   const attemptPin = useCallback(
     (threadRef: ScopedThreadRef) => {
       void (async () => {
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        // Drafts are not on the server yet — same belt-and-braces check the
+        // settle/snooze attempts carry.
+        if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
+        /* fork:end sidebar-v2-draft-rows */
         const result = await pinThread(threadRef);
         if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
           const error = squashAtomCommandFailure(result);
@@ -2432,6 +2445,9 @@ export default function SidebarV2() {
   const attemptUnpin = useCallback(
     (threadRef: ScopedThreadRef) => {
       void (async () => {
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
+        /* fork:end sidebar-v2-draft-rows */
         const result = await unpinThread(threadRef);
         if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
           const error = squashAtomCommandFailure(result);
