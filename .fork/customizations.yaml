@@ -1581,6 +1581,13 @@
     designChangeDraftStore, the composer renders it as an inline pill
     (element + compact delta, × to discard, tooltip shows the markdown),
     pending pills count toward sendability so a pill-only message sends,
+    a Send REPLACES that tab's pending pill rather than adding a second one
+    (buildSend builds from all of a tab's live drafts, never from the
+    selection, so a re-send is a strict superset of the previous pill and a
+    send-then-discard leaves one asking for changes the user threw away —
+    both used to ride the same message as overlapping, sometimes
+    contradictory asks); the replacement key is the TAB, since two preview
+    tabs hold independent draft sets and must each contribute a pill,
     and ChatView's fenced send path appends the full deterministic
     token-aware change-request markdown to the outgoing message inside
     <design_change_request> blocks — cleared only when the turn start

@@ -16,10 +16,26 @@ export interface DesignModeWebview extends Element {
   readonly executeJavaScript: (code: string, userGesture?: boolean) => Promise<unknown>;
 }
 
-export const findPreviewWebview = (runtimeTabId: string): DesignModeWebview | null =>
-  Array.from(document.querySelectorAll<DesignModeWebview>("webview[data-preview-tab]")).find(
-    (candidate) => candidate.getAttribute("data-preview-tab") === runtimeTabId,
-  ) ?? null;
+/** Last webview seen for a tab id. Every command below resolves its target through
+ * findPreviewWebview, so an uncached lookup means a document-wide querySelectorAll per
+ * scrub frame; the element itself changes only when the preview pane remounts. */
+const webviewByTabId = new Map<string, DesignModeWebview>();
+
+export const findPreviewWebview = (runtimeTabId: string): DesignModeWebview | null => {
+  // Revalidated, not trusted: a remounted pane leaves the old element detached, and a tab id
+  // could in principle be reused by a different one.
+  const cached = webviewByTabId.get(runtimeTabId);
+  if (cached?.isConnected && cached.getAttribute("data-preview-tab") === runtimeTabId) {
+    return cached;
+  }
+  const found =
+    Array.from(document.querySelectorAll<DesignModeWebview>("webview[data-preview-tab]")).find(
+      (candidate) => candidate.getAttribute("data-preview-tab") === runtimeTabId,
+    ) ?? null;
+  if (found) webviewByTabId.set(runtimeTabId, found);
+  else webviewByTabId.delete(runtimeTabId);
+  return found;
+};
 
 /** Builds the executeJavaScript expression for one guest-handle call. Arguments are
  * JSON-encoded — the whole command surface is JSON-serializable by contract

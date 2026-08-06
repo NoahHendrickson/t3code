@@ -19,11 +19,17 @@ import type { DesignChangeRequestPayload } from "./protocol";
  */
 export interface PendingDesignChange extends DesignChangeRequestPayload {
   readonly id: string;
+  /** The preview tab whose drafts built this request — the replacement key, see `add`. */
+  readonly tabId: string;
 }
 
 interface DesignChangeDraftStoreState {
   readonly byThreadKey: Record<string, readonly PendingDesignChange[]>;
-  readonly add: (threadRef: ScopedThreadRef, payload: DesignChangeRequestPayload) => void;
+  readonly add: (
+    threadRef: ScopedThreadRef,
+    tabId: string,
+    payload: DesignChangeRequestPayload,
+  ) => void;
   readonly remove: (threadRef: ScopedThreadRef, id: string) => void;
   readonly clear: (threadRef: ScopedThreadRef) => void;
 }
@@ -32,12 +38,22 @@ let nextId = 1;
 
 export const useDesignChangeDraftStore = create<DesignChangeDraftStoreState>()((set) => ({
   byThreadKey: {},
-  add: (threadRef, payload) =>
+  /**
+   * Attaches one tab's change request, REPLACING that tab's previous one. The guest builds
+   * every request from all of its live drafts (headlessMode's buildSend), never from the
+   * selection — so a second Send from the same tab is a strict superset of the first, and a
+   * Send / Discard / Send sequence leaves the earlier pill asking for changes the user threw
+   * away. Both used to ride the message: the agent got two overlapping asks, the older one
+   * sometimes contradicting the newer. Keyed by TAB, not thread: two preview tabs hold
+   * independent draft sets and must each be able to contribute a pill.
+   */
+  add: (threadRef, tabId, payload) =>
     set((state) => {
       const key = scopedThreadKey(threadRef);
       const pending = state.byThreadKey[key] ?? [];
-      const entry: PendingDesignChange = { ...payload, id: `design-change-${nextId++}` };
-      return { byThreadKey: { ...state.byThreadKey, [key]: [...pending, entry] } };
+      const entry: PendingDesignChange = { ...payload, id: `design-change-${nextId++}`, tabId };
+      const kept = pending.filter((existing) => existing.tabId !== tabId);
+      return { byThreadKey: { ...state.byThreadKey, [key]: [...kept, entry] } };
     }),
   remove: (threadRef, id) =>
     set((state) => {

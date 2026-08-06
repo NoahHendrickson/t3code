@@ -129,6 +129,15 @@ export class HeadlessDesignMode {
    * each console.log line crosses the webview boundary; the count itself changes rarely. */
   private lastSentCount = -1;
 
+  /** The same change gate LayersSession keeps (its `lastJson`), for the same reason.
+   * emitSelection is called on every selection change, on every draft-sync flush (so every
+   * RIPPLE_DEBOUNCE_MS through a scrub), and on every late source resolution — and most of
+   * those carry a snapshot byte-identical to the last one. Each emit is ~45 computed style
+   * properties per selected element across the console bridge, and lands in the host's ONE
+   * ungated store setter, re-rendering the whole panel. Gating here spends a stringify to
+   * save both. */
+  private lastSelectionJson = "";
+
   // Layout-ripple state: idle-zero — only populated during the post-edit window.
   // A rapid burst of edits (e.g. dragging a number field) reuses each element's FIRST
   // snapshot in the burst until RIPPLE_DEBOUNCE_MS of quiet, so ripples reflect
@@ -451,6 +460,10 @@ export class HeadlessDesignMode {
       if (this.restoreTimer) clearTimeout(this.restoreTimer);
       this.restoreTimer = null;
       this.pendingRestore = null;
+      // The host clears its own selection on the enabled flip (designModeStore's setEnabled),
+      // so the gate must not treat the next activation's first snapshot as a repeat of the
+      // last session's — reset it rather than reasoning about the two resets staying aligned.
+      this.lastSelectionJson = "";
       this.drafts.compareAll(false); // previews survive exit — never leave the page stranded on "before"
       // A deactivate mid-debounce-window must not leave sessionStorage stale — flush (R2 F-C).
       this.flushDraftSync();
@@ -702,6 +715,11 @@ export class HeadlessDesignMode {
     const snapshots = this.selection.map((el) =>
       buildElementSnapshot(el, this.registry.mint(el), this.drafts),
     );
+    // Ids are stable per element (ElementIdRegistry's WeakMap), so an unchanged selection
+    // showing unchanged values really does stringify identically — the gate can't stick.
+    const json = JSON.stringify(snapshots);
+    if (json === this.lastSelectionJson) return;
+    this.lastSelectionJson = json;
     this.onSelection?.(snapshots);
   }
 
