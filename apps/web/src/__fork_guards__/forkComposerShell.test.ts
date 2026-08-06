@@ -156,6 +156,15 @@ describe("fork guard: fork-composer-shell", () => {
     expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
   });
 
+  it("keeps the context strip mounted when the thread's worktree is gone", () => {
+    // A deleted worktree answers "not a repo" for its own cwd rather than
+    // failing, so gating on that alone unmounted the strip and stranded the
+    // thread there. A worktree path in play must keep the strip rendered.
+    expect(chatView).toMatch(
+      /showComposerContextStrip\s*=\s*\(\s*isGitRepo \|\| activeThreadWorktreePath !== null\s*\)\s*&&\s*activeProject !== null/u,
+    );
+  });
+
   it("keeps composer styling scoped to the fork marker", () => {
     const composerRules = rules.filter(
       (rule) =>

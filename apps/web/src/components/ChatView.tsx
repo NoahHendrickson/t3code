@@ -2506,7 +2506,18 @@ function ChatViewContent(props: ChatViewProps) {
     terminalUiLaunchContext?.threadId === activeThreadId ? terminalUiLaunchContext : null;
   // Default true while loading to avoid toolbar flicker.
   const isGitRepo = gitStatusQuery.data?.isRepo ?? true;
-  const showComposerContextStrip = isGitRepo && activeProject !== null;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  // `isGitRepo` describes the status cwd, which is the thread's worktree when
+  // it has one — and a worktree whose directory is gone answers "not a repo"
+  // rather than failing. Gating on that alone unmounted the whole strip,
+  // taking the workspace chip with it: the one control that could point the
+  // thread back at the project checkout. Since only a git project can hold a
+  // worktree in the first place, a worktree path in play is its own proof the
+  // strip belongs here. A project that is genuinely not a repo has none, so
+  // upstream's rule still hides the strip there.
+  const showComposerContextStrip =
+    (isGitRepo || activeThreadWorktreePath !== null) && activeProject !== null;
+  /* fork:end fork-composer-shell */
   const initialDiffPanelGitScope =
     gitStatusQuery.data?.hasWorkingTreeChanges === true ? "unstaged" : "branch";
   const diffPanelGitStatusResolutionKey = gitStatusQuery.data ? "resolved" : "pending";
