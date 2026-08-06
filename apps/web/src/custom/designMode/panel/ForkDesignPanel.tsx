@@ -24,6 +24,9 @@ import { fieldStateFor, type FieldStateFor } from "./selectionValues";
 interface Props {
   runtimeTabId: string | null;
   threadRef: ScopedThreadRef;
+  /** Which preview tab this panel is docked beside. An identifier, not surface state: the
+   * canvas strip's screen-size picker reads the viewport for itself. */
+  tabId: string | null;
 }
 
 /**
@@ -40,7 +43,7 @@ interface Props {
  * attaches it to the thread composer.
  * See `.fork/customizations.yaml#fork-design-mode`.
  */
-export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
+export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
 
   const first = tab.selection[0];
@@ -176,7 +179,12 @@ export function ForkDesignPanel({ runtimeTabId, threadRef }: Props) {
         )}
       </header>
 
-      <CanvasControls runtimeTabId={runtimeTabId} canvas={tab.canvas} />
+      <CanvasControls
+        runtimeTabId={runtimeTabId}
+        threadRef={threadRef}
+        tabId={tabId}
+        canvas={tab.canvas}
+      />
 
       {first ? (
         // Keyed by selection identity so field-local input state resets per selection.

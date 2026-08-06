@@ -1609,7 +1609,38 @@
     setCanvas/canvasCommand handle calls, with a change-gated canvas
     message carrying the settled zoom readout back; the gesture modules'
     scale() hooks read the live canvas scale so drags stay accurate while
-    zoomed. engine/vendor/** contains only the Forge leaf
+    zoomed. Entering canvas mode commits UPSTREAM's viewport back to fill so
+    the webview owns the whole preview pane and the canvas with it (a stale
+    device viewport would letterbox the canvas inside itself);
+    theme.custom.css continues the same canvas gray across any letterbox that
+    does appear — repainting the webview WRAPPER, whose own translucent
+    bg-muted/35 is what draws that letterbox, and pinned to the guest's
+    CANVAS_BG by a guard. The strip carries
+    a screen-size picker (MacBook 14"/16", 24"/27" displays,
+    panel/canvasResolutions.ts) so a designer names a size instead of dragging
+    the viewport rails to it. It commits upstream's preview viewport with the
+    screen's WIDTH verbatim — that width becomes the guest's real CSS
+    viewport, so media queries, vw and breakpoints answer to the screen being
+    previewed rather than to however wide the pane happens to be, which is the
+    whole point (a page that hides content below a breakpoint must see the
+    screen). The HEIGHT is derived from the measured pane so the frame's
+    aspect ratio matches it and upstream's fit lands 1:1 on both axes with no
+    letterbox; the cost is that the frame is not the screen's real height, so
+    "above the fold" is not meaningful. A "True height" switch at the foot of
+    the picker (device-local, OFF by default) opts into the screen's own
+    height instead — a real 1512x982 browser, honest fold, letterboxed into
+    canvas gray — and re-commits the applied screen immediately rather than
+    waiting for the next pick. Either way the widest screens in a tall pane
+    letterbox once the contract's viewport area cap bites.
+    Freeform settings rather than new contract preset ids: the shared catalog
+    is upstream's and phone/tablet only. A reset-view canvas command follows
+    each SIZE commit so the artboard lands on the freshly sized window instead
+    of keeping the previous size's pan/zoom; entry deliberately skips it, since
+    CanvasMode seeds its transform from the live scroll. The handover hangs off
+    the canvas-on transition rather than the toggle's click, so it also holds
+    when canvas resumes on its own, and exiting puts back the viewport that was
+    there before (or clears a frame picked inside canvas, whose picker is about
+    to disappear with it). engine/vendor/** contains only the Forge leaf
     modules reachable from the headless engine; they keep the Forge's own
     formatting (fmt-ignored at the root config, same treatment as qrcodegen.ts),
     carry t3-fork-marked local edits, and are excluded from the web TS project
@@ -1635,6 +1666,9 @@
     - apps/web/src/custom/designMode/layersDrag.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/CanvasControls.tsx
+    - apps/web/src/custom/designMode/panel/canvasResolutions.ts
+    - apps/web/src/custom/designMode/panel/ScreenSizeMenu.tsx
+    - apps/web/src/custom/designMode/panel/useCanvasViewportHandoff.ts
     # Every properties-panel section; ForkDesignPanel.tsx is wiring only.
     - apps/web/src/custom/designMode/panel/sections
     - apps/web/src/custom/designMode/panel/CornerRadiusIcon.tsx
@@ -1685,6 +1719,12 @@
     # navigation group. A shadow of this 320-line hot file would cost a re-port
     # on every upstream chrome-row change for the sake of two lines.
     - apps/web/src/components/preview/PreviewChromeRow.tsx
+    # Fenced canvas marker on the webview WRAPPER. That element is the letterbox
+    # around a fixed-size viewport and paints it with its own translucent
+    # bg-muted/35, so the canvas surround has to repaint it there — and it mounts
+    # under ElectronBrowserHost, outside the preview panel's subtree, so no
+    # descendant selector rooted at the panel can reach it.
+    - apps/web/src/browser/HostedBrowserWebview.tsx
     # Fenced mock adjustment: trailingActions is a fragment (toggle + menu)
     # under the fork, so the mock finds the menu's props on a fragment child.
     - apps/web/src/components/preview/PreviewView.test.tsx

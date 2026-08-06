@@ -1459,6 +1459,23 @@
   --fork-design-selected: var(--accent);
   --fork-design-accent: #0a7d3e;
   --fork-design-accent-bg: rgb(69 255 150 / 16%);
+  /* The artboard surround, and NOT theme-derived: canvas mode paints this exact value
+     onto the guest's <html> (engine/vendor/canvas.ts CANVAS_BG) whatever theme the app
+     wears, so the host side has to match it literally or the seam shows. A fork guard
+     pins the two together. */
+  --fork-design-canvas: #3c3c3c;
+}
+
+/* Canvas mode's gray lives on the guest's <html>, inside the webview. At a fixed screen
+   size the webview covers only its fit-scaled rectangle, and the letterbox around it is
+   painted by the webview WRAPPER's own translucent `bg-muted/35` — so the canvas read as a
+   box inside a box. Repainting the wrapper (not the surface slot beneath it, which that
+   translucent layer would tint anyway) makes the entire preview section one continuous
+   canvas. `background-color` beats the utility class at this specificity, and the marker is
+   per-tab, so an inactive offscreen preview is untouched. Only while canvas mode is on: a
+   fixed viewport without it is upstream's plain device preview, and stays that way. */
+:root[data-fork="noahhendrickson-t3code"] [data-preview-viewport][data-fork-canvas="on"] {
+  background-color: var(--fork-design-canvas);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {

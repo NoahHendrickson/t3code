@@ -33,6 +33,7 @@ import {
   LineSegments,
   LinkSimple,
   LinkSimpleBreak,
+  Monitor,
   PaintBrush,
   PaintBucket,
   Minus,
@@ -99,6 +100,7 @@ export const TextAlignJustifyIcon = glyph(TextAlignJustify);
 // Canvas strip. Not through the lucide→duotone shim: the strip sits inside the panel, and
 // mixing weights there reads as two different toolbars (PR #57 review).
 export const CanvasIcon = glyph(Selection);
+export const ScreenSizeIcon = glyph(Monitor);
 export const ZoomOutIcon = glyph(Minus);
 export const ZoomInIcon = glyph(Plus);
 export const ZoomFitIcon = glyph(ArrowsOut);

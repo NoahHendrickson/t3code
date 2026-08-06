@@ -20,7 +20,10 @@ interface Props {
 /** Fork override: docks the native design panel beside the untouched preview surface. */
 export function PreviewPanel({ mode, threadRef, tabId, configuredUrls, visible }: Props) {
   const previewState = useThreadPreviewState(threadRef);
-
+  const activeTabId = tabId ?? previewState.activeTabId;
+  const runtimeTabId = activeTabId
+    ? previewRuntimeTabId(threadRef, previewState.serverEpoch, activeTabId)
+    : null;
   if (!isPreviewSupportedInRuntime()) {
     return (
       <PreviewPanelShell mode={mode}>
@@ -33,11 +36,6 @@ export function PreviewPanel({ mode, threadRef, tabId, configuredUrls, visible }
     );
   }
 
-  const activeTabId = tabId ?? previewState.activeTabId;
-  const runtimeTabId = activeTabId
-    ? previewRuntimeTabId(threadRef, previewState.serverEpoch, activeTabId)
-    : null;
-
   return (
     <PreviewPanelShell mode={mode}>
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -48,7 +46,7 @@ export function PreviewPanel({ mode, threadRef, tabId, configuredUrls, visible }
           configuredUrls={configuredUrls}
           visible={visible}
         />
-        <ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} />
+        <ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} tabId={activeTabId} />
       </div>
     </PreviewPanelShell>
   );

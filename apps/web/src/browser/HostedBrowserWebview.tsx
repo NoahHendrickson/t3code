@@ -5,6 +5,9 @@ import { useShallow } from "zustand/react/shallow";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { previewBridge } from "~/components/preview/previewBridge";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { selectDesignModeTab, useDesignModeStore } from "~/custom/designMode/designModeStore";
+/* fork:end fork-design-mode */
 import { usePreviewBridge } from "~/components/preview/usePreviewBridge";
 import { cn } from "~/lib/utils";
 
@@ -51,6 +54,15 @@ export function HostedBrowserWebview(props: {
 }) {
   const { threadRef, tabId, runtimeTabId, initialUrl, viewport, zoomFactor } = props;
   const config = usePreviewWebviewConfig(threadRef.environmentId);
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+     This wrapper IS the letterbox around a fixed-size viewport, and its own
+     `bg-muted/35` is what paints it. Canvas mode's gray stops at the webview's edge,
+     so the fork continues it here — the marker lets theme.custom.css repaint exactly
+     this tab's surround. */
+  const canvasOn = useDesignModeStore(
+    (state) => selectDesignModeTab(state.byTabId, runtimeTabId).canvas.on,
+  );
+  /* fork:end fork-design-mode */
   const [initialSrc] = useState(() => initialUrl ?? "about:blank");
   const tabLeaseRef = useRef<AcquiredDesktopTab | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -245,6 +257,9 @@ export function HostedBrowserWebview(props: {
       style={{ ...wrapperStyle, overscrollBehavior: "contain" }}
       onScroll={syncContentPresentation}
       data-preview-viewport={runtimeTabId}
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      data-fork-canvas={canvasOn ? "on" : undefined}
+      /* fork:end fork-design-mode */
     >
       <div className="relative" style={{ width: layout.canvasWidth, height: layout.canvasHeight }}>
         {deviceToolbarVisible && effectiveViewport._tag !== "fill" ? (

@@ -73,6 +73,9 @@ export class CanvasSession {
       case "zoom-100":
         this.canvas.setZoomCentered(1);
         return;
+      case "reset-view":
+        this.canvas.resetView();
+        return;
       default: {
         // Exhaustiveness: a new DesignModeCanvasCommand variant must fail to compile
         // here instead of being silently dropped.
