@@ -37,6 +37,15 @@ function markerBlock(css: string): string {
   return css.slice(start, end);
 }
 
+/** A CSS font stack as a comparable list — quoting and spacing are noise. */
+function fontFamilies(stack: string): string[] {
+  return stack
+    .replace(/\/\*[\s\S]*?\*\//gu, "")
+    .split(",")
+    .map((family) => family.trim().replace(/^["']|["']$/gu, ""))
+    .filter((family) => family.length > 0);
+}
+
 describe("fork guard: geist-typography", () => {
   it("bundles both Geist faces as dependencies", () => {
     const manifest = JSON.parse(readSibling("../../package.json")) as {
@@ -93,6 +102,27 @@ describe("fork guard: geist-typography", () => {
     const block = markerBlock(readSibling("../theme.custom.css"));
     expect(block.slice(block.indexOf("--fork-font-mono:"))).toContain('"JetBrains Mono"');
     expect(FORK_TERMINAL_FONT_FALLBACK).toContain('"JetBrains Mono"');
+  });
+
+  it("keeps the module's fallback stack aligned with the CSS mono stack", () => {
+    // FORK_TERMINAL_FONT_FALLBACK is what an unset terminal preference means;
+    // `--fork-font-mono` is what the rest of the app renders in. They are the
+    // same stack except for the trailing generic, which the terminal omits on
+    // purpose (the surface appends its own glyph fallbacks). Nothing else pins
+    // the two together: edit one, forget the other, and the terminal default
+    // quietly drifts from the app's mono face.
+    const css = readSibling("../theme.custom.css");
+    // Exactly one declaration: a second — a `.dark` variant, a media query, a
+    // stale copy quoted in a comment — would win the cascade in some state
+    // while this guard went on checking whichever came first in the file.
+    expect(css.match(/--fork-font-mono:/gu)).toHaveLength(1);
+    // Compared as family lists, not text: `vp fmt` decides where the value
+    // wraps, and `Consolas` and `"Consolas"` are the same family to CSS.
+    const declared = markerBlock(css).match(/--fork-font-mono:([^;]*);/u);
+    expect(declared).not.toBeNull();
+    const cssFamilies = fontFamilies(declared?.[1] ?? "");
+    expect(cssFamilies.at(-1)).toBe("monospace");
+    expect(fontFamilies(FORK_TERMINAL_FONT_FALLBACK)).toEqual(cssFamilies.slice(0, -1));
   });
 
   it("keeps the terminal wired to the fork-owned font module", () => {
