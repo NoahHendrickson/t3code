@@ -12,6 +12,11 @@
  *   - the console-message protocol round-trips.
  */
 
+import {
+  PREVIEW_VIEWPORT_MAX_AREA,
+  PREVIEW_VIEWPORT_MAX_DIMENSION,
+  PREVIEW_VIEWPORT_MIN_DIMENSION,
+} from "@t3tools/contracts";
 import { build } from "esbuild";
 import * as NodeBuffer from "node:buffer";
 import * as NodeFS from "node:fs";
@@ -23,6 +28,15 @@ import {
   extractTrailingDesignChanges,
   summarizeDesignChangeBlock,
 } from "../custom/designMode/designChangeTranscript";
+import { resolveBrowserDeviceViewportArea } from "../browser/browserViewportLayout";
+import {
+  CANVAS_RESOLUTIONS,
+  resolutionForViewport,
+  viewportAtTrueSize,
+  viewportFillingPane,
+} from "../custom/designMode/panel/canvasResolutions";
+import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
+import { cssRules } from "./cssRules";
 import {
   DESIGN_MODE_CONSOLE_PREFIX,
   DESIGN_MODE_GLOBAL,
@@ -34,6 +48,9 @@ import {
 
 const webRoot = NodePath.resolve(NodeURL.fileURLToPath(new URL(".", import.meta.url)), "../..");
 const read = (relative: string) => NodeFS.readFileSync(NodePath.join(webRoot, relative), "utf8");
+/** Every fork theme rule is scoped under this; an unscoped one leaks into upstream. Derived
+ * from the marker module rather than hardcoded, like the sibling theme guards. */
+const FORK_MARKER = `[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 
 describe("fork guard: design mode", () => {
   it("mounts the Design toggle and the native panel in the preview pane", () => {
@@ -47,12 +64,87 @@ describe("fork guard: design mode", () => {
     expect(previewPanel).toContain(
       'import { ForkDesignPanel } from "~/custom/designMode/panel/ForkDesignPanel"',
     );
+    // Prefix, not the whole tag: the panel may take further props over time, and this
+    // guard is about the mount.
     expect(previewPanel).toContain(
-      "<ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} />",
+      "<ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef}",
     );
     // Layers rail docks in the same override, left of the untouched preview surface.
     expect(previewPanel).toContain("<ForkLayersTree runtimeTabId={runtimeTabId} />");
     expect(previewView).not.toContain("ForkLayersTree");
+  });
+
+  it("commits the screen's real width and derives a height that fills the pane", () => {
+    // The whole point: the guest's CSS viewport width IS the screen's, so a page that hides
+    // content below a breakpoint sees the screen and not however wide the pane happens to
+    // be. The height is derived instead so upstream's fit lands 1:1 on both axes and the
+    // frame fills the preview area — a fixed screen height would letterbox it.
+    const pane = { width: 1100, height: 1650 };
+    const area = resolveBrowserDeviceViewportArea(pane);
+    for (const resolution of CANVAS_RESOLUTIONS) {
+      const setting = viewportFillingPane(resolution, pane);
+      expect(setting._tag).toBe("freeform");
+      expect(setting.width).toBe(resolution.width);
+      // Same aspect ratio as the fit area, so nothing is letterboxed (within rounding) —
+      // unless the contract's area cap bit first, which it does for the widest screens in a
+      // tall pane. That letterbox is honest: the alternative is a refused resize.
+      const ceiling = Math.floor(PREVIEW_VIEWPORT_MAX_AREA / resolution.width);
+      if (setting.height < ceiling) {
+        expect(setting.height / setting.width).toBeCloseTo(area.height / area.width, 2);
+      }
+      // ...and always a size the contract will accept, or the commit toasts instead.
+      expect(setting.width).toBeLessThanOrEqual(PREVIEW_VIEWPORT_MAX_DIMENSION);
+      expect(setting.height).toBeGreaterThanOrEqual(PREVIEW_VIEWPORT_MIN_DIMENSION);
+      expect(setting.height).toBeLessThanOrEqual(PREVIEW_VIEWPORT_MAX_DIMENSION);
+      expect(setting.width * setting.height).toBeLessThanOrEqual(PREVIEW_VIEWPORT_MAX_AREA);
+    }
+    // A tall pane at the widest screen is the case that would blow the area cap.
+    const widest = CANVAS_RESOLUTIONS.reduce((a, b) => (b.width > a.width ? b : a));
+    const clamped = viewportFillingPane(widest, { width: 400, height: 4000 });
+    expect(clamped.width * clamped.height).toBeLessThanOrEqual(PREVIEW_VIEWPORT_MAX_AREA);
+    // Unmeasured pane falls back to the screen's own height rather than something absurd.
+    const unmeasured = viewportFillingPane(widest, null);
+    expect(unmeasured.height).toBe(widest.height);
+    // True height frames the screen verbatim on both axes — the fold is the whole point of
+    // the switch, so the pane must not get a say in the height.
+    for (const resolution of CANVAS_RESOLUTIONS) {
+      const framed = viewportAtTrueSize(resolution);
+      expect(framed).toEqual({
+        _tag: "freeform",
+        width: resolution.width,
+        height: resolution.height,
+      });
+    }
+    // Off by default, and flipping it re-commits the applied screen rather than waiting for
+    // the next pick — otherwise the switch reads as broken.
+    const menu = read("src/custom/designMode/panel/ScreenSizeMenu.tsx");
+    expect(/const TRUE_HEIGHT_STORAGE_KEY = "([^"]+)"/u.exec(menu)?.[1]).toMatch(
+      /^t3code:fork:[a-z-]+:v\d+$/u,
+    );
+    expect(menu).toContain("TRUE_HEIGHT_STORAGE_KEY,\n    false,");
+    expect(menu).toContain(
+      "if (activeResolution) commitCanvasViewport(runtimeTabId, viewportFor(activeResolution, next));",
+    );
+
+    // Widths are the identity the panel matches an applied viewport back by.
+    const widths = CANVAS_RESOLUTIONS.map((r) => r.width);
+    expect(new Set(widths).size).toBe(widths.length);
+    // Identity is width AND a height this menu could have produced — a hand-typed viewport
+    // that merely shares a catalog width must NOT be claimed, or True height would re-commit
+    // over it and discard the height the user set.
+    expect(resolutionForViewport(viewportAtTrueSize(widest), pane)).toEqual(widest);
+    expect(resolutionForViewport(viewportFillingPane(widest, pane), pane)).toEqual(widest);
+    expect(
+      resolutionForViewport({ _tag: "freeform", width: widest.width, height: 700 }, pane),
+    ).toBeNull();
+    // A `preset` viewport is upstream's device toolbar's, never ours — the legacy catalog's
+    // desktop-1920x1080 shares a width with the 24" entry.
+    expect(
+      resolutionForViewport(
+        { _tag: "preset", width: 1920, height: 1080, presetId: "desktop-1920x1080" },
+        pane,
+      ),
+    ).toBeNull();
   });
 
   it("keeps a way back out of the collapsed layers rail", () => {
@@ -98,6 +190,34 @@ describe("fork guard: design mode", () => {
     expect(read("src/components/preview/PreviewView.tsx")).toContain(
       "leadingActions={<ForkPreviewLayersToggle runtimeTabId={runtimeTabId} />}",
     );
+  });
+
+  it("continues the guest's canvas across the host letterbox in the same color", () => {
+    // Two surfaces draw one canvas: the guest paints its <html> from CANVAS_BG, and the
+    // host paints the area the fit-scaled webview does not cover. Different values are a
+    // visible seam around the artboard, and nothing else would catch the drift.
+    const guest = read("src/custom/designMode/engine/vendor/canvas.ts");
+    const canvasBg = /export const CANVAS_BG = '([^']+)'/u.exec(guest)?.[1];
+    expect(canvasBg).toBeDefined();
+    const rules = cssRules(read("src/theme.custom.css"));
+    const token = rules.find((rule) => rule.body.includes("--fork-design-canvas:"));
+    expect(token?.selector).toContain(FORK_MARKER);
+    expect(token?.body).toContain(`--fork-design-canvas: ${canvasBg};`);
+    // The surround only exists while canvas mode is on — a fixed viewport without it is
+    // upstream's plain device preview.
+    const surround = rules.find((rule) => rule.selector.includes("[data-preview-viewport]"));
+    expect(surround?.selector).toContain(FORK_MARKER);
+    expect(surround?.selector).toContain('[data-fork-canvas="on"]');
+    expect(surround?.body).toContain("background-color: var(--fork-design-canvas)");
+    // The wrapper, NOT the surface slot beneath it: the wrapper is `fixed`, z-30 and carries
+    // its own translucent `bg-muted/35`, so anything painted under it is tinted rather than
+    // shown — in light mode that seam ring is ~#7d7d7d against #3c3c3c. It also mounts under
+    // ElectronBrowserHost, outside the preview panel's subtree, so a descendant selector
+    // rooted at the panel could never have reached it.
+    const host = read("src/browser/HostedBrowserWebview.tsx");
+    expect(host).toContain('className="fixed overflow-hidden bg-muted/35"');
+    expect(host).toContain('data-fork-canvas={canvasOn ? "on" : undefined}');
+    expect(host).toContain("fork:begin fork-design-mode");
   });
 
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {

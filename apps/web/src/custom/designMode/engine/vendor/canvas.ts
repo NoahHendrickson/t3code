@@ -243,6 +243,18 @@ export class CanvasMode {
     this.persist()
   }
 
+  /** t3-fork: pin the artboard 1:1 at the page origin. The host's screen-size picker
+   * resizes the GUEST viewport to a named width, and the artboard then has to sit exactly
+   * ON that viewport — a pan/zoom left over from the previous size leaves the page floating
+   * in canvas gray. Deliberately measurement-free, so it is correct whether it lands before
+   * or after the browser applies the new viewport; zoomToFit() is NOT the answer (it fits
+   * scrollHeight, which zooms a long page way out instead of showing it at 1:1). */
+  resetView(): void {
+    this.armZoomTween()
+    this.setState({ x: 0, y: 0, scale: 1 })
+    this.persist()
+  }
+
   /** Shift+2 — fit the current selection (Figma parity). No-op without a selection. */
   zoomToSelection(): void {
     const r = this.opts.selectionRect?.()

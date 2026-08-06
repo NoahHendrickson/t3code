@@ -32,7 +32,7 @@ export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
  * contract had grown) were rejected wholesale by the stricter parser, so selection simply
  * stopped updating with nothing in the UI to say why (PR #57 review).
  */
-export const DESIGN_MODE_PROTOCOL_VERSION = 2;
+export const DESIGN_MODE_PROTOCOL_VERSION = 3;
 
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
@@ -214,8 +214,16 @@ const SOURCE_MODES: readonly DesignModeSourceMode[] = ["forge", "native-react", 
 /** Host-triggered canvas verbs beyond on/off — exactly the verbs the panel's zoom strip
  * fires; the guest's CanvasMode owns the math (vendored Forge canvas: cursor-anchored
  * zoom, powers-of-2 ladder, fit). Zoom-to-selection exists only as the guest's own
- * Shift+2 shortcut — no host verb until a panel control sends one. */
-export type DesignModeCanvasCommand = "zoom-in" | "zoom-out" | "zoom-fit" | "zoom-100";
+ * Shift+2 shortcut — no host verb until a panel control sends one. `reset-view` pins the
+ * artboard 1:1 at the page origin; the screen-size picker fires it after the viewport
+ * commit so the artboard lands ON the freshly sized window instead of keeping the previous
+ * size's pan/zoom. It is NOT `zoom-100`, which holds the viewport centre. */
+export type DesignModeCanvasCommand =
+  | "zoom-in"
+  | "zoom-out"
+  | "zoom-fit"
+  | "zoom-100"
+  | "reset-view";
 
 export type DesignModeEngineMessage =
   /** Engine finished booting; reports how source mapping works on this page. */

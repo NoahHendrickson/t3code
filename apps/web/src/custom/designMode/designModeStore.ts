@@ -36,7 +36,8 @@ export interface DesignModeTabState {
     readonly truncated: boolean;
   } | null;
   /** Canvas (pan/zoom artboard) state — the guest owns the transform; this mirrors its
-   * on/off + settled zoom readout for the panel controls. */
+   * on/off and settled zoom readout for the panel controls. The frame is NOT here: it is
+   * the preview viewport, which the panel reads from previewStateStore. */
   readonly canvas: { readonly on: boolean; readonly scalePercent: number };
 }
 
