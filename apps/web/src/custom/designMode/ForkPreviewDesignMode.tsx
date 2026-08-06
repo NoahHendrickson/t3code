@@ -7,7 +7,7 @@ import { toastManager } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
 
 import { parseDesignModeConsoleMessage } from "./protocol";
-import { designModeBridge, findPreviewWebview, forgetPreviewWebview } from "./designModeBridge";
+import { designModeBridge, findPreviewWebview } from "./designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
 
 interface Props {
@@ -115,7 +115,6 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
     attach();
     return () => {
       if (retryTimer !== null) window.clearTimeout(retryTimer);
-      forgetPreviewWebview(runtimeTabId);
       if (webview) {
         webview.removeEventListener("console-message", onConsoleMessage);
         webview.removeEventListener("dom-ready", onDomReady);

@@ -22,6 +22,7 @@ const payload = (
   markdown: "# Design change request",
   elementCount: 1,
   elements: [{ tag: "div", sourceLabel: "App.tsx:12", deltas: ["padding-top 24px → 32px"] }],
+  documentId: "doc-1",
   pageUrl: "http://localhost:5173/",
   ...overrides,
 });
@@ -59,14 +60,64 @@ describe("designChangeDraftStore", () => {
     expect(pendingFor(THREAD)[0]?.id).toBe(firstId);
   });
 
-  it("keeps both pages when the preview navigates between sends", () => {
+  it("keeps both pages when the preview truly navigates between sends", () => {
     const { add } = useDesignChangeDraftStore.getState();
-    add(THREAD, "tab-a", payload({ markdown: "home", pageUrl: "http://localhost:5173/" }));
-    add(THREAD, "tab-a", payload({ markdown: "settings", pageUrl: "http://localhost:5173/s" }));
+    // A real navigation wipes the guest and mints a new engine: BOTH halves of the key move.
+    add(
+      THREAD,
+      "tab-a",
+      payload({ markdown: "home", documentId: "doc-1", pageUrl: "http://localhost:5173/" }),
+    );
+    add(
+      THREAD,
+      "tab-a",
+      payload({ markdown: "settings", documentId: "doc-2", pageUrl: "http://localhost:5173/s" }),
+    );
 
     // Drafts are re-located per document, so the second request describes ONLY the new page:
     // replacing on tab alone would silently drop the first page's asks.
     expect(pendingFor(THREAD).map((entry) => entry.markdown)).toEqual(["home", "settings"]);
+  });
+
+  it("replaces when an SPA route change moves the href under the same document", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    // pushState churn: same engine, same live draft set, different location.href. The second
+    // Send is built from the same drafts as the first — stacking them would put two
+    // overlapping asks in one message, the exact defect supersession exists to prevent.
+    add(
+      THREAD,
+      "tab-a",
+      payload({ markdown: "first", documentId: "doc-1", pageUrl: "http://localhost:5173/a" }),
+    );
+    add(
+      THREAD,
+      "tab-a",
+      payload({ markdown: "second", documentId: "doc-1", pageUrl: "http://localhost:5173/b" }),
+    );
+
+    const pending = pendingFor(THREAD);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.markdown).toBe("second");
+  });
+
+  it("replaces when the same page reloads between sends", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    // A reload mints a fresh engine (new documentId) but restores the same page's drafts
+    // from the guest's sessionStorage — the pageUrl half of the key covers it.
+    add(
+      THREAD,
+      "tab-a",
+      payload({ markdown: "first", documentId: "doc-1", pageUrl: "http://localhost:5173/" }),
+    );
+    add(
+      THREAD,
+      "tab-a",
+      payload({ markdown: "second", documentId: "doc-2", pageUrl: "http://localhost:5173/" }),
+    );
+
+    const pending = pendingFor(THREAD);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.markdown).toBe("second");
   });
 
   it("holds a replaced chip's position in the row", () => {

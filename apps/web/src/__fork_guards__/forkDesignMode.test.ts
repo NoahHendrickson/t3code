@@ -38,9 +38,11 @@ import {
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
 import {
+  capPageUrl,
   DESIGN_MODE_CONSOLE_PREFIX,
   DESIGN_MODE_GLOBAL,
   DESIGN_MODE_LAYERS_MAX_DEPTH,
+  DESIGN_MODE_PAGE_URL_CAP,
   DESIGN_MODE_STYLE_KEYS,
   parseDesignChangeRequestPayload,
   parseDesignModeConsoleMessage,
@@ -672,6 +674,7 @@ describe("fork guard: design mode", () => {
       markdown: "Change button padding",
       elementCount: 1,
       elements: [{ tag: "button", sourceLabel: "App.tsx:5", deltas: ["8px → 12px"] }],
+      documentId: "doc-1",
       pageUrl: "http://localhost:5173/",
     };
     expect(parseDesignChangeRequestPayload(payload)).toEqual(payload);
@@ -682,11 +685,30 @@ describe("fork guard: design mode", () => {
         elements: [{ ...payload.elements[0], deltas: [3] }],
       }),
     ).toBeNull();
-    // pageUrl is the composer's replace-vs-append key (designChangeDraftStore), so a payload
-    // without one can't be honored — an engine too old to send it must fail the parse and be
-    // rebuilt by boot()'s version check, not silently replace across a navigation.
+    // documentId and pageUrl are the composer's replace-vs-append key (designChangeDraftStore),
+    // so a payload missing either can't be honored. An engine too old to send them fails the
+    // parse here; designModeBridge.buildSend reports that as "stale-engine" and the panel
+    // surfaces it (boot()'s version check only rebuilds the engine at the NEXT injection —
+    // the toggle or a navigation — never on the Send path).
     const { pageUrl: _omitted, ...withoutPage } = payload;
     expect(parseDesignChangeRequestPayload(withoutPage)).toBeNull();
+    const { documentId: _omittedDoc, ...withoutDocument } = payload;
+    expect(parseDesignChangeRequestPayload(withoutDocument)).toBeNull();
+    expect(parseDesignChangeRequestPayload({ ...payload, documentId: "" })).toBeNull();
     expect(parseDesignChangeRequestPayload({ ...payload, pageUrl: "x".repeat(2049) })).toBeNull();
+  });
+
+  it("caps long page urls without letting distinct documents collide", () => {
+    // The guest sends capPageUrl(location.href); the parser rejects anything longer than the
+    // cap, so the capped form must always fit.
+    const base = `data:text/html,${"a".repeat(3000)}`;
+    expect(capPageUrl(base).length).toBeLessThanOrEqual(DESIGN_MODE_PAGE_URL_CAP);
+    expect(capPageUrl("http://localhost:5173/")).toBe("http://localhost:5173/");
+    // Two long data: documents sharing their first 2KB must still compare UNEQUAL — a plain
+    // slice would collide them, and the draft store would replace one page's pill with the
+    // other's, silently dropping its asks (PR #63 review).
+    expect(capPageUrl(`${base}-variant-one`)).not.toBe(capPageUrl(`${base}-variant-two`));
+    // Identical hrefs still cap identically, or the reload half of the key would never match.
+    expect(capPageUrl(`${base}-same`)).toBe(capPageUrl(`${base}-same`));
   });
 });

@@ -41,19 +41,24 @@ let nextId = 1;
 export const useDesignChangeDraftStore = create<DesignChangeDraftStoreState>()((set) => ({
   byThreadKey: {},
   /**
-   * Attaches one request, REPLACING the pending one for the same preview tab AND page.
+   * Attaches one request, REPLACING the pending one for the same preview tab AND document.
    *
    * The guest builds every request from all of its live drafts (headlessMode's buildSend),
-   * never from the selection, so a second Send describing the same page always supersedes the
-   * first — either as a strict superset, or (after a Discard) as the corrected set. Stacking
-   * them put two overlapping, sometimes contradicting asks in one message.
+   * never from the selection, so a second Send built from the same draft set always
+   * supersedes the first — either as a strict superset, or (after a Discard) as the
+   * corrected set. Stacking them put two overlapping, sometimes contradicting asks in one
+   * message.
    *
-   * That supersession is a per-PAGE guarantee, which is why `pageUrl` is half the key. Drafts
-   * are re-located against whatever document the guest is showing now and dropped when they
-   * don't resolve, so a Send after the preview navigates carries ONLY the new page's asks —
-   * replacing on tab alone would silently drop the previous page's pill, and the user's only
-   * signal would be one chip quietly becoming another (PR #63 review). Across pages we append
-   * instead: a duplicate ask is recoverable and visible, lost work is neither.
+   * Drafts live exactly as long as their document, so "same draft set" is "same document" —
+   * matched by EITHER half of the key. `documentId` is the live-document half: it is minted
+   * per engine instance, which survives SPA pushState/hash churn just like the drafts do, so
+   * a re-Send after a client-side route change still supersedes even though `location.href`
+   * moved (PR #63 review). `pageUrl` is the reload half: a full reload mints a fresh
+   * `documentId` but restores the same page's drafts from the guest's sessionStorage, so a
+   * re-Send there supersedes by URL. A Send after a real cross-page navigation misses both
+   * halves and APPENDS — its drafts were re-located against the new document and dropped
+   * when they didn't resolve, so replacing would silently drop the previous page's asks: a
+   * duplicate ask is recoverable and visible, lost work is neither.
    *
    * The tab half is the second reason to key on more than the thread: two preview tabs hold
    * independent draft sets and must each be able to contribute.
@@ -67,7 +72,8 @@ export const useDesignChangeDraftStore = create<DesignChangeDraftStoreState>()((
       const key = scopedThreadKey(threadRef);
       const pending = state.byThreadKey[key] ?? [];
       const supersedes = (candidate: PendingDesignChange): boolean =>
-        candidate.runtimeTabId === runtimeTabId && candidate.pageUrl === payload.pageUrl;
+        candidate.runtimeTabId === runtimeTabId &&
+        (candidate.documentId === payload.documentId || candidate.pageUrl === payload.pageUrl);
       const existing = pending.find(supersedes);
       const entry: PendingDesignChange = {
         ...payload,

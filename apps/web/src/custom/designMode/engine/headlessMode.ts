@@ -16,7 +16,7 @@
  * Vendored why-comments are preserved verbatim where the logic came across unchanged.
  */
 import { buildElementSnapshot } from "./snapshot";
-import { DESIGN_MODE_PAGE_URL_CAP } from "../protocol";
+import { capPageUrl } from "../protocol";
 import type {
   DesignChangeRequestPayload,
   DesignModeAlignAxis,
@@ -119,6 +119,14 @@ export class HeadlessDesignMode {
   private moveDrag: MoveDrag;
   private handles: ResizeHandles;
   readonly drafts: DraftStore;
+
+  /** One opaque token per engine instance — and the engine lives exactly as long as its
+   * document (a real navigation wipes the guest's globals and boot re-injects; SPA route
+   * changes don't). Rides every buildSend payload as the composer's replace-vs-append key:
+   * `location.href` can't be that key alone, because pushState/hash churn moves the href
+   * while the live draft set stays put (PR #63 review). */
+  private readonly documentId =
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 
   /** The one id space selection snapshots and layers nodes share — every host command
    * resolves here, so tree, panel, and outlines can never disagree about an id. */
@@ -406,16 +414,27 @@ export class HeadlessDesignMode {
       markdown: renderStandaloneMarkdown(request),
       elementCount: request.elements.length,
       elements,
+      documentId: this.documentId,
       // Read here rather than at draft time: what this request describes is the set of drafts
       // that resolved against the CURRENT document, so the current document is its page.
-      pageUrl: location.href.slice(0, DESIGN_MODE_PAGE_URL_CAP),
+      pageUrl: capPageUrl(location.href),
     };
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────────────
 
   setActive(on: boolean): void {
-    if (on === this.active) return;
+    if (on === this.active) {
+      // Re-activating an already-active engine (boot's idempotent same-version path) means
+      // the host just rebuilt its world view after wiping it — clear the gate and re-emit,
+      // or a selection byte-identical to this session's last emit would be suppressed and
+      // the panel would sit empty while the page still shows its outlines (PR #63 review).
+      if (on) {
+        this.lastSelectionJson = "";
+        this.emitSelection();
+      }
+      return;
+    }
     this.active = on;
     this.overlay.setActive(on);
     if (on) {

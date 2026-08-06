@@ -531,7 +531,7 @@ export function renderMarkdown(req: ChangeRequest, theme: Theme = readTheme()): 
   req.elements.forEach((el, i) => {
     const loc = el.source ? sourceRef(el.source) : '(no source tag — locate by selector/text)'
     lines.push(`## ${i + 1}. <${el.tag}> — ${loc}`)
-    // The fallback names a selector, so PRINT it — every ElementChange carries one
+    // t3-fork: the fallback names a selector, so PRINT it — every ElementChange carries one
     // (elementContext's sanitized cssPath) and it used to stop at the guest, leaving an
     // untagged element addressed by nothing but its text and classes. On a page with no
     // source mapping at all (protocol.ts's `selector-only` mode) that is EVERY element,
