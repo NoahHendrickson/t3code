@@ -607,6 +607,23 @@
   gap: 8px;
 }
 
+/* The packing above only reaches children that are literally `.flex`, which
+   the desktop group and the branch wrapper are. Below `md` the workspace slot
+   is a Button (`inline-flex`) or, once locked, a bare `inline-flex` span —
+   neither matches, so upstream's `flex-1` survived on both. That was invisible
+   while the strip shrank to fit, because there was no free space to grow into;
+   a strip that spans the row hands it 48% to claim, opening a gap before the
+   branch chip. Pin every direct child instead of enumerating them, so the next
+   one added is packed by default. Flex only: the wrapper rule's gap and
+   max-width are wrapper business, and applying them here would fight the
+   chips' own 6px gap and cap. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  .chat-composer-context-strip
+  > * {
+  flex: 0 1 auto;
+}
+
 /* The context chips are the filled controls above the surface (checkout /
    worktree mode and branch). Same selected-surface fill, no hairline. Light
    mode falls back to upstream's accent; the drawn values are dark-only. */
