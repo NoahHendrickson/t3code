@@ -50,7 +50,7 @@ export function normalizeResolvedSource(
   // served, not in the file the agent will open. Rejecting the location outright is
   // deliberate: the engine's fallback (selector + component name) beats a confident pointer
   // at the wrong line of the right file, which reads as authoritative and is not.
-  if (!isSymbolicated(value.stack, filePath)) return null;
+  if (!isSymbolicated(value.stack, value)) return null;
   const file = normalizeFilePath(filePath);
   if (file === null) return null;
   if (typeof lineNumber !== "number" || !Number.isInteger(lineNumber) || lineNumber < 1) {
@@ -90,24 +90,89 @@ export function normalizeComponentName(value: unknown): string | null {
   return typeof value === "string" && COMPONENT_NAME_PATTERN.test(value) ? value : null;
 }
 
+/** react-grab reports a frame's raw `fileName` (a served URL like
+ * `http://host/src/App.tsx?t=123`) but derives the context's `filePath` from it, so the two are
+ * not comparable as-is. Reduced to a comparable path: origin, query, hash and a leading `./`
+ * removed. Deliberately loose — this only has to pair a frame with the location it produced. */
+function comparablePath(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  let path = value;
+  const scheme = path.indexOf("://");
+  if (scheme !== -1) {
+    const afterHost = path.indexOf("/", scheme + 3);
+    path = afterHost === -1 ? "" : path.slice(afterHost);
+  }
+  const cut = Math.min(
+    path.indexOf("?") === -1 ? path.length : path.indexOf("?"),
+    path.indexOf("#") === -1 ? path.length : path.indexOf("#"),
+  );
+  path = path.slice(0, cut);
+  if (path.startsWith("./")) path = path.slice(2);
+  return path.length === 0 ? null : path;
+}
+
+interface RawFrame {
+  fileName?: unknown;
+  lineNumber?: unknown;
+  columnNumber?: unknown;
+  isSymbolicated?: unknown;
+}
+
+/** The frame that produced the reported location, or null when it cannot be identified.
+ *
+ * Position is the stronger signal and is tried first: `line`/`column` are copied verbatim from
+ * the frame react-grab selected, whereas the path has been through its normalizer. The path
+ * comparison is the fallback, on comparable form rather than raw. `frames[0]` is deliberately
+ * NOT a fallback — it is not necessarily the reporting frame, and guessing here is what makes
+ * the flag check meaningless. */
+function findReportingFrame(frames: readonly RawFrame[], value: {
+  filePath?: unknown;
+  lineNumber?: unknown;
+  columnNumber?: unknown;
+}): RawFrame | null {
+  const byPosition = frames.filter(
+    (frame) => frame.lineNumber === value.lineNumber && frame.columnNumber === value.columnNumber,
+  );
+  if (byPosition.length === 1) return byPosition[0] ?? null;
+  const wanted = comparablePath(value.filePath);
+  if (wanted !== null) {
+    const byPath = frames.filter((frame) => {
+      const candidate = comparablePath(frame.fileName);
+      return candidate !== null && (candidate === wanted || candidate.endsWith(wanted));
+    });
+    if (byPath.length >= 1) return byPath[0] ?? null;
+  }
+  return byPosition[0] ?? null;
+}
+
 /**
  * Whether react-grab mapped the reported location back to authored source.
  *
- * react-grab marks each stack frame with `isSymbolicated`. The frame naming `filePath` is the
- * one that produced the reported line/column, so its flag is the one that counts. A missing
- * flag reads as symbolicated (older react-grab builds omit it, and rejecting every location
- * there would be a regression), and so does an absent stack — that is the pre-existing
- * contract for hosts whose resolver hands back a bare location.
+ * The check is `=== true`, not `!== false`, because of how the library actually reports this.
+ * In react-grab 0.1.44 / bippy 0.5.41 the symbolicating function is
+ * `return mapped ? {...frame, isSymbolicated: true} : frame` — a frame it FAILED to symbolicate
+ * comes back untouched, carrying no flag at all. `!== false` therefore read every failure as a
+ * success and passed generated coordinates straight through, which is the entire bug this gate
+ * exists to stop. There is no `isSymbolicated: false` anywhere in either dist.
+ *
+ * Consequence worth stating: a host whose resolver emits frames without the flag now loses its
+ * locations. That is the safe direction — an unflagged frame is indistinguishable from a failed
+ * one, and a wrong line costs more than a missing one. An absent stack is still trusted, which
+ * is the pre-existing contract for hosts that hand back a bare location with no stack at all.
  */
-export function isSymbolicated(stack: unknown, filePath: unknown): boolean {
+export function isSymbolicated(
+  stack: unknown,
+  value: { filePath?: unknown; lineNumber?: unknown; columnNumber?: unknown },
+): boolean {
   if (!Array.isArray(stack) || stack.length === 0) return true;
   const frames = stack.filter(
-    (frame): frame is { fileName?: unknown; isSymbolicated?: unknown } =>
-      typeof frame === "object" && frame !== null,
+    (frame): frame is RawFrame => typeof frame === "object" && frame !== null,
   );
-  const match = frames.find((frame) => frame.fileName === filePath) ?? frames[0];
-  if (!match) return true;
-  return match.isSymbolicated !== false;
+  if (frames.length === 0) return true;
+  const reporting = findReportingFrame(frames, value);
+  // Fail closed: an unidentifiable frame means the flag cannot be read at all.
+  if (!reporting) return false;
+  return reporting.isSymbolicated === true;
 }
 
 /**

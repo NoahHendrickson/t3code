@@ -152,18 +152,24 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
     if (!el.isConnected) return false;
     // Before the source gate on purpose — a component name is most valuable precisely when
     // there is no location to pair it with.
+    // Overwrites rather than first-write-wins: HMR can rename or replace the component behind
+    // a still-connected element, and a `hasAttribute` guard would serve the stale name forever.
     const componentName = readComponentName(raw);
-    if (componentName && !el.hasAttribute(COMPONENT_NAME_ATTR)) {
-      el.setAttribute(COMPONENT_NAME_ATTR, componentName);
-    }
+    if (componentName) el.setAttribute(COMPONENT_NAME_ATTR, componentName);
     if (!source) {
       // No position, but the file survived the host's symbolication check — worth carrying,
-      // since "which file" is most of what the address was for.
+      // since "which file" is most of what the address was for. Re-checked against a tag that
+      // may have appeared during the await, exactly like the success path below: an element
+      // that resolved fully in the meantime must not also gain a "(line not resolvable)" hint.
+      if (el.dataset.dcSource) return true;
       const file = readSourceFile(raw);
-      if (file && !el.hasAttribute(SOURCE_FILE_ATTR)) el.setAttribute(SOURCE_FILE_ATTR, file);
+      if (file) el.setAttribute(SOURCE_FILE_ATTR, file);
       return false;
     }
     if (el.dataset.dcSource) return true;
+    // Clear any hint left by an earlier attempt — the resolved tag carries the file now, and
+    // leaving both would render a location heading beside "(line not resolvable)".
+    el.removeAttribute(SOURCE_FILE_ATTR);
     markSynthesizedSource(el, source);
     return true;
   })();

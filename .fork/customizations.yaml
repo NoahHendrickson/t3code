@@ -1717,24 +1717,42 @@
     virtual:fork-design-mode-engine.
 
     Two accuracy rules govern what a change request is allowed to assert, both
-    added after a request cost more time than doing the edit by hand. First, a
-    css bullet may only say "change `px-2.5` -> `px-1`" once cssOrigin.ts has
-    PROVED that class is the lever, by removing it and re-measuring while the
-    element shows its original cascade; when a stylesheet rule outranks the
-    utility instead, the bullet names that rule and its file (Vite's
-    data-vite-dev-id is what still carries the authored filename) and drops the
-    utility suggestion, because editing an overridden class is a silent no-op.
+    added after a request cost more time than doing the edit by hand, and both
+    since corrected for how the underlying APIs actually behave.
+
+    First, a css bullet may only say "change `px-2.5` -> `px-1`" once
+    cssOrigin.ts has PROVED that class is the lever, by removing it and
+    re-measuring while the element shows its original cascade. The probe cannot
+    decide a TIE — if something else declares the same value, removing the
+    class moves nothing, and "inert" and "wins but shadowed" look identical —
+    so that case is reported as ambiguous and names BOTH rather than guessing.
+    When the class provably is not the lever the bullet names the winning rule
+    and its file (Vite's data-vite-dev-id is what still carries the authored
+    filename). Ranking is layer-aware: unlayered beats layered above
+    specificity, because Tailwind v4 utilities are in `@layer utilities` and an
+    unlayered fork rule of trivial specificity beats them. Two CSSOM traps are
+    load-bearing here: since CSS Nesting a CSSStyleRule HAS a (truthy, empty)
+    `cssRules`, so style rules must be handled before any grouping check or
+    every declaration is skipped; and `matchMedia` never throws, so only
+    CSSMediaRule may be condition-gated — `@supports`/`@container` must be
+    descended into unconditionally.
+
     Second, a source location is only forwarded when react-grab reports the
-    frame as symbolicated: an unsymbolicated frame carries GENERATED
-    coordinates, which look authoritative and point into a line the authored
-    file may not even have. Rejection costs the LINE, not the file:
-    `data-t3-source-file` still carries the authored path (react-grab reads it
-    off the fiber's module, so only the position inside it needed
-    symbolication) and `data-t3-component` carries the fiber's component name,
-    which together read as "Rendered by `<X>` in path (line not resolvable)" —
-    usually the faster address anyway. Relatedly, the NO_PREVIEW guardrail must
-    not promise upstream's automatic verification while this fork has not
-    vendored client/verifier.ts.
+    reporting frame as `isSymbolicated === true`. Not `!== false`: react-grab
+    0.1.44 / bippy 0.5.41 return a frame UNTOUCHED when symbolication fails, so
+    there is no `false` to test for and `!== false` passed every failure. The
+    frame is paired by position first, since the context's filePath is
+    normalized while the frame's fileName is a raw served URL. Rejection costs
+    the LINE, not the file: `data-t3-source-file` keeps the authored path and
+    `data-t3-component` the fiber's component name, rendered as "Rendered by
+    `<X>` in path (line not resolvable)" and only when no location resolved.
+    Hint results are TTL-evicted from the preload cache like nulls — they are
+    not successes, and caching them would pin a transient failure for the
+    element's lifetime.
+
+    Relatedly, the NO_PREVIEW guardrail must not promise upstream's automatic
+    verification while this fork has not vendored client/verifier.ts; a guard
+    test pins that wording.
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
@@ -1742,7 +1760,6 @@
     # (the engine tsconfig includes it by path) so the web project can type-check
     # and unit-test it, which files under engine/ cannot be.
     - apps/web/src/custom/designMode/cssOrigin.ts
-    - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
     - apps/web/src/custom/designMode/designModeStore.ts
     - apps/web/src/custom/designMode/designModeBridge.ts
     - apps/web/src/custom/designMode/designChangeDraftStore.ts
@@ -1844,3 +1861,4 @@
     - apps/web/package.json
   verify:
     - apps/web/src/__fork_guards__/forkDesignMode.test.ts
+    - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts

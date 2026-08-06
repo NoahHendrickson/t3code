@@ -12,11 +12,13 @@
  * Two questions, answered separately because they want different tools:
  *
  * 1. "Does the utility class control this property?" — answered EMPIRICALLY, by removing the
- *    class and re-measuring. That is ground truth: no cascade emulation to get wrong, and it
- *    naturally accounts for layers, `!important`, `@media`, and specificity all at once.
- * 2. "Then what does control it?" — answered BEST-EFFORT, by walking the stylesheets for
- *    matching rules that declare the property. Used only to name a culprit for the agent, so
- *    an approximate ordering is fine; question 1 already decided the phrasing.
+ *    class and re-measuring. That is ground truth for the cases it can decide: no cascade
+ *    emulation to get wrong, and it accounts for layers, `!important` and specificity at once.
+ *    It cannot decide a TIE — if another declaration carries the same value, removing the class
+ *    moves nothing, and "the class is inert" and "the class wins but is shadowed" look
+ *    identical. That case is reported as ambiguous rather than guessed at.
+ * 2. "Then what else declares it?" — answered by walking the stylesheets for matching rules.
+ *    Used to name a culprit, and to turn a tie into an honest "both of these declare it".
  *
  * Callers must probe while the element shows its ORIGINAL cascade (drafts compared back on).
  * With a draft applied as inline style the probe would measure the draft, conclude the class
@@ -29,16 +31,26 @@ export interface OriginRule {
   /** Basename of the owning file where derivable, else `<style>`. */
   stylesheet: string;
   important: boolean;
+  /** Inside an `@layer`. Unlayered normal declarations beat layered ones outright, which is
+   * why this ranks above specificity — the trap that made a `px-*` utility (layered, in
+   * Tailwind v4) lose to an unlayered fork rule of far lower specificity. */
+  layered: boolean;
 }
 
 export interface DeclarationOrigin {
-  /** Whether `utilityClass` is what the browser actually resolves this property from. */
+  /** The probe proved `utilityClass` is what resolves this property. */
   utilityWins: boolean;
-  /** The probed class, echoed back so callers need not re-derive it. */
+  /** The probe could not tell: removing the class did not move the value, which happens both
+   * when the class is inert AND when something else declares the same value. Callers must not
+   * claim the utility is overridden on this basis. */
+  ambiguous: boolean;
+  /** The probed class, echoed back so callers need not re-derive it. Null when no class on the
+   * element looked relevant — in which case no probe ran and `utilityWins` is meaningless. */
   utilityClass: string | null;
-  /** The one rule worth naming when the utility does not win. Null when the utility wins, or
-   * when nothing could be named — the request renders a single hint, and the empirical probe
-   * above, not this, is what decides the phrasing. */
+  /** The element's own inline style declares this property, which outranks every stylesheet
+   * rule below. Named separately because "edit that rule" is the wrong instruction for it. */
+  inlineStyle: boolean;
+  /** The rule worth naming, best-effort. Null when nothing could be named. */
   culprit: OriginRule | null;
 }
 
@@ -103,23 +115,42 @@ function stylesheetLabel(sheet: CSSStyleSheet): string {
   return "<style>";
 }
 
-/** A selector that is nothing but one class — i.e. a utility. Named separately so culprit
- * reporting can drop them: "`.px-1` sets padding" tells the agent nothing it did not ask for. */
-export function isBareClassSelector(selectorText: string): boolean {
-  return /^\.[\w\\.:%[\]/-]+$/.test(selectorText.trim());
+const SINGLE_CLASS_SELECTOR = /^\.((?:[^\\.:[\s>+~,()]|\\.)+)$/;
+
+/**
+ * Whether a selector is a tautology for this element: a single class that the element already
+ * carries, i.e. one of its own utilities. Naming `.px-1` as the culprit for a padding change
+ * tells the agent nothing it did not already have.
+ *
+ * Deliberately narrower than "looks like a utility". A plain-CSS guest project's
+ * `.composer-chip { padding: 8px }` is a single-class selector AND the most likely culprit
+ * there, so it must survive — it is only dismissed when the class is the element's own. And
+ * `.a.b` / `.a:hover` are not single-class at all: they genuinely outrank a utility and were
+ * previously discarded by a regex whose character class let unescaped `.` and `:` through.
+ */
+export function isTautologicalSelector(selectorText: string, classList: DOMTokenList): boolean {
+  const match = SINGLE_CLASS_SELECTOR.exec(selectorText.trim());
+  if (!match) return false;
+  const raw = match[1];
+  if (raw === undefined) return false;
+  return classList.contains(raw.replace(/\\(.)/g, "$1"));
 }
 
 /** A matched rule before selection. Split out so the choice can be tested without a DOM:
- * everything above this point needs live CSSOM, everything below is arithmetic. */
+ * everything that needs live CSSOM produces these, everything after is arithmetic. */
 export interface OriginCandidate extends OriginRule {
   order: number;
   specificity: number;
 }
 
-/** True when `a` outranks `b` by the cascade's tiebreak sequence: `!important` first, then
- * approximate specificity, then document order. */
+/** True when `a` outranks `b`. Tiers, strongest first: `!important`, then unlayered over
+ * layered, then approximate specificity, then document order. The layer tier is why a
+ * low-specificity unlayered rule correctly beats a Tailwind utility. Known gap: for
+ * `!important` declarations the layer order inverts, which is not modelled — the important
+ * tier already dominates, so the two only interact between competing important rules. */
 function outranks(a: OriginCandidate, b: OriginCandidate): boolean {
   if (a.important !== b.important) return a.important;
+  if (a.layered !== b.layered) return !a.layered;
   if (a.specificity !== b.specificity) return a.specificity > b.specificity;
   return a.order > b.order;
 }
@@ -132,77 +163,119 @@ export function pickCulprit(candidates: readonly OriginCandidate[]): OriginRule 
     if (best === null || outranks(candidate, best)) best = candidate;
   }
   if (best === null) return null;
-  const { selectorText, stylesheet, important } = best;
-  return { selectorText, stylesheet, important };
+  const { selectorText, stylesheet, important, layered } = best;
+  return { selectorText, stylesheet, important, layered };
 }
 
-function collectCulprit(el: Element, property: string): OriginRule | null {
-  const found: OriginCandidate[] = [];
+/** `@media` verdicts, memoised per walk: a Tailwind dev sheet repeats a handful of breakpoint
+ * strings across thousands of rules, and each `matchMedia` call parses afresh. */
+type MediaCache = Map<string, boolean>;
+
+function mediaMatches(condition: string, cache: MediaCache): boolean {
+  const cached = cache.get(condition);
+  if (cached !== undefined) return cached;
+  const result = window.matchMedia(condition).matches;
+  cache.set(condition, result);
+  return result;
+}
+
+/**
+ * Every style rule in the document that matches `el`, with the layer and ordering context
+ * needed to rank it. ONE walk per element serves every changed property — the walk, not the
+ * per-property filtering, is what costs on a 30k-rule dev sheet.
+ */
+function collectMatchingRules(el: Element): Array<OriginCandidate & { style: CSSStyleDeclaration }> {
+  const found: Array<OriginCandidate & { style: CSSStyleDeclaration }> = [];
+  const mediaCache: MediaCache = new Map();
+  const classList = el.classList;
   let order = 0;
 
-  const visit = (rules: CSSRuleList, sheet: CSSStyleSheet): void => {
-    for (const rule of Array.from(rules)) {
+  const visit = (rules: CSSRuleList, sheet: CSSStyleSheet, layered: boolean): void => {
+    for (let i = 0; i < rules.length; i += 1) {
+      const rule = rules[i];
+      if (!rule) continue;
       order += 1;
-      // Grouping rules (@media, @supports, @layer, @container) hold nested rules. Descend
-      // only when the condition currently holds, so a non-matching breakpoint is not blamed.
-      const nested = (rule as CSSGroupingRule).cssRules;
-      if (nested) {
-        const condition = (rule as CSSMediaRule).conditionText;
-        if (condition) {
+
+      // A CSSStyleRule has BOTH declarations and (since CSS Nesting, Chrome 112+) a `cssRules`
+      // list — which is an empty CSSRuleList object, and therefore truthy. Testing `cssRules`
+      // first sent every ordinary rule down the grouping branch and skipped its declarations,
+      // so nothing was ever collected. Style rules are handled first, and then still descended
+      // into for their nested children.
+      if (rule instanceof CSSStyleRule) {
+        const selectorText = rule.selectorText;
+        // Cheapest rejects first: string work and a classList lookup before any CSSOM read,
+        // and `matches()` — the expensive one — only for rules that survive.
+        if (typeof selectorText === "string" && !isTautologicalSelector(selectorText, classList)) {
+          let matched = false;
           try {
-            if (!window.matchMedia(condition).matches) continue;
+            matched = el.matches(selectorText);
           } catch {
-            // @supports/@container conditions are not media queries — descend rather than
-            // silently drop a rule that may well be the culprit.
+            matched = false; // selector the matcher rejects (::part, vendor pseudos)
+          }
+          if (matched) {
+            found.push({
+              selectorText,
+              stylesheet: stylesheetLabel(sheet),
+              important: false, // per-property, filled in by the caller
+              layered,
+              order,
+              specificity: roughSpecificity(selectorText),
+              style: rule.style,
+            });
           }
         }
-        visit(nested, sheet);
+        if (rule.cssRules.length > 0) visit(rule.cssRules, sheet, layered);
         continue;
       }
-      const style = (rule as CSSStyleRule).style;
-      const selectorText = (rule as CSSStyleRule).selectorText;
-      if (!style || typeof selectorText !== "string") continue;
-      if (!declaresProperty(style, property)) continue;
-      if (isBareClassSelector(selectorText)) continue;
-      try {
-        if (!el.matches(selectorText)) continue;
-      } catch {
-        continue; // selector the engine's matcher rejects (::part, vendor pseudos)
+
+      // `@media` is the only grouping rule whose condition can be evaluated here. Everything
+      // else — `@supports`, `@container`, `@layer` — is descended into unconditionally: the
+      // previous code routed them through `matchMedia` inside a `try`, but `matchMedia` never
+      // throws (an unparseable condition yields `not all`, `matches: false`), so those blocks
+      // were silently dropped instead of falling through as the comment claimed. `@container`
+      // is worse than dropped there: it parses as a valid viewport query and gets answered
+      // against the window rather than the container.
+      if (rule instanceof CSSMediaRule) {
+        if (!mediaMatches(rule.conditionText, mediaCache)) continue;
+        visit(rule.cssRules, sheet, layered);
+        continue;
       }
-      found.push({
-        selectorText,
-        stylesheet: stylesheetLabel(sheet),
-        important: isImportant(style, property),
-        order,
-        specificity: roughSpecificity(selectorText),
-      });
+      if (rule instanceof CSSGroupingRule) {
+        const nowLayered =
+          layered || (typeof CSSLayerBlockRule !== "undefined" && rule instanceof CSSLayerBlockRule);
+        visit(rule.cssRules, sheet, nowLayered);
+      }
     }
   };
 
   for (const sheet of Array.from(document.styleSheets)) {
     try {
       // Cross-origin sheets throw on access; they cannot be authored by this project anyway.
-      if (sheet.cssRules) visit(sheet.cssRules, sheet);
+      const rules = sheet.cssRules;
+      if (rules) visit(rules, sheet, false);
     } catch {
       continue;
     }
   }
-
-  return pickCulprit(found);
+  return found;
 }
 
-/** Whether removing `utilityClass` changes the property's computed value. Transitions are
+/** Whether removing `utilityClass` moves the property's computed value. Transitions are
  * suppressed across the probe: mid-transition `getComputedStyle` returns the animating value,
- * which would read as a difference the class did not cause. */
-function classControlsProperty(el: Element, property: string, utilityClass: string): boolean {
+ * which would read as a difference the class did not cause. `before` is passed in — the caller
+ * has already measured it, and re-measuring here would double the forced style recalcs. */
+function classMovesProperty(
+  el: Element,
+  property: string,
+  utilityClass: string,
+  before: string,
+): boolean {
   const style = (el as HTMLElement).style;
   const inlineTransition = style?.getPropertyValue("transition") ?? "";
   style?.setProperty("transition", "none");
   try {
-    const before = getComputedStyle(el).getPropertyValue(property);
     el.classList.remove(utilityClass);
-    const without = getComputedStyle(el).getPropertyValue(property);
-    return before !== without;
+    return getComputedStyle(el).getPropertyValue(property) !== before;
   } catch {
     return false;
   } finally {
@@ -213,18 +286,41 @@ function classControlsProperty(el: Element, property: string, utilityClass: stri
 }
 
 /**
- * Resolves what controls `property` on `el`. `utilityClass` is the builder's existing guess
- * (may be null when no class looked relevant); the probe either confirms it or demotes it.
+ * Resolves what controls each of `properties` on `el`, in one CSSOM walk.
+ *
+ * `measured` supplies the already-taken computed value per property, so the probe costs one
+ * forced recalc rather than two. `utilityFor` is the builder's existing class-list guess; the
+ * probe either confirms it, demotes it, or reports that it could not tell.
  */
-export function resolveDeclarationOrigin(
+export function resolveDeclarationOrigins(
   el: Element,
-  property: string,
-  utilityClass: string | null,
-): DeclarationOrigin {
-  const utilityWins =
-    utilityClass !== null &&
-    el.classList.contains(utilityClass) &&
-    classControlsProperty(el, property, utilityClass);
-  if (utilityWins) return { utilityWins: true, utilityClass, culprit: null };
-  return { utilityWins: false, utilityClass, culprit: collectCulprit(el, property) };
+  properties: Iterable<string>,
+  measured: ReadonlyMap<string, string>,
+  utilityFor: (property: string) => string | null,
+): Map<string, DeclarationOrigin> {
+  const matching = collectMatchingRules(el);
+  const inline = (el as HTMLElement).style;
+  const out = new Map<string, DeclarationOrigin>();
+
+  for (const property of properties) {
+    const utilityClass = utilityFor(property);
+    const before = measured.get(property) ?? getComputedStyle(el).getPropertyValue(property);
+    const canProbe = utilityClass !== null && el.classList.contains(utilityClass);
+    const moved = canProbe && classMovesProperty(el, property, utilityClass, before);
+
+    const candidates = matching
+      .filter((candidate) => declaresProperty(candidate.style, property))
+      .map((candidate) => ({ ...candidate, important: isImportant(candidate.style, property) }));
+
+    out.set(property, {
+      utilityWins: moved,
+      // Only a probe that ran and did not move the value is ambiguous. No probe at all is not
+      // ambiguity — it is simply the absence of a utility to talk about.
+      ambiguous: canProbe && !moved,
+      utilityClass,
+      inlineStyle: inline?.getPropertyValue(property) !== "" && inline?.getPropertyValue(property) !== undefined,
+      culprit: moved ? null : pickCulprit(candidates),
+    });
+  }
+  return out;
 }

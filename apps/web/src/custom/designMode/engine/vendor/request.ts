@@ -4,7 +4,8 @@ import { parseSourceAttr, type SourceLocation, type TaggedElement } from './sour
 import { readTheme, readTokens, suggestUtility, findExistingUtility, type Theme } from './tokens'
 import { isStructuralOpKind, type StructuralOpKind } from './shared/structural-kinds'
 // t3-fork: see ../../cssOrigin.ts — proves whether the named utility is really the lever.
-import { resolveDeclarationOrigin, type DeclarationOrigin } from '../../cssOrigin'
+import { resolveDeclarationOrigins, type DeclarationOrigin } from '../../cssOrigin'
+import { COMPONENT_NAME_ATTR, SOURCE_FILE_ATTR } from '../nativeSource'
 
 export interface ChangeItem {
   property: string
@@ -15,10 +16,16 @@ export interface ChangeItem {
   tokenExact: boolean
   /** Optional plain-language instruction overriding the literal before→after reading — set by the BUILDER (policy lives at construction), rendered generically. */
   intent?: string
-  /** t3-fork: the rule that actually resolves this property, named ONLY when the element's
-   * utility class provably does not (cssOrigin.ts probes by removing the class). Its presence
-   * is what suppresses `beforeUtility`, so the agent is never told to edit an inert class. */
-  origin?: { selectorText: string; stylesheet: string }
+  /** t3-fork: where this property actually resolves from, when it is not the element's own
+   * utility class. `kind` records what the probe in cssOrigin.ts was able to establish, so the
+   * rendered sentence never claims more than that:
+   *   `overrides` — the class was probed and provably is NOT the lever; edit the rule.
+   *   `ambiguous` — probe tied (something declares the same value); BOTH are named.
+   *   `plain`     — no utility class to probe; the rule is named without any claim about one.
+   *   `inline`    — an inline style on the element wins; no stylesheet rule is the lever. */
+  origin?:
+    | { kind: 'inline' }
+    | { kind: 'overrides' | 'ambiguous' | 'plain'; selectorText: string; stylesheet: string }
 }
 
 /** A Figma-pivot structural design op (spec 2026-07-22 §2-3), anchored at its ElementChange's
@@ -282,11 +289,11 @@ function elementContext(el: TaggedElement, changes: ChangeItem[]): ElementChange
     text: contextText(el.textContent ?? ''),
     selector: sanitizeInline(cssPath(el)),
     // t3-fork: written by nativeSource.ts's COMPONENT_NAME_ATTR, independently of the source tag.
-    ...(el.getAttribute('data-t3-component')
-      ? { component: sanitizeInline(el.getAttribute('data-t3-component')!) }
+    ...(el.getAttribute(COMPONENT_NAME_ATTR)
+      ? { component: sanitizeInline(el.getAttribute(COMPONENT_NAME_ATTR)!) }
       : {}),
-    ...(el.getAttribute('data-t3-source-file')
-      ? { sourceFile: sanitizeInline(el.getAttribute('data-t3-source-file')!) }
+    ...(el.getAttribute(SOURCE_FILE_ATTR)
+      ? { sourceFile: sanitizeInline(el.getAttribute(SOURCE_FILE_ATTR)!) }
       : {}),
     changes,
   }
@@ -395,10 +402,20 @@ export function buildChangeRequestWithElements(
         collapsed = collapse(raw)
         const probeClassName =
           typeof el.className === 'string' ? el.className : [...el.classList].join(' ')
-        for (const [property, v] of collapsed) {
-          if (v.beforeCss === v.afterCss) continue
-          const guess = theme.spacingBasePx === null ? null : findExistingUtility(probeClassName, property)
-          origins.set(property, resolveDeclarationOrigin(el, property, guess))
+        const changedProps = [...collapsed]
+          .filter(([, v]) => v.beforeCss !== v.afterCss)
+          .map(([property]) => property)
+        // One CSSOM walk for every changed property, and the already-measured `beforeCss`
+        // reused as the probe's baseline — on a Tailwind dev sheet the walk dominates, and
+        // re-measuring would double the forced style recalcs for no new information.
+        const measured = new Map(changedProps.map((property) => [property, collapsed.get(property)!.beforeCss]))
+        for (const [property, origin] of resolveDeclarationOrigins(
+          el,
+          changedProps,
+          measured,
+          (property) => (theme.spacingBasePx === null ? null : findExistingUtility(probeClassName, property)),
+        )) {
+          origins.set(property, origin)
         }
         drafts.compare(el, wasComparing)
       } finally {
@@ -425,12 +442,18 @@ export function buildChangeRequestWithElements(
           property,
           beforeCss: v.beforeCss,
           afterCss: v.afterCss,
-          beforeUtility: origin.utilityWins ? origin.utilityClass : null,
+          beforeUtility: origin.utilityWins || origin.ambiguous ? origin.utilityClass : null,
           afterUtility: suggestion?.utility ?? null,
           tokenExact: suggestion?.tokenExact ?? false,
         }
-        if (origin.culprit) {
+        // The phrasing has to match what was actually established. Only a probe that MOVED the
+        // value licenses "the utility is overridden"; a tie licenses "both declare this"; no
+        // probe at all licenses nothing beyond naming the rule.
+        if (origin.inlineStyle) {
+          item.origin = { kind: 'inline' }
+        } else if (origin.culprit) {
           item.origin = {
+            kind: origin.ambiguous ? 'ambiguous' : origin.utilityClass === null ? 'plain' : 'overrides',
             selectorText: origin.culprit.selectorText,
             stylesheet: origin.culprit.stylesheet,
           }
@@ -589,9 +612,13 @@ export function renderMarkdown(req: ChangeRequest, theme: Theme = readTheme()): 
     if (!el.source && el.selector) lines.push(`Selector: \`${el.selector}\``)
     // t3-fork: printed before text/classes — when the location was rejected this is the
     // strongest address the request carries, and the agent should read it first.
-    if (el.component || el.sourceFile) {
+    // Only when there is no resolved location — otherwise the heading already names the file
+    // and a "(line not resolvable)" line beside it contradicts it.
+    if (!el.source && (el.component || el.sourceFile)) {
       const where = el.sourceFile ? ` in ${el.sourceFile} (line not resolvable)` : ''
       lines.push(`Rendered by: ${el.component ? `\`<${el.component}>\`` : 'unknown component'}${where}`)
+    } else if (el.source && el.component) {
+      lines.push(`Rendered by: \`<${el.component}>\``)
     }
     if (el.text) lines.push(`Text: "${el.text}"`)
     if (el.className) lines.push(`Current classes: \`${el.className}\``)
@@ -604,8 +631,14 @@ export function renderMarkdown(req: ChangeRequest, theme: Theme = readTheme()): 
       let line = `- ${c.property}: ${c.beforeCss} → ${c.afterCss}`
       // t3-fork: a named origin means the class layer provably is NOT the lever here — say so
       // and point at the rule, instead of suggesting a utility edit that resolves to nothing.
-      if (c.origin) {
+      if (c.origin?.kind === 'inline') {
+        line += ` — currently set by an inline style on the element; that wins over every stylesheet rule, so change it where the style is applied`
+      } else if (c.origin?.kind === 'overrides') {
         line += ` — set by \`${c.origin.selectorText}\` in ${c.origin.stylesheet}, which outranks this element's utility classes; edit that rule`
+      } else if (c.origin?.kind === 'plain') {
+        line += ` — set by \`${c.origin.selectorText}\` in ${c.origin.stylesheet}; edit that rule`
+      } else if (c.origin?.kind === 'ambiguous' && c.beforeUtility) {
+        line += ` — \`${c.beforeUtility}\` and \`${c.origin.selectorText}\` (${c.origin.stylesheet}) both declare this at the same value, so removing either alone changes nothing; check which one wins before editing`
       } else if (c.afterUtility) {
         line += c.beforeUtility
           ? ` — change \`${c.beforeUtility}\` → \`${c.afterUtility}\``
