@@ -81,7 +81,12 @@
       }
 
       html.dark body {
-        background: #0a0a0a;
+        /* fork:begin fork-surface-palette — see .fork/customizations.yaml#fork-surface-palette
+           This body rule is what actually paints the pre-hydration viewport
+           (#boot-shell inherits it); it must agree with the fenced metas and
+           DARK_BACKGROUND above, not upstream's near-black. */
+        background: #161616;
+        /* fork:end fork-surface-palette */
         color: #f5f5f5;
       }
 

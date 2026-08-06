@@ -147,10 +147,11 @@ function terminalFontOptions(family: string, size: number): { family?: string; s
   // live cascade read: Advanced typography isolates the terminal from
   // code-font changes, and a computed --font-mono would carry them in. The
   // surface appends its own glyph fallbacks and re-measures the cell grid
-  // when the webfont lands.
+  // when the webfont lands. (Upstream's `{ size }` empty-family arm is
+  // unreachable behind this branch and dropped with it.)
   if (trimmed.length === 0) return { family: FORK_TERMINAL_FONT_FALLBACK, size };
+  return { family: trimmed, size };
   /* fork:end geist-typography */
-  return trimmed.length > 0 ? { family: trimmed, size } : { size };
 }
 
 export function terminalThemeFromApp(mountElement?: HTMLElement | null): GhosttyTheme {

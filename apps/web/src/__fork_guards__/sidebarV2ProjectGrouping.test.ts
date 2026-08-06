@@ -54,14 +54,18 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     expect(sidebar).toMatch(/visibleActiveSections\.flatMap\(\s*\(section,\s*sectionIndex\)\s*=>/u);
     // Pinned cards paint first and flat (upstream's pin block escapes
     // grouping on purpose); the grouped order follows them, and both feed
-    // one keyboard order.
-    expect(sidebar).toContain("...pinnedThreads,");
-    expect(sidebar).toContain("...orderedActiveThreads,");
-    expect(sidebar).toContain("...visibleSnoozedThreads,");
+    // one keyboard order. Order asserted, not just presence: a merge that
+    // reorders the spreads (pinned after active) still contains every name
+    // while breaking the paint/keyboard-order outcome.
+    const pinnedSpread = sidebar.indexOf("...pinnedThreads,");
+    const activeSpread = sidebar.indexOf("...orderedActiveThreads,");
+    const snoozedSpread = sidebar.indexOf("...visibleSnoozedThreads,");
+    expect(pinnedSpread).toBeGreaterThanOrEqual(0);
+    expect(activeSpread).toBeGreaterThan(pinnedSpread);
+    expect(snoozedSpread).toBeGreaterThan(activeSpread);
     const definition = sidebar.indexOf("const orderedActiveThreads");
-    const use = sidebar.indexOf("...orderedActiveThreads,");
     expect(definition).toBeGreaterThanOrEqual(0);
-    expect(use).toBeGreaterThan(definition);
+    expect(activeSpread).toBeGreaterThan(definition);
   });
 
   it("draws a header for every section that has one, in paint order", () => {

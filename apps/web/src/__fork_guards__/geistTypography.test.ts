@@ -20,7 +20,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
-import { FORK_TERMINAL_FONT_FALLBACK, terminalFontFamilyFrom } from "../custom/terminalFont";
+import { FORK_TERMINAL_FONT_FALLBACK } from "../custom/terminalFont";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -117,33 +117,18 @@ describe("fork guard: geist-typography", () => {
     expect(surface).toContain('"loadingdone"');
   });
 
-  describe("resolved stack", () => {
-    it("falls back to a stack that still leads with Geist Mono", () => {
-      // The degraded path must not land the terminal on SF Mono while the rest
-      // of the app is on Geist — that split is what the indirection prevents.
-      expect(terminalFontFamilyFrom("   ")).toBe(FORK_TERMINAL_FONT_FALLBACK);
+  describe("terminal default stack", () => {
+    it("leads with Geist Mono", () => {
+      // The unset-preference default must not land the terminal on SF Mono
+      // while the rest of the app is on Geist.
       expect(FORK_TERMINAL_FONT_FALLBACK.startsWith('"Geist Mono Variable"')).toBe(true);
     });
 
-    it("strips the trailing generic so the surface's glyph fallbacks stay reachable", () => {
+    it("carries no trailing generic, so the surface's glyph fallbacks stay reachable", () => {
       // The surface appends the Nerd Font fallbacks after whatever family it
-      // is given; a `monospace` generic mid-list would sit ahead of them, a
-      // stack shape upstream never produces. The generic returns at the true
-      // tail via the surface's own fallbacks.
-      expect(terminalFontFamilyFrom(' "Geist Mono Variable", monospace ')).toBe(
-        '"Geist Mono Variable"',
-      );
+      // is given; a `monospace` generic mid-list would sit ahead of them.
       expect(FORK_TERMINAL_FONT_FALLBACK.endsWith("monospace")).toBe(false);
-    });
-
-    it("prefers the cascade-resolved value when present", () => {
-      expect(terminalFontFamilyFrom(' "Geist Mono Variable", "SF Mono" ')).toBe(
-        '"Geist Mono Variable", "SF Mono"',
-      );
-    });
-
-    it("treats a generics-only stack as empty and falls back", () => {
-      expect(terminalFontFamilyFrom("monospace")).toBe(FORK_TERMINAL_FONT_FALLBACK);
+      expect(FORK_TERMINAL_FONT_FALLBACK).not.toContain("ui-monospace");
     });
   });
 });

@@ -123,13 +123,22 @@ describe("fork guard: fork-surface-palette", () => {
     expect(Math.abs(lStar(panel) - lStar(stage))).toBeGreaterThan(2);
   });
 
-  it("keeps the stage near upstream's pre-paint colour", () => {
-    // apps/web/index.html hardcodes #161616 for dark theme-color / body /
+  it("keeps the stage near the fork's pre-paint colour", () => {
+    // apps/web/index.html carries #161616 for dark theme-color / body /
     // DARK_BACKGROUND. The stage must stay close enough that the load flash
     // and overscroll band do not seam against the hydrated shell.
     const prePaint = "#161616";
     expect(indexHtml).toContain(prePaint);
     expect(indexHtml).toMatch(/DARK_BACKGROUND\s*=\s*"#161616"/u);
+    // The `html.dark body` rule is the declaration that actually paints the
+    // pre-hydration viewport (#boot-shell inherits it). The v0.0.32 sync
+    // shipped upstream's #0a0a0a here while the metas and the constant kept
+    // #161616 and this guard stayed green — assert the painting rule itself,
+    // not just that the hex appears somewhere in the file.
+    const darkBody = /html\.dark body \{[^}]*\}/u.exec(indexHtml)?.[0];
+    expect(darkBody).toBeDefined();
+    expect(darkBody).toContain("background: #161616");
+    expect(darkBody).not.toContain("#0a0a0a");
     const stage = declarationHex(blockFor(theme, STAGE), "--background");
     expect(Math.abs(lStar(stage) - lStar(prePaint))).toBeLessThan(3);
   });

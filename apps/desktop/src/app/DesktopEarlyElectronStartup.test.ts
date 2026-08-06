@@ -118,4 +118,54 @@ describe("DesktopEarlyElectronStartup", () => {
 
     assert.equal(preference, "gnome-libsecret");
   });
+
+  /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+  it("resolves fork-owned state and WM class on a packaged build", () => {
+    const options = resolveEarlyLinuxElectronOptions({
+      env: { XDG_CURRENT_DESKTOP: "GNOME" },
+      homeDirectory: "/home/user",
+      isPackaged: true,
+      joinPath,
+      readFileString: (path) => {
+        assert.equal(path, "/home/user/.t3-fork/userdata/desktop-settings.json");
+        return JSON.stringify({ linuxPasswordStore: "kwallet6" });
+      },
+    });
+
+    assert.equal(options.linuxWmClass, "t3code-fork");
+    assert.equal(options.passwordStore, "kwallet6");
+  });
+
+  it("stays fork-owned on a packaged build even when a dev-server URL leaks in", () => {
+    const preference = resolveEarlyLinuxPasswordStorePreference({
+      env: { VITE_DEV_SERVER_URL: "http://127.0.0.1:5173" },
+      homeDirectory: "/home/user",
+      isPackaged: true,
+      joinPath,
+      readFileString: (path) => {
+        // Packaged beats development for the base dir; the dev leaf still
+        // applies, same as DesktopEnvironment's derivation.
+        assert.equal(path, "/home/user/.t3-fork/dev/desktop-settings.json");
+        return JSON.stringify({ linuxPasswordStore: "kwallet" });
+      },
+    });
+
+    assert.equal(preference, "kwallet");
+  });
+
+  it("expands a leading ~ in T3CODE_HOME the way the server child does", () => {
+    const preference = resolveEarlyLinuxPasswordStorePreference({
+      env: { T3CODE_HOME: "~/.t3-elsewhere" },
+      homeDirectory: "/home/user",
+      isPackaged: true,
+      joinPath,
+      readFileString: (path) => {
+        assert.equal(path, "/home/user/.t3-elsewhere/userdata/desktop-settings.json");
+        return JSON.stringify({ linuxPasswordStore: "kwallet6" });
+      },
+    });
+
+    assert.equal(preference, "kwallet6");
+  });
+  /* fork:end fork-app-identity */
 });

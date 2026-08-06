@@ -57,6 +57,14 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(meta).toContain("props.terminalSlot");
   });
 
+  it("marks a pinned card on its title line", () => {
+    // The pinned block above the divider carries the grouping; the glyph
+    // names the state per card. A sync dropping just this hunk leaves pinned
+    // cards marked only by position, and nothing else fails.
+    const pinGlyph = /\{props\.isPinned \? \([\s\S]{0,400}?<PinIcon/u.exec(sidebarV2)?.[0];
+    expect(pinGlyph).toBeDefined();
+  });
+
   it("marks a thread that runs in a worktree of its own", () => {
     // The mark replaces the branch mark rather than joining it, so losing the
     // prop does not empty a slot — it silently draws every worktree thread as

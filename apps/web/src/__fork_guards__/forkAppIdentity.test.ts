@@ -42,6 +42,8 @@ const read = (relativePath: string): string =>
 
 const DESKTOP_ENVIRONMENT = "apps/desktop/src/app/DesktopEnvironment.ts";
 const DESKTOP_STATE_PATHS = "apps/desktop/src/app/DesktopStatePaths.ts";
+const DESKTOP_EARLY_STARTUP = "apps/desktop/src/app/DesktopEarlyElectronStartup.ts";
+const DESKTOP_PRE_READY = "apps/desktop/src/app/DesktopPreReadyPlatform.ts";
 const DESKTOP_BACKEND_CONFIGURATION = "apps/desktop/src/backend/DesktopBackendConfiguration.ts";
 const SERVER_CONFIG = "apps/server/src/config.ts";
 const BUILD_SCRIPT = "scripts/build-desktop-artifact.ts";
@@ -262,6 +264,31 @@ describe("fork guard: fork-app-identity", () => {
     const environment = read(DESKTOP_ENVIRONMENT);
     expect(environment).toContain('isDevelopment ? "t3code-dev" : "t3code-fork"');
     expect(environment).not.toContain('isDevelopment ? "t3code-dev" : "t3code"');
+  });
+
+  it("keeps the pre-ready early resolver on the fork's identity, agreeing with DesktopEnvironment", () => {
+    // Upstream's v0.0.32 pre-ready refactor re-derives the WM class and the
+    // settings base dir from scratch in DesktopEarlyElectronStartup — it never
+    // reads DesktopEnvironment — so the fork values must be restated there and
+    // must agree with the late path. The sync that introduced the file shipped
+    // WM class "t3code" and a ~/.t3 settings read while every guard stayed
+    // green; this is the tripwire for the next such file.
+    const early = read(DESKTOP_EARLY_STARTUP);
+    const environment = read(DESKTOP_ENVIRONMENT);
+    // Same WM class pair as the late path (DesktopEnvironment.linuxWmClass).
+    expect(early).toContain('? "t3code-dev" : "t3code-fork"');
+    expect(early).not.toContain('? "t3code-dev" : "t3code"');
+    // Same base-dir poles as the late path: upstream's ~/.t3 only for
+    // unpackaged development, ~/.t3-fork otherwise, tilde-expanded override.
+    expect(early).toContain('".t3-fork"');
+    expect(early).toMatch(/isUnpackagedDevelopment \? "\.t3" : "\.t3-fork"/u);
+    expect(environment).toContain('".t3-fork"');
+    // The early path must not call upstream's resolveDesktopBaseDir, whose
+    // default is ~/.t3 unconditionally — that is the exact defect. Matched as
+    // a call so the fence comment may still name it in prose.
+    expect(early).not.toContain("resolveDesktopBaseDir(");
+    // And the one Electron caller passes the packaged bit the carve-out needs.
+    expect(read(DESKTOP_PRE_READY)).toContain("isPackaged: Electron.app.isPackaged");
   });
 
   it("never adopts upstream's legacy user data directory", () => {

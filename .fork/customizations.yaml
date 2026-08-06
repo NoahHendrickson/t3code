@@ -275,6 +275,21 @@
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/app/DesktopEnvironment.test.ts
+    # The v0.0.32 pre-ready refactor: identity and state-dir logic that never
+    # reads DesktopEnvironment, so fork values are restated there under
+    # fences. The sync that introduced these files shipped WM class "t3code"
+    # and a ~/.t3 settings read unnoticed — hence the watch.
+    - apps/desktop/src/app/DesktopStatePaths.ts
+    - apps/desktop/src/app/DesktopEarlyElectronStartup.ts
+    - apps/desktop/src/app/DesktopEarlyElectronStartup.test.ts
+    - apps/desktop/src/app/DesktopPreReadyPlatform.ts
+    # Unfenced known carve-out: on packaged Linux this registers upstream's
+    # t3code-url-handler.desktop in ~/.local/share/applications and claims
+    # x-scheme-handler/t3code via xdg-mime. The scheme itself is deliberately
+    # shared (see intent), but the desktop-entry FILENAME collides with an
+    # installed upstream release's — last writer wins. Revisit before any
+    # packaged Linux fork release.
+    - apps/desktop/src/app/DesktopLinuxUrlHandler.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
     - apps/desktop/scripts/electron-launcher.mjs
     - apps/server/src/config.ts
