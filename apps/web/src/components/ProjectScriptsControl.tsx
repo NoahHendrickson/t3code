@@ -138,6 +138,10 @@ export default function ProjectScriptsControl({
 }: ProjectScriptsControlProps) {
   const addScriptFormId = React.useId();
   const [editingScriptId, setEditingScriptId] = useState<string | null>(null);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState({
+    scripts: false,
+    imports: false,
+  });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [command, setCommand] = useState("");
@@ -255,6 +259,7 @@ export default function ProjectScriptsControl({
   };
 
   const openEditDialog = (script: ProjectScript) => {
+    setActionsMenuOpen({ scripts: false, imports: false });
     setEditingScriptId(script.id);
     setName(script.name);
     setCommand(script.command);
@@ -329,13 +334,20 @@ export default function ProjectScriptsControl({
   return (
     <>
       {primaryScript ? (
-        <Group aria-label="Project scripts">
+        /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+           `data-fork-pill` is the only hook the fork adds here: it marks this
+           control as one of the workspace header's split pills, and
+           theme.custom.css does the rest. Both branches carry it — the split
+           Group when a primary script exists, and the lone "Add action" button
+           when one does not. fork:end fork-workspace-header */
+        <Group aria-label="Project scripts" data-fork-pill>
           <Tooltip>
             <TooltipTrigger
               render={
                 <Button
                   size="xs"
                   variant="outline"
+                  className="w-7 px-0 sm:w-6 @3xl/header-actions:w-auto! @3xl/header-actions:px-[calc(--spacing(2)-1px)]"
                   aria-label={`Run ${primaryScript.name}`}
                   onClick={() => onRunScript(primaryScript)}
                 />
@@ -349,7 +361,11 @@ export default function ProjectScriptsControl({
             <TooltipPopup side="top">Run {primaryScript.name}</TooltipPopup>
           </Tooltip>
           <GroupSeparator className="hidden @3xl/header-actions:block" />
-          <Menu highlightItemOnHover={false}>
+          <Menu
+            highlightItemOnHover={false}
+            open={actionsMenuOpen.scripts}
+            onOpenChange={(open) => setActionsMenuOpen({ scripts: open, imports: false })}
+          >
             <MenuTrigger
               render={<Button size="icon-xs" variant="outline" aria-label="Script actions" />}
             >
@@ -408,8 +424,16 @@ export default function ProjectScriptsControl({
           </Menu>
         </Group>
       ) : importableScripts.length > 0 ? (
-        <Menu highlightItemOnHover={false}>
-          <MenuTrigger render={<Button size="xs" variant="outline" aria-label="Project actions" />}>
+        <Menu
+          highlightItemOnHover={false}
+          open={actionsMenuOpen.imports}
+          onOpenChange={(open) => setActionsMenuOpen({ scripts: false, imports: open })}
+        >
+          <MenuTrigger
+            render={
+              <Button size="xs" variant="outline" aria-label="Project actions" data-fork-pill />
+            }
+          >
             <PlusIcon className="size-3.5" />
             <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
               Add action
@@ -428,7 +452,13 @@ export default function ProjectScriptsControl({
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button size="xs" variant="outline" aria-label="Add action" onClick={openAddDialog} />
+              <Button
+                size="xs"
+                variant="outline"
+                className="w-7 px-0 sm:w-6 @3xl/header-actions:w-auto! @3xl/header-actions:px-[calc(--spacing(2)-1px)]"
+                aria-label="Add action"
+                onClick={openAddDialog}
+              />
             }
           >
             <PlusIcon className="size-3.5" />

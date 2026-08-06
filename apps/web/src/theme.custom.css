@@ -7,8 +7,9 @@
  * in this file can leak into an unmarked, pure-upstream build.
  *
  * `@keyframes` are the one exception: they are global by definition and cannot
- * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-rain-*`
- * so the names cannot collide with upstream's.
+ * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-`
+ * (`sidebar-v2-rain-*`, `sidebar-v2-dev-server-pulse`) so the names cannot
+ * collide with upstream's.
  *
  * `@font-face` is the second exception, for the same reason: a face
  * *registration* is global — there is no selector to hang it off. What matters
@@ -25,46 +26,752 @@
 
 /* Geist ships as two variable faces: `Geist Variable` (100..900) and
    `Geist Mono Variable` (100..900). Both are pulled in here rather than from
-   `main.tsx` so the fork owns its own font loading and upstream's import block
-   stays untouched — upstream's DM Sans / JetBrains Mono imports are left in
-   place for the same reason, and cost nothing on the wire once the overrides
-   below stop referencing those families. */
+   `main.tsx` so the fork owns its own font loading — since upstream dropped
+   its DM Sans / JetBrains Mono webfonts for system stacks (v0.0.32 cycle),
+   these are the only bundled faces in the app. */
 @import "@fontsource-variable/geist/index.css";
 @import "@fontsource-variable/geist-mono/index.css";
 
 /* The stacks themselves. `index.css` reads these through
-   `--font-sans: var(--fork-font-sans, <upstream stack>)` inside its
-   `@theme inline` block, fenced as `fork:geist-typography` — the indirection is
-   what lets a scoped declaration reach Tailwind's compiled `.font-sans` /
-   `.font-mono` utilities, which bake their value in literally and would
-   otherwise ignore anything declared here. An unmarked build never sets these,
-   so it falls through to upstream's fallbacks.
+   `--font-sans: var(--fork-font-sans, <upstream stack>)` inside its non-inline
+   `@theme` block, fenced as `fork:geist-typography`. Upstream keeps the font
+   tokens out of `@theme inline` so Settings → Appearance can override them at
+   runtime (an inline style on the root, which outranks these declarations —
+   a user's explicit font choice beats the fork default). An unmarked build
+   never sets these, so it falls through to upstream's fallbacks.
 
    Geist Mono is listed AHEAD of SF Mono, inverting upstream's order. Upstream
-   puts SF Mono first, so on macOS its bundled mono webfont never actually
+   puts SF Mono first, so on macOS a bundled mono webfont never actually
    renders — keeping that order would make shipping Geist Mono pointless. */
 :root[data-fork="noahhendrickson-t3code"] {
   --fork-font-sans:
     "Geist Variable", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  /* "JetBrains Mono" is kept from upstream's stack: it is the only *bundled*
-     mono fallback, so dropping it would leave a Linux user with no SF Mono and
-     no Consolas on Liberation Mono or generic monospace if the Geist Mono fetch
-     fails, where upstream had a guaranteed face. */
+  /* "JetBrains Mono" is kept by name from the era its Fontsource face was
+     bundled: a Linux user with it installed still gets it ahead of
+     Liberation Mono / the generic when the Geist Mono face fails. */
   --fork-font-mono:
     "Geist Mono Variable", "Geist Mono", "SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas,
     "Liberation Mono", Menlo, monospace;
 }
 
-/* Upstream repeats the literal stacks on `body` (index.css:964) and `pre, code`
-   (index.css:1022) instead of reading its own `@theme` tokens, so overriding the
-   variables alone does not reach them. `:root[data-fork=…]` (0,2,x) outranks
-   both bare selectors. */
-:root[data-fork="noahhendrickson-t3code"] body {
-  font-family: var(--font-sans);
+/* ---------------------------------------------------------------------------
+   Surface palette (dark only) — see `.fork/customizations.yaml#fork-surface-palette`.
+
+   The shell moves off pure black. The workspace stage is #191919 and the
+   sidebar panel is #1e1e1e — chrome sits slightly in front of the work
+   surface (panel above stage). Stage #191919 is a judgement call that also
+   closes the seam with upstream's #161616 pre-paint / overscroll colour in
+   `apps/web/index.html`. Stage-scoped `--border: #2d2e2e` was kept: on the
+   darker stage it reads a touch stronger than against the old #212121, which
+   is fine for a hairline. Chrome muted text (--sidebar-muted-foreground) is
+   #e0e0e0 rather than upstream's #a3a3a3 so chrome labels stay readable on
+   the lifted surface; the cards' --muted-foreground stays upstream's — see
+   the note at the declaration. Receded card *titles* use a dedicated token
+   (--fork-sidebar-card-title-receded) rather than lifting the shared muted
+   channel.
+
+   Two blocks, not one, and the second is not redundant. Upstream re-declares
+   --background / --card / --border and the whole --sidebar-* family *on the
+   panel element itself* (index.css, `.dark [data-sidebar-version=…]`). A custom
+   property set only at :root never reaches an element that declares its own, so
+   the panel needs its own mirrored rule. Same reason the status palette below
+   uses the doubled selector.
+
+   Every value is flat opaque sRGB rather than an alpha over the panel. Alpha
+   compounds — a fill inside a hovered row inside a selected row lands on a
+   colour nobody specified — and these are only correct against #1e1e1e anyway,
+   so freezing them is honest about that. Light mode is untouched: it keeps
+   upstream's zinc hierarchy.
+
+   NOTE: only the v2 panel is repainted. v1 keeps upstream's black panel so the
+   beta toggle stays a real A/B. Darkening the stage toward that black panel
+   narrows the v1 edge — accepted cost of sitting near the #161616 pre-paint.
+   The stage is global chrome and has no sidebar-version attribute to key off. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --background: #191919;
+  --border: #2d2e2e;
+  /* Upstream's dark --primary / --ring are the same blue oklch. Fork chrome
+     is monochrome: focus underlines (border-ring), switches, and primary
+     fills read as white. --primary-foreground is the stage so white buttons
+     keep contrast. */
+  --primary: #ffffff;
+  --primary-foreground: #191919;
+  --ring: #ffffff;
+  /* Upstream lays a 0.035-opacity white noise over every chrome surface
+     (`@utility surface-grain`, applied to the sidebar shell and the workspace
+     inset). It was calibrated against a #000 shell. On these surfaces any
+     useful grain opacity compounds unspecified drift into fills this palette
+     freezes as flat opaque sRGB — the opacity that would keep drift within a
+     level of the panel is ~0.008, at which point there is no texture left to
+     preserve. Dropped rather than dialled down. Light mode keeps upstream's
+     grain — its surfaces are unchanged, so the original calibration still
+     holds. */
+  --surface-grain: none;
 }
 
-:root[data-fork="noahhendrickson-t3code"] :is(pre, code) {
-  font-family: var(--font-mono);
+:root[data-fork="noahhendrickson-t3code"].dark [data-sidebar-version="v2"] {
+  --background: #1e1e1e;
+  --card: #1e1e1e;
+  --sidebar: #1e1e1e;
+  --border: #2d2e2e;
+  --sidebar-border: #2d2e2e;
+  /* The stage-channel header art ramps to this, and seams against anything
+     that is not the panel's own surface (upstream makes the same point about
+     its own --card). */
+  --sidebar-stage-fade: #1e1e1e;
+  /* Upstream's panel values are #0a0a0a muted and #191a1d accent — both were
+     lifts off black, and both land *below* a #1e1e1e panel, which would carve
+     controls into the surface instead of raising them. */
+  --muted: #262626;
+  --accent: #262626;
+  /* Upstream's panel muted text is #a3a3a3. On #1e1e1e that reads too soft for
+     Search / All projects / project headers (and those rows further tint at
+     /80 and /70), so the chrome token lifts toward foreground (#f1f3f7)
+     without matching it. The sidebar-scoped token ONLY: every chrome consumer
+     reads --sidebar-muted-foreground, while the thread cards read
+     --muted-foreground — and the cards' shared muted channel stays upstream's
+     dim value on purpose. Alpha-tinted meta (/70), shelf ghosts (/35), and
+     unread encoding were calibrated against #a3a3a3; lifting the channel would
+     re-derive all of them. Receded *titles* alone read
+     --fork-sidebar-card-title-receded (#c0c0c0) via threadCardTitleClassName. */
+  --sidebar-muted-foreground: #e0e0e0;
+  /* Done/Idle card titles on the lifted panel — brighter than upstream muted
+     (#a3a3a3), still clearly below chrome (#e0e0e0) and foreground (#f1f3f7).
+     Lifting to chrome collapsed the receded/forward gap to ~1.19:1. */
+  --fork-sidebar-card-title-receded: #c0c0c0;
+  /* The ⌘K chip: rgba(255,255,255,0.08) over the panel in the design. */
+  --sidebar-control-surface: #303030;
+  --sidebar-row-hover: #262626;
+  --sidebar-row-active: #2a2a2a;
+  --sidebar-row-selected: #2a2a2a;
+}
+
+/* ---------------------------------------------------------------------------
+   Sidebar type size — see `.fork/customizations.yaml#fork-sidebar-type-size`.
+
+   Tailwind's text-xs / text-sm utilities read --text-xs / --text-sm (they are
+   @theme variables, not @theme inline, so a descendant override reaches the
+   compiled utilities). Remapping both to 0.8125rem (13px at the default root)
+   on the v2 panel makes Search, scope, project headers and slim shelves share
+   one body size without rewriting every className. Card titles (0.875rem) and
+   the repo/branch line (0.75rem) opt out with literal rem sizes — see
+   sidebar-v2-card-rows. Line-height stays 1rem so the card's h-4 rows scale
+   with the type; captions that use literal text-[11px] / text-[10px] are
+   untouched. Rem, not px: a px pin would freeze the sidebar while the rest of
+   the app (and h-4 itself) still honour the browser font-size setting. */
+:root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Workspace header split pills — see
+   `.fork/customizations.yaml#fork-workspace-header`.
+
+   The three header controls (Add action / Open / PR) are already built from the
+   right primitives: a `Group` wrapping an outline `Button size="xs"`, a
+   separator, and a caret `Button size="icon-xs"`. `Group` flattens the inner
+   corners so the pair paints as one control, and `size="xs"` is already 24px
+   and 12px at >=sm — which is exactly the design's spec. So nothing structural
+   changes; the only fork edit in those three files is a `data-fork-pill`
+   attribute, and everything visual happens here.
+
+   What is left to say: fully round the outer corners, drop the raised
+   treatment (border tint, popover fill, inset highlight) that reads as a button
+   floating above a page, and open the padding out to the drawn 10px/7px.
+
+   Selected as `button`, not `[data-slot="button"]`: Base UI's `render` prop
+   merges the trigger's own props over the rendered element's, so a `Button`
+   handed to a `TooltipTrigger` or `MenuTrigger` ends up in the DOM carrying
+   `data-slot="tooltip-trigger"` / `"menu-trigger"`. Two of the three pills are
+   built that way, so a slot-based selector silently matches nothing. */
+:root[data-fork="noahhendrickson-t3code"] :is(button[data-fork-pill], [data-fork-pill] > button) {
+  border-color: var(--fork-pill-border);
+  background: transparent;
+  color: var(--fork-pill-fg);
+  box-shadow: none;
+  gap: 6px;
+}
+
+/* The `::before` overlay carries the variant's inset highlight and its own
+   radius. With the fill gone it has nothing left to draw, and leaving it would
+   trace a rounded-md ghost inside a pill. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button)::before {
+  box-shadow: none;
+  border-radius: inherit;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button):is(:hover, [data-pressed]) {
+  background: var(--fork-pill-hover);
+}
+
+/* Start and end corners are set independently so a lone button (the "Add
+   action" fallback, which has no split half) rounds on both — it matches
+   :first-child and :last-child at once — while a real pair keeps the flat inner
+   seam `Group` gives it. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button:first-child) {
+  border-start-start-radius: var(--fork-pill-radius);
+  border-end-start-radius: var(--fork-pill-radius);
+  /* 10px in the design, less the 1px border the box already spends. */
+  padding-inline: 9px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  :is(button[data-fork-pill], [data-fork-pill] > button:last-child) {
+  border-start-end-radius: var(--fork-pill-radius);
+  border-end-end-radius: var(--fork-pill-radius);
+}
+
+/* The caret half: 7px each side of a 14px glyph, so 28px wide rather than the
+   square 24px `size="icon-xs"` gives it. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button:last-child:not(:first-child) {
+  width: auto;
+  padding-inline: 7px;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > [data-slot="separator"] {
+  background: var(--fork-pill-border);
+}
+
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-pill-radius: 999px;
+  --fork-pill-border: var(--border);
+  --fork-pill-fg: var(--foreground);
+  --fork-pill-hover: var(--accent);
+}
+
+/* The drawn values. Scoped to dark because the design is dark-only: in light
+   mode the pills keep resolving to upstream's border/foreground/accent, which
+   is what the fallbacks above are for. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-pill-border: #333333;
+  --fork-pill-fg: #e6e6e6;
+  --fork-pill-hover: #2d2e2e;
+}
+
+/* ---------------------------------------------------------------------------
+   Chat composer shell — see `.fork/customizations.yaml#fork-composer-shell`.
+
+   The designs draw the composer as a discrete bordered box with its run
+   controls floating on their own line 4px underneath. Upstream draws something
+   quite different: one "glass shell" whose ::before paints a single frosted
+   layer and whose ::after traces a single outline, clipped by a shape() path so
+   the composer and the branch strip below it read as one continuous vessel
+   joined by a notch. That is the thing being replaced, so the shell's two
+   painted pseudo-elements are switched off here and the box paints itself.
+
+   The blur is not dropped with them — the drawn fill is 80% opaque, which only
+   works over a blurred backdrop — it just moves onto the box. Without the
+   stitched shell, the floating control row (and the gap around the box) would
+   otherwise leave timeline rows readable underneath the docked composer, so the
+   overlay itself paints an opaque page-colored floor that fades in over its top
+   edge — messages end above the composer without bringing the vessel back.
+
+   Everything below is dark-scoped: the designs are dark-only, and an unmarked
+   or light build keeps upstream's shell untouched. */
+:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-shell::before,
+:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-host::after,
+:root[data-fork="noahhendrickson-t3code"] .chat-composer-context-strip::before {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-host {
+  box-shadow: none;
+}
+
+/* Opaque floor for the absolutely-docked composer overlay. Timeline content
+   still scrolls the full column height behind it; this background is what makes
+   the message area read as stopping above the composer once the glass vessel is
+   gone. The gradient reaches full opacity over the top 1.25rem — wider than the
+   overlay's 6–8px top padding on purpose — so the edge is a soft fade, not a
+   hard slab. A host background paints beneath every child by definition, so no
+   pseudo-element or child stacking rules are needed. */
+:root[data-fork="noahhendrickson-t3code"] [data-chat-composer-overlay="true"] {
+  background: linear-gradient(to bottom, transparent, var(--background) 1.25rem);
+}
+
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-composer-radius: 8px;
+  --fork-composer-bg: var(--card);
+  --fork-composer-border: var(--border);
+  --fork-composer-border-focus: var(--ring);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-composer-bg: rgb(41 41 41 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 8%);
+  /* A step above the resting hairline, a step below the old #595959 — the
+     focus recolour should register, not glow. */
+  --fork-composer-border-focus: #474747;
+}
+
+/* The frame div is upstream's 1px gradient-border trick: a p-px shim whose
+   child surface paints the fill. The fork wants a plain border, so the shim
+   collapses and the surface takes the border directly. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box] {
+  padding: 0;
+  border-radius: var(--fork-composer-radius);
+  background: none;
+}
+
+/* Mobile's collapsed tap target remains a distinct functional state. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-mobile-collapsed="true"][data-fork-composer-surface] {
+  border-radius: 12px;
+}
+
+/* Selected by name, not by position. This used to be `[data-fork-composer-box]
+   > div`, which worked only because the frame happens to have exactly one child
+   today. A Tier-4 rule whose whole job is surviving upstream syncs cannot be
+   coupled to a child count: upstream adding a drop overlay or a banner inside
+   the frame would give it a second frosted card with its own hairline, and
+   every guard here would stay green, because they assert on the text of this
+   stylesheet rather than on what it matches.
+
+   The hairline is an inset shadow, not a border, and that is a geometry
+   decision rather than a stylistic one. Figma draws the stroke inside the
+   frame, so the tall box measures 96px *including* it; a real border sits
+   outside the padding box and would push the same content to 98. An inset
+   shadow paints in the same place without joining the layout. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-surface] {
+  border-radius: inherit;
+  background: var(--fork-composer-bg);
+  box-shadow: inset 0 0 0 1px var(--fork-composer-border);
+  transition:
+    box-shadow 200ms,
+    border-radius 200ms;
+}
+
+/* The blur is dark-only, matching the fill it exists for. In light mode
+   --fork-composer-bg resolves to an opaque --card, so the filter would allocate
+   a compositing layer to blur something nothing can see through. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-surface] {
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+}
+
+/* The drag-over state, restored. Upstream paints it with `bg-accent/45 ring-1
+   ring-primary/70` on this element; both are swallowed here, because this
+   stylesheet is unlayered and Tailwind v4 utilities sit in `@layer utilities`,
+   which loses to unlayered rules whatever their specificity — and the ring is
+   a box-shadow, i.e. the exact property the hairline occupies. Repainting it
+   here keeps the drop target legible and keeps the hairline in the same
+   shadow, so the box does not gain a second one. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-drag-over] {
+  background: var(--accent);
+  /* Outline, not box-shadow, and that is empirical rather than stylistic. The
+     tint above lands from this same rule while a box-shadow declaration beside
+     it measurably does not — something on this element composes that property
+     in a way the fork's rule loses to, single- or multi-shadow alike, so a drag
+     advertised itself with a 4% fill and nothing else. `outline` is a property
+     neither upstream nor this stylesheet otherwise sets here, it follows the
+     border-radius, and it does not occupy the slot the hairline needs. */
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* Focus recolours that same hairline rather than adding a ring, so the box
+   keeps its 1px weight in both states and nothing reflows when the caret
+   lands. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-surface]:focus-within {
+  box-shadow: inset 0 0 0 1px var(--fork-composer-border-focus);
+}
+
+/* Upstream's min-height holds the editor open at ~3 lines instead of the
+   compact base row; one line is the drawn height and it grows from there. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box] [data-testid="composer-editor"] {
+  min-height: 0;
+}
+
+/* The drawn placeholder is full muted-foreground, not upstream's /35 tint. The
+   sibling selector only ever matches Lexical's placeholder (and its empty
+   spacer, which has no text) — typed text lives inside the editor itself. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-box]
+  [data-testid="composer-editor"]
+  ~ div {
+  color: var(--muted-foreground);
+}
+
+/* The placeholder has to move with the prompt, or the two disagree about both
+   size and leading and the caret sits a couple of pixels off the text it is
+   supposed to be sitting in front of.
+
+   A general sibling combinator, not an adjacent one: Lexical renders the
+   placeholder as the editor's *third* child, with an empty zero-height div
+   between them, so `+ div` matches the spacer and never reaches the
+   placeholder. `~ div` catches both; the spacer has no text to resize.
+
+   Desktop also moves the max-height scrollport off the contenteditable. The
+   14/16 line box lets Geist ink inflate scrollHeight on the editor itself, so
+   upstream's max-h + overflow-y:auto paints a phantom thumb on a single line.
+   The wrapper owns the cap; the editor stays unclamped and clips its ink so
+   the parent does not inherit the same false overflow. Below 40rem the prompt
+   stays on leading-relaxed and upstream's editor scroll behaviour is left
+   alone. 12.5rem matches upstream's max-h-50. */
+@media (width >= 40rem) {
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-fork-composer-box]
+    :is([data-testid="composer-editor"], [data-testid="composer-editor"] ~ div) {
+    /* The design's body/md: 14px Geist on a 23px line. The 24px action is
+       what sets the 40px base row (8 + 24 + 8); the one-line 23px prompt sits
+       centred beside it, and each wrapped line adds 23px. Below sm the type
+       stays 16px so iOS does not zoom on focus. */
+    font-size: 14px;
+    line-height: 23px;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+    max-height: 12.5rem;
+    overflow-y: auto;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-fork-composer-prompt]
+    [data-testid="composer-editor"] {
+    max-height: none;
+    overflow-y: hidden;
+  }
+
+  /* The placeholder (and Lexical's zero-height spacer) are the editor's
+     siblings, outside its clip. At 14/16 the placeholder's line box is a pixel
+     taller than its inset-0 box, and that pixel propagates through the
+     absolutely-positioned box into the wrapper's scrollable overflow — a
+     phantom thumb that shows only while the prompt is empty, because typing
+     unmounts the placeholder. Typed text already paints without that pixel.
+
+     `clip`, not `hidden`: setting an axis to hidden computes the other
+     axis's `visible` to `auto`, which turns this pure-paint element into a
+     scroll box — and the approval-state placeholder is server-supplied text
+     (paths, URLs, SHAs) with no break opportunity, so the reserved horizontal
+     scrollbar would eat the entire 16px line. And both axes, not just y: left
+     visible, that same unbreakable text propagates sideways overflow into the
+     wrapper — whose overflow-x computes to auto alongside its overflow-y —
+     and paints a 16px horizontal scrollbar there instead. clip contains the
+     element on both axes without creating a scroll container anywhere. The
+     editor above gets away with hidden only because pre-wrap +
+     wrap-break-word means it can never overflow horizontally. */
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-fork-composer-prompt]
+    [data-testid="composer-editor"]
+    ~ div {
+    overflow: clip;
+  }
+}
+
+/* The control row's ghost controls: 20px tall, 12px medium type on a 16px
+   line, a 12px glyph, 8px inline padding, at a 4px radius (Noey's call over
+   the drawn full pill). The named mode and model groups contain only ghost
+   controls; the mode chip is the single exception and owns its styling in
+   `custom/ComposerShell.css`. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  height: 20px;
+  min-height: 20px;
+  gap: 6px;
+  padding-inline: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip])
+  svg {
+  width: 12px;
+  height: 12px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  color: #a6a6a6;
+}
+
+/* Send and stop are the one exception to the pill rule: 24px squares at a 4px
+   radius, drawn as the only filled controls in the composer. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  border-radius: 4px;
+}
+
+/* Flat send (tone="flat"): in dark mode, a send button without stage-channel
+   art — any stage label that is not Dev/Nightly — is flat pure white with a
+   black icon. Dev/Nightly keep the stage-channel fill (tone="channel").
+   Unlayered, so this beats upstream's Tailwind fill; the fenced attribute
+   survives upstream className rewrites. Unmarked or light builds never match
+   and fall through to upstream's primary fill. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-action="stop"] {
+  background: #ea3150;
+}
+
+/* The model pill is the provider's name and a caret, nothing else. Upstream
+   leads it with a ProviderInstanceIcon, but this is the only named model
+   control on the lower row, so the icon is redundant with the word beside it.
+
+   Scoped to the composer: ProviderModelPicker is also used in Settings, where
+   the icon still does the work of distinguishing one configured instance from
+   another.
+
+   The `:not()` is load-bearing rather than decorative. The icon wrapper is the
+   label group's first child and carries no attributes of its own, while the
+   model name is wrapped in a tooltip trigger. If upstream ever drops the icon,
+   the model name becomes the first child — and without this guard the rule
+   would hide the name instead, leaving a pill with nothing but a caret. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-control-row]
+  [data-chat-provider-model-picker]
+  > span:first-child
+  > span:first-child:not([data-base-ui-tooltip-trigger]) {
+  display: none;
+}
+
+/* The mode controls carry leading and interleaved vertical rules, which earned
+   their keep when they trailed the model picker inside the box and needed to be
+   told apart from it. On the control row they are the first thing in the line,
+   so the leading rule divides the controls from nothing at all. The designs
+   separate these with spacing alone.
+
+   Scoped to the left slot, which is the only place that reasoning holds.
+   BranchToolbar sits in the right slot and draws its own separator between the
+   environment picker and the env-mode/branch pair on multi-environment
+   projects; hiding that one merged two groups the design keeps apart. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-control-row-slot="left"]
+  [data-slot="separator"] {
+  display: none;
+}
+
+/* BranchToolbar still ships the wrapper that hung it off the composer's
+   underside — a negative top margin, a fixed inset width, and the padding that
+   cleared the stitched outline. Inside the control row it is just the row's
+   right-hand group, so the wrapper flattens to nothing. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  .chat-composer-context-strip {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  /* Match the context row's pb-2 (8px) above the composer so the space
+     between checkout and branch equals the space under both pills. */
+  gap: 8px;
+}
+
+/* Upstream nests the PR pill with the branch trigger at gap-1 (4px), while the
+   strip itself is 8px between checkout and that pair — so checkout→PR reads
+   loose and PR→branch reads tight. Same 8px on every direct flex child keeps
+   the three chips (and env→checkout when both show) evenly spaced.
+
+   Upstream also gives the checkout group and branch wrapper `flex-1`, and the
+   branch `justify-end` below `md` (plus `md:ml-auto`). That splits the strip
+   into halves and parks the branch at the end of its half — a large empty gap
+   while "Current checkout" truncates. The fork's chips sit in one packed
+   leading cluster; neutralize the grow/end alignment so gap stays 8px. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  .chat-composer-context-strip
+  > .flex {
+  flex: 0 1 auto;
+  justify-content: flex-start;
+  margin-inline-start: 0;
+  max-width: 100%;
+  gap: 8px;
+}
+
+/* The context chips are the filled controls above the surface (checkout /
+   worktree mode and branch). Same selected-surface fill, no hairline. Light
+   mode falls back to upstream's accent; the drawn values are dark-only. */
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-context-chip-bg: var(--accent);
+  --fork-context-chip-bg-hover: var(--muted);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark {
+  /* Opaque resolved fills: unlike the composer, these chips do not own a
+     backdrop-filter and must not expose scrolling message text. */
+  --fork-context-chip-bg: #2a2a2a;
+  --fork-context-chip-bg-hover: #303030;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]) {
+  /* 24px tall, 6px radius. End padding is 2px more than start so the trailing
+     chevron (and the text-only end of Current checkout) don't sit hard against
+     the curve. */
+  height: 24px;
+  min-height: 24px;
+  gap: 6px;
+  padding-inline: 4px 6px;
+  border-radius: 6px;
+  /* 12px, matching the control row's Auto/Build type — Noey's bump over the
+     drawn 10px. */
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  background: var(--fork-context-chip-bg);
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]):is(:hover, [data-pressed], [data-popup-open]) {
+  background: var(--fork-context-chip-bg-hover);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]) {
+  color: #a6a6a6;
+}
+
+/* ---------------------------------------------------------------------------
+   Cool Dark — see `.fork/customizations.yaml#fork-cool-dark-theme`.
+
+   A selectable alternate dark palette: lighter and a touch cooler (cool gray,
+   not blue-slate) than the default fork dark. Placed after the default dark
+   surface / pill / composer / context-chip tokens so Cool Dark wins on both
+   specificity and source order. Same two-block pattern (stage + v2 panel) for
+   the upstream re-declaration reason. Keyed on data-fork-theme so Dark and
+   Cool Dark can coexist; both still carry `.dark` for Tailwind. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] {
+  --background: #1c1e20;
+  --app-chrome-background: #1c1e20;
+  --foreground: #e9eaec;
+  --card: #232628;
+  --card-foreground: #e9eaec;
+  --popover: #232628;
+  --popover-foreground: #e9eaec;
+  --secondary: #2c2f33;
+  --secondary-foreground: #e9eaec;
+  --muted: #2c2f33;
+  --muted-foreground: #90949a;
+  --accent: #2c2f33;
+  --accent-foreground: #e9eaec;
+  --border: #34383c;
+  --input: #34383c;
+  --surface-grain: none;
+  --fork-pill-border: #3c4045;
+  --fork-pill-fg: #e6e7e9;
+  --fork-pill-hover: #2c2f33;
+  --fork-composer-bg: rgb(44 47 51 / 80%);
+  --fork-composer-border: rgb(220 222 226 / 10%);
+  --fork-composer-border-focus: #52565c;
+  --fork-context-chip-bg: #2c2f33;
+  --fork-context-chip-bg-hover: #34383c;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-sidebar-version="v2"] {
+  --background: #232628;
+  --foreground: #e9eaec;
+  --card: #232628;
+  --card-foreground: #e9eaec;
+  --sidebar: #232628;
+  --sidebar-foreground: #e9eaec;
+  --border: #34383c;
+  --sidebar-border: #34383c;
+  --sidebar-stage-fade: #232628;
+  --muted: #2c2f33;
+  --accent: #2c2f33;
+  --accent-foreground: #e9eaec;
+  --muted-foreground: #90949a;
+  --sidebar-muted-foreground: #d5d7da;
+  --fork-sidebar-card-title-receded: #b2b5ba;
+  --sidebar-control-surface: #393d42;
+  --sidebar-row-hover: #2c2f33;
+  --sidebar-row-active: #32363a;
+  --sidebar-row-selected: #32363a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]) {
+  color: #92969c;
+}
+
+/* Optical start padding per chip: the workspace folder glyph carries more
+   empty space in its 12px frame than the branch glyph, so start is 0; the
+   branch combobox needs 6px so its ink clears the curve the same way. Equal
+   specificity with the shared chip rule; source order wins. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="select-trigger"] {
+  padding-inline-start: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="combobox-trigger"] {
+  padding-inline-start: 6px;
+}
+
+/* The workspace select keeps its popup but drops the trigger caret — the drawn
+   chip is icon + label only. The branch chip's caret is its own Lucide glyph,
+   not a select icon, so it stays. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="select-icon"] {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"])
+  svg {
+  width: 12px;
+  height: 12px;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-control-row-slot="right"] {
+  gap: 0;
+}
+
+/* Context usage is the circular readout immediately before model: a 24px
+   button around the ring's own 20px span. The ring's circle only inks ~70% of
+   its frame, so squeezing the span to the drawn 16px leaves a ~11px ring that
+   reads broken next to the 20px controls; the natural art lands at the drawn
+   visual weight. The control-geometry and glyph rules above exclude this
+   button by name because they out-rank anything written here. */
+/* Flex, not block: as a plain div the inline-flex button sits on the text
+   baseline, and the phantom descender space below it shoves the ring above
+   the row's centreline. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-status] {
+  display: flex;
+  align-items: center;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-status] button {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  /* Its hover fill squares off like every other control's. */
+  border-radius: 4px;
+}
+
+/* Down from the span's natural 20px: the ring inks ~70% of its frame, so
+   16px lands a ~11px visible circle beside the 20px controls. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-status] button > span {
+  width: 16px;
+  height: 16px;
 }
 
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
@@ -88,7 +795,6 @@
    copy its dot would resolve to a transparent color. */
 :root[data-fork="noahhendrickson-t3code"],
 :root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
-  --sidebar-row-working: color-mix(in srgb, var(--foreground) 5%, transparent);
   --sidebar-v2-status-working: var(--color-emerald-600);
   --sidebar-v2-status-done: var(--color-emerald-600);
   --sidebar-v2-status-approval: var(--color-amber-500);
@@ -101,10 +807,6 @@
    rather than a descendant one. */
 :root[data-fork="noahhendrickson-t3code"].dark,
 :root[data-fork="noahhendrickson-t3code"].dark [data-sidebar-version="v2"] {
-  /* Matches the rgba(255,255,255,0.08) fill on the working specimen. It lands
-     on the same value as --sidebar-row-hover, so working rows hover to
-     --sidebar-row-active instead — see rowSurfaceClassName in SidebarV2. */
-  --sidebar-row-working: color-mix(in srgb, var(--foreground) 8%, transparent);
   --sidebar-v2-status-working: #24fe8a;
   --sidebar-v2-status-done: #24fe8a;
   --sidebar-v2-status-approval: #ffcd59;
@@ -112,9 +814,57 @@
   --sidebar-v2-status-failed: #ff6b60;
 }
 
+/* ---------------------------------------------------------------------------
+   Dev-server pulse — see `.fork/customizations.yaml#sidebar-v2-dev-server-pulse`.
+
+   The thread card's branch/worktree mark breathes from working-green to the
+   theme's foreground while the port scanner attributes a listening dev server
+   to one of the thread's own terminals. Green is the same
+   `--sidebar-v2-status-working` the trailing mark uses, so "alive" keeps one
+   hue across the card; the far pole is `--foreground` rather than literal
+   white so the light theme pulses toward ink instead of vanishing into the
+   panel.
+
+   The mark is `currentColor` throughout (both fork WorktreeIcon and Lucide's
+   GitBranchIcon), so animating `color` on the svg is the whole mechanism —
+   the duotone's 20% inner nodes ride along for free. `> svg` rather than a
+   bare descendant: the slot also carries text (`sr-only` labels, the branch
+   name) and only the glyph is the signal.
+
+   4s and `alternate`, so a full breath is 8s — slow enough to read as ambient
+   status rather than an alert; every notification-shaped pulse in this app is
+   something blocked on you, and a healthy dev server is the opposite. Under
+   `prefers-reduced-motion` the animation drops and the `color` declaration
+   beneath it keeps the mark statically green, so the state survives without
+   the motion.
+
+   `color` does not composite, so each live row repaints its 12px glyph every
+   frame for as long as the listener runs — same deal the pixel rain already
+   accepts, and at this size a deliberate yes rather than an accident. Rows
+   offscreen pay nothing: `content-visibility: auto` on the li skips them. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-dev-server-live] > svg {
+  color: var(--sidebar-v2-status-working);
+  animation: sidebar-v2-dev-server-pulse 4s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-dev-server-live] > svg {
+    animation: none;
+  }
+}
+
+@keyframes sidebar-v2-dev-server-pulse {
+  from {
+    color: var(--sidebar-v2-status-working);
+  }
+  to {
+    color: var(--foreground);
+  }
+}
+
 /* Pixel rain: the "working" indicator ported from the phanttom Ghostty fork
    (macos/Sources/Features/Terminal/Sidebar/SidebarView.swift, PixelSparkleView).
-   Four columns of drops fall through a 5-row grid, each column with its own
+   Three columns of drops fall through a 5-row grid, each column with its own
    speed and phase; the drop head is bright with an exponential trail above
    it and a sharp falloff below.
 
@@ -680,4 +1430,52 @@
   100% {
     opacity: 0.135;
   }
+}
+
+/* ── Design mode panel surfaces (fork-design-mode) ─────────────────────────────
+   The Figma redesign (t3-fork file, node 193:9686) draws the panel on lifted
+   opaque surfaces with a green accent that is deliberately NOT --primary (fork
+   primary is white in dark mode). Scoped custom properties so the panel/layers
+   components can reference them semantically; light mode falls back to the
+   app's own surface tokens so the panel stays legible outside the dark theme
+   the design was authored in. */
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-design-surface: var(--background);
+  --fork-design-field: var(--muted);
+  --fork-design-selected: var(--accent);
+  --fork-design-accent: #0a7d3e;
+  --fork-design-accent-bg: rgb(69 255 150 / 16%);
+  /* The artboard surround, and NOT theme-derived: canvas mode paints this exact value
+     onto the guest's <html> (engine/vendor/canvas.ts CANVAS_BG) whatever theme the app
+     wears, so the host side has to match it literally or the seam shows. A fork guard
+     pins the two together. */
+  --fork-design-canvas: #3c3c3c;
+}
+
+/* Canvas mode's gray lives on the guest's <html>, inside the webview. At a fixed screen
+   size the webview covers only its fit-scaled rectangle, and the letterbox around it is
+   painted by the webview WRAPPER's own translucent `bg-muted/35` — so the canvas read as a
+   box inside a box. Repainting the wrapper (not the surface slot beneath it, which that
+   translucent layer would tint anyway) makes the entire preview section one continuous
+   canvas. `background-color` beats the utility class at this specificity, and the marker is
+   per-tab, so an inactive offscreen preview is untouched. Only while canvas mode is on: a
+   fixed viewport without it is upstream's plain device preview, and stays that way. */
+:root[data-fork="noahhendrickson-t3code"] [data-preview-viewport][data-fork-canvas="on"] {
+  background-color: var(--fork-design-canvas);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark {
+  /* Surface and field follow the THEME, not the palette the Figma file happened to be
+     drawn in: the panel docks inside the workspace, so a pinned #232527 read as a lighter
+     slab bolted onto it — and drifted further with every alternate theme (Cool Dark's
+     background is #1c1e20). Deriving them means the panel matches whatever surface it is
+     sitting on, including themes that don't exist yet. */
+  --fork-design-surface: var(--background);
+  --fork-design-field: var(--muted);
+  /* Deliberately NOT var(--accent): in this theme --accent and --muted are the same value,
+     so a selected segment would vanish into the field it sits on. A translucent lift works
+     against any surface, which is the whole job of this token. */
+  --fork-design-selected: rgb(255 255 255 / 8%);
+  --fork-design-accent: #45ff96;
+  --fork-design-accent-bg: rgb(69 255 150 / 16%);
 }

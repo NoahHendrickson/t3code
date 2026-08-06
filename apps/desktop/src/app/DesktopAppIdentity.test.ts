@@ -54,7 +54,7 @@ const makeElectronAppLayer = (calls: ElectronAppCalls) =>
         calls.setAboutPanelOptions.push(options);
       }),
     setAppUserModelId: () => Effect.void,
-    requestSingleInstanceLock: Effect.succeed(true),
+    getAppMetrics: Effect.succeed([]),
     isDefaultProtocolClient: () => Effect.succeed(false),
     setAsDefaultProtocolClient: () => Effect.succeed(true),
     setDesktopName: () => Effect.void,
@@ -63,6 +63,8 @@ const makeElectronAppLayer = (calls: ElectronAppCalls) =>
         calls.setDockIcon.push(iconPath);
       }),
     appendCommandLineSwitch: () => Effect.void,
+    onBeforeQuitForUpdate: () => Effect.void,
+    removeCommandLineSwitch: () => Effect.void,
     on: () => Effect.void,
   } satisfies ElectronApp.ElectronApp["Service"]);
 
@@ -193,8 +195,8 @@ describe("DesktopAppIdentity", () => {
         yield* identity.configure;
 
         // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-        assert.deepEqual(calls.setName, ["N3 Code (Alpha)"]);
-        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, "N3 Code (Alpha)");
+        assert.deepEqual(calls.setName, ["no3y Code (Alpha)"]);
+        assert.equal(calls.setAboutPanelOptions[0]?.applicationName, "no3y Code (Alpha)");
         // fork:end fork-app-identity
         assert.equal(calls.setAboutPanelOptions[0]?.applicationVersion, "1.2.3");
         assert.equal(calls.setAboutPanelOptions[0]?.version, "0123456789ab");

@@ -19,13 +19,21 @@
 #   shadows: upstream modules replaced via src/overrides/ — drift-watched
 #   watch:   upstream files carrying Tier-4 inline edits — drift-watched
 #   verify:  guard tests that fail if the customization is silently lost
+#
+# Keep `intent` to the invariants a sync must preserve. Design history,
+# rejected alternatives, and incident write-ups live in
+# .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md — narrative there, contract here.
 
 - id: ci-on-custom
   intent: >
-    Direct pushes to the custom branch run the full CI suite. Upstream's CI
-    triggers on pull_request and pushes to main only; custom is this fork's
-    working branch, so a push to it (like a merged sync) must be validated
-    the same way main is upstream.
+    CI runs on pushes to custom and does not run on pushes to main. Custom is
+    this fork's working branch, so a push to it (like a merged sync) must be
+    validated the way main is upstream. Main is the opposite: a pure upstream
+    mirror whose every commit upstream CI already validated, so running the
+    fork's CI there is pure spend — and since the mirror push authenticates
+    with a deploy key (see fork-sync-mirror.yml), which unlike GITHUB_TOKEN
+    does trigger push workflows, main must stay out of the push trigger list
+    or every hourly mirror advance schedules a full CI run.
   tier: 4
   files: []
   shadows: []
@@ -41,11 +49,21 @@
     is installed on pingdotgg but not on this fork, so upstream's labels queue
     forever here. If Blacksmith is ever installed on the fork, this
     customization can be retired wholesale.
+
+    Upstream tests tuned to Blacksmith's speed can sit close enough to their
+    timeout to fail deterministically on the slower hosted runners; those get
+    a fenced per-test timeout raise rather than a product change, because the
+    underlying cost is upstream's to fix and diverging in hot upstream logic
+    buys a conflict on every sync. Current carrier:
+    imageCompression.test.ts's give-up path (~15 encodes of an 8 MB stub
+    through chunked base64 — deterministic work, not flake). No guard asserts
+    these hunks; losing one turns CI red by itself, which is the enforcement.
   tier: 4
   files: []
   shadows: []
   watch:
     - .github/workflows/ci.yml
+    - apps/web/src/lib/imageCompression.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
@@ -56,12 +74,30 @@
     Fork Workflow section pointing to .fork/AGENTS.md, which defines the
     branch model (work from custom, never touch main) and the placement
     ladder for fork changes.
+    AGENTS.md also carries the fork-authored Change Scope section, fenced as
+    fork-change-scope, and it must sit ahead of upstream's first section
+    heading: it is the scope contract an agent reads before upstream's own
+    guidance, not an appendix. Upstream owns the rest of the document — a sync
+    takes upstream's rewrite wholesale and re-seats these two fenced sections,
+    Change Scope at the top and Fork Workflow at the bottom.
+    CLAUDE.md is a Tier-4 inline edit the fork owns outright, and it
+    deliberately diverges from the blob upstream ships. Upstream's committed
+    symlink target carries a trailing newline, so it names a file that cannot
+    exist and CLAUDE.md resolves to nothing — upstream fixed that in 5e13f5357
+    and reintroduced it in 6891c77d3, so it recurs. The fork's blob is the
+    9-byte target with no newline. Resolve any sync conflict on CLAUDE.md by
+    keeping the fork's side; taking upstream's restores the bug and silently
+    strips the rules from every Claude agent. It is the one Tier-4 edit that
+    cannot carry the usual begin/end fence comments: a symlink's blob is its
+    target verbatim, so a comment marker inside it would break the very link
+    the marker exists to describe. The watch entry is the whole fence.
   tier: 4
   files:
     - .fork/AGENTS.md
   shadows: []
   watch:
     - AGENTS.md
+    - CLAUDE.md
   verify:
     - apps/web/src/__fork_guards__/forkWorkflowDocs.test.ts
 
@@ -85,6 +121,27 @@
     - .github/workflows/release.yml
   verify:
     - apps/web/src/__fork_guards__/releaseUpstreamOnly.test.ts
+
+- id: relay-upstream-only
+  intent: >
+    The relay production deploy never runs from this fork. deploy-relay.yml
+    fires on every push to main and deploys with live Cloudflare, PlanetScale,
+    Clerk and APNs credentials; on the fork a push to main is the hourly
+    mirror advancing over unreviewed upstream code, authenticated by a deploy
+    key that — unlike GITHUB_TOKEN — does trigger push workflows. Before this
+    gate existed the runs were stopped only by the same two accidents
+    release-upstream-only records: Blacksmith runner labels the fork cannot
+    schedule, and token loop-prevention the deploy key retired. Gate the job
+    on the repository being upstream, independent of runner labels, so
+    installing Blacksmith here can never start deploying production from the
+    fork.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - .github/workflows/deploy-relay.yml
+  verify:
+    - apps/web/src/__fork_guards__/relayUpstreamOnly.test.ts
 
 - id: fork-desktop-release
   intent: >
@@ -116,50 +173,101 @@
 - id: fork-app-identity
   intent: >
     A packaged fork build is a different application from an installed
-    upstream release, and the two never share state. Upstream's release and
-    this fork's build are both non-development builds, so every identity
-    upstream derives from "is this a dev build" collapses onto the same value
-    for both: the same bundle id, the same "T3 Code (Alpha).app" path in
-    /Applications, the same ~/.t3 state tree holding state.sqlite and secrets,
-    and the same Electron user data directory. Installing a fork build
-    therefore offered to replace the real app, and running one would have
-    adopted its live database — including the legacy directory upstream
-    migrates from, which is why legacyUserDataDirName is redirected too rather
-    than left pointing at "T3 Code (Alpha)". The fork presents as "N3 Code":
-    bundle id com.t3tools.t3code.fork (unchanged across renames — it is the
-    stable identity macOS keys on), installs as "N3 Code.app", ships
-    N3-Code-* artifacts, packages placeholder "N" lettermark art from
-    assets/fork on all three platforms, and keeps all filesystem state under
-    the fork-owned base directory ~/.t3-fork (also stable across renames, so
-    display renames never orphan state).
+    upstream release, and the two never share state. Both are non-development
+    builds, so every identity upstream derives from "is this a dev build"
+    collapses onto the same value for both — bundle id, /Applications path,
+    the ~/.t3 state tree, and the Electron user data directory — and a fork
+    build would otherwise offer to replace the real app and adopt its live
+    database. legacyUserDataDirName is redirected too, so a fork build never
+    adopts the legacy directory upstream migrates from.
+    The fork presents as "no3y Code": bundle id com.t3tools.t3code.fork,
+    installs as "no3y Code.app", ships no3y-Code-* artifacts, packages the
+    green-grid mark from assets/fork on all three platforms (plus web splash
+    and favicon), and keeps all filesystem state under ~/.t3-fork. The bundle
+    id and the base directory are the stable identities and must never change
+    across display renames; display strings are safe to rename precisely
+    because those two are held stable.
     Isolation is forked at the base directory, not the "userdata" leaf,
     because the packaged app is two processes: the desktop resolves its own
     state directory and hands only baseDir (as bootstrap t3Home) to the
     bundled server child, which independently derives its stateDir, caches/
-    and worktrees/ from it. A desktop-side leaf rename shipped in v0.1.1 and
-    left the server child writing the real ~/.t3/userdata — see
-    .fork/notes/FORK-DATA-ISOLATION-HANDOFF.md. Moving the base keeps both halves on
-    upstream's own leaf derivations and isolates all three shared directories
-    at once, with no fork hunks in apps/server. Development paths are
-    deliberately untouched: `vp dev` in this repo is already the fork, dev
-    keeps ~/.t3/dev, and renaming it would strand existing dev state. The URL
-    scheme is also deliberately left shared — t3code:// is the app's own
-    internal origin, not just a deep-link handler, so changing only the
-    registration would be incoherent; two installed apps contend for the
-    scheme, which is untidy but not destructive. The in-app web UI (splash,
-    favicon, resolveDesktopWebAssetBrand) deliberately keeps upstream's T3
-    branding for now — the rebrand covers OS-facing identity (bundle, Dock,
-    handler picker, /Applications, artifacts), not the rendered app. An
-    explicit T3CODE_HOME still overrides the fork base on both halves, with
-    one refused value: upstream's own ~/.t3, which a non-development build
-    rejects at startup rather than opening the real app's database. Known
-    carve-out: the WSL backend bootstrap deliberately omits t3Home, so
+    and worktrees/ from it. Moving the base keeps both halves on upstream's
+    own leaf derivations and isolates all three shared directories at once,
+    with no fork hunks in apps/server. What must stay true is that no fork
+    surface resolves to upstream's live ~/.t3/userdata. An explicit
+    T3CODE_HOME still overrides the fork base on both halves, with one refused
+    value: upstream's own ~/.t3, which a non-development build rejects at
+    startup rather than opening the real app's database.
+    Development paths carry no fork rename — `vp dev` in this repo is already
+    the fork — but since upstream a17cbc3b4, dev state in a linked git
+    worktree is the worktree's own gitignored .t3 with a userdata leaf
+    (dev-runner exports it as T3CODE_HOME, so the server reads the base as
+    explicit). Because baseDir also carries caches/ and worktrees/, a
+    worktree's session checkouts land inside the repo tree, which is why .t3
+    is excluded from the test, fmt and lint discovery lists in vite.config.ts
+    and from the four .repos exclusions in .vscode/settings.json, the way
+    .repos already was.
+    The rendered app carries the name too: the sidebar brand reads
+    APP_BASE_NAME, drops the T3 wordmark, and pairs the name with the
+    designer-exported 24px pixel mark owned by fork-sidebar-chrome.
+    branding.ts's bridge-less fallback points at the fork's own constant
+    instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
+    apps/web/public for local/dev and into the packaged desktop client at
+    build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
+    path). The layered Icon Composer projects in assets/fork/app-icon.icon and
+    assets/fork/dev-app-icon.icon are the Figma source of truth (file t3-fork,
+    node 168:6364), so the surrounding tile receives the system Liquid Glass
+    treatment on macOS without rasterizing the mark. Production keeps the Figma
+    green background; development uses orange so installed variants remain
+    distinguishable in the Dock. Glass stays off on the mark layer itself so
+    the pixel grid remains crisp; the system treatment belongs to the
+    surrounding tile. The macOS Dock
+    exports add only a transparent outer canvas around the rendered artwork,
+    preserving the pixel art while matching the standard Mac icon footprint.
+    The local dev splash and favicons use the same orange family, while packaged
+    builds stamp the green production family. The Linux PNG and Windows ICO are
+    derived from the release 1024 render (the ICO embeds PNG entries at
+    16–256px), so every packaged channel carries the same artwork. Filenames
+    still say n3-* for path stability.
+    Deliberately shared: the t3code:// URL scheme stays shared (it is the
+    app's own internal origin, not just a deep-link handler — two installed
+    apps contend for it, untidy but not destructive).
+    Known carve-out: the WSL backend bootstrap deliberately omits t3Home, so
     WSL-side state is not isolated by this customization.
+    Known carve-out: hosted web (`apps/web/vercel.ts`) still runs
+    apply-web-brand-assets.ts with the Vercel channel and stamps upstream
+    production/nightly icons over the fork public/ set at deploy time.
+    Known carve-out: `npx t3` publish (`apps/server/scripts/cli.ts`
+    preparePublishIcons) still resolves upstream icons via
+    resolveWebAssetBrandForPackageVersion into dist/client.
+    Known conflict: `pnpm icons:export` writes blueprint development art
+    into apps/web/public via DEVELOPMENT_PUBLIC_ICON_OVERRIDES; after a
+    brand export the fork public icons must be re-copied from assets/fork
+    (or icons:check will report them stale / the byte-equality guard fails).
+    History — the v0.1.1 leaf-rename incident, the N3→no3y rename, and the
+    pre-a17cbc3b4 dev-state claim — is in
+    .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 4
   files:
+    - apps/web/src/custom/forkBranding.ts
+    - assets/fork/app-icon.icon/Assets/mark.svg
+    - assets/fork/app-icon.icon/icon.json
+    - assets/fork/dev-app-icon.icon/Assets/mark.svg
+    - assets/fork/dev-app-icon.icon/icon.json
     - assets/fork/n3-macos-1024.png
+    - assets/fork/n3-macos-dock.png
+    - assets/fork/n3-dev-macos-1024.png
+    - assets/fork/n3-dev-macos-dock.png
     - assets/fork/n3-universal-1024.png
     - assets/fork/n3-windows.ico
+    - assets/fork/n3-dev-web-apple-touch-180.png
+    - assets/fork/n3-dev-web-favicon-16x16.png
+    - assets/fork/n3-dev-web-favicon-32x32.png
+    - assets/fork/n3-dev-web-favicon.ico
+    - assets/fork/n3-web-apple-touch-180.png
+    - assets/fork/n3-web-favicon-16x16.png
+    - assets/fork/n3-web-favicon-32x32.png
+    - assets/fork/n3-web-favicon.ico
   shadows: []
   watch:
     - apps/desktop/src/main.ts
@@ -167,10 +275,52 @@
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/app/DesktopEnvironment.test.ts
+    # The v0.0.32 pre-ready refactor: identity and state-dir logic that never
+    # reads DesktopEnvironment, so fork values are restated there under
+    # fences. The sync that introduced these files shipped WM class "t3code"
+    # and a ~/.t3 settings read unnoticed — hence the watch.
+    - apps/desktop/src/app/DesktopStatePaths.ts
+    - apps/desktop/src/app/DesktopEarlyElectronStartup.ts
+    - apps/desktop/src/app/DesktopEarlyElectronStartup.test.ts
+    - apps/desktop/src/app/DesktopPreReadyPlatform.ts
+    # Unfenced known carve-out: on packaged Linux this registers upstream's
+    # t3code-url-handler.desktop in ~/.local/share/applications and claims
+    # x-scheme-handler/t3code via xdg-mime. The scheme itself is deliberately
+    # shared (see intent), but the desktop-entry FILENAME collides with an
+    # installed upstream release's — last writer wins. Revisit before any
+    # packaged Linux fork release.
+    - apps/desktop/src/app/DesktopLinuxUrlHandler.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
+    - apps/desktop/scripts/electron-launcher.mjs
     - apps/server/src/config.ts
+    - apps/web/src/branding.ts
+    - apps/web/src/branding.test.ts
+    - apps/web/src/components/sidebar/SidebarChrome.tsx
+    - apps/web/public/apple-touch-icon.png
+    - apps/web/public/favicon-16x16.png
+    - apps/web/public/favicon-32x32.png
+    - apps/web/public/favicon.ico
+    - apps/desktop/resources/icon.png
+    - apps/desktop/resources/icon.ico
+    - apps/desktop/resources/icon.icns
+    - packages/shared/src/devHome.ts
+    - packages/shared/src/hostProcess.ts
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
+    # Shared web-icon override builder + apply path packaging reuses for
+    # FORK_WEB_ICON_ASSETS (no twin copy pipeline in the packaging script).
+    - scripts/lib/brand-assets.ts
+    - scripts/apply-web-brand-assets.ts
+    # icons:export can overwrite apps/web/public with blueprint art — see
+    # Known conflict in intent.
+    - scripts/export-brand-icons.ts
+    # Hosted-web / npx-t3 surfaces still stamp upstream channel icons — see
+    # Known carve-out lines in intent.
+    - apps/web/vercel.ts
+    - apps/server/scripts/cli.ts
+    - scripts/dev-runner.ts
+    - vite.config.ts
+    - .vscode/settings.json
   verify:
     - apps/web/src/__fork_guards__/forkAppIdentity.test.ts
 
@@ -217,22 +367,127 @@
 
 - id: sidebar-v2-card-rows
   intent: >
-    Sidebar V2 thread rows are restyled as two-line cards: title first, an
-    11px metadata line under it, 16px radius instead of 6px, and the status
-    text labels ("Working", "Approval") replaced by a single 16px mark in a
-    fixed trailing slot. The mark's form carries the state — falling pixels
-    while the agent runs, a static dot once it stops, a clock for woke — and
-    the hue only reinforces it, which is the vocabulary the phanttom Ghostty
-    sidebar uses. Working takes emerald from that design rather than the sky
-    the mobile Live Activity still uses; the divergence is deliberate and
-    mobile has not been migrated. The status palette and the rain keyframes
-    live in the Tier 1 stylesheet; only the six --color-sidebar-v2-* utility
-    registrations sit inline in index.css, fenced as
-    fork:sidebar-v2-status-palette, because Tailwind reads utility names from
-    the @theme block alone and will not see them anywhere else.
+    Sidebar V2 thread rows are three-line cards at 8px radius: a title line, a
+    repo line (project plus branch), and a meta line whose two halves sit in
+    fixed corners — PR number and diff counts on the left, model label and
+    runtime glyph on the right. Splitting repo from meta is the point: the two
+    things you compare across rows, what a thread is and how big it got, are
+    then always at the same x. Upstream's terminal-status glyph (#4712) rides
+    the repo line after the branch cluster, handed in pre-built as a required
+    `terminalSlot` — required like `prSlot`, so a sync resolution that drops
+    the call-site line fails the typecheck instead of silently un-porting the
+    feature from the card variant.
+
+    Surface encodes interaction and nothing else. A row is filled on hover and
+    when selected or routed to; it is never filled because of its status.
+    Done and Idle recede their title colour at rest (restored on hover or
+    selection), per the component set — Working, Approval, Input and Failed
+    keep the foreground title. Every title is Regular at 0.875rem (14px);
+    colour alone carries the receded/forward distinction, which is why
+    receded titles use --fork-sidebar-card-title-receded (#c0c0c0) rather
+    than lifting the shared --muted-foreground channel (see
+    fork-surface-palette). The size is literal on threadCardTitleClassName so
+    the panel's --text-xs/--text-sm remap to 13px cannot shrink it. The repo
+    line (project + branch) is 0.75rem (12px) for the same reason. A card's
+    surface reads the same Done/Idle predicate as its title (`cardRecedes`);
+    upstream's shouldRecede survives for the slim shelves only, where
+    brightness still encodes unread-ness — the card delegates unread to the
+    Done dot.
+
+    Status text labels ("Working", "Approval") are replaced by a single 14px
+    mark in a fixed leading slot on the title line, and the slot is never empty
+    — idle draws a hollow ring rather than falling back to a variable-width
+    relative-time string, so the title text and the rows below share one left
+    edge. Repo and meta rows indent 24px (the mark's 14 plus the title gap's
+    10) so they align under the prompt rather than under the mark. The mark's
+    form carries the state — falling pixels while the agent runs, a static
+    dot once it stops, a clock for woke, a ring for idle — and the hue only
+    reinforces it. Working is emerald, deliberately diverging from the sky
+    the mobile Live Activity still uses; mobile has not been migrated.
+
+    Working duration and the hover actions stay on the title line's trailing
+    cell. Status no longer shares that cell, so the opacity-crossfade hit-path
+    bug that used to eat settle clicks cannot return.
+
+    Card metrics from Figma t3-fork node 113:3718: px-4 py-8 (4/8). The
+    title line (status + prompt) is 14px — status slot, rain, and title
+    leading all share that height; at 16px the rain read as hanging below
+    the prompt. Repo line stays 16px. Title-to-status gap is 10px
+    (gap-2.5) so 14+10 keeps the prompt lined up with the group header
+    label (24px folder + 4px gap); repo/meta indent 24px. Drawn card
+    heights are 54 / 77. Row gap is 8px (gap-2), not Figma's 4.
+    Cards sit 4px apart — the list ul's gap-1 (fork retune of Figma's 2px /
+    gap-0.5, for breathing room on the lifted panel); the li itself carries
+    no padding. List pad 8 puts the leading status at 12px — the same axis as
+    Search and the group folder icon. contain-intrinsic-size is 54 / 77 —
+    the drawn card exactly (same as the heights above). Branch and runtime
+    glyphs are 14px; the runtime mark sits in a 24px box flush with the
+    card edge so it shares the settle/discard centre on the trailing axis
+    (a lone 14px + pr-[3px] was 2px off once actions grew to size-6). The
+    model label is caption 11/15 on either line it lands on. The
+    branch/worktree cluster (mark plus name) reads at text-foreground/70 —
+    closer to the title than the surrounding muted-foreground/70 meta —
+    so the checkout stays legible without matching the prompt.
+
+    A card is three lines only when it has a PR or a diff for the third, or does
+    not yet know whether it has a PR; with a known-empty third line the model and
+    runtime move up beside the branch and the card closes at two lines. The
+    unknown case matters as much as the empty one: whether a thread has a PR is
+    the answer to a per-row VCS query, and collapsing before it lands would grow
+    every PR card 15px mid-scroll as the queries resolve. Nothing else varies the
+    height: an absent branch or model leaves its half of a row empty rather than
+    closing the row up. The li's contain-intrinsic-size is chosen by the same
+    predicate the component renders from, so it can never claim a height the row
+    does not have, and it measures the li — which carries no padding of its own,
+    so the hints equal the drawn heights of 54 and 77. Retune the card's
+    vertical padding or row gap and both hints move with it, or the scrollbar
+    misreports every skipped row by the difference.
+
+    A thread that runs in a worktree of its own draws a worktree mark where the
+    branch mark otherwise goes — replacing it, not joining it. That slot already
+    answers "which code is this on", and the two facts are not independent: a
+    thread on a worktree is on that worktree's branch, so a second glyph would
+    spend ~14px of a line whose branch name is already capped and truncating to
+    restate what the first implies. The predicate is the one the row's own git
+    cwd and env mode come from, so the mark cannot claim a worktree the rest of
+    the row is not treating as one, and the worktree case carries a `sr-only`
+    label because both marks are decorative to a screen reader.
+
+    The mark is fork-drawn (Figma t3-fork, node 86:6226), not Phosphor: nothing
+    in that set says "this thread has a checkout of its own", and the nearest
+    candidates are folders, which on this line read as the project. It is a 32
+    viewBox at stroke 2 with its two outer nodes at 20% — Phosphor's 256-at-16
+    ratio and duotone convention — so it matches the weight of the set around it
+    at any size. Retune the viewBox without the stroke and it stops. The Figma
+    export's #1E1E1E artboard and clip path are dropped and every paint is
+    currentColor; shipping either literal gives a dark square in light mode.
+
+    Diff counts bind to --success-foreground / --destructive-foreground rather
+    than emerald/red literals, so they hold up in light mode. They render only
+    once latestTurnDiff() returns data: it is an upstream stub returning null
+    today, and the slot is built to light up when the shell projection grows
+    checkpoint summaries.
+
+    The status palette and the rain keyframes live in the Tier 1 stylesheet;
+    only the five --color-sidebar-v2-status-* utility registrations sit inline
+    in index.css, because Tailwind reads utility names from the @theme block
+    alone and will not see them anywhere else.
+
+    Upstream's v0.0.32 thread pinning renders on the fork card as a 12px
+    PinIcon after the title text (upstream draws it on its project line,
+    which the fork card does not have). Pinned cards paint flat above the
+    grouped/flat active sections, closed by upstream's thin divider — a pin
+    freezes prominence across projects, so it deliberately escapes project
+    grouping — and they lead orderedThreads so keyboard order matches paint
+    order. Pin/unpin plumbing (context menu, decider rules, snooze-beats-pin
+    classification) is upstream's; the fork re-seats the rendering and adds a
+    hover pin action to the card (owned by sidebar-v2-row-action-hit-area).
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
+    - apps/web/src/custom/SidebarV2ThreadCardMeta.tsx
+    - apps/web/src/custom/icons/WorktreeIcon.tsx
+    - apps/web/src/custom/sidebarV2RowPolicy.ts
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
@@ -240,6 +495,695 @@
     - apps/web/src/index.css
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
+    - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
+
+- id: sidebar-v2-error-tooltip
+  intent: >
+    The thread tooltip shows the session's actual last error, not a literal.
+    Upstream's v0.0.30 tooltip restyle (dd5ea3248) flattened the line to the
+    string "Error occurred", which removed the only place the sidebar
+    surfaced what failed — diagnosing a dead session meant opening it, and
+    this fork's users drive many agents at once from that sidebar. The
+    message wraps rather than truncating: an error's tail (exit codes,
+    paths) is routinely the useful half, and the tooltip is already the
+    row's overflow surface. A sync that reintroduces the literal is a
+    regression even though it renders fine.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2ErrorTooltip.test.ts
+
+- id: sidebar-v2-dev-server-pulse
+  intent: >
+    The thread card's branch/worktree mark pulses working-green to foreground
+    while the port scanner attributes a listening server to that thread, so
+    the row whose checkout the running server is actually serving can be
+    picked out of the sidebar at a glance. The row's tooltip names what the
+    mark can only signal — `localhost:<port>` for local threads, `port <n>`
+    for remote ones, plus a `(+n)` overflow — so the pulse is never the only
+    way to learn the port. The host split is load-bearing: a remote thread's
+    listener is on the remote host, and unlike v1's Globe (a button routed
+    through openDiscoveredPort to the right environment, where "localhost" is
+    loose phrasing around a correct action) this label is inert text, so it
+    must not name a machine the port is not on.
+
+    Attribution is the port scanner's existing terminal→thread mapping and
+    nothing more: a listener counts for a row only when the scanner's
+    subprocess inspection traced it to one of the thread's own T3 terminals
+    (`useThreadDiscoveredPorts`, `port.terminal.threadId`). A server started in
+    an external shell arrives with `terminal: null` — the scanner knows its pid
+    but not its cwd — and must light up nothing rather than a guessed row. The
+    fuller feature (resolving the pid's cwd server-side and matching it against
+    thread.worktreePath) is deliberately out of scope: it needs an apps/server
+    + contracts change, recorded here so a future pass knows the seam.
+
+    Second known limitation, broader than the first: when the scanner's
+    process probe fails (`lsof` absent, its 5s timeout blown, any
+    ProcessRunError), PortScanner falls back to probing COMMON_DEV_PORTS and
+    every entry it yields carries `pid: null, terminal: null` — attribution is
+    impossible in that mode, so no row can ever pulse, and nothing surfaces
+    the degradation; it is indistinguishable from "no servers running".
+    Relatedly, the lsof output is truncated at 1MiB, so on a host with very
+    many listeners a port can drop out of one snapshot and return the next,
+    which this mark would render as a flicker. Both are scanner behaviours,
+    not introduced here — recorded because this is the first UI that turns
+    them into peripheral-vision motion.
+
+    Naming is deliberately restrained for the same reason: the scanner keeps
+    every listening TCP socket — no port range, no process-name filter, no
+    HTTP probe — so a debugger port, an ssh tunnel, or a database all light
+    the mark. The accessible text therefore says "Server listening on port N"
+    (what is actually known), never "dev server running", matching upstream's
+    own restraint ("Open localhost:5173").
+
+    Cost: a card row subscribes to its thread's environment discovered-servers
+    stream, which retains the server-side port scanner (3s lsof poll,
+    reference-counted) while subscribed. Stated precisely, because v2 is an
+    opt-in replacement for v1, not a neighbour: enabling v2 adds this standing
+    cost outright for its users — a v2 session with the sidebar open runs the
+    lsof poll for the whole session even if the preview pane is never opened,
+    where before this change nothing retained the scanner. It is the same
+    cost every v1 user already pays (Sidebar.tsx calls the identical hook per
+    row, unconditionally), which is the precedent for accepting it — not
+    evidence that nothing changed. Subscriptions key on thread.environmentId,
+    so a sidebar listing threads across M environments holds M streams and
+    every one of those hosts runs the 3s poll for the session — worth naming
+    because it leaves the machine. Slim (settled/snoozed) rows never draw the
+    card meta, so they pass null and skip the subscription entirely rather
+    than retaining the scanner for rows that cannot pulse.
+
+    Green is `--sidebar-v2-status-working` — one hue for "alive" across the
+    card — and the far pole is `--foreground`, not literal white, so light
+    mode pulses toward ink instead of vanishing. A full breath is 8s (4s
+    alternate): ambient status, not an alert — notification-shaped motion in
+    this app means "blocked on you", which a healthy dev server is the
+    opposite of. Both marks are currentColor, so animating `color` on the svg
+    is the entire mechanism; `color` does not composite, so each live row
+    repaints its 12px glyph every frame — accepted deliberately, same as the
+    pixel rain, with content-visibility sparing offscreen rows. The state also
+    rides in `sr-only` text after the branch name (identity before transient
+    state) because the motion is invisible to a screen reader, and
+    `prefers-reduced-motion` drops the animation onto a static working-green
+    mark rather than dropping the state.
+  tier: 4
+  files:
+    - apps/web/src/custom/SidebarV2ThreadCardMeta.tsx
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+    - apps/web/src/portDiscoveryState.ts
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2DevServerPulse.test.ts
+
+- id: sidebar-v2-project-grouping
+  intent: >
+    Sidebar V2's active cards can be grouped under project headers, from a
+    switch at the top of the fork's projects filter menu. Upstream's flat list
+    stays the default, and the preference is device-local (localStorage) rather
+    than a field in packages/contracts.
+
+    Both modes are one list shape. buildActiveThreadSections returns sections
+    for either, flat being the single headerless section, and the render and the
+    keyboard-order flattening both read that one sequence. They must never
+    become two derivations that agree by convention.
+
+    orderedThreads is the flattened section order. Three consumers are
+    positional and address the wrong row if it disagrees with paint order:
+    resolveAdjacentThreadId (arrow navigation), rangeSelectTo (shift-select) and
+    planForwardNavigation, which picks where you land after settling or snoozing
+    the thread you are viewing — under grouping that is the next card in the
+    grouped order, which may be the next project's first card. The number-key
+    jump labels are keyed by thread rather than by index, so they cannot
+    misaddress; they are numbered from this list, so a stale order only shows
+    them out of sequence down the screen.
+
+    Only the active cards group, and only where a header says something the
+    screen does not already: the snoozed and settled shelves stay flat, and
+    grouping is skipped whenever one project is on screen, whether by scope or
+    by the sidebar having a single project. The switch is disabled with a stated
+    reason in those states rather than accepting a click that does nothing.
+
+    Section order is projectGroups' own order and thread order inside a section
+    is the order it arrives in, so grouping introduces no second notion of
+    sorting and cannot disagree with the user's project sort order.
+
+    A thread whose project resolves to no group collects in a trailing section
+    whose header carries a null display name. It is never dropped, and never
+    trails headerless under the previous project. The label for that section is
+    the render site's, so the bucketing stays free of user-facing copy.
+
+    A grouped card hides its project name rather than dropping it: the header
+    carries it on screen, and the card keeps it for assistive tech, which has no
+    "two rows up". Grouped mode must never convey less than flat mode.
+
+    The header carries a trailing plus that starts a thread in that project. The
+    chrome row's "New thread" must ask which project when there are several — it
+    opens the new-thread-in palette — and a grouped header has already answered
+    that question, so its plus skips the picker.
+
+    Which environment it lands in is buildSidebarProjectPickerEntries' answer,
+    reached by calling it rather than by restating it. A logical project can
+    span environments, and that function prefers the member matching the thread
+    you are reading, falling back to the group's canonical ref — which
+    deriveSidebarProjectSnapshots picks as the primary-environment member, i.e.
+    preferentially the local one. Taking that canonical ref directly is not the
+    same rule: reading a remote thread of a project that also has a local
+    member, the palette starts remote and the shortcut would start local. Two
+    entry points into the same door must not disagree about which room they
+    enter, and sharing the derivation is the only version of that which cannot
+    drift back apart. The unresolved-project section names no project and so
+    renders no plus — the one header without one, gated on that bucket's own
+    UNGROUPED_PROJECT_KEY. Not on its label being null: the label correlates
+    today, and one signal carrying two meanings is how it stops correlating.
+
+    The heading role sits on the label span, not on the header row. The row also
+    holds the collapse control and the new-thread plus, and a heading containing
+    either takes that control's text into its own accessible name, so the
+    landmark announcing which project a run of cards belongs to would read
+    "<project> Collapse <project>" (or the plus's name). The row is a
+    presentational li and the label is the heading.
+
+    Groups collapse from the header row. Hovering anywhere on the row swaps the
+    folder mark for a chevron; clicking the mark or the label toggles. At rest
+    the mark is FolderOpen when expanded (Figma 113:3718 Frame 48) and
+    FolderClosed when collapsed (Figma 151:6742). Collapse is an absolutely-
+    positioned hit layer behind the row; the new-thread plus paints above it
+    (z-10) so its clicks start a thread instead of toggling — a flex-1
+    collapse sibling was eating them. Row-hover still swaps the mark when the
+    pointer is over the plus; the chevron rotates to point at the label while
+    collapsed. Collapsed keys persist in localStorage (device-local, like the
+    grouping switch). A collapsed section hides its cards from both paint and
+    keyboard order, with the open route thread kept visible — the same
+    exception the snoozed shelf makes for a deep-linked row — so collapse
+    cannot bury the thread you are viewing.
+
+    The header has no own horizontal pad — the list's 8px is the edge. The
+    folder sits in a 24px box so its 16px glyph centres on the same 12px axis as
+    Search and each card's status; gap-1 to the label (FolderOpen at
+    icon tint, the label at foreground — Figma 113:3718 Frame 48); 4px to the
+    first card via the list ul's gap-1 (fork retune of Figma's 2px), and
+    mt-3.5 plus that gap makes 18px between groups. The trailing plus takes
+    no nudge: with no row padding to compensate for, a flush 24px button
+    already centres on the trailing axis.
+
+    The ref index is memoized on the project list alone; the thread list churns
+    on the clock, capability descriptors and per-row PR states, none of which
+    change which project a ref belongs to.
+
+    Four Tier-4 fences carry this in SidebarV2.tsx: the import, the row prop,
+    the section/order memos, and the render hunk. The render hunk is the one
+    that sits inside upstream's own list body and so the one most likely to be
+    lost in a sync; the guard test asserts it emits headers from the same
+    sections it renders threads from, because a silent loss leaves a flat
+    sidebar over a grouped ordered list.
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2ProjectGrouping.ts
+    - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+    # Shared with fork-sidebar-chrome, which owns the two rows themselves and
+    # their metrics; this entry owns only the grouping switch inside the scope
+    # row's menu.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
+
+- id: sidebar-v2-list-animation
+  intent: >
+    Sidebar V2's thread list mounts `@formkit/auto-animate` so rows ease when
+    they leave or reflow. AutoAnimate's default *insert* path ignores the
+    `{ duration: 150, easing: "ease-out" }` options upstream passes: it holds
+    at opacity 0 for half of a 1.5× ease-in duration, while removals keep the
+    short ease-out scale/fade. Expanding a collapsed project group therefore
+    feels delayed and different from collapsing it, even though both are the
+    same list mutation.
+
+    The fork replaces that options object with a plugin whose add keyframes
+    are the reverse of remove (same duration, same easing, same scale/opacity
+    endpoints). Remain keeps AutoAnimate's FLIP, including the right/bottom-
+    anchored short-circuit. Plugins skip AutoAnimate's prefers-reduced-motion
+    gate, so the plugin itself collapses duration to 0 when that preference
+    is set.
+
+    One Tier-4 fence in SidebarV2.tsx carries the import and the
+    `autoAnimate(node, …)` call. A sync that restores the options object
+    silently brings the asymmetric open back.
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2ListAnimation.ts
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2ListAnimation.test.ts
+    - apps/web/src/custom/sidebarV2ListAnimation.test.ts
+
+- id: sidebar-v2-draft-rows
+  intent: >
+    New thread (project-header plus, chrome plus, shortcut) creates a
+    client-only draft and navigates to /draft/$draftId, but Sidebar V2's
+    list is fed from server shells — so until the first send the card was
+    missing and the sidebar looked empty for the thread you just opened.
+
+    Unpromoted drafts in composerDraftStore.draftThreadsByThreadKey are
+    projected into the same EnvironmentThreadShell shape the list already
+    paints, then folded into the active partition before sort. The card
+    title is the unsaved composer prompt (trimmed/truncated like ChatView's
+    auto-title) or "New thread" when empty — so typing then clicking away
+    leaves a named draft in the list. Prompts are read from getState() when
+    the open route changes, not subscribed per keystroke. Promoted drafts
+    and drafts whose reserved thread id already has a server shell are
+    skipped so the row never doubles.
+
+    Clicking a draft card navigates to /draft/$draftId (not the server
+    thread route). The open draft highlights via its reserved thread id —
+    upstream resolveActiveThreadRouteRef only resolves after promotion.
+    Settle, snooze, and rename are disabled. The settle slot shows an X
+    (Discard draft) on hover instead of Check; the context menu offers the
+    same discard via clearDraftThread. Discarding the draft you are viewing
+    selects the next painted row below (then the row above); it must not
+    fall through to handleNewThread the way settle does. Await the next
+    route (replace: true) before clear — a sync clear while still on
+    /draft/$id races the draft route's missing-session redirect to `/`,
+    and `_chat.index` immediately opens a fresh draft, so the card
+    animates out and back in while the workspace stays on "New thread".
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2DraftRows.ts
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2DraftRows.test.ts
+    - apps/web/src/custom/sidebarV2DraftRows.test.ts
+
+- id: sidebar-v2-row-action-hit-area
+  intent: >
+    This entry owns the size AND the placement of the Sidebar V2 row hover
+    actions; the id predates the alignment half.
+
+    Every Sidebar V2 row hover action — pin/unpin, snooze, settle, un-settle,
+    wake now — is a 24px square with a hover fill. Pin leads the card's hover
+    cell, ahead of snooze (Noey's placement); it is capability-gated like
+    settle/snooze, card-only (slim rows keep pin in the context menu), and
+    toggles between two literal labels so the guard's census counts each.
+    Upstream sizes them from padding around a
+    12px glyph, which lands at 24x18 on a card and 28x18 on a slim row: two
+    different shapes, both under the 24px minimum, on transparent buttons whose
+    edges you cannot see. On an icon-only control the box is the whole target,
+    so undersizing it and hiding it are the same bug twice.
+
+    All of them share SIDEBAR_V2_ICON_BUTTON_CLASS, which is the point: they appear
+    in two row variants, three branches of one ternary and a project header, and
+    the previous drift between them is exactly what a per-call-site class string
+    produces. The three slim-row branches share one placement constant on top of
+    it — they are one control, and three copies is how the set came apart the
+    first time. Every offset below is derived in custom/sidebarV2TrailingColumn
+    with the arithmetic that produced it; call sites name the one meant for them
+    rather than spelling a value out.
+
+    24px is the visual box; on a coarse pointer an invisible child grows it to
+    44px, the trick ui/button and the chrome rows' trailing buttons already use.
+    The row actions are hover-gated and never reach a touch device, but the
+    project header's plus is always rendered and its handler closes the mobile
+    drawer, so it does — and 24px is the WCAG 2.5.8 floor exactly. That floor
+    is a design-wide stance: the Figma chrome draws every icon-only control,
+    the always-on trailing buttons included, at the same 24px box. The class
+    also carries focus-visible, for the reason the hover fill exists: on a
+    transparent button you cannot see where the target ends, and that is as
+    true of keyboard focus as of the pointer. Its ring offset is 1, not the
+    chrome buttons' 2: these buttons sit inside the row surface's
+    overflow-hidden with their edge 4px from the clip boundary, and
+    ring-2 + offset-2 is exactly 4px of shadow — the ring rendered clipped.
+    offset-1 keeps the full ring with 1px to spare.
+
+    The fill is bg-foreground/10, not bg-accent. These sit on top of the row's
+    own hover fill (--sidebar-row-hover), and a foreground alpha is the one
+    value that stays a step brighter than the row beneath it in dark and a step
+    darker in light.
+
+    The card's trailing cell is h-6 rather than the title line's h-4 —
+    a 24px target cannot fit a 16px cell. It is centred in the 16px line, so it
+    overhangs 4px into the card's py-2 above and its gap-2 below, neither of
+    which carries anything to collide with. Status no longer shares this cell —
+    it leads the title line — so the opacity-crossfade hit-path bug that used to
+    eat settle clicks (an opacity-0 status span stacking above the actions)
+    cannot return; elapsed time is the only decoration that still fades here,
+    and it is pointer-events-none.
+
+    Placement: every trailing mark down the sidebar shares one vertical axis,
+    24px in from the panel's content edge — the chrome rows' pe-3 plus half
+    their 24px button. The rows do not share a right edge: chrome ends 12px
+    in, the list rows 8. A card's own px-1 closes that gap, so its flush 24px
+    action cell and its runtime glyph are on the axis as drawn; the project
+    header and the slim rows' right-0 overlay sit on the bare 8px edge and
+    spend me-1 to get back; the shelf chevrons' px-2.5 centres their 12px
+    glyph on the axis by itself. Boxes give up their edges; glyphs keep the
+    axis, which is the thing anyone actually reads. (An earlier derivation
+    assumed the list and chrome columns end at the same place — 4px wrong at
+    the source, and every offset inherited it.)
+
+    The chrome inset carries no scrollbar term. It used to carry the thread
+    list's scroll gutter too; fork-sidebar-chrome now compensates for that
+    gutter in the list's own end padding, so a scrollbar term reappearing here
+    would double-count it and walk both icons back off the column.
+
+    Upstream v0.0.30 reworked its own card's status slot toward the same goal
+    (an absolute actions overlay with focus-within:static and a min-w-8 slot)
+    and put the "Settle" text label back on the card action. Both were
+    declined at the sync: the fork's shared-grid-cell already solves the
+    overlap upstream was chasing — the cell is as wide as whichever state is
+    showing, so the title truncates against the real width — and the text
+    label is what this entry removed in the first place (at 282px it pushed
+    the actions over the title, which now shares their line). A sync that
+    reintroduces either is resolving the conflict backwards. Upstream's
+    matching restyle of sidebarMenuButtonVariants ([&>svg] muted at
+    opacity-60) was kept for upstream surfaces but is displaced on the fork's
+    chrome rows, whose buttons re-assert the /80 tint at full opacity —
+    parent-level [&>svg] outweighs the icon's own class, so without that the
+    fork tint is silently dead and the duotone glyphs double-fade.
+  tier: 4
+  files:
+    # Owned by fork-sidebar-chrome, which sets these rows' metrics; this entry
+    # owns only the trailing inset's 4px alignment term and the icon sizes.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    # The box every icon-only row control shares, and the offsets that put each
+    # trailing glyph on one axis. Split out of sidebarV2RowPolicy, whose subject
+    # is title-recede and row surface.
+    - apps/web/src/custom/sidebarV2TrailingColumn.ts
+    # Owned by sidebar-v2-project-grouping; this entry owns only its plus
+    # button's box and the 2px that puts it on the trailing column's axis.
+    - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/SidebarV2.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2RowActionHitArea.test.ts
+
+- id: fork-surface-palette
+  intent: >
+    The dark shell is not black. The workspace stage is #191919 and the sidebar
+    v2 panel is #1e1e1e — the panel sits slightly above the stage so chrome
+    reads in front of the work surface. Borders are #2d2e2e, row hover #262626,
+    row selected and route-active #2a2a2a. Chrome muted text
+    (--sidebar-muted-foreground) is #e0e0e0 (not upstream's #a3a3a3) so
+    Search / scope / project headers stay readable — and ONLY that shared
+    chrome token: the cards' --muted-foreground stays upstream's #a3a3a3 so
+    meta /70, shelf ghosts, and unread encoding keep their calibration.
+    Done/Idle *titles* alone lift via --fork-sidebar-card-title-receded
+    (#c0c0c0), still below chrome and foreground (#f1f3f7); lifting titles
+    to #e0e0e0 collapsed the receded/forward distinction to ~1.19:1.
+
+    The dark pre-paint / overscroll colour in apps/web/index.html is
+    fork-owned at #161616 so the load flash and rubber-band band do not seam
+    against the hydrated #191919 stage. It was upstream's own value until the
+    v0.0.32 cycle moved upstream to #0a0a0a; a sync taking upstream's
+    constant flashes near-black against the fork stage on every load.
+
+    Every value is flat opaque sRGB, not an alpha over the panel. Alpha
+    compounds — a fill inside a hovered row inside a selected row lands on a
+    colour nobody specified — and these are only correct against #1e1e1e
+    anyway, so freezing them is honest about that. Dark mode therefore clears
+    surface grain: upstream's noise would compound unspecified drift onto every
+    chrome surface this palette freezes.
+
+    Dark --primary and --ring are white (#ffffff), not upstream's blue oklch —
+    focus underlines (border-ring), switches, and primary fills stay
+    monochrome. --primary-foreground is the stage (#191919) so white primary
+    buttons keep contrast. Cool Dark inherits these unless it overrides them.
+
+    Two blocks are required and the second is not redundant: upstream
+    re-declares --background, --card, --border and the whole --sidebar-* family
+    on the panel element itself, and a custom property set only at :root never
+    reaches an element that declares its own.
+
+    Light mode is untouched and keeps upstream's zinc hierarchy. Only the v2
+    panel is repainted; v1 keeps upstream's black so the beta toggle stays a
+    real A/B, which does mean a v1 sidebar sits against the new stage — the
+    stage is global chrome and carries no sidebar-version attribute to key off.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/index.css
+    - apps/web/index.html
+  verify:
+    - apps/web/src/__fork_guards__/forkSurfacePalette.test.ts
+
+- id: fork-cool-dark-theme
+  intent: >
+    Appearance offers Cool Dark as a fourth option alongside System, Light, and
+    Dark. Cool Dark is a lighter, cool-gray dark palette (barely cool, not
+    blue-slate) that coexists with the default fork Dark — selecting it must
+    not replace or alter Dark's #191919 / #1e1e1e fills.
+
+    Cool Dark is a fork palette overlay, not a widened upstream ThemePreference.
+    Upstream t3code:theme stays light|dark|system. The palette is persisted
+    separately in t3code:fork-theme (cool-dark | absent) by custom/forkTheme.ts.
+    Selecting Cool Dark sets upstream theme to dark and stamps
+    data-fork-theme="cool-dark" on :root; Light / Dark / System clear that
+    attribute. A legacy t3code:theme=cool-dark value migrates to theme=dark plus
+    the palette key. main.tsx starts one document-level owner after the fork
+    marker is stamped; it reconciles storage events in every route, while React
+    subscriptions only report the stored preference. Palette snapshots never
+    migrate or write during render. No useTheme override.
+
+    The palette lives in theme.custom.css under
+    :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
+    selector plus [data-sidebar-version="v2"] (panel) — the doubled selector is
+    required for the same upstream re-declaration reason as fork-surface-palette.
+    Stage is #1c1e20, panel #232628 (panel above stage), with cool-gray borders,
+    row fills, composer, pills, and context chips. index.html pre-paints Cool
+    Dark so the load flash matches the stage.
+  tier: 2
+  files:
+    - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/theme.custom.css
+  watch:
+    - apps/web/src/main.tsx
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/index.html
+  verify:
+    - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
+    - apps/web/src/custom/forkTheme.test.ts
+
+- id: fork-sidebar-type-size
+  intent: >
+    Sidebar V2 body type is 0.8125rem (13px at the default root) for project
+    headers and slim shelves. The panel remaps Tailwind's --text-xs and
+    --text-sm (and their --line-height companions) to 0.8125rem / 1rem so those
+    share one size without rewriting each className. Search, New thread, Add
+    project, and the Projects label opt out at 0.875rem (14px) via CHROME_TYPE;
+    card titles and the repo/branch line opt out with literal rem sizes
+    (0.875rem / 0.75rem — see
+    sidebar-v2-card-rows) so the remap cannot flatten them. Rem, not px:
+    a px pin would freeze the sidebar while h-4 and the rest of the app still
+    honour the browser font-size setting. Line-height stays 1rem so the card's
+    h-4 rows scale with the type. Literal captions (text-[11px], text-[10px]
+    for meta, ⌘K, elapsed) stay at their drawn sizes. Scoped to
+    [data-sidebar-version="v2"] under the fork marker; light and dark share
+    the size. Portaled menus outside the panel keep upstream sizes.
+
+    The remap depends on two upstream facts the drift job must watch:
+    apps/web/src/index.css (text scale must stay non-inline @theme so
+    utilities emit var(--text-xs); moving it into this repo's @theme inline
+    block would bake the values and silently ignore the override — the same
+    failure geist-typography documents), and
+    apps/web/src/components/AppSidebarLayout.tsx (sole site rendering
+    data-sidebar-version; dropping the attribute makes the selector match
+    nothing).
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/index.css
+    - apps/web/src/components/AppSidebarLayout.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkSidebarTypeSize.test.ts
+
+- id: fork-sidebar-chrome
+  intent: >
+    The sidebar's collapse toggle lives inside the sidebar header, beside the
+    macOS traffic lights, so it reads as belonging to the panel it collapses
+    rather than as chrome floating over the workspace. It therefore leaves with
+    the panel, so AppSidebarLayout's fixed SidebarControl still exists and still
+    floats — but only while the sidebar is shut, which is exactly the case
+    COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS already reserves space for in every
+    workspace header.
+
+    The sidebar.toggle keybinding stays mounted unconditionally in
+    AppSidebarLayout. Hanging it off the button would unmount it with the
+    sidebar and leave a collapsed panel with no way back but the rail.
+
+    Moving the chrome out took its imports with it, so SidebarV2.tsx's import
+    header is deliberately shorter than upstream's: the ./ui/command, ./ui/kbd
+    and ./ui/menu statements are gone entirely, along with EllipsisIcon, and
+    upstream still imports and uses all of them. That header is the highest
+    traffic conflict region in this file during a sync, and the divergence is
+    intentional rather than a botched resolution — a sync must not restore
+    those imports to make a conflict go away, because nothing in the fork's
+    copy references them any more.
+
+    Same spirit, opposite direction: Sidebar.logic.ts keeps upstream's
+    searchSidebarThreadsByTitle (and its tests) even though nothing in the
+    fork's copy of SidebarV2 renders it. Upstream's inline sidebar thread
+    search (#4769) lives in the chrome this customization replaced, so the
+    2026-08-02 sync deliberately did not adopt its UI; the pure helper stays
+    so a future port into SidebarV2ChromeRows is a design decision, not an
+    archaeology dig. It is an orphan on purpose — do not "clean it up", and
+    do not count its tests as coverage of a rendered path.
+
+    The thread list pays for its own scroll gutter. scrollbar-gutter:stable
+    reserves the scrollbar inside the list's padding box, so the symmetric px-2
+    from Figma 113:3718 spends 8px of air on the left and 8 plus the scrollbar
+    on the right. The list's end padding gives the gutter width back. The gutter
+    itself stays: the scrollbar keeps its lane, the cards are 8px from both
+    edges, and the compensation is meaningless without the gutter that causes
+    it, so the two must move together.
+
+    The width given back is measured, not assumed. --app-scrollbar-width is only
+    true where ::-webkit-scrollbar applies: Firefox sets no scrollbar-width, so
+    it reserves the native scrollbar (~15px) and a token-sized giveback
+    under-corrects, while with macOS overlay scrollbars it reserves nothing at
+    all and the giveback over-corrects. custom/useScrollGutterWidth publishes
+    the browser's own answer (offsetWidth - clientWidth) as
+    --sidebar-list-gutter, so the rule holds on every engine.
+
+    One source for the 8px: both sides read --sidebar-list-pad. Spelled twice —
+    once as a start padding and once as a base to subtract from — a retune of
+    one leaves the other subtracting from a stale number, and the cards drift
+    off the chrome icons' axis with nothing failing.
+
+    Action rows (Search, New thread, Add project) use ps-2 pe-3 with an inner
+    px-1 control so their leading icon also sits at 12px — matching card status
+    and the group folder glyph. The Projects header uses symmetric px-3 (no
+    leading icon). Those controls are 32px tall (h-8), not Figma's 24, at
+    0.875rem (14px) type — literal so the panel's 13px text-xs remap cannot
+    shrink them.
+
+    These rows' own trailing inset is then 4px, and that 4px belongs to
+    sidebar-v2-row-action-hit-area, which owns the trailing glyph column's
+    single axis. It is not a scrollbar term and must not become one again.
+
+    The header follows Figma node 157:4536. It is flat and transparent on every
+    build, so the panel surface shows through with no stage artwork. Its native
+    macOS traffic lights start at x=16, y=20; a 28px trigger starts at x=80 so
+    its exact 20px Phosphor SidebarSimple glyph begins at x=84 — 16px after the
+    traffic-light group's 52px box. Non-macOS surfaces keep the same safe-area
+    variable and place the glyph at the ordinary 16px edge inset.
+
+    The brand stays on the trailing edge and ends 16px from it. It is the
+    designer-exported 24px pixel mark, a 4px gap, then APP_BASE_NAME at literal
+    0.875rem (14px), Geist Medium, with a 16px line-height. Literal type avoids
+    the sidebar-v2 13px text utility remap. Search, New thread, and Add project
+    remain labeled action rows; Projects remains a static muted label whose
+    trailing ListFilter (FunnelSimple) owns the scope / group-by menu.
+    Foreground, hover, pill, and focus treatments resolve through sidebar
+    tokens so the flat header remains legible in Light, Dark, and Cool Dark.
+
+    The sidebar no longer carries a channel cue. The composer send button and
+    standalone auth screen retain the fork's designer-supplied Dev dither in
+    place of upstream's blueprint, and Nightly retains upstream's sky. Those
+    surfaces still gate on resolveSidebarStageBackdropVariant, so packaged
+    release builds remain plain.
+
+    Upstream v0.0.30 layered an environmentIdentificationMode setting
+    (artwork / pill / none) over the same surfaces. The flat header ignores the
+    artwork choice, but the pill half is honored: "Version pill" still renders
+    upstream's badge here so the option does not become a no-op. artwork/none
+    keep governing the composer send button exactly as upstream wrote it; the
+    standalone auth screen still gates on the build channel alone. The same release also moved
+    upstream's search/scope controls into SidebarContent's fixedHeader slot;
+    the fork declines that mechanism — its own rows sit as siblings above the
+    self-scrolling list group, which pins them identically — and a sync must
+    not re-adopt fixedHeader here just to shrink a conflict. The header's
+    stage label now comes from upstream's useEnvironmentStageLabel, which
+    replaced the fork's local hook when upstream's became an exact equivalent
+    (both delegate to resolveServerBackedAppStageLabel with the fork's
+    APP_STAGE_LABEL fallback).
+  tier: 4
+  files:
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/custom/useScrollGutterWidth.ts
+    - apps/web/src/custom/SidebarStageDitherArt.tsx
+    - apps/web/src/custom/assets/sidebar-brand-mark.svg
+    - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
+  shadows: []
+  watch:
+    - apps/desktop/src/window/DesktopWindow.ts
+    - apps/web/src/components/AppSidebarLayout.tsx
+    - apps/web/src/components/SidebarStageBackdrop.tsx
+    - apps/web/src/components/SidebarStageBackdrop.test.tsx
+    - apps/web/src/components/SidebarV2.tsx
+    - apps/web/src/components/sidebar/SidebarChrome.tsx
+    # Styles ::-webkit-scrollbar { width: var(--app-scrollbar-width) }, which
+    # is what makes the thread list's reserved lane a styled 6px at all — and
+    # what the intent's cross-engine argument is anchored to. A retune the
+    # measurement absorbs; the failure is this rule disappearing or gaining
+    # scrollbar-width/appearance handling, which hands the lane to the UA
+    # default width the drawn 6px gutter does not assume.
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/forkSidebarChrome.test.ts
+
+- id: fork-workspace-header
+  intent: >
+    The workspace topbar is 52px. One token (--workspace-topbar-height) drives
+    both it and the sidebar header so they stay seam-aligned across the
+    divider. Settings and DiffPanelShell already hardcode the same 52px. The
+    .wco rule re-derives the token from env(titlebar-area-height), so on
+    Windows with Controls Overlay the OS still dictates the height and only
+    the fallback moves.
+
+    Project and title swap weight: the project is the fixed, repeating half, so
+    it takes semibold and becomes the landmark you navigate to, while the title
+    is long unique prose that reads better at regular weight than as a second
+    bold run competing with it. The project favicon is gone — it sat left of a
+    name that already said the same thing, in a header whose left half is
+    fighting three action pills for width.
+
+    The project breadcrumb is upstream's new-thread button (#4638): click,
+    aria-label and tooltip are upstream behaviour that must track upstream
+    through syncs. The fork owns only its presentation — no favicon, semibold
+    name, muted colour on the trigger. Those behaviour lines sit inside the
+    fork fence, so a sync will not re-apply upstream changes to them
+    automatically; port upstream's intent by hand when that hunk drifts.
+
+    Those three controls (Add action / Open / PR) become fully-rounded split
+    pills. They were already built from the right primitives — a Group wrapping
+    an outline Button size="xs", a separator, and a caret Button size="icon-xs",
+    where Group flattens the inner corners and size="xs" is already 24px and
+    12px at >=sm — so nothing structural changes. The only edit in those three
+    files is a data-fork-pill attribute; the styling is all in the Tier 1
+    stylesheet, which rounds the outer corners, drops the raised treatment that
+    reads as a button floating above a page, and opens padding to 10px/7px.
+
+    The two panel toggles render at 16px, and their glyphs become SquareHalf and
+    SquareHalfBottom via the Phosphor shim rather than at the call site — see
+    phosphor-duotone-icons. Upstream's framed-panel glyphs were hard to tell
+    apart from the sidebar toggle three controls to the left; a filled half
+    reads as "this edge" at a glance.
+  tier: 4
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    - apps/web/src/components/GitActionsControl.tsx
+    - apps/web/src/components/ProjectScriptsControl.tsx
+    - apps/web/src/components/chat/ChatHeader.tsx
+    - apps/web/src/components/chat/OpenInPicker.tsx
+    - apps/web/src/components/chat/PanelLayoutControls.tsx
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/forkWorkspaceHeader.test.ts
 
 - id: fork-clerk-launch-resilience
   intent: >
@@ -250,22 +1194,36 @@
     the app is ready. Fast machines win that race; CI runners lose it
     deterministically, and a cold local boot is the same dice roll (the
     v0.1.2 launch isolation gate caught it: the app exited before its server
-    ever started). Fork builds bake no Clerk publishable key, so the bridge
-    is guaranteed dead weight — DesktopClerk skips it outright when
-    desktopClerkFrontendApiHostname is undefined, logging a warning, and
-    main.ts registers both schemes' privileges synchronously at module load
-    (guaranteed to precede "ready"; the sole registrar on the skip path;
-    observed against the bundled Electron 41 that pre-ready re-registration
-    by a keyed build's bridge replaces the list harmlessly). Keyed builds
-    keep upstream's behavior exactly: bridge created, initialization and
-    cleanup failures both loud — the cleanup path's Effect.orDie is
-    deliberately untouched, because a real Clerk defect in a keyed build
-    must not hide behind a warning. The singleton-lock behavior in
-    DesktopClerk.configure is bridge-independent and preserved on both
-    paths.
+    ever started). A build with no baked Clerk publishable key has a bridge
+    that is guaranteed dead weight — historically every fork build; since
+    t3-connect-official-config, only a checkout without the tracked .env or
+    one that blanks the key via .env.local. DesktopClerk skips it outright
+    when desktopClerkFrontendApiHostname is undefined, logging a warning,
+    and main.ts registers both schemes' privileges synchronously at module
+    load (guaranteed to precede "ready") and is the sole registrar on every
+    path: createDesktopClerkBridge no-ops the registrar for the duration of
+    the createClerkBridge call and restores it after, because the bridge
+    would re-register the identical privilege set and that call throws
+    post-"ready". The suppression is load-bearing, not hygiene — packaged
+    fork builds are keyed since t3-connect-official-config, and the v0.1.7
+    dry run's launch isolation gate caught the keyed build losing the ready
+    race and dying on the bridge's own registration (an earlier observation
+    that pre-ready re-registration is harmless was true but answered the
+    wrong case). Keyed builds otherwise keep upstream's behavior: bridge
+    created, initialization and cleanup failures both loud — the cleanup
+    path's Effect.orDie is deliberately untouched, because a real Clerk
+    defect in a keyed build must not hide behind a warning. Keyed bridge
+    behavior stays unit-covered by upstream's DesktopClerk.test.ts, whose
+    fenced hunk bakes a key in before import; the registrar suppression by
+    DesktopClerkForkRegistrarSuppression.test.ts; the keyless skip by
+    DesktopClerkForkSkip.test.ts; and the packaged boot itself by
+    fork-release.yml's launch isolation gate on every build, dry runs
+    included. The singleton-lock behavior in DesktopClerk.configure is
+    bridge-independent and preserved on both paths.
   tier: 4
   files:
     - apps/desktop/src/app/DesktopClerkForkSkip.test.ts
+    - apps/desktop/src/app/DesktopClerkForkRegistrarSuppression.test.ts
   shadows: []
   watch:
     - apps/desktop/src/main.ts
@@ -276,54 +1234,42 @@
 
 - id: geist-typography
   intent: >
-    The app's typefaces are Geist (UI) and Geist Mono (code), bundled as
-    Fontsource variable faces and imported from the fork's own theme layer —
-    web and Electron renderer only; mobile and marketing still ship DM Sans.
+    The app's DEFAULT typefaces are Geist (UI) and Geist Mono (code), bundled
+    as Fontsource variable faces and imported from the fork's own theme layer —
+    web and Electron renderer only; mobile and marketing keep upstream's fonts.
+    Since upstream's v0.0.32 configurable-fonts work (Settings → Appearance:
+    family, size, smoothing — applied as inline styles on the root by
+    appearanceFonts.ts), the fork supplies the DEFAULT only: a user's explicit
+    font preference outranks the fork stacks by design, and clearing the
+    preference falls back to Geist, not to upstream's system stacks.
     The stacks live in theme.custom.css as --fork-font-sans / --fork-font-mono
-    and index.css's @theme block reads them through
+    and index.css's non-inline @theme block reads them through
     var(--fork-font-sans, <upstream stack>); that indirection is load-bearing,
-    not ceremony. The block is @theme inline, so Tailwind bakes font values
-    literally into .font-sans / .font-mono and their variants, and a compiled
-    utility cannot see a variable overridden in a later stylesheet — the same
-    constraint that forces the sidebar-v2 palette registrations to live in
-    index.css. Routing through --fork-font-* keeps the values scoped under the
-    fork marker while the fallbacks leave an unmarked build on DM Sans.
-    The terminal's font logic lives in custom/terminalFont.ts rather than in
-    the drawer: xterm takes its font from a constructor option instead of the
-    cascade, so --font-mono has to be resolved by hand and the cell grid
-    re-measured once the webfont lands — xterm sizes columns at open(), and
-    unlike the always-resident SF Mono a webfont can land after that, leaving
-    the grid measured against the fallback. That is fork feature logic with no
-    business in a 1.5k-line upstream mount effect. The drawer keeps two
-    one-line call sites, and the font-load probe is derived from the resolved
-    stack rather than hardcoded, so it cannot go stale on a face swap and an
-    unmarked build names a local system face and fetches nothing. The re-fit
-    also propagates to the PTY, because nothing in the drawer subscribes to
-    onResize — every upstream fit site calls resizeTerminal by hand, and a
-    re-fit that corrects only xterm's local grid leaves the PTY wrapping to the
-    stale, fallback-measured width.
-    Two further decisions are non-obvious. Geist Mono is listed AHEAD of SF Mono:
-    upstream puts SF Mono first, which means on macOS its bundled mono webfont
-    never renders at all, so preserving upstream's order would make shipping
-    Geist Mono pointless. And body / pre, code are re-declared under the fork
-    marker because upstream hardcodes the literal stacks on those selectors
-    (index.css:964, index.css:1022) instead of reading its own @theme tokens,
-    so overriding --font-sans / --font-mono alone does not reach them.
-    DM Sans / JetBrains Mono deps and their main.tsx imports are deliberately
-    left in place, but not because removing them would gain nothing, and the
-    two are not the same case. Nothing references DM Sans in a marked build, so
-    it costs nothing on the wire — but main.tsx still imports its Fontsource
-    CSS, so Vite emits the woff2 files into dist and into the Electron package
-    (roughly 60KB DM Sans, 96KB JetBrains Mono). For DM Sans the tradeoff is
-    therefore installer size, not request count, and it is the one worth
-    revisiting if package size matters; it is left as-is only to keep main.tsx
-    conflict-free. JetBrains Mono is NOT a size question: the fork's own mono
-    stack still names it, deliberately, as upstream's only bundled mono face —
-    the fallback for a Linux user with no SF Mono and no Consolas when the
-    Geist Mono fetch fails, which is exactly when it gets fetched. Dropping
-    that dependency on size grounds would silently strip the face out from
-    under a stack that still names it, and no guard would catch it: the guards
-    assert the family is listed, not that a bundled face backs it.
+    not ceremony — it keeps the values scoped under the fork marker while the
+    fallbacks leave an unmarked build on upstream's system stacks. Upstream
+    keeps the font tokens OUT of @theme inline precisely so runtime overrides
+    can reach them; a sync that moves them back into the inline block bakes
+    the values into every utility and kills both the fork default and
+    upstream's own settings feature.
+    The terminal is the one surface that does not read the cascade: the
+    ghostty surface takes its font as a creation option, and upstream feeds it
+    the Settings preference. The fork's default rides the empty-preference
+    branch of the drawer's terminalFontOptions, returning
+    FORK_TERMINAL_FONT_FALLBACK (custom/terminalFont.ts) — a constant rather
+    than a live cascade read, because Advanced typography isolates the
+    terminal from code-font changes and a computed --font-mono would carry
+    them in. Unlike the xterm era there is no fork refit shim: the surface
+    waits on document.fonts before measuring the cell grid and re-measures on
+    loadingdone, so the webfont-landing-late case is upstream's to handle.
+    Geist Mono is listed AHEAD of SF Mono: upstream puts SF Mono first, which
+    on macOS means a bundled mono webfont never renders at all.
+    Upstream dropped its DM Sans / JetBrains Mono webfonts in the same cycle
+    (system stacks now); the fork followed, so the two Geist faces are the
+    app's only bundled fonts. "JetBrains Mono" stays NAMED in the fork's mono
+    stacks for a Linux user who has it installed, but no bundled face backs it
+    any more. Known cosmetic divergence: the Appearance font picker's
+    "Default" label names the face upstream's DEFAULT_*_FONT_STACK resolves to
+    (a system face), not Geist — appearanceFonts.ts is deliberately unfenced.
   tier: 4
   files:
     - apps/web/src/theme.custom.css
@@ -332,15 +1278,508 @@
   watch:
     - apps/web/src/index.css
     - apps/web/src/components/ThreadTerminalDrawer.tsx
-    # No fence, but load-bearing: readPreviewAnnotationTheme reads --font-sans /
-    # --font-mono off documentElement and ships the resolved families into the
-    # previewed page, so the fork's stacks travel through here. Inert today (the
-    # previewed page has no Geist loaded, so it falls through to the same system
-    # faces as before), but it is the dynamic seam Annotation.css is not.
+    # The fork deleted its own refit shim because the surface waits on
+    # document.fonts before measuring and re-measures on loadingdone. If
+    # upstream stops, the terminal silently measures against fallback metrics.
+    - apps/web/src/terminal/ghostty/surface.ts
+    # No fence, but load-bearing: ships the resolved --font-sans / --font-mono
+    # into the previewed page — see FORK-CUSTOMIZATION-DECISIONS.md.
     - apps/web/src/browser/annotationTheme.ts
-    # detect-drift only greps fences in ts/css/yaml/sh, so it cannot see a
-    # dependency change. This is the first customization to add npm deps; the
-    # guard asserts both are present, and this entry makes the file drift-watched.
+    # Unfenced: the Settings → Appearance runtime override machinery whose
+    # unset-preference path the fork default relies on (removeProperty falls
+    # back to the stylesheet, i.e. the fork stacks), and whose DEFAULT_*
+    # stacks label the picker's "Default" entry.
+    - apps/web/src/appearanceFonts.ts
+    # Carries the Fontsource deps, which fences can't drift-watch — see
+    # FORK-CUSTOMIZATION-DECISIONS.md.
     - apps/web/package.json
   verify:
     - apps/web/src/__fork_guards__/geistTypography.test.ts
+
+- id: fork-lint-cleanliness
+  intent: >
+    Fork-owned code carries zero lint warnings, and CI fails on the first one.
+    Nothing in this repository otherwise gates on a warning: vp check lints
+    everything but exits 0, and no --max-warnings is set anywhere, so warnings
+    in fork-authored files accumulate in silence.
+    The gate is scoped to fork-owned paths on purpose rather than being a
+    repo-wide --max-warnings count. A repo-wide count ratchets against
+    upstream: the first sync that lands an upstream warning turns the build
+    red for code this fork cannot fix, and the only available response is to
+    raise the number. Scoped, upstream can add as many warnings as it likes
+    and this stays green because it never looks there; the upstream warnings
+    present when this landed are deliberately untouched.
+    Scope has three parts, filtered to .ts/.tsx/.mjs because files: also lists
+    images, CSS, YAML and shell. First, the fork-owned directories, including
+    .fork and apps/web/fork. Second, every lintable files: entry in this
+    manifest. Third, an explicit list of upstream-path files the fork has
+    edited enough to own their lint output — the part that matters most,
+    because the fork's largest authored surface is hunks inside files at
+    upstream paths, and a file-level scope cannot express "the fork owns these
+    lines but not this file". Adoption is not free: an upstream-authored
+    warning in an adopted file turns the build red, accepted only for files
+    the fork already maintains hunks in and would have to act on anyway.
+    ThreadTerminalDrawer.tsx is deliberately excluded despite carrying fork
+    fences, because its one warning is an unused eslint-disable on upstream's
+    line, under upstream's rule config — no fork change can clear it. Fenced
+    hunks in any other upstream file remain uncovered until adopted by name;
+    that gap is real and stated rather than papered over.
+    The gate compares oxlint's number_of_files against the count it passed in,
+    which is what keeps it honest: an explicitly-passed path matching
+    lint.ignorePatterns is skipped silently, so without that comparison a fork
+    path landing in an ignore list would produce a green run that inspected
+    nothing. It also passes --report-unused-disable-directives, matching the
+    repo's own lint script, so the gate is never weaker than the lint it
+    claims to enforce.
+    The guard test deliberately does not run the lint. It asserts the path
+    selection and the CI wiring, because selection is the half that fails
+    quietly — a gate pointed at the wrong paths still exits 0 — and it checks
+    selection by walking the tree independently, not by spot-checks.
+    The motivating incident (nine dead imports surviving three PRs in
+    SidebarV2.tsx) is in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+  tier: 1
+  files:
+    - .fork/lint-owned.mjs
+  shadows: []
+  watch:
+    # Carries the fenced step that runs the gate.
+    - .github/workflows/ci.yml
+    # lint.ignorePatterns lives here. An upstream addition that happens to
+    # match a fork-owned path would silently narrow the gate; the file-count
+    # check turns that into a failure, and this entry makes the change visible
+    # to the drift detector in the first place.
+    - vite.config.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkLintCleanliness.test.ts
+
+- id: fork-composer-shell
+  intent: >
+    The chat composer is a discrete 8px bordered surface with one compact base
+    layout in every thread state, including a brand-new draft. ChatView always
+    docks it to the bottom instead of centering it as a new-chat hero. The
+    empty-draft greeting ("What should we build…") is a separate absolute layer
+    centered in the chat column, not stacked above the docked input. The base
+    row is 40px tall: 8px padding around a one-line prompt and the 24px
+    send/stop button. The prompt and action remain in that same row as text
+    wraps — the action pinned bottom-right so it stays with the last line —
+    so the surface grows naturally with the editor; there is no tall/slim
+    density switch, resize observer, or wrap latch. Upstream's collapsed mobile tap
+    target remains a separate functional state.
+
+    Which controls sit where is the main design contract. BranchToolbar's
+    worktree, PR, and branch chips sit above the surface as filled chips
+    sharing one selected-surface fill with no hairline, 8px apart (matching
+    the context row's pb-2 under the pills — including the nested PR+branch
+    pair that upstream keeps at gap-1). Upstream's strip children use flex-1
+    and the branch's justify-end / md:ml-auto, which opens a large empty gap
+    between checkout and branch at narrower widths while the checkout label
+    truncates; the fork forces those direct flex children to flex 0 1 auto,
+    justify-content flex-start, and margin-inline-start 0 so the chips stay a
+    packed leading cluster. Chips use the Auto chip's container at
+    4px/6px inline padding (24px tall, 6px radius — extra 2px on the end so
+    the trailing chevron clears the curve; branch combobox takes 6px start,
+    workspace select 0 for its roomier folder glyph) at 12px type matching
+    the control row's ghost pills, and the workspace chip's trigger caret is
+    dropped. The workspace select opens above the chip row (side top, no
+    align-item-with-trigger) so its glass menu clears the neighboring branch
+    pill instead of overlapping it. Only the prompt and primary action sit
+    inside the base row. Runtime and interaction modes sit below-left;
+    context usage, model, and effort sit below-right in a 24px control row of
+    20px, 4px-radius controls (Noey's radius over the drawn full-pill ghosts,
+    so hover fills square off). The runtime mode renders as the design's 20px
+    accent chip — label only, no icon or caret — with its hue selected by a
+    typed fork-owned token map: auto green, full access yellow, auto-accept
+    edits purple, supervised red. The interaction and plan-sidebar toggles
+    are text-only ghost chips,
+    the model and effort selects share the row's 12px type (Noey's call over
+    the drawn 10px), and the composer's effort trigger joins its trait labels
+    with a plain space ("High 1M") while Settings keeps upstream's " · "
+    separator. The branch strip is still passed into ChatComposer as
+    the memoised contextStrip element, preserving ChatComposer's memo boundary
+    and keeping branch controls reachable while mobile is collapsed. Runtime,
+    model, and effort controls remain gated during a pending approval and while
+    the mobile composer is collapsed; the read-only context meter may remain.
+    The inline primary-action cluster is suppressed whenever the mobile
+    pending-answer cluster is visible, so only one answer action renders.
+
+    Upstream's stitched glass-shell paint is disabled under the fork marker.
+    The docked composer overlay paints an opaque page-colored floor (soft fade
+    over its top edge) so timeline rows cannot read through the floating
+    control row once that vessel is gone. The prompt surface keeps its own
+    translucent fill, inset hairline, focus-border recolour, backdrop blur,
+    and explicit drag-over outline.
+    BranchToolbar's stitched-strip spacing is flattened in the named context
+    row. Send and stop remain 24px square at 4px radius; dark builds without
+    stage-channel art use a flat white send button with a black icon, while
+    Dev and Nightly retain their channel fill. Existing project components
+    supply all icons and controls; no Figma-exported assets are committed.
+
+    Type follows the design system's dark tokens: the prompt is body/md — 14px
+    on a 23px line at >=40rem with a full muted-foreground placeholder (16px
+    mobile type stays, avoiding iOS focus zoom) — and the ghost controls and
+    mode chip are 12px medium on 16px with 12px glyphs. The prompt wrapper
+    owns the 12.5rem scroll cap so a one-line Lexical editor never paints a
+    phantom scrollbar, and the placeholder/spacer overflow containment remains
+    in place.     Attachment and pending-state content may add height above the
+    base row, but ordinary composer height changes only when prompt content
+    wraps. Pill styling stays narrowly scoped so pending-state primary actions
+    retain their upstream geometry.
+
+    Compact ⋯ collapse for the below-surface mode row uses fork-lowered
+    form-width thresholds (400px normal / 520px with wide primary actions),
+    not upstream's 620/780. Upstream's numbers pack denser in-box footers;
+    here mode chips sit opposite the model picker on a dedicated row, so
+    those thresholds hide Full access / Build / Plan behind ⋯ while a large
+    empty gap remains. The wide-actions threshold must stay under the form's
+    max-w-3xl (768px) or the expanded row can never appear in that state.
+    Mode-row collapse and model-picker compaction are deliberately split:
+    the override drives only ⋯ vs ComposerFooterModeControls; the model
+    trigger keeps upstream's 620/780 via composerModelSlotCompact.ts so the
+    right slot does not grow in the newly expanded 400–620 band. Traits stay
+    gated with the mode row (inline when expanded, CompactComposerControlsMenu
+    when collapsed) so they are never stranded between the two thresholds.
+  tier: 4
+  files:
+    - apps/web/src/custom/ComposerShell.tsx
+    - apps/web/src/custom/ComposerShell.css
+    - apps/web/src/custom/composerModelSlotCompact.ts
+    - apps/web/src/theme.custom.css
+    - apps/web/src/overrides/components/composerFooterLayout.ts
+  shadows:
+    - apps/web/src/components/composerFooterLayout.ts
+  watch:
+    # Carries the base row, the context/control rows, and contextStrip prop.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Docks the composer for new drafts, centers the draft greeting on its own
+    # layer, and passes BranchToolbar as contextStrip.
+    - apps/web/src/components/ChatView.tsx
+    # data-fork-composer-action on the send and stop buttons; the whole 24px
+    # square restyle hangs off it. Send also carries
+    # data-fork-composer-send-tone ("channel" with stage art, "flat"
+    # otherwise) for the dark-mode white/black fill.
+    - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    # The effort trigger's label join: a plain space instead of " · ".
+    - apps/web/src/components/chat/TraitsPicker.tsx
+    # Passes the composer-only label separator through to TraitsPicker.
+    - apps/web/src/components/chat/composerProviderState.tsx
+    # Workspace select opens above the context chips (side top, no
+    # align-item-with-trigger) so the glass menu clears the branch pill.
+    - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
+    # The glass-shell pseudo-elements and .chat-composer-context-strip this
+    # customization switches off. An upstream rework of that paint would leave
+    # the fork disabling rules that no longer exist.
+    - apps/web/src/index.css
+    # min-h-17.5 on the prompt editor, the placeholder that has to track the
+    # prompt's type ramp, and the max-h-50 / overflow-y-auto cap the fork
+    # re-homes on the prompt wrapper at >=40rem by overriding — the classes
+    # themselves stay on the editor here.
+    - apps/web/src/components/ComposerPromptEditor.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkComposerShell.test.ts
+
+- id: t3-connect-official-config
+  intent: >
+    Fork builds carry the same T3 Connect public configuration as official
+    releases, so the cloud UI, the `t3 connect` CLI group, and the managed
+    tunnel all work against upstream's hosted relay out of the box. Upstream
+    injects four public values at release time from CI variables this fork
+    does not have (release.yml's relay_public_config job); the fork instead
+    tracks them in a repository-root .env, which scripts/lib/public-config.ts
+    already reads for every dev run and build — with the right precedence
+    built in, since process env and .env.local both outrank it, so a personal
+    or self-hosted-relay override stays possible and stays gitignored. An
+    override REPLACES a value; it cannot blank one — the loader resolves
+    through firstNonEmpty, which treats empty as unset and falls through to
+    the tracked file. Building with T3 Connect off means temporarily
+    deleting the tracked .env in that checkout, never committing it. The
+    file is force-added past .gitignore's .env* rule on purpose: tracked
+    files are exempt from ignore rules, and upstream never ships a .env, so
+    a sync can never conflict with it. The values are public identifiers,
+    not secrets (docs/internals/t3-connect.md) — the same ones baked into
+    every official artifact; they were read from the published npm CLI
+    (t3@0.0.30). The .env must never grow server-side secrets or tokens; the
+    guard pins its key set to exactly these four so secret creep fails CI.
+    Two neighbouring customizations make keyed fork builds safe rather than
+    accidental: fork-clerk-launch-resilience's keyless skip only engages
+    when no publishable key is baked and keyed builds keep upstream's Clerk
+    bridge behavior exactly, and fork-app-identity deliberately keeps the
+    shared t3code:// scheme, which is the desktop OAuth callback Clerk's
+    redirect allowlist expects. Relay access itself remains gated by the
+    user's own Clerk account, which is what authorizes use of the hosted
+    service.
+  tier: 1
+  files:
+    - .env
+  shadows: []
+  watch:
+    # Upstream's loader: the one place the repo-root .env is read and
+    # projected into VITE_*/EXPO_PUBLIC_* aliases. If upstream renames the
+    # canonical variables or stops reading .env, this customization dies
+    # silently — the guard exercises the loader against the real repo root
+    # so that failure turns CI red instead.
+    - scripts/lib/public-config.ts
+    # Carries a fenced note telling developers NOT to `cp .env.example .env`
+    # in this fork — that documented upstream onboarding move would clobber
+    # the tracked file. An upstream rewrite of the example must re-seat it.
+    - .env.example
+    # Two fenced stubs blank the baked CLI OAuth client id: upstream models
+    # "unconfigured clone" by not stubbing the variable, which stopped being
+    # the ambient default once the tracked .env keyed every build.
+    - apps/web/src/cloud/connectCliAuth.test.ts
+    # reconcileRootEnv writes relay public config — OTLP tracing tokens
+    # included — into the repo-root .env, which this customization made
+    # committable. Unfenced (the fork never runs relay deploys), but any
+    # upstream rework of where that write lands must be re-checked against
+    # the tracked file. See the decisions note.
+    - infra/relay/scripts/deploy.ts
+  verify:
+    - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts
+
+- id: fork-design-mode
+  intent: >
+    The in-app preview browser carries a Figma-style design mode, ported from
+    NoahHendrickson/the-forge, with a NATIVE properties panel. A Design
+    toggle in the preview chrome row (desktop only, next to the three-dot
+    menu) injects a self-contained HEADLESS engine bundle into the previewed
+    page via webview.executeJavaScript — the guest keeps only what must touch
+    the page (selection outlines, hover, inline-style drafts, structural
+    verbs: inline text edit, drag-to-reorder, 8-point resize, delete/nudge,
+    layout ripple, sessionStorage persistence) and pushes selection snapshots
+    (computed styles per protocol.ts DESIGN_MODE_STYLE_KEYS) up over
+    console-message lines prefixed __t3-design-mode__:. The panel is T3
+    React (panel/ForkDesignPanel.tsx), docked as a column beside the browser
+    surface by the PreviewPanel override: size, padding, margin, radius, typography,
+    fill and opacity controls with scrub-to-edit fields, driving the guest
+    through the window.__T3_DESIGN_MODE__ command handle
+    (designModeBridge.ts, fire-and-forget except buildSend).
+    Panel section order and field chrome follow the fork's own Figma spec (file
+    fZRyRTZJtLKwuq8rj2SLg4, page V2, node 193:9686): a Position section (the six
+    align verbs over an X/Y pair, absolute-position toggle in the header), a
+    unified Layout section (W/H with per-axis Fixed/Hug/Fill menus and an
+    aspect-ratio lock, direction, gap, the 3x3 align matrix, padding pairs) and
+    Appearance (opacity, radius, per-corner grid) — with icon field prefixes
+    (panel/PanelIcons.tsx, Phosphor at `regular`, NOT through the lucide duotone
+    shim). Controls the spec does not draw are kept rather than dropped: margins,
+    per-side padding/stroke, min/max sizing, the raw display select and the
+    flex-child controls live behind in-section disclosures. Align is a set of
+    VERBS with no read-back state; engine/align.ts maps each to the one honest
+    CSS answer for that parent context (insets out of flow, align-self on an
+    auto-layout child's CROSS axis only — Figma disables the main axis too —
+    justify-self/align-self in grid, margin-auto for a block child with slack)
+    and reports capabilities per axis in the snapshot so the panel disables what
+    it cannot honor instead of writing something inert. Fields behave the way a
+    designer expects: a multi-select shows Mixed rather than the first element's
+    value (panel/selectionValues.ts) and any edit unifies it, numeric fields take
+    arithmetic through a hand-rolled parser and never eval
+    (panel/numericExpression.ts), sizing fields accept keywords (auto,
+    fit-content, none) so the request ships intent instead of a measured px, and
+    a property with a live draft carries a changed dot that reverts JUST that
+    property (snapshot `drafted` + the revertDraft verb over the vendored
+    DraftStore.discard, which is css-only so a structural draft survives).
+    The layers rail is Figma's layers panel, not a static tree: it REVEALS the
+    canvas selection (expanding ancestors and scrolling to the row), implements
+    the ARIA tree contract for real (roving tabindex, arrows, expand/collapse,
+    Home/End, Shift to extend), filters by label/tag with matches unfolded,
+    shows a type glyph per row, and drags a row among its siblings. The whole
+    rail collapses away (device-local localStorage flag, like the sidebar's own
+    collapse prefs); since nothing of it is left to click, the control that
+    reopens it lives in the preview chrome row's fenced leadingActions slot
+    (ForkPreviewLayersToggle), and the flag, the availability predicate and the
+    focus handoff are shared through layersCollapsed.ts so the two halves
+    cannot disagree — each unmounts ITSELF on activation, so each hands focus
+    to its counterpart rather than dropping it to <body>. Collapsing UNMOUNTS
+    the rail rather than hiding it, so a hidden rail costs nothing while the
+    guest re-emits layers; the accepted price is that the rail's view state
+    (filter text, hand-folded rows, active row) starts over on reopen, with the
+    reveal effect re-expanding the selection's ancestors. Reorder is
+    sibling-relative over the wire (`reorderElement(id, beforeId)`) because the
+    curated tree hoists tagged descendants through untagged wrappers — a row's
+    position in the TREE is not its position in the DOM, so only the guest can
+    turn "before this element" into an index; rows whose parent is not an
+    auto-layout container report `reorderable: false` and refuse the drop,
+    since the vendored move draft previews as inline `order`. Rows also carry a
+    siblingGroup identifying their DOM parent, because tree siblings are not
+    always DOM siblings and the drop gate must enforce the same rule the guest
+    does. Rail rows serialize in visual order ONLY when the `order` in play is
+    our own preview (read from inline style, never computed): an app that
+    authors `order` keeps its rail in DOM order, because reorderById computes
+    indices in DOM order and the two halves must agree. No hide/lock toggles:
+    hiding an element in CSS-land IS "remove this element", which the delete
+    draft already says honestly from the canvas. The guest handle carries
+    DESIGN_MODE_PROTOCOL_VERSION and boot() rebuilds rather than reusing a
+    handle stamped with a different one — a stale engine otherwise fails
+    silently, its snapshots rejected wholesale by a stricter parser.
+    Edits preview as inline styles and never touch source. Send delivers as a composer
+    ATTACHMENT, never prompt text: the panel stores the built request in
+    designChangeDraftStore, the composer renders it as an inline pill
+    (element + compact delta, × to discard, tooltip shows the markdown),
+    pending pills count toward sendability so a pill-only message sends,
+    and ChatView's fenced send path appends the full deterministic
+    token-aware change-request markdown to the outgoing message inside
+    <design_change_request> blocks — cleared only when the turn start
+    succeeds (T3 threads ARE the delivery surface — the Forge's own chat
+    feed, embedded sessions, MCP queue, watcher, verifier and every
+    /__the-forge/* endpoint are deliberately not ported, and the engine
+    must stay free of network calls). The host re-injects on dom-ready
+    while the mode is on, so navigations and dev-server reloads keep the
+    engine and its drafts. Element→source mapping works WITHOUT any
+    project setup: project-authored forge-mode JSX tags (data-dc-source)
+    remain the most precise source and always win per element, but on
+    untagged React pages the desktop preload's react-grab-backed resolver
+    (a frozen __T3_DESIGN_SOURCE_RESOLVER_V1__ page global installed by
+    src/preview/DesignSourceResolver.ts beside the element picker, reached
+    through the fenced import in preview-pick-preload.ts) recovers
+    file:line:col lazily — on hover dwell, selection, and send — and the
+    engine synthesizes a canonical data-dc-source (marked
+    data-t3-native-source so it is never mistaken for a project tag).
+    Elements whose source never resolves stay fully editable and send
+    with selector/text/style context; no install prompt, warning toast,
+    or Forge handoff exists anymore. Canvas mode (the Forge's vendored
+    CanvasMode, engine/vendor/canvas.ts) turns the page into a
+    pannable/zoomable artboard — space-drag/middle-drag pan,
+    cursor-anchored wheel and pinch zoom, the powers-of-2 ladder,
+    zoom-to-fit/selection — toggled from a strip in the native panel over
+    setCanvas/canvasCommand handle calls, with a change-gated canvas
+    message carrying the settled zoom readout back; the gesture modules'
+    scale() hooks read the live canvas scale so drags stay accurate while
+    zoomed. Entering canvas mode commits UPSTREAM's viewport back to fill so
+    the webview owns the whole preview pane and the canvas with it (a stale
+    device viewport would letterbox the canvas inside itself);
+    theme.custom.css continues the same canvas gray across any letterbox that
+    does appear — repainting the webview WRAPPER, whose own translucent
+    bg-muted/35 is what draws that letterbox, and pinned to the guest's
+    CANVAS_BG by a guard. The strip carries
+    a screen-size picker (MacBook 14"/16", 24"/27" displays,
+    panel/canvasResolutions.ts) so a designer names a size instead of dragging
+    the viewport rails to it. It commits upstream's preview viewport with the
+    screen's WIDTH verbatim — that width becomes the guest's real CSS
+    viewport, so media queries, vw and breakpoints answer to the screen being
+    previewed rather than to however wide the pane happens to be, which is the
+    whole point (a page that hides content below a breakpoint must see the
+    screen). The HEIGHT is derived from the measured pane so the frame's
+    aspect ratio matches it and upstream's fit lands 1:1 on both axes with no
+    letterbox; the cost is that the frame is not the screen's real height, so
+    "above the fold" is not meaningful. A "True height" switch at the foot of
+    the picker (device-local, OFF by default) opts into the screen's own
+    height instead — a real 1512x982 browser, honest fold, letterboxed into
+    canvas gray — and re-commits the applied screen immediately rather than
+    waiting for the next pick. Either way the widest screens in a tall pane
+    letterbox once the contract's viewport area cap bites.
+    Freeform settings rather than new contract preset ids: the shared catalog
+    is upstream's and phone/tablet only. A reset-view canvas command follows
+    each SIZE commit so the artboard lands on the freshly sized window instead
+    of keeping the previous size's pan/zoom; entry deliberately skips it, since
+    CanvasMode seeds its transform from the live scroll. The handover hangs off
+    the canvas-on transition rather than the toggle's click, so it also holds
+    when canvas resumes on its own, and exiting puts back the viewport that was
+    there before (or clears a frame picked inside canvas, whose picker is about
+    to disappear with it). engine/vendor/** contains only the Forge leaf
+    modules reachable from the headless engine; they keep the Forge's own
+    formatting (fmt-ignored at the root config, same treatment as qrcodegen.ts),
+    carry t3-fork-marked local edits, and are excluded from the web TS project
+    in favor of their own tsconfig island; the engine is bundled to an
+    injectable IIFE string by the fork:design-mode-engine Vite plugin as
+    virtual:fork-design-mode-engine.
+  tier: 4
+  files:
+    - apps/web/src/custom/designMode/protocol.ts
+    - apps/web/src/custom/designMode/designModeStore.ts
+    - apps/web/src/custom/designMode/designModeBridge.ts
+    - apps/web/src/custom/designMode/designChangeDraftStore.ts
+    - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
+    - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
+    - apps/web/src/custom/designMode/ForkTranscriptDesignChanges.tsx
+    - apps/web/src/custom/designMode/ForkLayersTree.tsx
+    - apps/web/src/custom/designMode/ForkPreviewLayersToggle.tsx
+    - apps/web/src/custom/designMode/layersCollapsed.ts
+    - apps/web/src/custom/designMode/layersTreeModel.ts
+    - apps/web/src/custom/designMode/layersTreeModel.test.ts
+    - apps/web/src/custom/designMode/panel/LayerTypeIcon.tsx
+    - apps/web/src/custom/designMode/designChangeTranscript.ts
+    - apps/web/src/custom/designMode/layersDrag.ts
+    - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
+    - apps/web/src/custom/designMode/panel/CanvasControls.tsx
+    - apps/web/src/custom/designMode/panel/canvasResolutions.ts
+    - apps/web/src/custom/designMode/panel/ScreenSizeMenu.tsx
+    - apps/web/src/custom/designMode/panel/useCanvasViewportHandoff.ts
+    # Every properties-panel section; ForkDesignPanel.tsx is wiring only.
+    - apps/web/src/custom/designMode/panel/sections
+    - apps/web/src/custom/designMode/panel/CornerRadiusIcon.tsx
+    - apps/web/src/custom/designMode/panel/PaddingIcon.tsx
+    - apps/web/src/custom/designMode/panel/DesignPanelFields.tsx
+    - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
+    - apps/web/src/custom/designMode/panel/DesignColorPicker.tsx
+    - apps/web/src/custom/designMode/panel/PanelIcons.tsx
+    - apps/web/src/custom/designMode/panel/numericExpression.ts
+    - apps/web/src/custom/designMode/panel/numericExpression.test.ts
+    - apps/web/src/custom/designMode/panel/selectionValues.ts
+    - apps/web/src/custom/designMode/panel/selectionValues.test.ts
+    - apps/web/src/custom/designMode/engineVirtual.d.ts
+    - apps/web/src/custom/designMode/engine/align.ts
+    - apps/web/src/custom/designMode/engine/boot.ts
+    - apps/web/src/custom/designMode/engine/bridge.ts
+    - apps/web/src/custom/designMode/engine/canvasSession.ts
+    - apps/web/src/custom/designMode/engine/headlessOverlay.ts
+    - apps/web/src/custom/designMode/engine/headlessMode.ts
+    - apps/web/src/custom/designMode/engine/idRegistry.ts
+    - apps/web/src/custom/designMode/engine/layersSession.ts
+    - apps/web/src/custom/designMode/engine/nativeSource.ts
+    - apps/web/src/custom/designMode/engine/sizeMode.ts
+    - apps/web/src/custom/designMode/engine/snapshot.ts
+    - apps/web/src/custom/designMode/engine/tsconfig.json
+    # The desktop half of native source recovery: the preload-installed page
+    # global the engine's nativeSource.ts consumes.
+    - apps/desktop/src/preview/DesignSourceResolver.ts
+    - apps/desktop/src/preview/DesignSourceResult.ts
+    - apps/desktop/src/preview/DesignSourceResolver.test.ts
+    # The reachable vendored Forge client leaves (one directory entry; the
+    # custom/ directory walk already lints it, and its own tsconfig checks it).
+    - apps/web/src/custom/designMode/engine/vendor
+    - apps/web/fork/vitePluginForkDesignMode.ts
+    - apps/web/src/overrides/components/preview/PreviewPanel.tsx
+  shadows:
+    - apps/web/src/components/preview/PreviewPanel.tsx
+  watch:
+    # Fenced import of the DesignSourceResolver preload module beside the
+    # upstream PickPreload entry — the whole desktop half of native source
+    # recovery hangs off this one line.
+    - apps/desktop/src/preview-pick-preload.ts
+    # Thin fenced import + <ForkPreviewDesignMode> in the chrome row's
+    # trailingActions slot, plus <ForkPreviewLayersToggle> in its leadingActions
+    # slot; the browser surface tree stays untouched.
+    - apps/web/src/components/preview/PreviewView.tsx
+    # Fenced `leadingActions` slot: one prop and one render site before the
+    # navigation group. A shadow of this 320-line hot file would cost a re-port
+    # on every upstream chrome-row change for the sake of two lines.
+    - apps/web/src/components/preview/PreviewChromeRow.tsx
+    # Fenced canvas marker on the webview WRAPPER. That element is the letterbox
+    # around a fixed-size viewport and paints it with its own translucent
+    # bg-muted/35, so the canvas surround has to repaint it there — and it mounts
+    # under ElectronBrowserHost, outside the preview panel's subtree, so no
+    # descendant selector rooted at the panel can reach it.
+    - apps/web/src/browser/HostedBrowserWebview.tsx
+    # Fenced mock adjustment: trailingActions is a fragment (toggle + menu)
+    # under the fork, so the mock finds the menu's props on a fragment child.
+    - apps/web/src/components/preview/PreviewView.test.tsx
+    # Fenced attachment-pill row (ForkComposerDesignChanges) beside the
+    # element-context chips. Also fenced under fork-composer-shell.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Three fenced hunks in onSend: pending design changes count toward
+    # sendability, their markdown is appended to the outgoing message text,
+    # and they clear only once the turn start succeeds.
+    - apps/web/src/components/ChatView.tsx
+    # Fenced strip-first extraction + transcript chip render in
+    # UserTimelineRow, so sent design blocks show as chips.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+    # Fenced plugin import + registration of fork:design-mode-engine.
+    - apps/web/vite.config.ts
+    # Fenced exclude of the engine TS island.
+    - apps/web/tsconfig.json
+    # Fenced fmt ignore for engine/vendor/** (keeps the Forge's formatting).
+    - vite.config.ts
+    # Unfenced (strict JSON): the esbuild devDependency the engine bundler
+    # plugin needs. An upstream lockfile/dep sweep dropping it breaks the
+    # bundle guard, not just the dev server.
+    - apps/web/package.json
+  verify:
+    - apps/web/src/__fork_guards__/forkDesignMode.test.ts

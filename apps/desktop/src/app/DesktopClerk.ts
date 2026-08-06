@@ -1,5 +1,8 @@
 import { createClerkBridge } from "@clerk/electron";
 import { storage } from "@clerk/electron/storage";
+// fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
+import * as Electron from "electron";
+// fork:end fork-clerk-launch-resilience
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -11,6 +14,7 @@ import { clerkFrontendApiHostnameFromPublishableKey } from "@t3tools/shared/rela
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
+import * as DesktopAppIdentity from "./DesktopAppIdentity.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 
 declare const __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: string | undefined;
@@ -72,18 +76,53 @@ export const desktopClerkFrontendApiHostname = resolveDesktopClerkFrontendApiHos
 );
 
 export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolean) {
-  return createClerkBridge({
-    storage: storage({ path: stateDir }),
-    passkeys: true,
-    renderer: {
-      scheme: ElectronProtocol.getDesktopScheme(isDevelopment),
-      host: ElectronProtocol.DESKTOP_HOST,
-    },
-  });
+  // fork:begin fork-clerk-launch-resilience — main.ts is the sole scheme registrar
+  // main.ts already registered both renderer schemes' privileges at module
+  // load with the exact set the bridge would ask for, so the bridge's own
+  // registerSchemesAsPrivileged call adds nothing — and throws once Electron
+  // is "ready", which layer construction can trail on a packaged boot (the
+  // v0.1.7 dry run's launch isolation gate died exactly there). No-op the
+  // registrar for the duration of the bridge call; everything else the
+  // bridge does (token persistence, OAuth transport, passkeys) is untouched.
+  // The optional reads are for unit tests, which import this module in plain
+  // Node where the electron shim exposes no protocol object.
+  const protocol = Electron.protocol as typeof Electron.protocol | undefined;
+  const registerSchemesAsPrivileged = protocol?.registerSchemesAsPrivileged;
+  if (protocol && registerSchemesAsPrivileged) {
+    protocol.registerSchemesAsPrivileged = () => {};
+  }
+  try {
+    // fork:end fork-clerk-launch-resilience
+    return createClerkBridge({
+      storage: storage({ path: stateDir }),
+      passkeys: true,
+      renderer: {
+        scheme: ElectronProtocol.getDesktopScheme(isDevelopment),
+        host: ElectronProtocol.DESKTOP_HOST,
+      },
+    });
+    // fork:begin fork-clerk-launch-resilience — restore the real registrar
+  } finally {
+    if (protocol && registerSchemesAsPrivileged) {
+      protocol.registerSchemesAsPrivileged = registerSchemesAsPrivileged;
+    }
+  }
+  // fork:end fork-clerk-launch-resilience
 }
 
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
+  const electronApp = yield* ElectronApp.ElectronApp;
+
+  // Electron scopes the single-instance lock to the userData directory and
+  // creates that directory when the lock is acquired. The SDK bridge takes
+  // the lock at creation, so userData must already point at the real
+  // directory here — under the default productName-derived path, acquiring
+  // the lock would create "T3 Code (Alpha)" and make the legacy-install
+  // detection in resolveUserDataPath match on fresh installs.
+  const userDataPath = yield* DesktopAppIdentity.resolveUserDataPath;
+  yield* electronApp.setPath("userData", userDataPath);
+
   // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
   // A build with no baked Clerk publishable key cannot sign in, so the
   // bridge is guaranteed dead weight — and a live hazard: createClerkBridge
@@ -92,17 +131,21 @@ export const make = Effect.gen(function* () {
   // deterministically; a cold local boot rolls the same dice). Skip the
   // bridge outright when there is no key: deterministic, and the renderer's
   // scheme privileges come from main.ts's synchronous registration, which is
-  // the sole registrar on this path. Keyed builds keep upstream's behavior
-  // exactly — including loud initialization AND cleanup failures, which must
-  // stay fatal there rather than hide behind a warning. The singleton-lock
-  // behavior in configure below is bridge-independent either way.
+  // the sole registrar on this path. Keyed builds keep upstream's bridge —
+  // including loud initialization AND cleanup failures, which must stay
+  // fatal there rather than hide behind a warning — except its redundant
+  // scheme re-registration, which createDesktopClerkBridge above suppresses
+  // so a post-"ready" layer build cannot die on it. The bridge now also
+  // carries the single-instance lock (acquired at creation), so the keyless
+  // path takes the lock directly in configure below.
+  let bridge: ReturnType<typeof createDesktopClerkBridge> | undefined;
   if (desktopClerkFrontendApiHostname === undefined) {
     yield* Effect.logWarning(
       "No Clerk publishable key in this build; skipping the Clerk bridge (cloud sign-in unavailable).",
     );
   } else {
     // fork:end fork-clerk-launch-resilience
-    yield* Effect.acquireRelease(
+    bridge = yield* Effect.acquireRelease(
       Effect.try({
         try: () => createDesktopClerkBridge(environment.stateDir, environment.isDevelopment),
         catch: (cause) =>
@@ -134,7 +177,20 @@ export const make = Effect.gen(function* () {
       const context = yield* Effect.context<ElectronWindow.ElectronWindow>();
       const runPromise = Effect.runPromiseWith(context);
 
-      if (!(yield* electronApp.requestSingleInstanceLock)) {
+      // The SDK bridge holds Electron's single-instance lock (acquired at
+      // bridge creation) so OAuth deep-link callbacks on Windows/Linux are
+      // forwarded to the running app. In a secondary instance the bridge has
+      // already begun quitting the app; app.quit() is asynchronous, so stop
+      // bootstrap here before whenReady can fire.
+      // fork:begin fork-clerk-launch-resilience — keyless builds have no bridge
+      // With the bridge skipped nothing has taken the lock, so take it
+      // directly; the optional read keeps plain-Node unit imports safe, where
+      // the electron shim exposes no app object.
+      const isPrimaryInstance = bridge
+        ? bridge.isPrimaryInstance
+        : (Electron.app?.requestSingleInstanceLock() ?? true);
+      // fork:end fork-clerk-launch-resilience
+      if (!isPrimaryInstance) {
         yield* electronApp.quit;
         return yield* Effect.interrupt;
       }

@@ -46,10 +46,13 @@ import {
   ArrowUp as PhArrowUp,
   ArrowsClockwise as PhArrowsClockwise,
   ArrowsDownUp as PhArrowsDownUp,
+  ArrowsInLineHorizontal as PhArrowsInLineHorizontal,
   ArrowsInLineVertical as PhArrowsInLineVertical,
   ArrowsInSimple as PhArrowsInSimple,
   ArrowsOutSimple as PhArrowsOutSimple,
+  BatteryEmpty as PhBatteryEmpty,
   BellSlash as PhBellSlash,
+  BookmarkSimple as PhBookmarkSimple,
   BoxArrowUp as PhBoxArrowUp,
   Broadcast as PhBroadcast,
   Bug as PhBug,
@@ -72,8 +75,11 @@ import {
   Code as PhCode,
   Columns as PhColumns,
   Copy as PhCopy,
+  CornersOut as PhCornersOut,
+  Cpu as PhCpu,
   Cursor as PhCursor,
   CursorClick as PhCursorClick,
+  Database as PhDatabase,
   DeviceMobile as PhDeviceMobile,
   DotsThree as PhDotsThree,
   DotsThreeVertical as PhDotsThreeVertical,
@@ -83,14 +89,18 @@ import {
   Eyedropper as PhEyedropper,
   File as PhFile,
   FileCode as PhFileCode,
+  FileMagnifyingGlass as PhFileMagnifyingGlass,
   Files as PhFiles,
   Flask as PhFlask,
   Folder as PhFolder,
   FolderDashed as PhFolderDashed,
   FolderOpen as PhFolderOpen,
   FolderPlus as PhFolderPlus,
+  FunnelSimple as PhFunnelSimple,
+  Gauge as PhGauge,
   Gear as PhGear,
   GearSix as PhGearSix,
+  GridFour as PhGridFour,
   GitBranch as PhGitBranch,
   GitCommit as PhGitCommit,
   GitDiff as PhGitDiff,
@@ -99,27 +109,36 @@ import {
   Globe as PhGlobe,
   GlobeHemisphereWest as PhGlobeHemisphereWest,
   Hammer as PhHammer,
+  HardDrive as PhHardDrive,
   HardDrives as PhHardDrives,
   Info as PhInfo,
   Keyboard as PhKeyboard,
-  Layout as PhLayout,
+  Laptop as PhLaptop,
   Lightning as PhLightning,
   Link as PhLink,
   LinkSimple as PhLinkSimple,
   ListChecks as PhListChecks,
+  ListMagnifyingGlass as PhListMagnifyingGlass,
   Lock as PhLock,
   LockOpen as PhLockOpen,
   MagnifyingGlass as PhMagnifyingGlass,
+  Memory as PhMemory,
   Minus as PhMinus,
   Monitor as PhMonitor,
   NotePencil as PhNotePencil,
   PaintBrush as PhPaintBrush,
+  Palette as PhPalette,
   Paragraph as PhParagraph,
   PencilRuler as PhPencilRuler,
   PencilSimpleLine as PhPencilSimpleLine,
+  PictureInPicture as PhPictureInPicture,
   Play as PhPlay,
   PlugsConnected as PhPlugsConnected,
   Plus as PhPlus,
+  PlusCircle as PhPlusCircle,
+  Pulse as PhPulse,
+  PushPin as PhPushPin,
+  PushPinSlash as PhPushPinSlash,
   QrCode as PhQrCode,
   Robot as PhRobot,
   Rows as PhRows,
@@ -129,6 +148,8 @@ import {
   SidebarSimple as PhSidebarSimple,
   SignIn as PhSignIn,
   Sparkle as PhSparkle,
+  SquareHalf as PhSquareHalf,
+  SquareHalfBottom as PhSquareHalfBottom,
   SquareSplitHorizontal as PhSquareSplitHorizontal,
   SquareSplitVertical as PhSquareSplitVertical,
   Star as PhStar,
@@ -218,7 +239,13 @@ export const CircleXIcon = icon("circle-x", PhXCircle, "duotone");
 export const CheckIcon = icon("check", PhCheck, "bold");
 export const CircleCheckIcon = icon("circle-check", PhCheckCircle, "duotone");
 export const CheckCircle2Icon = icon("check-circle-2", PhCheckCircle, "duotone");
+export const PinIcon = icon("pin", PhPushPin, "duotone");
+export const PinOffIcon = icon("pin-off", PhPushPinSlash, "duotone");
 export const PlusIcon = icon("plus", PhPlus, "bold");
+// lucide renamed PlusCircle -> CirclePlus; both names still resolve there, so
+// both are exported here.
+export const CirclePlusIcon = icon("circle-plus", PhPlusCircle, "duotone");
+export const PlusCircleIcon = icon("plus-circle", PhPlusCircle, "duotone");
 export const Plus = icon("plus", PhPlus, "bold");
 export const MinusIcon = icon("minus", PhMinus, "bold");
 export const Minus = icon("minus", PhMinus, "bold");
@@ -256,6 +283,10 @@ export const Files = icon("files", PhFiles, "duotone");
 export const FileDiff = icon("file-diff", PhGitDiff, "duotone");
 export const FileDiffIcon = icon("file-diff", PhGitDiff, "duotone");
 export const FileJsonIcon = icon("file-json", PhFileCode, "duotone");
+export const FileSearchIcon = icon("file-search", PhFileMagnifyingGlass, "duotone");
+// Text search — phosphor has no text-magnifier; the list-lines magnifier is
+// the closest read of "search within content".
+export const TextSearchIcon = icon("text-search", PhListMagnifyingGlass, "duotone");
 export const ClipboardList = icon("clipboard-list", PhClipboardText, "duotone");
 export const CopyIcon = icon("copy", PhCopy, "duotone");
 export const ArchiveIcon = icon("archive", PhArchive, "duotone");
@@ -292,11 +323,28 @@ export const RadioTower = icon("radio-tower", PhBroadcast, "duotone");
 export const QrCodeIcon = icon("qr-code", PhQrCode, "duotone");
 export const KeyboardIcon = icon("keyboard", PhKeyboard, "duotone");
 export const MonitorIcon = icon("monitor", PhMonitor, "duotone");
+export const LaptopIcon = icon("laptop", PhLaptop, "duotone");
 export const SmartphoneIcon = icon("smartphone", PhDeviceMobile, "duotone");
+// Resource telemetry diagnostics (upstream #2679). Pulse is Phosphor's
+// activity waveform — a pure line glyph, so it takes `bold` per this file's
+// no-enclosed-area rule; duotone weight would thin the stroke, not fill it.
+// Lucide's Battery is an empty body with no charge bars, and its one call
+// site is the "Host state" *section header* over rows that report the real
+// power source — so BatteryEmpty, the matching bare-body glyph; any
+// bar-carrying variant would read as a charge level where none is meant.
+// MemoryStick maps to Memory (a RAM chip).
+export const ActivityIcon = icon("activity", PhPulse, "bold");
+export const BatteryIcon = icon("battery", PhBatteryEmpty, "duotone");
+export const CpuIcon = icon("cpu", PhCpu, "duotone");
+export const DatabaseIcon = icon("database", PhDatabase, "duotone");
+export const GaugeIcon = icon("gauge", PhGauge, "duotone");
+export const HardDriveIcon = icon("hard-drive", PhHardDrive, "duotone");
+export const MemoryStickIcon = icon("memory-stick", PhMemory, "duotone");
 export const BotIcon = icon("bot", PhRobot, "duotone");
 export const SparklesIcon = icon("sparkles", PhSparkle, "duotone");
 export const ZapIcon = icon("zap", PhLightning, "duotone");
 export const StarIcon = icon("star", PhStar, "duotone");
+export const BookmarkIcon = icon("bookmark", PhBookmarkSimple, "duotone");
 export const LockIcon = icon("lock", PhLock, "duotone");
 export const LockOpenIcon = icon("lock-open", PhLockOpen, "duotone");
 export const LogInIcon = icon("log-in", PhSignIn, "duotone");
@@ -321,9 +369,18 @@ export const MoreVertical = icon("more-vertical", PhDotsThreeVertical, "bold");
 export const PlayIcon = icon("play", PhPlay, "duotone");
 export const ListChecksIcon = icon("list-checks", PhListChecks, "duotone");
 export const ListTodoIcon = icon("list-todo", PhListChecks, "duotone");
+// Figma FunnelSimple — lucide's ListFilter (three descending bars).
+export const ListFilterIcon = icon("list-filter", PhFunnelSimple, "bold");
 export const Camera = icon("camera", PhCamera, "duotone");
 export const PipetteIcon = icon("pipette", PhEyedropper, "duotone");
+export const PaletteIcon = icon("palette", PhPalette, "duotone");
 export const PaintbrushIcon = icon("paintbrush", PhPaintBrush, "duotone");
+// Design-mode panel (fork-design-mode): stroke-only glyphs pinned to bold, like the
+// other arrows/carets. Scan maps to Phosphor's CornersOut (the Figma spec's corner
+// toggle); FoldHorizontal to ArrowsInLineHorizontal (the gap field's prefix).
+export const ScanIcon = icon("scan", PhCornersOut, "bold");
+export const FoldHorizontalIcon = icon("fold-horizontal", PhArrowsInLineHorizontal, "bold");
+export const Grid2x2Icon = icon("grid-2x2", PhGridFour, "duotone");
 export const Paintbrush = icon("paintbrush", PhPaintBrush, "duotone");
 export const PencilRulerIcon = icon("pencil-ruler", PhPencilRuler, "duotone");
 export const PenLineIcon = icon("pen-line", PhPencilSimpleLine, "duotone");
@@ -337,8 +394,15 @@ export const Maximize2Icon = icon("maximize-2", PhArrowsOutSimple, "bold");
 export const Minimize2Icon = icon("minimize-2", PhArrowsInSimple, "bold");
 export const PanelLeftIcon = icon("panel-left", PhSidebar, "duotone");
 export const PanelLeftCloseIcon = icon("panel-left-close", PhSidebarSimple, "duotone");
-export const PanelRightIcon = icon("panel-right", PhSidebar, "duotone");
-export const PanelBottomIcon = icon("panel-bottom", PhLayout, "duotone");
+// The two workspace panel toggles. Phosphor's Sidebar and Layout, which these
+// used to map to, both draw a *framed* panel with an internal rule — at 16px
+// hard to tell apart from the sidebar toggle three controls to the left, or
+// from each other. SquareHalf fills the half it
+// controls instead, so the pair reads as "this edge" / "that edge" at a glance —
+// and it is what the design specifies.
+export const PanelRightIcon = icon("panel-right", PhSquareHalf, "duotone");
+export const PanelBottomIcon = icon("panel-bottom", PhSquareHalfBottom, "duotone");
+export const PictureInPicture2 = icon("picture-in-picture-2", PhPictureInPicture, "duotone");
 export const Columns2Icon = icon("columns-2", PhColumns, "duotone");
 export const Rows3Icon = icon("rows-3", PhRows, "duotone");
 export const SquareSplitHorizontal = icon(

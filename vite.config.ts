@@ -11,6 +11,9 @@ export default defineConfig({
   test: {
     environment: "node",
     exclude: [
+      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+      "**/.t3/**",
+      /* fork:end fork-app-identity */
       "**/.repos/**",
       "**/node_modules/**",
       "**/dist/**",
@@ -27,6 +30,9 @@ export default defineConfig({
   fmt: {
     ignorePatterns: [
       ".reference",
+      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+      ".t3/**",
+      /* fork:end fork-app-identity */
       ".repos/**",
       ".plans",
       ".alchemy",
@@ -40,6 +46,11 @@ export default defineConfig({
       "apps/mobile/ios/**",
       "apps/web/public/mockServiceWorker.js",
       "apps/web/src/lib/vendor/qrcodegen.ts",
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      // Vendored from NoahHendrickson/the-forge — keeps that repo's formatting so
+      // future re-syncs diff cleanly, same treatment as qrcodegen.ts above.
+      "apps/web/src/custom/designMode/engine/vendor/**",
+      /* fork:end fork-design-mode */
       "apps/mobile/uniwind-types.d.ts",
       "*.icon/**",
     ],
@@ -55,6 +66,10 @@ export default defineConfig({
   },
   lint: {
     ignorePatterns: [
+      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+      ".t3",
+      ".t3/**",
+      /* fork:end fork-app-identity */
       ".repos",
       ".repos/**",
       "dist",

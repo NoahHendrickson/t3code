@@ -13,10 +13,13 @@ import {
   createStageWorkspaceConfig,
   createStagePatchedDependencies,
   createBuildConfig,
-  DESKTOP_ASAR_UNPACK,
+  DESKTOP_ELECTRON_LANGUAGES,
+  DESKTOP_FILE_EXCLUSIONS,
+  DESKTOP_EXTRA_RESOURCES,
   InvalidMacPasskeyRpDomainError,
   InvalidMacPasskeyPublishableKeyError,
   InvalidMockUpdateServerPortError,
+  UnsupportedDesktopBuildArchitectureError,
   isMacPasskeySigningConfigurationError,
   LinuxIconResizeError,
   MacPasskeySigningConfigurationResolutionError,
@@ -27,17 +30,21 @@ import {
   resolveDesktopRuntimeDependencies,
   resolveFffNativeDependencies,
   resolveBuildOptions,
+  FORK_WEB_ICON_ASSETS,
   resolveDesktopBuildIconAssets,
   resolveDesktopProductName,
   resolveDesktopUpdateChannel,
-  resolveDesktopWebAssetBrand,
+  resolveResourceMonitorRustTargets,
+  resourceMonitorExecutableName,
   resolveGitHubPublishConfig,
   resolveMockUpdateServerPort,
   resolveMockUpdateServerUrl,
   resolvePackageManagerUserAgent,
   stageLinuxIconSize,
   STAGE_INSTALL_ARGS,
+  WINDOWS_ASAR_UNPACK,
 } from "./build-desktop-artifact.ts";
+import { resolveWebIconOverridesFromSources } from "./lib/brand-assets.ts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 
 function mockProcess(exitCode: number) {
@@ -85,15 +92,15 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("switches desktop packaging product names to nightly for nightly builds", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-    assert.equal(resolveDesktopProductName("0.0.17"), "N3 Code");
-    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "N3 Code (Nightly)");
+    assert.equal(resolveDesktopProductName("0.0.17"), "no3y Code");
+    assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "no3y Code (Nightly)");
     // fork:end fork-app-identity
   });
 
-  it("uses the fork's placeholder artwork for every channel", () => {
+  it("uses the fork's release icon family for every channel", () => {
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
     const forkIconAssets = {
-      macIconPng: "assets/fork/n3-macos-1024.png",
+      macIconPng: "assets/fork/n3-macos-dock.png",
       linuxIconPng: "assets/fork/n3-universal-1024.png",
       windowsIconIco: "assets/fork/n3-windows.ico",
     };
@@ -105,9 +112,38 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     // fork:end fork-app-identity
   });
 
-  it("switches the bundled splash and favicon branding for nightly versions", () => {
-    assert.equal(resolveDesktopWebAssetBrand("0.0.17"), "production");
-    assert.equal(resolveDesktopWebAssetBrand("0.0.17-nightly.20260413.42"), "nightly");
+  it("bundles the fork splash and favicon instead of upstream channel art", () => {
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    // Packaging always copies FORK_WEB_ICON_ASSETS through the shared brand
+    // override builder — no per-channel web brand selection.
+    assert.deepStrictEqual(FORK_WEB_ICON_ASSETS, {
+      faviconIco: "assets/fork/n3-web-favicon.ico",
+      favicon16Png: "assets/fork/n3-web-favicon-16x16.png",
+      favicon32Png: "assets/fork/n3-web-favicon-32x32.png",
+      appleTouchIconPng: "assets/fork/n3-web-apple-touch-180.png",
+    });
+    assert.deepStrictEqual(
+      resolveWebIconOverridesFromSources(FORK_WEB_ICON_ASSETS, "apps/server/dist/client"),
+      [
+        {
+          sourceRelativePath: "assets/fork/n3-web-favicon.ico",
+          targetRelativePath: "apps/server/dist/client/favicon.ico",
+        },
+        {
+          sourceRelativePath: "assets/fork/n3-web-favicon-16x16.png",
+          targetRelativePath: "apps/server/dist/client/favicon-16x16.png",
+        },
+        {
+          sourceRelativePath: "assets/fork/n3-web-favicon-32x32.png",
+          targetRelativePath: "apps/server/dist/client/favicon-32x32.png",
+        },
+        {
+          sourceRelativePath: "assets/fork/n3-web-apple-touch-180.png",
+          targetRelativePath: "apps/server/dist/client/apple-touch-icon.png",
+        },
+      ],
+    );
+    // fork:end fork-app-identity
   });
 
   it.effect("resolves GitHub desktop publish config from Effect config", () =>
@@ -305,9 +341,57 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     );
   });
 
-  it("unpacks the fff shared library for filesystem and FFI access", () => {
-    assert.deepStrictEqual(DESKTOP_ASAR_UNPACK, ["node_modules/@ff-labs/fff-bin-*/**/*"]);
+  it("limits Electron locales and excludes the unused Claude SDK executable", () => {
+    assert.deepStrictEqual(DESKTOP_ELECTRON_LANGUAGES, ["en-US"]);
+    assert.deepStrictEqual(DESKTOP_FILE_EXCLUSIONS, [
+      "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
+    ]);
   });
+
+  it.effect("applies platform-specific packaging to the build config", () =>
+    Effect.gen(function* () {
+      const mac = yield* createBuildConfig(
+        "mac",
+        "dmg",
+        "1.2.3",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+      const linux = yield* createBuildConfig(
+        "linux",
+        "AppImage",
+        "1.2.3",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+      const win = yield* createBuildConfig(
+        "win",
+        "nsis",
+        "1.2.3",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+
+      assert.notProperty(mac, "asarUnpack");
+      assert.notProperty(linux, "asarUnpack");
+      assert.deepStrictEqual(win.asarUnpack, WINDOWS_ASAR_UNPACK);
+      // Linux must register the renderer schemes so the generated .desktop
+      // entry advertises MimeType=x-scheme-handler/t3code; for OAuth deep links.
+      assert.deepStrictEqual((linux.linux as Record<string, unknown>).protocols, [
+        { name: "T3 Code", schemes: ["t3code", "t3code-dev"] },
+      ]);
+      for (const config of [mac, linux, win]) {
+        assert.deepStrictEqual(config.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);
+        assert.deepStrictEqual(config.files, DESKTOP_FILE_EXCLUSIONS);
+      }
+    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+  );
 
   it.effect("preserves both Linux icon resize failures with structural context", () => {
     const commands: Array<{ readonly command: string; readonly args: ReadonlyArray<string> }> = [];
@@ -483,7 +567,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.equal(mac.provisioningProfile, "/tmp/t3code.provisionprofile");
       // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
       assert.deepStrictEqual(mac.protocols, [
-        { name: "N3 Code", schemes: ["t3code", "t3code-dev"] },
+        { name: "no3y Code", schemes: ["t3code", "t3code-dev"] },
       ]);
       // fork:end fork-app-identity
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
@@ -508,6 +592,26 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 
+  it("stages the resource monitor as an external executable resource", () => {
+    assert.deepStrictEqual(DESKTOP_EXTRA_RESOURCES, [
+      {
+        from: "apps/desktop/prod-resources/resource-monitor",
+        to: "resource-monitor",
+      },
+    ]);
+    assert.deepStrictEqual(resolveResourceMonitorRustTargets("mac", "universal"), [
+      "aarch64-apple-darwin",
+      "x86_64-apple-darwin",
+    ]);
+    assert.deepStrictEqual(resolveResourceMonitorRustTargets("linux", "x64"), [
+      "x86_64-unknown-linux-gnu",
+    ]);
+    assert.deepStrictEqual(resolveResourceMonitorRustTargets("win", "arm64"), [
+      "aarch64-pc-windows-msvc",
+    ]);
+    assert.equal(resourceMonitorExecutableName("mac"), "t3-resource-monitor");
+    assert.equal(resourceMonitorExecutableName("win"), "t3-resource-monitor.exe");
+  });
   it("promotes target fff binaries to direct staged dependencies", () => {
     assert.deepStrictEqual(resolveFffNativeDependencies("mac", "arm64", "0.9.4"), {
       "@ff-labs/fff-bin-darwin-arm64": "0.9.4",
@@ -635,6 +739,32 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.equal(resolved.platform, "win");
       assert.equal(resolved.target, "nsis");
       assert.equal(resolved.arch, "arm64");
+    }),
+  );
+
+  it.effect("rejects universal builds on Linux and Windows before staging binaries", () =>
+    Effect.gen(function* () {
+      for (const platform of ["linux", "win"] as const) {
+        const error = yield* Effect.flip(
+          resolveBuildOptions({
+            platform: Option.some(platform),
+            target: Option.none(),
+            arch: Option.some("universal"),
+            buildVersion: Option.none(),
+            outputDir: Option.none(),
+            skipBuild: Option.none(),
+            keepStage: Option.none(),
+            signed: Option.none(),
+            verbose: Option.none(),
+            mockUpdates: Option.none(),
+            mockUpdateServerPort: Option.none(),
+            wslPrebuild: Option.none(),
+          }),
+        );
+
+        assert.instanceOf(error, UnsupportedDesktopBuildArchitectureError);
+        assert.deepStrictEqual(error.supportedArchitectures, ["x64", "arm64"]);
+      }
     }),
   );
 

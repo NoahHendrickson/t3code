@@ -1,17 +1,22 @@
 import { useAtomValue } from "@effect/atom-react";
 import * as Schema from "effect/Schema";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { isElectron } from "../env";
 import { getLocalStorageItem } from "../hooks/useLocalStorage";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
-import { cn, isMacPlatform } from "../lib/utils";
+import { isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
-import { useClientSettings } from "../hooks/useSettings";
+import { useSidebarV2Enabled } from "../hooks/useSettings";
 import ThreadSidebar from "./Sidebar";
 import ThreadSidebarV2 from "./SidebarV2";
-import { useSidebarStageBackdropVariant } from "./SidebarStageBackdrop";
 import {
   resolveInitialThreadSidebarWidth,
   resolveThreadSidebarMaximumWidth,
@@ -29,7 +34,20 @@ import {
 } from "./ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
-const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "90px";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+   A 28px trigger starting at x=80 centers its 20px glyph at x=84, exactly
+   16px after the native traffic-light group's 52px box. */
+const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px";
+/* fork:end fork-sidebar-chrome */
+
+function subscribeToViewportWidth(onChange: () => void): () => void {
+  window.addEventListener("resize", onChange);
+  return () => window.removeEventListener("resize", onChange);
+}
+
+function readViewportWidth(): number {
+  return window.innerWidth;
+}
 
 function readInitialThreadSidebarWidth(): number {
   try {
@@ -43,11 +61,22 @@ function readInitialThreadSidebarWidth(): number {
   }
 }
 
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+   The toggle is drawn inside the sidebar header now (SidebarChrome.tsx), beside
+   the traffic lights, so it reads as part of the panel it controls rather than
+   as chrome floating over the workspace. It therefore leaves with the panel —
+   which is why this component still exists, and still floats, but only while
+   the sidebar is collapsed. That is exactly the case
+   COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS already reserves space for in every
+   workspace header, so the inset keeps meaning what its name says.
+
+   The keyboard binding stays here unconditionally. Hanging it off the button
+   would unmount it with the sidebar and leave a collapsed panel with no way
+   back other than the rail. */
 function SidebarControl() {
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { toggleSidebar } = useSidebar();
   const isSidebarVisible = useSidebarVisibility();
-  const stageBackdropVariant = useSidebarStageBackdropVariant();
   const shortcutLabel = shortcutLabelForCommand(keybindings, "sidebar.toggle");
 
   useEffect(() => {
@@ -71,6 +100,8 @@ function SidebarControl() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [keybindings, toggleSidebar]);
 
+  if (isSidebarVisible) return null;
+
   return (
     <div
       className="pointer-events-none fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 flex h-[var(--workspace-topbar-height)] items-center"
@@ -80,12 +111,7 @@ function SidebarControl() {
         <TooltipTrigger
           render={
             <SidebarTrigger
-              className={cn(
-                "pointer-events-auto",
-                isSidebarVisible &&
-                  stageBackdropVariant &&
-                  "[:hover,[data-pressed]]:bg-white/15 focus-visible:ring-white/90 focus-visible:ring-offset-blue-700 [&_svg]:stroke-white/90! [&_svg]:opacity-100! [&_svg]:hover:stroke-white!",
-              )}
+              className="pointer-events-auto [&_svg]:size-5!"
               aria-label="Toggle main sidebar"
             />
           }
@@ -97,10 +123,11 @@ function SidebarControl() {
     </div>
   );
 }
+/* fork:end fork-sidebar-chrome */
 
 export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const sidebarV2Enabled = useClientSettings((settings) => settings.sidebarV2Enabled);
+  const sidebarV2Enabled = useSidebarV2Enabled();
   // Settings routes render the settings nav, which lives in the v1 component
   // and is identical for both sidebars — so v1 stays mounted there.
   const pathname = useLocation({ select: (location) => location.pathname });
@@ -109,7 +136,11 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const useSidebarV2Theme = useSidebarV2 || isOnSettings;
   const isMacosDesktop = isElectron && isMacPlatform(navigator.platform);
   const [sidebarWidth, setSidebarWidth] = useState(readInitialThreadSidebarWidth);
-  const sidebarMaximumWidth = resolveThreadSidebarMaximumWidth(window.innerWidth);
+  // Subscribed rather than read once: the clamp must track live window size,
+  // and a clamped drag ends with an unchanged width, which skips the re-render
+  // that would otherwise refresh a render-time snapshot.
+  const viewportWidth = useSyncExternalStore(subscribeToViewportWidth, readViewportWidth);
+  const sidebarMaximumWidth = resolveThreadSidebarMaximumWidth(viewportWidth);
   const [isWindowFullscreen, setIsWindowFullscreen] = useState(() => {
     const getWindowFullscreenState = window.desktopBridge?.getWindowFullscreenState;
     return isMacosDesktop && typeof getWindowFullscreenState === "function"

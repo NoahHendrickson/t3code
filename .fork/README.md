@@ -280,6 +280,22 @@ reserving agent runs for the judgment calls.
 A scheduled workflow that fetches upstream and fast-forwards `origin/main`. Pure plumbing, zero
 judgment, no reason to spend a routine run on it. Run it hourly.
 
+The push authenticates with the `fork-sync-mirror push key` deploy key (read-write, this repo
+only), stored as the `FORK_SYNC_PUSH_KEY` Actions secret — not with `GITHUB_TOKEN`, which can
+never hold the `workflows` permission and so is rejected whenever the mirrored range touches
+`.github/workflows/*` (that outage was the a148e08197 incident). Two consequences to keep true:
+
+- Deploy-key pushes, unlike token pushes, **do trigger `push` workflows**. Anything watching
+  `push: main` fires on every mirror advance over unreviewed upstream code, so such workflows
+  must either exclude `main` (ci.yml) or gate on `github.repository == 'pingdotgg/t3code'`
+  (deploy-relay.yml, release.yml).
+- The `mirror` job's checkout holds that write key while containing unreviewed upstream code.
+  It must stay git-plumbing-only; never add a step to it that executes checked-out content.
+
+If the key is lost, mint a new ed25519 pair, add the public half as a read-write deploy key, and
+store the private half as `FORK_SYNC_PUSH_KEY`; the job's preflight fails with a pointer here
+until then.
+
 Give it a second job: **drift detection.** Diff the newly-mirrored commits against the `shadows:`
 and Tier-4 file lists in `customizations.yaml`. When upstream touches a file you have shadowed or
 patched, that is the signal worth acting on.

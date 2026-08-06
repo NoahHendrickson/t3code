@@ -77,11 +77,34 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 
 :root {
   --app-scrollbar-width: 6px;
+  --app-scrollbar-thumb: rgb(217 217 217);
+  --app-scrollbar-thumb-hover: rgb(191 191 191);
+  /*
+   * Compact UI geometry. Keep these values semantic so sidebar, palette,
+   * tooltip, and toolbar controls cannot quietly drift apart.
+   */
+  --control-radius: 0.5rem;
+  --sidebar-content-inset: 0.5rem;
+  --sidebar-control-gap: 0.5rem;
+  --sidebar-icon-color: color-mix(in srgb, var(--sidebar-muted-foreground) 60%, var(--sidebar));
+  --sidebar-row-content-inset: 0.625rem;
+  --command-shell-inset: 0.5rem;
+  --command-content-inset: 1rem;
+  --floating-content-inset: 0.75rem;
   --glass-blur: 12px;
   --glass-opacity: 80%;
   --glass-saturation: 1.14;
   --desktop-window-right-resize-inset: 0px;
+  /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+     52px. One token drives both the workspace header and the sidebar header
+     so they stay seam-aligned across the divider. Settings and DiffPanelShell
+     already hardcode the same 52px.
+
+     `.wco` below re-derives this from env(titlebar-area-height), so on Windows
+     with Controls Overlay the OS still dictates the height and only the
+     fallback moves. */
   --workspace-topbar-height: 52px;
+  /* fork:end fork-workspace-header */
   --workspace-controls-top: 0px;
   --workspace-controls-left: calc(env(safe-area-inset-left) + 0.75rem);
   --workspace-controls-right: calc(env(safe-area-inset-right) + 0.75rem);
@@ -91,6 +114,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 .dark {
+  --app-scrollbar-thumb: rgb(255 255 255 / 8%);
+  --app-scrollbar-thumb-hover: rgb(255 255 255 / 12%);
   --glass-blur: 16px;
   --glass-saturation: 1.08;
 }
@@ -103,7 +128,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 .wco {
+  /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */
   --workspace-topbar-height: env(titlebar-area-height, 52px);
+  /* fork:end fork-workspace-header */
   --workspace-controls-top: env(titlebar-area-y, 0px);
   --workspace-controls-left: calc(env(titlebar-area-x, 0px) + 0.75rem);
   --workspace-controls-right: calc(
@@ -114,27 +141,18 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   );
 }
 
-@theme inline {
-  --color-zinc-25: oklch(99.2% 0 0);
-  --animate-skeleton: skeleton 2s -1s infinite linear;
-  /* Duty-cycled indicator animations: long holds with stepped ramps, so the
-     compositor updates discrete frames instead of every vsync. */
-  --animate-status-pulse: status-pulse 2s infinite;
-  --animate-status-ping: status-ping 2s infinite;
-  --animate-sidebar-working-text: sidebar-working-text 3.4s infinite;
+/* The font tokens are declared outside the inline theme so utilities reference
+   the variables and Settings -> Appearance can override them at runtime. The
+   default stacks are mirrored in `appearanceFonts.ts`. */
+@theme {
   /* fork:begin geist-typography — see .fork/customizations.yaml#geist-typography
-     Indirection only; the fork's actual stacks live in `theme.custom.css`. This
-     block is `@theme inline`, so Tailwind bakes these values *literally* into
-     `.font-sans`, `.font-mono` and every variant of them (`[&_input]:font-sans`
-     and friends) — a scoped override of `--font-sans` in the fork stylesheet
-     cannot reach a compiled utility, the same constraint that keeps the sidebar
-     palette registrations below in this file. Routing through --fork-font-*
-     keeps the fork's values scoped under its marker attribute, and the
-     fallbacks leave an unmarked, pure-upstream build on upstream's stacks. */
+     Indirection only; the fork's actual stacks live in `theme.custom.css`.
+     Non-inline `@theme` emits these on `:root`, where the marker-scoped
+     `--fork-font-*` declarations resolve — and a runtime Settings → Appearance
+     override (an inline style on the root) still outranks both. The fallbacks
+     leave an unmarked, pure-upstream build on upstream's stacks. */
   --font-sans: var(
     --fork-font-sans,
-    "DM Sans Variable",
-    "DM Sans",
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -143,15 +161,25 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   );
   --font-mono: var(
     --fork-font-mono,
+    ui-monospace,
     "SF Mono",
     "SFMono-Regular",
-    "JetBrains Mono",
+    Menlo,
     Consolas,
     "Liberation Mono",
-    Menlo,
     monospace
   );
   /* fork:end geist-typography */
+}
+
+@theme inline {
+  --color-zinc-25: oklch(99.2% 0 0);
+  --animate-skeleton: skeleton 2s -1s infinite linear;
+  /* Duty-cycled indicator animations: long holds with stepped ramps, so the
+     compositor updates discrete frames instead of every vsync. */
+  --animate-status-pulse: status-pulse 2s infinite;
+  --animate-status-ping: status-ping 2s infinite;
+  --animate-sidebar-working-text: sidebar-working-text 3.4s infinite;
   --color-warning-foreground: var(--warning-foreground);
   --color-warning: var(--warning);
   --color-success-foreground: var(--success-foreground);
@@ -187,9 +215,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-sidebar-row-selected: var(--sidebar-row-selected);
   /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
      Utility names only. Tailwind reads `@theme` to decide which `bg-*`/`fill-*`
-     classes exist, so these six registrations cannot live in the fork's own
+     classes exist, so these five registrations cannot live in the fork's own
      stylesheet. The values they resolve to do — see `theme.custom.css`. */
-  --color-sidebar-row-working: var(--sidebar-row-working);
   --color-sidebar-v2-status-working: var(--sidebar-v2-status-working);
   --color-sidebar-v2-status-done: var(--sidebar-v2-status-done);
   --color-sidebar-v2-status-approval: var(--sidebar-v2-status-approval);
@@ -363,12 +390,13 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
         rgb(0 0 0 / 96%) 82%,
         black 100%
       ),
-      linear-gradient(black, black);
-    -webkit-mask-position: top, bottom;
+      linear-gradient(black, black), linear-gradient(black, black);
+    -webkit-mask-position: top, bottom, right;
     -webkit-mask-repeat: no-repeat;
     -webkit-mask-size:
       100% var(--topbar-scroll-fade-height),
-      100% calc(100% - var(--topbar-scroll-fade-height));
+      100% calc(100% - var(--topbar-scroll-fade-height)),
+      var(--app-scrollbar-width) 100%;
     mask-image:
       linear-gradient(
         to bottom,
@@ -380,12 +408,35 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
         rgb(0 0 0 / 96%) 82%,
         black 100%
       ),
-      linear-gradient(black, black);
-    mask-position: top, bottom;
+      linear-gradient(black, black), linear-gradient(black, black);
+    mask-position: top, bottom, right;
     mask-repeat: no-repeat;
     mask-size:
       100% var(--topbar-scroll-fade-height),
-      100% calc(100% - var(--topbar-scroll-fade-height));
+      100% calc(100% - var(--topbar-scroll-fade-height)),
+      var(--app-scrollbar-width) 100%;
+  }
+
+  @keyframes settings-search-target-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+    50% {
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-primary) 70%, transparent);
+    }
+  }
+
+  .settings-page-scroll-fade div.settings-search-target-pulse,
+  .settings-page-scroll-fade section.settings-search-target-pulse > div:first-child {
+    animation: settings-search-target-pulse 650ms ease-in-out 2;
+    border-radius: 0.75rem;
+  }
+
+  /* The pulse is the destination indicator; without it (reduced motion), the
+     focus outline takes over, so exactly one indicator shows at a time. */
+  .settings-page-scroll-fade .settings-search-target-pulse:focus {
+    outline: none;
   }
 
   .workspace-titlebar-controls {
@@ -400,6 +451,13 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 
   .surface-subheader {
     @apply flex h-10 min-h-10 shrink-0 items-center border-b border-border/60 bg-background;
+  }
+
+  [data-preview-panel-mode="inline"] [data-right-panel-surface-content] [data-surface-subheader] {
+    height: calc(var(--spacing) * 7);
+    min-height: calc(var(--spacing) * 7);
+    margin-bottom: calc(var(--spacing) * 3);
+    border-bottom-color: transparent;
   }
 
   .chat-composer-horizontal-inset {
@@ -668,11 +726,11 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     background: color-mix(in srgb, var(--background) 64%, transparent);
   }
 
-  .glass-opacity-slider {
-    --glass-slider-progress: 0%;
-    --glass-slider-fill-offset: 0.5rem;
-    --glass-slider-fill-position: calc(
-      var(--glass-slider-progress) + var(--glass-slider-fill-offset)
+  .settings-slider {
+    --settings-slider-progress: 0%;
+    --settings-slider-fill-offset: 0.5rem;
+    --settings-slider-fill-position: calc(
+      var(--settings-slider-progress) + var(--settings-slider-fill-offset)
     );
     appearance: none;
     height: 1.5rem;
@@ -680,32 +738,32 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
     cursor: pointer;
   }
 
-  .glass-opacity-slider::-webkit-slider-runnable-track {
+  .settings-slider::-webkit-slider-runnable-track {
     height: 0.375rem;
     border-radius: 9999px;
     background: linear-gradient(
       to right,
-      var(--primary) 0 var(--glass-slider-fill-position),
-      color-mix(in srgb, var(--muted-foreground) 22%, transparent) var(--glass-slider-fill-position)
-        100%
+      var(--primary) 0 var(--settings-slider-fill-position),
+      color-mix(in srgb, var(--muted-foreground) 22%, transparent)
+        var(--settings-slider-fill-position) 100%
     );
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 55%, transparent);
   }
 
-  .glass-opacity-slider::-moz-range-track {
+  .settings-slider::-moz-range-track {
     height: 0.375rem;
     border-radius: 9999px;
     background: color-mix(in srgb, var(--muted-foreground) 22%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 55%, transparent);
   }
 
-  .glass-opacity-slider::-moz-range-progress {
+  .settings-slider::-moz-range-progress {
     height: 0.375rem;
     border-radius: 9999px;
     background: var(--primary);
   }
 
-  .glass-opacity-slider::-webkit-slider-thumb {
+  .settings-slider::-webkit-slider-thumb {
     appearance: none;
     width: 1rem;
     height: 1rem;
@@ -719,7 +777,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
       box-shadow 120ms ease;
   }
 
-  .glass-opacity-slider::-moz-range-thumb {
+  .settings-slider::-moz-range-thumb {
     width: 1rem;
     height: 1rem;
     border: 2px solid var(--primary);
@@ -731,54 +789,54 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
       box-shadow 120ms ease;
   }
 
-  .glass-opacity-slider:hover::-webkit-slider-thumb {
+  .settings-slider:hover::-webkit-slider-thumb {
     transform: scale(1.08);
     box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground) 20%, transparent);
   }
 
-  .glass-opacity-slider:hover::-moz-range-thumb {
+  .settings-slider:hover::-moz-range-thumb {
     transform: scale(1.08);
     box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground) 20%, transparent);
   }
 
-  .glass-opacity-slider:active::-webkit-slider-thumb {
+  .settings-slider:active::-webkit-slider-thumb {
     transform: scale(0.94);
   }
 
-  .glass-opacity-slider:active::-moz-range-thumb {
+  .settings-slider:active::-moz-range-thumb {
     transform: scale(0.94);
   }
 
-  .glass-opacity-slider:focus-visible {
+  .settings-slider:focus-visible {
     outline: none;
   }
 
-  .glass-opacity-slider:focus-visible::-webkit-slider-thumb {
+  .settings-slider:focus-visible::-webkit-slider-thumb {
     box-shadow:
       0 0 0 3px var(--background),
       0 0 0 5px var(--ring);
   }
 
-  .glass-opacity-slider:focus-visible::-moz-range-thumb {
+  .settings-slider:focus-visible::-moz-range-thumb {
     box-shadow:
       0 0 0 3px var(--background),
       0 0 0 5px var(--ring);
   }
 
   @media (forced-colors: active) {
-    .glass-opacity-slider {
+    .settings-slider {
       appearance: auto;
       accent-color: Highlight;
     }
 
-    .glass-opacity-slider::-webkit-slider-runnable-track,
-    .glass-opacity-slider::-webkit-slider-thumb {
+    .settings-slider::-webkit-slider-runnable-track,
+    .settings-slider::-webkit-slider-thumb {
       all: revert;
     }
 
-    .glass-opacity-slider::-moz-range-track,
-    .glass-opacity-slider::-moz-range-progress,
-    .glass-opacity-slider::-moz-range-thumb {
+    .settings-slider::-moz-range-track,
+    .settings-slider::-moz-range-progress,
+    .settings-slider::-moz-range-thumb {
       all: revert;
     }
   }
@@ -986,14 +1044,9 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 body {
-  font-family:
-    "DM Sans Variable",
-    "DM Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    system-ui,
-    sans-serif;
+  /* Reference the theme token (not a literal stack) so the Settings ->
+     Appearance runtime override of --font-sans reaches all interface text. */
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
 }
@@ -1044,8 +1097,27 @@ body {
 
 pre,
 code {
-  font-family:
-    "SF Mono", "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: var(--font-mono);
+}
+
+/* Code blocks in chat carry the size preference. Scoped to chat markdown
+   rather than every pre: a global rule would beat text-size utilities and
+   inherited sizes on unrelated pre surfaces (terminal previews, approvals).
+   Inline code stays relative to its sentence so it never towers over prose;
+   diffs and file previews take the size through --diffs-font-size. */
+.chat-markdown .chat-markdown-shiki .shiki,
+.chat-markdown pre code {
+  font-size: var(--font-size-code, inherit);
+}
+
+/* @pierre/diffs surfaces (diffs, file previews, annotatable code, search
+   lines) render inside shadow roots but consult these hooks with their own
+   literal stacks as fallback. Custom properties inherit across the shadow
+   boundary, so defining them once here routes every code surface through the
+   appearance font tokens. */
+:root {
+  --diffs-font-family: var(--font-mono);
+  --diffs-header-font-family: var(--font-sans);
 }
 
 /* Window drag region (frameless titlebar) */
@@ -1071,20 +1143,102 @@ code {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--app-scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--app-scrollbar-thumb-hover);
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+/* Settings -> Appearance can point the composer at its own face (for example a
+   mono font); default follows the sans stack. Applied on the surface wrapper so
+   the editor and its placeholder inherit together. */
+.composer-editor-surface {
+  font-family: var(--font-composer, var(--font-sans));
+  font-size: var(--font-size-prompt, 0.875rem);
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+/* Touch browsers zoom the page when a focused field is under 16px, so keep
+   the floor there regardless of the preference. Gated on a coarse pointer:
+   the zoom quirk does not exist on desktop, where a narrow window must not
+   silently override a smaller chosen prompt size. */
+@media (max-width: 39.999rem) and (pointer: coarse) {
+  .composer-editor-surface {
+    font-size: max(var(--font-size-prompt, 1rem), 16px);
+  }
+}
+
+.t3-ghostty-canvas {
+  cursor: text;
+}
+
+.t3-ghostty-scrollbar {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  right: 1px;
+  bottom: 4px;
+  width: var(--app-scrollbar-width);
+  cursor: default;
+  touch-action: none;
+}
+
+.t3-ghostty-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  right: 1px;
+  left: 1px;
+  border-radius: 3px;
+  background: var(--app-scrollbar-thumb);
+  transition: background-color 120ms ease-out;
+}
+
+.t3-ghostty-scrollbar:hover .t3-ghostty-scrollbar-thumb,
+.t3-ghostty-scrollbar:focus-visible .t3-ghostty-scrollbar-thumb {
+  background: var(--app-scrollbar-thumb-hover);
+}
+
+.model-picker-list::-webkit-scrollbar-track {
+  margin-block: 0.5rem;
+}
+
+.model-picker-list-scroll-fade-top,
+.model-picker-list-scroll-fade-bottom {
+  -webkit-mask-image: var(--model-picker-list-scroll-mask), linear-gradient(black, black);
+  -webkit-mask-position: left, right;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size:
+    calc(100% - var(--app-scrollbar-width)) 100%,
+    var(--app-scrollbar-width) 100%;
+  mask-image: var(--model-picker-list-scroll-mask), linear-gradient(black, black);
+  mask-position: left, right;
+  mask-repeat: no-repeat;
+  mask-size:
+    calc(100% - var(--app-scrollbar-width)) 100%,
+    var(--app-scrollbar-width) 100%;
+}
+
+.model-picker-list-scroll-fade-top {
+  --model-picker-list-scroll-mask: linear-gradient(to bottom, transparent, black var(--fade-size));
+}
+
+.model-picker-list-scroll-fade-bottom {
+  --model-picker-list-scroll-mask: linear-gradient(
+    to bottom,
+    black calc(100% - var(--fade-size)),
+    transparent
+  );
+}
+
+.model-picker-list-scroll-fade-top.model-picker-list-scroll-fade-bottom {
+  --model-picker-list-scroll-mask: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--fade-size),
+    black calc(100% - var(--fade-size)),
+    transparent
+  );
 }
 
 .turn-chip-strip {
@@ -1095,20 +1249,6 @@ code {
 
 .turn-chip-strip::-webkit-scrollbar {
   display: none;
-}
-
-/* Terminal drawer scrollbar parity with chat */
-.thread-terminal-drawer .xterm .xterm-scrollable-element > .scrollbar.vertical {
-  width: 6px !important;
-}
-
-.thread-terminal-drawer .xterm .xterm-scrollable-element > .scrollbar > .slider {
-  border-radius: 3px;
-}
-
-.thread-terminal-drawer .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
-  width: 6px !important;
-  left: 0 !important;
 }
 
 /* Reasoning select -- clickable label surface */
@@ -1361,9 +1501,7 @@ label:has(> select#reasoning-effort) select {
 .chat-markdown .chat-markdown-codeblock {
   margin: 0.65rem 0;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--muted) 78%, var(--background));
+  border-radius: var(--radius);
 }
 
 .chat-markdown .chat-markdown-codeblock-header {
@@ -1371,10 +1509,8 @@ label:has(> select#reasoning-effort) select {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--muted);
-  padding: 0.25rem 0.375rem 0.25rem 0.7rem;
-  color: var(--muted-foreground);
+  padding: 0.375rem 0.375rem 0 0.75rem;
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
 }
 
 .chat-markdown .chat-markdown-codeblock-title {
@@ -1387,7 +1523,7 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-markdown .chat-markdown-chrome-action {
-  color: var(--muted-foreground);
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
 }
 
 .chat-markdown .chat-markdown-chrome-action:hover {
@@ -1466,6 +1602,30 @@ label:has(> select#reasoning-effort) select {
   align-items: center;
   justify-content: space-between;
   margin-top: 0.125rem;
+}
+
+/* Prompt-stash save acknowledgement: the new count fades up from just below
+   its resting position, once, then stops. One-shot and event-driven (React
+   remounts the element by key on each stash) — no continuous animation. */
+@keyframes prompt-stash-count-enter {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.prompt-stash-count-enter {
+  animation: prompt-stash-count-enter 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt-stash-count-enter {
+    animation: none;
+  }
 }
 
 @keyframes provider-update-pill-countdown {
@@ -1579,28 +1739,6 @@ label:has(> select#reasoning-effort) select {
   background-clip: text;
   -webkit-background-clip: text;
   animation: ultrathink-rainbow 10s linear infinite;
-}
-
-/* Thin scrollbar for model picker */
-.model-picker-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.model-picker-list::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
-}
-
-.model-picker-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.dark .model-picker-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.dark .model-picker-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Composer chips are non-editable decorators, so the browser skips them when

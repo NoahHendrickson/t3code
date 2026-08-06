@@ -5,15 +5,14 @@ import { passkeys } from "@clerk/electron/passkeys";
 import { ClerkProvider as ElectronClerkProvider } from "@clerk/electron/react";
 import { createHashHistory, createBrowserHistory } from "@tanstack/react-router";
 
-import "@fontsource-variable/dm-sans/index.css";
-import "@fontsource/jetbrains-mono/400.css";
-import "@fontsource/jetbrains-mono/500.css";
-import "@xterm/xterm/css/xterm.css";
 import "./index.css";
 /* fork:begin fork-marker — see .fork/customizations.yaml#fork-marker */
 import "./theme.custom.css";
 import { applyForkMarker } from "./custom/forkMarker";
 /* fork:end fork-marker */
+/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+import { initializeForkTheme } from "./custom/forkTheme";
+/* fork:end fork-cool-dark-theme */
 
 import { isElectron } from "./env";
 import { ManagedRelayAuthProvider } from "./cloud/managedAuth";
@@ -33,6 +32,9 @@ const router = getRouter(history);
 /* fork:begin fork-marker — see .fork/customizations.yaml#fork-marker */
 applyForkMarker(document.documentElement);
 /* fork:end fork-marker */
+/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+initializeForkTheme();
+/* fork:end fork-cool-dark-theme */
 
 if (isElectron) {
   syncDocumentElectronPlatformClasses(navigator.platform);

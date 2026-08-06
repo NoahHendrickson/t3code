@@ -1,0 +1,19 @@
+{
+  // The engine is its own TypeScript island, excluded from apps/web's project (see the
+  // fork fence in apps/web/tsconfig.json). vendor/ is vendored from NoahHendrickson/the-forge
+  // and keeps that repo's compiler options — the two flags the T3 base config adds
+  // (noUncheckedIndexedAccess, exactOptionalPropertyTypes) would reject thousands of lines
+  // of upstream-Forge code that its own strict tsc already vouches for.
+  // Checked by apps/web/src/__fork_guards__/forkDesignMode.test.ts via the bundle build;
+  // run `npx tsc -p src/custom/designMode/engine` from apps/web for a full type pass.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["./**/*.ts", "../protocol.ts"]
+}

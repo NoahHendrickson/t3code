@@ -11,8 +11,8 @@
  * The terminal half is exercised as behaviour against the fork-owned module
  * rather than grepped for inside the drawer: string assertions on an upstream
  * file pin the code's *placement* instead of its effect, and would block moving
- * it. Only the two call sites are checked textually, because a rebase quietly
- * dropping them is precisely the failure this file exists to catch.
+ * it. Only the call site is checked textually, because a rebase quietly
+ * dropping it is precisely the failure this file exists to catch.
  */
 
 import * as NodeFS from "node:fs";
@@ -20,13 +20,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
-import {
-  FORK_TERMINAL_FONT_FALLBACK,
-  firstFontFamily,
-  refitTerminalWhenFontsReady,
-  terminalFontFamilyFrom,
-  type ForkTerminalFontTarget,
-} from "../custom/terminalFont";
+import { FORK_TERMINAL_FONT_FALLBACK } from "../custom/terminalFont";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -50,52 +44,6 @@ function fontFamilies(stack: string): string[] {
     .split(",")
     .map((family) => family.trim().replace(/^["']|["']$/gu, ""))
     .filter((family) => family.length > 0);
-}
-
-interface TerminalProbe {
-  readonly target: ForkTerminalFontTarget;
-  /** Every value written to `options.fontFamily`, in order. */
-  readonly writes: string[];
-  readonly scrolls: () => number;
-}
-
-function terminalProbe(fontFamily: string, atBottom = true): TerminalProbe {
-  const writes: string[] = [];
-  let current = fontFamily;
-  let scrolls = 0;
-  return {
-    writes,
-    scrolls: () => scrolls,
-    target: {
-      cols: 80,
-      rows: 24,
-      options: {
-        get fontFamily() {
-          return current;
-        },
-        set fontFamily(value: string) {
-          current = value;
-          writes.push(value);
-        },
-      },
-      buffer: { active: { viewportY: atBottom ? 5 : 0, baseY: 5 } },
-      scrollToBottom: () => {
-        scrolls += 1;
-      },
-    },
-  };
-}
-
-function fakeFonts(loadResult: Promise<FontFace[]> = Promise.resolve([])) {
-  const requested: string[] = [];
-  const fonts = {
-    load: (font: string) => {
-      requested.push(font);
-      return loadResult;
-    },
-    ready: Promise.resolve(),
-  } as unknown as Pick<FontFaceSet, "load" | "ready">;
-  return { requested, fonts };
 }
 
 describe("fork guard: geist-typography", () => {
@@ -124,11 +72,11 @@ describe("fork guard: geist-typography", () => {
   });
 
   it("keeps upstream's @theme tokens reading through the fork indirection", () => {
-    // `@theme inline` bakes font values literally into `.font-sans` /
-    // `.font-mono` and their variants, so a compiled utility can never see a
-    // variable overridden in a later stylesheet. Lose this indirection and
-    // every `font-mono`-classed element silently reverts to SF Mono while the
-    // rest of the app stays on Geist.
+    // Upstream declares the font tokens in a non-inline `@theme` block (so
+    // Settings → Appearance can override them at runtime); the fork routes
+    // both through `--fork-font-*` there. Lose this indirection and every
+    // font utility silently reverts to upstream's system stacks while the
+    // fork stylesheet's `--fork-font-*` values go unread.
     // Whitespace-tolerant: the formatter decides whether these wrap.
     const upstream = readSibling("../index.css");
     expect(upstream).toMatch(/--font-sans:\s*var\(\s*--fork-font-sans\s*,/u);
@@ -146,20 +94,23 @@ describe("fork guard: geist-typography", () => {
     expect(sfMono).toBeGreaterThan(geist);
   });
 
-  it("keeps upstream's bundled mono fallback in both stacks", () => {
-    // JetBrains Mono is upstream's only *bundled* mono face. Dropping it
-    // regresses a Linux user with no SF Mono and no Consolas to generic
-    // monospace whenever the Geist Mono fetch fails.
+  it("keeps the JetBrains Mono fallback named in both stacks", () => {
+    // Kept from the era when a Fontsource JetBrains Mono face was bundled
+    // (upstream dropped its webfonts in the v0.0.32 cycle; the fork followed):
+    // the name still rescues a Linux user with a locally installed JetBrains
+    // Mono before the stack degrades to Liberation Mono or the generic.
     const block = markerBlock(readSibling("../theme.custom.css"));
     expect(block.slice(block.indexOf("--fork-font-mono:"))).toContain('"JetBrains Mono"');
     expect(FORK_TERMINAL_FONT_FALLBACK).toContain('"JetBrains Mono"');
   });
 
-  it("keeps the module's fallback stack identical to the CSS mono stack", () => {
-    // FORK_TERMINAL_FONT_FALLBACK backs up the `--font-mono` read, so it has to
-    // stay the stack the cascade produces in a marked build. Nothing else pins
-    // the two together: edit one, forget the other, and the safety net quietly
-    // stops matching what it backs up while every other guard here stays green.
+  it("keeps the module's fallback stack aligned with the CSS mono stack", () => {
+    // FORK_TERMINAL_FONT_FALLBACK is what an unset terminal preference means;
+    // `--fork-font-mono` is what the rest of the app renders in. They are the
+    // same stack except for the trailing generic, which the terminal omits on
+    // purpose (the surface appends its own glyph fallbacks). Nothing else pins
+    // the two together: edit one, forget the other, and the terminal default
+    // quietly drifts from the app's mono face.
     const css = readSibling("../theme.custom.css");
     // Exactly one declaration: a second — a `.dark` variant, a media query, a
     // stale copy quoted in a comment — would win the cascade in some state
@@ -169,131 +120,45 @@ describe("fork guard: geist-typography", () => {
     // wraps, and `Consolas` and `"Consolas"` are the same family to CSS.
     const declared = markerBlock(css).match(/--fork-font-mono:([^;]*);/u);
     expect(declared).not.toBeNull();
-    expect(fontFamilies(declared?.[1] ?? "")).toEqual(fontFamilies(FORK_TERMINAL_FONT_FALLBACK));
+    const cssFamilies = fontFamilies(declared?.[1] ?? "");
+    expect(cssFamilies.at(-1)).toBe("monospace");
+    expect(fontFamilies(FORK_TERMINAL_FONT_FALLBACK)).toEqual(cssFamilies.slice(0, -1));
   });
 
   it("keeps the terminal wired to the fork-owned font module", () => {
+    // The ghostty surface takes its font as a creation option and handles the
+    // webfont re-measure itself. An unset Settings → Appearance preference
+    // must resolve to the fork's Geist Mono stack, not the surface's built-in
+    // face — that default lives in terminalFontOptions' empty-family branch.
+    // Lose it and the terminal silently reverts to upstream's default while
+    // the rest of the app is on Geist.
     const drawer = readSibling("../components/ThreadTerminalDrawer.tsx");
-    expect(drawer).toContain("fontFamily: resolveTerminalFontFamily(mount)");
-    expect(drawer).toContain("refitTerminalWhenFontsReady({");
+    expect(drawer).toMatch(/return\s*\{\s*family:\s*FORK_TERMINAL_FONT_FALLBACK\s*,\s*size\s*\}/u);
   });
 
-  describe("resolved stack", () => {
-    it("falls back to a stack that still leads with Geist Mono", () => {
-      // The degraded path must not land the terminal on SF Mono while the rest
-      // of the app is on Geist — that split is what the indirection prevents.
-      expect(terminalFontFamilyFrom("   ")).toBe(FORK_TERMINAL_FONT_FALLBACK);
+  it("keeps upstream's cold-load re-measure, which the fork's shim was deleted for", () => {
+    // The xterm-era refit shim was removed because the surface waits on
+    // document.fonts before measuring the cell grid and re-measures on
+    // loadingdone. If a sync drops either, Geist Mono measures at fallback
+    // advances with the PTY wrapping to a column count nobody re-derived —
+    // silently. This is the tripwire for that upstream dependency.
+    const surface = readSibling("../terminal/ghostty/surface.ts");
+    expect(surface).toContain("document.fonts.load(");
+    expect(surface).toContain('"loadingdone"');
+  });
+
+  describe("terminal default stack", () => {
+    it("leads with Geist Mono", () => {
+      // The unset-preference default must not land the terminal on SF Mono
+      // while the rest of the app is on Geist.
       expect(FORK_TERMINAL_FONT_FALLBACK.startsWith('"Geist Mono Variable"')).toBe(true);
     });
 
-    it("prefers the cascade-resolved value when present", () => {
-      expect(terminalFontFamilyFrom(' "Geist Mono Variable", monospace ')).toBe(
-        '"Geist Mono Variable", monospace',
-      );
-    });
-
-    it("takes the first family for the font-load probe", () => {
-      expect(firstFontFamily('"Geist Mono Variable", "SF Mono", monospace')).toBe(
-        '"Geist Mono Variable"',
-      );
-      expect(firstFontFamily("")).toBeNull();
-    });
-  });
-
-  describe("cold-load re-measure", () => {
-    it("probes the resolved family rather than a hardcoded one", async () => {
-      // Hardcoding goes stale on a face swap, and would fetch Geist Mono even in
-      // an unmarked build — breaking the fork's own scoping invariant.
-      const probe = terminalProbe('"Geist Mono Variable", monospace');
-      const { requested, fonts } = fakeFonts();
-      await refitTerminalWhenFontsReady({
-        terminal: probe.target,
-        isCurrent: () => true,
-        fit: () => {},
-        resize: () => {},
-        fonts,
-        scheduleFrame: (callback) => callback(),
-      });
-      expect(requested).toEqual(['12px "Geist Mono Variable"']);
-    });
-
-    it("re-applies the family so xterm re-measures, then tells the PTY", async () => {
-      // xterm's option setter drops equal writes, so the value has to change
-      // before it changes back. And nothing in the drawer subscribes to
-      // onResize: without the resize call the PTY keeps wrapping to the stale
-      // width while the local grid is corrected.
-      const probe = terminalProbe('"Geist Mono Variable", monospace');
-      const { fonts } = fakeFonts();
-      const resized: Array<[number, number]> = [];
-      let fitted = 0;
-
-      await refitTerminalWhenFontsReady({
-        terminal: probe.target,
-        isCurrent: () => true,
-        fit: () => {
-          fitted += 1;
-        },
-        resize: (cols, rows) => resized.push([cols, rows]),
-        fonts,
-        scheduleFrame: (callback) => callback(),
-      });
-
-      expect(probe.writes.length).toBe(2);
-      expect(probe.writes[0]).not.toBe(probe.writes[1]);
-      expect(probe.writes[1]).toBe('"Geist Mono Variable", monospace');
-      expect(fitted).toBe(1);
-      expect(resized).toEqual([[80, 24]]);
-      expect(probe.scrolls()).toBe(1);
-    });
-
-    it("holds the viewport when it was not pinned to the bottom", async () => {
-      const probe = terminalProbe('"Geist Mono Variable", monospace', false);
-      const { fonts } = fakeFonts();
-      await refitTerminalWhenFontsReady({
-        terminal: probe.target,
-        isCurrent: () => true,
-        fit: () => {},
-        resize: () => {},
-        fonts,
-        scheduleFrame: (callback) => callback(),
-      });
-      expect(probe.scrolls()).toBe(0);
-    });
-
-    it("leaves a torn-down terminal alone", async () => {
-      const probe = terminalProbe('"Geist Mono Variable", monospace');
-      const { fonts } = fakeFonts();
-      const resized: Array<[number, number]> = [];
-      await refitTerminalWhenFontsReady({
-        terminal: probe.target,
-        isCurrent: () => false,
-        fit: () => {},
-        resize: (cols, rows) => resized.push([cols, rows]),
-        fonts,
-        scheduleFrame: (callback) => callback(),
-      });
-      expect(probe.writes).toEqual([]);
-      expect(resized).toEqual([]);
-    });
-
-    it("survives a webfont that fails to load", async () => {
-      // FontFaceSet.load() rejects if a matching face fails. That must not
-      // surface as an unhandled rejection, and the re-fit should still run —
-      // the fallback metrics are simply the ones that stay correct.
-      const probe = terminalProbe('"Geist Mono Variable", monospace');
-      const { fonts } = fakeFonts(Promise.reject(new Error("404")));
-      let fitted = 0;
-      await refitTerminalWhenFontsReady({
-        terminal: probe.target,
-        isCurrent: () => true,
-        fit: () => {
-          fitted += 1;
-        },
-        resize: () => {},
-        fonts,
-        scheduleFrame: (callback) => callback(),
-      });
-      expect(fitted).toBe(1);
+    it("carries no trailing generic, so the surface's glyph fallbacks stay reachable", () => {
+      // The surface appends the Nerd Font fallbacks after whatever family it
+      // is given; a `monospace` generic mid-list would sit ahead of them.
+      expect(FORK_TERMINAL_FONT_FALLBACK.endsWith("monospace")).toBe(false);
+      expect(FORK_TERMINAL_FONT_FALLBACK).not.toContain("ui-monospace");
     });
   });
 });

@@ -4,10 +4,17 @@ on:
   pull_request:
   push:
     branches:
-      - main
       # fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom
+      # `main` is deliberately absent on the fork: it is a pure upstream
+      # mirror whose commits upstream CI has already validated, and mirror
+      # pushes authenticate with a deploy key, which — unlike GITHUB_TOKEN —
+      # triggers `push` workflows.
       - custom
       # fork:end ci-on-custom
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -19,6 +26,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
 
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@v1
@@ -27,14 +39,32 @@ jobs:
           cache: true
           run-install: true
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
       - name: Ensure Electron runtime is installed
         run: vp run --filter @t3tools/desktop ensure:electron
 
       - name: Check
         run: vp check
 
+      # fork:begin fork-lint-cleanliness — see .fork/customizations.yaml#fork-lint-cleanliness
+      # `vp check` lints the whole repo but exits 0 on warnings, and no
+      # --max-warnings is set anywhere, so fork-authored dead code accumulates
+      # silently — it took three PRs to remove nine dead imports because
+      # noticing was the hard part. This fails on a single warning in
+      # fork-owned code only, so upstream's warnings can never turn it red.
+      - name: Lint fork-owned code
+        run: node .fork/lint-owned.mjs
+      # fork:end fork-lint-cleanliness
+
       - name: Typecheck
         run: vpr typecheck
+
+      - name: Check resource monitor formatting
+        run: cargo fmt --manifest-path native/resource-monitor/Cargo.toml -- --check
 
       - name: Build desktop pipeline
         run: vp run build:desktop
@@ -54,6 +84,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
 
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@v1
@@ -62,11 +97,17 @@ jobs:
           cache: true
           run-install: true
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Ensure Electron runtime is installed
         run: vp run --filter @t3tools/desktop ensure:electron
 
       - name: Test
         run: vp run test
+
+      - name: Test resource monitor
+        run: cargo test --locked --manifest-path native/resource-monitor/Cargo.toml
 
   mobile_native_static_analysis:
     name: Mobile Native Static Analysis
@@ -77,13 +118,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
 
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@v1
         with:
           node-version-file: package.json
           cache: true
-          run-install: true
+          run-install: |
+            args:
+              - --filter=@t3tools/scripts...
 
       - name: Install mobile native static analysis tools
         run: brew bundle install --file apps/mobile/Brewfile
@@ -100,13 +148,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
 
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@v1
         with:
           node-version-file: package.json
           cache: true
-          run-install: true
+          run-install: |
+            args:
+              - --filter=@t3tools/scripts...
 
       - name: Exercise release-only workflow steps
         run: node scripts/release-smoke.ts

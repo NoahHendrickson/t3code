@@ -30,6 +30,8 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+import { FORK_APP_BASE_NAME } from "../custom/forkBranding";
+
 const repoRoot = NodePath.resolve(
   NodeURL.fileURLToPath(new URL(".", import.meta.url)),
   "../../../..",
@@ -39,6 +41,9 @@ const read = (relativePath: string): string =>
   NodeFS.readFileSync(NodePath.join(repoRoot, relativePath), "utf8");
 
 const DESKTOP_ENVIRONMENT = "apps/desktop/src/app/DesktopEnvironment.ts";
+const DESKTOP_STATE_PATHS = "apps/desktop/src/app/DesktopStatePaths.ts";
+const DESKTOP_EARLY_STARTUP = "apps/desktop/src/app/DesktopEarlyElectronStartup.ts";
+const DESKTOP_PRE_READY = "apps/desktop/src/app/DesktopPreReadyPlatform.ts";
 const DESKTOP_BACKEND_CONFIGURATION = "apps/desktop/src/backend/DesktopBackendConfiguration.ts";
 const SERVER_CONFIG = "apps/server/src/config.ts";
 const BUILD_SCRIPT = "scripts/build-desktop-artifact.ts";
@@ -55,10 +60,29 @@ describe("fork guard: fork-app-identity", () => {
 
   it("installs under a fork-owned app name", () => {
     const script = read(BUILD_SCRIPT);
-    expect(script).toContain('"N3 Code"');
+    expect(script).toContain('"no3y Code"');
     // Upstream reads productName from the desktop package.json ("T3 Code
     // (Alpha)") — the exact name of the installed release's bundle.
     expect(script).not.toContain("desktopPackageJson.productName");
+  });
+
+  it("brands the rendered app as the fork, not upstream", () => {
+    // The packaged build gets its name over the desktop bridge, so this
+    // fallback is the only thing a dev or hosted session has. Upstream's is
+    // "T3 Code" — leaving it meant every dev session ran under upstream's name
+    // while the installed app ran under the fork's, which is precisely the
+    // confusion the rename was asked for.
+    expect(FORK_APP_BASE_NAME).toBe("no3y Code");
+    const branding = read("apps/web/src/branding.ts");
+    expect(branding).toContain("?? FORK_APP_BASE_NAME");
+    expect(branding).not.toContain('?? "T3 Code"');
+  });
+
+  it("shows that name in the sidebar rather than upstream's wordmark", () => {
+    const chrome = read("apps/web/src/components/sidebar/SidebarChrome.tsx");
+    expect(chrome).toContain("{APP_BASE_NAME}");
+    // The borrowed T3 glyph, which read as a mismatch beside a different name.
+    expect(chrome).not.toContain("T3Wordmark");
   });
 
   it("keeps the release workflow on the fork's install name", () => {
@@ -68,8 +92,8 @@ describe("fork guard: fork-app-identity", () => {
     // told users to de-quarantine "T3 Code (Alpha).app", a bundle the fork
     // never installs as. Pin the strings that must track the product name.
     const workflow = read(FORK_RELEASE_WORKFLOW);
-    expect(workflow).toContain('"/Applications/N3 Code.app"');
-    expect(workflow).toContain("name: N3 Code");
+    expect(workflow).toContain('"/Applications/no3y Code.app"');
+    expect(workflow).toContain("name: no3y Code");
     // The install-path shape specifically: a "T3 Code Fork.app" mention
     // survives legitimately in the v0.1.1 cleanup instructions.
     expect(workflow).not.toContain("/Applications/T3 Code");
@@ -78,13 +102,106 @@ describe("fork guard: fork-app-identity", () => {
   it("packages with the fork's own artwork", () => {
     // Upstream art would make a fork build indistinguishable from the real
     // app in the Dock and /Applications, exactly where the two must be
-    // tell-apart-able. All three platform icons come from assets/fork.
+    // tell-apart-able. Desktop icons and bundled splash/favicon come from
+    // assets/fork; packaging must not fall back to upstream channel art.
     const script = read(BUILD_SCRIPT);
-    expect(script).toContain('"assets/fork/n3-macos-1024.png"');
+    expect(script).toContain('"assets/fork/n3-macos-dock.png"');
     expect(script).toContain('"assets/fork/n3-universal-1024.png"');
     expect(script).toContain('"assets/fork/n3-windows.ico"');
+    expect(script).toContain('"assets/fork/n3-web-favicon.ico"');
+    expect(script).toContain("FORK_WEB_ICON_ASSETS");
+    expect(script).toContain("applyWebIconOverrides");
+    expect(script).toContain("resolveWebIconOverridesFromSources");
     expect(script).not.toContain("BRAND_ASSET_PATHS.productionMacIconPng");
     expect(script).not.toContain("BRAND_ASSET_PATHS.nightlyMacIconPng");
+    expect(script).not.toContain("applyWebBrandAssets(");
+    expect(script).not.toContain("applyForkWebBrandAssets");
+    expect(script).not.toContain("resolveForkWebIconOverrides");
+
+    const launcher = read("apps/desktop/scripts/electron-launcher.mjs");
+    expect(launcher).toContain('"n3-dev-macos-dock.png"');
+    expect(launcher).not.toContain("blueprint-macos-1024.png");
+
+    const desktopEnvironment = read(DESKTOP_ENVIRONMENT);
+    expect(desktopEnvironment).toContain('"n3-dev-macos-dock.png"');
+    expect(desktopEnvironment).not.toContain('"blueprint-macos-1024.png"');
+
+    // Linux and Windows have no runtime icon override, so their packaged
+    // rasters must themselves carry the current release artwork — a path
+    // string alone would stay green forever while the bytes go stale.
+    expect(
+      NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/n3-universal-1024.png")),
+    ).toEqual(NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/n3-macos-1024.png")));
+    const windowsIco = NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/n3-windows.ico"));
+    const icoEntryCount = windowsIco.readUInt16LE(4);
+    const icoSizes = Array.from({ length: icoEntryCount }, (_, index) => {
+      const width = windowsIco.readUInt8(6 + index * 16);
+      return width === 0 ? 256 : width;
+    });
+    expect(icoSizes).toEqual([16, 24, 32, 48, 64, 128, 256]);
+    const ico256Offset = windowsIco.readUInt32LE(6 + 6 * 16 + 12);
+    // Each entry embeds a PNG resampled from n3-macos-1024.png, so the 256px
+    // entry must decode as a PNG whose IHDR matches the declared size.
+    expect(windowsIco.subarray(ico256Offset, ico256Offset + 8)).toEqual(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    );
+    expect(windowsIco.readUInt32BE(ico256Offset + 16)).toBe(256);
+
+    // Dev (`vp run dev`) serves apps/web/public — use the orange family there,
+    // while packaged builds stamp the green production family above.
+    for (const [source, target] of [
+      ["assets/fork/n3-dev-web-favicon.ico", "apps/web/public/favicon.ico"],
+      ["assets/fork/n3-dev-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
+      ["assets/fork/n3-dev-web-favicon-32x32.png", "apps/web/public/favicon-32x32.png"],
+      ["assets/fork/n3-dev-web-apple-touch-180.png", "apps/web/public/apple-touch-icon.png"],
+    ] as const) {
+      expect(NodeFS.readFileSync(NodePath.join(repoRoot, target))).toEqual(
+        NodeFS.readFileSync(NodePath.join(repoRoot, source)),
+      );
+    }
+  });
+
+  it("uses the fork's layered Liquid Glass app icons on macOS", () => {
+    type IconComposerProject = {
+      fill: { solid: string };
+      groups: Array<{
+        layers: Array<{ glass?: boolean; "image-name": string }>;
+        translucency: { enabled: boolean };
+      }>;
+    };
+    const productionIcon = JSON.parse(
+      read("assets/fork/app-icon.icon/icon.json"),
+    ) as IconComposerProject;
+    const developmentIcon = JSON.parse(
+      read("assets/fork/dev-app-icon.icon/icon.json"),
+    ) as IconComposerProject;
+    expect(productionIcon.fill.solid).toBe("srgb:0.00000,1.00000,0.56471,1.00000");
+    expect(developmentIcon.fill.solid).toBe("srgb:1.00000,0.41569,0.00000,1.00000");
+    for (const icon of [productionIcon, developmentIcon]) {
+      expect(icon.groups[0]?.layers[0]).toMatchObject({
+        glass: false,
+        "image-name": "mark.svg",
+      });
+      expect(icon.groups[0]?.translucency.enabled).toBe(true);
+    }
+
+    const mark = read("assets/fork/app-icon.icon/Assets/mark.svg");
+    expect(mark).toContain('viewBox="0 0 1024 1024"');
+    expect(mark).toContain('transform="translate(112.0075 111.998) scale(1.3333333333)"');
+    expect(
+      NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/dev-app-icon.icon/Assets/mark.svg")),
+    ).toEqual(
+      NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/app-icon.icon/Assets/mark.svg")),
+    );
+
+    const pngDimensions = (relativePath: string) => {
+      const contents = NodeFS.readFileSync(NodePath.join(repoRoot, relativePath));
+      return [contents.readUInt32BE(16), contents.readUInt32BE(20)];
+    };
+    expect(pngDimensions("assets/fork/n3-dev-macos-1024.png")).toEqual([1024, 1024]);
+    expect(pngDimensions("assets/fork/n3-dev-macos-dock.png")).toEqual([1272, 1272]);
+    expect(pngDimensions("assets/fork/n3-macos-1024.png")).toEqual([1024, 1024]);
+    expect(pngDimensions("assets/fork/n3-macos-dock.png")).toEqual([1272, 1272]);
   });
 
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {
@@ -128,10 +245,14 @@ describe("fork guard: fork-app-identity", () => {
     const serverConfig = read(SERVER_CONFIG);
     // The desktop hands the server its own baseDir, nothing narrower.
     expect(backendConfiguration).toContain("t3Home: environment.baseDir");
-    // Both halves append the same upstream leaf to that one input.
-    expect(environment).toContain('? "dev" : "userdata"');
+    // Both halves append the same upstream leaf to that one input. The
+    // desktop's leaf choice lives in upstream's DesktopStatePaths helper
+    // since the v0.0.32 sync; the environment must still route through it.
+    expect(environment).toContain("resolveDesktopStateDir({");
+    expect(read(DESKTOP_STATE_PATHS)).toContain('? "dev" : "userdata"');
     expect(serverConfig).toContain('? "dev" : "userdata"');
     expect(environment).not.toContain('"userdata-fork"');
+    expect(read(DESKTOP_STATE_PATHS)).not.toContain('"userdata-fork"');
     // The server also derives its shared sibling directories from baseDir, so
     // forking the base isolates caches/ and worktrees/ too. If upstream stops
     // deriving any of these from baseDir, the fork must notice.
@@ -143,6 +264,31 @@ describe("fork guard: fork-app-identity", () => {
     const environment = read(DESKTOP_ENVIRONMENT);
     expect(environment).toContain('isDevelopment ? "t3code-dev" : "t3code-fork"');
     expect(environment).not.toContain('isDevelopment ? "t3code-dev" : "t3code"');
+  });
+
+  it("keeps the pre-ready early resolver on the fork's identity, agreeing with DesktopEnvironment", () => {
+    // Upstream's v0.0.32 pre-ready refactor re-derives the WM class and the
+    // settings base dir from scratch in DesktopEarlyElectronStartup — it never
+    // reads DesktopEnvironment — so the fork values must be restated there and
+    // must agree with the late path. The sync that introduced the file shipped
+    // WM class "t3code" and a ~/.t3 settings read while every guard stayed
+    // green; this is the tripwire for the next such file.
+    const early = read(DESKTOP_EARLY_STARTUP);
+    const environment = read(DESKTOP_ENVIRONMENT);
+    // Same WM class pair as the late path (DesktopEnvironment.linuxWmClass).
+    expect(early).toContain('? "t3code-dev" : "t3code-fork"');
+    expect(early).not.toContain('? "t3code-dev" : "t3code"');
+    // Same base-dir poles as the late path: upstream's ~/.t3 only for
+    // unpackaged development, ~/.t3-fork otherwise, tilde-expanded override.
+    expect(early).toContain('".t3-fork"');
+    expect(early).toMatch(/isUnpackagedDevelopment \? "\.t3" : "\.t3-fork"/u);
+    expect(environment).toContain('".t3-fork"');
+    // The early path must not call upstream's resolveDesktopBaseDir, whose
+    // default is ~/.t3 unconditionally — that is the exact defect. Matched as
+    // a call so the fence comment may still name it in prose.
+    expect(early).not.toContain("resolveDesktopBaseDir(");
+    // And the one Electron caller passes the packaged bit the carve-out needs.
+    expect(read(DESKTOP_PRE_READY)).toContain("isPackaged: Electron.app.isPackaged");
   });
 
   it("never adopts upstream's legacy user data directory", () => {

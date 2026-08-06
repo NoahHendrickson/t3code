@@ -17,6 +17,9 @@ concurrency:
 jobs:
   deploy_relay:
     name: Deploy production relay
+    # fork:begin relay-upstream-only — see .fork/customizations.yaml#relay-upstream-only
+    if: github.repository == 'pingdotgg/t3code'
+    # fork:end relay-upstream-only
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 15
     environment:
@@ -38,13 +41,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
 
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@v1
         with:
           node-version-file: package.json
           cache: true
-          run-install: true
+          run-install: |
+            args:
+              - --filter=t3code-relay...
 
       - name: Deploy production relay stage
         id: deploy

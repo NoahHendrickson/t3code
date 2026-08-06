@@ -42,7 +42,11 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
               size="sm"
               disabled={!terminalAvailable}
             >
-              <PanelBottomIcon className="size-3.5" />
+              {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+                  16px, up from 14. The glyphs themselves (SquareHalfBottom /
+                  SquareHalf) come from the Phosphor shim, not from here. */}
+              <PanelBottomIcon className="size-4" />
+              {/* fork:end fork-workspace-header */}
             </Toggle>
           }
         />
@@ -64,7 +68,9 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
               size="sm"
               disabled={!rightPanelAvailable}
             >
-              <PanelRightIcon className="size-3.5" />
+              {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */}
+              <PanelRightIcon className="size-4" />
+              {/* fork:end fork-workspace-header */}
             </Toggle>
           }
         />

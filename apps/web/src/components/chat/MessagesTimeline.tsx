@@ -6,6 +6,10 @@ import {
   type TurnId,
 } from "@t3tools/contracts";
 import { parseScopedThreadKey } from "@t3tools/client-runtime/environment";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript";
+import { ForkTranscriptDesignChanges } from "~/custom/designMode/ForkTranscriptDesignChanges";
+/* fork:end fork-design-mode */
 import { resolveChatListAnchoredEndSpace } from "@t3tools/shared/chatList";
 import {
   createContext,
@@ -869,7 +873,14 @@ const TimelineRowContent = memo(function TimelineRowContent({ row }: { row: Time
 function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" }> }) {
   const ctx = use(TimelineRowCtx);
   const userImages = row.message.attachments ?? [];
-  const displayedUserMessage = deriveDisplayedUserMessageState(row.message.text);
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+     Design-change blocks are appended after every other context block at send time, so
+     they're the outermost trailing run — stripping them first also restores the trailing
+     position the element/terminal extractors below rely on. Rendered as chips further
+     down instead of raw markdown. */
+  const forkDesignChanges = extractTrailingDesignChanges(row.message.text);
+  const displayedUserMessage = deriveDisplayedUserMessageState(forkDesignChanges.promptText);
+  /* fork:end fork-design-mode */
   const terminalContexts = displayedUserMessage.contexts;
   const previewAnnotations: ParsedPreviewAnnotation[] = [];
   let visibleText = displayedUserMessage.visibleText;
@@ -931,6 +942,9 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
             image={previewImages[index] ?? null}
           />
         ))}
+        {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
+        <ForkTranscriptDesignChanges blocks={forkDesignChanges.blocks} />
+        {/* fork:end fork-design-mode */}
         {elementContexts.length > 0 ? (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {elementContexts.map((context) => (

@@ -1,5 +1,8 @@
 import type { DesktopAppBranding } from "@t3tools/contracts";
 import { formatAppDisplayName } from "./branding.logic";
+/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+import { FORK_APP_BASE_NAME } from "~/custom/forkBranding";
+/* fork:end fork-app-identity */
 
 function readInjectedDesktopAppBranding(): DesktopAppBranding | null {
   if (typeof window === "undefined") {
@@ -16,7 +19,12 @@ export const HOSTED_APP_CHANNEL =
   hostedAppChannel === "latest" || hostedAppChannel === "nightly" ? hostedAppChannel : null;
 export const HOSTED_APP_CHANNEL_LABEL =
   HOSTED_APP_CHANNEL === "nightly" ? "Nightly" : HOSTED_APP_CHANNEL === "latest" ? "Latest" : null;
-export const APP_BASE_NAME = injectedDesktopAppBranding?.baseName ?? "T3 Code";
+/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+   The packaged build injects the same name through the bridge; this fallback is
+   what a bridge-less build (dev, hosted web) shows. Upstream's "T3 Code" left
+   the fork's own dev sessions branded as upstream. */
+export const APP_BASE_NAME = injectedDesktopAppBranding?.baseName ?? FORK_APP_BASE_NAME;
+/* fork:end fork-app-identity */
 export const APP_STAGE_LABEL =
   injectedDesktopAppBranding?.stageLabel ??
   HOSTED_APP_CHANNEL_LABEL ??
