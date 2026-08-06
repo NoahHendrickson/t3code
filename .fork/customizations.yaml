@@ -1403,7 +1403,15 @@
     the model and effort selects share the row's 12px type (Noey's call over
     the drawn 10px), and the composer's effort trigger joins its trait labels
     with a plain space ("High 1M") while Settings keeps upstream's " · "
-    separator. The branch strip is still passed into ChatComposer as
+    separator. The runtime-mode chip and the composer's model and effort
+    triggers tighten to 4px inline padding so the row reads as a packed
+    cluster. The chip's padding lives in ComposerShell.css alongside its 20px
+    height (that rule outranks any Tailwind px-* utility on the trigger, so
+    the class is not the lever there); the model and effort triggers take it
+    per call site via triggerClassName rather than through
+    composerControlClassName, so the Build/Plan toggles and the Settings model
+    and traits pickers keep upstream's padding.
+    The branch strip is still passed into ChatComposer as
     the memoised contextStrip element, preserving ChatComposer's memo boundary
     and keeping branch controls reachable while mobile is collapsed. It also
     stays mounted whenever the thread holds a worktree path, rather than only

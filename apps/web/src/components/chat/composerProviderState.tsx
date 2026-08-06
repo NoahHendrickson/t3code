@@ -48,6 +48,7 @@ type TraitsRenderInput = {
   onPromptChange: (prompt: string) => void;
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
   triggerLabelSeparator?: string;
+  triggerClassName?: string;
   /* fork:end fork-composer-shell */
 };
 
@@ -99,6 +100,7 @@ function renderTraitsControl(
     onPromptChange,
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
     triggerLabelSeparator,
+    triggerClassName,
     /* fork:end fork-composer-shell */
   } = input;
   const hasTarget = threadRef !== undefined || draftId !== undefined;
@@ -120,6 +122,7 @@ function renderTraitsControl(
       prompt={prompt}
       onPromptChange={onPromptChange}
       {...(triggerLabelSeparator !== undefined ? { triggerLabelSeparator } : {})}
+      {...(triggerClassName !== undefined ? { triggerClassName } : {})}
     />
   );
 }
