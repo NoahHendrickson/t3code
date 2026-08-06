@@ -1547,7 +1547,12 @@
     canvas selection (expanding ancestors and scrolling to the row), implements
     the ARIA tree contract for real (roving tabindex, arrows, expand/collapse,
     Home/End, Shift to extend), filters by label/tag with matches unfolded,
-    shows a type glyph per row, and drags a row among its siblings. Reorder is
+    shows a type glyph per row, and drags a row among its siblings. The whole
+    rail collapses away (device-local localStorage flag, like the sidebar's own
+    collapse prefs); since nothing of it is left to click, the control that
+    reopens it lives in the preview chrome row's fenced leadingActions slot
+    (ForkPreviewLayersToggle), and the flag is shared through
+    layersCollapsed.ts so the two halves cannot disagree. Reorder is
     sibling-relative over the wire (`reorderElement(id, beforeId)`) because the
     curated tree hoists tagged descendants through untagged wrappers — a row's
     position in the TREE is not its position in the DOM, so only the guest can
@@ -1615,6 +1620,8 @@
     - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkTranscriptDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkLayersTree.tsx
+    - apps/web/src/custom/designMode/ForkPreviewLayersToggle.tsx
+    - apps/web/src/custom/designMode/layersCollapsed.ts
     - apps/web/src/custom/designMode/layersTreeModel.ts
     - apps/web/src/custom/designMode/layersTreeModel.test.ts
     - apps/web/src/custom/designMode/panel/LayerTypeIcon.tsx
@@ -1665,8 +1672,13 @@
     # recovery hangs off this one line.
     - apps/desktop/src/preview-pick-preload.ts
     # Thin fenced import + <ForkPreviewDesignMode> in the chrome row's
-    # trailingActions slot; the browser surface tree stays untouched.
+    # trailingActions slot, plus <ForkPreviewLayersToggle> in its leadingActions
+    # slot; the browser surface tree stays untouched.
     - apps/web/src/components/preview/PreviewView.tsx
+    # Fenced `leadingActions` slot: one prop and one render site before the
+    # navigation group. A shadow of this 320-line hot file would cost a re-port
+    # on every upstream chrome-row change for the sake of two lines.
+    - apps/web/src/components/preview/PreviewChromeRow.tsx
     # Fenced mock adjustment: trailingActions is a fragment (toggle + menu)
     # under the fork, so the mock finds the menu's props on a fragment child.
     - apps/web/src/components/preview/PreviewView.test.tsx

@@ -1,10 +1,18 @@
-import { ChevronDownIcon, ChevronRight, ChevronsDownUpIcon, SearchIcon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronRight,
+  ChevronsDownUpIcon,
+  PanelLeftCloseIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "./designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
+import { useLayersCollapsed } from "./layersCollapsed";
 import { useLayersDrag, type DropEdge } from "./layersDrag";
 import {
   ancestorsOf,
@@ -109,6 +117,7 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useLayersCollapsed();
   const listRef = useRef<HTMLDivElement>(null);
   const focusOnRender = useRef(false);
   /** The selection this rail has already scrolled to — see the reveal effect. */
@@ -286,10 +295,15 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
 
   if (!runtimeTabId || !tab.enabled || !tab.layers) return null;
 
+  // Collapsed gives the space back entirely — no stub rail. The control that reopens it
+  // lives in the preview chrome row (ForkPreviewLayersToggle), which is why the flag is
+  // shared state rather than local to this component.
+  if (collapsed) return null;
+
   return (
     <div
       className="flex w-52 shrink-0 flex-col border-r border-border bg-background"
-      data-fork-design-layers
+      data-fork-design-layers="expanded"
     >
       <header className="flex h-9 shrink-0 items-center gap-1 border-b border-border pe-1.5 ps-3">
         <SearchIcon className="size-3.5 shrink-0 text-muted-foreground/70" />
@@ -325,6 +339,16 @@ export function ForkLayersTree({ runtimeTabId }: { runtimeTabId: string | null }
             <ChevronsDownUpIcon />
           </button>
         )}
+        <button
+          type="button"
+          title="Hide layers"
+          aria-label="Hide layers"
+          aria-expanded={true}
+          onClick={() => setCollapsed(true)}
+          className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
+        >
+          <PanelLeftCloseIcon />
+        </button>
       </header>
       <div
         ref={listRef}

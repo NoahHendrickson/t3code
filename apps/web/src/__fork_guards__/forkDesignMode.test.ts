@@ -55,6 +55,34 @@ describe("fork guard: design mode", () => {
     expect(previewView).not.toContain("ForkLayersTree");
   });
 
+  it("keeps a way back out of the collapsed layers rail", () => {
+    // A one-way door is the failure mode: collapsed, the rail renders nothing, so the only
+    // control that reopens it would go with it. It moves to the chrome row's leading slot
+    // instead — which means the flag has to be shared state, not the rail's own.
+    const rail = read("src/custom/designMode/ForkLayersTree.tsx");
+    const toggle = read("src/custom/designMode/ForkPreviewLayersToggle.tsx");
+    const shared = read("src/custom/designMode/layersCollapsed.ts");
+    expect(/const LAYERS_COLLAPSED_STORAGE_KEY = "([^"]+)"/u.exec(shared)?.[1]).toMatch(
+      /^t3code:fork:[a-z-]+:v\d+$/u,
+    );
+    // Both halves read the same hook; a local useState in either would desync them.
+    for (const source of [rail, toggle]) {
+      expect(source).toContain('from "./layersCollapsed"');
+      expect(source).not.toContain("useState(false)");
+    }
+    expect(rail).toContain("if (collapsed) return null;");
+    expect(rail).toContain('aria-label="Hide layers"');
+    expect(toggle).toContain('aria-label="Show layers"');
+    expect(toggle).toContain("setCollapsed(false)");
+    // ...and the slot it mounts into exists on the chrome row and is actually passed.
+    const chromeRow = read("src/components/preview/PreviewChromeRow.tsx");
+    expect(chromeRow).toContain("leadingActions?: ReactNode;");
+    expect(chromeRow).toContain("{leadingActions}");
+    expect(read("src/components/preview/PreviewView.tsx")).toContain(
+      "leadingActions={<ForkPreviewLayersToggle runtimeTabId={runtimeTabId} />}",
+    );
+  });
+
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
     // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
     // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no

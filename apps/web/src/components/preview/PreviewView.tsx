@@ -56,6 +56,7 @@ import {
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { ForkPreviewDesignMode } from "~/custom/designMode/ForkPreviewDesignMode";
+import { ForkPreviewLayersToggle } from "~/custom/designMode/ForkPreviewLayersToggle";
 /* fork:end fork-design-mode */
 
 interface Props {
@@ -641,6 +642,9 @@ export function PreviewView({ threadRef, tabId: requestedTabId, configuredUrls, 
         pickDisabledReason={
           isUnreachable ? "Page didn't load — pick unavailable until the page renders" : undefined
         }
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        leadingActions={<ForkPreviewLayersToggle runtimeTabId={runtimeTabId} />}
+        /* fork:end fork-design-mode */
         trailingActions={
           previewBridge ? (
             <>
