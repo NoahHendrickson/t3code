@@ -95,7 +95,10 @@ function SidebarBrand() {
           while the injected desktop name and bridge-less fallback still agree.
           The mark is vector: its art is a 23x23 pixel grid, which no bitmap can
           resample into a 24px box without smearing every cell. crispEdges lives
-          in the asset, so the grid stays hard-edged at any size or DPR. */}
+          in the asset, so cells stay hard-edged at every DPR. The 23-into-24 fit
+          still renders the center row and column of cells 2px at DPR 1 — one
+          heavy line, accepted over either blurring all of them or drawing the
+          art at 23px, which centers on a half-pixel. */}
       <img alt="" className="size-6 shrink-0" src={sidebarBrandMarkUrl} />
       <span className="truncate text-[0.875rem] leading-4 font-medium">{APP_BASE_NAME}</span>
       {/* fork:end fork-app-identity */}

@@ -184,6 +184,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*text-sidebar-foreground/u);
     expect(chrome).toContain("size-6 shrink-0");
     expect(chrome).toContain("text-[0.875rem] leading-4 font-medium");
+    // The pixelated hack lived on the component, not the asset — a substring
+    // check on the class list would not notice it coming back beside it.
+    expect(chrome).not.toContain("image-rendering");
     // The mark's art is a 23x23 pixel grid drawn at a 24px slot. A bitmap can
     // only get there by resampling 23 cells onto 24 pixels, which blends every
     // cell into its neighbours — the blur the vector mark replaced. Keep it
@@ -197,10 +200,17 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(mark).toContain('shape-rendering="crispEdges"');
     expect(mark).not.toMatch(/image-rendering|<image\b/u);
     // Every cell edge must land on the integer grid; a fractional coordinate is
-    // the same smearing defect re-entering through the asset.
-    for (const coord of mark.matchAll(/\s(?:x|y|width|height)="([^"]+)"/gu)) {
+    // the same smearing defect re-entering through the asset. The count keeps
+    // the loop from passing vacuously, and the transform/<path> check pins the
+    // geometry to plain rect attributes — an svgo pass or Figma re-export that
+    // moves it into transforms or path data would otherwise hide fractional
+    // coordinates from this guard entirely.
+    const coords = [...mark.matchAll(/\s(?:x|y|width|height)="([^"]+)"/gu)];
+    expect(coords.length).toBeGreaterThan(100);
+    for (const coord of coords) {
       expect(coord[1]).toMatch(/^\d+$/u);
     }
+    expect(mark).not.toMatch(/transform=|<path\b/u);
   });
 
   it("keeps the flat header independent of identification mode and honors the pill", () => {
