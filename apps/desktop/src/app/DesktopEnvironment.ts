@@ -14,6 +14,7 @@ import * as Path from "effect/Path";
 
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopConfig from "./DesktopConfig.ts";
+import { resolveDesktopStateDir } from "./DesktopStatePaths.ts";
 import { isNightlyDesktopVersion } from "../updates/updateChannels.ts";
 
 export interface MakeDesktopEnvironmentInput {
@@ -67,6 +68,8 @@ export class DesktopEnvironment extends Context.Service<
     readonly appUserModelId: string;
     readonly linuxDesktopEntryName: string;
     readonly linuxWmClass: string;
+    readonly linuxApplicationsDir: string;
+    readonly appImagePath: Option.Option<string>;
     readonly userDataDirName: string;
     readonly legacyUserDataDirName: string;
     readonly defaultDesktopSettings: DesktopAppSettings.DesktopSettings;
@@ -154,7 +157,13 @@ const make = Effect.fn("desktop.environment.make")(function* (
       : input.platform === "darwin"
         ? path.join(homeDirectory, "Library", "Application Support")
         : Option.getOrElse(config.xdgConfigHome, () => path.join(homeDirectory, ".config"));
-  const configuredBaseDir = config.t3Home;
+  // Mirror DesktopStatePaths.normalizeConfiguredBaseDir: a blank T3CODE_HOME
+  // is unset, so baseDir and resolveDesktopStateDir agree on whether one was
+  // configured.
+  const configuredBaseDir = config.t3Home.pipe(
+    Option.map((value) => value.trim()),
+    Option.filter((value) => value.length > 0),
+  );
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
   // A fork build must not share ~/.t3 with an installed upstream release. The
   // base directory is the one input both halves of the app derive shared
@@ -224,10 +233,12 @@ const make = Effect.fn("desktop.environment.make")(function* (
     appVersion: input.appVersion,
   });
   const displayName = branding.displayName;
-  const stateDir = path.join(
+  const stateDir = resolveDesktopStateDir({
     baseDir,
-    isDevelopment && Option.isNone(configuredBaseDir) ? "dev" : "userdata",
-  );
+    isDevelopment,
+    joinPath: path.join,
+    t3Home: config.t3Home,
+  });
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
   // Electron-side identity stays forked: both builds are non-development, so
   // without these overrides they share the same Electron user data directory —
@@ -242,6 +253,10 @@ const make = Effect.fn("desktop.environment.make")(function* (
   // the fork the real app's data) or to a name a fork build once shipped.
   const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Fork)";
   // fork:end fork-app-identity
+  const linuxApplicationsDir = path.join(
+    Option.getOrElse(config.xdgDataHome, () => path.join(homeDirectory, ".local", "share")),
+    "applications",
+  );
   const resourcesPath = input.resourcesPath;
 
   return DesktopEnvironment.of({
@@ -287,6 +302,8 @@ const make = Effect.fn("desktop.environment.make")(function* (
     linuxDesktopEntryName: isDevelopment ? "t3code-dev.desktop" : "t3code-fork.desktop",
     linuxWmClass: isDevelopment ? "t3code-dev" : "t3code-fork",
     // fork:end fork-app-identity
+    linuxApplicationsDir,
+    appImagePath: config.appImagePath,
     userDataDirName,
     legacyUserDataDirName,
     defaultDesktopSettings: DesktopAppSettings.resolveDefaultDesktopSettings(input.appVersion),

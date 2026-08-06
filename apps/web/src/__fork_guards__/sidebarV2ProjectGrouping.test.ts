@@ -52,9 +52,14 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // Render call is multiline after format — pin the callback args, not a
     // single-line spelling prettier will keep rewriting.
     expect(sidebar).toMatch(/visibleActiveSections\.flatMap\(\s*\(section,\s*sectionIndex\)\s*=>/u);
-    expect(sidebar).toContain("[...orderedActiveThreads, ...visibleSnoozedThreads");
+    // Pinned cards paint first and flat (upstream's pin block escapes
+    // grouping on purpose); the grouped order follows them, and both feed
+    // one keyboard order.
+    expect(sidebar).toContain("...pinnedThreads,");
+    expect(sidebar).toContain("...orderedActiveThreads,");
+    expect(sidebar).toContain("...visibleSnoozedThreads,");
     const definition = sidebar.indexOf("const orderedActiveThreads");
-    const use = sidebar.indexOf("[...orderedActiveThreads,");
+    const use = sidebar.indexOf("...orderedActiveThreads,");
     expect(definition).toBeGreaterThanOrEqual(0);
     expect(use).toBeGreaterThan(definition);
   });
@@ -64,7 +69,7 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // header from the same section whose threads follow it. Dropping this hunk
     // is the likeliest outcome of a merge that rewrites upstream's list body,
     // and it would leave a flat-looking sidebar over a grouped ordered list.
-    const start = sidebar.indexOf("const items: ReactNode[] = visibleActiveSections.flatMap(");
+    const start = sidebar.indexOf("...visibleActiveSections.flatMap(");
     expect(start).toBeGreaterThanOrEqual(0);
     const end = sidebar.indexOf("/* fork:end sidebar-v2-project-grouping */", start);
     expect(end).toBeGreaterThan(start);

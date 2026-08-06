@@ -82,7 +82,7 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
       <SelectTrigger
         variant="ghost"
         size="xs"
-        className="shrink-0 font-medium"
+        className="min-w-0 shrink font-medium"
         aria-label="Workspace"
       >
         {effectiveEnvMode === "worktree" ? (
@@ -92,7 +92,12 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
         ) : (
           <FolderIcon className="size-3" />
         )}
-        <SelectValue />
+        <span
+          data-composer-label
+          className="min-w-0 max-w-[240px] truncate transition-[max-width,opacity] duration-300 ease-out group-data-[compact]/composer-context:max-w-0 group-data-[compact]/composer-context:opacity-0"
+        >
+          <SelectValue />
+        </span>
       </SelectTrigger>
       {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
       {/* Open above the chip row so glass clears the branch pill. Base UI may

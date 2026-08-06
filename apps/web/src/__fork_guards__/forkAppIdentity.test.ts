@@ -41,6 +41,7 @@ const read = (relativePath: string): string =>
   NodeFS.readFileSync(NodePath.join(repoRoot, relativePath), "utf8");
 
 const DESKTOP_ENVIRONMENT = "apps/desktop/src/app/DesktopEnvironment.ts";
+const DESKTOP_STATE_PATHS = "apps/desktop/src/app/DesktopStatePaths.ts";
 const DESKTOP_BACKEND_CONFIGURATION = "apps/desktop/src/backend/DesktopBackendConfiguration.ts";
 const SERVER_CONFIG = "apps/server/src/config.ts";
 const BUILD_SCRIPT = "scripts/build-desktop-artifact.ts";
@@ -242,10 +243,14 @@ describe("fork guard: fork-app-identity", () => {
     const serverConfig = read(SERVER_CONFIG);
     // The desktop hands the server its own baseDir, nothing narrower.
     expect(backendConfiguration).toContain("t3Home: environment.baseDir");
-    // Both halves append the same upstream leaf to that one input.
-    expect(environment).toContain('? "dev" : "userdata"');
+    // Both halves append the same upstream leaf to that one input. The
+    // desktop's leaf choice lives in upstream's DesktopStatePaths helper
+    // since the v0.0.32 sync; the environment must still route through it.
+    expect(environment).toContain("resolveDesktopStateDir({");
+    expect(read(DESKTOP_STATE_PATHS)).toContain('? "dev" : "userdata"');
     expect(serverConfig).toContain('? "dev" : "userdata"');
     expect(environment).not.toContain('"userdata-fork"');
+    expect(read(DESKTOP_STATE_PATHS)).not.toContain('"userdata-fork"');
     // The server also derives its shared sibling directories from baseDir, so
     // forking the base isolates caches/ and worktrees/ too. If upstream stops
     // deriving any of these from baseDir, the fork must notice.
