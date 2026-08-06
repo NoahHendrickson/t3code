@@ -7,14 +7,20 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <!-- fork:begin fork-surface-palette — see .fork/customizations.yaml#fork-surface-palette
+         The dark pre-paint stays on the fork stage's #161616; upstream moved
+         to #0a0a0a, which flashes near-black against the hydrated #191919. -->
     <meta name="theme-color" content="#161616" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#161616" />
+    <!-- fork:end fork-surface-palette -->
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script>
       (() => {
         const LIGHT_BACKGROUND = "#ffffff";
+        /* fork:begin fork-surface-palette — see .fork/customizations.yaml#fork-surface-palette */
         const DARK_BACKGROUND = "#161616";
+        /* fork:end fork-surface-palette */
         /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
         const COOL_DARK_BACKGROUND = "#1c1e20";
         /* fork:end fork-cool-dark-theme */
@@ -71,18 +77,16 @@
       body {
         background: #ffffff;
         color: #262626;
-        font-family:
-          "DM Sans Variable",
-          "DM Sans",
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          system-ui,
-          sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       }
 
       html.dark body {
+        /* fork:begin fork-surface-palette — see .fork/customizations.yaml#fork-surface-palette
+           This body rule is what actually paints the pre-hydration viewport
+           (#boot-shell inherits it); it must agree with the fenced metas and
+           DARK_BACKGROUND above, not upstream's near-black. */
         background: #161616;
+        /* fork:end fork-surface-palette */
         color: #f5f5f5;
       }
 

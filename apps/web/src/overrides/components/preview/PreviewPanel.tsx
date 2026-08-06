@@ -1,6 +1,8 @@
 "use client";
 
-import type { ScopedThreadRef } from "@t3tools/contracts";
+import type { PreviewAnnotationPayload, ScopedThreadRef } from "@t3tools/contracts";
+
+import type { ComposerImageAttachment } from "~/composerDraftStore";
 
 import { previewRuntimeTabId } from "~/browser/previewRuntimeTabId";
 import { PreviewPanelShell, type PreviewPanelMode } from "~/components/preview/PreviewPanelShell";
@@ -15,10 +17,21 @@ interface Props {
   tabId?: string | null;
   configuredUrls?: ReadonlyArray<string> | undefined;
   visible: boolean;
+  onSendAnnotation?: (
+    annotation: PreviewAnnotationPayload,
+    image: ComposerImageAttachment | null,
+  ) => void;
 }
 
 /** Fork override: docks the native design panel beside the untouched preview surface. */
-export function PreviewPanel({ mode, threadRef, tabId, configuredUrls, visible }: Props) {
+export function PreviewPanel({
+  mode,
+  threadRef,
+  tabId,
+  configuredUrls,
+  visible,
+  onSendAnnotation,
+}: Props) {
   const previewState = useThreadPreviewState(threadRef);
   const activeTabId = tabId ?? previewState.activeTabId;
   const runtimeTabId = activeTabId
@@ -45,6 +58,7 @@ export function PreviewPanel({ mode, threadRef, tabId, configuredUrls, visible }
           {...(tabId !== undefined ? { tabId } : {})}
           configuredUrls={configuredUrls}
           visible={visible}
+          {...(onSendAnnotation ? { onSendAnnotation } : {})}
         />
         <ForkDesignPanel runtimeTabId={runtimeTabId} threadRef={threadRef} tabId={activeTabId} />
       </div>

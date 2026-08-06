@@ -275,6 +275,21 @@
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/app/DesktopEnvironment.test.ts
+    # The v0.0.32 pre-ready refactor: identity and state-dir logic that never
+    # reads DesktopEnvironment, so fork values are restated there under
+    # fences. The sync that introduced these files shipped WM class "t3code"
+    # and a ~/.t3 settings read unnoticed — hence the watch.
+    - apps/desktop/src/app/DesktopStatePaths.ts
+    - apps/desktop/src/app/DesktopEarlyElectronStartup.ts
+    - apps/desktop/src/app/DesktopEarlyElectronStartup.test.ts
+    - apps/desktop/src/app/DesktopPreReadyPlatform.ts
+    # Unfenced known carve-out: on packaged Linux this registers upstream's
+    # t3code-url-handler.desktop in ~/.local/share/applications and claims
+    # x-scheme-handler/t3code via xdg-mime. The scheme itself is deliberately
+    # shared (see intent), but the desktop-entry FILENAME collides with an
+    # installed upstream release's — last writer wins. Revisit before any
+    # packaged Linux fork release.
+    - apps/desktop/src/app/DesktopLinuxUrlHandler.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
     - apps/desktop/scripts/electron-launcher.mjs
     - apps/server/src/config.ts
@@ -457,6 +472,15 @@
     only the five --color-sidebar-v2-status-* utility registrations sit inline
     in index.css, because Tailwind reads utility names from the @theme block
     alone and will not see them anywhere else.
+
+    Upstream's v0.0.32 thread pinning renders on the fork card as a 12px
+    PinIcon after the title text (upstream draws it on its project line,
+    which the fork card does not have). Pinned cards paint flat above the
+    grouped/flat active sections, closed by upstream's thin divider — a pin
+    freezes prominence across projects, so it deliberately escapes project
+    grouping — and they lead orderedThreads so keyboard order matches paint
+    order. Pin/unpin themselves (context menu, decider rules, snooze-beats-
+    pin classification) are upstream's; the fork only re-seats the rendering.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
@@ -871,9 +895,11 @@
     (#c0c0c0), still below chrome and foreground (#f1f3f7); lifting titles
     to #e0e0e0 collapsed the receded/forward distinction to ~1.19:1.
 
-    The stage stays near upstream's pre-paint / overscroll colour (#161616 in
-    apps/web/index.html) so the load flash and rubber-band band do not seam
-    against the hydrated stage.
+    The dark pre-paint / overscroll colour in apps/web/index.html is
+    fork-owned at #161616 so the load flash and rubber-band band do not seam
+    against the hydrated #191919 stage. It was upstream's own value until the
+    v0.0.32 cycle moved upstream to #0a0a0a; a sync taking upstream's
+    constant flashes near-black against the fork stage on every load.
 
     Every value is flat opaque sRGB, not an alpha over the panel. Alpha
     compounds — a fill inside a hovered row inside a selected row lands on a
@@ -1203,45 +1229,42 @@
 
 - id: geist-typography
   intent: >
-    The app's typefaces are Geist (UI) and Geist Mono (code), bundled as
-    Fontsource variable faces and imported from the fork's own theme layer —
-    web and Electron renderer only; mobile and marketing still ship DM Sans.
+    The app's DEFAULT typefaces are Geist (UI) and Geist Mono (code), bundled
+    as Fontsource variable faces and imported from the fork's own theme layer —
+    web and Electron renderer only; mobile and marketing keep upstream's fonts.
+    Since upstream's v0.0.32 configurable-fonts work (Settings → Appearance:
+    family, size, smoothing — applied as inline styles on the root by
+    appearanceFonts.ts), the fork supplies the DEFAULT only: a user's explicit
+    font preference outranks the fork stacks by design, and clearing the
+    preference falls back to Geist, not to upstream's system stacks.
     The stacks live in theme.custom.css as --fork-font-sans / --fork-font-mono
-    and index.css's @theme block reads them through
+    and index.css's non-inline @theme block reads them through
     var(--fork-font-sans, <upstream stack>); that indirection is load-bearing,
-    not ceremony. The block is @theme inline, so Tailwind bakes font values
-    literally into .font-sans / .font-mono and their variants, and a compiled
-    utility cannot see a variable overridden in a later stylesheet — the same
-    constraint that forces the sidebar-v2 palette registrations to live in
-    index.css. Routing through --fork-font-* keeps the values scoped under the
-    fork marker while the fallbacks leave an unmarked build on DM Sans.
-    The terminal's font logic lives in custom/terminalFont.ts rather than in
-    the drawer: the ghostty surface takes its font as a creation option
-    instead of from the cascade, so --font-mono has to be resolved by hand at
-    the mount site. The drawer keeps one one-line call site passing
-    font.family. Unlike the xterm era there is no fork refit shim: the
-    surface itself waits on document.fonts before measuring the cell grid and
-    re-measures on loadingdone, so the webfont-landing-late case is upstream's
-    to handle now. In an unmarked build the cascade read returns upstream's
-    stack and no Geist byte is fetched; the module's fallback only engages
-    when the read comes back empty.
+    not ceremony — it keeps the values scoped under the fork marker while the
+    fallbacks leave an unmarked build on upstream's system stacks. Upstream
+    keeps the font tokens OUT of @theme inline precisely so runtime overrides
+    can reach them; a sync that moves them back into the inline block bakes
+    the values into every utility and kills both the fork default and
+    upstream's own settings feature.
+    The terminal is the one surface that does not read the cascade: the
+    ghostty surface takes its font as a creation option, and upstream feeds it
+    the Settings preference. The fork's default rides the empty-preference
+    branch of the drawer's terminalFontOptions, returning
+    FORK_TERMINAL_FONT_FALLBACK (custom/terminalFont.ts) — a constant rather
+    than a live cascade read, because Advanced typography isolates the
+    terminal from code-font changes and a computed --font-mono would carry
+    them in. Unlike the xterm era there is no fork refit shim: the surface
+    waits on document.fonts before measuring the cell grid and re-measures on
+    loadingdone, so the webfont-landing-late case is upstream's to handle.
     Geist Mono is listed AHEAD of SF Mono: upstream puts SF Mono first, which
-    means on macOS its bundled mono webfont never renders at all. body / pre,
-    code are re-declared under
-    the fork marker because upstream hardcodes the literal stacks on those
-    selectors (index.css:964, index.css:1022) instead of reading its own
-    @theme tokens, so overriding --font-sans / --font-mono alone does not
-    reach them.
-    DM Sans / JetBrains Mono deps and their main.tsx imports stay, and the two
-    are not the same case. JetBrains Mono is load-bearing: the fork's own mono
-    stack still names it as the fallback for a Linux user with no SF Mono and
-    no Consolas when the Geist Mono fetch fails, and no guard would catch
-    dropping the face out from under a stack that still names it — the guards
-    assert the family is listed, not that a bundled face backs it. DM Sans is
-    inert in a marked build and costs only installer size (~60KB, plus 96KB
-    JetBrains Mono, emitted because main.tsx still imports the Fontsource
-    CSS); it is left as-is to keep main.tsx conflict-free and is the one to
-    revisit if package size matters.
+    on macOS means a bundled mono webfont never renders at all.
+    Upstream dropped its DM Sans / JetBrains Mono webfonts in the same cycle
+    (system stacks now); the fork followed, so the two Geist faces are the
+    app's only bundled fonts. "JetBrains Mono" stays NAMED in the fork's mono
+    stacks for a Linux user who has it installed, but no bundled face backs it
+    any more. Known cosmetic divergence: the Appearance font picker's
+    "Default" label names the face upstream's DEFAULT_*_FONT_STACK resolves to
+    (a system face), not Geist — appearanceFonts.ts is deliberately unfenced.
   tier: 4
   files:
     - apps/web/src/theme.custom.css
@@ -1257,6 +1280,11 @@
     # No fence, but load-bearing: ships the resolved --font-sans / --font-mono
     # into the previewed page — see FORK-CUSTOMIZATION-DECISIONS.md.
     - apps/web/src/browser/annotationTheme.ts
+    # Unfenced: the Settings → Appearance runtime override machinery whose
+    # unset-preference path the fork default relies on (removeProperty falls
+    # back to the stylesheet, i.e. the fork stacks), and whose DEFAULT_*
+    # stacks label the picker's "Default" entry.
+    - apps/web/src/appearanceFonts.ts
     # Carries the Fontsource deps, which fences can't drift-watch — see
     # FORK-CUSTOMIZATION-DECISIONS.md.
     - apps/web/package.json

@@ -20,7 +20,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
-import { FORK_TERMINAL_FONT_FALLBACK, terminalFontFamilyFrom } from "../custom/terminalFont";
+import { FORK_TERMINAL_FONT_FALLBACK } from "../custom/terminalFont";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -63,11 +63,11 @@ describe("fork guard: geist-typography", () => {
   });
 
   it("keeps upstream's @theme tokens reading through the fork indirection", () => {
-    // `@theme inline` bakes font values literally into `.font-sans` /
-    // `.font-mono` and their variants, so a compiled utility can never see a
-    // variable overridden in a later stylesheet. Lose this indirection and
-    // every `font-mono`-classed element silently reverts to SF Mono while the
-    // rest of the app stays on Geist.
+    // Upstream declares the font tokens in a non-inline `@theme` block (so
+    // Settings → Appearance can override them at runtime); the fork routes
+    // both through `--fork-font-*` there. Lose this indirection and every
+    // font utility silently reverts to upstream's system stacks while the
+    // fork stylesheet's `--fork-font-*` values go unread.
     // Whitespace-tolerant: the formatter decides whether these wrap.
     const upstream = readSibling("../index.css");
     expect(upstream).toMatch(/--font-sans:\s*var\(\s*--fork-font-sans\s*,/u);
@@ -85,10 +85,11 @@ describe("fork guard: geist-typography", () => {
     expect(sfMono).toBeGreaterThan(geist);
   });
 
-  it("keeps upstream's bundled mono fallback in both stacks", () => {
-    // JetBrains Mono is upstream's only *bundled* mono face. Dropping it
-    // regresses a Linux user with no SF Mono and no Consolas to generic
-    // monospace whenever the Geist Mono fetch fails.
+  it("keeps the JetBrains Mono fallback named in both stacks", () => {
+    // Kept from the era when a Fontsource JetBrains Mono face was bundled
+    // (upstream dropped its webfonts in the v0.0.32 cycle; the fork followed):
+    // the name still rescues a Linux user with a locally installed JetBrains
+    // Mono before the stack degrades to Liberation Mono or the generic.
     const block = markerBlock(readSibling("../theme.custom.css"));
     expect(block.slice(block.indexOf("--fork-font-mono:"))).toContain('"JetBrains Mono"');
     expect(FORK_TERMINAL_FONT_FALLBACK).toContain('"JetBrains Mono"');
@@ -96,12 +97,13 @@ describe("fork guard: geist-typography", () => {
 
   it("keeps the terminal wired to the fork-owned font module", () => {
     // The ghostty surface takes its font as a creation option and handles the
-    // webfont re-measure itself; the fork's whole job is resolving --font-mono
-    // at the mount site. Lose this line and the terminal silently reverts to
-    // upstream's SF Mono-first default while the rest of the app is on Geist.
-    // Whitespace-tolerant: the formatter decides whether the literal wraps.
+    // webfont re-measure itself. An unset Settings → Appearance preference
+    // must resolve to the fork's Geist Mono stack, not the surface's built-in
+    // face — that default lives in terminalFontOptions' empty-family branch.
+    // Lose it and the terminal silently reverts to upstream's default while
+    // the rest of the app is on Geist.
     const drawer = readSibling("../components/ThreadTerminalDrawer.tsx");
-    expect(drawer).toMatch(/font:\s*\{\s*family:\s*resolveTerminalFontFamily\(mount\)/u);
+    expect(drawer).toMatch(/return\s*\{\s*family:\s*FORK_TERMINAL_FONT_FALLBACK\s*,\s*size\s*\}/u);
   });
 
   it("keeps upstream's cold-load re-measure, which the fork's shim was deleted for", () => {
@@ -115,33 +117,18 @@ describe("fork guard: geist-typography", () => {
     expect(surface).toContain('"loadingdone"');
   });
 
-  describe("resolved stack", () => {
-    it("falls back to a stack that still leads with Geist Mono", () => {
-      // The degraded path must not land the terminal on SF Mono while the rest
-      // of the app is on Geist — that split is what the indirection prevents.
-      expect(terminalFontFamilyFrom("   ")).toBe(FORK_TERMINAL_FONT_FALLBACK);
+  describe("terminal default stack", () => {
+    it("leads with Geist Mono", () => {
+      // The unset-preference default must not land the terminal on SF Mono
+      // while the rest of the app is on Geist.
       expect(FORK_TERMINAL_FONT_FALLBACK.startsWith('"Geist Mono Variable"')).toBe(true);
     });
 
-    it("strips the trailing generic so the surface's glyph fallbacks stay reachable", () => {
+    it("carries no trailing generic, so the surface's glyph fallbacks stay reachable", () => {
       // The surface appends the Nerd Font fallbacks after whatever family it
-      // is given; a `monospace` generic mid-list would sit ahead of them, a
-      // stack shape upstream never produces. The generic returns at the true
-      // tail via the surface's own fallbacks.
-      expect(terminalFontFamilyFrom(' "Geist Mono Variable", monospace ')).toBe(
-        '"Geist Mono Variable"',
-      );
+      // is given; a `monospace` generic mid-list would sit ahead of them.
       expect(FORK_TERMINAL_FONT_FALLBACK.endsWith("monospace")).toBe(false);
-    });
-
-    it("prefers the cascade-resolved value when present", () => {
-      expect(terminalFontFamilyFrom(' "Geist Mono Variable", "SF Mono" ')).toBe(
-        '"Geist Mono Variable", "SF Mono"',
-      );
-    });
-
-    it("treats a generics-only stack as empty and falls back", () => {
-      expect(terminalFontFamilyFrom("monospace")).toBe(FORK_TERMINAL_FONT_FALLBACK);
+      expect(FORK_TERMINAL_FONT_FALLBACK).not.toContain("ui-monospace");
     });
   });
 });
