@@ -19,6 +19,9 @@ export interface ExtractedDesignChanges {
 }
 
 export function extractTrailingDesignChanges(prompt: string): ExtractedDesignChanges {
+  // Runs per render of every user row in the transcript, and almost no message carries a
+  // block — a literal scan is far cheaper than the regex, and answers for all of them.
+  if (!prompt.includes("<design_change_request>")) return { promptText: prompt, blocks: [] };
   const match = TRAILING_DESIGN_CHANGE_BLOCKS_PATTERN.exec(prompt);
   if (!match) return { promptText: prompt, blocks: [] };
   const blocks = [...match[0].matchAll(DESIGN_CHANGE_BLOCK_PATTERN)].map((block) => block[1] ?? "");

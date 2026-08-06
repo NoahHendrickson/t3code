@@ -32,7 +32,7 @@ export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
  * contract had grown) were rejected wholesale by the stricter parser, so selection simply
  * stopped updating with nothing in the UI to say why (PR #57 review).
  */
-export const DESIGN_MODE_PROTOCOL_VERSION = 3;
+export const DESIGN_MODE_PROTOCOL_VERSION = 4;
 
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
@@ -262,10 +262,39 @@ export interface DesignChangeElementSummary {
   readonly deltas: readonly string[];
 }
 
+/** Longest `pageUrl` accepted — the guest reads it off a page-controlled `location.href`,
+ * which a data: document can make arbitrarily long. Only ever compared, never rendered. */
+export const DESIGN_MODE_PAGE_URL_CAP = 2048;
+
+/** Caps a page-controlled `location.href` for the wire. A truncating cap alone would make
+ * two long data: URLs that share their first 2KB compare EQUAL — exactly the cross-page
+ * confusion `pageUrl` exists to prevent — so the cut tail is folded into a fingerprint
+ * suffix instead of dropped. Identical hrefs still cap identically. */
+export const capPageUrl = (href: string): string => {
+  if (href.length <= DESIGN_MODE_PAGE_URL_CAP) return href;
+  let hash = 0;
+  for (let i = 0; i < href.length; i++) hash = (hash * 31 + href.charCodeAt(i)) | 0;
+  const suffix = `#t3-trunc-${(hash >>> 0).toString(36)}-${href.length}`;
+  return `${href.slice(0, DESIGN_MODE_PAGE_URL_CAP - suffix.length)}${suffix}`;
+};
+
 export interface DesignChangeRequestPayload {
   readonly markdown: string;
   readonly elementCount: number;
   readonly elements: readonly DesignChangeElementSummary[];
+  /** The live document instance this request was built from — minted once per engine, and
+   * the engine lives exactly as long as its document (a real navigation wipes the guest's
+   * globals; SPA route changes don't). Drafts have the same lifetime, which is what makes
+   * this the composer's replace-vs-append key (designChangeDraftStore's `add`): a second
+   * Send from the same document instance is built from the same live draft set and always
+   * supersedes, even when a pushState/hash change has moved `location.href` in between.
+   * Opaque, never displayed and never sent to the agent. */
+  readonly documentId: string;
+  /** The document's `location.href` (capped — `capPageUrl`). The reload half of the
+   * replace-vs-append key: a full reload mints a fresh `documentId` but restores the same
+   * page's drafts from the guest's sessionStorage, so a re-Send there supersedes by URL.
+   * Compared, never displayed and never sent to the agent. */
+  readonly pageUrl: string;
 }
 
 /** The command surface `boot.ts` installs at `window.__T3_DESIGN_MODE__`. The host calls
@@ -426,6 +455,11 @@ export function parseDesignChangeRequestPayload(value: unknown): DesignChangeReq
     !isRecord(value) ||
     typeof value.markdown !== "string" ||
     !isNonNegativeInteger(value.elementCount) ||
+    typeof value.documentId !== "string" ||
+    value.documentId.length === 0 ||
+    value.documentId.length > 64 ||
+    typeof value.pageUrl !== "string" ||
+    value.pageUrl.length > DESIGN_MODE_PAGE_URL_CAP ||
     !Array.isArray(value.elements)
   ) {
     return null;
@@ -438,6 +472,8 @@ export function parseDesignChangeRequestPayload(value: unknown): DesignChangeReq
     markdown: value.markdown,
     elementCount: value.elementCount,
     elements: elements.filter((element): element is DesignChangeElementSummary => element !== null),
+    documentId: value.documentId,
+    pageUrl: value.pageUrl,
   };
 }
 

@@ -126,6 +126,17 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
     setSending(true);
     try {
       const result = await designModeBridge.buildSend(runtimeTabId);
+      if (result === "stale-engine") {
+        // Distinct from "no changes": drafts exist, but a live engine older than the host
+        // (dev HMR while the tool stayed on) built a payload the parser rejects. boot()'s
+        // version check only rebuilds it at the next injection, which the toggle provides.
+        toastManager.add({
+          type: "error",
+          title: "Design mode needs a refresh",
+          description: "Toggle Design mode off and on, then send again — your edits are kept.",
+        });
+        return;
+      }
       if (!result) {
         toastManager.add({ type: "info", title: "No changes to send" });
         return;
@@ -134,7 +145,12 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       // (ForkComposerDesignChanges) rather than as prompt text — the full markdown is
       // appended to the outgoing message by ChatView's fenced send path, so the composer
       // stays readable while the agent still gets the complete deterministic request.
-      useDesignChangeDraftStore.getState().add(threadRef, result);
+      // Keyed by tab AND document (the payload's documentId, with pageUrl as the reload
+      // fallback): a re-send from the same document updates this tab's pill in place even
+      // when an SPA route change moved the href, while a Send after a real cross-page
+      // navigation adds one — the drafts behind it are a different page's. See
+      // designChangeDraftStore's `add`.
+      useDesignChangeDraftStore.getState().add(threadRef, runtimeTabId, result);
       toastManager.add({
         type: "success",
         title:

@@ -16,6 +16,7 @@
  * Vendored why-comments are preserved verbatim where the logic came across unchanged.
  */
 import { buildElementSnapshot } from "./snapshot";
+import { capPageUrl } from "../protocol";
 import type {
   DesignChangeRequestPayload,
   DesignModeAlignAxis,
@@ -119,6 +120,14 @@ export class HeadlessDesignMode {
   private handles: ResizeHandles;
   readonly drafts: DraftStore;
 
+  /** One opaque token per engine instance — and the engine lives exactly as long as its
+   * document (a real navigation wipes the guest's globals and boot re-injects; SPA route
+   * changes don't). Rides every buildSend payload as the composer's replace-vs-append key:
+   * `location.href` can't be that key alone, because pushState/hash churn moves the href
+   * while the live draft set stays put (PR #63 review). */
+  private readonly documentId =
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
   /** The one id space selection snapshots and layers nodes share — every host command
    * resolves here, so tree, panel, and outlines can never disagree about an id. */
   private readonly registry = new ElementIdRegistry();
@@ -128,6 +137,18 @@ export class HeadlessDesignMode {
   /** Emit-on-change guard for the drafts count — drafts.onChange fires per scrub tick, and
    * each console.log line crosses the webview boundary; the count itself changes rarely. */
   private lastSentCount = -1;
+
+  /** The same change gate LayersSession keeps (its `lastJson`), for the same reason.
+   * emitSelection is called from a dozen sites — re-selecting the element already selected, a
+   * size-mode or align pick that lands on the value it already had, a discard with nothing to
+   * discard, a scrub that ends where it started, and every late source resolution — and each
+   * of those carries a snapshot byte-identical to the last one. An emit is ~45 computed style
+   * properties per selected element across the console bridge, landing in the host's ONE
+   * ungated store setter and re-rendering all seven panel sections. Gating here spends a
+   * stringify to save both. (Not a scrub-rate saving: `drafts.onChange` re-arms
+   * draftSyncTimer on every change, so the flush is a trailing debounce that fires once
+   * AFTER a scrub, never during — see flushDraftSync.) */
+  private lastSelectionJson = "";
 
   // Layout-ripple state: idle-zero — only populated during the post-edit window.
   // A rapid burst of edits (e.g. dragging a number field) reuses each element's FIRST
@@ -393,13 +414,27 @@ export class HeadlessDesignMode {
       markdown: renderStandaloneMarkdown(request),
       elementCount: request.elements.length,
       elements,
+      documentId: this.documentId,
+      // Read here rather than at draft time: what this request describes is the set of drafts
+      // that resolved against the CURRENT document, so the current document is its page.
+      pageUrl: capPageUrl(location.href),
     };
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────────────
 
   setActive(on: boolean): void {
-    if (on === this.active) return;
+    if (on === this.active) {
+      // Re-activating an already-active engine (boot's idempotent same-version path) means
+      // the host just rebuilt its world view after wiping it — clear the gate and re-emit,
+      // or a selection byte-identical to this session's last emit would be suppressed and
+      // the panel would sit empty while the page still shows its outlines (PR #63 review).
+      if (on) {
+        this.lastSelectionJson = "";
+        this.emitSelection();
+      }
+      return;
+    }
     this.active = on;
     this.overlay.setActive(on);
     if (on) {
@@ -451,6 +486,10 @@ export class HeadlessDesignMode {
       if (this.restoreTimer) clearTimeout(this.restoreTimer);
       this.restoreTimer = null;
       this.pendingRestore = null;
+      // The host clears its own selection on the enabled flip (designModeStore's setEnabled),
+      // so the gate must not treat the next activation's first snapshot as a repeat of the
+      // last session's — reset it rather than reasoning about the two resets staying aligned.
+      this.lastSelectionJson = "";
       this.drafts.compareAll(false); // previews survive exit — never leave the page stranded on "before"
       // A deactivate mid-debounce-window must not leave sessionStorage stale — flush (R2 F-C).
       this.flushDraftSync();
@@ -702,6 +741,11 @@ export class HeadlessDesignMode {
     const snapshots = this.selection.map((el) =>
       buildElementSnapshot(el, this.registry.mint(el), this.drafts),
     );
+    // Ids are stable per element (ElementIdRegistry's WeakMap), so an unchanged selection
+    // showing unchanged values really does stringify identically — the gate can't stick.
+    const json = JSON.stringify(snapshots);
+    if (json === this.lastSelectionJson) return;
+    this.lastSelectionJson = json;
     this.onSelection?.(snapshots);
   }
 
