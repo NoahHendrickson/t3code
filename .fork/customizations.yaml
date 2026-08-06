@@ -1493,6 +1493,58 @@
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
 
+- id: fork-chat-file-drop
+  intent: >
+    A file dragged in from outside the app can be released anywhere over the
+    chat column — the timeline as well as the composer docked under it — and
+    attaches to the composer, instead of having to be aimed at the composer
+    box the way upstream requires. Releasing it over the timeline used to hit
+    the browser default and navigate the app away to the dropped file, so a
+    missed drop cost the whole session. The zone is the chat column and
+    nothing else: the sidebar, the header, and the right panel do not attach,
+    leaving the right panel free to claim its own file drops later.
+
+    The window listens in the bubble phase and the customization is purely
+    additive: upstream's composer-scoped drag handlers stay, see every drop
+    aimed at them first, and a drop a nested target already claimed
+    (defaultPrevented) is left alone — which is also what keeps the file
+    tree's mention-drag channel untouched. Only drags carrying files are
+    claimed. Membership is hit-tested per event against the marker attribute
+    on ChatView's chat column, so the region survives layout changes as long
+    as the marker rides the column. Enter and leave are counted rather than
+    latched, counting only crossings inside the zone so the same number
+    answers "is the pointer over the chat"; that count ignores
+    defaultPrevented so it stays balanced across nested targets, and dragover
+    re-anchors it to the pointer.
+
+    Drags outside the zone are still preventDefault-ed on both dragover and
+    drop and then discarded, because a drop that is never handled is one the
+    browser opens — the dragover half is what makes the drop event fire at
+    all. Their dropEffect is "none" so the cursor does not promise an
+    attachment that will not happen. Because the window handlers run after
+    the composer's, the two share one drag-active state without fighting: the
+    composer keeps painting its drag-over tint for as long as the pointer is
+    over the chat, so where the file will land stays obvious. Files are handed
+    to the composer's existing attachment path unfiltered, so unsupported
+    types and the attachment limit keep reporting the same way a paste does.
+    Preview panes render in a webview and swallow their own drags; that is
+    upstream behaviour and out of scope here.
+  tier: 4
+  files:
+    - apps/web/src/custom/chatFileDrop.ts
+    - apps/web/src/custom/chatFileDrop.test.ts
+  shadows: []
+  watch:
+    # Carries the useChatFileDrop call and its import. Upstream's own composer
+    # drag handlers and isDragOverComposer state live here too — the hook
+    # shares that state, so a rename of it breaks the shared highlight.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Carries data-fork-chat-drop-zone on the chat column. An upstream rework
+    # of that column drops the marker, and with it the whole drop region.
+    - apps/web/src/components/ChatView.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkChatFileDrop.test.ts
+
 - id: t3-connect-official-config
   intent: >
     Fork builds carry the same T3 Connect public configuration as official

@@ -5960,7 +5960,16 @@ function ChatViewContent(props: ChatViewProps) {
         {/* Main content area with optional plan sidebar */}
         <div className="flex min-h-0 min-w-0 flex-1">
           {/* Chat column */}
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+            /* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
+            // The whole column takes file drops, not just the composer docked
+            // in it: a screenshot released over the timeline attaches to the
+            // next message. ChatComposer owns the listeners; this only marks
+            // the region they accept.
+            data-fork-chat-drop-zone="true"
+            /* fork:end fork-chat-file-drop */
+          >
             {/* Provider status overlays the timeline without changing its content height. */}
             <div className="pointer-events-none absolute inset-x-0 top-0 z-20">
               <ProviderStatusBanner
