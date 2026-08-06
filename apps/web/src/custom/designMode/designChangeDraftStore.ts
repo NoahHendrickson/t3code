@@ -19,15 +19,17 @@ import type { DesignChangeRequestPayload } from "./protocol";
  */
 export interface PendingDesignChange extends DesignChangeRequestPayload {
   readonly id: string;
-  /** The preview tab whose drafts built this request — the replacement key, see `add`. */
-  readonly tabId: string;
+  /** The preview webview whose drafts built this request. `runtimeTabId`, NOT the server tab
+   * id the panel also carries: server tab ids are unique only within one server process, so a
+   * restart could collide two tabs onto one pill. Half of the replacement key — see `add`. */
+  readonly runtimeTabId: string;
 }
 
 interface DesignChangeDraftStoreState {
   readonly byThreadKey: Record<string, readonly PendingDesignChange[]>;
   readonly add: (
     threadRef: ScopedThreadRef,
-    tabId: string,
+    runtimeTabId: string,
     payload: DesignChangeRequestPayload,
   ) => void;
   readonly remove: (threadRef: ScopedThreadRef, id: string) => void;
@@ -39,21 +41,44 @@ let nextId = 1;
 export const useDesignChangeDraftStore = create<DesignChangeDraftStoreState>()((set) => ({
   byThreadKey: {},
   /**
-   * Attaches one tab's change request, REPLACING that tab's previous one. The guest builds
-   * every request from all of its live drafts (headlessMode's buildSend), never from the
-   * selection — so a second Send from the same tab is a strict superset of the first, and a
-   * Send / Discard / Send sequence leaves the earlier pill asking for changes the user threw
-   * away. Both used to ride the message: the agent got two overlapping asks, the older one
-   * sometimes contradicting the newer. Keyed by TAB, not thread: two preview tabs hold
-   * independent draft sets and must each be able to contribute a pill.
+   * Attaches one request, REPLACING the pending one for the same preview tab AND page.
+   *
+   * The guest builds every request from all of its live drafts (headlessMode's buildSend),
+   * never from the selection, so a second Send describing the same page always supersedes the
+   * first — either as a strict superset, or (after a Discard) as the corrected set. Stacking
+   * them put two overlapping, sometimes contradicting asks in one message.
+   *
+   * That supersession is a per-PAGE guarantee, which is why `pageUrl` is half the key. Drafts
+   * are re-located against whatever document the guest is showing now and dropped when they
+   * don't resolve, so a Send after the preview navigates carries ONLY the new page's asks —
+   * replacing on tab alone would silently drop the previous page's pill, and the user's only
+   * signal would be one chip quietly becoming another (PR #63 review). Across pages we append
+   * instead: a duplicate ask is recoverable and visible, lost work is neither.
+   *
+   * The tab half is the second reason to key on more than the thread: two preview tabs hold
+   * independent draft sets and must each be able to contribute.
+   *
+   * Replacement REUSES the previous entry's id, so a re-send updates a chip in place rather
+   * than remounting and recoloring it — ForkComposerDesignChanges derives both its React key
+   * and its fill from the id on purpose.
    */
-  add: (threadRef, tabId, payload) =>
+  add: (threadRef, runtimeTabId, payload) =>
     set((state) => {
       const key = scopedThreadKey(threadRef);
       const pending = state.byThreadKey[key] ?? [];
-      const entry: PendingDesignChange = { ...payload, id: `design-change-${nextId++}`, tabId };
-      const kept = pending.filter((existing) => existing.tabId !== tabId);
-      return { byThreadKey: { ...state.byThreadKey, [key]: [...kept, entry] } };
+      const supersedes = (candidate: PendingDesignChange): boolean =>
+        candidate.runtimeTabId === runtimeTabId && candidate.pageUrl === payload.pageUrl;
+      const existing = pending.find(supersedes);
+      const entry: PendingDesignChange = {
+        ...payload,
+        id: existing?.id ?? `design-change-${nextId++}`,
+        runtimeTabId,
+      };
+      // Position is held too: an in-place update must not jump the chip to the end of the row.
+      const next = existing
+        ? pending.map((candidate) => (candidate.id === existing.id ? entry : candidate))
+        : [...pending, entry];
+      return { byThreadKey: { ...state.byThreadKey, [key]: next } };
     }),
   remove: (threadRef, id) =>
     set((state) => {

@@ -672,6 +672,7 @@ describe("fork guard: design mode", () => {
       markdown: "Change button padding",
       elementCount: 1,
       elements: [{ tag: "button", sourceLabel: "App.tsx:5", deltas: ["8px → 12px"] }],
+      pageUrl: "http://localhost:5173/",
     };
     expect(parseDesignChangeRequestPayload(payload)).toEqual(payload);
     expect(parseDesignChangeRequestPayload({ ...payload, elementCount: 2 })).toBeNull();
@@ -681,5 +682,11 @@ describe("fork guard: design mode", () => {
         elements: [{ ...payload.elements[0], deltas: [3] }],
       }),
     ).toBeNull();
+    // pageUrl is the composer's replace-vs-append key (designChangeDraftStore), so a payload
+    // without one can't be honored — an engine too old to send it must fail the parse and be
+    // rebuilt by boot()'s version check, not silently replace across a navigation.
+    const { pageUrl: _omitted, ...withoutPage } = payload;
+    expect(parseDesignChangeRequestPayload(withoutPage)).toBeNull();
+    expect(parseDesignChangeRequestPayload({ ...payload, pageUrl: "x".repeat(2049) })).toBeNull();
   });
 });

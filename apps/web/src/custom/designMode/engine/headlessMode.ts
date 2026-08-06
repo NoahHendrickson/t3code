@@ -16,6 +16,7 @@
  * Vendored why-comments are preserved verbatim where the logic came across unchanged.
  */
 import { buildElementSnapshot } from "./snapshot";
+import { DESIGN_MODE_PAGE_URL_CAP } from "../protocol";
 import type {
   DesignChangeRequestPayload,
   DesignModeAlignAxis,
@@ -130,12 +131,15 @@ export class HeadlessDesignMode {
   private lastSentCount = -1;
 
   /** The same change gate LayersSession keeps (its `lastJson`), for the same reason.
-   * emitSelection is called on every selection change, on every draft-sync flush (so every
-   * RIPPLE_DEBOUNCE_MS through a scrub), and on every late source resolution — and most of
-   * those carry a snapshot byte-identical to the last one. Each emit is ~45 computed style
-   * properties per selected element across the console bridge, and lands in the host's ONE
-   * ungated store setter, re-rendering the whole panel. Gating here spends a stringify to
-   * save both. */
+   * emitSelection is called from a dozen sites — re-selecting the element already selected, a
+   * size-mode or align pick that lands on the value it already had, a discard with nothing to
+   * discard, a scrub that ends where it started, and every late source resolution — and each
+   * of those carries a snapshot byte-identical to the last one. An emit is ~45 computed style
+   * properties per selected element across the console bridge, landing in the host's ONE
+   * ungated store setter and re-rendering all seven panel sections. Gating here spends a
+   * stringify to save both. (Not a scrub-rate saving: `drafts.onChange` re-arms
+   * draftSyncTimer on every change, so the flush is a trailing debounce that fires once
+   * AFTER a scrub, never during — see flushDraftSync.) */
   private lastSelectionJson = "";
 
   // Layout-ripple state: idle-zero — only populated during the post-edit window.
@@ -402,6 +406,9 @@ export class HeadlessDesignMode {
       markdown: renderStandaloneMarkdown(request),
       elementCount: request.elements.length,
       elements,
+      // Read here rather than at draft time: what this request describes is the set of drafts
+      // that resolved against the CURRENT document, so the current document is its page.
+      pageUrl: location.href.slice(0, DESIGN_MODE_PAGE_URL_CAP),
     };
   }
 

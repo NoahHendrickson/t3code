@@ -134,8 +134,9 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       // (ForkComposerDesignChanges) rather than as prompt text — the full markdown is
       // appended to the outgoing message by ChatView's fenced send path, so the composer
       // stays readable while the agent still gets the complete deterministic request.
-      // Keyed by tab: a re-send from this tab REPLACES its pending pill rather than stacking
-      // a second one, because every request is built from all of this tab's live drafts.
+      // Keyed by tab AND page (the payload's own pageUrl): a re-send describing the same page
+      // updates this tab's pill in place, while a Send after the preview navigates adds one —
+      // the drafts behind it are a different page's. See designChangeDraftStore's `add`.
       useDesignChangeDraftStore.getState().add(threadRef, runtimeTabId, result);
       toastManager.add({
         type: "success",

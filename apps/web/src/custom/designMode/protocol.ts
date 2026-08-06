@@ -32,7 +32,7 @@ export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
  * contract had grown) were rejected wholesale by the stricter parser, so selection simply
  * stopped updating with nothing in the UI to say why (PR #57 review).
  */
-export const DESIGN_MODE_PROTOCOL_VERSION = 3;
+export const DESIGN_MODE_PROTOCOL_VERSION = 4;
 
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
@@ -262,10 +262,20 @@ export interface DesignChangeElementSummary {
   readonly deltas: readonly string[];
 }
 
+/** Longest `pageUrl` accepted — the guest reads it off a page-controlled `location.href`,
+ * which a data:/blob: document can make arbitrarily long. Only ever compared, never rendered. */
+export const DESIGN_MODE_PAGE_URL_CAP = 2048;
+
 export interface DesignChangeRequestPayload {
   readonly markdown: string;
   readonly elementCount: number;
   readonly elements: readonly DesignChangeElementSummary[];
+  /** The guest document this request was built from (`location.href`, capped). Drafts live
+   * per document — they are re-located against whatever the page is NOW and silently dropped
+   * when they don't resolve — so a request only ever describes the page it was built on, and
+   * this is what lets the composer replace within a page instead of across a navigation
+   * (designChangeDraftStore's `add`). Compared, never displayed and never sent to the agent. */
+  readonly pageUrl: string;
 }
 
 /** The command surface `boot.ts` installs at `window.__T3_DESIGN_MODE__`. The host calls
@@ -426,6 +436,8 @@ export function parseDesignChangeRequestPayload(value: unknown): DesignChangeReq
     !isRecord(value) ||
     typeof value.markdown !== "string" ||
     !isNonNegativeInteger(value.elementCount) ||
+    typeof value.pageUrl !== "string" ||
+    value.pageUrl.length > DESIGN_MODE_PAGE_URL_CAP ||
     !Array.isArray(value.elements)
   ) {
     return null;
@@ -438,6 +450,7 @@ export function parseDesignChangeRequestPayload(value: unknown): DesignChangeReq
     markdown: value.markdown,
     elementCount: value.elementCount,
     elements: elements.filter((element): element is DesignChangeElementSummary => element !== null),
+    pageUrl: value.pageUrl,
   };
 }
 

@@ -1581,13 +1581,22 @@
     designChangeDraftStore, the composer renders it as an inline pill
     (element + compact delta, × to discard, tooltip shows the markdown),
     pending pills count toward sendability so a pill-only message sends,
-    a Send REPLACES that tab's pending pill rather than adding a second one
-    (buildSend builds from all of a tab's live drafts, never from the
-    selection, so a re-send is a strict superset of the previous pill and a
-    send-then-discard leaves one asking for changes the user threw away —
-    both used to ride the same message as overlapping, sometimes
-    contradictory asks); the replacement key is the TAB, since two preview
-    tabs hold independent draft sets and must each contribute a pill,
+    a Send REPLACES the pending pill for the same preview tab AND page rather
+    than adding a second one (buildSend builds from all of a tab's live
+    drafts, never from the selection, so a re-send describing the same page
+    always supersedes the earlier pill — as a superset, or after a discard as
+    the corrected set; both used to ride the same message as overlapping,
+    sometimes contradictory asks). Both halves of that key are load-bearing:
+    the TAB because two preview tabs hold independent draft sets, and the
+    PAGE (the payload's own pageUrl, from the guest's location.href) because
+    supersession is a per-document guarantee — drafts are re-located against
+    whatever document the guest shows now and dropped when they don't
+    resolve, so a Send after a navigation carries only the new page's asks
+    and replacing on tab alone would silently drop the previous page's pill.
+    Across pages it appends: a duplicate ask is visible and recoverable,
+    lost work is neither. Replacement reuses the previous entry's id and
+    position so the chip updates in place instead of remounting and
+    recoloring (the composer derives both its key and its fill from that id),
     and ChatView's fenced send path appends the full deterministic
     token-aware change-request markdown to the outgoing message inside
     <design_change_request> blocks — cleared only when the turn start

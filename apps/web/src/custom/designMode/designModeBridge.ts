@@ -21,6 +21,15 @@ export interface DesignModeWebview extends Element {
  * scrub frame; the element itself changes only when the preview pane remounts. */
 const webviewByTabId = new Map<string, DesignModeWebview>();
 
+/** Drops a tab's cached element. A miss evicts on its own, but nothing ever looks up a CLOSED
+ * tab — so without this the map pins one detached webview subtree per preview tab the session
+ * ever opened, for the life of the renderer (PR #63 review). Called from
+ * ForkPreviewDesignMode's effect cleanup; harmless on a plain unmount, since the next lookup
+ * re-finds a still-live element. */
+export const forgetPreviewWebview = (runtimeTabId: string): void => {
+  webviewByTabId.delete(runtimeTabId);
+};
+
 export const findPreviewWebview = (runtimeTabId: string): DesignModeWebview | null => {
   // Revalidated, not trusted: a remounted pane leaves the old element detached, and a tab id
   // could in principle be reused by a different one.
