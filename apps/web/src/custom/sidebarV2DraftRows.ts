@@ -120,12 +120,14 @@ export function draftIdByThreadKey(
 export function sidebarDraftRowCapabilities(isDraft: boolean): {
   readonly canSettle: boolean;
   readonly canSnooze: boolean;
+  readonly canPin: boolean;
   readonly canRename: boolean;
   readonly showDiscard: boolean;
 } {
   return {
     canSettle: !isDraft,
     canSnooze: !isDraft,
+    canPin: !isDraft,
     canRename: !isDraft,
     showDiscard: isDraft,
   };

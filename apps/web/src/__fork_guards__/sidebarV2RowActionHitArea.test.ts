@@ -34,6 +34,10 @@ const groupHeader = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
  * has lost its button; one that appears more often has grown a call site this
  * guard has never seen. */
 const ROW_ACTIONS: ReadonlyArray<readonly [label: string, count: number]> = [
+  // Pin and Unpin are one slot with two literal labels: the card renders one
+  // branch per state so each label stays greppable here.
+  ["Pin thread", 1],
+  ["Unpin thread", 1],
   ["Snooze thread", 1],
   ["Settle thread", 2],
   ["Un-settle thread", 1],

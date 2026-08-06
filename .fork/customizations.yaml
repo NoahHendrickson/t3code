@@ -479,8 +479,9 @@
     grouped/flat active sections, closed by upstream's thin divider — a pin
     freezes prominence across projects, so it deliberately escapes project
     grouping — and they lead orderedThreads so keyboard order matches paint
-    order. Pin/unpin themselves (context menu, decider rules, snooze-beats-
-    pin classification) are upstream's; the fork only re-seats the rendering.
+    order. Pin/unpin plumbing (context menu, decider rules, snooze-beats-pin
+    classification) is upstream's; the fork re-seats the rendering and adds a
+    hover pin action to the card (owned by sidebar-v2-row-action-hit-area).
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
@@ -787,8 +788,11 @@
     This entry owns the size AND the placement of the Sidebar V2 row hover
     actions; the id predates the alignment half.
 
-    Every Sidebar V2 row hover action — snooze, settle, un-settle, wake now — is
-    a 24px square with a hover fill. Upstream sizes them from padding around a
+    Every Sidebar V2 row hover action — pin/unpin, snooze, settle, un-settle,
+    wake now — is a 24px square with a hover fill. Pin leads the card's hover
+    cell, ahead of snooze (Noey's placement); it is capability-gated like
+    settle/snooze, card-only (slim rows keep pin in the context menu), and
+    toggles between two literal labels so the guard's census counts each. Upstream sizes them from padding around a
     12px glyph, which lands at 24x18 on a card and 28x18 on a slim row: two
     different shapes, both under the 24px minimum, on transparent buttons whose
     edges you cannot see. On an icon-only control the box is the whole target,
