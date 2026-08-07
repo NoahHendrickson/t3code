@@ -482,6 +482,18 @@
   line-height: 16px;
 }
 
+/* The model group packs tighter than the mode group: 4px inline padding so the
+   model and effort controls read as one cluster. Split out rather than
+   folded into the rule above because the left (mode) slot keeps 8px. This is
+   the geometry owner for these controls — it is unlayered while Tailwind's
+   utilities are in `@layer utilities`, so a `px-*` class at the call site
+   cannot reach them no matter how specific it is. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-model-controls]
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  padding-inline: 4px;
+}
+
 :root[data-fork="noahhendrickson-t3code"]
   :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
   :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip])
