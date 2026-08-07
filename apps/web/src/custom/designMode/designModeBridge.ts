@@ -47,16 +47,69 @@ export const findPreviewWebview = (runtimeTabId: string): DesignModeWebview | nu
 const handleCall = (member: string, args: readonly unknown[]): string =>
   `globalThis.${DESIGN_MODE_GLOBAL}?.${member}(${args.map((a) => JSON.stringify(a)).join(",")})`;
 
-const fire = (runtimeTabId: string, member: string, args: readonly unknown[]): void => {
+const fireNow = (runtimeTabId: string, member: string, args: readonly unknown[]): void => {
   const webview = findPreviewWebview(runtimeTabId);
   void webview?.executeJavaScript(handleCall(member, args), false).catch(() => undefined);
+};
+
+/** Continuous-gesture coalescing. A label scrub or a held arrow key commits on every
+ * pointermove/repeat tick, and each tick used to become its own JSON-serialize +
+ * executeJavaScript crossing into the guest. The guest already coalesces repaints to rAF,
+ * so within one host frame only the newest value of a gesture can ever be seen — queue at
+ * most one pending call per (tab, member, target) and flush on the next animation frame.
+ * Order across commands is preserved by flushing the queue synchronously ahead of every
+ * non-coalesced command (`fire`) and ahead of `buildSend`: a revert or send issued right
+ * after a scrub tick must observe that tick, never overtake it. A pending frame stranded
+ * by a hidden window flushes the same way, on whatever command comes next. */
+interface PendingCall {
+  readonly runtimeTabId: string;
+  readonly member: string;
+  args: readonly unknown[];
+}
+/** Keyed by `tab|member|target`; Map iteration is insertion-ordered, which is the flush
+ * order — first-seen order across targets, newest args within one. */
+const pending = new Map<string, PendingCall>();
+let pendingFrame: number | null = null;
+
+const flushPending = (): void => {
+  if (pendingFrame !== null) {
+    cancelAnimationFrame(pendingFrame);
+    pendingFrame = null;
+  }
+  if (pending.size === 0) return;
+  const calls = [...pending.values()];
+  pending.clear();
+  for (const call of calls) fireNow(call.runtimeTabId, call.member, call.args);
+};
+
+const fireCoalesced = (
+  runtimeTabId: string,
+  member: string,
+  target: string,
+  args: readonly unknown[],
+): void => {
+  const key = `${runtimeTabId}|${member}|${target}`;
+  const existing = pending.get(key);
+  if (existing) existing.args = args;
+  else pending.set(key, { runtimeTabId, member, args });
+  pendingFrame ??= requestAnimationFrame(() => {
+    pendingFrame = null;
+    flushPending();
+  });
+};
+
+const fire = (runtimeTabId: string, member: string, args: readonly unknown[]): void => {
+  flushPending();
+  fireNow(runtimeTabId, member, args);
 };
 
 /**
  * Host → guest command surface. Everything except `buildSend` is fire-and-forget: draft
  * writes are latency-tolerant (the guest coalesces repaints to rAF) and a lost call is
- * self-healing on the next edit. `buildSend`'s return value rides the executeJavaScript
- * promise back.
+ * self-healing on the next edit. The two scrub-driven writes (`applyDraft`, `setInset`)
+ * additionally coalesce host-side to one crossing per animation frame; every other command
+ * flushes them first, so observable order is unchanged. `buildSend`'s return value rides
+ * the executeJavaScript promise back.
  */
 export const designModeBridge = {
   setActive(runtimeTabId: string, on: boolean): void {
@@ -68,7 +121,7 @@ export const designModeBridge = {
     property: DesignModeWritableKey,
     value: string,
   ): void {
-    fire(runtimeTabId, "applyDraft", [ids, property, value]);
+    fireCoalesced(runtimeTabId, "applyDraft", `${property} ${ids.join()}`, [ids, property, value]);
   },
   setSizeMode(
     runtimeTabId: string,
@@ -82,7 +135,7 @@ export const designModeBridge = {
     fire(runtimeTabId, "setAbsolute", [ids, on]);
   },
   setInset(runtimeTabId: string, ids: readonly number[], axis: "x" | "y", px: number): void {
-    fire(runtimeTabId, "setInset", [ids, axis, px]);
+    fireCoalesced(runtimeTabId, "setInset", `${axis} ${ids.join()}`, [ids, axis, px]);
   },
   alignSelection(
     runtimeTabId: string,
@@ -113,6 +166,7 @@ export const designModeBridge = {
   async buildSend(
     runtimeTabId: string,
   ): Promise<DesignChangeRequestPayload | "stale-engine" | null> {
+    flushPending();
     const webview = findPreviewWebview(runtimeTabId);
     if (!webview) return null;
     const result = await webview
