@@ -1738,7 +1738,10 @@
     through the window.__T3_DESIGN_MODE__ command handle
     (designModeBridge.ts, fire-and-forget except buildSend; the scrub-driven
     writes applyDraft and setInset coalesce host-side to one IPC crossing per
-    animation frame, and every other command flushes them first so order holds).
+    animation frame, every other command flushes them first so order holds, and
+    hoverElement dedupes against the last id sent — mouseover bubbles, so the
+    layers rail fires it several times per row crossed and hover carries no new
+    information on a repeat).
     Panel section order and field chrome follow the fork's own Figma spec (file
     fZRyRTZJtLKwuq8rj2SLg4, page V2, node 193:9686): a Position section (the six
     align verbs over an X/Y pair, absolute-position toggle in the header), a
@@ -1831,12 +1834,28 @@
     and ChatView's fenced send path appends the full deterministic
     token-aware change-request markdown to the outgoing message inside
     <design_change_request> blocks — cleared only when the turn start
-    succeeds (T3 threads ARE the delivery surface — the Forge's own chat
+    succeeds, and then only the attachments that actually rode the message:
+    the ids are captured before the start is awaited, so a Send made from
+    the panel during that round trip is not dropped unsent (T3 threads ARE
+    the delivery surface — the Forge's own chat
     feed, embedded sessions, MCP queue, watcher, verifier and every
     /__the-forge/* endpoint are deliberately not ported, and the engine
     must stay free of network calls). The host re-injects on dom-ready
     while the mode is on, so navigations and dev-server reloads keep the
-    engine and its drafts. Element→source mapping works WITHOUT any
+    engine and its drafts — and it reconciles on every bridge attach too
+    (probe the guest's protocol version, re-inject when it is absent or
+    skewed, otherwise just re-activate), because this component unmounts
+    whenever the right panel shows a terminal or a diff and a reload in
+    that window would otherwise leave the mode "on" over a page with no
+    engine, every command swallowed and Send answering "no changes" over
+    intact drafts. Restored drafts carry their ORIGINAL on the wire rather
+    than re-deriving it: the toggle destroys the engine but leaves the
+    previews painted, so the store's default prior oracle (the element's
+    live inline style) would capture each draft's own value as the page's,
+    making Discard restore the draft over itself and the send builder
+    measure before === after. Closing a preview tab is the one moment the
+    per-tab state (store entry, undo history, bridge hover memo) is dropped
+    — a mere unmount must survive. Element→source mapping works WITHOUT any
     project setup: project-authored forge-mode JSX tags (data-dc-source)
     remain the most precise source and always win per element, but on
     untagged React pages the desktop preload's react-grab-backed resolver
@@ -1995,6 +2014,7 @@
     - apps/web/src/custom/designMode/panel/LayerTypeIcon.tsx
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/layersDrag.ts
+    - apps/web/src/custom/designMode/layersDrag.test.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/CanvasControls.tsx
     - apps/web/src/custom/designMode/panel/canvasResolutions.ts
@@ -2056,6 +2076,11 @@
     # under ElectronBrowserHost, outside the preview panel's subtree, so no
     # descendant selector rooted at the panel can reach it.
     - apps/web/src/browser/HostedBrowserWebview.tsx
+    # Fenced per-tab teardown in the lease's close path. This is the only place
+    # that knows a preview tab is CLOSED rather than merely unmounted, so it is
+    # where the tab's design-mode store entry, undo history and bridge memo go —
+    # everything else in the feature sees an unmount it must survive.
+    - apps/web/src/browser/desktopTabLifetime.ts
     # Fenced mock adjustment: trailingActions is a fragment (toggle + menu)
     # under the fork, so the mock finds the menu's props on a fragment child.
     - apps/web/src/components/preview/PreviewView.test.tsx

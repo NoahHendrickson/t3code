@@ -33,7 +33,8 @@ interface DesignChangeDraftStoreState {
     payload: DesignChangeRequestPayload,
   ) => void;
   readonly remove: (threadRef: ScopedThreadRef, id: string) => void;
-  readonly clear: (threadRef: ScopedThreadRef) => void;
+  /** Drops `ids`, or every pending attachment when `ids` is omitted. */
+  readonly clear: (threadRef: ScopedThreadRef, ids?: readonly string[]) => void;
 }
 
 let nextId = 1;
@@ -97,12 +98,25 @@ export const useDesignChangeDraftStore = create<DesignChangeDraftStoreState>()((
       else byThreadKey[key] = next;
       return { byThreadKey };
     }),
-  clear: (threadRef) =>
+  clear: (threadRef, ids) =>
     set((state) => {
       const key = scopedThreadKey(threadRef);
       if (!(key in state.byThreadKey)) return state;
-      const { [key]: _removed, ...rest } = state.byThreadKey;
-      return { byThreadKey: rest };
+      if (ids === undefined) {
+        const { [key]: _removed, ...rest } = state.byThreadKey;
+        return { byThreadKey: rest };
+      }
+      // Targeted: a send clears exactly what it carried. The whole-thread clear used to run
+      // AFTER the turn start resolved, so an attachment made from the design panel during
+      // that round trip was dropped without ever riding a message.
+      const dropped = new Set(ids);
+      const pending = state.byThreadKey[key] ?? [];
+      const next = pending.filter((entry) => !dropped.has(entry.id));
+      if (next.length === pending.length) return state;
+      const byThreadKey = { ...state.byThreadKey };
+      if (next.length === 0) delete byThreadKey[key];
+      else byThreadKey[key] = next;
+      return { byThreadKey };
     }),
 }));
 
@@ -156,6 +170,15 @@ export const forkDesignChanges = {
     return selectPendingDesignChanges(useDesignChangeDraftStore.getState().byThreadKey, threadRef)
       .length;
   },
+  /** The ids of everything pending right now — captured by the send path BEFORE the turn
+   * starts, so the clear that follows a successful start drops exactly what rode the message
+   * and nothing a Send made in the meantime. */
+  pendingIds(threadRef: ScopedThreadRef): readonly string[] {
+    return selectPendingDesignChanges(
+      useDesignChangeDraftStore.getState().byThreadKey,
+      threadRef,
+    ).map((entry) => entry.id);
+  },
   /** Appends every pending change request to the outgoing message text, each wrapped in a
    * `<design_change_request>` block (mirrors the `<element_context>` idiom so a transcript
    * renderer can extract it later). Returns `text` untouched when nothing is pending. */
@@ -170,7 +193,7 @@ export const forkDesignChanges = {
       .join("\n\n");
     return text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks;
   },
-  clear(threadRef: ScopedThreadRef): void {
-    useDesignChangeDraftStore.getState().clear(threadRef);
+  clear(threadRef: ScopedThreadRef, ids?: readonly string[]): void {
+    useDesignChangeDraftStore.getState().clear(threadRef, ids);
   },
 };

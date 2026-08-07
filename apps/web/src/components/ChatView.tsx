@@ -4782,6 +4782,7 @@ function ChatViewContent(props: ChatViewProps) {
        Design-change attachments append their full change-request markdown here (the
        composer only ever showed the pill); cleared below once the turn start succeeds. */
     const forkDesignChangeRef = { environmentId, threadId: threadIdForSend };
+    const forkDesignChangeIds = forkDesignChanges.pendingIds(forkDesignChangeRef);
     const messageTextForSendWithDesignChanges = forkDesignChanges.appendToPrompt(
       forkDesignChangeRef,
       messageTextForSend,
@@ -5033,8 +5034,10 @@ function ChatViewContent(props: ChatViewProps) {
     }
     /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
        The design-change attachments rode the sent message; a failed send keeps the
-       pills so nothing is lost. */
-    if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef);
+       pills so nothing is lost. Cleared BY ID, not wholesale: the turn start is awaited
+       above, and a Send from the design panel during that window must not be dropped
+       without ever having been sent. */
+    if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignChangeIds);
     /* fork:end fork-design-mode */
   };
 

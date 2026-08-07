@@ -1,5 +1,5 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
@@ -69,9 +69,31 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   /** Every verb below is a no-op without a tab and an addressable selection — one gate. */
   const target = runtimeTabId !== null && ids.length > 0 ? runtimeTabId : null;
 
+  // Read through a ref so leaveCompare (and therefore every mutating verb) does not take the
+  // compare flag as a dependency and rebuild on each toggle.
+  const comparingRef = useRef(tab.comparing);
+  comparingRef.current = tab.comparing;
+
+  /**
+   * Leaves compare before any write.
+   *
+   * The guest auto-exits compare for the element it is drafting (DraftStore.apply), but only
+   * that one — so editing while comparing left a multi-element selection rendering half
+   * "before" and half "after", under a button still labelled for the whole-page state. Exiting
+   * for everything, here, is the one rule that keeps the page, the guest and the label
+   * agreeing; the alternative (mirroring the guest's per-element rule host-side) would need
+   * compare state on the wire per element to describe something nobody wants to look at.
+   */
+  const leaveCompare = useCallback(() => {
+    if (!runtimeTabId || !comparingRef.current) return;
+    designModeBridge.compareAll(runtimeTabId, false);
+    useDesignModeStore.getState().setComparing(runtimeTabId, false);
+  }, [runtimeTabId]);
+
   const apply = useCallback(
     (property: DesignModeWritableKey, value: string) => {
       if (!target) return;
+      leaveCompare();
       // Undo bookkeeping rides the same snapshots the fields display: mid-gesture the
       // selection snapshot still holds the pre-gesture value (the emit is a trailing
       // debounce), so the first tick records exactly the state Cmd+Z should restore.
@@ -92,7 +114,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       designModeBridge.applyDraft(target, ids, property, value);
     },
     // ids is rebuilt per render but changes only with the selection snapshot array.
-    [target, tab.selection],
+    [leaveCompare, target, tab.selection],
   );
 
   // Every mutating verb the history does NOT record goes through this: clear-first is the
@@ -102,10 +124,11 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const unrecorded = useCallback(
     (mutate: (verbTarget: string) => void) => {
       if (!target) return;
+      leaveCompare();
       designUndoHistory.clear(target);
       mutate(target);
     },
-    [target],
+    [leaveCompare, target],
   );
 
   const setSizeMode = useCallback(
@@ -123,6 +146,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const onInset = useCallback(
     (axis: "x" | "y", px: number) => {
       if (!target || !Number.isFinite(px)) return;
+      leaveCompare();
       designUndoHistory.recordInset(
         target,
         axis,
@@ -132,7 +156,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       );
       designModeBridge.setInset(target, ids, axis, px);
     },
-    [target, tab.selection],
+    [leaveCompare, target, tab.selection],
   );
 
   const onAbsolute = useCallback(

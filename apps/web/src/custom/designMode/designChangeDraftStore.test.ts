@@ -161,6 +161,30 @@ describe("designChangeDraftStore", () => {
     expect(pendingFor(OTHER_THREAD)).toHaveLength(1);
   });
 
+  it("clears only what the send carried, so a Send mid-flight survives", () => {
+    // ChatView captures pendingIds BEFORE awaiting the turn start and clears by them after:
+    // the whole-thread clear used to run on the far side of that await and dropped an
+    // attachment made from the design panel during the round trip without ever sending it.
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload({ markdown: "rode along" }));
+    const sentIds = forkDesignChanges.pendingIds(THREAD);
+    expect(sentIds).toHaveLength(1);
+
+    add(THREAD, "tab-b", payload({ markdown: "arrived mid-flight" }));
+    forkDesignChanges.clear(THREAD, sentIds);
+
+    const pending = pendingFor(THREAD);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.markdown).toBe("arrived mid-flight");
+  });
+
+  it("drops the thread's whole entry once a targeted clear empties it", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload());
+    forkDesignChanges.clear(THREAD, forkDesignChanges.pendingIds(THREAD));
+    expect(scopedThreadKey(THREAD) in useDesignChangeDraftStore.getState().byThreadKey).toBe(false);
+  });
+
   it("round-trips every pending block through the transcript extractor", () => {
     const { add } = useDesignChangeDraftStore.getState();
     add(THREAD, "tab-a", payload({ markdown: "# one", pageUrl: "http://localhost:5173/" }));

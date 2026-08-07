@@ -32,7 +32,22 @@ export interface PersistedLifecycle {
   drafts: Array<{
     dcSource: string
     index: number
-    props: Array<[prop: string, value: string]>
+    /* t3-fork: the third slot is the draft's ORIGINAL — the page's own value for the
+     * property, captured when the draft was first minted.
+     *
+     * It has to travel. Re-deriving it on restore reads `DraftStore.pagePrior`, which for a
+     * css draft answers with the element's live INLINE style — and the inline style is where
+     * the previous engine left the draft. That is fine after a real reload (fresh DOM, no
+     * inline styles) and WRONG after a same-document re-injection, which is exactly what
+     * toggling Design mode off and on does: `destroy()` leaves the previews painted, so every
+     * restored draft would capture its own drafted value as the "original". Discard then
+     * restores the draft over itself and the send builder measures before === after, so the
+     * panel counts N changes while Send answers "nothing to send".
+     *
+     * Optional, and 2-tuples still load: a session persisted by an older engine must not be
+     * thrown away on upgrade — it restores the way it always did (re-derived) for the rest of
+     * that session, and the next persist writes the triple. */
+    props: Array<[prop: string, value: string, original?: string]>
     selector?: string
   }>
   sent: Array<{ id: string; elements: PersistedSentElement[] }>
@@ -100,8 +115,16 @@ function isValidDraftEntry(v: unknown): v is PersistedLifecycle['drafts'][number
   if (typeof v.dcSource !== 'string' || typeof v.index !== 'number') return false
   if (!isValidSelectorField(v)) return false
   if (!Array.isArray(v.props)) return false
+  /* t3-fork: 2- and 3-tuples both valid — see PersistedLifecycle.drafts. The optional third
+   * slot is the original, and it is validated as strictly as the other two: a non-string there
+   * would be handed to `style.setProperty` on discard. */
   return v.props.every(
-    (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string' && typeof p[1] === 'string'
+    (p) =>
+      Array.isArray(p) &&
+      (p.length === 2 || p.length === 3) &&
+      typeof p[0] === 'string' &&
+      typeof p[1] === 'string' &&
+      (p.length === 2 || typeof p[2] === 'string')
   )
 }
 

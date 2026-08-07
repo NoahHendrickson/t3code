@@ -525,7 +525,9 @@ export class HeadlessDesignMode {
         remainingDrafts.push(d);
         continue;
       }
-      for (const [prop, value] of d.props) this.drafts.apply(el, prop, value);
+      // The persisted original rides along: re-deriving it here would read the inline style a
+      // destroyed engine left painted on this very element (lifecycle-store.ts's `props`).
+      for (const [prop, value, original] of d.props) this.drafts.apply(el, prop, value, original);
     }
     pending.drafts = remainingDrafts;
 
@@ -630,7 +632,11 @@ export class HeadlessDesignMode {
       liveKeys.add(persistKey(address));
       drafts.push({
         ...address,
-        props: [...props.entries()].map(([p, d]) => [p, d.value] as [string, string]),
+        // Value AND original — the original is not re-derivable at restore time (see
+        // lifecycle-store.ts's `props` and DraftStore.apply's `knownOriginal`).
+        props: [...props.entries()].map(
+          ([p, d]) => [p, d.value, d.original] as [string, string, string],
+        ),
       });
     }
     // Merge in still-unresolved restore work so a reload mid-retry-window doesn't lose it.
