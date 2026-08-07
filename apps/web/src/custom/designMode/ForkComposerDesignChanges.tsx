@@ -82,13 +82,13 @@ function DesignChangeChip({
             </span>
             <span className="shrink-0">{chipLabel(entry)}</span>
             {source ? <span className="shrink-0">{source}</span> : null}
-            {/* min-w-0 lets the summary actually give way in a narrow column — without it
-                flex refuses to shrink below the text's own width and everything after
-                this span (the unresolved note, the remove button) is pushed out of the
-                clipped pill instead of the summary ellipsizing. */}
-            {summary ? <span className="min-w-0 truncate">{summary}</span> : null}
+            {summary ? <span className="truncate">{summary}</span> : null}
+            {/* min-w-0 + truncate: this note must yield BEFORE the remove button. In a
+                squeezed pill every unshrinkable child clips from the right, and the
+                right-most child is the X — an unremovable attachment is a one-way door
+                (PR #71 review). */}
             {unresolved > 0 ? (
-              <span className="shrink-0 text-[11px] font-medium opacity-80">
+              <span className="min-w-0 truncate text-[11px] font-medium opacity-80">
                 {entry.elements.length === 1 ? "no source" : `${unresolved} without source`}
               </span>
             ) : null}
@@ -108,7 +108,7 @@ function DesignChangeChip({
       />
       <TooltipPopup className="max-w-96 whitespace-pre-wrap font-mono text-[11px]">
         {unresolved > 0
-          ? `${unresolved === entry.elements.length ? (unresolved === 1 ? "This element has" : "These elements have") : `${unresolved} of ${entry.elements.length} elements have`} no source location — the request carries selector and text context instead.\n\n`
+          ? `${unresolved === entry.elements.length ? (unresolved === 1 ? "This element has" : "These elements have") : `${unresolved} of ${entry.elements.length} elements ${unresolved === 1 ? "has" : "have"}`} no source location — the request carries selector and text context instead.\n\n`
           : ""}
         {entry.markdown.slice(0, 600)}
         {entry.markdown.length > 600 ? "…" : ""}

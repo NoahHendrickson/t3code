@@ -235,7 +235,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
             : `Design changes for ${result.elementCount} elements attached`,
         description:
           unresolved > 0
-            ? `${unresolved === result.elements.length ? (unresolved === 1 ? "The element has" : "All of them have") : `${unresolved} of them have`} no source location — sent with selector and text context. Rides along with your next message.`
+            ? `${unresolved === result.elements.length ? (unresolved === 1 ? "The element has" : "All of them have") : `${unresolved} of them ${unresolved === 1 ? "has" : "have"}`} no source location — sent with selector and text context. Rides along with your next message.`
             : "It rides along with your next message — add a comment or just press Enter.",
       });
     } finally {
