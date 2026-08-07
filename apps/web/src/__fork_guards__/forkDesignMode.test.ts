@@ -222,6 +222,38 @@ describe("fork guard: design mode", () => {
     expect(host).toContain("fork:begin fork-design-mode");
   });
 
+  it("hands the page back while the browse modifier is held", () => {
+    const engine = read("src/custom/designMode/engine/headlessMode.ts");
+    // ONE predicate, read off the event itself: a keydown-tracked flag would read false
+    // whenever the ⌘ press landed on T3's own chrome (panel, layers rail) rather than the guest.
+    expect(engine).toContain(
+      "function isBrowseGesture(e: MouseEvent | KeyboardEvent): boolean {\n  return e.metaKey;\n}",
+    );
+    // Every path that would otherwise eat the gesture asks it. A path added later that
+    // intercepts without asking is exactly the drift this list catches.
+    expect(engine).toContain("if (isBrowseGesture(ev)) {\n        this.overlay.hideOutline();");
+    expect(engine).toContain("if (isBrowseGesture(e)) {\n      this.passThroughClick(e);");
+    expect(engine).toContain("if (this.overlay.contains(e.target) || isBrowseGesture(e)) return;");
+    expect(engine).toContain("if (e.button !== 0 || this.textEdit.active || isBrowseGesture(e))");
+    expect(engine).toContain("blocked: (e) => this.textEdit.active || isBrowseGesture(e),");
+    expect(read("src/custom/designMode/engine/vendor/move-drag.ts")).toContain(
+      "if (this.opts.blocked(e)) return",
+    );
+    // The click is REPLACED, not released: Chromium reads a ⌘-click on an anchor as "open in
+    // a new tab" and router Links bail out of client-side navigation on metaKey, so a released
+    // ⌘-click would open tabs instead of following links. Hence a modifier-free copy, the
+    // real event swallowed, and a re-entrancy guard for the copy's own trip through the
+    // capture listener.
+    expect(engine).toContain("if (e === this.passthroughClick) return;");
+    const copy = /const copy = new MouseEvent\("click", \{([\s\S]*?)\n {4}\}\);/u.exec(engine)?.[1];
+    expect(copy).toBeDefined();
+    for (const modifier of ["metaKey", "ctrlKey", "altKey", "shiftKey"]) {
+      expect(copy).not.toContain(modifier);
+    }
+    expect(copy).toContain("clientX: e.clientX");
+    expect(copy).toContain("button: e.button");
+  });
+
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
     // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
     // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no

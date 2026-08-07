@@ -249,9 +249,11 @@ export interface MoveDragOpts {
   /** canvas.scale() — divides the absolute free-drag's pointer deltas ONLY (see the asymmetry
    *  note on reorderTargetFor). Reorder hit-testing never touches it. */
   scale: () => number
-  /** text-edit active / space held / middle button in flight — canvas.ts and text-edit.ts own
-   *  those gestures, and this module must not compete for the same pointerdown. */
-  blocked: () => boolean
+  /** text-edit active / browse gesture held / space held / middle button in flight — canvas.ts,
+   *  text-edit.ts and the controller's ⌘-to-browse own those gestures, and this module must not
+   *  compete for the same pointerdown. Takes the event because the browse gesture is read off
+   *  the modifier the press itself carries, not off tracked keyboard state. */
+  blocked: (e: PointerEvent) => boolean
   overlayContains: (t: EventTarget | null) => boolean
   /** Crossing the threshold selects the element, Figma-style. */
   onSelect: (el: TaggedElement) => void
@@ -565,7 +567,7 @@ export class MoveDrag {
     // Left button only. Middle is canvas.ts's pan (and its window-capture handler has already
     // stopped propagation by the time we'd see it), right is the context menu's.
     if (e.button !== 0) return
-    if (this.opts.blocked()) return
+    if (this.opts.blocked(e)) return
     const target = realTarget(e)
     if (this.opts.overlayContains(target)) return
     const el = findSelectableElement(target instanceof Element ? target : null)

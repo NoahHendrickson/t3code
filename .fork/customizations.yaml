@@ -1874,7 +1874,24 @@
     host-side (protocol.ts countUnresolvedDesignElements) and surfaced on the
     composer pill and in the send toast, because buildSend's ~1.5s
     native-source grace means WHEN Send was clicked can change how precise
-    the ask is. Canvas mode (the Forge's vendored
+    the ask is.
+    Holding Cmd hands the page back: while the modifier is down the guest
+    stops intercepting, so the user can walk the app they are inspecting —
+    follow a link, open a menu, fill a form — without leaving design mode or
+    losing the selection. The gate is read off each event's metaKey rather
+    than tracked from keydown, because the press that arms it routinely lands
+    on T3's own chrome (the panel, the layers rail) while the click lands in
+    the guest; that also means it cannot tell the two physical Cmd keys
+    apart, and Meta-only makes this a macOS gesture. The click is REPLACED
+    rather than released: Chromium reads Cmd+click on an anchor as "open in a
+    new tab" and every router Link bails out of client-side navigation when
+    metaKey is set, so the engine swallows the real event and re-dispatches a
+    modifier-free copy at the same target — released as-is, the gesture meant
+    to walk the app would open tabs instead of following links. Hover chrome,
+    the source prefetch, click-to-select, double-click text edit, the
+    keyboard verbs and the move drag all ask the same predicate; the
+    selection's own resize handles stay live, being overlay chrome on an
+    element the user already chose. Canvas mode (the Forge's vendored
     CanvasMode, engine/vendor/canvas.ts) turns the page into a
     pannable/zoomable artboard — space-drag/middle-drag pan,
     cursor-anchored wheel and pinch zoom, the powers-of-2 ladder,
