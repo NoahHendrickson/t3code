@@ -1185,6 +1185,110 @@
   verify:
     - apps/web/src/__fork_guards__/forkWorkspaceHeader.test.ts
 
+- id: narrow-workspace-layout
+  intent: >
+    The chat column has one minimum width, and the sidebar never takes it below
+    that — by pushing or otherwise. 400px, THREAD_MAIN_CONTENT_MIN_WIDTH, set in
+    a shadow of threadSidebarWidth. Upstream already uses that constant to stop
+    a sidebar *drag* from eating the column; the fork gives it the second half
+    of the same meaning, in custom/narrowChatOverlay.ts: as soon as pushing
+    would take the column under it, the panel stops pushing and floats over the
+    workspace instead. One number, both directions.
+
+    Only THREAD_MAIN_CONTENT_MIN_WIDTH moves in the shadow. The storage key, the
+    default and the sidebar minimum stay on upstream's values, and both exported
+    functions stay byte-identical, so the shadow keeps upstream's public API —
+    load-bearing, because AppSidebarLayout imports this module relatively and
+    relative import sites type-check against upstream while the bundler loads
+    the shadow (overrides/README.md).
+
+    The decision is measured, never a viewport breakpoint, and a sync that
+    "simplifies" it into a media query reintroduces the bug it replaced: the
+    right panel takes from the same column, so a 1200px window with a 740px
+    preview open leaves the chat 220px and needs the overlay, while a 950px
+    window with no panel leaves it 690px and does not. narrowChatOverlay
+    measures the column (ChatView's data-chat-column-maximized-away wrapper, or
+    the inset on routes with no workspace) plus the panel, and writes
+    data-fork-sidebar-overlay onto the sidebar wrapper for the Tier 1 stylesheet
+    to key off. It decides on the width the column *would* have if the panel
+    pushed, not the width it has: overlaying hands the column the panel's width
+    back, so a predicate over the measured width flips, re-measures, and flips
+    again every frame. It writes to the DOM rather than React state because it
+    runs from a ResizeObserver during a window drag.
+
+    Four rules carry the overlay and all four must survive together. The
+    sidebar-gap spacer goes to zero width — upstream's panel is already
+    fixed-positioned, so that spacer is the entire push. The panel is raised to
+    z-index 45, which has to stay a sandwich rather than a number: above the
+    timeline minimap (z-40, left-anchored, the only inset descendant that
+    overlaps a left-side panel — the titlebar controls are right-anchored and
+    never reach it) and below the expanded-image lightbox (z-50). Isolating the
+    inset instead is the tempting shortcut and is wrong: ExpandedImageDialog
+    renders inline inside the inset rather than through a portal, so an isolated
+    inset puts opaque chrome over that lightbox's backdrop, its previous-image
+    button and its click-to-close target. The accepted edge is the mirror image
+    — a hovered stacked composer banner also reaches z-50 and can paint over the
+    floating panel, which is transient and cosmetic where the lightbox was
+    neither. The inset's drag regions are released to
+    no-drag, because draggable regions are not resolved by stacking order: a
+    later `-webkit-app-region: drag` rect overrides an earlier `no-drag` one
+    wherever they overlap, and the workspace title bar comes after the sidebar in
+    the DOM — floating, its drag strip runs under the panel and swallows the
+    press that should collapse it, which is exactly how this shipped broken
+    once. The cost, accepted: that strip is not a window-drag handle while the
+    panel floats. And the shadow marking the floating layer is pinned to
+    [data-state="expanded"], since a collapsed panel parks just off the left
+    edge and an unconditional shadow bleeds its blur back across the chat.
+
+    The column is resolved on every pass, never once. The thread route renders
+    nothing until its thread ref resolves and then an inset whose ChatView
+    arrives later still, so a watcher that resolves at mount and gives up never
+    attaches on a cold window — which is exactly how this shipped broken the
+    second time, invisibly, because the inset it stood in for is the column plus
+    the right panel and therefore reads wide enough to decline the overlay. What
+    keeps it attached is a `childList` MutationObserver on the wrapper, the
+    inset, and ChatView's row: each one level above what it waits for. `subtree`
+    on any of them would put the observer over streaming messages and composer
+    keystrokes, so it stays off.
+
+    Collapsing and reopening the sidebar must keep working while it floats. That
+    is the point of the released drag strip, and of resolving the attribute for
+    a collapsed panel as though it were open — the attribute describes what
+    opening would do, so the first frame after a toggle is never the pushed
+    layout it exists to avoid.
+
+    Below `md` none of this applies: upstream swaps the panel for a Sheet that
+    already overlays and renders no gap element, so the rules match nothing and
+    the measurement reads a zero-width panel.
+  tier: 4
+  files:
+    - apps/web/src/custom/narrowChatOverlay.ts
+    - apps/web/src/overrides/components/threadSidebarWidth.ts
+    - apps/web/src/theme.custom.css
+  shadows:
+    - apps/web/src/components/threadSidebarWidth.ts
+  watch:
+    # Fenced: mounts the measurement, keyed on the route. Also the sole consumer
+    # of the minimum — the sidebar's maxWidth and the shouldAcceptWidth drag
+    # gate both read it, relatively imported.
+    - apps/web/src/components/AppSidebarLayout.tsx
+    # Carries the gap spacer, every data-slot the rules select on, the
+    # data-sidebar-state the decision reads, and the isMobile Sheet swap.
+    - apps/web/src/components/ui/sidebar.tsx
+    # The measured column (data-chat-column-maximized-away) and one of the two
+    # title-bar drag owners the overlay releases.
+    - apps/web/src/components/ChatView.tsx
+    # Defines .drag-region itself — the class the release rule overrides.
+    - apps/web/src/index.css
+    # Fenced: upstream's own test for this module, which imports it relatively
+    # and therefore runs against the shadow. One case hardcoded a 700px viewport
+    # that is only narrower than the two minimums combined while the reserve is
+    # 40rem, so at 400px it asserted the opposite of its own name. Derived from
+    # the constants instead, which holds for either value.
+    - apps/web/src/components/threadSidebarWidth.test.ts
+  verify:
+    - apps/web/src/__fork_guards__/narrowWorkspaceLayout.test.ts
+
 - id: fork-clerk-launch-resilience
   intent: >
     A keyless fork build never races the Clerk bridge. Upstream registers the
