@@ -22,10 +22,16 @@ export interface ChangeItem {
    *   `overrides` — the class was probed and provably is NOT the lever; edit the rule.
    *   `ambiguous` — probe tied (something declares the same value); BOTH are named.
    *   `plain`     — no utility class to probe; the rule is named without any claim about one.
-   *   `inline`    — an inline style on the element wins; no stylesheet rule is the lever. */
+   *   `inline`    — an inline style on the element wins; no stylesheet rule is the lever.
+   * The `-unnamed` arms carry the same verdicts when the winning/tying declaration could not
+   * be recovered from any accessible stylesheet (cross-origin sheets throw on CSSOM access).
+   * They exist so the verdict still reaches the renderer: without an origin the bullet falls
+   * through to the change/add utility arms, naming a lever the probe just disproved
+   * (PR #67 review). */
   origin?:
     | { kind: 'inline' }
     | { kind: 'overrides' | 'ambiguous' | 'plain'; selectorText: string; stylesheet: string }
+    | { kind: 'overrides-unnamed' | 'ambiguous-unnamed' }
 }
 
 /** A Figma-pivot structural design op (spec 2026-07-22 §2-3), anchored at its ElementChange's
@@ -457,6 +463,16 @@ export function buildChangeRequestWithElements(
             selectorText: origin.culprit.selectorText,
             stylesheet: origin.culprit.stylesheet,
           }
+        } else if (origin.ambiguous) {
+          // t3-fork: a tie whose partner no accessible sheet names (cross-origin CSS). The
+          // verdict must still ship — origin-less fallthrough would print the confident
+          // "change `x` → `y`" the probe just declined to license (PR #67 review).
+          item.origin = { kind: 'ambiguous-unnamed' }
+        } else if (origin.utilityClass !== null && !origin.utilityWins) {
+          // t3-fork: the value probe proved the utility lost, but the winner is not in any
+          // accessible sheet. Suggesting add/change of a class in the same losing layer would
+          // repeat the exact no-op this probe exists to prevent (PR #67 review).
+          item.origin = { kind: 'overrides-unnamed' }
         }
         // 'display: flex → block' is never the literal ask — it is the panel's deterministic
         // preview of REMOVING auto layout. Stamp the intent here at construction so the agent
@@ -639,6 +655,10 @@ export function renderMarkdown(req: ChangeRequest, theme: Theme = readTheme()): 
         line += ` — set by \`${c.origin.selectorText}\` in ${c.origin.stylesheet}; edit that rule`
       } else if (c.origin?.kind === 'ambiguous' && c.beforeUtility) {
         line += ` — \`${c.beforeUtility}\` and \`${c.origin.selectorText}\` (${c.origin.stylesheet}) both declare this at the same value, so removing either alone changes nothing; check which one wins before editing`
+      } else if (c.origin?.kind === 'ambiguous-unnamed' && c.beforeUtility) {
+        line += ` — \`${c.beforeUtility}\` ties with another declaration of the same value that could not be traced to an accessible stylesheet; check which one wins before editing`
+      } else if (c.origin?.kind === 'overrides-unnamed') {
+        line += ` — overridden by a rule that could not be traced to an accessible stylesheet; this element's utility classes are not the lever, so find where this property is really set`
       } else if (c.afterUtility) {
         line += c.beforeUtility
           ? ` — change \`${c.beforeUtility}\` → \`${c.afterUtility}\``

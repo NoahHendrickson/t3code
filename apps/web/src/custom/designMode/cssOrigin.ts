@@ -51,8 +51,10 @@ export interface DeclarationOrigin {
    * DIFFERS from the measured one is not ambiguous: the utility provably lost, and the culprit
    * carries the overridden claim. */
   ambiguous: boolean;
-  /** The probed class, echoed back so callers need not re-derive it. Null when no class on the
-   * element looked relevant — in which case no probe ran and `utilityWins` is meaningless. */
+  /** The probed class, echoed back so callers need not re-derive it. Null when no probe ran —
+   * no class on the element looked relevant, or the scan's candidate was not actually in the
+   * classList — so a non-null value always means the removal probe exercised this class, and
+   * `utilityWins`/`ambiguous` are its verdicts. */
   utilityClass: string | null;
   /** The element's own inline style declares this property, which outranks every stylesheet
    * rule below. Named separately because "edit that rule" is the wrong instruction for it. */
@@ -377,6 +379,10 @@ export function resolveDeclarationOrigins(
     const inlineStyle = inlineValue !== "" && inlineValue !== undefined;
     const canProbe = utilityClass !== null && el.classList.contains(utilityClass);
     const moved = canProbe && classMovesProperty(el, property, utilityClass, before);
+    // A class the probe never exercised is reported as no class at all: every downstream
+    // reading of a non-null utilityClass ("it lost", "it tied") presumes the removal probe
+    // actually ran, and a class-list scan alone must never license one (PR #67 review).
+    const probedClass = canProbe ? utilityClass : null;
 
     const declaring = matching
       .filter((candidate) => declaresProperty(candidate.style, property))
@@ -404,7 +410,7 @@ export function resolveDeclarationOrigins(
     out.set(property, {
       utilityWins: moved,
       ambiguous,
-      utilityClass,
+      utilityClass: probedClass,
       inlineStyle,
       culprit: moved ? null : pickCulprit(culpritPool),
     });
