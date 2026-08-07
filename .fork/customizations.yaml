@@ -1744,7 +1744,12 @@
     data-t3-native-source so it is never mistaken for a project tag).
     Elements whose source never resolves stay fully editable and send
     with selector/text/style context; no install prompt, warning toast,
-    or Forge handoff exists anymore. Canvas mode (the Forge's vendored
+    or Forge handoff exists anymore. That downgrade is VISIBLE, not
+    silent: the payload's per-element sourceLabel (null = unaddressed by
+    send time) is counted host-side (protocol.ts
+    countUnresolvedDesignElements) and surfaced on the composer pill and
+    in the send toast, because buildSend's ~1.5s native-source grace
+    means WHEN Send was clicked can change how precise the ask is. Canvas mode (the Forge's vendored
     CanvasMode, engine/vendor/canvas.ts) turns the page into a
     pannable/zoomable artboard — space-drag/middle-drag pan,
     cursor-anchored wheel and pinch zoom, the powers-of-2 ladder,
@@ -1840,6 +1845,7 @@
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
+    - apps/web/src/custom/designMode/protocol.test.ts
     # Outside engine/ on purpose: like protocol.ts it crosses the TS-island fence
     # (the engine tsconfig includes it by path) so the web project can type-check
     # and unit-test it, which files under engine/ cannot be.

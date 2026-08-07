@@ -9,11 +9,12 @@ import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
 import { applyDesignUndoEntry } from "../designUndoApply";
 import { designUndoHistory } from "../designUndoHistory";
-import type {
-  DesignModeAlignAxis,
-  DesignModeAlignValue,
-  DesignModeSizeMode,
-  DesignModeWritableKey,
+import {
+  countUnresolvedDesignElements,
+  type DesignModeAlignAxis,
+  type DesignModeAlignValue,
+  type DesignModeSizeMode,
+  type DesignModeWritableKey,
 } from "../protocol";
 import { CanvasControls } from "./CanvasControls";
 import { AppearanceSection } from "./sections/AppearanceSection";
@@ -222,13 +223,20 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       // navigation adds one — the drafts behind it are a different page's. See
       // designChangeDraftStore's `add`.
       useDesignChangeDraftStore.getState().add(threadRef, runtimeTabId, result);
+      // Precision is part of the receipt: buildSend's ~1.5s native-source grace can expire
+      // and downgrade elements to selector/text context. Say so here rather than letting
+      // WHEN Send was clicked silently change what the agent gets (the pill repeats it).
+      const unresolved = countUnresolvedDesignElements(result);
       toastManager.add({
         type: "success",
         title:
           result.elementCount === 1
             ? "Design change attached"
             : `Design changes for ${result.elementCount} elements attached`,
-        description: "It rides along with your next message — add a comment or just press Enter.",
+        description:
+          unresolved > 0
+            ? `${unresolved === result.elements.length ? (unresolved === 1 ? "The element has" : "All of them have") : `${unresolved} of them have`} no source location — sent with selector and text context. Rides along with your next message.`
+            : "It rides along with your next message — add a comment or just press Enter.",
       });
     } finally {
       setSending(false);
