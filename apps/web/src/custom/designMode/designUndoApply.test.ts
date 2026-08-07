@@ -17,6 +17,7 @@ const TAB = "tab-1";
 const PADDING = "padding-top" as DesignModeWritableKey;
 
 let calls: string[] = [];
+let frames: Array<() => void> = [];
 
 const webview = {
   isConnected: true,
@@ -27,21 +28,38 @@ const webview = {
   },
 };
 
+/** Coalesced bridge writes (once PR #69 lands) flush no later than the next frame. The
+ * callback must be QUEUED, not run inline: an inline run flushes before the bridge stores
+ * the frame handle, leaving a stale handle that starves every later write. */
+const runFrames = () => {
+  const queued = frames;
+  frames = [];
+  for (const frame of queued) frame();
+};
+
 beforeEach(() => {
-  calls = [];
+  frames = [];
   (globalThis as { document?: unknown }).document = {
     querySelectorAll: () => [webview],
   };
   (globalThis as { requestAnimationFrame?: unknown }).requestAnimationFrame = (
     callback: () => void,
   ) => {
-    // Coalesced bridge writes (once PR #69 lands) flush no later than the next frame;
-    // running the frame inline keeps these assertions valid on both bridge shapes.
-    callback();
-    return 1;
+    frames.push(callback);
+    return frames.length;
   };
-  (globalThis as { cancelAnimationFrame?: unknown }).cancelAnimationFrame = () => undefined;
+  (globalThis as { cancelAnimationFrame?: unknown }).cancelAnimationFrame = (id: number) => {
+    if (id >= 1 && id <= frames.length) frames[id - 1] = () => undefined;
+  };
+  // Drain bridge state a prior test may have left queued, then start clean.
+  runFrames();
+  calls = [];
 });
+
+const apply = (entry: DesignUndoEntry, direction: "undo" | "redo") => {
+  applyDesignUndoEntry(TAB, entry, direction);
+  runFrames();
+};
 
 const draftEntry: DesignUndoEntry = {
   kind: "draft",
@@ -65,7 +83,7 @@ const insetEntry: DesignUndoEntry = {
 
 describe("applyDesignUndoEntry", () => {
   it("undo of a draft restores per element: prev re-applies, null prev discards", () => {
-    applyDesignUndoEntry(TAB, draftEntry, "undo");
+    apply(draftEntry, "undo");
     expect(calls).toHaveLength(2);
     expect(calls[0]).toContain("applyDraft");
     expect(calls[0]).toContain("[1]");
@@ -75,7 +93,7 @@ describe("applyDesignUndoEntry", () => {
   });
 
   it("redo of a draft re-applies the final value to the whole set in one call", () => {
-    applyDesignUndoEntry(TAB, draftEntry, "redo");
+    apply(draftEntry, "redo");
     expect(calls).toHaveLength(1);
     expect(calls[0]).toContain("applyDraft");
     expect(calls[0]).toContain("[1,2]");
@@ -83,7 +101,7 @@ describe("applyDesignUndoEntry", () => {
   });
 
   it("undo of an inset restores each element's own offset", () => {
-    applyDesignUndoEntry(TAB, insetEntry, "undo");
+    apply(insetEntry, "undo");
     expect(calls).toHaveLength(2);
     expect(calls[0]).toContain("setInset");
     expect(calls[0]).toContain("[1]");
@@ -93,7 +111,7 @@ describe("applyDesignUndoEntry", () => {
   });
 
   it("redo of an inset moves the whole set to the gesture's final offset", () => {
-    applyDesignUndoEntry(TAB, insetEntry, "redo");
+    apply(insetEntry, "redo");
     expect(calls).toHaveLength(1);
     expect(calls[0]).toContain("setInset");
     expect(calls[0]).toContain("[1,2]");
