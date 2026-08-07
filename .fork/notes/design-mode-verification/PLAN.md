@@ -157,6 +157,8 @@ Host:
 - Extend #76's `designSentPreviews` record to carry the latest report.
 - Panel footer replaces #76's blind prompt with the report: a count line, a disclosure listing
   each change and its verdict, and the actions.
+- Summary on the transcript chip too — see "Where the outcome surfaces" below. The panel owns the
+  actions; the chip carries the counts to where the user is actually looking after a send.
 - Keep the pure/impure split the fork already favours: `verdictFor(expected, measured, kind)`
   is a pure function tested without a DOM; the measurement wrapper stays thin.
 
@@ -206,15 +208,44 @@ offers (drop a redundant preview) is right either way.
   verdict, mirroring #76's guard against claiming success.
 - Protocol round-trip tests for the new message shapes, alongside the existing ones.
 
+## Where the outcome surfaces: beside the agent's reply
+
+Decided (2026-08-07): the verdict belongs on the transcript chip, not only in the panel.
+
+After pressing Enter nobody is looking at the design panel — they are watching the agent work.
+`ForkTranscriptDesignChanges` already renders a "Design change" chip on the sent user message,
+which puts the outcome one glance from the agent's own account of what it did. Phase 1 should
+carry the summary there, not treat it as a follow-up.
+
+This is a placement decision, NOT a change of source of truth. The agent's message is a report
+of intent and can never be the evidence:
+
+- It is the failure mode this fork already has the receipt for. `cssOrigin.ts` exists because an
+  agent changed `px-2.5` → `px-1`, reported it done, and the padding never moved — a rule in
+  `ComposerShell.css` outranked the utility. The probe stops the fork ASKING for that edit;
+  nothing stops an agent REPORTING it.
+- The agent never observes the rendered result, so "did the pixel move" is outside what it can
+  know, however honestly it answers.
+- It misleads exactly the user this feature is for. Someone who reads code can go check
+  `Card.tsx:42`; a designer reading "I've updated the padding" has no way to doubt it.
+
+The two are complementary and should be read together — which is the argument for the placement:
+
+- **Measurement answers _did it work_** — the half the agent structurally cannot supply.
+- **The agent's reply answers _why not_** — which file it went to, what it could not find, what
+  it decided instead. That is the half measurement cannot supply, and it is what turns "2 did
+  not land" into something actionable.
+
+A verdict with no explanation sends the user hunting; an explanation with no verdict is a claim.
+Side by side they are a diagnosis. Implication for copy: the chip reports counts and verdicts
+only, and never paraphrases or contradicts the agent's message — the two must read as separate
+kinds of evidence, not as two opinions.
+
 ## Open questions
 
-1. **Does the report belong anywhere besides the panel?** A user who sent from the panel and
-   then moved to another thread never sees it. A transcript chip on the sent message
-   (`ForkTranscriptDesignChanges` already renders one) could carry the outcome. Probably a
-   follow-up, but worth deciding before the report's shape is fixed.
-2. **Auto-clear the `applied` ones?** Tempting, and it makes the common case zero-click. Against:
+1. **Auto-clear the `applied` ones?** Tempting, and it makes the common case zero-click. Against:
    it is still a destructive action taken on the user's behalf, and the whole point of this plan
    is that the tool now has grounds — not permission. Recommend explicit for the first cut.
-3. **How long does a report stay valid?** It is a measurement of a moment. Re-measuring on every
+2. **How long does a report stay valid?** It is a measurement of a moment. Re-measuring on every
    page settle keeps it live; the alternative is showing a timestamp and letting it go stale.
    Recommend live.
