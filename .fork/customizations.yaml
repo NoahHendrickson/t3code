@@ -1659,6 +1659,14 @@
     a property with a live draft carries a changed dot that reverts JUST that
     property (snapshot `drafted` + the revertDraft verb over the vendored
     DraftStore.discard, which is css-only so a structural draft survives).
+    Scrub-shaped edits are undoable: one slider gesture, typed commit or nudge
+    run is ONE Cmd+Z step (Cmd+Shift+Z redoes), bookkept host-side per tab in
+    designUndoHistory.ts off the pre-gesture selection snapshots. The stack
+    records only style drafts and X/Y insets; every other mutating verb clears
+    it instead of letting Cmd+Z pop an older step past an action it cannot
+    reverse, and navigation or engine teardown clears it because its entries
+    name ids from the torn-down registry. Editable targets keep native text
+    undo — the listener skips them.
     The layers rail is Figma's layers panel, not a static tree: it REVEALS the
     canvas selection (expanding ancestors and scrolling to the row), implements
     the ARIA tree contract for real (roving tabindex, arrows, expand/collapse,
@@ -1842,6 +1850,10 @@
     - apps/web/src/custom/designMode/designChangeDraftStore.ts
     - apps/web/src/custom/designMode/designChangeDraftStore.test.ts
     - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
+    - apps/web/src/custom/designMode/designUndoHistory.ts
+    - apps/web/src/custom/designMode/designUndoHistory.test.ts
+    - apps/web/src/custom/designMode/designUndoApply.ts
+    - apps/web/src/custom/designMode/designUndoApply.test.ts
     - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkTranscriptDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkLayersTree.tsx

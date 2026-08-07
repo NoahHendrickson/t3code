@@ -8,6 +8,7 @@ import { cn } from "~/lib/utils";
 
 import { parseDesignModeConsoleMessage } from "./protocol";
 import { designModeBridge, findPreviewWebview } from "./designModeBridge";
+import { designUndoHistory } from "./designUndoHistory";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
 
 interface Props {
@@ -86,8 +87,10 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
     };
 
     // A navigation (or dev-server full reload) wipes the guest's globals — put the engine
-    // back whenever design mode is meant to be on for this tab.
+    // back whenever design mode is meant to be on for this tab. The undo history dies
+    // with the old document: its entries name ids from the previous injection's registry.
     const onDomReady = () => {
+      designUndoHistory.clear(runtimeTabId);
       if (!enabledRef.current) return;
       void injectEngine(runtimeTabId).catch(() => undefined);
     };
@@ -128,6 +131,8 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
     if (enabledRef.current) {
       // Destroy (not just deactivate): drafts persist in the guest's sessionStorage and
       // are restored on the next injection, so tearing the overlay down loses nothing.
+      // The undo history does NOT survive the id registry it names — clear it.
+      designUndoHistory.clear(runtimeTabId);
       designModeBridge.destroy(runtimeTabId);
       store.setEnabled(runtimeTabId, false);
       return;

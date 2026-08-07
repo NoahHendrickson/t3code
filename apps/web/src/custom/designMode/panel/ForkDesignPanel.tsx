@@ -1,5 +1,5 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
@@ -7,6 +7,8 @@ import { toastManager } from "~/components/ui/toast";
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
+import { applyDesignUndoEntry } from "../designUndoApply";
+import { designUndoHistory } from "../designUndoHistory";
 import type {
   DesignModeAlignAxis,
   DesignModeAlignValue,
@@ -53,45 +55,79 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
 
   const apply = useCallback(
     (property: DesignModeWritableKey, value: string) => {
-      if (target) designModeBridge.applyDraft(target, ids, property, value);
+      if (!target) return;
+      // Undo bookkeeping rides the same snapshots the fields display: mid-gesture the
+      // selection snapshot still holds the pre-gesture value (the emit is a trailing
+      // debounce), so the first tick records exactly the state Cmd+Z should restore.
+      // Write-only shorthands (`gap`) never appear in snapshots — prev null makes undo
+      // discard that property's draft instead (designUndoHistory.ts).
+      designUndoHistory.recordDraft(
+        target,
+        property,
+        tab.selection.map((element) => ({
+          id: element.id,
+          prev: element.drafted.includes(property)
+            ? ((element.styles as Partial<Record<DesignModeWritableKey, string>>)[property] ?? null)
+            : null,
+        })),
+        value,
+        Date.now(),
+      );
+      designModeBridge.applyDraft(target, ids, property, value);
     },
     // ids is rebuilt per render but changes only with the selection snapshot array.
     [target, tab.selection],
   );
 
-  const setSizeMode = useCallback(
-    (axis: "width" | "height", mode: DesignModeSizeMode) => {
-      if (target) designModeBridge.setSizeMode(target, ids, axis, mode);
+  // Every mutating verb the history does NOT record goes through this: clear-first is the
+  // default, so a verb added later keeps Cmd+Z honest without remembering a line — popping
+  // a step older than an action undo cannot reverse would un-do the wrong thing. Only
+  // `apply` and `onInset` record instead (PR #70 review).
+  const unrecorded = useCallback(
+    (mutate: (verbTarget: string) => void) => {
+      if (!target) return;
+      designUndoHistory.clear(target);
+      mutate(target);
     },
-    [target, tab.selection],
+    [target],
+  );
+
+  const setSizeMode = useCallback(
+    (axis: "width" | "height", mode: DesignModeSizeMode) =>
+      unrecorded((verbTarget) => designModeBridge.setSizeMode(verbTarget, ids, axis, mode)),
+    [unrecorded, tab.selection],
   );
 
   const onAlign = useCallback(
-    (axis: DesignModeAlignAxis, value: DesignModeAlignValue) => {
-      if (target) designModeBridge.alignSelection(target, ids, axis, value);
-    },
-    [target, tab.selection],
+    (axis: DesignModeAlignAxis, value: DesignModeAlignValue) =>
+      unrecorded((verbTarget) => designModeBridge.alignSelection(verbTarget, ids, axis, value)),
+    [unrecorded, tab.selection],
   );
 
   const onInset = useCallback(
     (axis: "x" | "y", px: number) => {
-      if (target && Number.isFinite(px)) designModeBridge.setInset(target, ids, axis, px);
+      if (!target || !Number.isFinite(px)) return;
+      designUndoHistory.recordInset(
+        target,
+        axis,
+        tab.selection.map((element) => ({ id: element.id, prev: element.offsets[axis] })),
+        px,
+        Date.now(),
+      );
+      designModeBridge.setInset(target, ids, axis, px);
     },
     [target, tab.selection],
   );
 
   const onAbsolute = useCallback(
-    (on: boolean) => {
-      if (target) designModeBridge.setAbsolute(target, ids, on);
-    },
-    [target, tab.selection],
+    (on: boolean) => unrecorded((verbTarget) => designModeBridge.setAbsolute(verbTarget, ids, on)),
+    [unrecorded, tab.selection],
   );
 
   const onAspectLock = useCallback(
-    (on: boolean) => {
-      if (target) designModeBridge.setAspectLock(target, ids, on);
-    },
-    [target, tab.selection],
+    (on: boolean) =>
+      unrecorded((verbTarget) => designModeBridge.setAspectLock(verbTarget, ids, on)),
+    [unrecorded, tab.selection],
   );
 
   // Per-field mixed/changed state plus its revert — one helper the sections spread onto
@@ -99,9 +135,9 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const field = useCallback(
     (...args: Parameters<FieldStateFor>) =>
       fieldStateFor(tab.selection, (properties) => {
-        if (target) designModeBridge.revertDraft(target, ids, properties);
+        unrecorded((verbTarget) => designModeBridge.revertDraft(verbTarget, ids, properties));
       })(...args),
-    [target, tab.selection],
+    [unrecorded, tab.selection],
   );
 
   const onCompare = useCallback(() => {
@@ -113,9 +149,44 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
 
   const onDiscard = useCallback(() => {
     if (!runtimeTabId) return;
+    // Not through `unrecorded`: Discard works with an empty selection, which that gate
+    // refuses — but it too is a mutation the history cannot reverse.
+    designUndoHistory.clear(runtimeTabId);
     designModeBridge.discardAll(runtimeTabId);
     useDesignModeStore.getState().setComparing(runtimeTabId, false);
   }, [runtimeTabId]);
+
+  // Cmd+Z / Cmd+Shift+Z while Design mode is on. Window-level because after a scrub the
+  // focus is wherever the pointer left it, not inside the panel; editable targets are
+  // skipped so the composer's (and the fields' own) text undo stays native. The effect is
+  // wiring only — filter, pop, apply — with the undo/redo semantics in designUndoApply.ts.
+  useEffect(() => {
+    if (!runtimeTabId || !tab.enabled) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      if (event.key.toLowerCase() !== "z" || event.defaultPrevented) return;
+      const element = event.target;
+      if (
+        element instanceof HTMLElement &&
+        (element.tagName === "INPUT" ||
+          element.tagName === "TEXTAREA" ||
+          element.tagName === "SELECT" ||
+          element.isContentEditable)
+      ) {
+        return;
+      }
+      const direction = event.shiftKey ? "redo" : "undo";
+      const entry =
+        direction === "redo"
+          ? designUndoHistory.redo(runtimeTabId)
+          : designUndoHistory.undo(runtimeTabId);
+      if (!entry) return;
+      event.preventDefault();
+      applyDesignUndoEntry(runtimeTabId, entry, direction);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [runtimeTabId, tab.enabled]);
 
   // buildSend can block up to the guest's native-source grace (~1.5s) — the flag both
   // shows the wait honestly on the button and makes a double-click during it a no-op
