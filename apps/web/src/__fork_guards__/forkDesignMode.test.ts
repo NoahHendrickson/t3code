@@ -305,6 +305,7 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain(
       "if (turnStartSucceeded) forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent)",
     );
+    expect(chatView).not.toContain("pendingIds");
   });
 
   it("offers to resolve previews that were sent, without claiming they landed", () => {
@@ -322,16 +323,15 @@ describe("fork guard: design mode", () => {
       expect(panel.slice(panel.indexOf("data-fork-design-resolve-previews"))).not.toContain(claim);
     }
 
-    // The record is minted by the send path, from the pills it is about to clear.
+    // The record is minted by the send path, from the entries it is about to clear.
     const store = read("src/custom/designMode/designChangeDraftStore.ts");
-    expect(store).toContain("markSent(threadRef: ScopedThreadRef");
+    expect(store).toContain("sent: readonly PendingDesignChange[]");
     expect(store).toContain("useDesignSentPreviews.getState().markSent(");
 
     // And it dies with its tab, like every other per-tab design-mode state.
     expect(read("src/custom/designMode/designModeTabLifetime.ts")).toContain(
       "useDesignSentPreviews.getState().forget(runtimeTabId)",
     );
-    expect(chatView).not.toContain("pendingIds");
   });
 
   it("renders sent design changes as transcript chips, not raw markdown", () => {

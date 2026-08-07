@@ -211,6 +211,8 @@ describe("designChangeDraftStore", () => {
     const pending = pendingFor(THREAD);
     expect(pending).toHaveLength(1);
     expect(pending[0]?.markdown).toBe("re-sent mid-flight");
+  });
+
   it("markSent notes the contributing tabs before the pills it read them from are cleared", () => {
     const { add } = useDesignChangeDraftStore.getState();
     add(THREAD, "tab-a", payload({ markdown: "from a" }));
