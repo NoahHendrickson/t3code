@@ -2015,6 +2015,7 @@
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/layersDrag.ts
     - apps/web/src/custom/designMode/layersDrag.test.ts
+    - apps/web/src/custom/designMode/designModeTabLifetime.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/panel/CanvasControls.tsx
     - apps/web/src/custom/designMode/panel/canvasResolutions.ts

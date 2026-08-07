@@ -226,8 +226,14 @@ export const designModeBridge = {
     lastHoverByTabId.delete(runtimeTabId);
     fire(runtimeTabId, "destroy", []);
   },
-  /** Drops this tab's host-side bridge memo. The tab is gone (its webview closed), so the
-   * hover memo has nothing left to describe — see desktopTabLifetime's fenced cleanup. */
+  /** Drops the hover memo alone. A re-injected engine starts with a fresh id registry and no
+   * outline painted, so the memo describes nothing — and would suppress the hover of whichever
+   * row happens to draw the id it last sent (ForkPreviewDesignMode's injectEngine). */
+  forgetHover(runtimeTabId: string): void {
+    lastHoverByTabId.delete(runtimeTabId);
+  },
+  /** Drops every host-side memo for a tab that is GONE (its webview closed), including the
+   * cached element itself — see designModeTabLifetime's disposeDesignModeTab. */
   forgetTab(runtimeTabId: string): void {
     lastHoverByTabId.delete(runtimeTabId);
     webviewByTabId.delete(runtimeTabId);

@@ -86,13 +86,28 @@ describe("fork guard: design mode", () => {
     expect(toggle).toContain("engineIsCurrent");
     expect(toggle).toContain("if (enabledRef.current) void reconcileEngine(runtimeTabId)");
 
+    // A re-injection invalidates every host memo keyed on guest ids, so injection owns those
+    // clears rather than each call site remembering them.
+    expect(toggle).toContain("designUndoHistory.clear(tabId)");
+    expect(toggle).toContain("designModeBridge.forgetHover(tabId)");
+    // ...and the reconcile re-checks the toggle after its probe's round trip, or a toggle-off
+    // inside that window would be undone by the injection that follows.
+    expect(toggle).toContain("if (!enabledRef.current) return;");
+
     // The counterpart: the one place that knows a preview tab is CLOSED rather than merely
-    // unmounted. Without it `designModeStore.remove` had no call site at all.
+    // unmounted. Without it `designModeStore.remove` had no call site at all. The lease makes
+    // ONE call — what gets released is the feature's own business, so the next per-tab memo
+    // does not grow another line in an upstream file.
     const tabLifetime = read("src/browser/desktopTabLifetime.ts");
     expect(tabLifetime).toContain("fork:begin fork-design-mode");
-    expect(tabLifetime).toContain("useDesignModeStore.getState().remove(tabId)");
-    expect(tabLifetime).toContain("designUndoHistory.clear(tabId)");
-    expect(tabLifetime).toContain("designModeBridge.forgetTab(tabId)");
+    expect(tabLifetime).toContain("disposeDesignModeTab(tabId)");
+    for (const internal of ["useDesignModeStore", "designUndoHistory", "designModeBridge"]) {
+      expect(tabLifetime).not.toContain(internal);
+    }
+    const disposal = read("src/custom/designMode/designModeTabLifetime.ts");
+    expect(disposal).toContain("useDesignModeStore.getState().remove(runtimeTabId)");
+    expect(disposal).toContain("designUndoHistory.clear(runtimeTabId)");
+    expect(disposal).toContain("designModeBridge.forgetTab(runtimeTabId)");
   });
 
   it("commits the screen's real width and derives a height that fills the pane", () => {
@@ -279,16 +294,18 @@ describe("fork guard: design mode", () => {
       'import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore"',
     );
     expect(chatView).toContain("forkDesignChanges.count({ environmentId, threadId:");
-    expect(chatView).toContain("forkDesignChanges.appendToPrompt(");
+    // ONE read: the outgoing text and the entries that went into it come back together, so
+    // "what rode the message" is not an invariant ChatView holds by hand across the await.
     expect(chatView).toContain(
-      "messageTextForSendWithDesignChanges || IMAGE_ONLY_BOOTSTRAP_PROMPT",
+      "forkDesignChanges.takeForSend(forkDesignChangeRef, messageTextForSend)",
     );
-    // Cleared BY ID: the ids are captured before the turn start is awaited, so a Send made
-    // from the design panel during that round trip is not dropped unsent by a blanket clear.
-    expect(chatView).toContain("forkDesignChanges.pendingIds(forkDesignChangeRef)");
+    expect(chatView).toContain("forkDesignSend.text || IMAGE_ONLY_BOOTSTRAP_PROMPT");
+    // Cleared by ENTRY, not by id — a re-send during the awaited turn start replaces the pill
+    // in place under the same id, so only identity distinguishes it from what was sent.
     expect(chatView).toContain(
-      "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignChangeIds)",
+      "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignSend.sent)",
     );
+    expect(chatView).not.toContain("pendingIds");
   });
 
   it("renders sent design changes as transcript chips, not raw markdown", () => {

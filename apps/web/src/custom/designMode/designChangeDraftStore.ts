@@ -33,8 +33,19 @@ interface DesignChangeDraftStoreState {
     payload: DesignChangeRequestPayload,
   ) => void;
   readonly remove: (threadRef: ScopedThreadRef, id: string) => void;
-  /** Drops `ids`, or every pending attachment when `ids` is omitted. */
-  readonly clear: (threadRef: ScopedThreadRef, ids?: readonly string[]) => void;
+  /**
+   * Drops exactly `sent` — matched by ENTRY IDENTITY, not by id — or every pending attachment
+   * when `sent` is omitted.
+   *
+   * Identity rather than id because `add` deliberately reuses a superseded entry's id for the
+   * same tab and document (the composer chip derives its React key and its fill from it, so a
+   * re-send must update in place). That makes the id stable across replacement and therefore
+   * useless as a freshness token: clearing by id after an awaited turn start would delete a
+   * payload the panel produced DURING the round trip, which is the common re-send case and
+   * exactly the loss this targeting exists to prevent (PR #74 review). `add` always builds a
+   * fresh object, so reference identity is the thing that actually moves.
+   */
+  readonly clear: (threadRef: ScopedThreadRef, sent?: readonly PendingDesignChange[]) => void;
 }
 
 let nextId = 1;
@@ -98,20 +109,19 @@ export const useDesignChangeDraftStore = create<DesignChangeDraftStoreState>()((
       else byThreadKey[key] = next;
       return { byThreadKey };
     }),
-  clear: (threadRef, ids) =>
+  clear: (threadRef, sent) =>
     set((state) => {
       const key = scopedThreadKey(threadRef);
       if (!(key in state.byThreadKey)) return state;
-      if (ids === undefined) {
+      if (sent === undefined) {
         const { [key]: _removed, ...rest } = state.byThreadKey;
         return { byThreadKey: rest };
       }
-      // Targeted: a send clears exactly what it carried. The whole-thread clear used to run
-      // AFTER the turn start resolved, so an attachment made from the design panel during
-      // that round trip was dropped without ever riding a message.
-      const dropped = new Set(ids);
+      // Targeted: a send clears exactly the entries it carried. A replacement minted during
+      // the awaited turn start is a different object under the same id, so it survives.
+      const dropped = new Set<PendingDesignChange>(sent);
       const pending = state.byThreadKey[key] ?? [];
-      const next = pending.filter((entry) => !dropped.has(entry.id));
+      const next = pending.filter((entry) => !dropped.has(entry));
       if (next.length === pending.length) return state;
       const byThreadKey = { ...state.byThreadKey };
       if (next.length === 0) delete byThreadKey[key];
@@ -170,30 +180,35 @@ export const forkDesignChanges = {
     return selectPendingDesignChanges(useDesignChangeDraftStore.getState().byThreadKey, threadRef)
       .length;
   },
-  /** The ids of everything pending right now — captured by the send path BEFORE the turn
-   * starts, so the clear that follows a successful start drops exactly what rode the message
-   * and nothing a Send made in the meantime. */
-  pendingIds(threadRef: ScopedThreadRef): readonly string[] {
-    return selectPendingDesignChanges(
-      useDesignChangeDraftStore.getState().byThreadKey,
-      threadRef,
-    ).map((entry) => entry.id);
-  },
-  /** Appends every pending change request to the outgoing message text, each wrapped in a
-   * `<design_change_request>` block (mirrors the `<element_context>` idiom so a transcript
-   * renderer can extract it later). Returns `text` untouched when nothing is pending. */
-  appendToPrompt(threadRef: ScopedThreadRef, text: string): string {
-    const pending = selectPendingDesignChanges(
+  /**
+   * ONE read of the pending set, producing both halves of a send: the outgoing message text
+   * with every request appended, and the entries that went into it — handed back verbatim so
+   * the caller can clear exactly those once the turn start succeeds.
+   *
+   * One call rather than two because "what rode the message" is otherwise an invariant ChatView
+   * has to hold by convention across an await, and the module's own rule is that each of these
+   * helpers is a single call so the fences stay one line (Cursor review, PR #74). Reading the
+   * store twice also left a window where the text and the clear list could disagree.
+   *
+   * Each request is wrapped in a `<design_change_request>` block, mirroring the
+   * `<element_context>` idiom so a transcript renderer can extract it later. `text` comes back
+   * untouched when nothing is pending.
+   */
+  takeForSend(
+    threadRef: ScopedThreadRef,
+    text: string,
+  ): { readonly text: string; readonly sent: readonly PendingDesignChange[] } {
+    const sent = selectPendingDesignChanges(
       useDesignChangeDraftStore.getState().byThreadKey,
       threadRef,
     );
-    if (pending.length === 0) return text;
-    const blocks = pending
+    if (sent.length === 0) return { text, sent };
+    const blocks = sent
       .map((entry) => `<design_change_request>\n${entry.markdown}\n</design_change_request>`)
       .join("\n\n");
-    return text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks;
+    return { text: text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks, sent };
   },
-  clear(threadRef: ScopedThreadRef, ids?: readonly string[]): void {
-    useDesignChangeDraftStore.getState().clear(threadRef, ids);
+  clear(threadRef: ScopedThreadRef, sent?: readonly PendingDesignChange[]): void {
+    useDesignChangeDraftStore.getState().clear(threadRef, sent);
   },
 };

@@ -69,67 +69,73 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   /** Every verb below is a no-op without a tab and an addressable selection — one gate. */
   const target = runtimeTabId !== null && ids.length > 0 ? runtimeTabId : null;
 
-  // Read through a ref so leaveCompare (and therefore every mutating verb) does not take the
-  // compare flag as a dependency and rebuild on each toggle.
+  // Read through a ref so the mutation gate below — and therefore every verb built on it —
+  // does not take the compare flag as a dependency and rebuild on each toggle.
   const comparingRef = useRef(tab.comparing);
   comparingRef.current = tab.comparing;
 
   /**
-   * Leaves compare before any write.
+   * THE mutation gate. Every write the panel makes goes through this — there is no second way
+   * in — so the rules a mutation owes are structural rather than a checklist each new verb has
+   * to remember (Cursor review, PR #74).
    *
-   * The guest auto-exits compare for the element it is drafting (DraftStore.apply), but only
-   * that one — so editing while comparing left a multi-element selection rendering half
-   * "before" and half "after", under a button still labelled for the whole-page state. Exiting
-   * for everything, here, is the one rule that keeps the page, the guest and the label
-   * agreeing; the alternative (mirroring the guest's per-element rule host-side) would need
-   * compare state on the wire per element to describe something nobody wants to look at.
+   * Two rules today, and both are easy to get wrong by omission:
+   *
+   * - **Leave compare first.** The guest auto-exits compare for the element it is drafting
+   *   (DraftStore.apply), but only that one — so editing while comparing left a multi-element
+   *   selection rendering half "before" and half "after", under a button still labelled for the
+   *   whole-page state. Exiting for everything keeps the page, the guest and the label agreeing;
+   *   mirroring the guest's per-element rule host-side would need compare state on the wire per
+   *   element to describe something nobody wants to look at.
+   * - **Clear the undo stack unless the verb records its own step.** Popping a step OLDER than
+   *   an action undo cannot reverse would un-do the wrong thing, so clear-first is the default
+   *   and only the two scrub-shaped writes pass a `record` (PR #70 review).
    */
-  const leaveCompare = useCallback(() => {
-    if (!runtimeTabId || !comparingRef.current) return;
-    designModeBridge.compareAll(runtimeTabId, false);
-    useDesignModeStore.getState().setComparing(runtimeTabId, false);
-  }, [runtimeTabId]);
+  const mutate = useCallback(
+    (run: (verbTarget: string) => void, record?: (verbTarget: string) => void) => {
+      if (!target) return;
+      if (runtimeTabId && comparingRef.current) {
+        designModeBridge.compareAll(runtimeTabId, false);
+        useDesignModeStore.getState().setComparing(runtimeTabId, false);
+      }
+      if (record) record(target);
+      else designUndoHistory.clear(target);
+      run(target);
+    },
+    [runtimeTabId, target],
+  );
 
   const apply = useCallback(
     (property: DesignModeWritableKey, value: string) => {
-      if (!target) return;
-      leaveCompare();
-      // Undo bookkeeping rides the same snapshots the fields display: mid-gesture the
-      // selection snapshot still holds the pre-gesture value (the emit is a trailing
-      // debounce), so the first tick records exactly the state Cmd+Z should restore.
-      // Write-only shorthands (`gap`) never appear in snapshots — prev null makes undo
-      // discard that property's draft instead (designUndoHistory.ts).
-      designUndoHistory.recordDraft(
-        target,
-        property,
-        addressable.map((element) => ({
-          id: element.id,
-          prev: element.drafted.includes(property)
-            ? ((element.styles as Partial<Record<DesignModeWritableKey, string>>)[property] ?? null)
-            : null,
-        })),
-        value,
-        Date.now(),
+      mutate(
+        (verbTarget) => designModeBridge.applyDraft(verbTarget, ids, property, value),
+        // Undo bookkeeping rides the same snapshots the fields display: mid-gesture the
+        // selection snapshot still holds the pre-gesture value (the emit is a trailing
+        // debounce), so the first tick records exactly the state Cmd+Z should restore.
+        // Write-only shorthands (`gap`) never appear in snapshots — prev null makes undo
+        // discard that property's draft instead (designUndoHistory.ts).
+        (verbTarget) =>
+          designUndoHistory.recordDraft(
+            verbTarget,
+            property,
+            addressable.map((element) => ({
+              id: element.id,
+              prev: element.drafted.includes(property)
+                ? ((element.styles as Partial<Record<DesignModeWritableKey, string>>)[property] ??
+                  null)
+                : null,
+            })),
+            value,
+            Date.now(),
+          ),
       );
-      designModeBridge.applyDraft(target, ids, property, value);
     },
     // ids is rebuilt per render but changes only with the selection snapshot array.
-    [leaveCompare, target, tab.selection],
+    [mutate, tab.selection],
   );
 
-  // Every mutating verb the history does NOT record goes through this: clear-first is the
-  // default, so a verb added later keeps Cmd+Z honest without remembering a line — popping
-  // a step older than an action undo cannot reverse would un-do the wrong thing. Only
-  // `apply` and `onInset` record instead (PR #70 review).
-  const unrecorded = useCallback(
-    (mutate: (verbTarget: string) => void) => {
-      if (!target) return;
-      leaveCompare();
-      designUndoHistory.clear(target);
-      mutate(target);
-    },
-    [leaveCompare, target],
-  );
+  /** The gate's default arm, named for the verbs that read better with it. */
+  const unrecorded = useCallback((run: (verbTarget: string) => void) => mutate(run), [mutate]);
 
   const setSizeMode = useCallback(
     (axis: "width" | "height", mode: DesignModeSizeMode) =>
@@ -145,18 +151,20 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
 
   const onInset = useCallback(
     (axis: "x" | "y", px: number) => {
-      if (!target || !Number.isFinite(px)) return;
-      leaveCompare();
-      designUndoHistory.recordInset(
-        target,
-        axis,
-        addressable.map((element) => ({ id: element.id, prev: element.offsets[axis] })),
-        px,
-        Date.now(),
+      if (!Number.isFinite(px)) return;
+      mutate(
+        (verbTarget) => designModeBridge.setInset(verbTarget, ids, axis, px),
+        (verbTarget) =>
+          designUndoHistory.recordInset(
+            verbTarget,
+            axis,
+            addressable.map((element) => ({ id: element.id, prev: element.offsets[axis] })),
+            px,
+            Date.now(),
+          ),
       );
-      designModeBridge.setInset(target, ids, axis, px);
     },
-    [leaveCompare, target, tab.selection],
+    [mutate, tab.selection],
   );
 
   const onAbsolute = useCallback(

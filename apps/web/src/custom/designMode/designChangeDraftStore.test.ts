@@ -161,27 +161,60 @@ describe("designChangeDraftStore", () => {
     expect(pendingFor(OTHER_THREAD)).toHaveLength(1);
   });
 
-  it("clears only what the send carried, so a Send mid-flight survives", () => {
-    // ChatView captures pendingIds BEFORE awaiting the turn start and clears by them after:
-    // the whole-thread clear used to run on the far side of that await and dropped an
-    // attachment made from the design panel during the round trip without ever sending it.
+  it("takeForSend returns the text and the entries in one read", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload({ markdown: "# one" }));
+    add(THREAD, "tab-b", payload({ markdown: "# two" }));
+
+    const taken = forkDesignChanges.takeForSend(THREAD, "make it pop");
+    expect(taken.sent).toHaveLength(2);
+    expect(extractTrailingDesignChanges(taken.text).blocks).toEqual(["# one", "# two"]);
+    // Reading is not taking — the pills survive until the turn start succeeds.
+    expect(pendingFor(THREAD)).toHaveLength(2);
+  });
+
+  it("leaves the text untouched when nothing is pending", () => {
+    const taken = forkDesignChanges.takeForSend(THREAD, "just a message");
+    expect(taken.text).toBe("just a message");
+    expect(taken.sent).toHaveLength(0);
+  });
+
+  it("clears only what the send carried, so a Send from another tab mid-flight survives", () => {
     const { add } = useDesignChangeDraftStore.getState();
     add(THREAD, "tab-a", payload({ markdown: "rode along" }));
-    const sentIds = forkDesignChanges.pendingIds(THREAD);
-    expect(sentIds).toHaveLength(1);
+    const taken = forkDesignChanges.takeForSend(THREAD, "");
 
     add(THREAD, "tab-b", payload({ markdown: "arrived mid-flight" }));
-    forkDesignChanges.clear(THREAD, sentIds);
+    forkDesignChanges.clear(THREAD, taken.sent);
 
     const pending = pendingFor(THREAD);
     expect(pending).toHaveLength(1);
     expect(pending[0]?.markdown).toBe("arrived mid-flight");
   });
 
+  it("survives a mid-flight RE-SEND, which reuses the id it replaces", () => {
+    // The common case, and the one clearing by id could never protect: `add` reuses the
+    // superseded entry's id for the same tab and document, so the replacement minted during
+    // the awaited turn start carries the very id the send captured. Only entry identity tells
+    // them apart (PR #74 review).
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload({ markdown: "rode along" }));
+    const taken = forkDesignChanges.takeForSend(THREAD, "");
+    const sentId = taken.sent[0]!.id;
+
+    add(THREAD, "tab-a", payload({ markdown: "re-sent mid-flight" }));
+    expect(pendingFor(THREAD)[0]?.id).toBe(sentId); // same id, different payload
+    forkDesignChanges.clear(THREAD, taken.sent);
+
+    const pending = pendingFor(THREAD);
+    expect(pending).toHaveLength(1);
+    expect(pending[0]?.markdown).toBe("re-sent mid-flight");
+  });
+
   it("drops the thread's whole entry once a targeted clear empties it", () => {
     const { add } = useDesignChangeDraftStore.getState();
     add(THREAD, "tab-a", payload());
-    forkDesignChanges.clear(THREAD, forkDesignChanges.pendingIds(THREAD));
+    forkDesignChanges.clear(THREAD, forkDesignChanges.takeForSend(THREAD, "").sent);
     expect(scopedThreadKey(THREAD) in useDesignChangeDraftStore.getState().byThreadKey).toBe(false);
   });
 
@@ -190,8 +223,9 @@ describe("designChangeDraftStore", () => {
     add(THREAD, "tab-a", payload({ markdown: "# one", pageUrl: "http://localhost:5173/" }));
     add(THREAD, "tab-b", payload({ markdown: "# two", pageUrl: "http://localhost:5173/" }));
 
-    const sent = forkDesignChanges.appendToPrompt(THREAD, "make it pop");
-    const extracted = extractTrailingDesignChanges(sent);
+    const extracted = extractTrailingDesignChanges(
+      forkDesignChanges.takeForSend(THREAD, "make it pop").text,
+    );
     expect(extracted.promptText).toBe("make it pop");
     expect(extracted.blocks).toEqual(["# one", "# two"]);
   });

@@ -49,8 +49,19 @@ function rowIdFromEvent(event: DragEvent<HTMLElement>): number | null {
  * which is the whole reason rows carry `siblingGroup`). Dropping below the last row of a DOM
  * group therefore used to ship the id of a row under a DIFFERENT DOM parent, which the guest
  * correctly refuses (`reorderById` requires a shared parent) — so the drag simply did nothing,
- * with no feedback anywhere. "After the last sibling" is `null`, which the guest already reads
- * as "move to the end"; only a next sibling in the SAME group is a usable reference.
+ * with no feedback anywhere.
+ *
+ * The reference is found by SCANNING FORWARD for the next same-group tree sibling, not by
+ * looking one step ahead. A single-step lookahead reads "the very next row is hoisted" as "this
+ * is the end of the DOM group", which is only true when every REMAINING sibling is also
+ * hoisted. In `P = [a, wrapper(b), c, d]`, dropping `c` after `a` would take that shortcut and
+ * ship `null` — landing the row at the end of the parent, past `d`, while the rail drew its
+ * insertion line directly under `a`. That is worse than the refusal it replaced: a silent
+ * no-op became a visibly wrong landing (PR #74 review).
+ *
+ * `null` is therefore reserved for a genuine end-of-group. Where the tree and the DOM disagree
+ * the landing is inherently approximate — "between `a` and a row living inside a wrapper" has
+ * no DOM expression — but the next real sibling is much closer to what the rail promised.
  *
  * Pure, and exported, because it is the one piece of this gesture that is arithmetic.
  */
@@ -64,9 +75,21 @@ export function resolveDropBeforeId(
   // actually commits, and a stale insertion line must never survive as a stale reference.
   if (over.node.siblingGroup !== dragged.node.siblingGroup) return null;
   if (edge === "before") return { beforeId: over.node.id };
-  const next = over.nextSiblingId === null ? undefined : byId.get(over.nextSiblingId);
-  if (!next || next.node.siblingGroup !== dragged.node.siblingGroup) return { beforeId: null };
-  return { beforeId: next.node.id };
+  // Bounded by the map: every hop consumes a distinct row, and a row already visited cannot be
+  // reached again, so a cyclic `nextSiblingId` (only reachable from a malformed payload) ends
+  // the walk rather than spinning.
+  const seen = new Set<number>([over.node.id]);
+  let cursor = over.nextSiblingId;
+  while (cursor !== null && !seen.has(cursor)) {
+    seen.add(cursor);
+    const candidate = byId.get(cursor);
+    if (!candidate) break;
+    if (candidate.node.siblingGroup === dragged.node.siblingGroup) {
+      return { beforeId: candidate.node.id };
+    }
+    cursor = candidate.nextSiblingId;
+  }
+  return { beforeId: null };
 }
 
 export function useLayersDrag({

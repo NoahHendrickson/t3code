@@ -49,14 +49,49 @@ describe("resolveDropBeforeId", () => {
     expect(resolveDropBeforeId(a, b, "after", index([a, b]))).toEqual({ beforeId: null });
   });
 
-  it("treats a next sibling in another DOM group as the end of this one", () => {
-    // The regression: `b` is last under ITS dom parent, but the tree gives it a next sibling
-    // hoisted out of an untagged wrapper. Shipping `3` here made the guest refuse the whole
+  it("treats a trailing hoisted sibling as the end of this group", () => {
+    // The original regression: `b` is last under ITS dom parent, but the tree gives it a next
+    // sibling hoisted out of an untagged wrapper. Shipping `3` made the guest refuse the whole
     // reorder — sibling-relative moves are only meaningful within one DOM parent.
     const a = row(1, 7, 2);
     const b = row(2, 7, 3);
     const hoisted = row(3, 9, null);
     expect(resolveDropBeforeId(a, b, "after", index([a, b, hoisted]))).toEqual({ beforeId: null });
+  });
+
+  it("scans PAST a hoisted sibling to the next real one", () => {
+    // `P = [a, wrapper(b), c, d]`. Dropping `c` after `a` must not read "the next row is
+    // hoisted" as "this is the end of the parent" — a one-step lookahead shipped `null` here
+    // and landed the row past `d`, while the rail drew its line under `a`. Worse than the
+    // refusal it replaced: a silent no-op became a visibly wrong landing (PR #74 review).
+    const a = row(1, 7, 2);
+    const hoisted = row(2, 9, 3);
+    const c = row(3, 7, 4);
+    const d = row(4, 7, null);
+    const rows = index([a, hoisted, c, d]);
+    expect(resolveDropBeforeId(d, a, "after", rows)).toEqual({ beforeId: 3 });
+    // And the scan keeps going across several hoisted rows in a run, not just one.
+    const hoisted2 = row(5, 9, 2);
+    const a2 = row(1, 7, 5);
+    expect(resolveDropBeforeId(d, a2, "after", index([a2, hoisted2, hoisted, c, d]))).toEqual({
+      beforeId: 3,
+    });
+  });
+
+  it("still reports the end when every remaining sibling is hoisted", () => {
+    const a = row(1, 7, 2);
+    const hoistedA = row(2, 9, 3);
+    const hoistedB = row(3, 9, null);
+    expect(resolveDropBeforeId(a, a, "after", index([a, hoistedA, hoistedB]))).toEqual({
+      beforeId: null,
+    });
+  });
+
+  it("ends the scan on a cyclic sibling chain instead of spinning", () => {
+    // Only reachable from a malformed payload, but the walk is over host-supplied ids.
+    const a = row(1, 7, 2);
+    const b = row(2, 9, 1);
+    expect(resolveDropBeforeId(a, a, "after", index([a, b]))).toEqual({ beforeId: null });
   });
 
   it("refuses a drop onto a row in another DOM group", () => {

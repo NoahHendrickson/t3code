@@ -1,9 +1,7 @@
 import { previewBridge } from "~/components/preview/previewBridge";
 
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-import { designModeBridge } from "~/custom/designMode/designModeBridge";
-import { useDesignModeStore } from "~/custom/designMode/designModeStore";
-import { designUndoHistory } from "~/custom/designMode/designUndoHistory";
+import { disposeDesignModeTab } from "~/custom/designMode/designModeTabLifetime";
 /* fork:end fork-design-mode */
 
 import { stopBrowserRecording } from "./browserRecording";
@@ -66,14 +64,11 @@ export function acquireDesktopTab(tabId: string): AcquiredDesktopTab {
         if (!latest || latest.references > 0) return;
         leases.delete(tabId);
         /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
-           The tab's webview is about to be destroyed, taking the guest engine, its drafts
-           and its id registry with it — so every per-tab thing the design mode keyed by this
-           runtime tab id describes something that no longer exists. This is the only place
-           that knows a preview tab is CLOSED rather than merely unmounted, which is why the
-           cleanup hangs here and not off a component. */
-        useDesignModeStore.getState().remove(tabId);
-        designUndoHistory.clear(tabId);
-        designModeBridge.forgetTab(tabId);
+           The tab's webview is about to be destroyed, taking the guest engine, its drafts and
+           its id registry with it. This is the only place that knows a preview tab is CLOSED
+           rather than merely unmounted, which is why the call hangs here — WHAT gets released
+           is the feature's own business (designModeTabLifetime.ts). */
+        disposeDesignModeTab(tabId);
         /* fork:end fork-design-mode */
         void enqueueDesktopTabOperation(tabId, async () => {
           await stopBrowserRecording(tabId).catch(() => null);

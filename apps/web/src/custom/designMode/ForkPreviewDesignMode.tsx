@@ -36,10 +36,13 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
   const injectEngine = useCallback(async (tabId: string) => {
     const webview = findPreviewWebview(tabId);
     if (!webview) throw new Error("Preview webview not found");
-    // The incoming engine mints a fresh id registry, so every entry the history holds names
-    // an id that is about to mean nothing. Cleared here rather than at each call site so a
-    // future injection path cannot forget it.
+    // The incoming engine mints a fresh id registry (ids restart at 1) and paints no outline,
+    // so every host-side memo keyed on the old ids is about to name something else: the undo
+    // history's entries, and the bridge's last-hover dedupe — which would otherwise swallow the
+    // hover of whichever row draws the id it last sent (PR #74 review). Cleared here rather
+    // than at each call site so a future injection path cannot forget either.
     designUndoHistory.clear(tabId);
+    designModeBridge.forgetHover(tabId);
     const { default: engineCode } = await import("virtual:fork-design-mode-engine");
     await webview.executeJavaScript(engineCode, false);
   }, []);
@@ -61,7 +64,13 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
    */
   const reconcileEngine = useCallback(
     async (tabId: string) => {
-      if (await designModeBridge.engineIsCurrent(tabId)) {
+      const current = await designModeBridge.engineIsCurrent(tabId);
+      // Re-checked after the probe's round trip: a toggle-off landing inside that window has
+      // already destroyed the engine and cleared the store, so reconciling on the stale answer
+      // would inject, boot would emit `state { active: true }`, and Design mode would turn
+      // itself back on under the user (PR #74 review).
+      if (!enabledRef.current) return;
+      if (current) {
         designModeBridge.setActive(tabId, true);
         return;
       }
