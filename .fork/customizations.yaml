@@ -1728,13 +1728,13 @@
     - apps/web/src/custom/designMode/protocol.ts
     - apps/web/src/custom/designMode/designModeStore.ts
     - apps/web/src/custom/designMode/designModeBridge.ts
+    - apps/web/src/custom/designMode/designChangeDraftStore.ts
+    - apps/web/src/custom/designMode/designChangeDraftStore.test.ts
+    - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
     - apps/web/src/custom/designMode/designUndoHistory.ts
     - apps/web/src/custom/designMode/designUndoHistory.test.ts
     - apps/web/src/custom/designMode/designUndoApply.ts
     - apps/web/src/custom/designMode/designUndoApply.test.ts
-    - apps/web/src/custom/designMode/designChangeDraftStore.ts
-    - apps/web/src/custom/designMode/designChangeDraftStore.test.ts
-    - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
     - apps/web/src/custom/designMode/ForkComposerDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkTranscriptDesignChanges.tsx
     - apps/web/src/custom/designMode/ForkLayersTree.tsx
