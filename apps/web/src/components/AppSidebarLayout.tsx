@@ -15,6 +15,9 @@ import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings"
 import { isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { useSidebarV2Enabled } from "../hooks/useSettings";
+/* fork:begin narrow-workspace-layout — see .fork/customizations.yaml#narrow-workspace-layout */
+import { useSidebarOverlayOnNarrowChat } from "../custom/narrowChatOverlay";
+/* fork:end narrow-workspace-layout */
 import ThreadSidebar from "./Sidebar";
 import ThreadSidebarV2 from "./SidebarV2";
 import {
@@ -147,6 +150,12 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       ? getWindowFullscreenState()
       : false;
   });
+  /* fork:begin narrow-workspace-layout — see .fork/customizations.yaml#narrow-workspace-layout
+     Keyed on the route because the chat column it measures unmounts with the
+     workspace. Everything else it needs it reads from the DOM, so a window drag
+     re-decides without re-rendering the workspace. */
+  useSidebarOverlayOnNarrowChat(pathname);
+  /* fork:end narrow-workspace-layout */
   const sidebarProviderStyle = {
     "--sidebar-width": `${sidebarWidth}px`,
     ...(isMacosDesktop && !isWindowFullscreen

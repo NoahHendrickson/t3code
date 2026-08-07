@@ -29,6 +29,16 @@ describe("thread sidebar width", () => {
   });
 
   it("keeps the sidebar minimum when the whole layout is narrower than its minimums", () => {
-    expect(resolveInitialThreadSidebarWidth(900, 700)).toBe(THREAD_SIDEBAR_MIN_WIDTH);
+    /* fork:begin narrow-workspace-layout — see .fork/customizations.yaml#narrow-workspace-layout
+       Derived from the two minimums rather than hardcoded at 700, which is only
+       narrower than their sum while THREAD_MAIN_CONTENT_MIN_WIDTH is upstream's
+       40rem. The fork's 400px moves that sum to 608 and left this asserting the
+       opposite of its own name. Holds for either constant. */
+    const narrowerThanBothMinimums = THREAD_SIDEBAR_MIN_WIDTH + THREAD_MAIN_CONTENT_MIN_WIDTH - 1;
+
+    expect(resolveInitialThreadSidebarWidth(900, narrowerThanBothMinimums)).toBe(
+      THREAD_SIDEBAR_MIN_WIDTH,
+    );
+    /* fork:end narrow-workspace-layout */
   });
 });

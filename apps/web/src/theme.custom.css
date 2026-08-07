@@ -814,6 +814,80 @@
   height: 16px;
 }
 
+/* ---------------------------------------------------------------------------
+   Narrow workspace layout — see
+   `.fork/customizations.yaml#narrow-workspace-layout`.
+
+   The sidebar floats over the workspace instead of pushing it whenever pushing
+   would take the chat column under its minimum width. `data-fork-sidebar-overlay`
+   carries that decision; `custom/narrowChatOverlay.ts` measures the column and
+   sets it. It is not a breakpoint — the right panel takes from the same column,
+   so a wide window with a preview open needs the overlay while a narrower one
+   without it does not.
+
+   Upstream's desktop panel is already `fixed`; what pushes is the in-flow
+   `sidebar-gap` spacer rendered beside it, so zeroing that one width is the
+   whole overlay. The panel keeps its own left-slide transition and the chat
+   column stops moving when the sidebar is toggled.
+   ------------------------------------------------------------------------ */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-sidebar-overlay="true"]
+  [data-slot="sidebar-gap"] {
+  width: 0;
+}
+
+/* The floating panel has to out-stack what it floats over. The inset is
+   `relative` with no z-index, so it is not a stacking context and its
+   descendants' own z-indices compete directly with the panel's z-10 — the
+   timeline minimap (`absolute top-0 left-0 z-40`) is the one that overlaps a
+   left-side panel and wins. The workspace titlebar controls are right-anchored
+   (`position: absolute; right: …`), so they never reach it.
+
+   Raising the panel, rather than isolating the inset. `isolation: isolate`
+   would trap the whole subtree below the panel — including the one chat overlay
+   that is not portaled: ExpandedImageDialog renders inline inside the inset at
+   `fixed inset-0 z-50`, so an isolated inset puts the opaque panel over the
+   lightbox's backdrop, its previous-image button and its click-to-close target.
+   45 clears the minimap and still yields to that lightbox.
+
+   Accepted edge: a *hovered* stacked composer banner also reaches z-50 and can
+   paint over the floating panel. Transient and cosmetic, where the lightbox
+   case was neither. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-sidebar-overlay="true"]
+  [data-slot="sidebar-container"] {
+  z-index: 45;
+}
+
+/* Electron only, and the reason the panel's own toggle was unclickable while it
+   floated. Draggable regions are not resolved by stacking order — a later
+   `-webkit-app-region: drag` rect overrides an earlier `no-drag` one wherever
+   they overlap, and the workspace's title bar comes after the sidebar in the
+   DOM. Pushed, the two never overlap; floating, the workspace's drag strip runs
+   underneath the panel and swallows the press that should have collapsed it.
+   While the panel floats it owns that strip, so the workspace releases it —
+   the same "one owner at a time" rule upstream already applies when the right
+   panel takes over the title bar. Cost: the strip is not a window-drag handle
+   in this state. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-sidebar-overlay="true"]
+  [data-slot="sidebar-inset"]
+  .drag-region {
+  -webkit-app-region: no-drag;
+}
+
+/* The panel's 1px border is enough while it holds a column of its own. Over
+   live chat content it reads as a seam, so the overlay — and only the overlay —
+   carries a shadow that says which layer is in front. Pinned to the expanded
+   state: a collapsed panel parks just off the left edge, and an unconditional
+   shadow would bleed its blur back across the chat. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-sidebar-overlay="true"]
+  [data-slot="sidebar"][data-state="expanded"]
+  [data-slot="sidebar-container"] {
+  box-shadow: 0 0 24px rgb(0 0 0 / 0.28);
+}
+
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
    falls back to upstream's variables. The design's hues are tuned for a black
    panel; on the light panel the same values are near-invisible at 8px, so each
