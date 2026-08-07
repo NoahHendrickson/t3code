@@ -125,11 +125,14 @@ interface RawFrame {
  * comparison is the fallback, on comparable form rather than raw. `frames[0]` is deliberately
  * NOT a fallback — it is not necessarily the reporting frame, and guessing here is what makes
  * the flag check meaningless. */
-function findReportingFrame(frames: readonly RawFrame[], value: {
-  filePath?: unknown;
-  lineNumber?: unknown;
-  columnNumber?: unknown;
-}): RawFrame | null {
+function findReportingFrame(
+  frames: readonly RawFrame[],
+  value: {
+    filePath?: unknown;
+    lineNumber?: unknown;
+    columnNumber?: unknown;
+  },
+): RawFrame | null {
   const byPosition = frames.filter(
     (frame) => frame.lineNumber === value.lineNumber && frame.columnNumber === value.columnNumber,
   );
