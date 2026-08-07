@@ -51,8 +51,22 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
 
   const first = tab.selection[0];
-  const ids = tab.selection.map((element) => element.id);
-  /** Every verb below is a no-op without a tab and a selection — one gate, not six. */
+  // Mutating verbs write to the ADDRESSABLE elements only: in a mixed selection, a draft
+  // fanned onto an anonymous sibling is the same lying affordance the whole-selection
+  // gate exists to stop, just reached through Shift-click (PR #72 review). Undo records
+  // the same filtered set, so every entry covers exactly what was written.
+  const ids = tab.selection
+    .filter((element) => element.sourceState !== "anonymous")
+    .map((element) => element.id);
+  const addressable = tab.selection.filter((element) => element.sourceState !== "anonymous");
+  // When NOTHING in the selection can be traced to code — every element's native-source
+  // attempt settled with no tag, no file, no component name — editing is disabled with
+  // the reason stated; inspection (values, selection, layers) stays live. Per-element
+  // state is the single source of truth: no-resolver hosts settle elements as anonymous
+  // too (nativeSource.ts), so there is no separate page-level concept, and `pending`
+  // stays editable (no flicker; a settle re-emits the snapshot either way).
+  const unaddressable = tab.selection.length > 0 && addressable.length === 0;
+  /** Every verb below is a no-op without a tab and an addressable selection — one gate. */
   const target = runtimeTabId !== null && ids.length > 0 ? runtimeTabId : null;
 
   const apply = useCallback(
@@ -66,7 +80,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       designUndoHistory.recordDraft(
         target,
         property,
-        tab.selection.map((element) => ({
+        addressable.map((element) => ({
           id: element.id,
           prev: element.drafted.includes(property)
             ? ((element.styles as Partial<Record<DesignModeWritableKey, string>>)[property] ?? null)
@@ -112,7 +126,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       designUndoHistory.recordInset(
         target,
         axis,
-        tab.selection.map((element) => ({ id: element.id, prev: element.offsets[axis] })),
+        addressable.map((element) => ({ id: element.id, prev: element.offsets[axis] })),
         px,
         Date.now(),
       );
@@ -246,20 +260,6 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
 
   if (!runtimeTabId || !tab.enabled) return null;
 
-  // When the whole selection is known-anonymous — every element's native-source attempt
-  // settled with no tag, no file, not even a component name — an edit could only ship an
-  // anonymous selector, so editing is disabled outright with the reason stated;
-  // inspection (values, selection, layers) stays live. `pending` elements stay editable
-  // (no flicker while resolution is in flight; a settle re-emits the snapshot either
-  // way), and partially-resolved context (component/file without a line) counts as
-  // addressable — that is real context the agent acts on (PR #67). The sourceMode check
-  // covers the rare host with no resolver installed at all, where per-element attempts
-  // never even start.
-  const unaddressable =
-    tab.sourceMode === "selector-only" ||
-    (tab.selection.length > 0 &&
-      tab.selection.every((element) => element.sourceState === "unresolved"));
-
   const sectionProps = {
     selection: tab.selection,
     apply,
@@ -312,14 +312,16 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
               read-only.
             </p>
           ) : null}
-          {/* fieldset carries the disabled semantics for every input and button inside;
-              pointer-events-none additionally kills the label scrubs and pickers, which
-              are spans a disabled fieldset does not reach. min-w-0 undoes the fieldset
-              default (min-width: min-content) that would defeat the column's clipping. */}
-          <fieldset
-            disabled={unaddressable}
+          {/* Read-only, not inert: the mutating callbacks above are the real gate (they
+              write to addressable ids only, none here), and theme.custom.css turns off
+              pointer events for inputs and non-disclosure buttons under this marker —
+              NOT a disabled fieldset, which would also disable the Expando/section
+              disclosure buttons and make collapsed values unreadable, contradicting the
+              note (PR #72 review). Disclosures keep working via their aria-expanded. */}
+          <div
+            data-fork-design-readonly={unaddressable ? "" : undefined}
             aria-disabled={unaddressable ? "true" : undefined}
-            className={cn("min-w-0 space-y-5", unaddressable && "pointer-events-none opacity-50")}
+            className={cn("space-y-5", unaddressable && "opacity-60")}
           >
             <PositionSection
               element={first}
@@ -339,13 +341,13 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
             <TypographySection element={first} {...sectionProps} tokens={tab.tokens} />
             <FillSection element={first} {...sectionProps} tokens={tab.tokens} />
             <StrokeSection element={first} {...sectionProps} tokens={tab.tokens} />
-          </fieldset>
+          </div>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center px-4 text-center">
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {unaddressable
-              ? "Click an element in the preview to inspect it. This page has no source mapping, so there is no code location to edit — elements are read-only."
+            {tab.sourceMode === "selector-only"
+              ? "Click an element in the preview to inspect it. Source mapping wasn't detected on this page — elements that can't be traced to code are read-only."
               : "Click an element in the preview to edit it. Shift-click adds to the selection; double-click edits text."}
           </p>
         </div>

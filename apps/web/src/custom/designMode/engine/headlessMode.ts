@@ -35,6 +35,7 @@ import { LayersSession } from "./layersSession";
 import { basename, findSelectableElement, type TaggedElement } from "./vendor/source";
 import {
   awaitResolutions,
+  hasSettledUntagged,
   isSynthesizedSource,
   markSynthesizedSource,
   resolveAndTag,
@@ -699,16 +700,37 @@ export class HeadlessDesignMode {
   private promoteSourceResolution(els: readonly TaggedElement[]): void {
     for (const target of sourceContextTargets(els)) {
       if (target.dataset?.dcSource) continue;
+      // Captured BEFORE the attempt: a failed settle must re-emit only on the pending →
+      // settled TRANSITION. Emitting on every settle re-runs the full snapshot rebuild
+      // (~45 computed-style reads per selected element) for outcomes the change gate
+      // then discards — repeated failed retries, and every element of a no-resolver
+      // page after the first (PR #72 review).
+      const freshAttempt = !hasSettledUntagged(target);
       void resolveAndTag(target).then((tagged) => {
         if (!this.active || !this.selection.includes(target)) return;
-        // Re-emit on EVERY settle, not just success: a failed attempt moves the
-        // snapshot's sourceState to `unresolved`, which is what lets the panel disable
-        // editing for an anonymous element instead of pretending. The emit is
-        // change-gated, so a settle that changed nothing costs one stringify.
-        this.emitSelection();
-        if (tagged) this.persist();
+        if (tagged) {
+          this.emitSelection();
+          this.persist();
+          return;
+        }
+        // First settle without a tag: the snapshot's sourceState just changed (pending →
+        // anonymous, or → resolved via a context attribute), which the panel's gate needs
+        // to hear. Coalesced: a multi-select's settles land in a burst, and one emit
+        // covers all of them.
+        if (freshAttempt) this.scheduleSettleEmit();
       });
     }
+  }
+
+  private settleEmitTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** One selection emit per burst of resolution settles — see promoteSourceResolution. */
+  private scheduleSettleEmit(): void {
+    if (this.settleEmitTimer !== null) return;
+    this.settleEmitTimer = setTimeout(() => {
+      this.settleEmitTimer = null;
+      if (this.active && this.selection.length > 0) this.emitSelection();
+    }, 0);
   }
 
   private setSelection(next: TaggedElement[]): void {

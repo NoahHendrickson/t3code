@@ -1742,20 +1742,30 @@
     file:line:col lazily — on hover dwell, selection, and send — and the
     engine synthesizes a canonical data-dc-source (marked
     data-t3-native-source so it is never mistaken for a project tag).
-    A selection that is known-anonymous makes the panel read-only: snapshots
-    carry a per-element sourceState (resolved | pending | unresolved, protocol
-    v5) where `unresolved` means a native-source attempt SETTLED with no tag,
-    no file, and no component name — the one state in which an edit could only
-    ship an anonymous selector, so the sections render inside a disabled
-    fieldset under a message saying the element can't be traced to code.
-    `pending` stays editable (no flicker while resolution is in flight;
-    promoteSourceResolution re-emits the snapshot on every settle, success or
-    not), component/file-only context counts as resolved (PR #67's "Rendered
-    by" line is real context), and a later successful retry re-enables the
-    panel by the same re-emit. Inspection, selection and the layers rail stay
-    live throughout; no install prompt, warning toast, or Forge handoff
-    exists anymore. For elements that remain merely IMPRECISE rather than
-    anonymous, the downgrade is VISIBLE instead of silent: the payload's
+    A selection that is known-anonymous makes the panel read-only, with
+    per-element state as the ONLY source of truth: snapshots carry a
+    sourceState (resolved | pending | anonymous, protocol v5 — named apart
+    from the pill's "unresolved sourceLabel" counter on purpose, the two have
+    different inclusion rules) where `anonymous` means a native-source attempt
+    SETTLED with no tag, no file, and no component name. No-resolver hosts
+    settle elements as anonymous too (resolveAndTag's early exit records the
+    settle), so there is no page-level sourceMode clause in the gate — the
+    boot-time mode probe is a one-shot at dom-ready and must never pin a
+    session-long lock. Mutating verbs write to ADDRESSABLE ids only, so a
+    Shift-click mixed selection cannot fan drafts onto anonymous siblings, and
+    the undo history records the same filtered set. The read-only rendering is
+    a marker div ([data-fork-design-readonly]) whose theme.custom.css rules
+    stop pointer events on inputs and non-disclosure buttons — NOT a disabled
+    fieldset, which would also disable the Expando/section disclosures and
+    make collapsed values unreadable; disclosures stay live via their
+    aria-expanded. `pending` stays editable (no flicker), component/file-only
+    context counts as resolved (PR #67's "Rendered by" line is real context),
+    and promoteSourceResolution re-emits only on the pending→settled
+    TRANSITION, coalesced per burst, so repeated failed retries and
+    no-resolver fan-outs cost nothing. Inspection, selection and the layers
+    rail stay live throughout; no install prompt, warning toast, or Forge
+    handoff exists anymore. For elements that remain merely IMPRECISE rather
+    than anonymous, the downgrade is VISIBLE instead of silent: the payload's
     per-element sourceLabel (null = unaddressed by send time) is counted
     host-side (protocol.ts countUnresolvedDesignElements) and surfaced on the
     composer pill and in the send toast, because buildSend's ~1.5s

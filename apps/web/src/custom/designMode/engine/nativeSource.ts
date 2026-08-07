@@ -151,7 +151,15 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
   const cached = attempts.get(el);
   if (cached) return cached;
   const resolver = getResolver();
-  if (!resolver) return Promise.resolve(false);
+  if (!resolver) {
+    // A host with no resolver installed can never address this element — that IS a
+    // settled answer, and recording it here is what lets the panel's per-element gate
+    // work without a separate page-level concept (PR #72 review). If a resolver appears
+    // later (never in practice — preloads install before page scripts), the ordinary
+    // retry path still runs because nothing was cached in `attempts`.
+    settledUntagged.add(el);
+    return Promise.resolve(false);
+  }
   const attempt = (async () => {
     let raw: unknown;
     try {

@@ -145,7 +145,7 @@ export interface DesignModeAlignCaps {
   readonly vertical: boolean;
 }
 
-export const DESIGN_MODE_SOURCE_STATES = ["resolved", "pending", "unresolved"] as const;
+export const DESIGN_MODE_SOURCE_STATES = ["resolved", "pending", "anonymous"] as const;
 export type DesignModeSourceState = (typeof DESIGN_MODE_SOURCE_STATES)[number];
 
 /** One selected element as the native panel sees it. `id` is minted by the guest engine
@@ -158,10 +158,13 @@ export interface DesignModeElementSnapshot {
   /** What the engine knows about addressing this element in code. `resolved` — a tag, a
    * source file, or at least a component name exists (all three give the agent something
    * real to act on). `pending` — no attempt has settled yet; stay editable rather than
-   * flicker. `unresolved` — a native-source attempt SETTLED and produced nothing at all:
+   * flicker. `anonymous` — a native-source attempt SETTLED and produced nothing at all:
    * the one state where the panel disables editing, because an edit could only ever ship
    * an anonymous selector. Late resolution re-emits the snapshot, so `unresolved` can
-   * still upgrade (retries stay allowed by design — React metadata can mount late). */
+   * still upgrade (retries stay allowed by design — React metadata can mount late).
+   * Distinct on purpose from countUnresolvedDesignElements' rule (sourceLabel null =
+   * imprecise SEND), which includes component/file-only elements this field calls
+   * resolved (PR #72 review). */
   readonly sourceState: DesignModeSourceState;
   readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
   /** Current W/H sizing modes (engine/sizeMode.ts) — drives the panel's per-axis menu. */

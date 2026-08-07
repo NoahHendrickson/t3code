@@ -14,12 +14,12 @@ import { basename, parseSourceAttr, type TaggedElement } from "./vendor/source";
 /** What addressing the request could carry for this element, read live off the DOM plus
  * the attempt ledger. A component name or source file counts as resolved — "Rendered by
  * <X> in file" is real context the agent can act on (PR #67) — so only an element that
- * settled with NONE of the three reads as unresolved. */
+ * settled with NONE of the three reads as anonymous. */
 function sourceStateOf(el: TaggedElement, hasTag: boolean): DesignModeSourceState {
   if (hasTag || el.hasAttribute(COMPONENT_NAME_ATTR) || el.hasAttribute(SOURCE_FILE_ATTR)) {
     return "resolved";
   }
-  return hasSettledUntagged(el) ? "unresolved" : "pending";
+  return hasSettledUntagged(el) ? "anonymous" : "pending";
 }
 
 /** The X/Y readout, in the margin-edge basis the panel's fields also WRITE (POSITION_ROWS

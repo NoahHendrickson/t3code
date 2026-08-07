@@ -56,7 +56,7 @@ const selectionLine = (elements: unknown[]) =>
   DESIGN_MODE_CONSOLE_PREFIX + JSON.stringify({ type: "selection", elements });
 
 describe("selection snapshot sourceState", () => {
-  it.each(["resolved", "pending", "unresolved"])("accepts %s", (state) => {
+  it.each(["resolved", "pending", "anonymous"])("accepts %s", (state) => {
     const message = parseDesignModeConsoleMessage(
       selectionLine([snapshot({ sourceState: state })]),
     );
