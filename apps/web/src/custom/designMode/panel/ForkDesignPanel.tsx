@@ -1,13 +1,21 @@
+import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
+import { useThreadSession } from "~/state/entities";
 
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
+import {
+  SENT_PREVIEW_ARM_FALLBACK_MS,
+  selectSentPreview,
+  shouldOfferPreviewResolution,
+  useDesignSentPreviews,
+} from "../designSentPreviews";
 import { applyDesignUndoEntry } from "../designUndoApply";
 import { designUndoHistory } from "../designUndoHistory";
 import {
@@ -202,6 +210,54 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
     designUndoHistory.clear(runtimeTabId);
     designModeBridge.discardAll(runtimeTabId);
     useDesignModeStore.getState().setComparing(runtimeTabId, false);
+    useDesignSentPreviews.getState().forget(runtimeTabId);
+  }, [runtimeTabId]);
+
+  // ── Resolving previews that have already been sent ───────────────────────────────────
+  //
+  // A sent request leaves its drafts painted over whatever the agent then changed, and the
+  // inline styles win — so the page stops being evidence of anything until they come off.
+  // The panel asks once the turn is over. It does NOT claim the edit landed: this fork does
+  // not vendor the Forge's verifier, so nothing here can check (engine/vendor/README.md).
+  const session = useThreadSession(threadRef);
+  const working = session?.status === "running" || session?.status === "starting";
+  const sentPreview = useDesignSentPreviews((state) =>
+    selectSentPreview(state.byTabId, runtimeTabId),
+  );
+  const threadKey = scopedThreadKey(threadRef);
+
+  useEffect(() => {
+    if (!runtimeTabId || !sentPreview || sentPreview.armed) return;
+    const { arm } = useDesignSentPreviews.getState();
+    if (working) {
+      arm(runtimeTabId, threadKey);
+      return;
+    }
+    // Never seen working — either the turn is still in the round trip between its start
+    // resolving and the session status arriving, or it began and ended while this panel was
+    // unmounted. Waiting out the remainder of the fallback separates those without a state
+    // machine, and re-arms correctly across a remount because the deadline rides the record.
+    const remaining = Math.max(0, SENT_PREVIEW_ARM_FALLBACK_MS - (Date.now() - sentPreview.at));
+    const timer = window.setTimeout(() => arm(runtimeTabId, threadKey), remaining);
+    return () => window.clearTimeout(timer);
+  }, [runtimeTabId, sentPreview, threadKey, working]);
+
+  // Reverting or discarding the last draft answers the question on its own — drop the record
+  // rather than leave a prompt hanging over a page with nothing left to resolve.
+  useEffect(() => {
+    if (runtimeTabId && sentPreview && tab.draftCount === 0) {
+      useDesignSentPreviews.getState().forget(runtimeTabId);
+    }
+  }, [runtimeTabId, sentPreview, tab.draftCount]);
+
+  const offerResolution = shouldOfferPreviewResolution({
+    record: sentPreview,
+    working,
+    draftCount: tab.draftCount,
+  });
+
+  const onKeepPreviews = useCallback(() => {
+    if (runtimeTabId) useDesignSentPreviews.getState().forget(runtimeTabId);
   }, [runtimeTabId]);
 
   // Cmd+Z / Cmd+Shift+Z while Design mode is on. Window-level because after a scrub the
@@ -386,6 +442,27 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       )}
 
       <footer className="shrink-0 space-y-1.5 border-t border-border px-4 py-2">
+        {offerResolution ? (
+          <div
+            className="space-y-1.5 rounded-md bg-[var(--fork-design-field)] px-2.5 py-2"
+            data-fork-design-resolve-previews
+          >
+            {/* Says what is true and nothing more: the previews are still on top. Whether the
+                agent did the work is for the user to see on the page — with these off. */}
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {tab.draftCount === 1 ? "This edit was" : "These edits were"} sent. The preview is
+              still painted over whatever the agent changed — drop it to see the real page.
+            </p>
+            <div className="flex items-center gap-1">
+              <Button variant="secondary" size="xs" onClick={onDiscard} type="button">
+                Drop previews
+              </Button>
+              <Button variant="ghost" size="xs" onClick={onKeepPreviews} type="button">
+                Keep
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground">
             {tab.draftCount === 0

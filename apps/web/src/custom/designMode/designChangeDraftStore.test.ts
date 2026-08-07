@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { extractTrailingDesignChanges } from "./designChangeTranscript";
 import { forkDesignChanges, useDesignChangeDraftStore } from "./designChangeDraftStore";
+import { useDesignSentPreviews } from "./designSentPreviews";
 import type { DesignChangeRequestPayload } from "./protocol";
 
 /**
@@ -37,6 +38,7 @@ const pendingFor = (threadRef: ScopedThreadRef) => {
 describe("designChangeDraftStore", () => {
   beforeEach(() => {
     useDesignChangeDraftStore.setState({ byThreadKey: {} });
+    useDesignSentPreviews.setState({ byTabId: {} });
   });
 
   it("replaces the pending attachment when the same tab re-sends the same page", () => {
@@ -209,6 +211,32 @@ describe("designChangeDraftStore", () => {
     const pending = pendingFor(THREAD);
     expect(pending).toHaveLength(1);
     expect(pending[0]?.markdown).toBe("re-sent mid-flight");
+  it("markSent notes the contributing tabs before the pills it read them from are cleared", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload({ markdown: "from a" }));
+    add(THREAD, "tab-b", payload({ markdown: "from b" }));
+    const taken = forkDesignChanges.takeForSend(THREAD, "");
+
+    forkDesignChanges.markSent(THREAD, taken.sent, 1_000);
+
+    // Both tabs recorded — the panel can now offer to resolve either one's previews.
+    expect(useDesignSentPreviews.getState().byTabId).toEqual({
+      "tab-a": { threadKey: scopedThreadKey(THREAD), at: 1_000, armed: false },
+      "tab-b": { threadKey: scopedThreadKey(THREAD), at: 1_000, armed: false },
+    });
+    expect(pendingFor(THREAD)).toHaveLength(0);
+  });
+
+  it("markSent leaves a tab whose pill did not ride this message alone", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload({ markdown: "rode along" }));
+    const taken = forkDesignChanges.takeForSend(THREAD, "");
+    add(THREAD, "tab-b", payload({ markdown: "arrived mid-flight" }));
+
+    forkDesignChanges.markSent(THREAD, taken.sent, 1_000);
+
+    expect(Object.keys(useDesignSentPreviews.getState().byTabId)).toEqual(["tab-a"]);
+    expect(pendingFor(THREAD)).toHaveLength(1);
   });
 
   it("drops the thread's whole entry once a targeted clear empties it", () => {

@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
 
+import { useDesignSentPreviews } from "./designSentPreviews";
 import type { DesignChangeRequestPayload } from "./protocol";
 
 /**
@@ -209,6 +210,27 @@ export const forkDesignChanges = {
     return { text: text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks, sent };
   },
   clear(threadRef: ScopedThreadRef, sent?: readonly PendingDesignChange[]): void {
+    useDesignChangeDraftStore.getState().clear(threadRef, sent);
+  },
+  /**
+   * The send succeeded: remember which preview tabs contributed drafts to it, then drop the
+   * pills. Ordering is the whole reason this is one call — the tabs are only readable from the
+   * entries the clear is about to remove, and a caller that got that backwards would lose the
+   * resolution prompt with nothing to show for it.
+   *
+   * The drafts themselves stay applied in the guest. They are the user's, and the tool never
+   * commits them; what changes is that the panel now has grounds to ask about them
+   * (designSentPreviews.ts).
+   */
+  markSent(
+    threadRef: ScopedThreadRef,
+    sent: readonly PendingDesignChange[],
+    at: number = Date.now(),
+  ): void {
+    const threadKey = scopedThreadKey(threadRef);
+    for (const runtimeTabId of new Set(sent.map((entry) => entry.runtimeTabId))) {
+      useDesignSentPreviews.getState().markSent(runtimeTabId, threadKey, at);
+    }
     useDesignChangeDraftStore.getState().clear(threadRef, sent);
   },
 };

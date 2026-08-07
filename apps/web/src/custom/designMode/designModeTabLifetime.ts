@@ -1,5 +1,6 @@
 import { designModeBridge } from "./designModeBridge";
 import { useDesignModeStore } from "./designModeStore";
+import { useDesignSentPreviews } from "./designSentPreviews";
 import { designUndoHistory } from "./designUndoHistory";
 
 /**
@@ -17,6 +18,7 @@ import { designUndoHistory } from "./designUndoHistory";
  */
 export function disposeDesignModeTab(runtimeTabId: string): void {
   useDesignModeStore.getState().remove(runtimeTabId);
+  useDesignSentPreviews.getState().forget(runtimeTabId);
   designUndoHistory.clear(runtimeTabId);
   designModeBridge.forgetTab(runtimeTabId);
 }

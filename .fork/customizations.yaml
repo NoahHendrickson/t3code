@@ -1848,7 +1848,17 @@
     whenever the right panel shows a terminal or a diff and a reload in
     that window would otherwise leave the mode "on" over a page with no
     engine, every command swallowed and Send answering "no changes" over
-    intact drafts. Restored drafts carry their ORIGINAL on the wire rather
+    intact drafts. A sent request leaves its drafts painted over whatever
+    the agent then changed — inline styles win, so the page stops being
+    evidence of anything until they come off — and the panel says so: once
+    the turn that carried them ends, the footer offers Drop previews or
+    Keep. It states only what is true; it must NEVER claim the edit was
+    applied or verified, because the Forge's verifier is not vendored here
+    and nothing in this fork can check. The offer is gated on the turn being
+    over (a send is armed by observing the thread work, or by a fallback
+    timer for a turn that began and ended while the panel was closed), so it
+    can never invite dropping previews out from under a running agent, and
+    it disappears on its own once no drafts are left. Restored drafts carry their ORIGINAL on the wire rather
     than re-deriving it: the toggle destroys the engine but leaves the
     previews painted, so the store's default prior oracle (the element's
     live inline style) would capture each draft's own value as the page's,
@@ -2013,6 +2023,8 @@
     - apps/web/src/custom/designMode/layersTreeModel.test.ts
     - apps/web/src/custom/designMode/panel/LayerTypeIcon.tsx
     - apps/web/src/custom/designMode/designChangeTranscript.ts
+    - apps/web/src/custom/designMode/designSentPreviews.ts
+    - apps/web/src/custom/designMode/designSentPreviews.test.ts
     - apps/web/src/custom/designMode/layersDrag.ts
     - apps/web/src/custom/designMode/layersDrag.test.ts
     - apps/web/src/custom/designMode/designModeTabLifetime.ts

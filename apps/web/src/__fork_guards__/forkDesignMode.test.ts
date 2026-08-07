@@ -303,7 +303,33 @@ describe("fork guard: design mode", () => {
     // Cleared by ENTRY, not by id — a re-send during the awaited turn start replaces the pill
     // in place under the same id, so only identity distinguishes it from what was sent.
     expect(chatView).toContain(
-      "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignSend.sent)",
+      "if (turnStartSucceeded) forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent)",
+    );
+  });
+
+  it("offers to resolve previews that were sent, without claiming they landed", () => {
+    // Sent drafts stay painted over whatever the agent then changed, and inline styles win —
+    // so the page stops being evidence until they come off. The panel says so once the turn
+    // ends. What it must NOT do is assert the edit was applied: the Forge's verifier is not
+    // vendored here (engine/vendor/README.md), so nothing in this fork can check.
+    const panel = read("src/custom/designMode/panel/ForkDesignPanel.tsx");
+    expect(panel).toContain("shouldOfferPreviewResolution");
+    expect(panel).toContain("data-fork-design-resolve-previews");
+    // The prompt is gated on the turn being over, so it can never offer to drop previews out
+    // from under a running agent.
+    expect(panel).toContain('session?.status === "running" || session?.status === "starting"');
+    for (const claim of ["applied", "verified", "landed successfully"]) {
+      expect(panel.slice(panel.indexOf("data-fork-design-resolve-previews"))).not.toContain(claim);
+    }
+
+    // The record is minted by the send path, from the pills it is about to clear.
+    const store = read("src/custom/designMode/designChangeDraftStore.ts");
+    expect(store).toContain("markSent(threadRef: ScopedThreadRef");
+    expect(store).toContain("useDesignSentPreviews.getState().markSent(");
+
+    // And it dies with its tab, like every other per-tab design-mode state.
+    expect(read("src/custom/designMode/designModeTabLifetime.ts")).toContain(
+      "useDesignSentPreviews.getState().forget(runtimeTabId)",
     );
     expect(chatView).not.toContain("pendingIds");
   });
