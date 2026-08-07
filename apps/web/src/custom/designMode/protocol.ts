@@ -262,6 +262,15 @@ export interface DesignChangeElementSummary {
   readonly deltas: readonly string[];
 }
 
+/** Elements the request could not source-address by send time. buildSend waits at most
+ * ~1.5s for in-flight native resolution and then ships selector/text context for whatever
+ * is left (`sourceLabel` null) — WHEN the user pressed Send silently changed how precise
+ * the ask was. This count is what the pill and the send toast surface so the downgrade is
+ * visible instead. */
+export const countUnresolvedDesignElements = (payload: {
+  readonly elements: ReadonlyArray<{ readonly sourceLabel: string | null }>;
+}): number => payload.elements.filter((element) => element.sourceLabel === null).length;
+
 /** Longest `pageUrl` accepted — the guest reads it off a page-controlled `location.href`,
  * which a data: document can make arbitrarily long. Only ever compared, never rendered. */
 export const DESIGN_MODE_PAGE_URL_CAP = 2048;

@@ -11,6 +11,7 @@ import {
   useDesignChangeTargetRef,
   useForkPendingDesignChanges,
 } from "./designChangeDraftStore";
+import { countUnresolvedDesignElements } from "./protocol";
 
 interface Props {
   /** The composer's own draft target — a DraftId for unstarted threads. Resolved to the
@@ -65,6 +66,7 @@ function DesignChangeChip({
 }) {
   const source = chipSource(entry);
   const summary = chipSummary(entry);
+  const unresolved = countUnresolvedDesignElements(entry);
   return (
     <Tooltip>
       <TooltipTrigger
@@ -81,6 +83,15 @@ function DesignChangeChip({
             <span className="shrink-0">{chipLabel(entry)}</span>
             {source ? <span className="shrink-0">{source}</span> : null}
             {summary ? <span className="truncate">{summary}</span> : null}
+            {/* min-w-0 + truncate: this note must yield BEFORE the remove button. In a
+                squeezed pill every unshrinkable child clips from the right, and the
+                right-most child is the X — an unremovable attachment is a one-way door
+                (PR #71 review). */}
+            {unresolved > 0 ? (
+              <span className="min-w-0 truncate text-[11px] font-medium opacity-80">
+                {entry.elements.length === 1 ? "no source" : `${unresolved} without source`}
+              </span>
+            ) : null}
             <button
               type="button"
               className="flex size-5 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/16"
@@ -96,6 +107,9 @@ function DesignChangeChip({
         }
       />
       <TooltipPopup className="max-w-96 whitespace-pre-wrap font-mono text-[11px]">
+        {unresolved > 0
+          ? `${unresolved === entry.elements.length ? (unresolved === 1 ? "This element has" : "These elements have") : `${unresolved} of ${entry.elements.length} elements ${unresolved === 1 ? "has" : "have"}`} no source location — the request carries selector and text context instead.\n\n`
+          : ""}
         {entry.markdown.slice(0, 600)}
         {entry.markdown.length > 600 ? "…" : ""}
       </TooltipPopup>
