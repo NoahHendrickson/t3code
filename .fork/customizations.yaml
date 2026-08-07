@@ -1567,7 +1567,9 @@
     surface by the PreviewPanel override: size, padding, margin, radius, typography,
     fill and opacity controls with scrub-to-edit fields, driving the guest
     through the window.__T3_DESIGN_MODE__ command handle
-    (designModeBridge.ts, fire-and-forget except buildSend).
+    (designModeBridge.ts, fire-and-forget except buildSend; the scrub-driven
+    writes applyDraft and setInset coalesce host-side to one IPC crossing per
+    animation frame, and every other command flushes them first so order holds).
     Panel section order and field chrome follow the fork's own Figma spec (file
     fZRyRTZJtLKwuq8rj2SLg4, page V2, node 193:9686): a Position section (the six
     align verbs over an X/Y pair, absolute-position toggle in the header), a
@@ -1720,6 +1722,7 @@
     - apps/web/src/custom/designMode/protocol.ts
     - apps/web/src/custom/designMode/designModeStore.ts
     - apps/web/src/custom/designMode/designModeBridge.ts
+    - apps/web/src/custom/designMode/designModeBridge.test.ts
     - apps/web/src/custom/designMode/designChangeDraftStore.ts
     - apps/web/src/custom/designMode/designChangeDraftStore.test.ts
     - apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx
