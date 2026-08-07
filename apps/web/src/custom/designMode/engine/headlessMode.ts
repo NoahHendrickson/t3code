@@ -700,9 +700,13 @@ export class HeadlessDesignMode {
     for (const target of sourceContextTargets(els)) {
       if (target.dataset?.dcSource) continue;
       void resolveAndTag(target).then((tagged) => {
-        if (!tagged || !this.active || !this.selection.includes(target)) return;
+        if (!this.active || !this.selection.includes(target)) return;
+        // Re-emit on EVERY settle, not just success: a failed attempt moves the
+        // snapshot's sourceState to `unresolved`, which is what lets the panel disable
+        // editing for an anonymous element instead of pretending. The emit is
+        // change-gated, so a settle that changed nothing costs one stringify.
         this.emitSelection();
-        this.persist();
+        if (tagged) this.persist();
       });
     }
   }

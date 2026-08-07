@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
+import { cn } from "~/lib/utils";
 
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
@@ -245,6 +246,20 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
 
   if (!runtimeTabId || !tab.enabled) return null;
 
+  // When the whole selection is known-anonymous — every element's native-source attempt
+  // settled with no tag, no file, not even a component name — an edit could only ship an
+  // anonymous selector, so editing is disabled outright with the reason stated;
+  // inspection (values, selection, layers) stays live. `pending` elements stay editable
+  // (no flicker while resolution is in flight; a settle re-emits the snapshot either
+  // way), and partially-resolved context (component/file without a line) counts as
+  // addressable — that is real context the agent acts on (PR #67). The sourceMode check
+  // covers the rare host with no resolver installed at all, where per-element attempts
+  // never even start.
+  const unaddressable =
+    tab.sourceMode === "selector-only" ||
+    (tab.selection.length > 0 &&
+      tab.selection.every((element) => element.sourceState === "unresolved"));
+
   const sectionProps = {
     selection: tab.selection,
     apply,
@@ -285,32 +300,52 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
         // Keyed by selection identity so field-local input state resets per selection.
         <div
           key={`${first.id}:${tab.selection.length}`}
-          className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4"
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
         >
-          <PositionSection
-            element={first}
-            selection={tab.selection}
-            onAlign={onAlign}
-            onInset={onInset}
-            onAbsolute={onAbsolute}
-          />
-          <LayoutSection
-            element={first}
-            {...sectionProps}
-            onSizeMode={setSizeMode}
-            onAspectLock={onAspectLock}
-          />
-          <MarginSection element={first} {...sectionProps} />
-          <AppearanceSection element={first} {...sectionProps} />
-          <TypographySection element={first} {...sectionProps} tokens={tab.tokens} />
-          <FillSection element={first} {...sectionProps} tokens={tab.tokens} />
-          <StrokeSection element={first} {...sectionProps} tokens={tab.tokens} />
+          {unaddressable ? (
+            <p
+              className="mb-4 rounded-md bg-[var(--fork-design-field)] px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+              data-fork-design-unaddressable-note
+            >
+              {tab.selection.length === 1 ? "This element" : "These elements"} can&apos;t be traced
+              to code — no source location, file, or component resolved — so the values below are
+              read-only.
+            </p>
+          ) : null}
+          {/* fieldset carries the disabled semantics for every input and button inside;
+              pointer-events-none additionally kills the label scrubs and pickers, which
+              are spans a disabled fieldset does not reach. min-w-0 undoes the fieldset
+              default (min-width: min-content) that would defeat the column's clipping. */}
+          <fieldset
+            disabled={unaddressable}
+            aria-disabled={unaddressable ? "true" : undefined}
+            className={cn("min-w-0 space-y-5", unaddressable && "pointer-events-none opacity-50")}
+          >
+            <PositionSection
+              element={first}
+              selection={tab.selection}
+              onAlign={onAlign}
+              onInset={onInset}
+              onAbsolute={onAbsolute}
+            />
+            <LayoutSection
+              element={first}
+              {...sectionProps}
+              onSizeMode={setSizeMode}
+              onAspectLock={onAspectLock}
+            />
+            <MarginSection element={first} {...sectionProps} />
+            <AppearanceSection element={first} {...sectionProps} />
+            <TypographySection element={first} {...sectionProps} tokens={tab.tokens} />
+            <FillSection element={first} {...sectionProps} tokens={tab.tokens} />
+            <StrokeSection element={first} {...sectionProps} tokens={tab.tokens} />
+          </fieldset>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center px-4 text-center">
           <p className="text-xs leading-relaxed text-muted-foreground">
-            {tab.sourceMode === "selector-only"
-              ? "Click an element in the preview to edit it. Source mapping isn't available on this page, so changes are sent with selector and text context instead of file locations."
+            {unaddressable
+              ? "Click an element in the preview to inspect it. This page has no source mapping, so there is no code location to edit — elements are read-only."
               : "Click an element in the preview to edit it. Shift-click adds to the selection; double-click edits text."}
           </p>
         </div>

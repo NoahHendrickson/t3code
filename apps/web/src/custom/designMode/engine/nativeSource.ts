@@ -114,6 +114,19 @@ export function normalizeNativeSource(value: unknown): string | null {
  * selector-only forever); the preload's short-TTL null cache bounds the retry cost. */
 const attempts = new WeakMap<TaggedElement, Promise<boolean>>();
 
+/** Elements whose attempt settled without producing a tag. Snapshots read this to tell
+ * "no attempt has finished" (pending — stay editable) apart from "an attempt finished
+ * and found nothing" (with the attributes also absent, the element is anonymous and the
+ * panel disables editing). Membership is never the whole answer: a tag or a
+ * component/file attribute — including one a LATER retry writes — always wins at read
+ * time, so stale membership is harmless. */
+const settledUntagged = new WeakSet<TaggedElement>();
+
+/** Whether a native-source attempt for `el` has settled without tagging it. */
+export function hasSettledUntagged(el: TaggedElement): boolean {
+  return settledUntagged.has(el);
+}
+
 /** The elements a send or selection actually names: each element itself plus the parent
  * and adjacent siblings the structural asks (move/absolute) reference. One helper for
  * BOTH the send barrier and selection promotion so the two fan-outs never drift. */
@@ -175,6 +188,7 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
   })();
   attempts.set(el, attempt);
   void attempt.then((tagged) => {
+    if (!tagged) settledUntagged.add(el);
     if (!tagged && attempts.get(el) === attempt) attempts.delete(el);
   });
   return attempt;
