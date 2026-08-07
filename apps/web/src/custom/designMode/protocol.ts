@@ -32,7 +32,7 @@ export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
  * contract had grown) were rejected wholesale by the stricter parser, so selection simply
  * stopped updating with nothing in the UI to say why (PR #57 review).
  */
-export const DESIGN_MODE_PROTOCOL_VERSION = 4;
+export const DESIGN_MODE_PROTOCOL_VERSION = 5;
 
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
@@ -145,6 +145,9 @@ export interface DesignModeAlignCaps {
   readonly vertical: boolean;
 }
 
+export const DESIGN_MODE_SOURCE_STATES = ["resolved", "pending", "anonymous"] as const;
+export type DesignModeSourceState = (typeof DESIGN_MODE_SOURCE_STATES)[number];
+
 /** One selected element as the native panel sees it. `id` is minted by the guest engine
  * and is only meaningful for the current selection — commands referencing a stale id
  * no-op. `sourceLabel` is "file.tsx:12" when the element carries a data-dc-source tag. */
@@ -152,6 +155,17 @@ export interface DesignModeElementSnapshot {
   readonly id: number;
   readonly tag: string;
   readonly sourceLabel: string | null;
+  /** What the engine knows about addressing this element in code. `resolved` — a tag, a
+   * source file, or at least a component name exists (all three give the agent something
+   * real to act on). `pending` — no attempt has settled yet; stay editable rather than
+   * flicker. `anonymous` — a native-source attempt SETTLED and produced nothing at all:
+   * the one state where the panel disables editing, because an edit could only ever ship
+   * an anonymous selector. Late resolution re-emits the snapshot, so `unresolved` can
+   * still upgrade (retries stay allowed by design — React metadata can mount late).
+   * Distinct on purpose from countUnresolvedDesignElements' rule (sourceLabel null =
+   * imprecise SEND), which includes component/file-only elements this field calls
+   * resolved (PR #72 review). */
+  readonly sourceState: DesignModeSourceState;
   readonly styles: Readonly<Record<DesignModeStyleKey, string>>;
   /** Current W/H sizing modes (engine/sizeMode.ts) — drives the panel's per-axis menu. */
   readonly sizeModes: { readonly width: DesignModeSizeMode; readonly height: DesignModeSizeMode };
@@ -378,6 +392,7 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
     !isNonNegativeInteger(value.id) ||
     typeof value.tag !== "string" ||
     (value.sourceLabel !== null && typeof value.sourceLabel !== "string") ||
+    !DESIGN_MODE_SOURCE_STATES.some((state) => state === value.sourceState) ||
     !isStyleMap(value.styles) ||
     !isRecord(value.sizeModes) ||
     !isRecord(value.offsets) ||
@@ -394,11 +409,13 @@ function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null 
   const width = parseSizeMode(value.sizeModes.width);
   const height = parseSizeMode(value.sizeModes.height);
   const positionState = POSITION_STATES.find((state) => state === value.positionState);
-  if (width === null || height === null || !positionState) return null;
+  const sourceState = DESIGN_MODE_SOURCE_STATES.find((state) => state === value.sourceState);
+  if (width === null || height === null || !positionState || !sourceState) return null;
   return {
     id: value.id,
     tag: value.tag,
     sourceLabel: value.sourceLabel,
+    sourceState,
     styles: value.styles,
     sizeModes: { width, height },
     offsets: { x: value.offsets.x, y: value.offsets.y },

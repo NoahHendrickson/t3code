@@ -1519,3 +1519,22 @@
   --fork-design-accent: #45ff96;
   --fork-design-accent-bg: rgb(69 255 150 / 16%);
 }
+
+/* ── Design panel read-only affordance (fork-design-mode) ──────────────────────
+   An unaddressable selection (every element's sourceState is `anonymous`) renders
+   inside [data-fork-design-readonly]. The real mutation gate is the panel's
+   callbacks; these rules are the affordance layer: inputs and mutating buttons
+   stop taking the pointer, while disclosure buttons — identified by the
+   aria-expanded the ARIA pattern requires of them — keep working so collapsed
+   values stay READABLE, which a disabled fieldset would prevent (PR #72 review).
+   The :first-child rule reaches the field labels' prefix cell, the span that
+   doubles as the scrub handle. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-design-readonly]
+  :is(input, select, textarea, button:not([aria-expanded])) {
+  pointer-events: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-design-readonly] label > :first-child {
+  pointer-events: none;
+}

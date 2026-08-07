@@ -501,6 +501,7 @@ describe("fork guard: design mode", () => {
       id: 1,
       tag: "button",
       sourceLabel: "App.tsx:5",
+      sourceState: "resolved",
       styles,
       sizeModes: { width: "fixed", height: "hug" },
       offsets: { x: 24, y: -8 },

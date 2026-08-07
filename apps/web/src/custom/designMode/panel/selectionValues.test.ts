@@ -20,6 +20,7 @@ function snapshot(
     id,
     tag: "div",
     sourceLabel: null,
+    sourceState: "resolved",
     styles: { ...full, ...styles },
     sizeModes: { width: "fixed", height: "fixed" },
     offsets: { x: 0, y: 0 },

@@ -21,8 +21,10 @@ export interface DesignModeTokens {
 export interface DesignModeTabState {
   readonly enabled: boolean;
   /** How the engine maps elements to source on this page (protocol.ts
-   * DesignModeSourceMode) — null until the engine's ready message reports it. Every mode
-   * stays fully editable; `selector-only` gets a soft note in the panel's empty state. */
+   * DesignModeSourceMode) — null until the engine's ready message reports it.
+   * `selector-only` means the page has NO source mapping: the panel renders read-only
+   * (disabled fieldset + message) because there is no code location to point the agent
+   * at; inspection and selection stay live. The mappable modes stay fully editable. */
   readonly sourceMode: DesignModeSourceMode | null;
   readonly selection: readonly DesignModeElementSnapshot[];
   readonly draftCount: number;

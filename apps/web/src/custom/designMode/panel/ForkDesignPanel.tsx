@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
+import { cn } from "~/lib/utils";
 
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
@@ -50,8 +51,22 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const tab = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
 
   const first = tab.selection[0];
-  const ids = tab.selection.map((element) => element.id);
-  /** Every verb below is a no-op without a tab and a selection — one gate, not six. */
+  // Mutating verbs write to the ADDRESSABLE elements only: in a mixed selection, a draft
+  // fanned onto an anonymous sibling is the same lying affordance the whole-selection
+  // gate exists to stop, just reached through Shift-click (PR #72 review). Undo records
+  // the same filtered set, so every entry covers exactly what was written.
+  const ids = tab.selection
+    .filter((element) => element.sourceState !== "anonymous")
+    .map((element) => element.id);
+  const addressable = tab.selection.filter((element) => element.sourceState !== "anonymous");
+  // When NOTHING in the selection can be traced to code — every element's native-source
+  // attempt settled with no tag, no file, no component name — editing is disabled with
+  // the reason stated; inspection (values, selection, layers) stays live. Per-element
+  // state is the single source of truth: no-resolver hosts settle elements as anonymous
+  // too (nativeSource.ts), so there is no separate page-level concept, and `pending`
+  // stays editable (no flicker; a settle re-emits the snapshot either way).
+  const unaddressable = tab.selection.length > 0 && addressable.length === 0;
+  /** Every verb below is a no-op without a tab and an addressable selection — one gate. */
   const target = runtimeTabId !== null && ids.length > 0 ? runtimeTabId : null;
 
   const apply = useCallback(
@@ -65,7 +80,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       designUndoHistory.recordDraft(
         target,
         property,
-        tab.selection.map((element) => ({
+        addressable.map((element) => ({
           id: element.id,
           prev: element.drafted.includes(property)
             ? ((element.styles as Partial<Record<DesignModeWritableKey, string>>)[property] ?? null)
@@ -111,7 +126,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       designUndoHistory.recordInset(
         target,
         axis,
-        tab.selection.map((element) => ({ id: element.id, prev: element.offsets[axis] })),
+        addressable.map((element) => ({ id: element.id, prev: element.offsets[axis] })),
         px,
         Date.now(),
       );
@@ -285,32 +300,54 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
         // Keyed by selection identity so field-local input state resets per selection.
         <div
           key={`${first.id}:${tab.selection.length}`}
-          className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4"
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
         >
-          <PositionSection
-            element={first}
-            selection={tab.selection}
-            onAlign={onAlign}
-            onInset={onInset}
-            onAbsolute={onAbsolute}
-          />
-          <LayoutSection
-            element={first}
-            {...sectionProps}
-            onSizeMode={setSizeMode}
-            onAspectLock={onAspectLock}
-          />
-          <MarginSection element={first} {...sectionProps} />
-          <AppearanceSection element={first} {...sectionProps} />
-          <TypographySection element={first} {...sectionProps} tokens={tab.tokens} />
-          <FillSection element={first} {...sectionProps} tokens={tab.tokens} />
-          <StrokeSection element={first} {...sectionProps} tokens={tab.tokens} />
+          {unaddressable ? (
+            <p
+              className="mb-4 rounded-md bg-[var(--fork-design-field)] px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+              data-fork-design-unaddressable-note
+            >
+              {tab.selection.length === 1 ? "This element" : "These elements"} can&apos;t be traced
+              to code — no source location, file, or component resolved — so the values below are
+              read-only.
+            </p>
+          ) : null}
+          {/* Read-only, not inert: the mutating callbacks above are the real gate (they
+              write to addressable ids only, none here), and theme.custom.css turns off
+              pointer events for inputs and non-disclosure buttons under this marker —
+              NOT a disabled fieldset, which would also disable the Expando/section
+              disclosure buttons and make collapsed values unreadable, contradicting the
+              note (PR #72 review). Disclosures keep working via their aria-expanded. */}
+          <div
+            data-fork-design-readonly={unaddressable ? "" : undefined}
+            aria-disabled={unaddressable ? "true" : undefined}
+            className={cn("space-y-5", unaddressable && "opacity-60")}
+          >
+            <PositionSection
+              element={first}
+              selection={tab.selection}
+              onAlign={onAlign}
+              onInset={onInset}
+              onAbsolute={onAbsolute}
+            />
+            <LayoutSection
+              element={first}
+              {...sectionProps}
+              onSizeMode={setSizeMode}
+              onAspectLock={onAspectLock}
+            />
+            <MarginSection element={first} {...sectionProps} />
+            <AppearanceSection element={first} {...sectionProps} />
+            <TypographySection element={first} {...sectionProps} tokens={tab.tokens} />
+            <FillSection element={first} {...sectionProps} tokens={tab.tokens} />
+            <StrokeSection element={first} {...sectionProps} tokens={tab.tokens} />
+          </div>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center px-4 text-center">
           <p className="text-xs leading-relaxed text-muted-foreground">
             {tab.sourceMode === "selector-only"
-              ? "Click an element in the preview to edit it. Source mapping isn't available on this page, so changes are sent with selector and text context instead of file locations."
+              ? "Click an element in the preview to inspect it. Source mapping wasn't detected on this page — elements that can't be traced to code are read-only."
               : "Click an element in the preview to edit it. Shift-click adds to the selection; double-click edits text."}
           </p>
         </div>
