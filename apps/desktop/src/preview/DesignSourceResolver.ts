@@ -17,8 +17,8 @@ import { getElementContext } from "react-grab/primitives";
 
 import {
   DESIGN_SOURCE_RESOLVER_GLOBAL,
-  normalizeResolvedSource,
-  type DesignSourceResult,
+  describeResolvedSource,
+  type ResolvedDesignSource,
 } from "./DesignSourceResult.ts";
 
 /** react-grab resolution symbolicates through source maps — cap concurrent work so a
@@ -48,19 +48,23 @@ function releaseSlot(): void {
 
 /** Settled AND in-flight results share one promise per element — concurrent callers
  * (hover prefetch racing a click promotion) never trigger duplicate react-grab work.
- * Successes cache for the element's lifetime; null results expire after a short TTL so
- * an element resolved before React mounted its dev metadata (hydration, a lazy chunk)
- * can succeed on a later ask instead of staying selector-only forever (PR #54 review).
- * The TTL also bounds retry cost: at most one react-grab attempt per element per TTL. */
-const resolutionCache = new WeakMap<Element, Promise<DesignSourceResult | null>>();
+ *
+ * Three tiers, not two. Only a FULL location caches for the element's lifetime. Both a null
+ * result and a hint (`{file?, componentName?}` with no position) expire after a short TTL, so
+ * an element asked before React mounted its dev metadata — hydration, a lazy chunk, a source
+ * map still in flight — can succeed on a later ask instead of being pinned at "(line not
+ * resolvable)" forever. Caching hints as successes would have quietly cancelled the retry
+ * behaviour PR #54 added, since a hint is non-null. The TTL also bounds retry cost: at most
+ * one react-grab attempt per element per TTL. */
+const resolutionCache = new WeakMap<Element, Promise<ResolvedDesignSource | null>>();
 
-const NULL_RESULT_TTL_MS = 5000;
+const RETRYABLE_RESULT_TTL_MS = 5000;
 
-async function resolveElement(element: Element): Promise<DesignSourceResult | null> {
+async function resolveElement(element: Element): Promise<ResolvedDesignSource | null> {
   await acquireSlot();
   try {
     const context = await getElementContext(element);
-    const normalized = normalizeResolvedSource(context);
+    const normalized = describeResolvedSource(context);
     // Recheck after the await — an element replaced mid-resolution must not hand the
     // engine a location for a node that no longer exists.
     if (!normalized || !element.isConnected || element.ownerDocument !== document) return null;
@@ -72,7 +76,7 @@ async function resolveElement(element: Element): Promise<DesignSourceResult | nu
   }
 }
 
-function resolve(element: unknown): Promise<DesignSourceResult | null> {
+function resolve(element: unknown): Promise<ResolvedDesignSource | null> {
   if (!(element instanceof Element) || element.ownerDocument !== document || !element.isConnected) {
     return Promise.resolve(null);
   }
@@ -81,10 +85,11 @@ function resolve(element: unknown): Promise<DesignSourceResult | null> {
   const resolution = resolveElement(element);
   resolutionCache.set(element, resolution);
   void resolution.then((result) => {
-    if (result !== null) return;
+    // A hint is not a success — `line` is what distinguishes the two arms of the union.
+    if (result !== null && "line" in result && result.line !== undefined) return;
     window.setTimeout(() => {
       if (resolutionCache.get(element) === resolution) resolutionCache.delete(element);
-    }, NULL_RESULT_TTL_MS);
+    }, RETRYABLE_RESULT_TTL_MS);
   });
   return resolution;
 }

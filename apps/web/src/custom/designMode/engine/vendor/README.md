@@ -21,6 +21,16 @@ are intentionally absent — the properties panel is native T3 React
 Local edits are marked with `t3-fork:` comments. The load-bearing ones:
 
 - `lifecycle.ts` — `StageEvent`/`LifecycleStage` inlined (verifier.ts not vendored).
+- Request accuracy (2026-08-06, `designMode/cssOrigin.ts` is the fork-owned core):
+  - `request.ts` — `ChangeItem.origin` and the probe that fills it. A css bullet may only
+    name a utility once `cssOrigin.ts` has proved that class is the lever by removing it
+    and re-measuring; otherwise the bullet names the winning rule instead. The probe runs
+    inside the `compare(el, true)` window, which is why `collapse()` is called there.
+  - `request.ts` — `ElementChange.component` / `.sourceFile`, read from the attributes
+    `nativeSource.ts` writes, and the `Rendered by:` line that renders them.
+  - `shared/guardrails.ts` — `NO_PREVIEW_GUARDRAIL` must NOT promise that "The Forge
+    verifies the changes automatically". True upstream, false here: `client/verifier.ts`
+    is not vendored, so nothing checks. Restore the stronger wording only alongside it.
 - `./shared/` import paths (were `../shared/` upstream).
 - A handful of mechanical lint fixes (snapshot spreads → `Array.from`, `toReversed()`,
   `Set#has`, two unused imports) — style-only, no behavior change.

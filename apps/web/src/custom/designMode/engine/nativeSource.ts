@@ -28,7 +28,39 @@ export const NATIVE_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
  * module state while the page DOM (and its synthesized tags) lives on. */
 export const NATIVE_SOURCE_MARKER_ATTR = "data-t3-native-source";
 
+/** The React component that rendered the element, when the host could name one. Written
+ * INDEPENDENTLY of `data-dc-source`: the host rejects a location it could not symbolicate, and
+ * that is exactly when knowing "this is a `ComposerSelectControl`" saves the agent the hunt. */
+export const COMPONENT_NAME_ATTR = "data-t3-component";
+
+/** The authored file, when the host could name one but could NOT resolve a position inside it.
+ * Never written alongside `data-dc-source` — a real tag already carries the file. */
+export const SOURCE_FILE_ATTR = "data-t3-source-file";
+
+const COMPONENT_NAME_PATTERN = /^[A-Za-z_$][\w$.]{0,63}$/;
 const MAX_FILE_LENGTH = 4096;
+
+/** Same posture as readComponentName: re-validated rather than trusted from the preload.
+ * TWIN of `normalizeFilePath` in apps/desktop/src/preview/DesignSourceResult.ts — deliberate
+ * duplication across the trust boundary, not a shared helper, because each side must hold on
+ * its own. Loosen one and loosen the other, or the boundary stops meaning anything. */
+function readSourceFile(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return null;
+  const file = (value as { file?: unknown }).file;
+  if (typeof file !== "string" || file.length === 0 || file.length > MAX_FILE_LENGTH) return null;
+  // eslint-disable-next-line no-control-regex
+  return /[\u0000-\u001f\u007f]/.test(file) ? null : file;
+}
+
+/** Page-controlled like every other resolver field, and it lands in the agent's request text —
+ * re-validated here rather than trusted from the preload (same posture as normalizeNativeSource).
+ * TWIN of `normalizeComponentName` in apps/desktop/src/preview/DesignSourceResult.ts; keep the
+ * two patterns identical. */
+function readComponentName(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return null;
+  const name = (value as { componentName?: unknown }).componentName;
+  return typeof name === "string" && COMPONENT_NAME_PATTERN.test(name) ? name : null;
+}
 
 interface NativeSourceResolver {
   resolve(element: Element): Promise<unknown>;
@@ -117,8 +149,27 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
     const source = normalizeNativeSource(raw);
     // Recheck after the await: a node replaced by HMR must not be tagged post-mortem,
     // and a tag that appeared meanwhile (restore re-synthesis) must not be overwritten.
-    if (!source || !el.isConnected) return false;
+    if (!el.isConnected) return false;
+    // Before the source gate on purpose — a component name is most valuable precisely when
+    // there is no location to pair it with.
+    // Overwrites rather than first-write-wins: HMR can rename or replace the component behind
+    // a still-connected element, and a `hasAttribute` guard would serve the stale name forever.
+    const componentName = readComponentName(raw);
+    if (componentName) el.setAttribute(COMPONENT_NAME_ATTR, componentName);
+    if (!source) {
+      // No position, but the file survived the host's symbolication check — worth carrying,
+      // since "which file" is most of what the address was for. Re-checked against a tag that
+      // may have appeared during the await, exactly like the success path below: an element
+      // that resolved fully in the meantime must not also gain a "(line not resolvable)" hint.
+      if (el.dataset.dcSource) return true;
+      const file = readSourceFile(raw);
+      if (file) el.setAttribute(SOURCE_FILE_ATTR, file);
+      return false;
+    }
     if (el.dataset.dcSource) return true;
+    // Clear any hint left by an earlier attempt — the resolved tag carries the file now, and
+    // leaving both would render a location heading beside "(line not resolvable)".
+    el.removeAttribute(SOURCE_FILE_ATTR);
     markSynthesizedSource(el, source);
     return true;
   })();

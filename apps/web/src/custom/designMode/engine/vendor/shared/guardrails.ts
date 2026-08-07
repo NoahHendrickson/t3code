@@ -21,8 +21,14 @@
 export const SCOPE_GUARDRAIL =
   'Scope: apply to this call site only. If a change would modify a shared component rendered elsewhere, skip it and report it back as needing confirmation — do not pause waiting for an answer.'
 
-// No verification ask on purpose: the browser-side verifier (client/verifier.ts) checks
-// computed styles post-HMR itself. Telling the agent to "verify" makes it spin up dev
+// No verification ask on purpose: telling the agent to "verify" makes it spin up dev
 // servers/screenshots to preview the result the user is already watching live.
+//
+// t3-fork: upstream's wording promised that "The Forge verifies the changes automatically",
+// which is true upstream (client/verifier.ts re-reads computed styles post-HMR) and false
+// here — that verifier was never vendored into this fork, and nothing else checks. Claiming a
+// safety net that does not exist is worse than claiming none: it told the agent to stop
+// looking at exactly the point where an edit that resolved to nothing would have been caught.
+// If the verifier is ever vendored, restore the stronger sentence along with it.
 export const NO_PREVIEW_GUARDRAIL =
-  'Do not run the app, take screenshots, or preview the result — the user is watching the live app, and The Forge verifies the changes automatically.'
+  'Do not run the app, take screenshots, or preview the result — the user is watching the live app and will say if an edit did not land.'
