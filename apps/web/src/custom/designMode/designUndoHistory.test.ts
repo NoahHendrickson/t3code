@@ -92,11 +92,11 @@ describe("designUndoHistory", () => {
     expect(history.undo(TAB)?.next).toBe("12px");
   });
 
-  it("non-undoable verbs empty both directions", () => {
+  it("clear (the non-undoable-verb path) empties both directions", () => {
     draftAt(0, "12px");
     history.undo(TAB);
     draftAt(1000, "16px");
-    history.noteNonUndoable(TAB);
+    history.clear(TAB);
     expect(history.undo(TAB)).toBeNull();
     expect(history.redo(TAB)).toBeNull();
   });

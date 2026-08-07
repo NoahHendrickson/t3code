@@ -9,14 +9,14 @@ import type { DesignModeWritableKey } from "./protocol";
  *
  * The stack records only the two scrub-shaped writes (style drafts and X/Y insets). Any
  * other mutating verb (size mode, align, absolute, aspect lock, per-property revert,
- * discard) must call noteNonUndoable instead: popping an entry OLDER than an action we
- * cannot undo would un-do the wrong thing, so the honest behavior is an empty stack, not
- * a lying one. Navigation and engine teardown clear too — recorded element ids don't
- * survive a re-injection's id registry.
+ * discard) must `clear` instead: popping an entry OLDER than an action we cannot undo
+ * would un-do the wrong thing, so the honest behavior is an empty stack, not a lying one.
+ * Navigation and engine teardown clear too — recorded element ids don't survive a
+ * re-injection's id registry.
  *
  * Pure bookkeeping: no bridge calls, no Date reads (callers pass `at`), so the whole
- * contract is unit-testable. ForkDesignPanel records, applies popped entries over the
- * bridge, and owns the Cmd+Z / Cmd+Shift+Z listener.
+ * contract is unit-testable. ForkDesignPanel records and owns the Cmd+Z / Cmd+Shift+Z
+ * listener; designUndoApply.ts turns popped entries into bridge commands.
  */
 
 export interface DraftUndoTarget {
@@ -90,11 +90,13 @@ export class DesignUndoHistory {
     // A new edit forks history — the redone future is no longer reachable.
     history.redo = [];
     const top = history.undo.at(-1);
-    if (top && at - top.at <= GESTURE_MERGE_MS && merges(top.entry, entry)) {
-      // Same gesture: keep the first tick's prevs, take the newest next.
-      top.entry = withNext(top.entry, entry);
-      top.at = at;
-      return;
+    if (top && at - top.at <= GESTURE_MERGE_MS) {
+      const merged = mergedEntry(top.entry, entry);
+      if (merged) {
+        top.entry = merged;
+        top.at = at;
+        return;
+      }
     }
     history.undo.push({ entry, at });
     if (history.undo.length > MAX_ENTRIES) history.undo.shift();
@@ -122,12 +124,10 @@ export class DesignUndoHistory {
     this.push(tabId, { kind: "inset", axis, targets, next }, at);
   }
 
-  /** A mutating verb this stack does not record happened — drop both directions. */
-  noteNonUndoable(tabId: string): void {
-    this.byTabId.delete(tabId);
-  }
-
-  /** Navigation, engine teardown, tab close: recorded ids are meaningless now. */
+  /** Drops both directions. Two situations demand it, with one honest behavior: a mutating
+   * verb this stack does not record ran (popping a step OLDER than an action undo cannot
+   * reverse would un-do the wrong thing), or navigation/engine teardown invalidated the id
+   * registry the entries name. */
   clear(tabId: string): void {
     this.byTabId.delete(tabId);
   }
@@ -151,22 +151,23 @@ export class DesignUndoHistory {
   }
 }
 
-const merges = (top: DesignUndoEntry, next: DesignUndoEntry): boolean => {
+/** The merged form of `next` continuing `top`'s gesture — the stacked entry's first-tick
+ * prevs kept, the newest tick's value taken — or null when they are different gestures.
+ * Match and merge live in ONE conditional per kind so a mismatch cannot take a "safe
+ * fallback" that replaces the stacked entry (and its prevs) wholesale (PR #70 review). */
+const mergedEntry = (top: DesignUndoEntry, next: DesignUndoEntry): DesignUndoEntry | null => {
   if (top.kind === "draft" && next.kind === "draft") {
-    return top.property === next.property && sameIdSet(top.targets, next.targets);
+    return top.property === next.property && sameIdSet(top.targets, next.targets)
+      ? { ...top, next: next.next }
+      : null;
   }
   if (top.kind === "inset" && next.kind === "inset") {
-    return top.axis === next.axis && sameIdSet(top.targets, next.targets);
-  }
-  return false;
-};
-
-const withNext = (top: DesignUndoEntry, next: DesignUndoEntry): DesignUndoEntry =>
-  top.kind === "draft" && next.kind === "draft"
-    ? { ...top, next: next.next }
-    : top.kind === "inset" && next.kind === "inset"
+    return top.axis === next.axis && sameIdSet(top.targets, next.targets)
       ? { ...top, next: next.next }
-      : next;
+      : null;
+  }
+  return null;
+};
 
 /** The one history the live panel records into, keyed by runtimeTabId like every other
  * per-tab design-mode state. Tests construct their own. */

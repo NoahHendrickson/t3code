@@ -7,6 +7,7 @@ import { toastManager } from "~/components/ui/toast";
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
+import { applyDesignUndoEntry } from "../designUndoApply";
 import { designUndoHistory } from "../designUndoHistory";
 import type {
   DesignModeAlignAxis,
@@ -78,22 +79,29 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
     [target, tab.selection],
   );
 
-  const setSizeMode = useCallback(
-    (axis: "width" | "height", mode: DesignModeSizeMode) => {
+  // Every mutating verb the history does NOT record goes through this: clear-first is the
+  // default, so a verb added later keeps Cmd+Z honest without remembering a line — popping
+  // a step older than an action undo cannot reverse would un-do the wrong thing. Only
+  // `apply` and `onInset` record instead (PR #70 review).
+  const unrecorded = useCallback(
+    (mutate: (verbTarget: string) => void) => {
       if (!target) return;
-      designUndoHistory.noteNonUndoable(target);
-      designModeBridge.setSizeMode(target, ids, axis, mode);
+      designUndoHistory.clear(target);
+      mutate(target);
     },
-    [target, tab.selection],
+    [target],
+  );
+
+  const setSizeMode = useCallback(
+    (axis: "width" | "height", mode: DesignModeSizeMode) =>
+      unrecorded((verbTarget) => designModeBridge.setSizeMode(verbTarget, ids, axis, mode)),
+    [unrecorded, tab.selection],
   );
 
   const onAlign = useCallback(
-    (axis: DesignModeAlignAxis, value: DesignModeAlignValue) => {
-      if (!target) return;
-      designUndoHistory.noteNonUndoable(target);
-      designModeBridge.alignSelection(target, ids, axis, value);
-    },
-    [target, tab.selection],
+    (axis: DesignModeAlignAxis, value: DesignModeAlignValue) =>
+      unrecorded((verbTarget) => designModeBridge.alignSelection(verbTarget, ids, axis, value)),
+    [unrecorded, tab.selection],
   );
 
   const onInset = useCallback(
@@ -112,21 +120,14 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   );
 
   const onAbsolute = useCallback(
-    (on: boolean) => {
-      if (!target) return;
-      designUndoHistory.noteNonUndoable(target);
-      designModeBridge.setAbsolute(target, ids, on);
-    },
-    [target, tab.selection],
+    (on: boolean) => unrecorded((verbTarget) => designModeBridge.setAbsolute(verbTarget, ids, on)),
+    [unrecorded, tab.selection],
   );
 
   const onAspectLock = useCallback(
-    (on: boolean) => {
-      if (!target) return;
-      designUndoHistory.noteNonUndoable(target);
-      designModeBridge.setAspectLock(target, ids, on);
-    },
-    [target, tab.selection],
+    (on: boolean) =>
+      unrecorded((verbTarget) => designModeBridge.setAspectLock(verbTarget, ids, on)),
+    [unrecorded, tab.selection],
   );
 
   // Per-field mixed/changed state plus its revert — one helper the sections spread onto
@@ -134,11 +135,9 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const field = useCallback(
     (...args: Parameters<FieldStateFor>) =>
       fieldStateFor(tab.selection, (properties) => {
-        if (!target) return;
-        designUndoHistory.noteNonUndoable(target);
-        designModeBridge.revertDraft(target, ids, properties);
+        unrecorded((verbTarget) => designModeBridge.revertDraft(verbTarget, ids, properties));
       })(...args),
-    [target, tab.selection],
+    [unrecorded, tab.selection],
   );
 
   const onCompare = useCallback(() => {
@@ -150,17 +149,17 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
 
   const onDiscard = useCallback(() => {
     if (!runtimeTabId) return;
-    designUndoHistory.noteNonUndoable(runtimeTabId);
+    // Not through `unrecorded`: Discard works with an empty selection, which that gate
+    // refuses — but it too is a mutation the history cannot reverse.
+    designUndoHistory.clear(runtimeTabId);
     designModeBridge.discardAll(runtimeTabId);
     useDesignModeStore.getState().setComparing(runtimeTabId, false);
   }, [runtimeTabId]);
 
   // Cmd+Z / Cmd+Shift+Z while Design mode is on. Window-level because after a scrub the
   // focus is wherever the pointer left it, not inside the panel; editable targets are
-  // skipped so the composer's (and the fields' own) text undo stays native. Applying a
-  // popped entry needs no snapshot: per-target prevs were recorded at gesture start, and
-  // a null prev means the property had no draft before — discard it rather than pin its
-  // computed value as a fake edit.
+  // skipped so the composer's (and the fields' own) text undo stays native. The effect is
+  // wiring only — filter, pop, apply — with the undo/redo semantics in designUndoApply.ts.
   useEffect(() => {
     if (!runtimeTabId || !tab.enabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -176,37 +175,14 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
       ) {
         return;
       }
-      const entry = event.shiftKey
-        ? designUndoHistory.redo(runtimeTabId)
-        : designUndoHistory.undo(runtimeTabId);
+      const direction = event.shiftKey ? "redo" : "undo";
+      const entry =
+        direction === "redo"
+          ? designUndoHistory.redo(runtimeTabId)
+          : designUndoHistory.undo(runtimeTabId);
       if (!entry) return;
       event.preventDefault();
-      if (entry.kind === "draft") {
-        if (event.shiftKey) {
-          const ids = entry.targets.map((entryTarget) => entryTarget.id);
-          designModeBridge.applyDraft(runtimeTabId, ids, entry.property, entry.next);
-        } else {
-          for (const entryTarget of entry.targets) {
-            if (entryTarget.prev !== null) {
-              designModeBridge.applyDraft(
-                runtimeTabId,
-                [entryTarget.id],
-                entry.property,
-                entryTarget.prev,
-              );
-            } else {
-              designModeBridge.revertDraft(runtimeTabId, [entryTarget.id], [entry.property]);
-            }
-          }
-        }
-      } else if (event.shiftKey) {
-        const ids = entry.targets.map((entryTarget) => entryTarget.id);
-        designModeBridge.setInset(runtimeTabId, ids, entry.axis, entry.next);
-      } else {
-        for (const entryTarget of entry.targets) {
-          designModeBridge.setInset(runtimeTabId, [entryTarget.id], entry.axis, entryTarget.prev);
-        }
-      }
+      applyDesignUndoEntry(runtimeTabId, entry, direction);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
