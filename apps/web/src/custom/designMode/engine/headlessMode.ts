@@ -28,6 +28,7 @@ import type {
   DesignModeWritableKey,
 } from "../protocol";
 import { alignElement } from "./align";
+import { BrowseHandoff } from "./browseHandoff";
 import type { HeadlessOverlay } from "./headlessOverlay";
 import { CanvasSession } from "./canvasSession";
 import { ElementIdRegistry } from "./idRegistry";
@@ -81,21 +82,6 @@ const ARROW_DIRS: Record<string, "left" | "right" | "up" | "down" | undefined> =
   ArrowUp: "up",
   ArrowDown: "down",
 };
-
-/**
- * Hold ⌘ to hand the page back — every intercepting path below asks this first, so while the
- * modifier is down the app under inspection behaves as if design mode were off: menus open,
- * links follow, forms take input. Read off the EVENT rather than tracked from keydown,
- * because the keydown that arms it routinely lands on T3's own chrome (the panel, the layers
- * rail) while the click lands in the guest — a tracked flag would read false exactly when it
- * matters. The physical side of the key is deliberately not distinguished: mouse events carry
- * `metaKey`, never which ⌘ produced it, and one source of truth beats an affordance that
- * disagrees with itself. Meta-only, so this is a macOS gesture; Windows/Linux never deliver
- * the Super key to the page.
- */
-function isBrowseGesture(e: MouseEvent | KeyboardEvent): boolean {
-  return e.metaKey;
-}
 
 /**
  * The `onBeforeApply` hooks the Forge's own W/H and border-width rows carried (panel-specs'
@@ -200,6 +186,10 @@ export class HeadlessDesignMode {
    * BEFORE the gesture modules so their scale() hooks can reference it. */
   readonly canvas: CanvasSession;
 
+  /** ⌘-to-browse — the predicate, the click replacement and its re-entrancy guard all
+   * live in browseHandoff.ts; the handlers below only ask. */
+  private readonly browse = new BrowseHandoff();
+
   constructor(private overlay: HeadlessOverlay) {
     this.canvas = new CanvasSession({
       hostContains: (t) => this.overlay.containsDeep(t),
@@ -222,7 +212,7 @@ export class HeadlessDesignMode {
     this.moveDrag = new MoveDrag({
       drafts: this.drafts,
       scale: () => this.canvas.scale(),
-      blocked: (e) => this.textEdit.active || isBrowseGesture(e),
+      blocked: (e) => this.textEdit.active || this.browse.shouldYield(e),
       overlayContains: (t) => this.overlay.containsDeep(t),
       onSelect: (el) => this.select(el),
       onEdited: () => this.handleEdited(),
@@ -939,7 +929,7 @@ export class HeadlessDesignMode {
       if (!this.active || !ev || this.overlay.contains(ev.target)) return;
       // Browsing: no hover outline over a page the user is driving, and no prefetch for an
       // element they are not about to select.
-      if (isBrowseGesture(ev)) {
+      if (this.browse.shouldYield(ev)) {
         this.overlay.hideOutline();
         this.scheduleHoverResolve(null);
         return;
@@ -953,14 +943,12 @@ export class HeadlessDesignMode {
 
   private onClick = (e: MouseEvent): void => {
     if (this.overlay.contains(e.target)) return;
-    // The passthrough copy below re-enters this same capture listener — let it run to the page.
-    if (e === this.passthroughClick) return;
     // Mid-edit click policy (caret shield / commit-and-fall-through) lives in TextEditMode.
+    // The handoff's re-dispatched copy also re-enters this capture listener; it reaches the
+    // shield only ever as 'idle' — a copy exists only after the original's shield check
+    // came back idle or committed, both of which leave no live edit.
     if (this.textEdit.handleClick(e) === "shielded") return;
-    if (isBrowseGesture(e)) {
-      this.passThroughClick(e);
-      return;
-    }
+    if (this.browse.handleClick(e) === "passthrough") return;
     e.preventDefault();
     e.stopPropagation();
     const el = findSelectableElement(e.target as Element);
@@ -969,45 +957,9 @@ export class HeadlessDesignMode {
     else this.deselect();
   };
 
-  /** The one click the browse gesture is holding ⌘ FOR, tracked while it is in flight so the
-   * handler above can recognize its own event. */
-  private passthroughClick: MouseEvent | null = null;
-
-  /** Hands one click to the page as if design mode were off — by re-dispatching a
-   * modifier-free copy, not by standing aside. Letting the real event through would give the
-   * page a ⌘-click, and a ⌘-click is not a click: Chromium reads it on an anchor as "open in
-   * a new tab", and every router Link bails out of client-side navigation when `metaKey` is
-   * set — so the gesture meant to walk the app would open tabs instead of following links.
-   * The copy carries the original's geometry and button with the modifiers cleared. */
-  private passThroughClick(e: MouseEvent): void {
-    e.preventDefault();
-    e.stopPropagation();
-    const target = e.target;
-    if (!(target instanceof Element)) return;
-    const copy = new MouseEvent("click", {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      view: window,
-      detail: e.detail,
-      screenX: e.screenX,
-      screenY: e.screenY,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      button: e.button,
-      buttons: e.buttons,
-    });
-    this.passthroughClick = copy;
-    try {
-      target.dispatchEvent(copy);
-    } finally {
-      this.passthroughClick = null;
-    }
-  }
-
   /** Double-click on a text-leaf element enters inline text edit (Figma behavior). */
   private onDblClick = (e: MouseEvent): void => {
-    if (this.overlay.contains(e.target) || isBrowseGesture(e)) return;
+    if (this.overlay.contains(e.target) || this.browse.shouldYield(e)) return;
     const el = this.textEdit.candidate(e.target);
     if (!el) return;
     e.preventDefault();
@@ -1020,7 +972,7 @@ export class HeadlessDesignMode {
     if (this.textEdit.handleKey(e)) return;
     // Browsing owns ⌘ combos: the page's own ⌘-shortcuts (and the browser's ⌘←/⌘⌫) must not
     // arrive as a delete draft or a nudge.
-    if (isBrowseGesture(e)) return;
+    if (this.browse.shouldYield(e)) return;
     if (e.key === "Delete" || e.key === "Backspace") {
       // Del in an input must never nuke the selection. Carve-out: when the focused control
       // IS in the selection, the intent is deleting the element itself (PR #44 review).
@@ -1069,7 +1021,7 @@ export class HeadlessDesignMode {
 
   private onPointerDown = (e: PointerEvent): void => {
     // No no-drop cursor while browsing — nothing is being dragged, so nothing is refusing.
-    if (e.button !== 0 || this.textEdit.active || isBrowseGesture(e)) return;
+    if (e.button !== 0 || this.textEdit.active || this.browse.shouldYield(e)) return;
     if (this.overlay.containsDeep(e.composedPath()[0] ?? e.target)) return;
     const el = findSelectableElement(e.target as Element);
     if (!el || this.drafts.structuralOf(el)?.kind === "delete") return;

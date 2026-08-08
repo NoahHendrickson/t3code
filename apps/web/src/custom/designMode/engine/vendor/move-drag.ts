@@ -249,10 +249,10 @@ export interface MoveDragOpts {
   /** canvas.scale() — divides the absolute free-drag's pointer deltas ONLY (see the asymmetry
    *  note on reorderTargetFor). Reorder hit-testing never touches it. */
   scale: () => number
-  /** text-edit active / browse gesture held / space held / middle button in flight — canvas.ts,
-   *  text-edit.ts and the controller's ⌘-to-browse own those gestures, and this module must not
-   *  compete for the same pointerdown. Takes the event because the browse gesture is read off
-   *  the modifier the press itself carries, not off tracked keyboard state. */
+  /** Caller policy — true when another gesture owner (text-edit, canvas, a modifier-gated
+   *  mode) has claimed this pointerdown, so this module must not compete for it. Takes the
+   *  press itself because policy may live on the event's own modifiers rather than tracked
+   *  keyboard state. */
   blocked: (e: PointerEvent) => boolean
   overlayContains: (t: EventTarget | null) => boolean
   /** Crossing the threshold selects the element, Figma-style. */
