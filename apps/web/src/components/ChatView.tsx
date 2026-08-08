@@ -5030,11 +5030,14 @@ function ChatViewContent(props: ChatViewProps) {
     }
     /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
        The design-change attachments rode the sent message; a failed send keeps the
-       pills so nothing is lost. Clears exactly the entries takeForSend returned, not the
-       thread: the turn start is awaited above, and a Send from the design panel during
-       that window replaces a pill IN PLACE under the same id — so only entry identity
-       tells the two apart. */
-    if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignSend.sent);
+       pills so nothing is lost. markSent notes which preview tabs contributed (so the
+       panel can offer to resolve their still-painted previews once the turn ends) and
+       then clears exactly the entries takeForSend returned, not the thread: the turn
+       start is awaited above, and a Send from the design panel during that window
+       replaces a pill IN PLACE under the same id — so only entry identity tells the
+       two apart. */
+    if (turnStartSucceeded)
+      forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent, messageCreatedAt);
     /* fork:end fork-design-mode */
   };
 

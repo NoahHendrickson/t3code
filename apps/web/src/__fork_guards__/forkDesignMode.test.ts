@@ -339,9 +339,38 @@ describe("fork guard: design mode", () => {
     // Cleared by ENTRY, not by id — a re-send during the awaited turn start replaces the pill
     // in place under the same id, so only identity distinguishes it from what was sent.
     expect(chatView).toContain(
-      "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignSend.sent)",
+      "forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent, messageCreatedAt)",
     );
     expect(chatView).not.toContain("pendingIds");
+  });
+
+  it("offers to resolve previews that were sent, without claiming they landed", () => {
+    // Sent drafts stay painted over whatever the agent then changed, and inline styles win —
+    // so the page stops being evidence until they come off. The panel says so once the turn
+    // ends. What it must NOT do is assert the edit was applied: the Forge's verifier is not
+    // vendored here (engine/vendor/README.md), so nothing in this fork can check.
+    //
+    // The turn-over invariant itself ("never offer while the turn is open") is NOT pinned
+    // here as an implementation string — it lives in shouldOfferPreviewResolution, a pure
+    // exported predicate with its own behavioral tests (designSentPreviews.test.ts). This
+    // guard holds the wiring: the panel's offer routes through that predicate, so the
+    // invariant cannot be bypassed by a hand-rolled condition in the component.
+    const panel = read("src/custom/designMode/panel/ForkDesignPanel.tsx");
+    expect(panel).toContain("shouldOfferPreviewResolution(");
+    expect(panel).toContain("data-fork-design-resolve-previews");
+    for (const claim of ["applied", "verified", "landed successfully"]) {
+      expect(panel.slice(panel.indexOf("data-fork-design-resolve-previews"))).not.toContain(claim);
+    }
+
+    // The record is minted by the send path, from the entries it is about to clear.
+    const store = read("src/custom/designMode/designChangeDraftStore.ts");
+    expect(store).toContain("sent: readonly PendingDesignChange[]");
+    expect(store).toContain("useDesignSentPreviews.getState().markSent(");
+
+    // And it dies with its tab, like every other per-tab design-mode state.
+    expect(read("src/custom/designMode/designModeTabLifetime.ts")).toContain(
+      "useDesignSentPreviews.getState().forget(runtimeTabId)",
+    );
   });
 
   it("renders sent design changes as transcript chips, not raw markdown", () => {

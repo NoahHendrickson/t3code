@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
 
+import { useDesignSentPreviews } from "./designSentPreviews";
 import type { DesignChangeRequestPayload } from "./protocol";
 
 /**
@@ -208,7 +209,26 @@ export const forkDesignChanges = {
       .join("\n\n");
     return { text: text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks, sent };
   },
-  clear(threadRef: ScopedThreadRef, sent?: readonly PendingDesignChange[]): void {
+  /**
+   * The send succeeded: remember which preview tabs contributed drafts to it, then drop the
+   * pills. Ordering is the whole reason this is one call — the tabs are only readable from the
+   * entries the clear is about to remove, and a caller that got that backwards would lose the
+   * resolution prompt with nothing to show for it. Deliberately the facade's ONLY
+   * send-completion verb: a bare clear-on-success export sat here briefly, and any send path
+   * that picked it would compile, pass, and silently never mint a sent-preview record.
+   *
+   * `sentAt` is the sent message's own client-minted `createdAt` — the turn adopted for it
+   * gets its `requestedAt` stamped from that exact time, which is how the resolution prompt
+   * later knows the thread's projected turn covers this send (designSentPreviews.ts).
+   *
+   * The drafts themselves stay applied in the guest. They are the user's, and the tool never
+   * commits them; what changes is that the panel now has grounds to ask about them.
+   */
+  markSent(threadRef: ScopedThreadRef, sent: readonly PendingDesignChange[], sentAt: string): void {
+    const threadKey = scopedThreadKey(threadRef);
+    for (const runtimeTabId of new Set(sent.map((entry) => entry.runtimeTabId))) {
+      useDesignSentPreviews.getState().markSent(runtimeTabId, threadKey, sentAt);
+    }
     useDesignChangeDraftStore.getState().clear(threadRef, sent);
   },
 };
