@@ -50,7 +50,13 @@ export const BranchToolbarEnvModeSelector = memo(function BranchToolbarEnvModeSe
 
   if (envLocked) {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 border border-transparent px-[calc(--spacing(3)-1px)] text-sm font-medium text-muted-foreground/70 sm:text-xs">
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+         Locked checkout is a span (not a button), so the chip paint keys off
+         data-fork-context-chip — same filled pill as the branch trigger. */
+      <span
+        data-fork-context-chip
+        className="inline-flex shrink-0 items-center border border-transparent text-sm font-medium sm:text-xs"
+      >
         {activeWorktreePath ? (
           <>
             <FolderGitIcon className="size-3" />

@@ -125,7 +125,13 @@ const MobileRunContextSelector = memo(function MobileRunContextSelector({
 
   if (isLocked) {
     return (
-      <span className="inline-flex min-w-0 max-w-[48%] flex-1 items-center justify-start gap-1 rounded-md border border-transparent px-[calc(--spacing(2)-1px)] text-sm font-medium text-muted-foreground/70 md:hidden">
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+         Mobile locked readout is a span; data-fork-context-chip keeps the frosted
+         chip paint (desktop EnvModeSelector has the same mark). */
+      <span
+        data-fork-context-chip
+        className="inline-flex min-w-0 max-w-[48%] flex-1 items-center justify-start border border-transparent text-sm font-medium md:hidden"
+      >
         {triggerContent}
       </span>
     );

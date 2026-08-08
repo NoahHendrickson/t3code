@@ -475,7 +475,6 @@ export class HeadlessDesignMode {
       this.moveDrag.stop();
       this.handles.stop();
       this.layers.stop();
-      this.clearNoDrop();
       if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
       if (this.reflowRaf) cancelAnimationFrame(this.reflowRaf);
       if (this.rippleRaf) cancelAnimationFrame(this.rippleRaf);
@@ -1021,31 +1020,25 @@ export class HeadlessDesignMode {
     return this.moveDrag.reorderStep(el, dir);
   }
 
-  /** The no-drop affordance for ratified #1 — written as an inline style on <html>, since
-   * the overlay's shadow stylesheet cannot style the page's own <html>. */
-  private savedPageCursor: string | null = null;
-
+  /**
+   * Own the press before the page does. Base UI menus/buttons open on pointerdown, and
+   * opening them often swallows the click that used to be our only select path — so the
+   * sidebar stayed empty while the widget activated. Select here; leave drag targets alone
+   * so MoveDrag's sub-threshold press can still become an ordinary click.
+   */
   private onPointerDown = (e: PointerEvent): void => {
-    // No no-drop cursor while browsing — nothing is being dragged, so nothing is refusing.
     if (e.button !== 0 || this.textEdit.active || this.browse.shouldYield(e)) return;
     if (this.overlay.containsDeep(e.composedPath()[0] ?? e.target)) return;
     const el = findSelectableElement(e.target as Element);
-    if (!el || this.drafts.structuralOf(el)?.kind === "delete") return;
     // The gate IS MoveDrag's own plan, not a copy of its conditions (PR #46 review).
-    if (this.moveDrag.wouldDrag(el)) return; // a real drag target — MoveDrag has it
-    if (this.savedPageCursor === null) this.savedPageCursor = document.documentElement.style.cursor;
-    document.documentElement.style.cursor = "not-allowed";
-    window.addEventListener("pointerup", this.clearNoDrop, { once: true });
-    window.addEventListener("pointercancel", this.clearNoDrop, { once: true });
-  };
-
-  /** Idempotent AND inert when nothing is armed — setActive(false) calls this unconditionally. */
-  private clearNoDrop = (): void => {
-    if (this.savedPageCursor === null) return;
-    document.documentElement.style.cursor = this.savedPageCursor;
-    this.savedPageCursor = null;
-    window.removeEventListener("pointerup", this.clearNoDrop);
-    window.removeEventListener("pointercancel", this.clearNoDrop);
+    if (el && this.drafts.structuralOf(el)?.kind !== "delete" && this.moveDrag.wouldDrag(el)) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    if (el && e.shiftKey) this.toggleSelection(el);
+    else if (el) this.select(el);
+    else this.deselect();
   };
 
   /** The one delete routine. Deselect FIRST: a selection outline hugging a display:none

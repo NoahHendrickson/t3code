@@ -292,6 +292,29 @@ describe("fork guard: design mode", () => {
     );
   });
 
+  it("selects on pointerdown so menus cannot activate under the press", () => {
+    // Base UI MenuTrigger opens on pointerdown; a click-only intercept lets the menu open
+    // and often swallows the click, so the design panel stayed empty. The press must be
+    // owned before the page sees it — except for MoveDrag targets, which still need a
+    // sub-threshold press to become an ordinary click.
+    const engine = read("src/custom/designMode/engine/headlessMode.ts");
+    const body = /private onPointerDown = \(e: PointerEvent\): void => \{([\s\S]*?)\n  \};/u.exec(
+      engine,
+    )?.[1];
+    expect(body).toBeDefined();
+    expect(body).toContain("this.browse.shouldYield(e)");
+    expect(body).toContain("this.moveDrag.wouldDrag(el)");
+    expect(body).toContain("e.preventDefault()");
+    expect(body).toContain("e.stopPropagation()");
+    expect(body).toContain("this.toggleSelection(el)");
+    expect(body).toContain("this.select(el)");
+    expect(body).toContain("this.deselect()");
+    // Drag targets must fall through WITHOUT preventDefault — MoveDrag documents why.
+    expect(body).toMatch(
+      /if \(el && this\.drafts\.structuralOf\(el\)\?\.kind !== "delete" && this\.moveDrag\.wouldDrag\(el\)\) \{\n\s*return;\n\s*\}\n\s*e\.preventDefault\(\)/u,
+    );
+  });
+
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
     // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
     // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no

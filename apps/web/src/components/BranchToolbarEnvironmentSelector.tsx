@@ -43,7 +43,13 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
 
   if (envLocked || onEnvironmentChange === undefined) {
     return (
-      <span className="inline-flex min-w-0 max-w-full items-center gap-1 border border-transparent px-[calc(--spacing(3)-1px)] text-sm font-medium text-muted-foreground/70 sm:text-xs">
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+         Locked environment readout is a span; data-fork-context-chip keeps the
+         filled chip paint when there is no select trigger. */
+      <span
+        data-fork-context-chip
+        className="inline-flex min-w-0 max-w-full items-center border border-transparent text-sm font-medium sm:text-xs"
+      >
         {activeEnvironment?.isPrimary ? (
           <MonitorIcon className="size-3 shrink-0" />
         ) : (
