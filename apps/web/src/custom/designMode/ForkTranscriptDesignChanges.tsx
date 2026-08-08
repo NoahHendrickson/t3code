@@ -8,8 +8,34 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import { summarizeDesignChangeBlock } from "./designChangeTranscript";
-import { useDesignSentPreviews, verifySummaryLine } from "./designSentPreviews";
-import { summarizeVerifyReport } from "./protocol";
+import { selectVerifySummaryLineForMessage, useDesignSentPreviews } from "./designSentPreviews";
+
+/**
+ * Measured verdicts for one sent message, when any of its records are still live. Its own
+ * component so the store subscription exists ONLY under a message that actually carries
+ * design blocks — the timeline mounts the parent unconditionally in every user row, and a
+ * selector running per store write times every visible row would be paid mostly by rows
+ * that could never display it. Verdicts appear while the preview pane (and its panel) is
+ * measuring; a user watching the agent from Diff or Terminal gets the line as soon as
+ * they look back at the preview and measurement catches up.
+ *
+ * The line carries counts and verdicts only, beside (never paraphrasing) the agent's own
+ * reply: measurement answers "did it work", the reply answers "why not".
+ */
+function TranscriptVerdictLine({ messageId }: { messageId: string }) {
+  const verdictLine = useDesignSentPreviews((state) =>
+    selectVerifySummaryLineForMessage(state.byTabId, messageId),
+  );
+  if (!verdictLine) return null;
+  return (
+    <span
+      className="select-none self-center text-[10px] text-muted-foreground"
+      data-fork-design-verdict-line
+    >
+      {verdictLine}
+    </span>
+  );
+}
 
 /**
  * Sent-message chips for `<design_change_request>` blocks — the transcript twin of the
@@ -19,31 +45,15 @@ import { summarizeVerifyReport } from "./protocol";
  */
 export function ForkTranscriptDesignChanges({
   blocks,
-  messageCreatedAt,
+  messageId,
 }: {
   blocks: readonly string[];
-  /** The message's client-minted createdAt — the same timestamp markSent recorded, which
-   * is what ties a live verification record back to the message whose send it measures. */
-  messageCreatedAt?: string;
+  /** The message's id — the one stable identity of the row, and markSent's correlation
+   * key, so the verdict line merges every contributing tab's records for exactly this
+   * message and never another thread's (`sentAt` is shared by every contributing tab and
+   * only ms-unique — an identity it was never meant to be). */
+  messageId: string;
 }) {
-  // Measured verdicts for THIS message's send, when its record is still live: after a
-  // send, nobody is looking at the design panel — they are watching the agent work here.
-  // The line carries counts and verdicts only, beside (never paraphrasing) the agent's own
-  // reply: measurement answers "did it work", the reply answers "why not". Null once the
-  // record is resolved or was never this message's — the chip quietly shows no verdict.
-  const verdictLine = useDesignSentPreviews((state) => {
-    if (!messageCreatedAt) return null;
-    for (const record of Object.values(state.byTabId)) {
-      if (
-        record.sentAt === messageCreatedAt &&
-        record.report &&
-        record.report.elements.length > 0
-      ) {
-        return verifySummaryLine(summarizeVerifyReport(record.report));
-      }
-    }
-    return null;
-  });
   if (blocks.length === 0) return null;
   // Content-derived keys (occurrence-counted for identical blocks) — the list is static
   // per message, so content is the stable identity.
@@ -81,14 +91,7 @@ export function ForkTranscriptDesignChanges({
           </Tooltip>
         );
       })}
-      {verdictLine ? (
-        <span
-          className="select-none self-center text-[10px] text-muted-foreground"
-          data-fork-design-verdict-line
-        >
-          {verdictLine}
-        </span>
-      ) : null}
+      <TranscriptVerdictLine messageId={messageId} />
     </div>
   );
 }

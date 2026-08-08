@@ -338,9 +338,9 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain("forkDesignSend.text || IMAGE_ONLY_BOOTSTRAP_PROMPT");
     // Cleared by ENTRY, not by id — a re-send during the awaited turn start replaces the pill
     // in place under the same id, so only identity distinguishes it from what was sent.
-    expect(chatView).toContain(
-      "forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent, messageCreatedAt)",
-    );
+    expect(chatView).toContain("forkDesignChanges.markSent(");
+    expect(chatView).toContain("messageCreatedAt,");
+    expect(chatView).toContain("messageIdForSend,");
     expect(chatView).not.toContain("pendingIds");
   });
 
@@ -355,12 +355,25 @@ describe("fork guard: design mode", () => {
     // exported predicate with its own behavioral tests (designSentPreviews.test.ts). This
     // guard holds the wiring: the panel's offer routes through that predicate, so the
     // invariant cannot be bypassed by a hand-rolled condition in the component.
-    const panel = read("src/custom/designMode/panel/ForkDesignPanel.tsx");
+    const panel = read("src/custom/designMode/panel/SentPreviewResolution.tsx");
     expect(panel).toContain("shouldOfferPreviewResolution(");
     expect(panel).toContain("data-fork-design-resolve-previews");
     // Verdict wording has ONE home — the shared label map — and the panel renders labels
-    // through it rather than hand-writing claims beside the data attribute.
+    // through it rather than hand-writing claims beside the data attribute. Every verdict
+    // key is in the map, `missing` included: a wording hand-written twice is a wording
+    // that drifts.
     expect(panel).toContain("VERIFY_VERDICT_LABELS[check.verdict]");
+    expect(panel).toContain("VERIFY_VERDICT_LABELS.missing");
+    expect(panel).toContain("VERIFY_VERDICT_LABELS.applied");
+    // The region scan the label map cannot replace: any hand-written success claim in the
+    // rendered footer must trip CI even if it never touches the map. ("applied" appears
+    // legitimately as the verdict KEY in code — the scan covers the words with no such
+    // alias.) The discard's blast radius is stated on every path, measured or not.
+    const region = panel.slice(panel.indexOf("data-fork-design-resolve-previews"));
+    for (const claim of ["verified", "landed successfully", "Applied"]) {
+      expect(region).not.toContain(claim);
+    }
+    expect(region).toContain("Discarding clears every edit on this tab");
     const labels = read("src/custom/designMode/designSentPreviews.ts");
     // 'unverifiable' must never borrow the success words — "can't be checked" rendered as
     // anything stronger is exactly the invented claim this feature exists to avoid. And
@@ -368,6 +381,7 @@ describe("fork guard: design mode", () => {
     // ("landed"), which is not "the agent's edit was correct" ("applied"/"verified").
     expect(labels).toContain('applied: "landed"');
     expect(labels).toContain('unverifiable: "can\'t be checked"');
+    expect(labels).toContain('missing: "gone from the page"');
     for (const claim of ["applied", "verified"]) {
       expect(labels.slice(labels.indexOf("VERIFY_VERDICT_LABELS = {"))).not.toContain(`"${claim}"`);
     }
@@ -393,9 +407,10 @@ describe("fork guard: design mode", () => {
     );
     expect(timeline).toContain("<ForkTranscriptDesignChanges");
     expect(timeline).toContain("blocks={forkDesignChanges.blocks}");
-    // The verdict line's correlation key: the message's own client-minted createdAt is the
-    // timestamp markSent recorded, so the chip can find the record whose send it measures.
-    expect(timeline).toContain("messageCreatedAt={row.message.createdAt}");
+    // The verdict line's correlation key: the message's own id — the one stable identity
+    // of the row — so the chip merges every contributing tab's records for exactly this
+    // message (`sentAt` is shared across tabs and only ms-unique).
+    expect(timeline).toContain("messageId={row.message.id}");
     // Extraction round-trip: blocks are the outermost trailing run and strip cleanly,
     // restoring the position the upstream element/terminal extractors rely on.
     const markdown = "# Design change request\n\n## 1. <button> — src/App.tsx:5:3\n- x";
@@ -629,6 +644,84 @@ describe("fork guard: design mode", () => {
     expect(engine.loadLifecycle(stored([entry([["padding-top", "32px", 24]])]))?.drafts).toEqual(
       [],
     );
+  });
+
+  it("verification's measurement window restores the page's inline styles exactly", async () => {
+    // The riskiest write in the verifier: the suppress → measure → restore pass mutates
+    // inline styles on the user's live page, and a restore that loses `!important`, a
+    // page-authored longhand, or a value written mid-window corrupts the page silently.
+    // withTransitionsSuppressed's contract is a WHOLE-cssText snapshot per element, rolled
+    // back wholesale — pinned here on the same inline-style shim the restore-original
+    // guard uses, so a vendor re-sync that "simplifies" it to value-only save/restore
+    // fails loudly. expandCollapsedProperty is the commit path's other pure seam: the
+    // report's collapsed names must expand through the builder's own COLLAPSE table.
+    const result = await build({
+      stdin: {
+        contents: [
+          'export { withTransitionsSuppressed } from "./src/custom/designMode/engine/vendor/request";',
+          'export { expandCollapsedProperty } from "./src/custom/designMode/engine/verifySession";',
+        ].join("\n"),
+        resolveDir: webRoot,
+        sourcefile: "design-mode-verify-guard.ts",
+        loader: "ts",
+      },
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "es2022",
+      write: false,
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]?.text ?? "";
+    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.Buffer.from(code).toString("base64")}`;
+    const engine = (await import(moduleUrl)) as {
+      withTransitionsSuppressed: <T>(els: Iterable<unknown>, fn: () => T) => T;
+      expandCollapsedProperty: (property: string, draftProps: readonly string[]) => string[];
+    };
+
+    // An element whose inline slot carries priorities and longhands — the shapes a
+    // value-only restore destroys.
+    const cssTextElement = () => {
+      let cssText = "transition-duration: 200ms !important; padding-top: 8px;";
+      return {
+        style: {
+          get cssText() {
+            return cssText;
+          },
+          set cssText(next: string) {
+            cssText = next;
+          },
+          setProperty(key: string, value: string, priority = "") {
+            cssText += ` ${key}: ${value}${priority ? ` !${priority}` : ""};`;
+          },
+          removeProperty(key: string) {
+            cssText = cssText
+              .split(";")
+              .filter((declaration) => !declaration.trim().startsWith(`${key}:`))
+              .join(";");
+          },
+        },
+      };
+    };
+    const el = cssTextElement();
+    const before = el.style.cssText;
+    const out = engine.withTransitionsSuppressed([el], () => {
+      // The measurement pass's own suppression writes happen INSIDE the window and must
+      // roll back with the transition.
+      el.style.removeProperty("padding-top");
+      el.style.setProperty("color", "red");
+      return el.style.cssText;
+    });
+    expect(out).toContain("transition: none");
+    expect(out).not.toContain("padding-top");
+    expect(el.style.cssText).toBe(before);
+
+    // Collapsed names expand through the builder's own table, scoped to what was sent.
+    expect(
+      engine.expandCollapsedProperty("padding-inline", ["padding-left", "padding-right", "color"]),
+    ).toEqual(["padding-left", "padding-right"]);
+    expect(engine.expandCollapsedProperty("color", ["color"])).toEqual(["color"]);
+    expect(engine.expandCollapsedProperty("padding-inline", ["color"])).toEqual([]);
   });
 
   it("keeps the native source bridge contract aligned across preload and engine", () => {

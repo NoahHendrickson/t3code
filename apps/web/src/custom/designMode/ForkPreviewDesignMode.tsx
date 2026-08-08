@@ -99,6 +99,11 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
           return;
         case "state":
           store.setEnabled(runtimeTabId, message.active);
+          // Toggling off stops the guest's measuring (setActive(false) suspends the
+          // verifier), so the last report stops being current — retire it rather than
+          // let the transcript chip keep asserting a reading about a page that will be
+          // rebuilt while the tool is off. The record itself survives for re-enable.
+          if (!message.active) useDesignSentPreviews.getState().forgetReport(runtimeTabId);
           return;
         case "selection":
           store.setSelection(runtimeTabId, message.elements);
@@ -125,6 +130,11 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
           // Rides to the sent-preview store, not the tab store: a verdict is evidence
           // about a SEND, and it only means anything while that send's record exists.
           useDesignSentPreviews.getState().setReport(runtimeTabId, message.report);
+          return;
+        case "sent-resolved":
+          // The guest's ledger emptied — every check committed, or the drafts discarded.
+          // The explicit end of the sent question; never inferred from an empty report.
+          useDesignSentPreviews.getState().forget(runtimeTabId);
           return;
         default: {
           // Exhaustiveness: a new DesignModeEngineMessage variant must fail to compile

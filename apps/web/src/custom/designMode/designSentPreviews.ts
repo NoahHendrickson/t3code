@@ -2,7 +2,11 @@ import { create } from "zustand";
 
 import { isLatestTurnSettled } from "~/session-logic";
 
-import type { DesignVerifyReport } from "./protocol";
+import {
+  summarizeVerifyReport,
+  type DesignVerifyReport,
+  type DesignVerifySummary,
+} from "./protocol";
 
 /**
  * Which preview tabs have shipped their drafts to the agent and not yet been resolved.
@@ -14,11 +18,12 @@ import type { DesignVerifyReport } from "./protocol";
  * changes that may already exist in the code. Nothing in the feature said so: the only way out
  * was remembering to press Discard.
  *
- * This is the bookkeeping behind saying so. It records nothing about WHETHER the edit landed —
- * the fork does not vendor the Forge's verifier (see engine/vendor/README.md), so any such
- * claim would be invented. It records only that drafts were sent; whether the turn they rode
- * has finished is not guessed at from wall clock or observed status flips but read off the
- * thread's own projected turn (see shouldOfferPreviewResolution).
+ * This is the bookkeeping behind saying so. Whether the edit landed is never asserted from
+ * here — that claim exists only as a MEASUREMENT (`report`, produced by the guest's
+ * engine/verifySession.ts with the previews suppressed), and the wording it may use lives in
+ * VERIFY_VERDICT_LABELS below. Whether the turn a send rode has finished is not guessed at
+ * from wall clock or observed status flips but read off the thread's own projected turn
+ * (see shouldOfferPreviewResolution).
  *
  * In-memory and per runtime tab id, like every other host-side design-mode store: the drafts
  * it describes live in the guest page, and both die with the tab. The record dies only on an
@@ -37,6 +42,11 @@ export interface SentPreviewRecord {
    * shouldOfferPreviewResolution compare the two without ever crossing clocks.
    */
   readonly sentAt: string;
+  /** The sent message's id — the transcript chip's correlation key. Unlike `sentAt` (which
+   * every tab contributing to one message shares, and which is only ms-unique), a message
+   * id names exactly one message, so the chip can merge every contributing tab's verdicts
+   * under the right row and never another thread's. */
+  readonly messageId: string;
   /**
    * The latest measured verdict report from the guest (designVerify — armed once the turn
    * settles, re-measured per page settle). Null until the first measurement arrives; a
@@ -48,25 +58,45 @@ export interface SentPreviewRecord {
 interface DesignSentPreviewsState {
   readonly byTabId: Record<string, SentPreviewRecord>;
   /** A turn carrying this tab's drafts started. Re-sending replaces the record. */
-  readonly markSent: (runtimeTabId: string, threadKey: string, sentAt: string) => void;
+  readonly markSent: (
+    runtimeTabId: string,
+    threadKey: string,
+    sentAt: string,
+    messageId: string,
+  ) => void;
   /** A verdict report arrived from this tab's guest. Meaningful only while a record
    * exists — a report for a forgotten (or never-sent) tab is stale evidence, dropped. */
   readonly setReport: (runtimeTabId: string, report: DesignVerifyReport) => void;
+  /** Design mode toggled off for this tab: the guest stops measuring, so the last report
+   * stops being current. The record survives (the sent question is still open and the
+   * prompt re-offers on re-enable); only the measurement is retired, which also takes the
+   * transcript chip's verdict line down rather than leaving it asserting a stale reading
+   * about a page rebuilt since. */
+  readonly forgetReport: (runtimeTabId: string) => void;
   /** The question has been answered (either way), or the thing it asked about is gone. */
   readonly forget: (runtimeTabId: string) => void;
 }
 
 export const useDesignSentPreviews = create<DesignSentPreviewsState>()((set) => ({
   byTabId: {},
-  markSent: (runtimeTabId, threadKey, sentAt) =>
+  markSent: (runtimeTabId, threadKey, sentAt, messageId) =>
     set((state) => ({
-      byTabId: { ...state.byTabId, [runtimeTabId]: { threadKey, sentAt, report: null } },
+      byTabId: {
+        ...state.byTabId,
+        [runtimeTabId]: { threadKey, sentAt, messageId, report: null },
+      },
     })),
   setReport: (runtimeTabId, report) =>
     set((state) => {
       const current = state.byTabId[runtimeTabId];
       if (!current) return state;
       return { byTabId: { ...state.byTabId, [runtimeTabId]: { ...current, report } } };
+    }),
+  forgetReport: (runtimeTabId) =>
+    set((state) => {
+      const current = state.byTabId[runtimeTabId];
+      if (!current || current.report === null) return state;
+      return { byTabId: { ...state.byTabId, [runtimeTabId]: { ...current, report: null } } };
     }),
   forget: (runtimeTabId) =>
     set((state) => {
@@ -89,25 +119,57 @@ export const VERIFY_VERDICT_LABELS = {
   unchanged: "didn't land",
   diverged: "changed differently",
   unverifiable: "can't be checked",
+  missing: "gone from the page",
 } as const;
 
-/** The counts line ("2 landed · 1 didn't land"), zero counts skipped. Pure for testing;
- * empty string when there is nothing to say. */
-export function verifySummaryLine(summary: {
-  readonly applied: number;
-  readonly unchanged: number;
-  readonly diverged: number;
-  readonly unverifiable: number;
-  readonly missing: number;
-}): string {
-  const parts: string[] = [];
-  if (summary.applied > 0) parts.push(`${summary.applied} ${VERIFY_VERDICT_LABELS.applied}`);
-  if (summary.unchanged > 0) parts.push(`${summary.unchanged} ${VERIFY_VERDICT_LABELS.unchanged}`);
-  if (summary.diverged > 0) parts.push(`${summary.diverged} ${VERIFY_VERDICT_LABELS.diverged}`);
-  if (summary.unverifiable > 0)
-    parts.push(`${summary.unverifiable} ${VERIFY_VERDICT_LABELS.unverifiable}`);
-  if (summary.missing > 0) parts.push(`${summary.missing} gone from the page`);
-  return parts.join(" · ");
+/** Why a check couldn't be judged, in the same one-home vocabulary. */
+export const VERIFY_REASON_LABELS = {
+  intent: "an intent-shaped ask",
+  viewport: "the viewport changed since the send",
+  inline: "the page styles this inline",
+} as const;
+
+/** The counts line ("2 landed · 1 didn't land"), zero counts skipped. Iterates the label
+ * map so a new verdict is a one-line change, and takes the exported summary type so a
+ * stale structural copy can never drift silently. Empty string when there is nothing to
+ * say — callers render their fallback copy instead of an empty element. */
+export function verifySummaryLine(summary: DesignVerifySummary): string {
+  return (Object.keys(VERIFY_VERDICT_LABELS) as Array<keyof typeof VERIFY_VERDICT_LABELS>)
+    .filter((verdict) => summary[verdict] > 0)
+    .map((verdict) => `${summary[verdict]} ${VERIFY_VERDICT_LABELS[verdict]}`)
+    .join(" · ");
+}
+
+/**
+ * The transcript chip's verdict line for one sent MESSAGE: every live record minted by
+ * that message's send (one per contributing preview tab), their measured summaries merged.
+ * Keyed by message id — the one stable identity a message row owns — never by timestamp,
+ * which every contributing tab shares and another thread could collide with. Returns null
+ * (not "") when nothing is measured, so the chip renders nothing rather than an empty
+ * span; a string return keeps the zustand selector Object.is-stable.
+ */
+export function selectVerifySummaryLineForMessage(
+  byTabId: Record<string, SentPreviewRecord>,
+  messageId: string,
+): string | null {
+  let merged: DesignVerifySummary | null = null;
+  for (const record of Object.values(byTabId)) {
+    if (record.messageId !== messageId || record.report === null) continue;
+    if (record.report.elements.length === 0) continue;
+    const summary = summarizeVerifyReport(record.report);
+    merged = merged
+      ? {
+          applied: merged.applied + summary.applied,
+          unchanged: merged.unchanged + summary.unchanged,
+          diverged: merged.diverged + summary.diverged,
+          unverifiable: merged.unverifiable + summary.unverifiable,
+          missing: merged.missing + summary.missing,
+        }
+      : summary;
+  }
+  if (!merged) return null;
+  const line = verifySummaryLine(merged);
+  return line === "" ? null : line;
 }
 
 export function selectSentPreview(

@@ -219,15 +219,21 @@ export const forkDesignChanges = {
    *
    * `sentAt` is the sent message's own client-minted `createdAt` — the turn adopted for it
    * gets its `requestedAt` stamped from that exact time, which is how the resolution prompt
-   * later knows the thread's projected turn covers this send (designSentPreviews.ts).
+   * later knows the thread's projected turn covers this send. `messageId` is the same
+   * message's id, the transcript chip's correlation key (designSentPreviews.ts).
    *
    * The drafts themselves stay applied in the guest. They are the user's, and the tool never
    * commits them; what changes is that the panel now has grounds to ask about them.
    */
-  markSent(threadRef: ScopedThreadRef, sent: readonly PendingDesignChange[], sentAt: string): void {
+  markSent(
+    threadRef: ScopedThreadRef,
+    sent: readonly PendingDesignChange[],
+    sentAt: string,
+    messageId: string,
+  ): void {
     const threadKey = scopedThreadKey(threadRef);
     for (const runtimeTabId of new Set(sent.map((entry) => entry.runtimeTabId))) {
-      useDesignSentPreviews.getState().markSent(runtimeTabId, threadKey, sentAt);
+      useDesignSentPreviews.getState().markSent(runtimeTabId, threadKey, sentAt, messageId);
     }
     useDesignChangeDraftStore.getState().clear(threadRef, sent);
   },

@@ -15,6 +15,12 @@ export interface PersistedSentElement {
    * locate() falls back to a dcSource lookup for any disconnected element, so a placeholder
    * self-heals once the element re-appears. */
   tag: string
+  /* t3-fork: the same reload-survival fallback `selection` and `drafts` already carry —
+   * a T3-synthesized dcSource does not survive a reload (see the note on
+   * PersistedLifecycle below), so entries carrying one (or none) also persist a bounded
+   * css path. Trusted only on a UNIQUE match, like the drafts drain: measuring — and then
+   * committing — against the wrong element is worse than reporting it missing. */
+  selector?: string
   draftProps: string[]
   changes: SentChange[]
   change: ElementChange
@@ -51,13 +57,13 @@ export interface PersistedLifecycle {
     selector?: string
   }>
   sent: Array<{ id: string; elements: PersistedSentElement[] }>
-  /* t3-fork: conditions of the latest send, for the verifier's "same conditions, or say
-   * so" rule — a request drafted at one viewport must not be judged by measurements taken
-   * at another. Top-level rather than per entry because the fork keeps exactly one
-   * outstanding send (a re-Send supersedes). Optional so pre-existing v:1 snapshots load
-   * unchanged; absent reads as "unknown", which the verifier treats as unchanged
-   * conditions rather than dropping to unverifiable. */
-  sentMeta?: { viewport: { width: number; height: number } }
+  /* t3-fork: conditions of the latest send, for the verifier — a request drafted at one
+   * viewport must not have its mismatches judged by measurements taken at another, and
+   * `verifying` records whether live measurement was armed so a full reload resumes it
+   * without the host re-asking (the reload is exactly the event verification waits for).
+   * Top-level rather than per entry because the fork keeps exactly one outstanding send
+   * (a re-Send supersedes). Optional so pre-existing v:1 snapshots load unchanged. */
+  sentMeta?: { viewport: { width: number; height: number }; verifying?: boolean }
 }
 
 function matches(dcSource: string, doc: Document): TaggedElement[] {
@@ -75,6 +81,15 @@ export function sourceIndex(el: Element, dcSource: string, doc: Document = docum
 export function locateBySource(dcSource: string, index: number, doc: Document = document): TaggedElement | null {
   const els = matches(dcSource, doc)
   return els[index] ?? els[0] ?? null
+}
+
+/* t3-fork: the verifier's resolver — index hit or nothing. locateBySource's first-match
+ * fallback is right for restoring a draft (a missed restore is recoverable) and WRONG for
+ * measurement: after the agent deletes list row 2, `els[0]` is a live sibling, the element
+ * would report present, its checks would be measured — and commitVerified would then strip
+ * the SIBLING's previews. A deleted instance must read as missing. */
+export function locateBySourceExact(dcSource: string, index: number, doc: Document = document): TaggedElement | null {
+  return matches(dcSource, doc)[index] ?? null
 }
 
 /** THE canonical resolver for "re-find a disconnected element" — every call site that used to
@@ -276,6 +291,7 @@ function isValidSentElement(v: unknown): v is PersistedSentElement {
   if (!isRecord(v)) return false
   if (typeof v.dcSource !== 'string' && v.dcSource !== null) return false
   if (typeof v.index !== 'number' || typeof v.tag !== 'string') return false
+  if (!isValidSelectorField(v)) return false
   if (!Array.isArray(v.draftProps) || !v.draftProps.every((p) => typeof p === 'string')) return false
   if (!Array.isArray(v.changes) || !v.changes.every(isValidSentChange)) return false
   if (!isValidElementChange(v.change)) return false
@@ -329,7 +345,10 @@ export function loadLifecycle(storage: Storage = sessionStorage): PersistedLifec
     isRecord(s.sentMeta.viewport) &&
     isFiniteNumber(s.sentMeta.viewport.width) &&
     isFiniteNumber(s.sentMeta.viewport.height)
-      ? { viewport: { width: s.sentMeta.viewport.width, height: s.sentMeta.viewport.height } }
+      ? {
+          viewport: { width: s.sentMeta.viewport.width, height: s.sentMeta.viewport.height },
+          ...(s.sentMeta.verifying === true ? { verifying: true } : {}),
+        }
       : undefined
 
   return { v: 1, designModeOn: s.designModeOn, selection, drafts, sent, ...(sentMeta ? { sentMeta } : {}) }

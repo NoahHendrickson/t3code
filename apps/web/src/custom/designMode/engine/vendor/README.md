@@ -42,6 +42,21 @@ Local edits are marked with `t3-fork:` comments. The load-bearing ones:
   previous previews painted, so re-derivation captured each draft's own value as the page's
   original — Discard restored the draft over itself and Send reported nothing to send.
   Do not drop the parameter when re-syncing: upstream never rebuilds in-place this way.
+- Sent-change verification (2026-08-08, `engine/verifySession.ts` is the fork-owned core —
+  the delivery-side verify trigger rebuilt on T3's own turn lifecycle instead of the
+  un-vendored `verifier.ts` polling loop):
+  - `request.ts` — `measureComputed` and `COLLAPSE` exported, and
+    `withTransitionsSuppressed` added. The verifier compares its reading against the value
+    the builder measured at send time, so the two reads must be taken identically — losing
+    these exports on a re-sync fails the build (loud).
+  - `lifecycle.ts` — `SentSeed.selector` (reload-survival fallback, projected/restored),
+    and `restoreSent`'s locator takes the whole `PersistedSentElement`.
+  - `lifecycle-store.ts` — `PersistedSentElement.selector`, `locateBySourceExact` (index
+    hit or nothing: the first-match fallback would let verification measure — and commit —
+    against a sibling of a deleted list row), and `PersistedLifecycle.sentMeta`
+    (`viewport` + `verifying`). Losing `sentMeta` on a re-sync fails SILENTLY — every
+    cross-viewport check would turn from an honest "can't be checked" into a false
+    "didn't land" — so port it deliberately.
 - Native-source mode (2026-08-04, `engine/nativeSource.ts` is the fork-owned core):
   - `source.ts` — `findSelectableElement`: a tagged ancestor still wins, but untagged
     elements are selectable themselves (svg internals climb to the outermost `<svg>`).

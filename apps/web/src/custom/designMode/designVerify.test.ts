@@ -22,6 +22,7 @@ describe("verdictFor", () => {
     beforeCss: "8px",
     afterCss: "32px",
     intentShaped: false,
+    inlineAuthored: false,
     viewportChanged: false,
   };
 
@@ -46,25 +47,45 @@ describe("verdictFor", () => {
     });
   });
 
-  it("a changed viewport pre-empts everything — measurements under different conditions prove nothing", () => {
+  it("a viewport change downgrades MISMATCHES only — a match still verifies", () => {
+    // A changed pane size cannot manufacture the asked-for value, so applied survives:
+    // one splitter drag must not void the checks a user could still act on.
     expect(verdictFor({ ...base, viewportChanged: true, measured: "32px" })).toEqual({
+      verdict: "applied",
+      actual: "32px",
+    });
+    // A DIFFERING value under different conditions proves nothing, in either direction.
+    expect(verdictFor({ ...base, viewportChanged: true, measured: "8px" })).toEqual({
       verdict: "unverifiable",
       actual: null,
       reason: "viewport",
     });
-    // Even over intent: the viewport reason names the condition that would fix it.
-    expect(
-      verdictFor({ ...base, intentShaped: true, viewportChanged: true, measured: "32px" }),
-    ).toEqual({ verdict: "unverifiable", actual: null, reason: "viewport" });
+    expect(verdictFor({ ...base, viewportChanged: true, measured: "16px" })).toEqual({
+      verdict: "unverifiable",
+      actual: null,
+      reason: "viewport",
+    });
   });
 
-  it("an intent-shaped ask gets a non-answer, not a guess", () => {
+  it("an intent-shaped ask gets a non-answer, not a guess — even when strings match", () => {
     // `auto` computes to a px measurement — exact-match verification would judge the
     // wrong thing, so the honest verdict is a fourth state the user can read.
     expect(verdictFor({ ...base, intentShaped: true, measured: "32px" })).toEqual({
       verdict: "unverifiable",
       actual: null,
       reason: "intent",
+    });
+  });
+
+  it("a page-authored inline property is never judged", () => {
+    // The draft overwrote the page's own inline declaration: suppression cannot read the
+    // page's value without guessing (restoring the recorded original pins a possibly-stale
+    // value; removing the slot deletes the page's declaration too). Honest answer: neither
+    // — even when the measured string happens to equal the ask.
+    expect(verdictFor({ ...base, inlineAuthored: true, measured: "32px" })).toEqual({
+      verdict: "unverifiable",
+      actual: null,
+      reason: "inline",
     });
   });
 
@@ -79,8 +100,8 @@ describe("verdictFor", () => {
 });
 
 const report = (overrides: Partial<DesignVerifyReport> = {}): DesignVerifyReport => ({
-  requestId: "send-1",
   viewportChanged: false,
+  truncated: false,
   elements: [
     {
       tag: "div",
@@ -117,8 +138,8 @@ describe("summarizeVerifyReport", () => {
 describe("verifySummaryLine", () => {
   it("names each non-zero count in the shared vocabulary and skips the zeros", () => {
     expect(
-      verifySummaryLine({ applied: 2, unchanged: 1, diverged: 0, unverifiable: 1, missing: 0 }),
-    ).toBe("2 landed · 1 didn't land · 1 can't be checked");
+      verifySummaryLine({ applied: 2, unchanged: 1, diverged: 0, unverifiable: 1, missing: 1 }),
+    ).toBe("2 landed · 1 didn't land · 1 can't be checked · 1 gone from the page");
   });
 
   it("says nothing when there is nothing to say", () => {
@@ -136,6 +157,11 @@ describe("parseVerifyReport", () => {
   it("rides the console-message envelope as the verdict variant", () => {
     const line = DESIGN_MODE_CONSOLE_PREFIX + JSON.stringify({ type: "verdict", report: report() });
     expect(parseDesignModeConsoleMessage(line)).toEqual({ type: "verdict", report: report() });
+  });
+
+  it("parses the sent-resolved envelope", () => {
+    const line = DESIGN_MODE_CONSOLE_PREFIX + JSON.stringify({ type: "sent-resolved" });
+    expect(parseDesignModeConsoleMessage(line)).toEqual({ type: "sent-resolved" });
   });
 
   it("rejects a verdict outside the closed set — console lines are page-forgeable", () => {
@@ -160,6 +186,79 @@ describe("parseVerifyReport", () => {
     expect(parseVerifyReport(JSON.parse(JSON.stringify(forged)))).toBeNull();
   });
 
+  it("rejects cross-field combinations measure() cannot produce", () => {
+    const withCheck = (check: Record<string, unknown>, viewportChanged = false) => ({
+      viewportChanged,
+      truncated: false,
+      elements: [
+        { tag: "div", sourceLabel: null, missing: false, checks: [check], structuralOps: 0 },
+      ],
+    });
+    // An applied verdict with nothing measured is an invented claim, not a shape quirk.
+    expect(
+      parseVerifyReport(
+        withCheck({ property: "color", expected: "red", verdict: "applied", actual: null }),
+      ),
+    ).toBeNull();
+    // Unverifiable measured nothing, and always says why.
+    expect(
+      parseVerifyReport(
+        withCheck({ property: "color", expected: "red", verdict: "unverifiable", actual: "red" }),
+      ),
+    ).toBeNull();
+    expect(
+      parseVerifyReport(
+        withCheck({ property: "color", expected: "red", verdict: "unverifiable", actual: null }),
+      ),
+    ).toBeNull();
+    // The viewport reason can only exist inside a report that says the viewport changed.
+    expect(
+      parseVerifyReport(
+        withCheck({
+          property: "color",
+          expected: "red",
+          verdict: "unverifiable",
+          actual: null,
+          reason: "viewport",
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parseVerifyReport(
+        withCheck(
+          {
+            property: "color",
+            expected: "red",
+            verdict: "unverifiable",
+            actual: null,
+            reason: "viewport",
+          },
+          true,
+        ),
+      ),
+    ).not.toBeNull();
+  });
+
+  it("rejects checks smuggled in beside a missing flag", () => {
+    // summarize counts a missing element once and skips its checks — a forged line could
+    // hide N real checks behind the flag. Reject the combination outright.
+    expect(
+      parseVerifyReport({
+        viewportChanged: false,
+        truncated: false,
+        elements: [
+          {
+            tag: "div",
+            sourceLabel: null,
+            missing: true,
+            checks: [{ property: "color", expected: "red", verdict: "unchanged", actual: "blue" }],
+            structuralOps: 0,
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
   it("rejects an oversized report rather than admitting it into host state", () => {
     const elements = Array.from({ length: 101 }, () => ({
       tag: "div",
@@ -168,12 +267,14 @@ describe("parseVerifyReport", () => {
       checks: [],
       structuralOps: 0,
     }));
-    expect(parseVerifyReport({ requestId: "x", viewportChanged: false, elements })).toBeNull();
+    expect(parseVerifyReport({ viewportChanged: false, truncated: false, elements })).toBeNull();
   });
 
   it("rejects malformed shapes wholesale", () => {
     expect(parseVerifyReport(null)).toBeNull();
-    expect(parseVerifyReport({ requestId: 5, viewportChanged: false, elements: [] })).toBeNull();
-    expect(parseVerifyReport({ requestId: "x", viewportChanged: "yes", elements: [] })).toBeNull();
+    expect(parseVerifyReport({ viewportChanged: false, elements: [] })).toBeNull();
+    expect(
+      parseVerifyReport({ viewportChanged: "yes", truncated: false, elements: [] }),
+    ).toBeNull();
   });
 });
