@@ -671,7 +671,13 @@
   font-weight: 500;
   line-height: 16px;
   background: var(--fork-context-chip-bg);
-  /* Ghost/disabled Button uses opacity-64; locked chips must stay fully inked. */
+}
+
+/* Locked readout spans only — do not force opacity on interactive buttons or a
+   disabled branch picker loses its dim while refs load / an action is pending. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-context-chip] {
   opacity: 1;
 }
 

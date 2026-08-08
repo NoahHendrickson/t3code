@@ -298,6 +298,17 @@ describe("fork guard: design mode", () => {
     // owned before the page sees it — except for MoveDrag targets, which still need a
     // sub-threshold press to become an ordinary click.
     const engine = read("src/custom/designMode/engine/headlessMode.ts");
+    // One funnel owns tombstone refusal + toggle/select/deselect; both event paths call it.
+    const selectFromTarget =
+      /private selectFromTarget\(el: TaggedElement \| null, shiftKey: boolean\): void \{([\s\S]*?)\n  \}/u.exec(
+        engine,
+      )?.[1];
+    expect(selectFromTarget).toBeDefined();
+    expect(selectFromTarget).toContain('kind === "delete"');
+    expect(selectFromTarget).toContain("this.toggleSelection(el)");
+    expect(selectFromTarget).toContain("this.select(el)");
+    expect(selectFromTarget).toContain("this.deselect()");
+
     const body = /private onPointerDown = \(e: PointerEvent\): void => \{([\s\S]*?)\n  \};/u.exec(
       engine,
     )?.[1];
@@ -306,13 +317,24 @@ describe("fork guard: design mode", () => {
     expect(body).toContain("this.moveDrag.wouldDrag(el)");
     expect(body).toContain("e.preventDefault()");
     expect(body).toContain("e.stopPropagation()");
-    expect(body).toContain("this.toggleSelection(el)");
-    expect(body).toContain("this.select(el)");
-    expect(body).toContain("this.deselect()");
-    // Drag targets must fall through WITHOUT preventDefault — MoveDrag documents why.
+    expect(body).toContain("this.selectFromTarget(el, e.shiftKey)");
+    expect(body).toContain("this.suppressNextClickSelection = true");
+    // Clear shape: delete early-return, then wouldDrag fall-through (no preventDefault),
+    // then preventDefault + selectFromTarget. Do not fold delete into the drag gate.
     expect(body).toMatch(
-      /if \(el && this\.drafts\.structuralOf\(el\)\?\.kind !== "delete" && this\.moveDrag\.wouldDrag\(el\)\) \{\n\s*return;\n\s*\}\n\s*e\.preventDefault\(\)/u,
+      /kind === "delete"\) return;[\s\S]*?if \(el && this\.moveDrag\.wouldDrag\(el\)\) return;[\s\S]*?e\.preventDefault\(\)/u,
     );
+    expect(body).not.toContain('kind !== "delete"');
+
+    const click = /private onClick = \(e: MouseEvent\): void => \{([\s\S]*?)\n  \};/u.exec(
+      engine,
+    )?.[1];
+    expect(click).toBeDefined();
+    expect(click).toContain("this.suppressNextClickSelection");
+    expect(click).toContain("this.selectFromTarget(");
+    // Click must not re-run the toggle/select ladder inline — only via the helper,
+    // and only when pointerdown did not already own the gesture.
+    expect(click).not.toContain("this.toggleSelection(el)");
   });
 
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {

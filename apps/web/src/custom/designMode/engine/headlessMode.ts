@@ -946,8 +946,29 @@ export class HeadlessDesignMode {
     });
   };
 
+  /**
+   * One selection funnel for pointerdown and click. Tombstones refuse here so both
+   * paths agree with deleteElements / outlinable — a selection outline on display:none
+   * is a lie.
+   */
+  private selectFromTarget(el: TaggedElement | null, shiftKey: boolean): void {
+    if (el && this.drafts.structuralOf(el)?.kind === "delete") return;
+    if (el && shiftKey) this.toggleSelection(el);
+    else if (el) this.select(el);
+    else this.deselect();
+  }
+
   private onClick = (e: MouseEvent): void => {
     if (this.overlay.contains(e.target)) return;
+    // preventDefault on pointerdown does not cancel click. When pointerdown already
+    // owned selection for this gesture, swallow the click so Shift-toggle is not undone
+    // — before textEdit/browse, so those paths cannot leave the suppress flag stuck.
+    if (this.suppressNextClickSelection) {
+      this.suppressNextClickSelection = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     // Mid-edit click policy (caret shield / commit-and-fall-through) lives in TextEditMode.
     // The handoff's re-dispatched copy also re-enters this capture listener; it reaches the
     // shield only ever as 'idle' — a copy exists only after the original's shield check
@@ -956,10 +977,7 @@ export class HeadlessDesignMode {
     if (this.browse.handleClick(e) === "passthrough") return;
     e.preventDefault();
     e.stopPropagation();
-    const el = findSelectableElement(e.target as Element);
-    if (el && e.shiftKey) this.toggleSelection(el);
-    else if (el) this.select(el);
-    else this.deselect();
+    this.selectFromTarget(findSelectableElement(e.target as Element), e.shiftKey);
   };
 
   /** Double-click on a text-leaf element enters inline text edit (Figma behavior). */
@@ -1020,6 +1038,9 @@ export class HeadlessDesignMode {
     return this.moveDrag.reorderStep(el, dir);
   }
 
+  /** Set when pointerdown already ran selectFromTarget; cleared by the following click. */
+  private suppressNextClickSelection = false;
+
   /**
    * Own the press before the page does. Base UI menus/buttons open on pointerdown, and
    * opening them often swallows the click that used to be our only select path — so the
@@ -1027,18 +1048,19 @@ export class HeadlessDesignMode {
    * so MoveDrag's sub-threshold press can still become an ordinary click.
    */
   private onPointerDown = (e: PointerEvent): void => {
+    // Fresh press — drop any stale suppress from a click that never arrived.
+    this.suppressNextClickSelection = false;
     if (e.button !== 0 || this.textEdit.active || this.browse.shouldYield(e)) return;
     if (this.overlay.containsDeep(e.composedPath()[0] ?? e.target)) return;
     const el = findSelectableElement(e.target as Element);
+    // Tombstones: no preventDefault, no select (matches pre-rewrite early-return).
+    if (el && this.drafts.structuralOf(el)?.kind === "delete") return;
     // The gate IS MoveDrag's own plan, not a copy of its conditions (PR #46 review).
-    if (el && this.drafts.structuralOf(el)?.kind !== "delete" && this.moveDrag.wouldDrag(el)) {
-      return;
-    }
+    if (el && this.moveDrag.wouldDrag(el)) return;
     e.preventDefault();
     e.stopPropagation();
-    if (el && e.shiftKey) this.toggleSelection(el);
-    else if (el) this.select(el);
-    else this.deselect();
+    this.suppressNextClickSelection = true;
+    this.selectFromTarget(el, e.shiftKey);
   };
 
   /** The one delete routine. Deselect FIRST: a selection outline hugging a display:none
