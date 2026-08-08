@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import { isLatestTurnSettled } from "~/session-logic";
+
 /**
  * Which preview tabs have shipped their drafts to the agent and not yet been resolved.
  *
@@ -12,61 +14,43 @@ import { create } from "zustand";
  *
  * This is the bookkeeping behind saying so. It records nothing about WHETHER the edit landed —
  * the fork does not vendor the Forge's verifier (see engine/vendor/README.md), so any such
- * claim would be invented. It records only that the drafts were sent and that the turn they
- * rode has finished, which is exactly when "keep these, or drop them?" is a fair question.
+ * claim would be invented. It records only that drafts were sent; whether the turn they rode
+ * has finished is not guessed at from wall clock or observed status flips but read off the
+ * thread's own projected turn (see shouldOfferPreviewResolution).
  *
  * In-memory and per runtime tab id, like every other host-side design-mode store: the drafts
- * it describes live in the guest page, and both die with the tab.
+ * it describes live in the guest page, and both die with the tab. The record dies only on an
+ * explicit answer (the footer's two buttons, the panel's own Discard) or tab teardown — never
+ * on a draft count that happened to touch zero, so an undo/redo peek cannot permanently eat
+ * the prompt.
  */
 export interface SentPreviewRecord {
-  /** The thread the request rode. Held so a record cannot be armed by another thread's work. */
+  /** The thread the request rode. Held so a record cannot be resolved by another thread's
+   * work. */
   readonly threadKey: string;
-  /** When the turn started, in ms. Only the arming fallback reads it. */
-  readonly at: number;
   /**
-   * Whether the send is old enough to ask about.
-   *
-   * Set when the panel observes the thread actually working after the send — or, when it never
-   * does, by a fallback timer. Both paths exist because neither is sufficient: gating purely on
-   * "the thread is idle" would flash the prompt in the window between the turn start resolving
-   * and the session status arriving over the event stream, and gating purely on "we saw it run"
-   * would never fire for a turn that began and ended while the preview panel was closed.
+   * The sent message's own `createdAt` — the client-minted timestamp ChatView put on the
+   * turn-start command. The server stamps the adopted turn's `requestedAt` from exactly this
+   * message time (the decider's adoption contract), which is what lets
+   * shouldOfferPreviewResolution compare the two without ever crossing clocks.
    */
-  readonly armed: boolean;
+  readonly sentAt: string;
 }
-
-/**
- * How long a send waits before it is treated as resolvable without ever having been seen to
- * run. Generous on purpose: a real in-flight turn reports itself running within a round trip,
- * so this only ever pays out for a turn nobody was watching. Its cost when wrong is a prompt
- * arriving a few seconds early, which the user can decline.
- */
-export const SENT_PREVIEW_ARM_FALLBACK_MS = 10_000;
 
 interface DesignSentPreviewsState {
   readonly byTabId: Record<string, SentPreviewRecord>;
-  /** A turn carrying this tab's drafts started. Re-sending re-arms from scratch. */
-  readonly markSent: (runtimeTabId: string, threadKey: string, at: number) => void;
-  /** The send is now old enough to ask about — see SentPreviewRecord.armed. */
-  readonly arm: (runtimeTabId: string, threadKey: string) => void;
+  /** A turn carrying this tab's drafts started. Re-sending replaces the record. */
+  readonly markSent: (runtimeTabId: string, threadKey: string, sentAt: string) => void;
   /** The question has been answered (either way), or the thing it asked about is gone. */
   readonly forget: (runtimeTabId: string) => void;
 }
 
 export const useDesignSentPreviews = create<DesignSentPreviewsState>()((set) => ({
   byTabId: {},
-  markSent: (runtimeTabId, threadKey, at) =>
+  markSent: (runtimeTabId, threadKey, sentAt) =>
     set((state) => ({
-      byTabId: { ...state.byTabId, [runtimeTabId]: { threadKey, at, armed: false } },
+      byTabId: { ...state.byTabId, [runtimeTabId]: { threadKey, sentAt } },
     })),
-  arm: (runtimeTabId, threadKey) =>
-    set((state) => {
-      const current = state.byTabId[runtimeTabId];
-      // Thread-checked: the panel arms off whichever thread it is docked in, and a tab can be
-      // looked at from a different thread than the one its request rode.
-      if (!current || current.armed || current.threadKey !== threadKey) return state;
-      return { byTabId: { ...state.byTabId, [runtimeTabId]: { ...current, armed: true } } };
-    }),
   forget: (runtimeTabId) =>
     set((state) => {
       if (!(runtimeTabId in state.byTabId)) return state;
@@ -82,21 +66,54 @@ export function selectSentPreview(
   return (runtimeTabId ? byTabId[runtimeTabId] : undefined) ?? null;
 }
 
+/** The session slice the readiness question consults — isLatestTurnSettled's own, so the two
+ * can never drift apart. */
+export type SentPreviewSession = Parameters<typeof isLatestTurnSettled>[1];
+
+/** The projected-turn slice the readiness question consults: isLatestTurnSettled's own plus
+ * `requestedAt`, the correlation to the send. */
+export type SentPreviewLatestTurn = NonNullable<Parameters<typeof isLatestTurnSettled>[0]> & {
+  readonly requestedAt: string;
+};
+
 /**
  * Whether the panel should ask about this tab's previews right now.
  *
  * Pure, so the whole condition is one testable expression rather than a chain of `&&` spread
- * across a component. `working` covers both halves of an in-flight turn (starting and running):
- * an agent still working has not produced anything to resolve, so the question would be noise.
+ * across a component. The invariant it owes: NEVER offer to drop previews while the turn that
+ * carried them is open — including the windows where the session alone cannot say so (a null
+ * session during a live turn is by design: the decider adopts the turn up to minutes after
+ * `thread.turn.start`, and a worktree checkout plus a cold provider boot routinely spend >10s
+ * there).
+ *
+ * So readiness is read off the thread's own projection instead of guessed at:
+ *
+ * - `latestTurn.requestedAt < record.sentAt` — the projection still shows a turn from BEFORE
+ *   this send (the send's own turn hasn't projected yet, or is still queued for adoption).
+ *   Quiet. The two timestamps share one origin — adoption stamps `requestedAt` from the sent
+ *   message's client-minted time — so the comparison never mixes clocks.
+ * - `requestedAt >= sentAt` — the projection covers this send: its own turn, or any later one,
+ *   whose completion equally means the page underneath may have changed. Now
+ *   `isLatestTurnSettled` — the app's one shared answer to "is the turn actually over", the
+ *   same predicate the sidebar trusts — decides. It stays false while `completedAt` is unset
+ *   and while a session reports running, so both the adoption window and a live turn keep the
+ *   prompt away without any timer.
+ * - A turn that began AND ended while the panel was unmounted needs no special case: on
+ *   remount the projection already satisfies both checks and the prompt appears at once.
+ *
+ * No drafts left means the question already answered itself — the user discarded or reverted
+ * their way out of it, and a prompt about nothing is worse than no prompt. (The record
+ * survives that state on purpose: a redo that repaints the drafts gets its prompt back.)
  */
 export function shouldOfferPreviewResolution(input: {
   readonly record: SentPreviewRecord | null;
-  readonly working: boolean;
+  readonly threadKey: string;
+  readonly latestTurn: SentPreviewLatestTurn | null;
+  readonly session: SentPreviewSession;
   readonly draftCount: number;
 }): boolean {
-  const { record, working, draftCount } = input;
-  // No drafts left means the question already answered itself — the user discarded or reverted
-  // their way out of it, and a prompt about nothing is worse than no prompt.
-  if (!record || !record.armed || working || draftCount === 0) return false;
-  return true;
+  const { record, threadKey, latestTurn, session, draftCount } = input;
+  if (!record || record.threadKey !== threadKey || draftCount === 0) return false;
+  if (!latestTurn || Date.parse(latestTurn.requestedAt) < Date.parse(record.sentAt)) return false;
+  return isLatestTurnSettled(latestTurn, session);
 }

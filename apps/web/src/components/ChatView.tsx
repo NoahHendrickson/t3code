@@ -5036,7 +5036,8 @@ function ChatViewContent(props: ChatViewProps) {
        start is awaited above, and a Send from the design panel during that window
        replaces a pill IN PLACE under the same id — so only entry identity tells the
        two apart. */
-    if (turnStartSucceeded) forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent);
+    if (turnStartSucceeded)
+      forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent, messageCreatedAt);
     /* fork:end fork-design-mode */
   };
 
