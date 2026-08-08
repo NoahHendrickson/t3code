@@ -226,8 +226,8 @@ describe("designChangeDraftStore", () => {
 
     // Both tabs recorded — the panel can now offer to resolve either one's previews.
     expect(useDesignSentPreviews.getState().byTabId).toEqual({
-      "tab-a": { threadKey: scopedThreadKey(THREAD), sentAt: SENT_AT },
-      "tab-b": { threadKey: scopedThreadKey(THREAD), sentAt: SENT_AT },
+      "tab-a": { threadKey: scopedThreadKey(THREAD), sentAt: SENT_AT, report: null },
+      "tab-b": { threadKey: scopedThreadKey(THREAD), sentAt: SENT_AT, report: null },
     });
     expect(pendingFor(THREAD)).toHaveLength(0);
   });

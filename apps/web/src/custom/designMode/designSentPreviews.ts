@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 import { isLatestTurnSettled } from "~/session-logic";
 
+import type { DesignVerifyReport } from "./protocol";
+
 /**
  * Which preview tabs have shipped their drafts to the agent and not yet been resolved.
  *
@@ -35,12 +37,21 @@ export interface SentPreviewRecord {
    * shouldOfferPreviewResolution compare the two without ever crossing clocks.
    */
   readonly sentAt: string;
+  /**
+   * The latest measured verdict report from the guest (designVerify — armed once the turn
+   * settles, re-measured per page settle). Null until the first measurement arrives; a
+   * pre-verification engine never delivers one and the prompt keeps its unmeasured copy.
+   */
+  readonly report: DesignVerifyReport | null;
 }
 
 interface DesignSentPreviewsState {
   readonly byTabId: Record<string, SentPreviewRecord>;
   /** A turn carrying this tab's drafts started. Re-sending replaces the record. */
   readonly markSent: (runtimeTabId: string, threadKey: string, sentAt: string) => void;
+  /** A verdict report arrived from this tab's guest. Meaningful only while a record
+   * exists — a report for a forgotten (or never-sent) tab is stale evidence, dropped. */
+  readonly setReport: (runtimeTabId: string, report: DesignVerifyReport) => void;
   /** The question has been answered (either way), or the thing it asked about is gone. */
   readonly forget: (runtimeTabId: string) => void;
 }
@@ -49,8 +60,14 @@ export const useDesignSentPreviews = create<DesignSentPreviewsState>()((set) => 
   byTabId: {},
   markSent: (runtimeTabId, threadKey, sentAt) =>
     set((state) => ({
-      byTabId: { ...state.byTabId, [runtimeTabId]: { threadKey, sentAt } },
+      byTabId: { ...state.byTabId, [runtimeTabId]: { threadKey, sentAt, report: null } },
     })),
+  setReport: (runtimeTabId, report) =>
+    set((state) => {
+      const current = state.byTabId[runtimeTabId];
+      if (!current) return state;
+      return { byTabId: { ...state.byTabId, [runtimeTabId]: { ...current, report } } };
+    }),
   forget: (runtimeTabId) =>
     set((state) => {
       if (!(runtimeTabId in state.byTabId)) return state;
@@ -58,6 +75,40 @@ export const useDesignSentPreviews = create<DesignSentPreviewsState>()((set) => 
       return { byTabId: rest };
     }),
 }));
+
+/**
+ * The one vocabulary for verdicts, shared by the panel rows, the summary line and the
+ * transcript chip — and pinned by a fork guard: `unverifiable` must never borrow the
+ * success words, because "can't be checked" rendered as anything stronger is exactly the
+ * invented claim this feature exists to avoid. "landed" (not "applied"/"verified") keeps
+ * even the success wording at measurement strength: the page renders the value; whether
+ * the agent's edit was any good is the turn diff's question.
+ */
+export const VERIFY_VERDICT_LABELS = {
+  applied: "landed",
+  unchanged: "didn't land",
+  diverged: "changed differently",
+  unverifiable: "can't be checked",
+} as const;
+
+/** The counts line ("2 landed · 1 didn't land"), zero counts skipped. Pure for testing;
+ * empty string when there is nothing to say. */
+export function verifySummaryLine(summary: {
+  readonly applied: number;
+  readonly unchanged: number;
+  readonly diverged: number;
+  readonly unverifiable: number;
+  readonly missing: number;
+}): string {
+  const parts: string[] = [];
+  if (summary.applied > 0) parts.push(`${summary.applied} ${VERIFY_VERDICT_LABELS.applied}`);
+  if (summary.unchanged > 0) parts.push(`${summary.unchanged} ${VERIFY_VERDICT_LABELS.unchanged}`);
+  if (summary.diverged > 0) parts.push(`${summary.diverged} ${VERIFY_VERDICT_LABELS.diverged}`);
+  if (summary.unverifiable > 0)
+    parts.push(`${summary.unverifiable} ${VERIFY_VERDICT_LABELS.unverifiable}`);
+  if (summary.missing > 0) parts.push(`${summary.missing} gone from the page`);
+  return parts.join(" · ");
+}
 
 export function selectSentPreview(
   byTabId: Record<string, SentPreviewRecord>,

@@ -19,6 +19,7 @@ import { buildElementSnapshot } from "./snapshot";
 import { capPageUrl } from "../protocol";
 import type {
   DesignChangeRequestPayload,
+  DesignVerifyReport,
   DesignModeAlignAxis,
   DesignModeAlignValue,
   DesignModeElementSnapshot,
@@ -62,6 +63,8 @@ import {
   locateBySource,
   type PersistedLifecycle,
 } from "./vendor/lifecycle-store";
+import { LifecycleSession, type SentSeed } from "./vendor/lifecycle";
+import { VerifySession } from "./verifySession";
 
 /** Rapid edits (e.g. dragging a number field) within this window reuse the first snapshot. */
 const RIPPLE_DEBOUNCE_MS = 300;
@@ -111,6 +114,7 @@ export class HeadlessDesignMode {
   onDraftsCount?: (count: number) => void;
   onStateChange?: (active: boolean) => void;
   onLayers?: (roots: DesignModeLayerNode[], truncated: boolean) => void;
+  onVerdict?: (report: DesignVerifyReport) => void;
 
   private moveRaf = 0;
   private reflowRaf = 0;
@@ -121,6 +125,9 @@ export class HeadlessDesignMode {
   private moveDrag: MoveDrag;
   private handles: ResizeHandles;
   readonly drafts: DraftStore;
+  /** Sent-ledger verification (suppress → measure → restore, live re-measure) — see
+   * verifySession.ts. Constructed in the constructor beside the DraftStore it reads. */
+  private readonly verify: VerifySession;
 
   /** One opaque token per engine instance — and the engine lives exactly as long as its
    * document (a real navigation wipes the guest's globals and boot re-injects; SPA route
@@ -135,6 +142,15 @@ export class HeadlessDesignMode {
   private readonly registry = new ElementIdRegistry();
   /** The layers subsystem (observer, debounce, cap, change gate) — see layersSession.ts. */
   private readonly layers = new LayersSession(this.registry);
+
+  /** The sent ledger — the Forge's own single owner of sent-state (seeds, persistence
+   * projection, placeholder healing), dormant in this fork until verification needed it.
+   * Kept latest-only: a re-Send from the same engine is built from the same live draft set
+   * and always supersedes, so register() is preceded by clear(). */
+  private readonly lifecycle = new LifecycleSession();
+  /** The viewport the latest send was drafted at (ChangeRequest.viewport), for the
+   * verifier's same-conditions rule. Persisted as sentMeta. */
+  private sentViewport: { width: number; height: number } | null = null;
 
   /** Emit-on-change guard for the drafts count — drafts.onChange fires per scrub tick, and
    * each console.log line crosses the webview boundary; the count itself changes rarely. */
@@ -230,6 +246,13 @@ export class HeadlessDesignMode {
       this.draftSyncTimer = setTimeout(() => this.flushDraftSync(), RIPPLE_DEBOUNCE_MS);
     };
     this.layers.onLayers = (roots, truncated) => this.onLayers?.(roots, truncated);
+    this.verify = new VerifySession({
+      drafts: this.drafts,
+      lifecycle: this.lifecycle,
+      sentViewport: () => this.sentViewport,
+      ignores: (target) => this.overlay.containsDeep(target),
+      onVerdict: (report) => this.onVerdict?.(report),
+    });
   }
 
   private emitDraftsCount(): void {
@@ -374,11 +397,34 @@ export class HeadlessDesignMode {
   }
 
   /** The one discard-everything verb. Re-emits the selection afterwards: computed values
-   * changed under the panel, and a fresh snapshot is how it finds out. */
+   * changed under the panel, and a fresh snapshot is how it finds out. Discarding answers
+   * the sent question too — the previews the ledger described are gone. */
   discardAll(): void {
     this.drafts.discardAll();
+    this.lifecycle.clear();
+    this.sentViewport = null;
+    this.verify.disarm();
     this.remeasure();
     this.emitSelection();
+  }
+
+  /** Arms verification of the sent ledger (host calls this once the turn that carried the
+   * send has settled). See VerifySession — measures now, re-measures per page settle. */
+  verifySent(): void {
+    if (this.lifecycle.records().length === 0) return;
+    this.verify.arm();
+  }
+
+  /** Commits the checks the current measurement verifies as applied; the ledger and
+   * sessionStorage follow. Resolves to the committed property count for the host toast. */
+  commitVerified(): number {
+    const committed = this.verify.commitVerified();
+    if (committed > 0) {
+      if (this.lifecycle.records().length === 0) this.sentViewport = null;
+      this.flushDraftSync();
+      this.emitSelection();
+    }
+    return committed;
   }
 
   compareAll(on: boolean): void {
@@ -400,8 +446,30 @@ export class HeadlessDesignMode {
       [...sourceContextTargets(this.drafts.draftedElements())],
       SEND_SOURCE_WAIT_MS,
     );
-    const { request } = buildChangeRequestWithElements(this.drafts);
+    const { request, elements: builtElements } = buildChangeRequestWithElements(this.drafts);
     if (request.elements.length === 0) return null;
+    // Record what was sent, at the granularity verification needs: the DraftStore's own
+    // keys (targeted commit's language) beside the request's rendered changes. Latest-only
+    // — this send was built from the whole live draft set, so it supersedes outright — and
+    // any verification of the previous send is over by definition.
+    const seeds: SentSeed[] = [...builtElements.entries()].map(([el, change]) => {
+      const dcSource = el.dataset?.dcSource ?? null;
+      return {
+        el,
+        dcSource,
+        index: dcSource ? sourceIndex(el, dcSource) : 0,
+        draftProps: [...(this.drafts.entries().get(el)?.keys() ?? [])],
+        change,
+      };
+    });
+    this.verify.disarm();
+    this.lifecycle.clear();
+    this.lifecycle.register(
+      `send-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`,
+      seeds,
+    );
+    this.sentViewport = { ...request.viewport };
+    this.persist();
     const opLabels: Record<string, string> = {
       delete: "Delete element",
       text: "Edit text",
@@ -475,6 +543,8 @@ export class HeadlessDesignMode {
       this.moveDrag.stop();
       this.handles.stop();
       this.layers.stop();
+      // The ledger itself survives (it is persisted state); only the live measuring stops.
+      this.verify.disarm();
       this.clearNoDrop();
       if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
       if (this.reflowRaf) cancelAnimationFrame(this.reflowRaf);
@@ -509,6 +579,11 @@ export class HeadlessDesignMode {
   restoreLifecycle(saved: PersistedLifecycle): void {
     if (!saved.designModeOn) return;
     this.setActive(true);
+    // The sent ledger restores alongside the drafts it describes. Elements the framework
+    // has not mounted yet get detached placeholders; verification's own healPlaceholders
+    // pass re-finds them at measure time (the same self-heal the drafts drain runs).
+    this.lifecycle.restoreSent(saved.sent, (dcSource, index) => locateBySource(dcSource, index));
+    this.sentViewport = saved.sentMeta?.viewport ?? null;
     this.pendingRestore = { drafts: saved.drafts, selection: saved.selection };
     const { done } = this.drainPendingRestore();
     if (!done) this.scheduleRestoreRetry();
@@ -662,7 +737,8 @@ export class HeadlessDesignMode {
       designModeOn: this.active,
       selection,
       drafts,
-      sent: [],
+      sent: this.lifecycle.toPersistedSent(),
+      ...(this.sentViewport ? { sentMeta: { viewport: this.sentViewport } } : {}),
     });
   }
 

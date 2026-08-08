@@ -186,7 +186,9 @@ export const MOVE_PREVIEW_DISCLAIMER =
  * fell off the project's token scale. */
 const OFF_SCALE_NOTE = 'off the token scale — arbitrary value; double-check intent'
 
-const COLLAPSE: Array<{ into: string; parts: string[] }> = [
+/* t3-fork: exported — verifySession.ts expands a report's collapsed property names back to
+ * DraftStore keys through this same table, so the two directions cannot drift. */
+export const COLLAPSE: Array<{ into: string; parts: string[] }> = [
   {
     into: 'border-radius',
     parts: ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'],

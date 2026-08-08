@@ -28,6 +28,7 @@ const AFTER_SEND = "2026-08-08T12:00:30.000Z";
 const record = (overrides: Partial<SentPreviewRecord> = {}): SentPreviewRecord => ({
   threadKey: THREAD,
   sentAt: SENT_AT,
+  report: null,
   ...overrides,
 });
 
@@ -68,6 +69,7 @@ describe("designSentPreviews store", () => {
     expect(useDesignSentPreviews.getState().byTabId[TAB]).toEqual({
       threadKey: THREAD,
       sentAt: SENT_AT,
+      report: null,
     });
   });
 
@@ -78,6 +80,7 @@ describe("designSentPreviews store", () => {
     expect(useDesignSentPreviews.getState().byTabId[TAB]).toEqual({
       threadKey: THREAD,
       sentAt: AFTER_SEND,
+      report: null,
     });
   });
 

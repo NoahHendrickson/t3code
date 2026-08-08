@@ -344,11 +344,11 @@ describe("fork guard: design mode", () => {
     expect(chatView).not.toContain("pendingIds");
   });
 
-  it("offers to resolve previews that were sent, without claiming they landed", () => {
+  it("offers to resolve previews that were sent, claiming only what was measured", () => {
     // Sent drafts stay painted over whatever the agent then changed, and inline styles win —
-    // so the page stops being evidence until they come off. The panel says so once the turn
-    // ends. What it must NOT do is assert the edit was applied: the Forge's verifier is not
-    // vendored here (engine/vendor/README.md), so nothing in this fork can check.
+    // so the page stops being evidence until they come off. Once the turn ends the panel
+    // arms the guest verifier and renders MEASUREMENTS: any success wording must come from
+    // a verdict the page produced, never from the agent's account or from optimism.
     //
     // The turn-over invariant itself ("never offer while the turn is open") is NOT pinned
     // here as an implementation string — it lives in shouldOfferPreviewResolution, a pure
@@ -358,8 +358,18 @@ describe("fork guard: design mode", () => {
     const panel = read("src/custom/designMode/panel/ForkDesignPanel.tsx");
     expect(panel).toContain("shouldOfferPreviewResolution(");
     expect(panel).toContain("data-fork-design-resolve-previews");
-    for (const claim of ["applied", "verified", "landed successfully"]) {
-      expect(panel.slice(panel.indexOf("data-fork-design-resolve-previews"))).not.toContain(claim);
+    // Verdict wording has ONE home — the shared label map — and the panel renders labels
+    // through it rather than hand-writing claims beside the data attribute.
+    expect(panel).toContain("VERIFY_VERDICT_LABELS[check.verdict]");
+    const labels = read("src/custom/designMode/designSentPreviews.ts");
+    // 'unverifiable' must never borrow the success words — "can't be checked" rendered as
+    // anything stronger is exactly the invented claim this feature exists to avoid. And
+    // even the success label stays at measurement strength: the page renders the value
+    // ("landed"), which is not "the agent's edit was correct" ("applied"/"verified").
+    expect(labels).toContain('applied: "landed"');
+    expect(labels).toContain('unverifiable: "can\'t be checked"');
+    for (const claim of ["applied", "verified"]) {
+      expect(labels.slice(labels.indexOf("VERIFY_VERDICT_LABELS = {"))).not.toContain(`"${claim}"`);
     }
 
     // The record is minted by the send path, from the entries it is about to clear.
@@ -381,7 +391,11 @@ describe("fork guard: design mode", () => {
     expect(timeline).toContain(
       "const forkDesignChanges = extractTrailingDesignChanges(row.message.text)",
     );
-    expect(timeline).toContain("<ForkTranscriptDesignChanges blocks={forkDesignChanges.blocks} />");
+    expect(timeline).toContain("<ForkTranscriptDesignChanges");
+    expect(timeline).toContain("blocks={forkDesignChanges.blocks}");
+    // The verdict line's correlation key: the message's own client-minted createdAt is the
+    // timestamp markSent recorded, so the chip can find the record whose send it measures.
+    expect(timeline).toContain("messageCreatedAt={row.message.createdAt}");
     // Extraction round-trip: blocks are the outermost trailing run and strip cleanly,
     // restoring the position the upstream element/terminal extractors rely on.
     const markdown = "# Design change request\n\n## 1. <button> — src/App.tsx:5:3\n- x";

@@ -183,6 +183,25 @@ export const designModeBridge = {
     if (result == null) return null;
     return parseDesignChangeRequestPayload(result) ?? "stale-engine";
   },
+  /** Arms sent-ledger verification (measure now, re-measure per page settle); the results
+   * arrive as `verdict` console messages, never as a return value. A pre-v6 engine has no
+   * such member — the optional-chained call throws into fire's catch and the panel simply
+   * keeps its unverified copy until the next injection rebuilds the engine. */
+  verifySent(runtimeTabId: string): void {
+    fire(runtimeTabId, "verifySent", []);
+  },
+  /** Commits every check the guest's fresh measurement verifies as applied. Resolves to
+   * the committed property count; null when the webview/engine is unreachable or answers
+   * with something that is not a count (a pre-v6 engine). */
+  async commitVerified(runtimeTabId: string): Promise<number | null> {
+    flushPending();
+    const webview = findPreviewWebview(runtimeTabId);
+    if (!webview) return null;
+    const result = await webview
+      .executeJavaScript(handleCall("commitVerified", []), false)
+      .catch(() => null);
+    return typeof result === "number" && Number.isInteger(result) && result >= 0 ? result : null;
+  },
   /** Whether a live guest engine speaking THIS host's protocol version is installed on the
    * page — the remount reconcile's probe (ForkPreviewDesignMode). Cheap enough to ask on
    * every attach: one property read across the boundary, no bundle transfer. Null covers both

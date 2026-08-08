@@ -943,7 +943,10 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
           />
         ))}
         {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
-        <ForkTranscriptDesignChanges blocks={forkDesignChanges.blocks} />
+        <ForkTranscriptDesignChanges
+          blocks={forkDesignChanges.blocks}
+          messageCreatedAt={row.message.createdAt}
+        />
         {/* fork:end fork-design-mode */}
         {elementContexts.length > 0 ? (
           <div className="mb-2 flex flex-wrap gap-1.5">

@@ -10,6 +10,7 @@ import { parseDesignModeConsoleMessage } from "./protocol";
 import { designModeBridge, findPreviewWebview } from "./designModeBridge";
 import { designUndoHistory } from "./designUndoHistory";
 import { selectDesignModeTab, useDesignModeStore } from "./designModeStore";
+import { useDesignSentPreviews } from "./designSentPreviews";
 
 interface Props {
   runtimeTabId: string | null;
@@ -119,6 +120,11 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
           return;
         case "canvas":
           store.setCanvas(runtimeTabId, { on: message.on, scalePercent: message.scalePercent });
+          return;
+        case "verdict":
+          // Rides to the sent-preview store, not the tab store: a verdict is evidence
+          // about a SEND, and it only means anything while that send's record exists.
+          useDesignSentPreviews.getState().setReport(runtimeTabId, message.report);
           return;
         default: {
           // Exhaustiveness: a new DesignModeEngineMessage variant must fail to compile

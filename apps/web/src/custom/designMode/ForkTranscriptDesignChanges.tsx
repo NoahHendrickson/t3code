@@ -8,6 +8,8 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import { summarizeDesignChangeBlock } from "./designChangeTranscript";
+import { useDesignSentPreviews, verifySummaryLine } from "./designSentPreviews";
+import { summarizeVerifyReport } from "./protocol";
 
 /**
  * Sent-message chips for `<design_change_request>` blocks — the transcript twin of the
@@ -15,7 +17,33 @@ import { summarizeDesignChangeBlock } from "./designChangeTranscript";
  * consumed it); the transcript shows a compact chip with the full request on hover.
  * Fenced into MessagesTimeline's UserTimelineRow.
  */
-export function ForkTranscriptDesignChanges({ blocks }: { blocks: readonly string[] }) {
+export function ForkTranscriptDesignChanges({
+  blocks,
+  messageCreatedAt,
+}: {
+  blocks: readonly string[];
+  /** The message's client-minted createdAt — the same timestamp markSent recorded, which
+   * is what ties a live verification record back to the message whose send it measures. */
+  messageCreatedAt?: string;
+}) {
+  // Measured verdicts for THIS message's send, when its record is still live: after a
+  // send, nobody is looking at the design panel — they are watching the agent work here.
+  // The line carries counts and verdicts only, beside (never paraphrasing) the agent's own
+  // reply: measurement answers "did it work", the reply answers "why not". Null once the
+  // record is resolved or was never this message's — the chip quietly shows no verdict.
+  const verdictLine = useDesignSentPreviews((state) => {
+    if (!messageCreatedAt) return null;
+    for (const record of Object.values(state.byTabId)) {
+      if (
+        record.sentAt === messageCreatedAt &&
+        record.report &&
+        record.report.elements.length > 0
+      ) {
+        return verifySummaryLine(summarizeVerifyReport(record.report));
+      }
+    }
+    return null;
+  });
   if (blocks.length === 0) return null;
   // Content-derived keys (occurrence-counted for identical blocks) — the list is static
   // per message, so content is the stable identity.
@@ -53,6 +81,14 @@ export function ForkTranscriptDesignChanges({ blocks }: { blocks: readonly strin
           </Tooltip>
         );
       })}
+      {verdictLine ? (
+        <span
+          className="select-none self-center text-[10px] text-muted-foreground"
+          data-fork-design-verdict-line
+        >
+          {verdictLine}
+        </span>
+      ) : null}
     </div>
   );
 }

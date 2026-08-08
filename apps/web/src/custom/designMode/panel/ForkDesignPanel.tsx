@@ -13,14 +13,17 @@ import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
 import {
+  VERIFY_VERDICT_LABELS,
   selectSentPreview,
   shouldOfferPreviewResolution,
   useDesignSentPreviews,
+  verifySummaryLine,
 } from "../designSentPreviews";
 import { applyDesignUndoEntry } from "../designUndoApply";
 import { designUndoHistory } from "../designUndoHistory";
 import {
   countUnresolvedDesignElements,
+  summarizeVerifyReport,
   type DesignModeAlignAxis,
   type DesignModeAlignValue,
   type DesignModeSizeMode,
@@ -452,8 +455,11 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
 //
 // A sent request leaves its drafts painted over whatever the agent then changed, and the
 // inline styles win — so the page stops being evidence of anything until they come off.
-// The footer asks once the turn is over. It does NOT claim the edit landed: this fork does
-// not vendor the Forge's verifier, so nothing here can check (engine/vendor/README.md).
+// Once the turn is over, the footer arms the guest's verifier (designVerify): the page is
+// measured with the previews suppressed and every sent property gets a verdict — landed,
+// didn't land, changed differently, can't be checked — re-measured per page settle so a
+// late reload corrects a wrong verdict. The copy renders MEASUREMENTS, never the agent's
+// account: an engine that cannot verify (pre-v6) keeps the unmeasured copy below.
 //
 // A child component rather than panel state on purpose: its subscriptions — the thread's
 // session and projected latest turn — churn hardest exactly while a turn runs, and here
@@ -475,30 +481,127 @@ function SentPreviewResolution({
   const latestTurn = useAtomValue(environmentThreadDetails.latestTurnAtom(threadRef));
   const threadKey = scopedThreadKey(threadRef);
 
+  const offer = shouldOfferPreviewResolution({
+    record,
+    threadKey,
+    latestTurn,
+    session,
+    draftCount,
+  });
+
+  // The turn is over — start measuring. Idempotent while armed, so the effect only needs
+  // the flip; a re-send mints a new record and the next settle re-arms through here again.
+  useEffect(() => {
+    if (offer) designModeBridge.verifySent(runtimeTabId);
+  }, [offer, runtimeTabId]);
+
+  // An empty report means the guest's sent ledger is gone — every check committed, or the
+  // drafts discarded guest-side. That is an answer (unlike a draft count touching zero,
+  // which is a peek), so the record goes with it.
+  const ledgerEmpty = record?.report != null && record.report.elements.length === 0;
+  useEffect(() => {
+    if (ledgerEmpty) useDesignSentPreviews.getState().forget(runtimeTabId);
+  }, [ledgerEmpty, runtimeTabId]);
+
   const onKeep = useCallback(() => {
     useDesignSentPreviews.getState().forget(runtimeTabId);
   }, [runtimeTabId]);
 
-  if (!shouldOfferPreviewResolution({ record, threadKey, latestTurn, session, draftCount })) {
-    return null;
-  }
+  const onDropVerified = useCallback(() => {
+    // Commit is a mutation the undo history cannot reverse — same clear-first rule as
+    // every other unrecorded verb (designUndoHistory's own contract).
+    designUndoHistory.clear(runtimeTabId);
+    void designModeBridge.commitVerified(runtimeTabId);
+  }, [runtimeTabId]);
+
+  if (!offer) return null;
+
+  const report = record?.report ?? null;
+  const summary = report && !ledgerEmpty ? summarizeVerifyReport(report) : null;
+
   return (
     <div
       className="space-y-1.5 rounded-md bg-[var(--fork-design-field)] px-2.5 py-2"
       data-fork-design-resolve-previews
     >
-      {/* Says what is true and nothing more — and the RECORD is what is true, not the live
-          draft count: edits made after the send are never claimed as sent, and the discard
-          states its full blast radius because the guest has no way to drop only the sent
-          subset (a hot reload re-renders the page and re-mints every element id, so sent
-          identity recorded at send time is stale exactly when this prompt appears). */}
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Edits from a sent request are still previewed on top of the page, hiding whatever the agent
-        changed underneath. Discarding clears every edit on this tab — including any made after the
-        send.
-      </p>
+      {summary ? (
+        <>
+          {/* Counts and verdicts only — measurements of the page, never a paraphrase of
+              the agent's reply (the two must read as separate kinds of evidence). */}
+          <p className="text-[11px] leading-relaxed text-foreground">
+            {verifySummaryLine(summary)}
+            {report?.viewportChanged
+              ? " — the viewport changed since the send, so nothing can be checked"
+              : ""}
+          </p>
+          <details className="text-[11px] text-muted-foreground">
+            <summary className="cursor-pointer select-none">Each change</summary>
+            <ul className="mt-1 space-y-0.5">
+              {/* Content-derived keys, occurrence-counted for identical rows — the list is
+                  static per report, so content is the stable identity (the chip's idiom). */}
+              {(() => {
+                const seen = new Map<string, number>();
+                return report?.elements.map((element) => {
+                  const base = `${element.tag}|${element.sourceLabel ?? ""}`;
+                  const occurrence = (seen.get(base) ?? 0) + 1;
+                  seen.set(base, occurrence);
+                  return { element, key: `${base}#${occurrence}` };
+                });
+              })()?.map(({ element, key }) => (
+                <li key={key}>
+                  <span className="font-mono">
+                    {element.tag}
+                    {element.sourceLabel ? ` · ${element.sourceLabel}` : ""}
+                  </span>
+                  {element.missing ? (
+                    <span> — gone from the page</span>
+                  ) : (
+                    <ul className="ml-3">
+                      {element.checks.map((check) => (
+                        <li key={check.property}>
+                          {check.property}: {VERIFY_VERDICT_LABELS[check.verdict]}
+                          {check.verdict === "diverged" && check.actual !== null
+                            ? ` (asked ${check.expected}, page shows ${check.actual})`
+                            : ""}
+                        </li>
+                      ))}
+                      {element.structuralOps > 0 ? (
+                        <li>
+                          {element.structuralOps === 1
+                            ? "1 structural change"
+                            : `${element.structuralOps} structural changes`}
+                          : {VERIFY_VERDICT_LABELS.unverifiable}
+                        </li>
+                      ) : null}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </>
+      ) : (
+        /* No measurement yet (or an engine too old to measure): say only what is true —
+           the previews are still on top — and state the discard's full blast radius. */
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Edits from a sent request are still previewed on top of the page, hiding whatever the
+          agent changed underneath. Discarding clears every edit on this tab — including any made
+          after the send.
+        </p>
+      )}
       <div className="flex items-center gap-1">
-        <Button variant="secondary" size="xs" onClick={onDiscard} type="button">
+        {summary && summary.applied > 0 ? (
+          <Button variant="secondary" size="xs" onClick={onDropVerified} type="button">
+            Drop{" "}
+            {summary.applied === 1 ? "the landed preview" : `${summary.applied} landed previews`}
+          </Button>
+        ) : null}
+        <Button
+          variant={summary && summary.applied > 0 ? "ghost" : "secondary"}
+          size="xs"
+          onClick={onDiscard}
+          type="button"
+        >
           Discard all edits
         </Button>
         <Button variant="ghost" size="xs" onClick={onKeep} type="button">

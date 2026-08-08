@@ -32,7 +32,7 @@ export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
  * contract had grown) were rejected wholesale by the stricter parser, so selection simply
  * stopped updating with nothing in the UI to say why (PR #57 review).
  */
-export const DESIGN_MODE_PROTOCOL_VERSION = 5;
+export const DESIGN_MODE_PROTOCOL_VERSION = 6;
 
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
@@ -265,7 +265,10 @@ export type DesignModeEngineMessage =
       readonly type: "layers";
       readonly roots: readonly DesignModeLayerNode[];
       readonly truncated: boolean;
-    };
+    }
+  /** A verification pass over the sent ledger finished (armed by the `verifySent` verb;
+   * re-emitted change-gated after every page settle while armed). */
+  | { readonly type: "verdict"; readonly report: DesignVerifyReport };
 
 /** One element's worth of a built change request, compact enough for the composer's
  * attachment pill: "div · App.tsx:15" plus per-change deltas like
@@ -320,6 +323,105 @@ export interface DesignChangeRequestPayload {
   readonly pageUrl: string;
 }
 
+// ── Sent-change verification ─────────────────────────────────────────────────────────────
+//
+// After a change request's turn ends, the page is showing the agent's real edit with the
+// previews still painted on top. Verification measures the page with the previews
+// suppressed and compares against what was sent — outcome, not craft: it can say the page
+// renders the asked-for value, never that the agent's edit was good.
+
+export type DesignVerifyVerdict = "applied" | "unchanged" | "diverged" | "unverifiable";
+
+export interface DesignVerifyCheck {
+  /** The sent property name (collapsed form, as the request rendered it). */
+  readonly property: string;
+  /** The value the request asked for (the send-time measured after). */
+  readonly expected: string;
+  readonly verdict: DesignVerifyVerdict;
+  /** What the page renders now with previews suppressed; null when nothing was measured
+   * (an unverifiable check pre-empts measurement). */
+  readonly actual: string | null;
+  /** Why 'unverifiable': 'intent' — the ask was intent-shaped (a layout keyword or an
+   * instruction), so exact-match comparison would judge the wrong thing; 'viewport' — the
+   * request was drafted at a different viewport, so a differing value proves nothing. */
+  readonly reason?: "intent" | "viewport";
+}
+
+export interface DesignVerifyElementReport {
+  readonly tag: string;
+  readonly sourceLabel: string | null;
+  /** The element resolved at send time and no longer does — nothing was measured. */
+  readonly missing: boolean;
+  readonly checks: readonly DesignVerifyCheck[];
+  /** Structural ops (delete/text/move/absolute) that rode this element's send. Phase 1
+   * does not measure them; each counts as unverifiable in the summary. */
+  readonly structuralOps: number;
+}
+
+export interface DesignVerifyReport {
+  readonly requestId: string;
+  /** Every measured comparison was skipped because the preview viewport is not the one
+   * the request was drafted at (its per-check reason is 'viewport'). */
+  readonly viewportChanged: boolean;
+  /** Empty when there is no sent ledger left to verify — the host reads that as "nothing
+   * to resolve" (everything committed or discarded). */
+  readonly elements: readonly DesignVerifyElementReport[];
+}
+
+/**
+ * The verdict for one sent property — pure and DOM-free, so the precedence rules are one
+ * testable expression. Order matters and is the contract:
+ *
+ * 1. viewport changed → unverifiable. A measurement under different conditions is not
+ *    evidence for or against anything.
+ * 2. intent-shaped ask → unverifiable. The caller decides what counts (KEYWORD_PASSTHROUGH
+ *    values, ChangeItem.intent); this function only owes the precedence.
+ * 3. measured == expected → applied. Checked before 'unchanged' so the degenerate
+ *    before == after case (which the builder filters, but storage could resurrect) reads
+ *    as the harmless verdict rather than the alarming one.
+ * 4. measured == the send-time before → unchanged. The ask did not land; the preview is
+ *    the only thing showing it.
+ * 5. anything else → diverged. Changed, but not to what was asked — the verdict a user
+ *    essentially never catches by eye.
+ */
+export function verdictFor(input: {
+  readonly beforeCss: string;
+  readonly afterCss: string;
+  readonly intentShaped: boolean;
+  readonly viewportChanged: boolean;
+  readonly measured: string;
+}): Pick<DesignVerifyCheck, "verdict" | "actual" | "reason"> {
+  if (input.viewportChanged) return { verdict: "unverifiable", actual: null, reason: "viewport" };
+  if (input.intentShaped) return { verdict: "unverifiable", actual: null, reason: "intent" };
+  if (input.measured === input.afterCss) return { verdict: "applied", actual: input.measured };
+  if (input.measured === input.beforeCss) return { verdict: "unchanged", actual: input.measured };
+  return { verdict: "diverged", actual: input.measured };
+}
+
+export interface DesignVerifySummary {
+  readonly applied: number;
+  readonly unchanged: number;
+  readonly diverged: number;
+  readonly unverifiable: number;
+  readonly missing: number;
+}
+
+/** Counts for the panel line and the transcript chip. A missing element counts once under
+ * `missing` (its unmeasured checks are not double-reported), and each structural op counts
+ * as unverifiable — phase 1 has no oracle for them and must not pretend otherwise. */
+export function summarizeVerifyReport(report: DesignVerifyReport): DesignVerifySummary {
+  const summary = { applied: 0, unchanged: 0, diverged: 0, unverifiable: 0, missing: 0 };
+  for (const element of report.elements) {
+    if (element.missing) {
+      summary.missing += 1;
+      continue;
+    }
+    for (const check of element.checks) summary[check.verdict] += 1;
+    summary.unverifiable += element.structuralOps;
+  }
+  return summary;
+}
+
 /** The command surface `boot.ts` installs at `window.__T3_DESIGN_MODE__`. The host calls
  * these through `webview.executeJavaScript` (designModeBridge.ts) — every argument and
  * return value must stay JSON-serializable. */
@@ -371,6 +473,17 @@ export interface DesignModeGuestHandle {
   setCanvas(on: boolean): void;
   /** Discrete canvas zoom verbs; no-ops while canvas is off. */
   canvasCommand(action: DesignModeCanvasCommand): void;
+  /** Arms verification of the sent ledger: measures now (previews suppressed, one pass),
+   * emits a `verdict` message, then re-measures after every quiet window while the page
+   * keeps mutating — a late HMR/reload corrects a wrong verdict rather than freezing it.
+   * Disarmed by a new buildSend, commitVerified clearing the ledger, discardAll, and
+   * deactivation. Idempotent while armed. */
+  verifySent(): void;
+  /** Commits every check the CURRENT measurement verifies as applied — the draft comes
+   * off WITHOUT restoring the original ("the code owns this now"), pruned from the sent
+   * ledger, and a fresh `verdict` message follows. Re-measures at call time rather than
+   * trusting the last emitted report. Resolves to the number of committed properties. */
+  commitVerified(): Promise<number>;
   destroy(): void;
 }
 
@@ -385,6 +498,86 @@ const isStyleMap = (value: unknown): value is Readonly<Record<DesignModeStyleKey
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
+
+const VERIFY_VERDICTS: readonly DesignVerifyVerdict[] = [
+  "applied",
+  "unchanged",
+  "diverged",
+  "unverifiable",
+];
+
+/** Console lines are page-observable and page-forgeable, so a verdict report is validated
+ * as untrusted input like every other engine message: every field type-checked, fresh
+ * literals constructed, and sizes bounded (a forged line must not smuggle a multi-MB
+ * report into host state). Caps are generous versus real sends — a request that large
+ * would have failed at the composer long before verification. */
+const VERIFY_REPORT_MAX_ELEMENTS = 100;
+const VERIFY_REPORT_MAX_CHECKS = 100;
+const VERIFY_REPORT_MAX_VALUE_LENGTH = 512;
+
+function parseVerifyCheck(value: unknown): DesignVerifyCheck | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.property !== "string" || value.property.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+    return null;
+  if (typeof value.expected !== "string" || value.expected.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+    return null;
+  const verdict = VERIFY_VERDICTS.find((candidate) => candidate === value.verdict);
+  if (!verdict) return null;
+  if (
+    value.actual !== null &&
+    (typeof value.actual !== "string" || value.actual.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+  )
+    return null;
+  if (value.reason !== undefined && value.reason !== "intent" && value.reason !== "viewport")
+    return null;
+  return {
+    property: value.property,
+    expected: value.expected,
+    verdict,
+    actual: value.actual,
+    ...(value.reason !== undefined ? { reason: value.reason } : {}),
+  };
+}
+
+function parseVerifyElementReport(value: unknown): DesignVerifyElementReport | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.tag !== "string" || value.tag.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+    return null;
+  if (
+    value.sourceLabel !== null &&
+    (typeof value.sourceLabel !== "string" ||
+      value.sourceLabel.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+  )
+    return null;
+  if (typeof value.missing !== "boolean") return null;
+  if (!Array.isArray(value.checks) || value.checks.length > VERIFY_REPORT_MAX_CHECKS) return null;
+  if (!isNonNegativeInteger(value.structuralOps) || value.structuralOps > VERIFY_REPORT_MAX_CHECKS)
+    return null;
+  const checks = value.checks.map(parseVerifyCheck);
+  if (checks.some((check) => check === null)) return null;
+  return {
+    tag: value.tag,
+    sourceLabel: value.sourceLabel,
+    missing: value.missing,
+    checks: checks.filter((check): check is DesignVerifyCheck => check !== null),
+    structuralOps: value.structuralOps,
+  };
+}
+
+export function parseVerifyReport(value: unknown): DesignVerifyReport | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.requestId !== "string" || value.requestId.length > 64) return null;
+  if (typeof value.viewportChanged !== "boolean") return null;
+  if (!Array.isArray(value.elements) || value.elements.length > VERIFY_REPORT_MAX_ELEMENTS)
+    return null;
+  const elements = value.elements.map(parseVerifyElementReport);
+  if (elements.some((element) => element === null)) return null;
+  return {
+    requestId: value.requestId,
+    viewportChanged: value.viewportChanged,
+    elements: elements.filter((element): element is DesignVerifyElementReport => element !== null),
+  };
+}
 
 function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null {
   if (
@@ -558,6 +751,10 @@ export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMes
               roots: roots.filter((root): root is DesignModeLayerNode => root !== null),
               truncated: value.truncated,
             };
+      }
+      case "verdict": {
+        const report = parseVerifyReport(value.report);
+        return report ? { type: "verdict", report } : null;
       }
       default:
         return null;

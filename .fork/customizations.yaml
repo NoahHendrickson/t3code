@@ -1851,15 +1851,35 @@
     intact drafts. A sent request leaves its drafts painted over whatever
     the agent then changed — inline styles win, so the page stops being
     evidence of anything until they come off — and the panel says so: once
-    the turn that carried them ends, the footer offers Discard all edits or
-    Keep previews. It states only what is true; it must NEVER claim the
-    edit was applied or verified, because the Forge's verifier is not
-    vendored here and nothing in this fork can check — and the discard
-    names its full blast radius (every edit on the tab, including ones made
-    after the send), because the guest cannot drop only the sent subset: a
-    hot reload re-renders the page and re-mints every element id, so sent
-    identity recorded at send time is stale exactly when the prompt
-    appears. The offer is gated on the thread's own projected turn, never
+    the turn that carried them ends, the footer measures instead of
+    guessing: the guest's verifier (engine/verifySession.ts) suppresses
+    every draft's inline declaration, reads what the current cascade
+    produces, restores the exact painted values, and compares against the
+    sent ledger — per property: landed / didn't land / changed differently
+    / can't be checked, with missing elements and structural ops reported
+    honestly as unmeasurable. Suppression is NOT the compare toggle
+    (compare writes the recorded original back, which lies whenever the
+    page authored its own inline style); the ledger is the Forge's own
+    LifecycleSession + lifecycle-store sent slot, dormant here until this
+    feature, registered at buildSend with the DraftStore's real keys and
+    persisted so it survives the reload it exists to be checked after. The
+    verdict re-measures after every mutation quiet-window while armed, so
+    a late HMR corrects a wrong verdict rather than freezing it, and
+    verification is gated on the same conditions rule the request records
+    (a send drafted at another viewport reports can't-be-checked, never a
+    false difference). Verdict wording has one home
+    (VERIFY_VERDICT_LABELS) and stays at measurement strength: "landed"
+    means the page renders the value — never that the agent's edit was
+    good, which is the turn diff's question — and the same counts ride the
+    transcript chip beside the agent's own reply (measurement answers "did
+    it work", the reply answers "why not"; the chip never paraphrases it).
+    Drop-landed commits via the DraftStore's targeted commit (the draft
+    comes off without restoring the original — the code owns the value
+    now), scoped to exactly the verified properties; Discard-all still
+    names its full blast radius (every edit on the tab, including ones
+    made after the send), because an unverified drop has no smaller honest
+    unit: a hot reload re-mints element ids, so host-side sent identity
+    alone is stale exactly when the prompt appears. The offer is gated on the thread's own projected turn, never
     on wall clock or observed status flips: the record carries the sent
     message's client-minted createdAt, adoption stamps the turn's
     requestedAt from that same time, and the prompt waits for a projected
@@ -2057,6 +2077,7 @@
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/designSentPreviews.ts
     - apps/web/src/custom/designMode/designSentPreviews.test.ts
+    - apps/web/src/custom/designMode/designVerify.test.ts
     - apps/web/src/custom/designMode/layersDrag.ts
     - apps/web/src/custom/designMode/layersDrag.test.ts
     - apps/web/src/custom/designMode/designModeTabLifetime.ts
@@ -2086,6 +2107,7 @@
     - apps/web/src/custom/designMode/engine/headlessMode.ts
     - apps/web/src/custom/designMode/engine/idRegistry.ts
     - apps/web/src/custom/designMode/engine/layersSession.ts
+    - apps/web/src/custom/designMode/engine/verifySession.ts
     - apps/web/src/custom/designMode/engine/nativeSource.ts
     - apps/web/src/custom/designMode/engine/sizeMode.ts
     - apps/web/src/custom/designMode/engine/snapshot.ts

@@ -51,6 +51,13 @@ export interface PersistedLifecycle {
     selector?: string
   }>
   sent: Array<{ id: string; elements: PersistedSentElement[] }>
+  /* t3-fork: conditions of the latest send, for the verifier's "same conditions, or say
+   * so" rule — a request drafted at one viewport must not be judged by measurements taken
+   * at another. Top-level rather than per entry because the fork keeps exactly one
+   * outstanding send (a re-Send supersedes). Optional so pre-existing v:1 snapshots load
+   * unchanged; absent reads as "unknown", which the verifier treats as unchanged
+   * conditions rather than dropping to unverifiable. */
+  sentMeta?: { viewport: { width: number; height: number } }
 }
 
 function matches(dcSource: string, doc: Document): TaggedElement[] {
@@ -315,5 +322,15 @@ export function loadLifecycle(storage: Storage = sessionStorage): PersistedLifec
     sent.push({ id: entry.id, elements })
   }
 
-  return { v: 1, designModeOn: s.designModeOn, selection, drafts, sent }
+  /* t3-fork: optional and dropped-not-failed when malformed — a corrupt viewport loses the
+   * verifier's conditions check, never the drafts. */
+  const sentMeta =
+    isRecord(s.sentMeta) &&
+    isRecord(s.sentMeta.viewport) &&
+    isFiniteNumber(s.sentMeta.viewport.width) &&
+    isFiniteNumber(s.sentMeta.viewport.height)
+      ? { viewport: { width: s.sentMeta.viewport.width, height: s.sentMeta.viewport.height } }
+      : undefined
+
+  return { v: 1, designModeOn: s.designModeOn, selection, drafts, sent, ...(sentMeta ? { sentMeta } : {}) }
 }
