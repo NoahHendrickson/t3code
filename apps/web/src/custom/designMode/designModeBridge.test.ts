@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { designModeBridge } from "./designModeBridge";
-import type { DesignModeWritableKey } from "./protocol";
+import { DESIGN_MODE_PROTOCOL_VERSION, type DesignModeWritableKey } from "./protocol";
 
 /**
  * The bridge's scrub coalescing contract, which nothing else can hold: scrub-driven
@@ -17,13 +17,15 @@ const PADDING: DesignModeWritableKey = "padding-top" as DesignModeWritableKey;
 
 let calls: string[] = [];
 let frames: Array<() => void> = [];
+/** What the stub webview resolves executeJavaScript with — only the liveness probe reads it. */
+let evaluateResult: unknown = null;
 
 const webview = {
   isConnected: true,
   getAttribute: (name: string) => (name === "data-preview-tab" ? TAB : null),
   executeJavaScript: (code: string) => {
     calls.push(code);
-    return Promise.resolve(null);
+    return Promise.resolve(evaluateResult);
   },
 };
 
@@ -36,6 +38,7 @@ const runFrame = () => {
 
 beforeEach(() => {
   frames = [];
+  evaluateResult = null;
   (globalThis as { requestAnimationFrame?: unknown }).requestAnimationFrame = (
     callback: () => void,
   ) => {
@@ -48,8 +51,10 @@ beforeEach(() => {
   (globalThis as { document?: unknown }).document = {
     querySelectorAll: () => [webview],
   };
-  // Drain coalesced state a prior test may have left: discardAll flushes pending first.
+  // Drain coalesced state a prior test may have left: discardAll flushes pending first, and
+  // setActive drops the hover memo so a dedupe test never inherits a neighbour's last hover.
   designModeBridge.discardAll(TAB);
+  designModeBridge.setActive(TAB, true);
   calls = [];
 });
 
@@ -101,5 +106,59 @@ describe("designModeBridge scrub coalescing", () => {
     runFrame();
     expect(calls).toHaveLength(1);
     expect(calls[0]).toContain("[1,2]");
+  });
+});
+
+/**
+ * Hover is idempotent, and `mouseover` bubbles — the layers rail's delegated handler fires
+ * several times per row crossed (row, caret, glyph, label). Every repeat used to be its own
+ * executeJavaScript crossing plus a getBoundingClientRect in the guest.
+ */
+describe("designModeBridge hover deduping", () => {
+  it("sends one crossing per distinct hover target", () => {
+    designModeBridge.hoverElement(TAB, 4);
+    designModeBridge.hoverElement(TAB, 4);
+    designModeBridge.hoverElement(TAB, 4);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toContain("hoverElement");
+  });
+
+  it("still sends every change, including the clear on leaving the rail", () => {
+    designModeBridge.hoverElement(TAB, 4);
+    designModeBridge.hoverElement(TAB, 5);
+    designModeBridge.hoverElement(TAB, null);
+    designModeBridge.hoverElement(TAB, null);
+    expect(calls).toHaveLength(3);
+    expect(calls[2]).toContain("null");
+  });
+
+  it("re-sends the same target after re-entering the row", () => {
+    designModeBridge.hoverElement(TAB, 4);
+    designModeBridge.hoverElement(TAB, null);
+    designModeBridge.hoverElement(TAB, 4);
+    expect(calls).toHaveLength(3);
+  });
+
+  it("forgets the memo when the engine is rebuilt, which starts with no outline", () => {
+    designModeBridge.hoverElement(TAB, 4);
+    designModeBridge.destroy(TAB);
+    calls = [];
+    designModeBridge.hoverElement(TAB, 4);
+    expect(calls).toHaveLength(1);
+  });
+});
+
+/** The remount reconcile's probe — see ForkPreviewDesignMode's reconcileEngine. */
+describe("designModeBridge engine liveness", () => {
+  it("reports an engine speaking this host's protocol version as current", async () => {
+    evaluateResult = DESIGN_MODE_PROTOCOL_VERSION;
+    expect(await designModeBridge.engineIsCurrent(TAB)).toBe(true);
+  });
+
+  it("reports no engine, and a version-skewed one, as not current", async () => {
+    evaluateResult = null;
+    expect(await designModeBridge.engineIsCurrent(TAB)).toBe(false);
+    evaluateResult = DESIGN_MODE_PROTOCOL_VERSION - 1;
+    expect(await designModeBridge.engineIsCurrent(TAB)).toBe(false);
   });
 });

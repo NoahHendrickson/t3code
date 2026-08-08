@@ -48,7 +48,14 @@ export class DraftStore {
    * legitimately touch both halves. */
   private readonly structural = new StructuralDraftStore(this.host)
 
-  apply(el: TaggedElement, prop: string, value: string): void {
+  /* t3-fork: `knownOriginal` is the restore path's answer to "what did the page have here?".
+   * The default oracle (`pagePrior`) reads the element's live inline style for a css draft,
+   * which is the previous engine's own preview whenever this session is being rebuilt into the
+   * SAME document (the Design-mode off/on toggle destroys the engine but leaves the previews
+   * painted). A restore already knows the real original — it was persisted with the draft —
+   * so it passes it rather than letting the oracle re-derive a lie. See
+   * lifecycle-store.ts's PersistedLifecycle.drafts. */
+  apply(el: TaggedElement, prop: string, value: string, knownOriginal?: string): void {
     // Same tombstone guard as applyText: Compare un-hides a delete-drafted element
     // (writeAll 'original' restores its display), which makes it selectable and scrubbable
     // again — a css draft minted there would ride the same request as the delete, telling
@@ -74,7 +81,7 @@ export class DraftStore {
     // THIS node), and capturing that as "original" would make a discard un-restorable — same rule,
     // same oracle, as every structural capture (review findings 1-3).
     if (existing) existing.value = value
-    else props.set(prop, { original: this.structural.pagePrior(el, prop), value })
+    else props.set(prop, { original: knownOriginal ?? this.structural.pagePrior(el, prop), value })
 
     if (this.showingOriginal.has(el)) {
       // auto-exit compare so the user sees the edit they just made

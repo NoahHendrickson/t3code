@@ -25,16 +25,59 @@ interface Props {
  * `.fork/customizations.yaml#fork-design-mode`.
  */
 export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
-  const tabState = useDesignModeStore((state) => selectDesignModeTab(state.byTabId, runtimeTabId));
+  // Only `enabled` — this button re-rendered on every selection, layers and canvas message
+  // otherwise (up to ~4Hz while an agent edits the previewed page) to draw the same icon.
+  const enabled = useDesignModeStore(
+    (state) => selectDesignModeTab(state.byTabId, runtimeTabId).enabled,
+  );
   const enabledRef = useRef(false);
-  enabledRef.current = tabState.enabled;
+  enabledRef.current = enabled;
 
   const injectEngine = useCallback(async (tabId: string) => {
     const webview = findPreviewWebview(tabId);
     if (!webview) throw new Error("Preview webview not found");
+    // The incoming engine mints a fresh id registry (ids restart at 1) and paints no outline,
+    // so every host-side memo keyed on the old ids is about to name something else: the undo
+    // history's entries, and the bridge's last-hover dedupe — which would otherwise swallow the
+    // hover of whichever row draws the id it last sent (PR #74 review). Cleared here rather
+    // than at each call site so a future injection path cannot forget either.
+    designUndoHistory.clear(tabId);
+    designModeBridge.forgetHover(tabId);
     const { default: engineCode } = await import("virtual:fork-design-mode-engine");
     await webview.executeJavaScript(engineCode, false);
   }, []);
+
+  /**
+   * Brings the guest back in line with what this tab's store says.
+   *
+   * The bridge attaches on mount, but injection only ever happened on the toggle and on
+   * `dom-ready` — and this component unmounts whenever the right panel shows a terminal or a
+   * diff, or the user switches threads. A full page reload in that window (exactly what a
+   * non-HMR-able agent edit causes, i.e. the feature's own loop) wiped the guest's globals
+   * with nobody listening for `dom-ready`, and the panel came back reporting Design mode on
+   * over a page with no engine: commands vanished into `fire`'s catch and Send answered "no
+   * changes" while the drafts sat untouched in the guest's sessionStorage.
+   *
+   * A live same-version engine is left alone apart from `setActive(true)`, which is the
+   * engine's own re-emit path (headlessMode's idempotent re-activation clears the selection
+   * gate and pushes a fresh snapshot), so the panel re-syncs without transferring the bundle.
+   */
+  const reconcileEngine = useCallback(
+    async (tabId: string) => {
+      const current = await designModeBridge.engineIsCurrent(tabId);
+      // Re-checked after the probe's round trip: a toggle-off landing inside that window has
+      // already destroyed the engine and cleared the store, so reconciling on the stale answer
+      // would inject, boot would emit `state { active: true }`, and Design mode would turn
+      // itself back on under the user (PR #74 review).
+      if (!enabledRef.current) return;
+      if (current) {
+        designModeBridge.setActive(tabId, true);
+        return;
+      }
+      await injectEngine(tabId);
+    },
+    [injectEngine],
+  );
 
   // Bridge + re-injection listeners live on the webview element itself (it outlives this
   // component's mounts). Attached only while the chrome row is mounted for this tab.
@@ -87,8 +130,10 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
     };
 
     // A navigation (or dev-server full reload) wipes the guest's globals — put the engine
-    // back whenever design mode is meant to be on for this tab. The undo history dies
-    // with the old document: its entries name ids from the previous injection's registry.
+    // back whenever design mode is meant to be on for this tab. The undo history dies with
+    // the old document whether or not we re-inject (its entries name ids from the previous
+    // injection's registry), which is why the clear here is unconditional and not left to
+    // injectEngine's own.
     const onDomReady = () => {
       designUndoHistory.clear(runtimeTabId);
       if (!enabledRef.current) return;
@@ -114,6 +159,8 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
       }
       webview.addEventListener("console-message", onConsoleMessage);
       webview.addEventListener("dom-ready", onDomReady);
+      // The listeners alone do not make the guest agree with us — see reconcileEngine.
+      if (enabledRef.current) void reconcileEngine(runtimeTabId).catch(() => undefined);
     };
     attach();
     return () => {
@@ -123,14 +170,15 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
         webview.removeEventListener("dom-ready", onDomReady);
       }
     };
-  }, [injectEngine, runtimeTabId]);
+  }, [injectEngine, reconcileEngine, runtimeTabId]);
 
   const handleToggle = useCallback(() => {
     if (!runtimeTabId) return;
     const store = useDesignModeStore.getState();
     if (enabledRef.current) {
-      // Destroy (not just deactivate): drafts persist in the guest's sessionStorage and
-      // are restored on the next injection, so tearing the overlay down loses nothing.
+      // Destroy (not just deactivate): drafts persist in the guest's sessionStorage — with
+      // their originals, so the next injection restores them faithfully rather than
+      // capturing the previews this teardown leaves painted (lifecycle-store.ts's `props`).
       // The undo history does NOT survive the id registry it names — clear it.
       designUndoHistory.clear(runtimeTabId);
       designModeBridge.destroy(runtimeTabId);
@@ -154,23 +202,23 @@ export function ForkPreviewDesignMode({ runtimeTabId, disabled }: Props) {
       <TooltipTrigger
         render={
           <Button
-            variant={tabState.enabled ? "secondary" : "ghost"}
+            variant={enabled ? "secondary" : "ghost"}
             size="icon-xs"
             onClick={handleToggle}
             disabled={disabled}
-            aria-label={tabState.enabled ? "Exit design mode" : "Design mode"}
-            aria-pressed={tabState.enabled ? "true" : "false"}
+            aria-label={enabled ? "Exit design mode" : "Design mode"}
+            aria-pressed={enabled ? "true" : "false"}
             type="button"
             data-fork-design-mode-toggle
           />
         }
       >
-        <PaintbrushIcon className={cn(tabState.enabled && "text-primary")} />
+        <PaintbrushIcon className={cn(enabled && "text-primary")} />
       </TooltipTrigger>
       <TooltipPopup>
         {disabled
           ? "Design mode needs a loaded page"
-          : tabState.enabled
+          : enabled
             ? "Exit design mode"
             : "Design mode — click elements to edit, send changes to the agent"}
       </TooltipPopup>

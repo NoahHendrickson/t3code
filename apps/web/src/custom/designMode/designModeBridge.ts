@@ -1,5 +1,6 @@
 import {
   DESIGN_MODE_GLOBAL,
+  DESIGN_MODE_PROTOCOL_VERSION,
   parseDesignChangeRequestPayload,
   type DesignChangeRequestPayload,
   type DesignModeAlignAxis,
@@ -40,6 +41,12 @@ export const findPreviewWebview = (runtimeTabId: string): DesignModeWebview | nu
   else webviewByTabId.delete(runtimeTabId);
   return found;
 };
+
+/** Last hover id pushed to each tab's guest, so identical repeats never cross the boundary
+ * (see `hoverElement`). Reset by the engine-lifecycle verbs below, since a rebuilt engine
+ * starts with no hover outline and no memory of one; the ordinary staleness path is already
+ * closed by the rail sending `null` on mouseleave. */
+const lastHoverByTabId = new Map<string, number | null>();
 
 /** Builds the executeJavaScript expression for one guest-handle call. Arguments are
  * JSON-encoded — the whole command surface is JSON-serializable by contract
@@ -113,6 +120,7 @@ const fire = (runtimeTabId: string, member: string, args: readonly unknown[]): v
  */
 export const designModeBridge = {
   setActive(runtimeTabId: string, on: boolean): void {
+    lastHoverByTabId.delete(runtimeTabId);
     fire(runtimeTabId, "setActive", [on]);
   },
   applyDraft(
@@ -175,10 +183,34 @@ export const designModeBridge = {
     if (result == null) return null;
     return parseDesignChangeRequestPayload(result) ?? "stale-engine";
   },
+  /** Whether a live guest engine speaking THIS host's protocol version is installed on the
+   * page — the remount reconcile's probe (ForkPreviewDesignMode). Cheap enough to ask on
+   * every attach: one property read across the boundary, no bundle transfer. Null covers both
+   * "no engine" and an unreadable answer; the caller re-injects either way, which is
+   * idempotent by boot()'s contract. */
+  async engineVersion(runtimeTabId: string): Promise<number | null> {
+    const webview = findPreviewWebview(runtimeTabId);
+    if (!webview) return null;
+    const result = await webview
+      .executeJavaScript(`globalThis.${DESIGN_MODE_GLOBAL}?.version ?? null`, false)
+      .catch(() => null);
+    return typeof result === "number" ? result : null;
+  },
+  /** True when the engine on the page is one this host can drive without re-injecting. */
+  async engineIsCurrent(runtimeTabId: string): Promise<boolean> {
+    return (await this.engineVersion(runtimeTabId)) === DESIGN_MODE_PROTOCOL_VERSION;
+  },
   selectElement(runtimeTabId: string, id: number, mode: DesignModeSelectMode = "replace"): void {
     fire(runtimeTabId, "selectElement", [id, mode]);
   },
+  /** Deduped against the last hover sent for this tab. `mouseover` bubbles, so the layers
+   * rail's delegated handler fires two to four times per row crossed (row → caret → glyph →
+   * label) and every one of those used to be its own executeJavaScript crossing plus a
+   * getBoundingClientRect in the guest — a pointer sweep down the rail cost a hundred round
+   * trips to paint one outline. Hover is idempotent, so repeats carry no information. */
   hoverElement(runtimeTabId: string, id: number | null): void {
+    if (lastHoverByTabId.get(runtimeTabId) === id) return;
+    lastHoverByTabId.set(runtimeTabId, id);
     fire(runtimeTabId, "hoverElement", [id]);
   },
   reorderElement(runtimeTabId: string, id: number, beforeId: number | null): void {
@@ -191,6 +223,19 @@ export const designModeBridge = {
     fire(runtimeTabId, "canvasCommand", [action]);
   },
   destroy(runtimeTabId: string): void {
+    lastHoverByTabId.delete(runtimeTabId);
     fire(runtimeTabId, "destroy", []);
+  },
+  /** Drops the hover memo alone. A re-injected engine starts with a fresh id registry and no
+   * outline painted, so the memo describes nothing — and would suppress the hover of whichever
+   * row happens to draw the id it last sent (ForkPreviewDesignMode's injectEngine). */
+  forgetHover(runtimeTabId: string): void {
+    lastHoverByTabId.delete(runtimeTabId);
+  },
+  /** Drops every host-side memo for a tab that is GONE (its webview closed), including the
+   * cached element itself — see designModeTabLifetime's disposeDesignModeTab. */
+  forgetTab(runtimeTabId: string): void {
+    lastHoverByTabId.delete(runtimeTabId);
+    webviewByTabId.delete(runtimeTabId);
   },
 };

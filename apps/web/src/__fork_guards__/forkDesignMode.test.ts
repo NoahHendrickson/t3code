@@ -76,6 +76,40 @@ describe("fork guard: design mode", () => {
     expect(previewView).not.toContain("ForkLayersTree");
   });
 
+  it("reconciles the guest on every bridge attach, and forgets a closed tab", () => {
+    // Injection used to happen on the toggle and on `dom-ready` only. This component unmounts
+    // whenever the right panel shows a terminal or a diff, or the user switches threads — and
+    // a page reload in that window (a non-HMR-able agent edit: the feature's own loop) wiped
+    // the guest with nobody listening, leaving Design mode "on" over a page with no engine.
+    const toggle = read("src/custom/designMode/ForkPreviewDesignMode.tsx");
+    expect(toggle).toContain("reconcileEngine");
+    expect(toggle).toContain("engineIsCurrent");
+    expect(toggle).toContain("if (enabledRef.current) void reconcileEngine(runtimeTabId)");
+
+    // A re-injection invalidates every host memo keyed on guest ids, so injection owns those
+    // clears rather than each call site remembering them.
+    expect(toggle).toContain("designUndoHistory.clear(tabId)");
+    expect(toggle).toContain("designModeBridge.forgetHover(tabId)");
+    // ...and the reconcile re-checks the toggle after its probe's round trip, or a toggle-off
+    // inside that window would be undone by the injection that follows.
+    expect(toggle).toContain("if (!enabledRef.current) return;");
+
+    // The counterpart: the one place that knows a preview tab is CLOSED rather than merely
+    // unmounted. Without it `designModeStore.remove` had no call site at all. The lease makes
+    // ONE call — what gets released is the feature's own business, so the next per-tab memo
+    // does not grow another line in an upstream file.
+    const tabLifetime = read("src/browser/desktopTabLifetime.ts");
+    expect(tabLifetime).toContain("fork:begin fork-design-mode");
+    expect(tabLifetime).toContain("disposeDesignModeTab(tabId)");
+    for (const internal of ["useDesignModeStore", "designUndoHistory", "designModeBridge"]) {
+      expect(tabLifetime).not.toContain(internal);
+    }
+    const disposal = read("src/custom/designMode/designModeTabLifetime.ts");
+    expect(disposal).toContain("useDesignModeStore.getState().remove(runtimeTabId)");
+    expect(disposal).toContain("designUndoHistory.clear(runtimeTabId)");
+    expect(disposal).toContain("designModeBridge.forgetTab(runtimeTabId)");
+  });
+
   it("commits the screen's real width and derives a height that fills the pane", () => {
     // The whole point: the guest's CSS viewport width IS the screen's, so a page that hides
     // content below a breakpoint sees the screen and not however wide the pane happens to
@@ -260,13 +294,18 @@ describe("fork guard: design mode", () => {
       'import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore"',
     );
     expect(chatView).toContain("forkDesignChanges.count({ environmentId, threadId:");
-    expect(chatView).toContain("forkDesignChanges.appendToPrompt(");
+    // ONE read: the outgoing text and the entries that went into it come back together, so
+    // "what rode the message" is not an invariant ChatView holds by hand across the await.
     expect(chatView).toContain(
-      "messageTextForSendWithDesignChanges || IMAGE_ONLY_BOOTSTRAP_PROMPT",
+      "forkDesignChanges.takeForSend(forkDesignChangeRef, messageTextForSend)",
     );
+    expect(chatView).toContain("forkDesignSend.text || IMAGE_ONLY_BOOTSTRAP_PROMPT");
+    // Cleared by ENTRY, not by id — a re-send during the awaited turn start replaces the pill
+    // in place under the same id, so only identity distinguishes it from what was sent.
     expect(chatView).toContain(
-      "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef)",
+      "if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignSend.sent)",
     );
+    expect(chatView).not.toContain("pendingIds");
   });
 
   it("renders sent design changes as transcript chips, not raw markdown", () => {
@@ -415,6 +454,102 @@ describe("fork guard: design mode", () => {
     expect(layers.map((node) => node.el.id)).toEqual(["deep-root", "later-peer"]);
     expect(layers[0]?.children).toHaveLength(1);
     expect(budget).toEqual({ left: 7, truncated: true });
+  });
+
+  it("restores a persisted draft's ORIGINAL rather than re-deriving it", async () => {
+    // The engine's own restore contract, and the one place it can be wrong invisibly.
+    //
+    // Toggling Design mode off destroys the engine but deliberately leaves the draft previews
+    // painted as inline styles (they come back from sessionStorage). So when the next
+    // injection re-applies them into the SAME document, DraftStore's default prior oracle —
+    // which for a css draft reads the element's live inline style — answers with the previous
+    // engine's own preview. Every restored draft would then record its drafted value as the
+    // page's original: Discard restores the draft over itself, and the send builder measures
+    // before === after and drops the change, so the panel counts N changes while Send says
+    // there is nothing to send. The persisted third tuple slot is what closes it.
+    const result = await build({
+      stdin: {
+        contents: [
+          'export { DraftStore } from "./src/custom/designMode/engine/vendor/drafts";',
+          'export { loadLifecycle } from "./src/custom/designMode/engine/vendor/lifecycle-store";',
+        ].join("\n"),
+        resolveDir: webRoot,
+        sourcefile: "design-mode-drafts-guard.ts",
+        loader: "ts",
+      },
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "es2022",
+      write: false,
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]?.text ?? "";
+    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.Buffer.from(code).toString("base64")}`;
+    const engine = (await import(moduleUrl)) as {
+      DraftStore: new () => {
+        apply: (el: unknown, prop: string, value: string, knownOriginal?: string) => void;
+        discard: (el: unknown, props?: string[]) => void;
+        entries: () => Map<unknown, Map<string, { original: string; value: string }>>;
+      };
+      loadLifecycle: (storage: unknown) => { drafts: unknown[] } | null;
+    };
+
+    // Just enough element for the css half of the store: it only ever reads and writes
+    // inline style declarations.
+    const element = () => {
+      const inline = new Map<string, string>();
+      return {
+        inline,
+        style: {
+          setProperty: (key: string, value: string) => inline.set(key, value),
+          removeProperty: (key: string) => inline.delete(key),
+          getPropertyValue: (key: string) => inline.get(key) ?? "",
+          getPropertyPriority: () => "",
+        },
+      };
+    };
+
+    // A restore into a document still showing the previous engine's preview.
+    const restored = element();
+    restored.style.setProperty("padding-top", "32px");
+    const store = new engine.DraftStore();
+    store.apply(restored, "padding-top", "32px", "");
+    expect(store.entries().get(restored)?.get("padding-top")?.original).toBe("");
+    store.discard(restored, ["padding-top"]);
+    expect(restored.inline.has("padding-top")).toBe(false);
+
+    // The default oracle on the same shape — the behaviour the persisted original exists to
+    // avoid, pinned here so nobody "simplifies" the parameter away.
+    const rederived = element();
+    rederived.style.setProperty("padding-top", "32px");
+    const naive = new engine.DraftStore();
+    naive.apply(rederived, "padding-top", "32px");
+    naive.discard(rederived, ["padding-top"]);
+    expect(rederived.inline.get("padding-top")).toBe("32px");
+
+    // A first-time draft is unaffected: no inline style, so the original is empty either way.
+    const fresh = element();
+    const first = new engine.DraftStore();
+    first.apply(fresh, "padding-top", "32px");
+    expect(first.entries().get(fresh)?.get("padding-top")?.original).toBe("");
+
+    // The wire shape: triples load, pre-upgrade 2-tuples still load (a session in flight must
+    // not be thrown away), and a non-string original is rejected — it would be handed
+    // straight to setProperty on discard.
+    const stored = (drafts: unknown) => ({
+      getItem: () => JSON.stringify({ v: 1, designModeOn: true, selection: [], drafts, sent: [] }),
+    });
+    const entry = (props: unknown) => ({ dcSource: "App.tsx:1:1", index: 0, props });
+    expect(
+      engine.loadLifecycle(stored([entry([["padding-top", "32px", "24px"]])]))?.drafts,
+    ).toEqual([entry([["padding-top", "32px", "24px"]])]);
+    expect(engine.loadLifecycle(stored([entry([["padding-top", "32px"]])]))?.drafts).toHaveLength(
+      1,
+    );
+    expect(engine.loadLifecycle(stored([entry([["padding-top", "32px", 24]])]))?.drafts).toEqual(
+      [],
+    );
   });
 
   it("keeps the native source bridge contract aligned across preload and engine", () => {

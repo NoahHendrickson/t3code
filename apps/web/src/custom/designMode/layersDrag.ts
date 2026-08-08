@@ -40,6 +40,58 @@ function rowIdFromEvent(event: DragEvent<HTMLElement>): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
+/**
+ * The `beforeId` a drop resolves to — `{ beforeId: null }` meaning "to the end of the DOM
+ * sibling list" — or null when the gesture must be refused.
+ *
+ * The subtlety is `nextSiblingId`: it is the next TREE sibling, and tree siblings are not
+ * always DOM siblings (the curated walk hoists tagged descendants through untagged wrappers,
+ * which is the whole reason rows carry `siblingGroup`). Dropping below the last row of a DOM
+ * group therefore used to ship the id of a row under a DIFFERENT DOM parent, which the guest
+ * correctly refuses (`reorderById` requires a shared parent) — so the drag simply did nothing,
+ * with no feedback anywhere.
+ *
+ * The reference is found by SCANNING FORWARD for the next same-group tree sibling, not by
+ * looking one step ahead. A single-step lookahead reads "the very next row is hoisted" as "this
+ * is the end of the DOM group", which is only true when every REMAINING sibling is also
+ * hoisted. In `P = [a, wrapper(b), c, d]`, dropping `c` after `a` would take that shortcut and
+ * ship `null` — landing the row at the end of the parent, past `d`, while the rail drew its
+ * insertion line directly under `a`. That is worse than the refusal it replaced: a silent
+ * no-op became a visibly wrong landing (PR #74 review).
+ *
+ * `null` is therefore reserved for a genuine end-of-group. Where the tree and the DOM disagree
+ * the landing is inherently approximate — "between `a` and a row living inside a wrapper" has
+ * no DOM expression — but the next real sibling is much closer to what the rail promised.
+ *
+ * Pure, and exported, because it is the one piece of this gesture that is arithmetic.
+ */
+export function resolveDropBeforeId(
+  dragged: LayerRow,
+  over: LayerRow,
+  edge: DropEdge,
+  byId: ReadonlyMap<number, LayerRow>,
+): { readonly beforeId: number | null } | null {
+  // The same gate `onDragOver` paints with — re-asserted here because the drop is what
+  // actually commits, and a stale insertion line must never survive as a stale reference.
+  if (over.node.siblingGroup !== dragged.node.siblingGroup) return null;
+  if (edge === "before") return { beforeId: over.node.id };
+  // Bounded by the map: every hop consumes a distinct row, and a row already visited cannot be
+  // reached again, so a cyclic `nextSiblingId` (only reachable from a malformed payload) ends
+  // the walk rather than spinning.
+  const seen = new Set<number>([over.node.id]);
+  let cursor = over.nextSiblingId;
+  while (cursor !== null && !seen.has(cursor)) {
+    seen.add(cursor);
+    const candidate = byId.get(cursor);
+    if (!candidate) break;
+    if (candidate.node.siblingGroup === dragged.node.siblingGroup) {
+      return { beforeId: candidate.node.id };
+    }
+    cursor = candidate.nextSiblingId;
+  }
+  return { beforeId: null };
+}
+
 export function useLayersDrag({
   rows,
   filtering,
@@ -62,6 +114,18 @@ export function useLayersDrag({
   const dragged = useRef<number | null>(null);
   const byId = useMemo(() => new Map(rows.map((row) => [row.node.id, row])), [rows]);
 
+  // Mirrored in a ref so the handlers below can READ the live drop target without taking it
+  // as a memo dependency: `dragover` fires at pointer rate, and depending on the state meant
+  // rebuilding the whole handler object (and re-running the memo) on every edge flip.
+  const dropTargetRef = useRef<DropTarget | null>(null);
+  const setDrop = useCallback((next: DropTarget | null) => {
+    const current = dropTargetRef.current;
+    if (current === next) return;
+    if (current && next && current.overId === next.overId && current.edge === next.edge) return;
+    dropTargetRef.current = next;
+    setDropTarget(next);
+  }, []);
+
   const canDrag = useCallback((row: LayerRow) => row.node.reorderable && !filtering, [filtering]);
 
   const containerHandlers = useMemo<LayerDragContainerHandlers>(
@@ -74,7 +138,7 @@ export function useLayersDrag({
         // Firefox refuses to start a drag with no payload; the value itself is unused.
         event.dataTransfer.setData("text/plain", String(row.node.id));
         dragged.current = row.node.id;
-        setDropTarget({ overId: row.node.id, edge: "before" });
+        setDrop({ overId: row.node.id, edge: "before" });
       },
       onDragOver: (event) => {
         const source = dragged.current;
@@ -93,6 +157,9 @@ export function useLayersDrag({
           row.node.id !== source;
         if (!droppable) {
           event.dataTransfer.dropEffect = "none";
+          // The line has to go with the refusal: leaving it painted on the last valid row
+          // while the pointer sits over an undroppable one promises a drop that cannot happen.
+          setDrop(null);
           return;
         }
         event.preventDefault();
@@ -102,36 +169,36 @@ export function useLayersDrag({
           ?.getBoundingClientRect();
         if (!bounds) return;
         const edge: DropEdge = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
-        if (dropTarget?.overId !== row.node.id || dropTarget.edge !== edge) {
-          setDropTarget({ overId: row.node.id, edge });
-        }
+        setDrop({ overId: row.node.id, edge });
       },
       onDragLeave: (event) => {
         // Only when the pointer leaves the LIST, not on every row-to-row crossing.
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-        setDropTarget(null);
+        setDrop(null);
       },
       onDrop: (event) => {
         event.preventDefault();
         const source = dragged.current;
-        const target = dropTarget;
+        const target = dropTargetRef.current;
         dragged.current = null;
-        setDropTarget(null);
+        setDrop(null);
         if (source === null || !target) return;
         const row = byId.get(target.overId);
-        if (!row) return;
-        const beforeId = target.edge === "before" ? row.node.id : row.nextSiblingId;
+        const from = byId.get(source);
+        if (!row || !from) return;
+        const resolved = resolveDropBeforeId(from, row, target.edge, byId);
+        if (!resolved) return;
         // Dropping a row onto its own edge is the "moved nothing" case; everything else goes
         // to the guest, INCLUDING a drag back to the original slot — that one drops the move
         // draft, which is the only way to undo a reorder from the rail.
-        if (beforeId !== source) onReorder(source, beforeId);
+        if (resolved.beforeId !== source) onReorder(source, resolved.beforeId);
       },
       onDragEnd: () => {
         dragged.current = null;
-        setDropTarget(null);
+        setDrop(null);
       },
     }),
-    [byId, dropTarget, filtering, onReorder],
+    [byId, filtering, onReorder, setDrop],
   );
 
   return { dropTarget, canDrag, containerHandlers };

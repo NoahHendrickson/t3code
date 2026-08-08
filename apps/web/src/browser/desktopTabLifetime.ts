@@ -1,5 +1,9 @@
 import { previewBridge } from "~/components/preview/previewBridge";
 
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { disposeDesignModeTab } from "~/custom/designMode/designModeTabLifetime";
+/* fork:end fork-design-mode */
+
 import { stopBrowserRecording } from "./browserRecording";
 
 interface DesktopTabLease {
@@ -59,6 +63,13 @@ export function acquireDesktopTab(tabId: string): AcquiredDesktopTab {
         const latest = leases.get(tabId);
         if (!latest || latest.references > 0) return;
         leases.delete(tabId);
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+           The tab's webview is about to be destroyed, taking the guest engine, its drafts and
+           its id registry with it. This is the only place that knows a preview tab is CLOSED
+           rather than merely unmounted, which is why the call hangs here — WHAT gets released
+           is the feature's own business (designModeTabLifetime.ts). */
+        disposeDesignModeTab(tabId);
+        /* fork:end fork-design-mode */
         void enqueueDesktopTabOperation(tabId, async () => {
           await stopBrowserRecording(tabId).catch(() => null);
           await previewBridge?.closeTab(tabId);

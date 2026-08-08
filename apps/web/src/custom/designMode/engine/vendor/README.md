@@ -34,6 +34,14 @@ Local edits are marked with `t3-fork:` comments. The load-bearing ones:
 - `./shared/` import paths (were `../shared/` upstream).
 - A handful of mechanical lint fixes (snapshot spreads → `Array.from`, `toReversed()`,
   `Set#has`, two unused imports) — style-only, no behavior change.
+- Restore fidelity (2026-08-07): `drafts.ts` — `apply()` takes an optional `knownOriginal`,
+  and `lifecycle-store.ts` — a persisted draft's `props` tuple carries that original in a
+  third slot (2-tuples still load). Upstream re-derives the original through `pagePrior` on
+  restore, which for a css draft reads the element's live INLINE style; T3 destroys and
+  re-injects the engine into the SAME document on every Design-mode toggle, leaving the
+  previous previews painted, so re-derivation captured each draft's own value as the page's
+  original — Discard restored the draft over itself and Send reported nothing to send.
+  Do not drop the parameter when re-syncing: upstream never rebuilds in-place this way.
 - Native-source mode (2026-08-04, `engine/nativeSource.ts` is the fork-owned core):
   - `source.ts` — `findSelectableElement`: a tagged ancestor still wins, but untagged
     elements are selectable themselves (svg internals climb to the outermost `<svg>`).

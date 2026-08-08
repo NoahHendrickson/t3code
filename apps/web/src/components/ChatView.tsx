@@ -4782,10 +4782,7 @@ function ChatViewContent(props: ChatViewProps) {
        Design-change attachments append their full change-request markdown here (the
        composer only ever showed the pill); cleared below once the turn start succeeds. */
     const forkDesignChangeRef = { environmentId, threadId: threadIdForSend };
-    const messageTextForSendWithDesignChanges = forkDesignChanges.appendToPrompt(
-      forkDesignChangeRef,
-      messageTextForSend,
-    );
+    const forkDesignSend = forkDesignChanges.takeForSend(forkDesignChangeRef, messageTextForSend);
     /* fork:end fork-design-mode */
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
@@ -4795,7 +4792,7 @@ function ChatViewContent(props: ChatViewProps) {
       models: ctxSelectedProviderModels,
       effort: ctxSelectedPromptEffort,
       /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-      text: messageTextForSendWithDesignChanges || IMAGE_ONLY_BOOTSTRAP_PROMPT,
+      text: forkDesignSend.text || IMAGE_ONLY_BOOTSTRAP_PROMPT,
       /* fork:end fork-design-mode */
     });
     const turnAttachmentsPromise = Promise.all(
@@ -5033,8 +5030,11 @@ function ChatViewContent(props: ChatViewProps) {
     }
     /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
        The design-change attachments rode the sent message; a failed send keeps the
-       pills so nothing is lost. */
-    if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef);
+       pills so nothing is lost. Clears exactly the entries takeForSend returned, not the
+       thread: the turn start is awaited above, and a Send from the design panel during
+       that window replaces a pill IN PLACE under the same id — so only entry identity
+       tells the two apart. */
+    if (turnStartSucceeded) forkDesignChanges.clear(forkDesignChangeRef, forkDesignSend.sent);
     /* fork:end fork-design-mode */
   };
 
