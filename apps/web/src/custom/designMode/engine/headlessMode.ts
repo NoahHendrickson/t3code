@@ -28,6 +28,7 @@ import type {
   DesignModeWritableKey,
 } from "../protocol";
 import { alignElement } from "./align";
+import { BrowseHandoff } from "./browseHandoff";
 import type { HeadlessOverlay } from "./headlessOverlay";
 import { CanvasSession } from "./canvasSession";
 import { ElementIdRegistry } from "./idRegistry";
@@ -185,6 +186,10 @@ export class HeadlessDesignMode {
    * BEFORE the gesture modules so their scale() hooks can reference it. */
   readonly canvas: CanvasSession;
 
+  /** ⌘-to-browse — the predicate, the click replacement and its re-entrancy guard all
+   * live in browseHandoff.ts; the handlers below only ask. */
+  private readonly browse = new BrowseHandoff();
+
   constructor(private overlay: HeadlessOverlay) {
     this.canvas = new CanvasSession({
       hostContains: (t) => this.overlay.containsDeep(t),
@@ -207,7 +212,7 @@ export class HeadlessDesignMode {
     this.moveDrag = new MoveDrag({
       drafts: this.drafts,
       scale: () => this.canvas.scale(),
-      blocked: () => this.textEdit.active,
+      blocked: (e) => this.textEdit.active || this.browse.shouldYield(e),
       overlayContains: (t) => this.overlay.containsDeep(t),
       onSelect: (el) => this.select(el),
       onEdited: () => this.handleEdited(),
@@ -928,6 +933,13 @@ export class HeadlessDesignMode {
       this.moveRaf = 0;
       const ev = this.lastMove;
       if (!this.active || !ev || this.overlay.contains(ev.target)) return;
+      // Browsing: no hover outline over a page the user is driving, and no prefetch for an
+      // element they are not about to select.
+      if (this.browse.shouldYield(ev)) {
+        this.overlay.hideOutline();
+        this.scheduleHoverResolve(null);
+        return;
+      }
       const el = findSelectableElement(ev.target as Element);
       if (el && !this.selection.includes(el)) this.overlay.showOutline(el.getBoundingClientRect());
       else this.overlay.hideOutline();
@@ -938,7 +950,11 @@ export class HeadlessDesignMode {
   private onClick = (e: MouseEvent): void => {
     if (this.overlay.contains(e.target)) return;
     // Mid-edit click policy (caret shield / commit-and-fall-through) lives in TextEditMode.
+    // The handoff's re-dispatched copy also re-enters this capture listener; it reaches the
+    // shield only ever as 'idle' — a copy exists only after the original's shield check
+    // came back idle or committed, both of which leave no live edit.
     if (this.textEdit.handleClick(e) === "shielded") return;
+    if (this.browse.handleClick(e) === "passthrough") return;
     e.preventDefault();
     e.stopPropagation();
     const el = findSelectableElement(e.target as Element);
@@ -949,7 +965,7 @@ export class HeadlessDesignMode {
 
   /** Double-click on a text-leaf element enters inline text edit (Figma behavior). */
   private onDblClick = (e: MouseEvent): void => {
-    if (this.overlay.contains(e.target)) return;
+    if (this.overlay.contains(e.target) || this.browse.shouldYield(e)) return;
     const el = this.textEdit.candidate(e.target);
     if (!el) return;
     e.preventDefault();
@@ -960,6 +976,9 @@ export class HeadlessDesignMode {
   private onKey = (e: KeyboardEvent): void => {
     if (this.overlay.contains(e.target)) return;
     if (this.textEdit.handleKey(e)) return;
+    // Browsing owns ⌘ combos: the page's own ⌘-shortcuts (and the browser's ⌘←/⌘⌫) must not
+    // arrive as a delete draft or a nudge.
+    if (this.browse.shouldYield(e)) return;
     if (e.key === "Delete" || e.key === "Backspace") {
       // Del in an input must never nuke the selection. Carve-out: when the focused control
       // IS in the selection, the intent is deleting the element itself (PR #44 review).
@@ -1007,7 +1026,8 @@ export class HeadlessDesignMode {
   private savedPageCursor: string | null = null;
 
   private onPointerDown = (e: PointerEvent): void => {
-    if (e.button !== 0 || this.textEdit.active) return;
+    // No no-drop cursor while browsing — nothing is being dragged, so nothing is refusing.
+    if (e.button !== 0 || this.textEdit.active || this.browse.shouldYield(e)) return;
     if (this.overlay.containsDeep(e.composedPath()[0] ?? e.target)) return;
     const el = findSelectableElement(e.target as Element);
     if (!el || this.drafts.structuralOf(el)?.kind === "delete") return;

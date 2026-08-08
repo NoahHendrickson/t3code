@@ -256,6 +256,42 @@ describe("fork guard: design mode", () => {
     expect(host).toContain("fork:begin fork-design-mode");
   });
 
+  it("hands the page back while the browse modifier is held", () => {
+    // The browse policy's module contract (browseHandoff.ts), not its call sites — freezing
+    // the engine's handler strings would make the next correct refactor fail this guard.
+    const handoff = read("src/custom/designMode/engine/browseHandoff.ts");
+    // ONE predicate, read off the event itself: a keydown-tracked flag would read false
+    // whenever the ⌘ press landed on T3's own chrome (panel, layers rail) rather than the guest.
+    expect(handoff).toContain(
+      "shouldYield(e: MouseEvent | KeyboardEvent): boolean {\n    return e.metaKey;\n  }",
+    );
+    // The click is REPLACED, not released: Chromium reads a ⌘-click on an anchor as "open in
+    // a new tab" and router Links bail out of client-side navigation on metaKey, so a released
+    // ⌘-click would open tabs instead of following links. Hence a modifier-free copy, the
+    // real event swallowed, and a re-entrancy guard for the copy's own trip through the
+    // capture listener.
+    expect(handoff).toContain('if (e === this.inFlight) return "passthrough";');
+    const copy = /const copy = new MouseEvent\("click", \{([\s\S]*?)\n {6}\}\);/u.exec(
+      handoff,
+    )?.[1];
+    expect(copy).toBeDefined();
+    for (const modifier of ["metaKey", "ctrlKey", "altKey", "shiftKey"]) {
+      expect(copy).not.toContain(modifier);
+    }
+    expect(copy).toContain("clientX: e.clientX");
+    expect(copy).toContain("button: e.button");
+    // The policy has ONE home. The engine constructs the handoff and asks it; a metaKey
+    // read growing back inside the orchestrator is the scatter this guard exists to stop.
+    const engine = read("src/custom/designMode/engine/headlessMode.ts");
+    expect(engine).toContain("new BrowseHandoff()");
+    expect(engine).not.toContain("metaKey");
+    // The drag module hands the press itself to caller policy — modifier-gated modes can
+    // only block a drag they can see.
+    expect(read("src/custom/designMode/engine/vendor/move-drag.ts")).toContain(
+      "if (this.opts.blocked(e)) return",
+    );
+  });
+
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
     // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
     // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no
