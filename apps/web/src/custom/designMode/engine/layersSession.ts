@@ -1,12 +1,9 @@
 import { DESIGN_MODE_LAYERS_MAX_DEPTH, type DesignModeLayerNode } from "../protocol";
 import type { ElementIdRegistry } from "./idRegistry";
 import { hasForgeTags } from "./nativeSource";
+import { SettleObserver } from "./settleGate";
 import { buildLayerTree, type LayerBudget, type LayerNode } from "./vendor/layers";
 import { reorderAxisOf } from "./vendor/move-drag";
-
-/** Quiet-window for MutationObserver-driven layers rebuilds — HMR re-renders land as
- * bursts (same rationale as the Forge's LayersTree REFRESH_DEBOUNCE_MS). */
-const LAYERS_DEBOUNCE_MS = 250;
 
 /** Node cap for one layers message — a deep page must not turn every mutation into a
  * multi-hundred-KB console line. Enforced inside the WALK (buildLayerTree's budget), so
@@ -70,15 +67,9 @@ function visualOrder(
 export class LayersSession {
   onLayers?: (roots: DesignModeLayerNode[], truncated: boolean) => void;
 
-  private observer: MutationObserver | null = null;
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private lastJson = "";
-  /** Per-emit memo — cleared at the top of every emit, never held across one. */
-  private parents = new Map<Element, ParentFacts>();
-
-  constructor(private readonly registry: ElementIdRegistry) {}
-
-  start(): void {
+  /** Settle-driven rebuilds via the engine's shared observe-then-settle primitive
+   * (settleGate.ts) — same debounce the verifier uses, one home for the idiom. */
+  private readonly settle = new SettleObserver({
     // The observer can never feed back on itself — the overlay hangs off documentElement,
     // outside the observed body subtree. characterData is included so our own inline text
     // edits relabel their rows. Known cost: a page whose text genuinely changes on a
@@ -86,32 +77,27 @@ export class LayersSession {
     // different — so it rebuilds+emits once per debounce window while the mode is on.
     // If that ever surfaces in a perf audit, the lever is dropping characterData and
     // accepting stale labels until a structural mutation.
-    this.observer = new MutationObserver(this.schedule);
-    this.observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
+    target: () => document.body,
+    observe: { childList: true, subtree: true, characterData: true },
+    onSettle: () => this.emit(),
+  });
+  private lastJson = "";
+  /** Per-emit memo — cleared at the top of every emit, never held across one. */
+  private parents = new Map<Element, ParentFacts>();
+
+  constructor(private readonly registry: ElementIdRegistry) {}
+
+  start(): void {
+    this.settle.start();
     this.emit();
   }
 
   stop(): void {
-    this.observer?.disconnect();
-    this.observer = null;
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = null;
+    this.settle.stop();
     this.registry.clearLayersScope();
     this.parents.clear();
     this.lastJson = "";
   }
-
-  private schedule = (): void => {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      this.emit();
-    }, LAYERS_DEBOUNCE_MS);
-  };
 
   private factsFor(parent: Element | null): ParentFacts {
     if (!parent) return DETACHED;

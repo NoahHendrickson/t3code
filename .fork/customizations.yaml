@@ -1157,14 +1157,15 @@
     fork fence, so a sync will not re-apply upstream changes to them
     automatically; port upstream's intent by hand when that hunk drifts.
 
-    Those three controls (Add action / Open / PR) become fully-rounded split
+    Those three controls (Add action / Open / PR) become 4px-radius split
     pills. They were already built from the right primitives — a Group wrapping
     an outline Button size="xs", a separator, and a caret Button size="icon-xs",
     where Group flattens the inner corners and size="xs" is already 24px and
     12px at >=sm — so nothing structural changes. The only edit in those three
     files is a data-fork-pill attribute; the styling is all in the Tier 1
-    stylesheet, which rounds the outer corners, drops the raised treatment that
-    reads as a button floating above a page, and opens padding to 10px/7px.
+    stylesheet, which rounds the outer corners to 4px, drops the raised
+    treatment that reads as a button floating above a page, and opens padding
+    to 10px/7px.
 
     The two panel toggles render at 16px, and their glyphs become SquareHalf and
     SquareHalfBottom via the Phosphor shim rather than at the call site — see
@@ -1597,7 +1598,12 @@
     - apps/web/src/components/chat/composerProviderState.tsx
     # Workspace select opens above the context chips (side top, no
     # align-item-with-trigger) so the glass menu clears the branch pill.
+    # Locked checkout/env spans carry data-fork-context-chip so they keep the
+    # filled pill when there is no interactive trigger (desktop selectors +
+    # mobile locked readout in BranchToolbar).
+    - apps/web/src/components/BranchToolbar.tsx
     - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
+    - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
     # The glass-shell pseudo-elements and .chat-composer-context-strip this
     # customization switches off. An upstream rework of that paint would leave
     # the fork disabling rules that no longer exist.
@@ -1851,15 +1857,51 @@
     intact drafts. A sent request leaves its drafts painted over whatever
     the agent then changed — inline styles win, so the page stops being
     evidence of anything until they come off — and the panel says so: once
-    the turn that carried them ends, the footer offers Discard all edits or
-    Keep previews. It states only what is true; it must NEVER claim the
-    edit was applied or verified, because the Forge's verifier is not
-    vendored here and nothing in this fork can check — and the discard
-    names its full blast radius (every edit on the tab, including ones made
-    after the send), because the guest cannot drop only the sent subset: a
-    hot reload re-renders the page and re-mints every element id, so sent
-    identity recorded at send time is stale exactly when the prompt
-    appears. The offer is gated on the thread's own projected turn, never
+    the turn that carried them ends, the footer measures instead of
+    guessing: the guest's verifier (engine/verifySession.ts) suppresses
+    every draft's inline declaration, reads what the current cascade
+    produces, restores the exact painted values, and compares against the
+    sent ledger — per property: landed / didn't land / changed differently
+    / can't be checked, with missing elements and structural ops reported
+    honestly as unmeasurable. Suppression is NOT the compare toggle
+    (compare writes the recorded original back, which lies whenever the
+    page authored its own inline style); the ledger is the Forge's own
+    LifecycleSession + lifecycle-store sent slot, dormant here until this
+    feature, registered at buildSend with the DraftStore's real keys and
+    persisted so it survives the reload it exists to be checked after. The
+    verdict re-measures after every mutation quiet-window while armed, so
+    a late HMR corrects a wrong verdict rather than freezing it, and
+    verification is gated on the same conditions rule the request records
+    — a matching value verifies under any viewport (a pane resize cannot
+    manufacture the asked-for value), while a DIFFERING value measured at
+    another viewport reports can't-be-checked, never a false difference —
+    and a property the send-time origin probe found page-authored inline is
+    never judged at all: the draft and the page share one style slot there,
+    so no suppression can read the page's own value without guessing.
+    Element resolution is strict (exact source index or a unique css path,
+    with the same persisted-selector fallback the drafts drain carries) —
+    a deleted list row reports gone-from-the-page rather than measuring,
+    and then committing against, a surviving sibling. The verification
+    switch is symmetric and host-owned (setVerifying), armed by the footer
+    while it offers and released by its cleanup — Keep, unmount, thread
+    switch — with the intent persisted so the reload it waits for resumes
+    it; the sent ledger and report are size-capped (the parser's own
+    bounds, flagged truncated; the persisted projection yields before it
+    could cost the drafts their sessionStorage). The ledger resolving
+    guest-side (commit-all, discard) emits an explicit sent-resolved
+    signal, never an empty display payload. Verdict wording has one home
+    (VERIFY_VERDICT_LABELS) and stays at measurement strength: "landed"
+    means the page renders the value — never that the agent's edit was
+    good, which is the turn diff's question — and the same counts ride the
+    transcript chip beside the agent's own reply (measurement answers "did
+    it work", the reply answers "why not"; the chip never paraphrases it).
+    Drop-landed commits via the DraftStore's targeted commit (the draft
+    comes off without restoring the original — the code owns the value
+    now), scoped to exactly the verified properties; Discard-all still
+    names its full blast radius (every edit on the tab, including ones
+    made after the send), because an unverified drop has no smaller honest
+    unit: a hot reload re-mints element ids, so host-side sent identity
+    alone is stale exactly when the prompt appears. The offer is gated on the thread's own projected turn, never
     on wall clock or observed status flips: the record carries the sent
     message's client-minted createdAt, adoption stamps the turn's
     requestedAt from that same time, and the prompt waits for a projected
@@ -2078,9 +2120,11 @@
     - apps/web/src/custom/designMode/layersTreeModel.ts
     - apps/web/src/custom/designMode/layersTreeModel.test.ts
     - apps/web/src/custom/designMode/panel/LayerTypeIcon.tsx
+    - apps/web/src/custom/designMode/panel/SentPreviewResolution.tsx
     - apps/web/src/custom/designMode/designChangeTranscript.ts
     - apps/web/src/custom/designMode/designSentPreviews.ts
     - apps/web/src/custom/designMode/designSentPreviews.test.ts
+    - apps/web/src/custom/designMode/designVerify.test.ts
     - apps/web/src/custom/designMode/layersDrag.ts
     - apps/web/src/custom/designMode/layersDrag.test.ts
     - apps/web/src/custom/designMode/designModeTabLifetime.ts
@@ -2110,6 +2154,8 @@
     - apps/web/src/custom/designMode/engine/headlessMode.ts
     - apps/web/src/custom/designMode/engine/idRegistry.ts
     - apps/web/src/custom/designMode/engine/layersSession.ts
+    - apps/web/src/custom/designMode/engine/settleGate.ts
+    - apps/web/src/custom/designMode/engine/verifySession.ts
     - apps/web/src/custom/designMode/engine/nativeSource.ts
     - apps/web/src/custom/designMode/engine/sizeMode.ts
     - apps/web/src/custom/designMode/engine/snapshot.ts
@@ -2186,3 +2232,23 @@
   verify:
     - apps/web/src/__fork_guards__/forkDesignMode.test.ts
     - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
+
+- id: fork-right-panel-tabbar-divider
+  intent: >
+    The right-panel tab strip has a full-width hairline under it so the tabs
+    separate from the surface content below (Layers, preview chrome, Design,
+    terminal, diff, files). The rule lives in theme.custom.css and keys off
+    the existing data-right-panel-tabbar attribute on RightPanelTabs — no
+    upstream fence. Losing either the attribute or the fork-scoped
+    border-bottom: 1px solid var(--border) rule collapses the seam again.
+    The border token matches DiffPanelShell's chrome row.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Owns data-right-panel-tabbar. An upstream rename or drop of that
+    # attribute leaves the CSS compiling against nothing.
+    - apps/web/src/components/RightPanelTabs.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkRightPanelTabbarDivider.test.ts

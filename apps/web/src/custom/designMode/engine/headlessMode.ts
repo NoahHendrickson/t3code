@@ -19,6 +19,7 @@ import { buildElementSnapshot } from "./snapshot";
 import { capPageUrl } from "../protocol";
 import type {
   DesignChangeRequestPayload,
+  DesignVerifyReport,
   DesignModeAlignAxis,
   DesignModeAlignValue,
   DesignModeElementSnapshot,
@@ -62,6 +63,7 @@ import {
   locateBySource,
   type PersistedLifecycle,
 } from "./vendor/lifecycle-store";
+import { VerifySession } from "./verifySession";
 
 /** Rapid edits (e.g. dragging a number field) within this window reuse the first snapshot. */
 const RIPPLE_DEBOUNCE_MS = 300;
@@ -111,6 +113,8 @@ export class HeadlessDesignMode {
   onDraftsCount?: (count: number) => void;
   onStateChange?: (active: boolean) => void;
   onLayers?: (roots: DesignModeLayerNode[], truncated: boolean) => void;
+  onVerdict?: (report: DesignVerifyReport) => void;
+  onSentResolved?: () => void;
 
   private moveRaf = 0;
   private reflowRaf = 0;
@@ -121,6 +125,10 @@ export class HeadlessDesignMode {
   private moveDrag: MoveDrag;
   private handles: ResizeHandles;
   readonly drafts: DraftStore;
+  /** The sent ledger + its verification, owned end to end by verifySession.ts (the
+   * canvasSession/layersSession pattern) — this class only calls the seams from
+   * buildSend / persist / restoreLifecycle / discardAll and the two handle verbs. */
+  private readonly verify: VerifySession;
 
   /** One opaque token per engine instance — and the engine lives exactly as long as its
    * document (a real navigation wipes the guest's globals and boot re-injects; SPA route
@@ -230,6 +238,12 @@ export class HeadlessDesignMode {
       this.draftSyncTimer = setTimeout(() => this.flushDraftSync(), RIPPLE_DEBOUNCE_MS);
     };
     this.layers.onLayers = (roots, truncated) => this.onLayers?.(roots, truncated);
+    this.verify = new VerifySession({
+      drafts: this.drafts,
+      onVerdict: (report) => this.onVerdict?.(report),
+      onResolved: () => this.onSentResolved?.(),
+      onStateDirty: () => this.persist(),
+    });
   }
 
   private emitDraftsCount(): void {
@@ -374,11 +388,33 @@ export class HeadlessDesignMode {
   }
 
   /** The one discard-everything verb. Re-emits the selection afterwards: computed values
-   * changed under the panel, and a fresh snapshot is how it finds out. */
+   * changed under the panel, and a fresh snapshot is how it finds out. Discarding answers
+   * the sent question too — the previews the ledger described are gone — and the flush
+   * matters: discard is the action taken right after the agent's edit lands, which is
+   * exactly when the dev server pushes a reload, and a reload inside the debounce window
+   * would restore a ghost ledger describing previews that no longer exist. */
   discardAll(): void {
     this.drafts.discardAll();
+    this.verify.clear();
     this.remeasure();
     this.emitSelection();
+    this.flushDraftSync();
+  }
+
+  /** The verification switch (host-owned, symmetric) — see VerifySession.setVerifying. */
+  setVerifying(on: boolean): void {
+    this.verify.setVerifying(on);
+  }
+
+  /** Commits the checks the current measurement verifies as applied; the ledger and
+   * sessionStorage follow. Resolves to the committed property count for the host toast. */
+  commitVerified(): number {
+    const committed = this.verify.commitVerified();
+    if (committed > 0) {
+      this.flushDraftSync();
+      this.emitSelection();
+    }
+    return committed;
   }
 
   compareAll(on: boolean): void {
@@ -400,8 +436,10 @@ export class HeadlessDesignMode {
       [...sourceContextTargets(this.drafts.draftedElements())],
       SEND_SOURCE_WAIT_MS,
     );
-    const { request } = buildChangeRequestWithElements(this.drafts);
+    const { request, elements: builtElements } = buildChangeRequestWithElements(this.drafts);
     if (request.elements.length === 0) return null;
+    // The sent ledger records what rode this request — one seam, owned by verifySession.
+    this.verify.recordSend(builtElements, request.viewport);
     const opLabels: Record<string, string> = {
       delete: "Delete element",
       text: "Edit text",
@@ -459,6 +497,7 @@ export class HeadlessDesignMode {
       this.layers.start();
       // Re-enter the artboard if this session had canvas on (CanvasMode's own pref).
       this.canvas.resume();
+      this.verify.resumeMeasuring();
       this.persist();
     } else {
       this.textEdit.finish(); // commit any in-progress inline text edit before the listeners go
@@ -475,7 +514,9 @@ export class HeadlessDesignMode {
       this.moveDrag.stop();
       this.handles.stop();
       this.layers.stop();
-      this.clearNoDrop();
+      // The ledger and the verifying INTENT survive (persisted state); only the live
+      // observer stops. Re-activation resumes it.
+      this.verify.stopMeasuring();
       if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
       if (this.reflowRaf) cancelAnimationFrame(this.reflowRaf);
       if (this.rippleRaf) cancelAnimationFrame(this.rippleRaf);
@@ -509,6 +550,9 @@ export class HeadlessDesignMode {
   restoreLifecycle(saved: PersistedLifecycle): void {
     if (!saved.designModeOn) return;
     this.setActive(true);
+    // The sent ledger restores alongside the drafts it describes; a persisted verifying
+    // intent resumes measuring at once — the reload IS the event it was waiting for.
+    this.verify.restore(saved);
     this.pendingRestore = { drafts: saved.drafts, selection: saved.selection };
     const { done } = this.drainPendingRestore();
     if (!done) this.scheduleRestoreRetry();
@@ -662,7 +706,7 @@ export class HeadlessDesignMode {
       designModeOn: this.active,
       selection,
       drafts,
-      sent: [],
+      ...this.verify.toPersisted(),
     });
   }
 
@@ -947,8 +991,29 @@ export class HeadlessDesignMode {
     });
   };
 
+  /**
+   * One selection funnel for pointerdown and click. Tombstones refuse here so both
+   * paths agree with deleteElements / outlinable — a selection outline on display:none
+   * is a lie.
+   */
+  private selectFromTarget(el: TaggedElement | null, shiftKey: boolean): void {
+    if (el && this.drafts.structuralOf(el)?.kind === "delete") return;
+    if (el && shiftKey) this.toggleSelection(el);
+    else if (el) this.select(el);
+    else this.deselect();
+  }
+
   private onClick = (e: MouseEvent): void => {
     if (this.overlay.contains(e.target)) return;
+    // preventDefault on pointerdown does not cancel click. When pointerdown already
+    // owned selection for this gesture, swallow the click so Shift-toggle is not undone
+    // — before textEdit/browse, so those paths cannot leave the suppress flag stuck.
+    if (this.suppressNextClickSelection) {
+      this.suppressNextClickSelection = false;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     // Mid-edit click policy (caret shield / commit-and-fall-through) lives in TextEditMode.
     // The handoff's re-dispatched copy also re-enters this capture listener; it reaches the
     // shield only ever as 'idle' — a copy exists only after the original's shield check
@@ -957,10 +1022,7 @@ export class HeadlessDesignMode {
     if (this.browse.handleClick(e) === "passthrough") return;
     e.preventDefault();
     e.stopPropagation();
-    const el = findSelectableElement(e.target as Element);
-    if (el && e.shiftKey) this.toggleSelection(el);
-    else if (el) this.select(el);
-    else this.deselect();
+    this.selectFromTarget(findSelectableElement(e.target as Element), e.shiftKey);
   };
 
   /** Double-click on a text-leaf element enters inline text edit (Figma behavior). */
@@ -1021,31 +1083,29 @@ export class HeadlessDesignMode {
     return this.moveDrag.reorderStep(el, dir);
   }
 
-  /** The no-drop affordance for ratified #1 — written as an inline style on <html>, since
-   * the overlay's shadow stylesheet cannot style the page's own <html>. */
-  private savedPageCursor: string | null = null;
+  /** Set when pointerdown already ran selectFromTarget; cleared by the following click. */
+  private suppressNextClickSelection = false;
 
+  /**
+   * Own the press before the page does. Base UI menus/buttons open on pointerdown, and
+   * opening them often swallows the click that used to be our only select path — so the
+   * sidebar stayed empty while the widget activated. Select here; leave drag targets alone
+   * so MoveDrag's sub-threshold press can still become an ordinary click.
+   */
   private onPointerDown = (e: PointerEvent): void => {
-    // No no-drop cursor while browsing — nothing is being dragged, so nothing is refusing.
+    // Fresh press — drop any stale suppress from a click that never arrived.
+    this.suppressNextClickSelection = false;
     if (e.button !== 0 || this.textEdit.active || this.browse.shouldYield(e)) return;
     if (this.overlay.containsDeep(e.composedPath()[0] ?? e.target)) return;
     const el = findSelectableElement(e.target as Element);
-    if (!el || this.drafts.structuralOf(el)?.kind === "delete") return;
+    // Tombstones: no preventDefault, no select (matches pre-rewrite early-return).
+    if (el && this.drafts.structuralOf(el)?.kind === "delete") return;
     // The gate IS MoveDrag's own plan, not a copy of its conditions (PR #46 review).
-    if (this.moveDrag.wouldDrag(el)) return; // a real drag target — MoveDrag has it
-    if (this.savedPageCursor === null) this.savedPageCursor = document.documentElement.style.cursor;
-    document.documentElement.style.cursor = "not-allowed";
-    window.addEventListener("pointerup", this.clearNoDrop, { once: true });
-    window.addEventListener("pointercancel", this.clearNoDrop, { once: true });
-  };
-
-  /** Idempotent AND inert when nothing is armed — setActive(false) calls this unconditionally. */
-  private clearNoDrop = (): void => {
-    if (this.savedPageCursor === null) return;
-    document.documentElement.style.cursor = this.savedPageCursor;
-    this.savedPageCursor = null;
-    window.removeEventListener("pointerup", this.clearNoDrop);
-    window.removeEventListener("pointercancel", this.clearNoDrop);
+    if (el && this.moveDrag.wouldDrag(el)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.suppressNextClickSelection = true;
+    this.selectFromTarget(el, e.shiftKey);
   };
 
   /** The one delete routine. Deselect FIRST: a selection outline hugging a display:none

@@ -59,6 +59,9 @@ export interface SentSeed {
    * (via resolveElement) so a restored/detached seed heals to the SAME list instance it was
    * originally sent for, not just whichever instance happens to match first. */
   index: number
+  /* t3-fork: reload-survival fallback for untagged/synthesized addresses — see
+   * PersistedSentElement.selector. */
+  selector?: string
   draftProps: string[]
   change: ElementChange
 }
@@ -324,6 +327,7 @@ export class LifecycleSession implements SentStore {
           // detached. Seeds carry their index from send/restore time — trust it instead.
           index: seed.index,
           tag: seed.change.tag,
+          ...(seed.selector ? { selector: seed.selector } : {}),
           draftProps: seed.draftProps,
           changes: seed.change.changes.map((c) => ({ property: c.property, afterCss: c.afterCss })),
           change: seed.change,
@@ -334,14 +338,17 @@ export class LifecycleSession implements SentStore {
   }
 
   /** Rebuilds session entries from a persisted lifecycle snapshot (full page reload). Elements
-   * whose dcSource can't be located yet get a detached placeholder; healPlaceholders() self-heals
-   * them once the framework mounts the real node. */
-  restoreSent(persistedSent: PersistedLifecycle['sent'], locate: (dcSource: string, index: number) => TaggedElement | null): void {
+   * the locator can't find yet get a detached placeholder; healPlaceholders() self-heals
+   * them once the framework mounts the real node.
+   * t3-fork: the locator receives the WHOLE persisted element (not just dcSource+index) so
+   * callers can apply the selector fallback untagged addresses depend on. */
+  restoreSent(persistedSent: PersistedLifecycle['sent'], locate: (pe: PersistedSentElement) => TaggedElement | null): void {
     for (const s of persistedSent) {
       const seeds: SentSeed[] = s.elements.map((pe: PersistedSentElement) => ({
-        el: (pe.dcSource && locate(pe.dcSource, pe.index)) || (document.createElement(pe.tag) as TaggedElement),
+        el: locate(pe) ?? (document.createElement(pe.tag) as TaggedElement),
         dcSource: pe.dcSource,
         index: pe.index,
+        ...(pe.selector ? { selector: pe.selector } : {}),
         draftProps: pe.draftProps,
         change: pe.change,
       }))

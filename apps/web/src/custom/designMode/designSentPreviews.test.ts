@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import {
+  selectVerifySummaryLineForMessage,
   shouldOfferPreviewResolution,
   useDesignSentPreviews,
   type SentPreviewLatestTurn,
   type SentPreviewRecord,
 } from "./designSentPreviews";
+import type { DesignVerifyReport } from "./protocol";
 
 /**
  * The resolution prompt's own rules. Worth holding here rather than in a component test: every
@@ -25,10 +27,41 @@ const SENT_AT = "2026-08-08T12:00:10.000Z";
 const BEFORE_SEND = "2026-08-08T12:00:00.000Z";
 const AFTER_SEND = "2026-08-08T12:00:30.000Z";
 
+const MESSAGE_ID = "msg-1";
+
 const record = (overrides: Partial<SentPreviewRecord> = {}): SentPreviewRecord => ({
   threadKey: THREAD,
   sentAt: SENT_AT,
+  messageId: MESSAGE_ID,
+  report: null,
   ...overrides,
+});
+
+const measuredReport = (applied: number, unchanged = 0): DesignVerifyReport => ({
+  viewportChanged: false,
+  truncated: false,
+  elements: [
+    {
+      tag: "div",
+      sourceLabel: null,
+      missing: false,
+      checks: [
+        ...Array.from({ length: applied }, (_, index) => ({
+          property: `padding-${index}`,
+          expected: "32px",
+          verdict: "applied" as const,
+          actual: "32px",
+        })),
+        ...Array.from({ length: unchanged }, (_, index) => ({
+          property: `margin-${index}`,
+          expected: "8px",
+          verdict: "unchanged" as const,
+          actual: "4px",
+        })),
+      ],
+      structuralOps: 0,
+    },
+  ],
 });
 
 const turnId = (value: string) => value as SentPreviewLatestTurn["turnId"];
@@ -63,32 +96,84 @@ describe("designSentPreviews store", () => {
     useDesignSentPreviews.setState({ byTabId: {} });
   });
 
-  it("records a send with the thread and message time it rode", () => {
-    useDesignSentPreviews.getState().markSent(TAB, THREAD, SENT_AT);
+  it("records a send with the thread, message time and message id it rode", () => {
+    useDesignSentPreviews.getState().markSent(TAB, THREAD, SENT_AT, MESSAGE_ID);
     expect(useDesignSentPreviews.getState().byTabId[TAB]).toEqual({
       threadKey: THREAD,
       sentAt: SENT_AT,
+      messageId: MESSAGE_ID,
+      report: null,
     });
   });
 
-  it("re-sending replaces the record", () => {
+  it("re-sending replaces the record, measurement included", () => {
     const store = useDesignSentPreviews.getState();
-    store.markSent(TAB, THREAD, SENT_AT);
-    store.markSent(TAB, THREAD, AFTER_SEND);
+    store.markSent(TAB, THREAD, SENT_AT, MESSAGE_ID);
+    store.setReport(TAB, measuredReport(1));
+    store.markSent(TAB, THREAD, AFTER_SEND, "msg-2");
     expect(useDesignSentPreviews.getState().byTabId[TAB]).toEqual({
       threadKey: THREAD,
       sentAt: AFTER_SEND,
+      messageId: "msg-2",
+      report: null,
     });
+  });
+
+  it("a report for a forgotten (or never-sent) tab is stale evidence, dropped", () => {
+    const store = useDesignSentPreviews.getState();
+    const before = useDesignSentPreviews.getState().byTabId;
+    store.setReport(TAB, measuredReport(1));
+    expect(useDesignSentPreviews.getState().byTabId).toBe(before);
+    store.markSent(TAB, THREAD, SENT_AT, MESSAGE_ID);
+    store.forget(TAB);
+    const after = useDesignSentPreviews.getState().byTabId;
+    store.setReport(TAB, measuredReport(1));
+    expect(useDesignSentPreviews.getState().byTabId).toBe(after);
+  });
+
+  it("forgetReport retires the measurement but keeps the open question", () => {
+    const store = useDesignSentPreviews.getState();
+    store.markSent(TAB, THREAD, SENT_AT, MESSAGE_ID);
+    store.setReport(TAB, measuredReport(2));
+    store.forgetReport(TAB);
+    expect(useDesignSentPreviews.getState().byTabId[TAB]).toEqual({
+      threadKey: THREAD,
+      sentAt: SENT_AT,
+      messageId: MESSAGE_ID,
+      report: null,
+    });
+    // Idempotent and identity-stable when there is nothing to retire.
+    const before = useDesignSentPreviews.getState().byTabId;
+    store.forgetReport(TAB);
+    expect(useDesignSentPreviews.getState().byTabId).toBe(before);
   });
 
   it("forgets a tab, and forgetting an unknown one keeps the state identical", () => {
     const store = useDesignSentPreviews.getState();
-    store.markSent(TAB, THREAD, SENT_AT);
+    store.markSent(TAB, THREAD, SENT_AT, MESSAGE_ID);
     store.forget(TAB);
     expect(useDesignSentPreviews.getState().byTabId).toEqual({});
     const before = useDesignSentPreviews.getState().byTabId;
     store.forget("never-seen");
     expect(useDesignSentPreviews.getState().byTabId).toBe(before);
+  });
+
+  it("merges every contributing tab's verdicts under one message id — and only that id", () => {
+    const store = useDesignSentPreviews.getState();
+    store.markSent("tab-a", THREAD, SENT_AT, MESSAGE_ID);
+    store.markSent("tab-b", THREAD, SENT_AT, MESSAGE_ID);
+    store.markSent("tab-c", THREAD, SENT_AT, "msg-other");
+    store.setReport("tab-a", measuredReport(2));
+    store.setReport("tab-b", measuredReport(1, 1));
+    store.setReport("tab-c", measuredReport(5));
+    const state = useDesignSentPreviews.getState().byTabId;
+    expect(selectVerifySummaryLineForMessage(state, MESSAGE_ID)).toBe("3 landed · 1 didn't land");
+    // A record still measuring (no report) contributes nothing rather than hiding the rest.
+    store.forgetReport("tab-b");
+    expect(
+      selectVerifySummaryLineForMessage(useDesignSentPreviews.getState().byTabId, MESSAGE_ID),
+    ).toBe("2 landed");
+    expect(selectVerifySummaryLineForMessage(state, "msg-none")).toBeNull();
   });
 });
 

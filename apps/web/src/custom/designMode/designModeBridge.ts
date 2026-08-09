@@ -1,6 +1,7 @@
 import {
   DESIGN_MODE_GLOBAL,
   DESIGN_MODE_PROTOCOL_VERSION,
+  isNonNegativeInteger,
   parseDesignChangeRequestPayload,
   type DesignChangeRequestPayload,
   type DesignModeAlignAxis,
@@ -182,6 +183,28 @@ export const designModeBridge = {
       .catch(() => null);
     if (result == null) return null;
     return parseDesignChangeRequestPayload(result) ?? "stale-engine";
+  },
+  /** The sent-verification switch (measure now + re-measure per page settle when on; all
+   * work stops when off). Results arrive as `verdict` console messages, never as a return
+   * value. A pre-v6 engine has no such member — the optional-chained call throws into
+   * fire's catch and the panel simply keeps its unmeasured copy until the next injection
+   * rebuilds the engine. */
+  setVerifying(runtimeTabId: string, on: boolean): void {
+    fire(runtimeTabId, "setVerifying", [on]);
+  },
+  /** Commits every check the guest's fresh measurement verifies as applied. Resolves to
+   * the committed property count (the caller's outcome toast reads it — zero means the
+   * page changed between render and click and nothing was safe to drop); null when the
+   * webview/engine is unreachable or answers with something that is not a count (a
+   * pre-v6 engine). */
+  async commitVerified(runtimeTabId: string): Promise<number | null> {
+    flushPending();
+    const webview = findPreviewWebview(runtimeTabId);
+    if (!webview) return null;
+    const result = await webview
+      .executeJavaScript(handleCall("commitVerified", []), false)
+      .catch(() => null);
+    return isNonNegativeInteger(result) ? result : null;
   },
   /** Whether a live guest engine speaking THIS host's protocol version is installed on the
    * page — the remount reconcile's probe (ForkPreviewDesignMode). Cheap enough to ask on

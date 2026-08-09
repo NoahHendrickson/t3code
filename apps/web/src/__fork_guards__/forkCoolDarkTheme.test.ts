@@ -167,16 +167,23 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
   });
 
-  it("keeps context chips opaque without allocating their own backdrop filters", () => {
+  it("keeps context chips on an opaque match of the composer fill", () => {
+    // Chips share the composer's RGB but stay opaque: design-mode canvas
+    // transforms <body>, which disables backdrop-filter on descendants.
     const contextRules = cssRules(theme).filter((rule) =>
       rule.body.includes("--fork-context-chip-bg:"),
     );
     const defaultDark = contextRules.find((rule) => rule.selector === `${MARKER}.dark`);
     const coolDark = contextRules.find((rule) => rule.selector === COOL_STAGE[0]);
-    expect(defaultDark?.body).toContain("--fork-context-chip-bg: #2a2a2a");
-    expect(coolDark?.body).toContain("--fork-context-chip-bg: #2c2f33");
-    expect(defaultDark?.body).not.toContain("var(--fork-composer-bg)");
-    expect(coolDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
+    expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(41 41 41)");
+    expect(coolDark?.body).toContain("--fork-context-chip-bg: rgb(44 47 51)");
+    expect(defaultDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
+    const chipBlur = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.body.includes("backdrop-filter"),
+    );
+    expect(chipBlur).toBeUndefined();
   });
 
   it("pre-paints Cool Dark from the palette key so the load flash matches the stage", () => {

@@ -43,19 +43,28 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
 
   if (envLocked || onEnvironmentChange === undefined) {
     return (
-      <span className="inline-flex min-w-0 max-w-full items-center gap-1 border border-transparent px-[calc(--spacing(3)-1px)] text-sm font-medium text-muted-foreground/70 sm:text-xs">
-        {activeEnvironment?.isPrimary ? (
-          <MonitorIcon className="size-3 shrink-0" />
-        ) : (
-          <CloudIcon className="size-3 shrink-0" />
-        )}
+      <>
+        {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+            Locked environment readout is a span; data-fork-context-chip keeps the
+            filled chip paint when there is no select trigger. */}
         <span
-          data-composer-label
-          className="min-w-0 max-w-[240px] truncate transition-[max-width,opacity] duration-300 ease-out group-data-[compact]/composer-context:max-w-0 group-data-[compact]/composer-context:opacity-0"
+          data-fork-context-chip
+          className="inline-flex min-w-0 max-w-full items-center border border-transparent text-sm font-medium sm:text-xs"
         >
-          {activeEnvironment?.label ?? "Run on"}
+          {activeEnvironment?.isPrimary ? (
+            <MonitorIcon className="size-3 shrink-0" />
+          ) : (
+            <CloudIcon className="size-3 shrink-0" />
+          )}
+          <span
+            data-composer-label
+            className="min-w-0 max-w-[240px] truncate transition-[max-width,opacity] duration-300 ease-out group-data-[compact]/composer-context:max-w-0 group-data-[compact]/composer-context:opacity-0"
+          >
+            {activeEnvironment?.label ?? "Run on"}
+          </span>
         </span>
-      </span>
+        {/* fork:end fork-composer-shell */}
+      </>
     );
   }
 

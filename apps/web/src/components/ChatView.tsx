@@ -5037,7 +5037,12 @@ function ChatViewContent(props: ChatViewProps) {
        replaces a pill IN PLACE under the same id — so only entry identity tells the
        two apart. */
     if (turnStartSucceeded)
-      forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent, messageCreatedAt);
+      forkDesignChanges.markSent(
+        forkDesignChangeRef,
+        forkDesignSend.sent,
+        messageCreatedAt,
+        messageIdForSend,
+      );
     /* fork:end fork-design-mode */
   };
 

@@ -222,12 +222,22 @@ describe("designChangeDraftStore", () => {
     add(THREAD, "tab-b", payload({ markdown: "from b" }));
     const taken = forkDesignChanges.takeForSend(THREAD, "");
 
-    forkDesignChanges.markSent(THREAD, taken.sent, SENT_AT);
+    forkDesignChanges.markSent(THREAD, taken.sent, SENT_AT, "msg-1");
 
     // Both tabs recorded — the panel can now offer to resolve either one's previews.
     expect(useDesignSentPreviews.getState().byTabId).toEqual({
-      "tab-a": { threadKey: scopedThreadKey(THREAD), sentAt: SENT_AT },
-      "tab-b": { threadKey: scopedThreadKey(THREAD), sentAt: SENT_AT },
+      "tab-a": {
+        threadKey: scopedThreadKey(THREAD),
+        sentAt: SENT_AT,
+        messageId: "msg-1",
+        report: null,
+      },
+      "tab-b": {
+        threadKey: scopedThreadKey(THREAD),
+        sentAt: SENT_AT,
+        messageId: "msg-1",
+        report: null,
+      },
     });
     expect(pendingFor(THREAD)).toHaveLength(0);
   });
@@ -238,7 +248,7 @@ describe("designChangeDraftStore", () => {
     const taken = forkDesignChanges.takeForSend(THREAD, "");
     add(THREAD, "tab-b", payload({ markdown: "arrived mid-flight" }));
 
-    forkDesignChanges.markSent(THREAD, taken.sent, SENT_AT);
+    forkDesignChanges.markSent(THREAD, taken.sent, SENT_AT, "msg-1");
 
     expect(Object.keys(useDesignSentPreviews.getState().byTabId)).toEqual(["tab-a"]);
     expect(pendingFor(THREAD)).toHaveLength(1);

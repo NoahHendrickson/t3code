@@ -305,19 +305,29 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("height: 24px"),
     );
     expect(context?.body).toMatch(/border-radius:\s*6px/u);
-    expect(context?.body).toMatch(/padding-inline:\s*4px 6px/u);
-    const checkoutChip = rules.find(
+    expect(context?.body).toMatch(/padding-inline:\s*6px/u);
+    const chipPad = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes('[data-slot="select-trigger"]'),
+        rule.selector.includes('[data-slot="select-trigger"]') &&
+        rule.selector.includes('[data-slot="combobox-trigger"]') &&
+        rule.selector.includes("[data-fork-context-chip]"),
     );
-    expect(checkoutChip?.body).toMatch(/padding-inline-start:\s*0/u);
-    const branchChip = rules.find(
+    expect(chipPad?.body).toMatch(/padding-inline:\s*6px/u);
+    // Workspace + branch chips share white ink in dark (including locked spans).
+    const chipInk = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes('[data-slot="combobox-trigger"]'),
+        rule.selector.includes("[data-fork-context-chip]") &&
+        rule.body.includes("color:"),
     );
-    expect(branchChip?.body).toMatch(/padding-inline-start:\s*6px/u);
+    expect(chipInk?.body).toMatch(/color:\s*#ffffff/u);
+    expect(chipInk?.selector).toContain(".dark");
+    expect(envModeSelector).toContain("data-fork-context-chip");
+    expect(readSibling("../components/BranchToolbarEnvironmentSelector.tsx")).toContain(
+      "data-fork-context-chip",
+    );
+    expect(readSibling("../components/BranchToolbar.tsx")).toContain("data-fork-context-chip");
     const meter = rules.find((rule) =>
       rule.selector.endsWith("[data-fork-composer-status] button"),
     );

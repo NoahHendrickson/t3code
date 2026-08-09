@@ -56,6 +56,8 @@ function boot(): void {
   mode.onSelection = (elements) => emitToHost({ type: "selection", elements });
   mode.onDraftsCount = (count) => emitToHost({ type: "drafts", count });
   mode.onLayers = (roots, truncated) => emitToHost({ type: "layers", roots, truncated });
+  mode.onVerdict = (report) => emitToHost({ type: "verdict", report });
+  mode.onSentResolved = () => emitToHost({ type: "sent-resolved" });
   mode.canvas.onCanvas = (on, scalePercent) => emitToHost({ type: "canvas", on, scalePercent });
   // Theme tokens re-read on every activation (setActive resets the vendored token
   // cache, so a CSS edit made while the tool was off is picked up here too).
@@ -93,6 +95,10 @@ function boot(): void {
     reorderElement: (id, beforeId) => mode.reorderById(id, beforeId),
     setCanvas: (on) => mode.canvas.setOn(on),
     canvasCommand: (action) => mode.canvas.run(action),
+    setVerifying: (on) => mode.setVerifying(on),
+    // Sync engine-side; Promise-typed on the wire so the count rides executeJavaScript
+    // back exactly as buildSend's payload does.
+    commitVerified: () => Promise.resolve(mode.commitVerified()),
     destroy: () => {
       mode.setActive(false);
       overlay.destroy();

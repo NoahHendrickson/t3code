@@ -292,6 +292,51 @@ describe("fork guard: design mode", () => {
     );
   });
 
+  it("selects on pointerdown so menus cannot activate under the press", () => {
+    // Base UI MenuTrigger opens on pointerdown; a click-only intercept lets the menu open
+    // and often swallows the click, so the design panel stayed empty. The press must be
+    // owned before the page sees it — except for MoveDrag targets, which still need a
+    // sub-threshold press to become an ordinary click.
+    const engine = read("src/custom/designMode/engine/headlessMode.ts");
+    // One funnel owns tombstone refusal + toggle/select/deselect; both event paths call it.
+    const selectFromTarget =
+      /private selectFromTarget\(el: TaggedElement \| null, shiftKey: boolean\): void \{([\s\S]*?)\n  \}/u.exec(
+        engine,
+      )?.[1];
+    expect(selectFromTarget).toBeDefined();
+    expect(selectFromTarget).toContain('kind === "delete"');
+    expect(selectFromTarget).toContain("this.toggleSelection(el)");
+    expect(selectFromTarget).toContain("this.select(el)");
+    expect(selectFromTarget).toContain("this.deselect()");
+
+    const body = /private onPointerDown = \(e: PointerEvent\): void => \{([\s\S]*?)\n  \};/u.exec(
+      engine,
+    )?.[1];
+    expect(body).toBeDefined();
+    expect(body).toContain("this.browse.shouldYield(e)");
+    expect(body).toContain("this.moveDrag.wouldDrag(el)");
+    expect(body).toContain("e.preventDefault()");
+    expect(body).toContain("e.stopPropagation()");
+    expect(body).toContain("this.selectFromTarget(el, e.shiftKey)");
+    expect(body).toContain("this.suppressNextClickSelection = true");
+    // Clear shape: delete early-return, then wouldDrag fall-through (no preventDefault),
+    // then preventDefault + selectFromTarget. Do not fold delete into the drag gate.
+    expect(body).toMatch(
+      /kind === "delete"\) return;[\s\S]*?if \(el && this\.moveDrag\.wouldDrag\(el\)\) return;[\s\S]*?e\.preventDefault\(\)/u,
+    );
+    expect(body).not.toContain('kind !== "delete"');
+
+    const click = /private onClick = \(e: MouseEvent\): void => \{([\s\S]*?)\n  \};/u.exec(
+      engine,
+    )?.[1];
+    expect(click).toBeDefined();
+    expect(click).toContain("this.suppressNextClickSelection");
+    expect(click).toContain("this.selectFromTarget(");
+    // Click must not re-run the toggle/select ladder inline — only via the helper,
+    // and only when pointerdown did not already own the gesture.
+    expect(click).not.toContain("this.toggleSelection(el)");
+  });
+
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
     // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
     // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no
@@ -338,28 +383,52 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain("forkDesignSend.text || IMAGE_ONLY_BOOTSTRAP_PROMPT");
     // Cleared by ENTRY, not by id — a re-send during the awaited turn start replaces the pill
     // in place under the same id, so only identity distinguishes it from what was sent.
-    expect(chatView).toContain(
-      "forkDesignChanges.markSent(forkDesignChangeRef, forkDesignSend.sent, messageCreatedAt)",
-    );
+    expect(chatView).toContain("forkDesignChanges.markSent(");
+    expect(chatView).toContain("messageCreatedAt,");
+    expect(chatView).toContain("messageIdForSend,");
     expect(chatView).not.toContain("pendingIds");
   });
 
-  it("offers to resolve previews that were sent, without claiming they landed", () => {
+  it("offers to resolve previews that were sent, claiming only what was measured", () => {
     // Sent drafts stay painted over whatever the agent then changed, and inline styles win —
-    // so the page stops being evidence until they come off. The panel says so once the turn
-    // ends. What it must NOT do is assert the edit was applied: the Forge's verifier is not
-    // vendored here (engine/vendor/README.md), so nothing in this fork can check.
+    // so the page stops being evidence until they come off. Once the turn ends the panel
+    // arms the guest verifier and renders MEASUREMENTS: any success wording must come from
+    // a verdict the page produced, never from the agent's account or from optimism.
     //
     // The turn-over invariant itself ("never offer while the turn is open") is NOT pinned
     // here as an implementation string — it lives in shouldOfferPreviewResolution, a pure
     // exported predicate with its own behavioral tests (designSentPreviews.test.ts). This
     // guard holds the wiring: the panel's offer routes through that predicate, so the
     // invariant cannot be bypassed by a hand-rolled condition in the component.
-    const panel = read("src/custom/designMode/panel/ForkDesignPanel.tsx");
+    const panel = read("src/custom/designMode/panel/SentPreviewResolution.tsx");
     expect(panel).toContain("shouldOfferPreviewResolution(");
     expect(panel).toContain("data-fork-design-resolve-previews");
-    for (const claim of ["applied", "verified", "landed successfully"]) {
-      expect(panel.slice(panel.indexOf("data-fork-design-resolve-previews"))).not.toContain(claim);
+    // Verdict wording has ONE home — the shared label map — and the panel renders labels
+    // through it rather than hand-writing claims beside the data attribute. Every verdict
+    // key is in the map, `missing` included: a wording hand-written twice is a wording
+    // that drifts.
+    expect(panel).toContain("VERIFY_VERDICT_LABELS[check.verdict]");
+    expect(panel).toContain("VERIFY_VERDICT_LABELS.missing");
+    expect(panel).toContain("VERIFY_VERDICT_LABELS.applied");
+    // The region scan the label map cannot replace: any hand-written success claim in the
+    // rendered footer must trip CI even if it never touches the map. ("applied" appears
+    // legitimately as the verdict KEY in code — the scan covers the words with no such
+    // alias.) The discard's blast radius is stated on every path, measured or not.
+    const region = panel.slice(panel.indexOf("data-fork-design-resolve-previews"));
+    for (const claim of ["verified", "landed successfully", "Applied"]) {
+      expect(region).not.toContain(claim);
+    }
+    expect(region).toContain("Discarding clears every edit on this tab");
+    const labels = read("src/custom/designMode/designSentPreviews.ts");
+    // 'unverifiable' must never borrow the success words — "can't be checked" rendered as
+    // anything stronger is exactly the invented claim this feature exists to avoid. And
+    // even the success label stays at measurement strength: the page renders the value
+    // ("landed"), which is not "the agent's edit was correct" ("applied"/"verified").
+    expect(labels).toContain('applied: "landed"');
+    expect(labels).toContain('unverifiable: "can\'t be checked"');
+    expect(labels).toContain('missing: "gone from the page"');
+    for (const claim of ["applied", "verified"]) {
+      expect(labels.slice(labels.indexOf("VERIFY_VERDICT_LABELS = {"))).not.toContain(`"${claim}"`);
     }
 
     // The record is minted by the send path, from the entries it is about to clear.
@@ -381,7 +450,12 @@ describe("fork guard: design mode", () => {
     expect(timeline).toContain(
       "const forkDesignChanges = extractTrailingDesignChanges(row.message.text)",
     );
-    expect(timeline).toContain("<ForkTranscriptDesignChanges blocks={forkDesignChanges.blocks} />");
+    expect(timeline).toContain("<ForkTranscriptDesignChanges");
+    expect(timeline).toContain("blocks={forkDesignChanges.blocks}");
+    // The verdict line's correlation key: the message's own id — the one stable identity
+    // of the row — so the chip merges every contributing tab's records for exactly this
+    // message (`sentAt` is shared across tabs and only ms-unique).
+    expect(timeline).toContain("messageId={row.message.id}");
     // Extraction round-trip: blocks are the outermost trailing run and strip cleanly,
     // restoring the position the upstream element/terminal extractors rely on.
     const markdown = "# Design change request\n\n## 1. <button> — src/App.tsx:5:3\n- x";
@@ -615,6 +689,84 @@ describe("fork guard: design mode", () => {
     expect(engine.loadLifecycle(stored([entry([["padding-top", "32px", 24]])]))?.drafts).toEqual(
       [],
     );
+  });
+
+  it("verification's measurement window restores the page's inline styles exactly", async () => {
+    // The riskiest write in the verifier: the suppress → measure → restore pass mutates
+    // inline styles on the user's live page, and a restore that loses `!important`, a
+    // page-authored longhand, or a value written mid-window corrupts the page silently.
+    // withTransitionsSuppressed's contract is a WHOLE-cssText snapshot per element, rolled
+    // back wholesale — pinned here on the same inline-style shim the restore-original
+    // guard uses, so a vendor re-sync that "simplifies" it to value-only save/restore
+    // fails loudly. expandCollapsedProperty is the commit path's other pure seam: the
+    // report's collapsed names must expand through the builder's own COLLAPSE table.
+    const result = await build({
+      stdin: {
+        contents: [
+          'export { withTransitionsSuppressed } from "./src/custom/designMode/engine/vendor/request";',
+          'export { expandCollapsedProperty } from "./src/custom/designMode/engine/verifySession";',
+        ].join("\n"),
+        resolveDir: webRoot,
+        sourcefile: "design-mode-verify-guard.ts",
+        loader: "ts",
+      },
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "es2022",
+      write: false,
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]?.text ?? "";
+    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.Buffer.from(code).toString("base64")}`;
+    const engine = (await import(moduleUrl)) as {
+      withTransitionsSuppressed: <T>(els: Iterable<unknown>, fn: () => T) => T;
+      expandCollapsedProperty: (property: string, draftProps: readonly string[]) => string[];
+    };
+
+    // An element whose inline slot carries priorities and longhands — the shapes a
+    // value-only restore destroys.
+    const cssTextElement = () => {
+      let cssText = "transition-duration: 200ms !important; padding-top: 8px;";
+      return {
+        style: {
+          get cssText() {
+            return cssText;
+          },
+          set cssText(next: string) {
+            cssText = next;
+          },
+          setProperty(key: string, value: string, priority = "") {
+            cssText += ` ${key}: ${value}${priority ? ` !${priority}` : ""};`;
+          },
+          removeProperty(key: string) {
+            cssText = cssText
+              .split(";")
+              .filter((declaration) => !declaration.trim().startsWith(`${key}:`))
+              .join(";");
+          },
+        },
+      };
+    };
+    const el = cssTextElement();
+    const before = el.style.cssText;
+    const out = engine.withTransitionsSuppressed([el], () => {
+      // The measurement pass's own suppression writes happen INSIDE the window and must
+      // roll back with the transition.
+      el.style.removeProperty("padding-top");
+      el.style.setProperty("color", "red");
+      return el.style.cssText;
+    });
+    expect(out).toContain("transition: none");
+    expect(out).not.toContain("padding-top");
+    expect(el.style.cssText).toBe(before);
+
+    // Collapsed names expand through the builder's own table, scoped to what was sent.
+    expect(
+      engine.expandCollapsedProperty("padding-inline", ["padding-left", "padding-right", "color"]),
+    ).toEqual(["padding-left", "padding-right"]);
+    expect(engine.expandCollapsedProperty("color", ["color"])).toEqual(["color"]);
+    expect(engine.expandCollapsedProperty("padding-inline", ["color"])).toEqual([]);
   });
 
   it("keeps the native source bridge contract aligned across preload and engine", () => {
