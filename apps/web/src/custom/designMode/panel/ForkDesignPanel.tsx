@@ -1,22 +1,13 @@
-import { useAtomValue } from "@effect/atom-react";
-import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
-import { useThreadSession } from "~/state/entities";
-import { environmentThreadDetails } from "~/state/threads";
-
 import { useDesignChangeDraftStore } from "../designChangeDraftStore";
 import { designModeBridge } from "../designModeBridge";
 import { selectDesignModeTab, useDesignModeStore } from "../designModeStore";
-import {
-  selectSentPreview,
-  shouldOfferPreviewResolution,
-  useDesignSentPreviews,
-} from "../designSentPreviews";
+import { useDesignSentPreviews } from "../designSentPreviews";
 import { applyDesignUndoEntry } from "../designUndoApply";
 import { designUndoHistory } from "../designUndoHistory";
 import {
@@ -27,6 +18,7 @@ import {
   type DesignModeWritableKey,
 } from "../protocol";
 import { CanvasControls } from "./CanvasControls";
+import { SentPreviewResolution } from "./SentPreviewResolution";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { LayoutSection } from "./sections/LayoutSection";
 import { FillSection, MarginSection, StrokeSection } from "./sections/PaintSections";
@@ -444,67 +436,6 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
           {sending ? "Preparing…" : "Send to chat"}
         </Button>
       </footer>
-    </div>
-  );
-}
-
-// ── Resolving previews that have already been sent ─────────────────────────────────────
-//
-// A sent request leaves its drafts painted over whatever the agent then changed, and the
-// inline styles win — so the page stops being evidence of anything until they come off.
-// The footer asks once the turn is over. It does NOT claim the edit landed: this fork does
-// not vendor the Forge's verifier, so nothing here can check (engine/vendor/README.md).
-//
-// A child component rather than panel state on purpose: its subscriptions — the thread's
-// session and projected latest turn — churn hardest exactly while a turn runs, and here
-// they re-render this one footer block instead of the whole panel. Mounted below the
-// panel's `!tab.enabled` bail, so with design mode off nothing subscribes at all.
-function SentPreviewResolution({
-  runtimeTabId,
-  threadRef,
-  draftCount,
-  onDiscard,
-}: {
-  runtimeTabId: string;
-  threadRef: ScopedThreadRef;
-  draftCount: number;
-  onDiscard: () => void;
-}) {
-  const record = useDesignSentPreviews((state) => selectSentPreview(state.byTabId, runtimeTabId));
-  const session = useThreadSession(threadRef);
-  const latestTurn = useAtomValue(environmentThreadDetails.latestTurnAtom(threadRef));
-  const threadKey = scopedThreadKey(threadRef);
-
-  const onKeep = useCallback(() => {
-    useDesignSentPreviews.getState().forget(runtimeTabId);
-  }, [runtimeTabId]);
-
-  if (!shouldOfferPreviewResolution({ record, threadKey, latestTurn, session, draftCount })) {
-    return null;
-  }
-  return (
-    <div
-      className="space-y-1.5 rounded-md bg-[var(--fork-design-field)] px-2.5 py-2"
-      data-fork-design-resolve-previews
-    >
-      {/* Says what is true and nothing more — and the RECORD is what is true, not the live
-          draft count: edits made after the send are never claimed as sent, and the discard
-          states its full blast radius because the guest has no way to drop only the sent
-          subset (a hot reload re-renders the page and re-mints every element id, so sent
-          identity recorded at send time is stale exactly when this prompt appears). */}
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Edits from a sent request are still previewed on top of the page, hiding whatever the agent
-        changed underneath. Discarding clears every edit on this tab — including any made after the
-        send.
-      </p>
-      <div className="flex items-center gap-1">
-        <Button variant="secondary" size="xs" onClick={onDiscard} type="button">
-          Discard all edits
-        </Button>
-        <Button variant="ghost" size="xs" onClick={onKeep} type="button">
-          Keep previews
-        </Button>
-      </div>
     </div>
   );
 }
