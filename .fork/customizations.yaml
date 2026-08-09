@@ -2067,9 +2067,31 @@
     not successes, and caching them would pin a transient failure for the
     element's lifetime.
 
+    Third, the resolver snapshots the rendering component's primitive props
+    (strings/numbers/booleans, `children` excluded, capped at 12 entries and
+    64 chars per string) off the composite fiber whose displayName matches
+    the reported component name — no match, no props, so the request never
+    labels props with a component they do not belong to. The snapshot crosses
+    the bridge only beside a component name, is re-validated by the guest
+    twin (designProps.ts's readDesignProps, mirroring DesignSourceResult.ts's
+    normalizeResolvedProps), rides the element as `data-t3-props`, is
+    re-validated AGAIN when the request builder reads that page-controlled
+    attribute back, and renders as "Rendered by `<Button>` — props:
+    `variant="ghost" size="sm"`". It exists to ground the SCOPE guardrail's
+    component-vs-one-off judgment in the design system's own vocabulary.
+    bippy is imported by its root export on purpose (the mangled-name d.ts of
+    bippy/core cannot be imported by name; the root's hook-install side
+    effect is guarded double work beside react-grab's bundled copy).
+
     Relatedly, the NO_PREVIEW guardrail must not promise upstream's automatic
     verification while this fork has not vendored client/verifier.ts; a guard
-    test pins that wording.
+    test pins that wording. The SCOPE guardrail likewise diverges from
+    upstream: instead of call-site-only scoping that skips shared-component
+    edits, the agent judges component-wide vs one-off intent from the
+    request's component/source context (selecting a Button and nudging its
+    padding usually means the Button, not one instance), prefers project
+    tokens over hard-coded values, and states which scope it chose. The same
+    guard test pins that wording too.
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
@@ -2078,6 +2100,8 @@
     # (the engine tsconfig includes it by path) so the web project can type-check
     # and unit-test it, which files under engine/ cannot be.
     - apps/web/src/custom/designMode/cssOrigin.ts
+    - apps/web/src/custom/designMode/designProps.ts
+    - apps/web/src/custom/designMode/designProps.test.ts
     - apps/web/src/custom/designMode/designModeStore.ts
     - apps/web/src/custom/designMode/designModeBridge.ts
     - apps/web/src/custom/designMode/designModeBridge.test.ts
@@ -2153,6 +2177,16 @@
     # upstream PickPreload entry — the whole desktop half of native source
     # recovery hangs off this one line.
     - apps/desktop/src/preview-pick-preload.ts
+    # alwaysBundle for the preview-pick-preload entry must keep listing every
+    # package the resolver imports (react-grab AND bippy). The webview is
+    # sandboxed, so anything left external becomes a require() that throws
+    # before the preload installs the picker or the resolver global — packaged
+    # builds only, where no dev server catches it.
+    - apps/desktop/vite.config.ts
+    # Unfenced (strict JSON): the bippy dependency DesignSourceResolver walks
+    # fibers with. An upstream dep sweep dropping it breaks the packaged
+    # preload, not just a type import.
+    - apps/desktop/package.json
     # Thin fenced import + <ForkPreviewDesignMode> in the chrome row's
     # trailingActions slot, plus <ForkPreviewLayersToggle> in its leadingActions
     # slot; the browser surface tree stays untouched.

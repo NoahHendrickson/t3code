@@ -792,6 +792,18 @@ describe("fork guard: design mode", () => {
     expect(preloadEntry).toContain("fork:begin fork-design-mode");
     expect(preloadEntry).toContain('import "./preview/DesignSourceResolver.ts"');
 
+    // Every package the resolver imports must be BUNDLED into the preload artifact. This
+    // webview is sandboxed, so a leftover external require() throws before the preload
+    // installs the picker or the resolver global — the whole preview-pick path dies, and
+    // only in packaged builds where a dev server never catches it.
+    const desktopViteConfig = NodeFS.readFileSync(
+      NodePath.join(desktopRoot, "vite.config.ts"),
+      "utf8",
+    );
+    for (const bundled of ["react-grab", "bippy"]) {
+      expect(desktopViteConfig).toContain(`id === "${bundled}"`);
+    }
+
     // react-grab stays a desktop-preload dependency only — never bundled into the web app.
     const webPackage = read("package.json");
     expect(webPackage).not.toContain("react-grab");
