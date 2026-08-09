@@ -19,7 +19,7 @@
  * (which holds a settled null for a short TTL) absorbs the repeats, so pointer traffic
  * still can't retry-storm react-grab.
  */
-import { PROPS_ATTR, readDesignProps } from "../designProps";
+import { type DesignProps, PROPS_ATTR, readDesignProps } from "../designProps";
 import type { TaggedElement } from "./vendor/source";
 
 export const NATIVE_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
@@ -61,6 +61,13 @@ function readComponentName(value: unknown): string | null {
   if (typeof value !== "object" || value === null) return null;
   const name = (value as { componentName?: unknown }).componentName;
   return typeof name === "string" && COMPONENT_NAME_PATTERN.test(name) ? name : null;
+}
+
+/** The resolver result's `props`, narrowed off `unknown` the same way readComponentName
+ * narrows the name — the validation itself lives in readDesignProps. */
+function readProps(value: unknown): DesignProps | null {
+  if (typeof value !== "object" || value === null) return null;
+  return readDesignProps((value as { props?: unknown }).props);
 }
 
 interface NativeSourceResolver {
@@ -184,9 +191,16 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
       // and only ever stamped ALONGSIDE the component name — the request renders props as
       // `<Name> — props: ...`. Overwrite semantics for the same HMR reason; a resolution that
       // yields no props clears a stale stamp rather than serving it forever.
-      const props = readDesignProps((raw as { props?: unknown }).props);
+      const props = readProps(raw);
       if (props) el.setAttribute(PROPS_ATTR, JSON.stringify(props));
       else el.removeAttribute(PROPS_ATTR);
+    } else {
+      // The stamp is atomic with the resolution: a resolve that comes back nameless (HMR
+      // swapped the component behind a still-connected element) clears BOTH attributes.
+      // Leaving them would let the request render a previous component's vocabulary as
+      // current evidence — and props now feed the agent's component-vs-one-off scope call.
+      el.removeAttribute(COMPONENT_NAME_ATTR);
+      el.removeAttribute(PROPS_ATTR);
     }
     if (!source) {
       // No position, but the file survived the host's symbolication check — worth carrying,

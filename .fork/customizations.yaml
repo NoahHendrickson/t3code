@@ -2131,6 +2131,16 @@
     # upstream PickPreload entry — the whole desktop half of native source
     # recovery hangs off this one line.
     - apps/desktop/src/preview-pick-preload.ts
+    # alwaysBundle for the preview-pick-preload entry must keep listing every
+    # package the resolver imports (react-grab AND bippy). The webview is
+    # sandboxed, so anything left external becomes a require() that throws
+    # before the preload installs the picker or the resolver global — packaged
+    # builds only, where no dev server catches it.
+    - apps/desktop/vite.config.ts
+    # Unfenced (strict JSON): the bippy dependency DesignSourceResolver walks
+    # fibers with. An upstream dep sweep dropping it breaks the packaged
+    # preload, not just a type import.
+    - apps/desktop/package.json
     # Thin fenced import + <ForkPreviewDesignMode> in the chrome row's
     # trailingActions slot, plus <ForkPreviewLayersToggle> in its leadingActions
     # slot; the browser surface tree stays untouched.
