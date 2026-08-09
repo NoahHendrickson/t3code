@@ -203,6 +203,10 @@
       "types": "./src/devHome.ts",
       "import": "./src/devHome.ts"
     },
+    "./forkDesignProps": {
+      "types": "./src/forkDesignProps.ts",
+      "import": "./src/forkDesignProps.ts"
+    },
     "./devProxy": {
       "types": "./src/devProxy.ts",
       "import": "./src/devProxy.ts"

@@ -803,6 +803,25 @@ describe("fork guard: design mode", () => {
     for (const bundled of ["react-grab", "bippy"]) {
       expect(desktopViteConfig).toContain(`id === "${bundled}"`);
     }
+    // ...including the workspace package carrying the shared props policy, which is just
+    // as unresolvable from a sandboxed preload as an npm one.
+    expect(desktopViteConfig).toContain('id.startsWith("@t3tools/")');
+
+    // The props policy has exactly ONE implementation. Both trust boundaries still call
+    // it independently — that is the point — but neither may re-declare the rules.
+    const sharedPolicy = NodeFS.readFileSync(
+      NodePath.join(webRoot, "../../packages/shared/src/forkDesignProps.ts"),
+      "utf8",
+    );
+    expect(sharedPolicy).toContain("export function normalizeForkDesignProps");
+    for (const caller of [
+      read("src/custom/designMode/designProps.ts"),
+      NodeFS.readFileSync(NodePath.join(desktopRoot, "src/preview/DesignSourceResult.ts"), "utf8"),
+    ]) {
+      expect(caller).toContain('from "@t3tools/shared/forkDesignProps"');
+      // The tell of a re-implementation: the entry loop's own cap check.
+      expect(caller).not.toContain("count >= MAX_PROPS");
+    }
 
     // react-grab stays a desktop-preload dependency only — never bundled into the web app.
     const webPackage = read("package.json");

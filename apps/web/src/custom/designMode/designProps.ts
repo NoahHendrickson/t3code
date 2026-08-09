@@ -6,51 +6,35 @@
  * inline rendering. Lives OUTSIDE engine/ (the cssOrigin.ts pattern) so it stays
  * unit-testable in apps/web's project while the engine island includes it by reference.
  *
- * Trust boundary: this is the guest-side TWIN of `normalizeResolvedProps` in
- * apps/desktop/src/preview/DesignSourceResult.ts — deliberate duplication, not a shared
- * helper, because each side of the page-shared global must hold on its own. Keep the
- * caps and shapes in step. The validator runs TWICE per journey on purpose: once on the
- * resolver result (nativeSource.ts), and again when the request builder reads the stamped
- * attribute back — any element in the served DOM can carry an attacker-authored
- * `data-t3-props`, exactly like `data-dc-source`.
+ * Trust boundary: the props POLICY itself is shared — `normalizeForkDesignProps` in
+ * @t3tools/shared/forkDesignProps, which the desktop resolver
+ * (apps/desktop/src/preview/DesignSourceResult.ts) validates against too. What stays
+ * duplicated is the CALL, not the rules: the validator runs TWICE per journey on purpose,
+ * once on the resolver result (nativeSource.ts) and again when the request builder reads
+ * the stamped attribute back — any element in the served DOM can carry an
+ * attacker-authored `data-t3-props`, exactly like `data-dc-source`.
  */
+
+import {
+  type ForkDesignProps,
+  MAX_DESIGN_PROP_VALUE_LENGTH,
+  MAX_DESIGN_PROPS,
+  normalizeForkDesignProps,
+} from "@t3tools/shared/forkDesignProps";
 
 /** Stamped beside COMPONENT_NAME_ATTR by nativeSource.ts, and only ever alongside it —
  * the request renders props as `<Name> — props: ...`, so a props bag with no component
  * name has nowhere honest to appear. */
 export const PROPS_ATTR = "data-t3-props";
 
-export type DesignProps = Record<string, string | number | boolean>;
+/** Local names for the shared props policy. */
+export type DesignProps = ForkDesignProps;
+export const MAX_PROPS = MAX_DESIGN_PROPS;
+export const MAX_PROP_VALUE_LENGTH = MAX_DESIGN_PROP_VALUE_LENGTH;
 
-/** Caps twinned with DesignSourceResult.ts (flood control for a page-controlled object). */
-export const MAX_PROPS = 12;
-export const MAX_PROP_VALUE_LENGTH = 64;
-
-/** JSX-attribute-shaped names only (identifier, plus the `-` of `data-*`/`aria-*`). */
-const PROP_NAME_PATTERN = /^[A-Za-z_$][\w$-]{0,63}$/;
-
-/** Unknown → validated primitive props, or null when nothing usable survives.
- * Entry-level skipping, not rejection — props are best-effort context. `children` is
- * excluded even when primitive (the request already carries `Text:`); strings are
- * control-character-rejected and sliced to the cap. */
-export function readDesignProps(value: unknown): DesignProps | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  const out: DesignProps = {};
-  let count = 0;
-  for (const [name, raw] of Object.entries(value)) {
-    if (count >= MAX_PROPS) break;
-    if (name === "children" || !PROP_NAME_PATTERN.test(name)) continue;
-    if (typeof raw === "boolean") out[name] = raw;
-    else if (typeof raw === "number" && Number.isFinite(raw)) out[name] = raw;
-    else if (typeof raw === "string") {
-      // eslint-disable-next-line no-control-regex
-      if (/[\u0000-\u001f\u007f]/.test(raw)) continue;
-      out[name] = raw.slice(0, MAX_PROP_VALUE_LENGTH);
-    } else continue;
-    count += 1;
-  }
-  return count === 0 ? null : out;
-}
+/** Unknown → validated primitive props, or null when nothing usable survives. The rules
+ * live in @t3tools/shared/forkDesignProps; this is the guest-side CALL of them. */
+export const readDesignProps = normalizeForkDesignProps;
 
 /** The stamped attribute's value → validated props. JSON that does not parse, or parses
  * to anything but a usable bag, is null — the attribute is page-controlled either way. */

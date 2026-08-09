@@ -75,11 +75,14 @@ export default defineConfig({
         // left external here throws before the preload installs the picker or the design
         // source resolver, taking the whole preview-pick path down. `bippy` rides along
         // with react-grab: DesignSourceResolver imports it directly for the fiber walk.
+        // `@t3tools/*` is a workspace package and just as unresolvable from here —
+        // DesignSourceResult pulls in the shared design-props policy.
         alwaysBundle: (id) =>
           id === "react-grab" ||
           id.startsWith("react-grab/") ||
           id === "bippy" ||
-          id.startsWith("bippy/"),
+          id.startsWith("bippy/") ||
+          id.startsWith("@t3tools/"),
       },
     },
     {
