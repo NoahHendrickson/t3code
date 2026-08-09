@@ -14,12 +14,19 @@
 // If you add a NEW way for queue markdown to reach an agent, it must carry these (or an
 // equivalent instruction wrapper) too.
 
-// "skip and report", never "pause": an unresolved (claimed-but-unmarked) item goes stale
-// after CLAIM_TIMEOUT_MS and gets re-delivered on a later watch cycle — a paused agent would
-// be re-asked the same question every few minutes. The command texts (server/setup.ts) spell
-// out the MCP mechanics: mark_applied status "failed", note "needs confirmation: <why>".
+// t3-fork: upstream scoped every edit to its call site and told the agent to SKIP anything
+// that would touch a shared component. In this fork that default is inverted: a designer who
+// selects a Button and nudges its padding almost always means "the Button", not "this one
+// button" — call-site-only scoping turned those edits into one-off className overrides that
+// drift from the design system. Scope is now a judgment call the agent makes from the
+// evidence the request already carries (the rendering component, the authored file, how
+// design-system-shaped the edit is). What survives from upstream is the no-pause rule
+// (a stalled agent re-asks the same question forever) — recast as "choose and disclose":
+// the agent states the scope it picked so the user can redirect a wrong guess. A faithful
+// re-sync would restore upstream's skip-and-report wording; a guard test pins this one
+// (forkDesignModeCssOrigin.test.ts).
 export const SCOPE_GUARDRAIL =
-  'Scope: apply to this call site only. If a change would modify a shared component rendered elsewhere, skip it and report it back as needing confirmation — do not pause waiting for an answer.'
+  'Scope: for each edit, judge whether the user means the component everywhere or just this instance, and act on your best reading. Changes to the intrinsic look of a component (color, spacing, radius, typography) usually belong in the component or shared rule that renders the element, so every instance updates; edits tied to this particular spot in the layout belong at the call site. Prefer the project tokens and the suggested utilities over hard-coded values. Do not pause to ask — state which scope you chose in your reply so the user can redirect a wrong guess.'
 
 // No verification ask on purpose: telling the agent to "verify" makes it spin up dev
 // servers/screenshots to preview the result the user is already watching live.

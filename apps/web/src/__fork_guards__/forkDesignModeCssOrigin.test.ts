@@ -138,20 +138,21 @@ describe("fork guard: design-mode css origin", () => {
     });
   });
 
+  // Read as text rather than imported: guardrails.ts lives inside the engine's TS island,
+  // which apps/web's project excludes, so an import here fails to type-check (TS6307).
+  const guardrails = NodeFS.readFileSync(
+    NodeURL.fileURLToPath(
+      new URL("../custom/designMode/engine/vendor/shared/guardrails.ts", import.meta.url),
+    ),
+    "utf8",
+  );
+
   // Re-sync durability: upstream's wording promises "The Forge verifies the changes
   // automatically", which is false in this fork — client/verifier.ts was never vendored, so
   // nothing checks. A faithful re-sync would restore that sentence and silently tell the agent
   // to stop looking exactly where a no-op edit surfaces. Delete this only alongside a vendored
   // verifier.
   describe("NO_PREVIEW_GUARDRAIL", () => {
-    // Read as text rather than imported: guardrails.ts lives inside the engine's TS island,
-    // which apps/web's project excludes, so an import here fails to type-check (TS6307).
-    const guardrails = NodeFS.readFileSync(
-      NodeURL.fileURLToPath(
-        new URL("../custom/designMode/engine/vendor/shared/guardrails.ts", import.meta.url),
-      ),
-      "utf8",
-    );
     const noPreview = /export const NO_PREVIEW_GUARDRAIL\s*=\s*'([^']*)'/u.exec(guardrails)?.[1];
 
     it("is found in the vendored source", () => {
@@ -164,6 +165,37 @@ describe("fork guard: design-mode css origin", () => {
 
     it("still tells the agent not to spin up its own preview", () => {
       expect(noPreview).toMatch(/Do not run the app/u);
+    });
+  });
+
+  // Re-sync durability, same shape as NO_PREVIEW's: upstream scopes every edit to its call
+  // site and tells the agent to SKIP shared-component changes. This fork inverts that —
+  // selecting a Button and nudging its padding usually means "the Button", so the agent
+  // judges component-wide vs one-off from the request's component/source context and says
+  // which it chose. A faithful re-sync would silently restore the skip-and-report wording
+  // and turn design edits back into call-site overrides.
+  describe("SCOPE_GUARDRAIL", () => {
+    const scope = /export const SCOPE_GUARDRAIL\s*=\s*'([^']*)'/u.exec(guardrails)?.[1];
+
+    it("is found in the vendored source", () => {
+      expect(scope).toBeTruthy();
+    });
+
+    it("no longer instance-locks or skips shared-component edits", () => {
+      expect(scope).not.toMatch(/apply to this call site only/u);
+      expect(scope).not.toMatch(/skip it/u);
+    });
+
+    it("asks the agent to judge component-wide vs one-off and disclose its choice", () => {
+      expect(scope).toMatch(/judge/u);
+      expect(scope).toMatch(/component/u);
+      expect(scope).toMatch(/instance/u);
+      expect(scope).toMatch(/which scope you chose/u);
+    });
+
+    it("keeps the no-pause rule and the token preference", () => {
+      expect(scope).toMatch(/Do not pause/u);
+      expect(scope).toMatch(/tokens/u);
     });
   });
 });

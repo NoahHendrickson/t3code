@@ -5,6 +5,10 @@ import { readTheme, readTokens, suggestUtility, findExistingUtility, type Theme 
 import { isStructuralOpKind, type StructuralOpKind } from './shared/structural-kinds'
 // t3-fork: see ../../cssOrigin.ts — proves whether the named utility is really the lever.
 import { resolveDeclarationOrigins, type DeclarationOrigin } from '../../cssOrigin'
+// t3-fork: the rendering component's primitive-props snapshot (../../designProps.ts) —
+// parsed back OFF the stamped attribute with full re-validation, because any element in
+// the served DOM can carry an attacker-authored data-t3-props.
+import { formatDesignProps, parsePropsAttr, PROPS_ATTR, type DesignProps } from '../../designProps'
 import { COMPONENT_NAME_ATTR, SOURCE_FILE_ATTR } from '../nativeSource'
 
 export interface ChangeItem {
@@ -110,6 +114,10 @@ export interface ElementChange {
   /** t3-fork: the React component that rendered this element, when the host named one. Carries
    * the "where do I edit?" answer that a rejected/absent source location cannot. */
   component?: string
+  /** t3-fork: the component's primitive props at resolution time (`variant`, `size`, ...) —
+   * the design-system vocabulary the agent needs for the SCOPE_GUARDRAIL's component-vs-one-off
+   * judgment. Only ever present alongside `component`; the renderer hangs it off that name. */
+  props?: DesignProps
   /** t3-fork: the authored file, when it was known but no position inside it was. */
   sourceFile?: string
   changes: ChangeItem[]
@@ -288,6 +296,11 @@ function sourceRef(loc: SourceLocation): string {
  * flow, always [] for prompts. */
 function elementContext(el: TaggedElement, changes: ChangeItem[]): ElementChange {
   const className = typeof el.className === 'string' ? el.className : [...el.classList].join(' ')
+  // t3-fork: props only ever ride WITH a component name (nativeSource stamps them together,
+  // and the renderer hangs them off `<Name>`); parsePropsAttr re-validates the attribute,
+  // which is page-controlled like every other data-* this context reads.
+  const component = el.getAttribute(COMPONENT_NAME_ATTR)
+  const props = component ? parsePropsAttr(el.getAttribute(PROPS_ATTR)) : null
   return {
     tag: el.tagName.toLowerCase(),
     source: el.dataset.dcSource ? parseSourceAttr(el.dataset.dcSource) : null,
@@ -295,9 +308,8 @@ function elementContext(el: TaggedElement, changes: ChangeItem[]): ElementChange
     text: contextText(el.textContent ?? ''),
     selector: sanitizeInline(cssPath(el)),
     // t3-fork: written by nativeSource.ts's COMPONENT_NAME_ATTR, independently of the source tag.
-    ...(el.getAttribute(COMPONENT_NAME_ATTR)
-      ? { component: sanitizeInline(el.getAttribute(COMPONENT_NAME_ATTR)!) }
-      : {}),
+    ...(component ? { component: sanitizeInline(component) } : {}),
+    ...(props ? { props } : {}),
     ...(el.getAttribute(SOURCE_FILE_ATTR)
       ? { sourceFile: sanitizeInline(el.getAttribute(SOURCE_FILE_ATTR)!) }
       : {}),
@@ -630,11 +642,19 @@ export function renderMarkdown(req: ChangeRequest, theme: Theme = readTheme()): 
     // strongest address the request carries, and the agent should read it first.
     // Only when there is no resolved location — otherwise the heading already names the file
     // and a "(line not resolvable)" line beside it contradicts it.
+    // The props snapshot rides the component name in ONE code span — JSX vocabulary
+    // (`variant="ghost" size="sm"`), which is what makes "component-wide or one-off?"
+    // (SCOPE_GUARDRAIL) a judgment the agent can ground instead of a guess. sanitizeInline
+    // strips backticks so a page-authored value can never close the span.
+    const propsClause =
+      el.component && el.props ? ` — props: \`${sanitizeInline(formatDesignProps(el.props))}\`` : ''
     if (!el.source && (el.component || el.sourceFile)) {
       const where = el.sourceFile ? ` in ${el.sourceFile} (line not resolvable)` : ''
-      lines.push(`Rendered by: ${el.component ? `\`<${el.component}>\`` : 'unknown component'}${where}`)
+      lines.push(
+        `Rendered by: ${el.component ? `\`<${el.component}>\`` : 'unknown component'}${where}${propsClause}`
+      )
     } else if (el.source && el.component) {
-      lines.push(`Rendered by: \`<${el.component}>\``)
+      lines.push(`Rendered by: \`<${el.component}>\`${propsClause}`)
     }
     if (el.text) lines.push(`Text: "${el.text}"`)
     if (el.className) lines.push(`Current classes: \`${el.className}\``)

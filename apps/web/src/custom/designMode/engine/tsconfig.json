@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["./**/*.ts", "../protocol.ts", "../cssOrigin.ts"]
+  "include": ["./**/*.ts", "../protocol.ts", "../cssOrigin.ts", "../designProps.ts"]
 }

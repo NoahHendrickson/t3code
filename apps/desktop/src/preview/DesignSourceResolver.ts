@@ -9,10 +9,18 @@
  * the same property react-grab already depends on for the element picker.
  *
  * The surface is deliberately tiny: one frozen object with one async `resolve`
- * method returning validated scalars (`file`/`line`/`column`) or null. No Electron
- * object, IPC function, Node capability, React Fiber, or raw react-grab context
- * ever crosses this boundary.
+ * method returning validated scalars (`file`/`line`/`column`/`componentName`, plus the
+ * primitives-only `props` snapshot) or null. No Electron object, IPC function, Node
+ * capability, React Fiber, or raw react-grab context ever crosses this boundary.
  */
+// The ROOT export on purpose, side effect and all: importing `bippy` installs the React
+// DevTools hook stub at module load when none exists. In this preload that is guarded
+// double work, not new behavior — react-grab's own bundled bippy ships the identical
+// installer in the chunk `react-grab/primitives` pulls in, and fiber access (the picker,
+// getElementContext) already depends on it. `bippy/core` would skip the install but its
+// published d.ts exports mangled names (`getDisplayName as L`), so it cannot be imported
+// by name. Same pinned version as react-grab's bundled copy (0.5.41).
+import { getDisplayName, isCompositeFiber, type Fiber } from "bippy";
 import { getElementContext } from "react-grab/primitives";
 
 import {
@@ -20,6 +28,35 @@ import {
   describeResolvedSource,
   type ResolvedDesignSource,
 } from "./DesignSourceResult.ts";
+
+/** How far up the fiber tree to look for the named component. The rendering component is
+ * normally the first composite ancestor; the budget only exists so a hostile or cyclic
+ * `return` chain cannot spin. */
+const MAX_FIBER_WALK = 25;
+
+/** The `memoizedProps` of the composite fiber whose displayName matches the name react-grab
+ * reported, walked upward from the context's own fiber. Matching by NAME is the honesty
+ * guard: the request renders these as `<Name> — props: ...`, so props read off any other
+ * fiber would be labeled with a component they do not belong to — no match, no props.
+ * Returns the RAW object; normalizeResolvedProps (via describeResolvedSource) owns making
+ * it safe to cross the bridge. Best-effort throughout: any surprise returns null rather
+ * than failing a resolution that already has a location to deliver. */
+function readComponentProps(fiber: Fiber | null, componentName: string | null): unknown {
+  if (!fiber || typeof componentName !== "string" || componentName.length === 0) return null;
+  try {
+    let candidate: Fiber | null = fiber;
+    for (let depth = 0; candidate && depth < MAX_FIBER_WALK; depth += 1) {
+      if (isCompositeFiber(candidate) && getDisplayName(candidate.type) === componentName) {
+        const props: unknown = candidate.memoizedProps;
+        return typeof props === "object" ? props : null;
+      }
+      candidate = candidate.return;
+    }
+  } catch {
+    // A hostile props getter or a detached fiber mid-commit — context, never worth throwing.
+  }
+  return null;
+}
 
 /** react-grab resolution symbolicates through source maps — cap concurrent work so a
  * scrubbing cursor can't queue dozens of expensive lookups at once. */
@@ -64,7 +101,10 @@ async function resolveElement(element: Element): Promise<ResolvedDesignSource | 
   await acquireSlot();
   try {
     const context = await getElementContext(element);
-    const normalized = describeResolvedSource(context);
+    const normalized = describeResolvedSource({
+      ...context,
+      props: readComponentProps(context.fiber, context.componentName),
+    });
     // Recheck after the await — an element replaced mid-resolution must not hand the
     // engine a location for a node that no longer exists.
     if (!normalized || !element.isConnected || element.ownerDocument !== document) return null;

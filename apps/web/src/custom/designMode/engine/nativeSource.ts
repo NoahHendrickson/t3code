@@ -19,6 +19,7 @@
  * (which holds a settled null for a short TTL) absorbs the repeats, so pointer traffic
  * still can't retry-storm react-grab.
  */
+import { PROPS_ATTR, readDesignProps } from "../designProps";
 import type { TaggedElement } from "./vendor/source";
 
 export const NATIVE_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
@@ -176,7 +177,17 @@ export function resolveAndTag(el: TaggedElement): Promise<boolean> {
     // Overwrites rather than first-write-wins: HMR can rename or replace the component behind
     // a still-connected element, and a `hasAttribute` guard would serve the stale name forever.
     const componentName = readComponentName(raw);
-    if (componentName) el.setAttribute(COMPONENT_NAME_ATTR, componentName);
+    if (componentName) {
+      el.setAttribute(COMPONENT_NAME_ATTR, componentName);
+      // Same trust posture as the name it rides with: re-validated on this side of the
+      // page-shared global (readDesignProps is the twin of the host's normalizeResolvedProps),
+      // and only ever stamped ALONGSIDE the component name — the request renders props as
+      // `<Name> — props: ...`. Overwrite semantics for the same HMR reason; a resolution that
+      // yields no props clears a stale stamp rather than serving it forever.
+      const props = readDesignProps((raw as { props?: unknown }).props);
+      if (props) el.setAttribute(PROPS_ATTR, JSON.stringify(props));
+      else el.removeAttribute(PROPS_ATTR);
+    }
     if (!source) {
       // No position, but the file survived the host's symbolication check — worth carrying,
       // since "which file" is most of what the address was for. Re-checked against a tag that
