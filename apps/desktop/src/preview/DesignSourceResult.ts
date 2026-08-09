@@ -7,6 +7,11 @@
  * PickLabelPosition.ts uses beside PickPreload.ts).
  */
 
+// The props policy has ONE implementation, shared with the guest engine. The CALLS stay
+// dual on purpose: this side cannot vouch for what the page later writes into the
+// `data-t3-props` attribute the engine reads back off the DOM, so each boundary validates
+// independently. Called under its own name here — no local alias, nothing outside this
+// file consumed one.
 import { type ForkDesignProps, normalizeForkDesignProps } from "@t3tools/shared/forkDesignProps";
 
 export const DESIGN_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
@@ -27,15 +32,8 @@ export interface DesignSourceResult {
   line: number;
   column: number;
   componentName?: string;
-  props?: ResolvedProps;
+  props?: ForkDesignProps;
 }
-
-/** Local names for the shared props policy (`@t3tools/shared/forkDesignProps`), which the
- * guest engine re-validates against too. The POLICY has one implementation; the CALLS stay
- * dual on purpose — this side cannot vouch for what the page later writes into the
- * `data-t3-props` attribute the engine reads back off the DOM. */
-export type ResolvedProps = ForkDesignProps;
-export const normalizeResolvedProps = normalizeForkDesignProps;
 
 /**
  * Validates and normalizes a react-grab element context into the resolver's result
@@ -73,7 +71,7 @@ export function normalizeResolvedSource(
   const componentName = normalizeComponentName(value.componentName);
   // Gated on the component name: props are rendered as `<Name> — props: ...` in the request,
   // and a props bag with no component to hang it on has nowhere honest to appear.
-  const props = componentName === null ? null : normalizeResolvedProps(value.props);
+  const props = componentName === null ? null : normalizeForkDesignProps(value.props);
   return {
     file,
     line: lineNumber,
@@ -203,7 +201,7 @@ export function isSymbolicated(
 export interface DesignSourceHint {
   file?: string;
   componentName?: string;
-  props?: ResolvedProps;
+  props?: ForkDesignProps;
   line?: never;
   column?: never;
 }
@@ -232,7 +230,7 @@ export function describeResolvedSource(
   // Props survive a rejected location exactly like the component name does — both come off
   // the fiber, and both matter MOST when there is no line to point at. Same component-name
   // gate as the full-location arm.
-  const props = componentName === null ? null : normalizeResolvedProps(value?.props);
+  const props = componentName === null ? null : normalizeForkDesignProps(value?.props);
   return {
     ...(componentName === null ? {} : { componentName }),
     ...(file === null ? {} : { file }),

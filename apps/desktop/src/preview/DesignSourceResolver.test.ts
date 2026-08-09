@@ -179,4 +179,34 @@ describe("describeResolvedSource — props", () => {
       column: 4,
     });
   });
+
+  // The policy's own rules are asserted once, in @t3tools/shared. What belongs HERE is that
+  // this boundary actually routes props through it: the host half of the deliberate dual
+  // validation. Without this, rebinding normalizeResolvedProps to something permissive — or
+  // simply not calling it — leaves every desktop test and every textual fork guard green.
+  it("filters a hostile props bag on the way across the bridge", () => {
+    const hostile: Record<string, unknown> = {
+      variant: "ghost",
+      children: "Save", // the element's own text already rides the request
+      "not a name": "skipped", // not JSX-attribute-shaped
+      injected: "line\nbreak", // control characters: request-injection guard
+      onClick: () => {}, // never a primitive
+      long: "x".repeat(200), // sliced to the cap
+    };
+    for (let i = 0; i < 20; i += 1) hostile[`p${i}`] = i; // over the entry cap
+    const resolved = describeResolvedSource({
+      ...VALID,
+      componentName: "Btn",
+      props: hostile,
+    } as typeof VALID);
+    const props = (resolved as { props?: Record<string, string | number | boolean> }).props ?? {};
+    expect(Object.keys(props).length).toBeLessThanOrEqual(12);
+    expect(props).not.toHaveProperty("children");
+    expect(props).not.toHaveProperty("not a name");
+    expect(props).not.toHaveProperty("injected");
+    expect(props).not.toHaveProperty("onClick");
+    for (const value of Object.values(props)) {
+      expect(typeof value === "string" ? value.length : 0).toBeLessThanOrEqual(64);
+    }
+  });
 });
