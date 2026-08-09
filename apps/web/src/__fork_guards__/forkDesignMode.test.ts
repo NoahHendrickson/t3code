@@ -809,18 +809,18 @@ describe("fork guard: design mode", () => {
 
     // The props policy has exactly ONE implementation. Both trust boundaries still call
     // it independently — that is the point — but neither may re-declare the rules.
-    const sharedPolicy = NodeFS.readFileSync(
-      NodePath.join(webRoot, "../../packages/shared/src/forkDesignProps.ts"),
-      "utf8",
+    const policyPath = NodePath.join(webRoot, "../../packages/shared/src/forkDesignProps.ts");
+    expect(NodeFS.readFileSync(policyPath, "utf8")).toContain(
+      "export function normalizeForkDesignProps",
     );
-    expect(sharedPolicy).toContain("export function normalizeForkDesignProps");
     for (const caller of [
       read("src/custom/designMode/designProps.ts"),
       NodeFS.readFileSync(NodePath.join(desktopRoot, "src/preview/DesignSourceResult.ts"), "utf8"),
     ]) {
       expect(caller).toContain('from "@t3tools/shared/forkDesignProps"');
-      // The tell of a re-implementation: the entry loop's own cap check.
-      expect(caller).not.toContain("count >= MAX_PROPS");
+      // Asserting the outcome, not one spelling of a loop condition: a caller that pasted
+      // the policy back in would have to re-declare its name pattern to do so.
+      expect(caller).not.toContain("PROP_NAME_PATTERN");
     }
 
     // react-grab stays a desktop-preload dependency only — never bundled into the web app.
@@ -831,6 +831,35 @@ describe("fork guard: design mode", () => {
     const designModeToggle = read("src/custom/designMode/ForkPreviewDesignMode.tsx");
     expect(designModeToggle).not.toContain("forge-mode init");
     expect(designModeToggle).not.toContain("SETUP.md");
+  });
+
+  it("keeps the props policy to a single definition repo-wide", () => {
+    // The structural half of the rule above: grep every source file the fork owns, so a
+    // THIRD copy appearing somewhere neither trust boundary imports still turns CI red.
+    const roots = [
+      NodePath.join(webRoot, "src"),
+      NodePath.join(webRoot, "../desktop/src"),
+      NodePath.join(webRoot, "../../packages/shared/src"),
+    ];
+    const definitions: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of NodeFS.readdirSync(dir, { withFileTypes: true })) {
+        const full = NodePath.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== "node_modules") walk(full);
+        } else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
+          // Line-anchored: a mention inside a string literal (this guard quotes the
+          // signature) is not a definition.
+          if (
+            /^export function normalizeForkDesignProps/m.test(NodeFS.readFileSync(full, "utf8"))
+          ) {
+            definitions.push(NodePath.relative(webRoot, full));
+          }
+        }
+      }
+    };
+    for (const root of roots) walk(root);
+    expect(definitions).toEqual(["../../packages/shared/src/forkDesignProps.ts"]);
   });
 
   it("round-trips and rejects ready messages (source modes)", () => {

@@ -15,22 +15,16 @@
  * attacker-authored `data-t3-props`, exactly like `data-dc-source`.
  */
 
-import {
-  type ForkDesignProps,
-  MAX_DESIGN_PROP_VALUE_LENGTH,
-  MAX_DESIGN_PROPS,
-  normalizeForkDesignProps,
-} from "@t3tools/shared/forkDesignProps";
+import { type ForkDesignProps, normalizeForkDesignProps } from "@t3tools/shared/forkDesignProps";
 
 /** Stamped beside COMPONENT_NAME_ATTR by nativeSource.ts, and only ever alongside it —
  * the request renders props as `<Name> — props: ...`, so a props bag with no component
  * name has nowhere honest to appear. */
 export const PROPS_ATTR = "data-t3-props";
 
-/** Local names for the shared props policy. */
+/** Local name for the shared props type — the caps live with the policy that enforces
+ * them and have no separate consumer on this side. */
 export type DesignProps = ForkDesignProps;
-export const MAX_PROPS = MAX_DESIGN_PROPS;
-export const MAX_PROP_VALUE_LENGTH = MAX_DESIGN_PROP_VALUE_LENGTH;
 
 /** Unknown → validated primitive props, or null when nothing usable survives. The rules
  * live in @t3tools/shared/forkDesignProps; this is the guest-side CALL of them. */

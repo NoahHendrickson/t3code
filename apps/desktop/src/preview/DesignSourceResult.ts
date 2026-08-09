@@ -7,12 +7,7 @@
  * PickLabelPosition.ts uses beside PickPreload.ts).
  */
 
-import {
-  type ForkDesignProps,
-  MAX_DESIGN_PROP_VALUE_LENGTH,
-  MAX_DESIGN_PROPS,
-  normalizeForkDesignProps,
-} from "@t3tools/shared/forkDesignProps";
+import { type ForkDesignProps, normalizeForkDesignProps } from "@t3tools/shared/forkDesignProps";
 
 export const DESIGN_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
 
@@ -40,8 +35,6 @@ export interface DesignSourceResult {
  * dual on purpose — this side cannot vouch for what the page later writes into the
  * `data-t3-props` attribute the engine reads back off the DOM. */
 export type ResolvedProps = ForkDesignProps;
-export const MAX_PROPS = MAX_DESIGN_PROPS;
-export const MAX_PROP_VALUE_LENGTH = MAX_DESIGN_PROP_VALUE_LENGTH;
 export const normalizeResolvedProps = normalizeForkDesignProps;
 
 /**
