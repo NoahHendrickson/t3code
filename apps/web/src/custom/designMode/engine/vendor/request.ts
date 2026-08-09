@@ -186,7 +186,28 @@ export const MOVE_PREVIEW_DISCLAIMER =
  * fell off the project's token scale. */
 const OFF_SCALE_NOTE = 'off the token scale — arbitrary value; double-check intent'
 
-const COLLAPSE: Array<{ into: string; parts: string[] }> = [
+/* t3-fork: the builder's transition window, shared with verifySession.ts — both measure
+ * computed values and neither may mistake a mid-transition frame for a difference. Saves
+ * each element's ENTIRE inline cssText and restores it wholesale: value-only save/restore
+ * loses `!important` and, when the page authored longhands, a shorthand write destroys
+ * them irrecoverably. The callback may make its own inline edits; they are rolled back
+ * with the transition. */
+export function withTransitionsSuppressed<T>(els: Iterable<TaggedElement>, fn: () => T): T {
+  const saved: Array<{ el: TaggedElement; cssText: string }> = []
+  for (const el of els) {
+    saved.push({ el, cssText: el.style.cssText })
+    el.style.setProperty('transition', 'none')
+  }
+  try {
+    return fn()
+  } finally {
+    for (const { el, cssText } of saved) el.style.cssText = cssText
+  }
+}
+
+/* t3-fork: exported — verifySession.ts expands a report's collapsed property names back to
+ * DraftStore keys through this same table, so the two directions cannot drift. */
+export const COLLAPSE: Array<{ into: string; parts: string[] }> = [
   {
     into: 'border-radius',
     parts: ['border-top-left-radius', 'border-top-right-radius', 'border-bottom-right-radius', 'border-bottom-left-radius'],
@@ -223,7 +244,10 @@ function collapse(items: Map<string, { beforeCss: string; afterCss: string }>): 
   return out
 }
 
-function measureComputed(el: TaggedElement, props: Iterable<string>): Map<string, string> {
+/* t3-fork: exported — verifySession.ts compares its reading against the value THIS function
+ * measured at send time, so the two reads must be taken identically or a divergence in the
+ * reading itself manufactures a false `diverged`. */
+export function measureComputed(el: TaggedElement, props: Iterable<string>): Map<string, string> {
   const computed = getComputedStyle(el)
   const out = new Map<string, string>()
   for (const prop of props) out.set(prop, computed.getPropertyValue(prop))

@@ -32,7 +32,7 @@ export const DESIGN_MODE_GLOBAL = "__T3_DESIGN_MODE__";
  * contract had grown) were rejected wholesale by the stricter parser, so selection simply
  * stopped updating with nothing in the UI to say why (PR #57 review).
  */
-export const DESIGN_MODE_PROTOCOL_VERSION = 5;
+export const DESIGN_MODE_PROTOCOL_VERSION = 6;
 
 /** The computed-style properties the native panel renders (READ keys), in section
  * order. The guest snapshot carries exactly these keys (engine/snapshot.ts); the panel
@@ -265,7 +265,14 @@ export type DesignModeEngineMessage =
       readonly type: "layers";
       readonly roots: readonly DesignModeLayerNode[];
       readonly truncated: boolean;
-    };
+    }
+  /** A verification pass over the sent ledger finished (armed by `setVerifying(true)`;
+   * re-emitted change-gated after every page settle while armed). */
+  | { readonly type: "verdict"; readonly report: DesignVerifyReport }
+  /** The sent ledger emptied guest-side — every check committed, or the drafts discarded.
+   * An explicit resolution signal, deliberately NOT an empty verdict report: host teardown
+   * must not be coupled to the absence of display data. */
+  | { readonly type: "sent-resolved" };
 
 /** One element's worth of a built change request, compact enough for the composer's
  * attachment pill: "div · App.tsx:15" plus per-change deltas like
@@ -320,6 +327,121 @@ export interface DesignChangeRequestPayload {
   readonly pageUrl: string;
 }
 
+// ── Sent-change verification ─────────────────────────────────────────────────────────────
+//
+// After a change request's turn ends, the page is showing the agent's real edit with the
+// previews still painted on top. Verification measures the page with the previews
+// suppressed and compares against what was sent — outcome, not craft: it can say the page
+// renders the asked-for value, never that the agent's edit was good.
+
+export type DesignVerifyVerdict = "applied" | "unchanged" | "diverged" | "unverifiable";
+
+export type DesignVerifyUnverifiableReason = "intent" | "viewport" | "inline";
+
+export interface DesignVerifyCheck {
+  /** The sent property name (collapsed form, as the request rendered it). */
+  readonly property: string;
+  /** The value the request asked for (the send-time measured after). */
+  readonly expected: string;
+  readonly verdict: DesignVerifyVerdict;
+  /** What the page renders now with previews suppressed; null exactly when the verdict is
+   * unverifiable (nothing sound was measured — the parser holds this pairing). */
+  readonly actual: string | null;
+  /** Why 'unverifiable' — surfaced per row, per the plan's "with the reason shown".
+   * 'intent': the ask was intent-shaped (a sizing keyword whose computed resolution
+   * inverts it, or an instruction), so exact-match comparison would judge the wrong thing.
+   * 'viewport': the value differs but the viewport is not the one the request was drafted
+   * at, so the difference proves nothing (a MATCH still verifies — see verdictFor).
+   * 'inline': the page authors this property inline (send-time origin probe), so the
+   * draft and the page share one style slot and no suppression can read the page's own
+   * value without guessing. */
+  readonly reason?: DesignVerifyUnverifiableReason;
+}
+
+export interface DesignVerifyElementReport {
+  readonly tag: string;
+  readonly sourceLabel: string | null;
+  /** The element resolved at send time and no longer does — nothing was measured. */
+  readonly missing: boolean;
+  readonly checks: readonly DesignVerifyCheck[];
+  /** Structural ops (delete/text/move/absolute) that rode this element's send. Phase 1
+   * does not measure them; each counts as unverifiable in the summary. */
+  readonly structuralOps: number;
+}
+
+export interface DesignVerifyReport {
+  /** The preview viewport is not the one the request was drafted at. Matching values
+   * still verify; differing ones report unverifiable('viewport') instead of a judgement. */
+  readonly viewportChanged: boolean;
+  /** The guest capped the report at the parser's own bounds (a multi-hundred-element send
+   * must not become a multi-MB console line — the LAYERS_NODE_CAP precedent). */
+  readonly truncated: boolean;
+  readonly elements: readonly DesignVerifyElementReport[];
+}
+
+/**
+ * The verdict for one sent property — pure and DOM-free, so the precedence rules are one
+ * testable expression. Order matters and is the contract:
+ *
+ * 1. intent-shaped ask → unverifiable('intent'). Measurement itself is unsound: the
+ *    computed resolution inverts the intent (`auto` → a px). The caller decides what
+ *    counts; this function only owes the precedence.
+ * 2. page-authored inline → unverifiable('inline'). The draft and the page share one
+ *    style slot, so no suppression can read the page's own value without guessing —
+ *    restoring the recorded original pins a possibly-stale value, removing the slot
+ *    deletes the page's declaration too. The honest answer is neither.
+ * 3. measured == expected → applied. A match is a match under ANY viewport — a changed
+ *    pane size cannot manufacture the asked-for value — and this also absorbs the
+ *    degenerate before == after case (which the builder filters, but storage could
+ *    resurrect) into the harmless verdict rather than the alarming one.
+ * 4. viewport changed → unverifiable('viewport'). A DIFFERING value under different
+ *    conditions proves nothing; only downgrading mismatches keeps one splitter drag from
+ *    voiding the applied checks a user could still act on.
+ * 5. measured == the send-time before → unchanged. The ask did not land; the preview is
+ *    the only thing showing it.
+ * 6. anything else → diverged. Changed, but not to what was asked — the verdict a user
+ *    essentially never catches by eye.
+ */
+export function verdictFor(input: {
+  readonly beforeCss: string;
+  readonly afterCss: string;
+  readonly intentShaped: boolean;
+  readonly inlineAuthored: boolean;
+  readonly viewportChanged: boolean;
+  readonly measured: string;
+}): Pick<DesignVerifyCheck, "verdict" | "actual" | "reason"> {
+  if (input.intentShaped) return { verdict: "unverifiable", actual: null, reason: "intent" };
+  if (input.inlineAuthored) return { verdict: "unverifiable", actual: null, reason: "inline" };
+  if (input.measured === input.afterCss) return { verdict: "applied", actual: input.measured };
+  if (input.viewportChanged) return { verdict: "unverifiable", actual: null, reason: "viewport" };
+  if (input.measured === input.beforeCss) return { verdict: "unchanged", actual: input.measured };
+  return { verdict: "diverged", actual: input.measured };
+}
+
+export interface DesignVerifySummary {
+  readonly applied: number;
+  readonly unchanged: number;
+  readonly diverged: number;
+  readonly unverifiable: number;
+  readonly missing: number;
+}
+
+/** Counts for the panel line and the transcript chip. A missing element counts once under
+ * `missing` (its unmeasured checks are not double-reported), and each structural op counts
+ * as unverifiable — phase 1 has no oracle for them and must not pretend otherwise. */
+export function summarizeVerifyReport(report: DesignVerifyReport): DesignVerifySummary {
+  const summary = { applied: 0, unchanged: 0, diverged: 0, unverifiable: 0, missing: 0 };
+  for (const element of report.elements) {
+    if (element.missing) {
+      summary.missing += 1;
+      continue;
+    }
+    for (const check of element.checks) summary[check.verdict] += 1;
+    summary.unverifiable += element.structuralOps;
+  }
+  return summary;
+}
+
 /** The command surface `boot.ts` installs at `window.__T3_DESIGN_MODE__`. The host calls
  * these through `webview.executeJavaScript` (designModeBridge.ts) — every argument and
  * return value must stay JSON-serializable. */
@@ -371,13 +493,27 @@ export interface DesignModeGuestHandle {
   setCanvas(on: boolean): void;
   /** Discrete canvas zoom verbs; no-ops while canvas is off. */
   canvasCommand(action: DesignModeCanvasCommand): void;
+  /** The verification switch, host-owned and symmetric (a one-way door is a bug): `true`
+   * arms — measure now with previews suppressed, emit a `verdict` message, re-measure
+   * after every quiet window while the page keeps mutating (a late HMR/reload corrects a
+   * wrong verdict rather than freezing it) — and `false` stops the observer and the work.
+   * The armed state persists with the ledger, so a full reload resumes measuring without
+   * the host re-asking. Also disarmed by a new buildSend, commitVerified emptying the
+   * ledger, and discardAll. Idempotent in both directions. */
+  setVerifying(on: boolean): void;
+  /** Commits every check the CURRENT measurement verifies as applied — the draft comes
+   * off WITHOUT restoring the original ("the code owns this now") and is pruned from the
+   * sent ledger; a fresh `verdict` (or `sent-resolved`) message follows. Re-measures at
+   * call time rather than trusting the last emitted report. Resolves to the number of
+   * committed draft properties, for the host's outcome toast. */
+  commitVerified(): Promise<number>;
   destroy(): void;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const isNonNegativeInteger = (value: unknown): value is number =>
+export const isNonNegativeInteger = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= 0;
 
 const isStyleMap = (value: unknown): value is Readonly<Record<DesignModeStyleKey, string>> =>
@@ -385,6 +521,101 @@ const isStyleMap = (value: unknown): value is Readonly<Record<DesignModeStyleKey
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
+
+const VERIFY_VERDICTS: readonly DesignVerifyVerdict[] = [
+  "applied",
+  "unchanged",
+  "diverged",
+  "unverifiable",
+];
+
+/** Console lines are page-observable and page-forgeable, so a verdict report is validated
+ * as untrusted input like every other engine message: every field type-checked, fresh
+ * literals constructed, and sizes bounded (a forged line must not smuggle a multi-MB
+ * report into host state). The element/check caps are EXPORTED and enforced by the guest's
+ * own measure() too (with a `truncated` flag), the LAYERS_NODE_CAP precedent — a report
+ * the parser would drop must never be built and shipped in the first place. */
+export const VERIFY_REPORT_MAX_ELEMENTS = 100;
+export const VERIFY_REPORT_MAX_CHECKS = 100;
+const VERIFY_REPORT_MAX_VALUE_LENGTH = 512;
+
+const VERIFY_REASONS: readonly DesignVerifyUnverifiableReason[] = ["intent", "viewport", "inline"];
+
+/** Cross-field invariants hold here, not just field types: the threat model is a forged
+ * console line, and a "well-typed" combination measure() cannot produce (an applied check
+ * with nothing measured, an unverifiable one carrying a value) is exactly how a forgery
+ * would smuggle an invented claim past shape checks. */
+function parseVerifyCheck(value: unknown, viewportChanged: boolean): DesignVerifyCheck | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.property !== "string" || value.property.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+    return null;
+  if (typeof value.expected !== "string" || value.expected.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+    return null;
+  const verdict = VERIFY_VERDICTS.find((candidate) => candidate === value.verdict);
+  if (!verdict) return null;
+  const reason = VERIFY_REASONS.find((candidate) => candidate === value.reason);
+  if (verdict === "unverifiable") {
+    // Unverifiable means nothing sound was measured — it carries a reason and no value.
+    if (value.actual !== null || !reason || value.reason !== reason) return null;
+    // The viewport reason can only exist inside a report that says the viewport changed.
+    if (reason === "viewport" && !viewportChanged) return null;
+    return { property: value.property, expected: value.expected, verdict, actual: null, reason };
+  }
+  // Every judged verdict carries the measurement that produced it, and no reason.
+  if (typeof value.actual !== "string" || value.actual.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+    return null;
+  if (value.reason !== undefined) return null;
+  return { property: value.property, expected: value.expected, verdict, actual: value.actual };
+}
+
+function parseVerifyElementReport(
+  value: unknown,
+  viewportChanged: boolean,
+): DesignVerifyElementReport | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.tag !== "string" || value.tag.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+    return null;
+  if (
+    value.sourceLabel !== null &&
+    (typeof value.sourceLabel !== "string" ||
+      value.sourceLabel.length > VERIFY_REPORT_MAX_VALUE_LENGTH)
+  )
+    return null;
+  if (typeof value.missing !== "boolean") return null;
+  if (!Array.isArray(value.checks) || value.checks.length > VERIFY_REPORT_MAX_CHECKS) return null;
+  // A missing element measured nothing — checks smuggled in beside the flag would vanish
+  // from the summary (it counts missing once and skips the rest), a quiet way to hide N
+  // real checks. Forged or malformed either way: reject.
+  if (value.missing && value.checks.length > 0) return null;
+  if (!isNonNegativeInteger(value.structuralOps) || value.structuralOps > VERIFY_REPORT_MAX_CHECKS)
+    return null;
+  const checks = value.checks.map((check) => parseVerifyCheck(check, viewportChanged));
+  if (checks.some((check) => check === null)) return null;
+  return {
+    tag: value.tag,
+    sourceLabel: value.sourceLabel,
+    missing: value.missing,
+    checks: checks.filter((check): check is DesignVerifyCheck => check !== null),
+    structuralOps: value.structuralOps,
+  };
+}
+
+export function parseVerifyReport(value: unknown): DesignVerifyReport | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.viewportChanged !== "boolean") return null;
+  if (typeof value.truncated !== "boolean") return null;
+  if (!Array.isArray(value.elements) || value.elements.length > VERIFY_REPORT_MAX_ELEMENTS)
+    return null;
+  const elements = value.elements.map((element) =>
+    parseVerifyElementReport(element, value.viewportChanged === true),
+  );
+  if (elements.some((element) => element === null)) return null;
+  return {
+    viewportChanged: value.viewportChanged,
+    truncated: value.truncated,
+    elements: elements.filter((element): element is DesignVerifyElementReport => element !== null),
+  };
+}
 
 function parseElementSnapshot(value: unknown): DesignModeElementSnapshot | null {
   if (
@@ -559,6 +790,12 @@ export function parseDesignModeConsoleMessage(line: string): DesignModeEngineMes
               truncated: value.truncated,
             };
       }
+      case "verdict": {
+        const report = parseVerifyReport(value.report);
+        return report ? { type: "verdict", report } : null;
+      }
+      case "sent-resolved":
+        return { type: "sent-resolved" };
       default:
         return null;
     }
