@@ -292,6 +292,51 @@ describe("fork guard: design mode", () => {
     );
   });
 
+  it("selects on pointerdown so menus cannot activate under the press", () => {
+    // Base UI MenuTrigger opens on pointerdown; a click-only intercept lets the menu open
+    // and often swallows the click, so the design panel stayed empty. The press must be
+    // owned before the page sees it — except for MoveDrag targets, which still need a
+    // sub-threshold press to become an ordinary click.
+    const engine = read("src/custom/designMode/engine/headlessMode.ts");
+    // One funnel owns tombstone refusal + toggle/select/deselect; both event paths call it.
+    const selectFromTarget =
+      /private selectFromTarget\(el: TaggedElement \| null, shiftKey: boolean\): void \{([\s\S]*?)\n  \}/u.exec(
+        engine,
+      )?.[1];
+    expect(selectFromTarget).toBeDefined();
+    expect(selectFromTarget).toContain('kind === "delete"');
+    expect(selectFromTarget).toContain("this.toggleSelection(el)");
+    expect(selectFromTarget).toContain("this.select(el)");
+    expect(selectFromTarget).toContain("this.deselect()");
+
+    const body = /private onPointerDown = \(e: PointerEvent\): void => \{([\s\S]*?)\n  \};/u.exec(
+      engine,
+    )?.[1];
+    expect(body).toBeDefined();
+    expect(body).toContain("this.browse.shouldYield(e)");
+    expect(body).toContain("this.moveDrag.wouldDrag(el)");
+    expect(body).toContain("e.preventDefault()");
+    expect(body).toContain("e.stopPropagation()");
+    expect(body).toContain("this.selectFromTarget(el, e.shiftKey)");
+    expect(body).toContain("this.suppressNextClickSelection = true");
+    // Clear shape: delete early-return, then wouldDrag fall-through (no preventDefault),
+    // then preventDefault + selectFromTarget. Do not fold delete into the drag gate.
+    expect(body).toMatch(
+      /kind === "delete"\) return;[\s\S]*?if \(el && this\.moveDrag\.wouldDrag\(el\)\) return;[\s\S]*?e\.preventDefault\(\)/u,
+    );
+    expect(body).not.toContain('kind !== "delete"');
+
+    const click = /private onClick = \(e: MouseEvent\): void => \{([\s\S]*?)\n  \};/u.exec(
+      engine,
+    )?.[1];
+    expect(click).toBeDefined();
+    expect(click).toContain("this.suppressNextClickSelection");
+    expect(click).toContain("this.selectFromTarget(");
+    // Click must not re-run the toggle/select ladder inline — only via the helper,
+    // and only when pointerdown did not already own the gesture.
+    expect(click).not.toContain("this.toggleSelection(el)");
+  });
+
   it("wires every guest-handle verb from the protocol through boot and the host bridge", () => {
     // The drift this catches: a verb declared in DesignModeGuestHandle but never installed on
     // the page global (the panel's call silently no-ops) or never given a bridge wrapper (no

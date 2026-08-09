@@ -38,6 +38,10 @@ describe("fork guard: fork-workspace-header", () => {
     ]) {
       expect(readSibling(path), `${path} lost data-fork-pill`).toContain("data-fork-pill");
     }
+    // The empty-scripts "Add action" branch is a lone button (no Group). Dropping the
+    // mark there leaves it on the raised outline while Open / Commit & push stay pills.
+    const scripts = readSibling("../components/ProjectScriptsControl.tsx");
+    expect(scripts).toMatch(/aria-label="Add action"[\s\S]{0,80}data-fork-pill/u);
   });
 
   it("styles the pills only under the fork marker", () => {
@@ -55,8 +59,8 @@ describe("fork guard: fork-workspace-header", () => {
     }
   });
 
-  it("rounds the pills fully and drops the raised button treatment", () => {
-    expect(theme).toMatch(/--fork-pill-radius:\s*999px/u);
+  it("rounds the pills to 4px and drops the raised button treatment", () => {
+    expect(theme).toMatch(/--fork-pill-radius:\s*4px/u);
     // The outline variant paints its border, fill and inset highlight from
     // tokens that assume a button floating above a page. All three go.
     expect(theme).toMatch(/\[data-fork-pill\][\s\S]{0,600}background:\s*transparent/u);

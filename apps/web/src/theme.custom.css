@@ -178,7 +178,7 @@
    changes; the only fork edit in those three files is a `data-fork-pill`
    attribute, and everything visual happens here.
 
-   What is left to say: fully round the outer corners, drop the raised
+   What is left to say: round the outer corners to 4px, drop the raised
    treatment (border tint, popover fill, inset highlight) that reads as a button
    floating above a page, and open the padding out to the drawn 10px/7px.
 
@@ -239,7 +239,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"] {
-  --fork-pill-radius: 999px;
+  --fork-pill-radius: 4px;
   --fork-pill-border: var(--border);
   --fork-pill-fg: var(--foreground);
   --fork-pill-hover: var(--accent);
@@ -645,22 +645,25 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
-  /* Opaque resolved fills: unlike the composer, these chips do not own a
-     backdrop-filter and must not expose scrolling message text. */
-  --fork-context-chip-bg: #2a2a2a;
+  /* Same RGB as --fork-composer-bg, but opaque. The composer can frost with
+     backdrop-filter; chips cannot — design-mode canvas puts transform on
+     <body>, which disables backdrop-filter on descendants, and a translucent
+     chip then disappears (Local checkout looked unstyled until design mode
+     / canvas turned off). Hover stays a step lighter. */
+  --fork-context-chip-bg: rgb(41 41 41);
   --fork-context-chip-bg-hover: #303030;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"]) {
-  /* 24px tall, 6px radius. End padding is 2px more than start so the trailing
-     chevron (and the text-only end of Current checkout) don't sit hard against
-     the curve. */
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  /* 24px tall, 6px radius. Inline padding is refined per trigger below so
+     workspace and branch match; [data-fork-context-chip] is the locked
+     workspace/env span — same pill when there is no interactive trigger. */
   height: 24px;
   min-height: 24px;
   gap: 6px;
-  padding-inline: 4px 6px;
+  padding-inline: 6px;
   border-radius: 6px;
   /* 12px, matching the control row's Auto/Build type — Noey's bump over the
      drawn 10px. */
@@ -668,6 +671,14 @@
   font-weight: 500;
   line-height: 16px;
   background: var(--fork-context-chip-bg);
+}
+
+/* Locked readout spans only — do not force opacity on interactive buttons or a
+   disabled branch picker loses its dim while refs load / an action is pending. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-context-chip] {
+  opacity: 1;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
@@ -678,8 +689,8 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"]) {
-  color: #a6a6a6;
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
 }
 
 /* ---------------------------------------------------------------------------
@@ -714,7 +725,8 @@
   --fork-composer-bg: rgb(44 47 51 / 80%);
   --fork-composer-border: rgb(220 222 226 / 10%);
   --fork-composer-border-focus: #52565c;
-  --fork-context-chip-bg: #2c2f33;
+  /* Opaque sibling of the Cool Dark composer fill — see default-dark note. */
+  --fork-context-chip-bg: rgb(44 47 51);
   --fork-context-chip-bg-hover: #34383c;
 }
 
@@ -743,24 +755,25 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"]) {
-  color: #92969c;
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
 }
 
-/* Optical start padding per chip: the workspace folder glyph carries more
-   empty space in its 12px frame than the branch glyph, so start is 0; the
-   branch combobox needs 6px so its ink clears the curve the same way. Equal
-   specificity with the shared chip rule; source order wins. */
+/* Lucide glyphs on these triggers ship with opacity-70 / opacity-50; force
+   full ink so white chip labels don't wash back to gray. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  [data-slot="select-trigger"] {
-  padding-inline-start: 0;
+  :is(button, [data-slot="button"], [data-fork-context-chip])
+  svg {
+  opacity: 1;
 }
 
+/* Same inline padding on every chip. The old folder-glyph optical start of 0
+   left Local checkout tight on the leading edge next to a 6px branch chip. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  [data-slot="combobox-trigger"] {
-  padding-inline-start: 6px;
+  :is([data-slot="select-trigger"], [data-slot="combobox-trigger"], [data-fork-context-chip]) {
+  padding-inline: 6px;
 }
 
 /* The workspace select keeps its popup but drops the trigger caret — the drawn
@@ -774,7 +787,7 @@
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"])
+  :is(button, [data-slot="button"], [data-fork-context-chip])
   svg {
   width: 12px;
   height: 12px;
@@ -1611,4 +1624,11 @@
 
 :root[data-fork="noahhendrickson-t3code"] [data-fork-design-readonly] label > :first-child {
   pointer-events: none;
+}
+
+/* ── Right panel tab strip divider (fork-right-panel-tabbar-divider) ──────────
+   Hairline under the tab strip so tabs separate from the surface content
+   (Layers / preview chrome / Design). Same --border token DiffPanelShell uses. */
+:root[data-fork="noahhendrickson-t3code"] [data-right-panel-tabbar] {
+  border-bottom: 1px solid var(--border);
 }

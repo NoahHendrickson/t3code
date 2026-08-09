@@ -1,22 +1,34 @@
 import { useState } from "react";
 
+import type { DesignModeElementSnapshot } from "../../protocol";
 import { CornerRadiusIcon } from "../CornerRadiusIcon";
 import { PanelSection, PanelToggle, ScrubField } from "../DesignPanelFields";
 import { OpacityIcon, PerCornerIcon, RadiusIcon } from "../PanelIcons";
 import type { SectionProps } from "./section";
 
+const CORNER_KEYS = [
+  "border-top-left-radius",
+  "border-top-right-radius",
+  "border-bottom-right-radius",
+  "border-bottom-left-radius",
+] as const;
+
+/** True when any corner disagrees with the others — the per-corner grid must stay open so
+ * the values are visible without an extra click (Figma's custom-radius disclosure). */
+export function hasCustomCornerRadii(styles: DesignModeElementSnapshot["styles"]): boolean {
+  const first = styles[CORNER_KEYS[0]];
+  return CORNER_KEYS.some((key) => styles[key] !== first);
+}
+
 /** The Figma "Appearance" group: opacity, uniform radius, and an expandable per-corner
  * grid behind the corners toggle (accent-lit while open). Corner state resets with the
- * keyed fields container, like every other field-local state. */
+ * keyed fields container, like every other field-local state — except a non-uniform
+ * radius always forces the grid open. */
 export function AppearanceSection({ element, apply, field }: SectionProps) {
-  const [corners, setCorners] = useState(false);
+  const [manualCorners, setManualCorners] = useState(false);
   const { styles } = element;
-  const cornerKeys = [
-    "border-top-left-radius",
-    "border-top-right-radius",
-    "border-bottom-right-radius",
-    "border-bottom-left-radius",
-  ] as const;
+  const customCorners = hasCustomCornerRadii(styles);
+  const corners = customCorners || manualCorners;
   return (
     <PanelSection title="Appearance" className="grid-cols-[1fr_1fr_auto]">
       <ScrubField
@@ -40,13 +52,18 @@ export function AppearanceSection({ element, apply, field }: SectionProps) {
         min={0}
         // The uniform field writes the shorthand but a per-corner edit writes longhands, so
         // it counts as changed (and reverts) when either shape has a draft.
-        {...field(cornerKeys, ["border-radius", ...cornerKeys])}
+        {...field(CORNER_KEYS, ["border-radius", ...CORNER_KEYS])}
         onEdit={(v) => apply("border-radius", v)}
       />
       <PanelToggle
         pressed={corners}
-        title={corners ? "Uniform radius" : "Per-corner radius"}
-        onClick={() => setCorners((open) => !open)}
+        title={
+          customCorners ? "Per-corner radius" : corners ? "Uniform radius" : "Per-corner radius"
+        }
+        onClick={() => {
+          if (customCorners) return;
+          setManualCorners((open) => !open);
+        }}
       >
         <PerCornerIcon />
       </PanelToggle>

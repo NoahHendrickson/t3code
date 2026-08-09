@@ -449,6 +449,10 @@ export default function ProjectScriptsControl({
           </MenuPopup>
         </Menu>
       ) : (
+        /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+           Lone "Add action" (no scripts yet) still needs the pill mark — without it this
+           branch keeps the raised outline treatment while Open / Commit & push use the
+           fork pill. fork:end fork-workspace-header */
         <Tooltip>
           <TooltipTrigger
             render={
@@ -457,6 +461,7 @@ export default function ProjectScriptsControl({
                 variant="outline"
                 className="w-7 px-0 sm:w-6 @3xl/header-actions:w-auto! @3xl/header-actions:px-[calc(--spacing(2)-1px)]"
                 aria-label="Add action"
+                data-fork-pill
                 onClick={openAddDialog}
               />
             }

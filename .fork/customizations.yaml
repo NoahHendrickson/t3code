@@ -1157,14 +1157,15 @@
     fork fence, so a sync will not re-apply upstream changes to them
     automatically; port upstream's intent by hand when that hunk drifts.
 
-    Those three controls (Add action / Open / PR) become fully-rounded split
+    Those three controls (Add action / Open / PR) become 4px-radius split
     pills. They were already built from the right primitives — a Group wrapping
     an outline Button size="xs", a separator, and a caret Button size="icon-xs",
     where Group flattens the inner corners and size="xs" is already 24px and
     12px at >=sm — so nothing structural changes. The only edit in those three
     files is a data-fork-pill attribute; the styling is all in the Tier 1
-    stylesheet, which rounds the outer corners, drops the raised treatment that
-    reads as a button floating above a page, and opens padding to 10px/7px.
+    stylesheet, which rounds the outer corners to 4px, drops the raised
+    treatment that reads as a button floating above a page, and opens padding
+    to 10px/7px.
 
     The two panel toggles render at 16px, and their glyphs become SquareHalf and
     SquareHalfBottom via the Phosphor shim rather than at the call site — see
@@ -1597,7 +1598,12 @@
     - apps/web/src/components/chat/composerProviderState.tsx
     # Workspace select opens above the context chips (side top, no
     # align-item-with-trigger) so the glass menu clears the branch pill.
+    # Locked checkout/env spans carry data-fork-context-chip so they keep the
+    # filled pill when there is no interactive trigger (desktop selectors +
+    # mobile locked readout in BranchToolbar).
+    - apps/web/src/components/BranchToolbar.tsx
     - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
+    - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
     # The glass-shell pseudo-elements and .chat-composer-context-strip this
     # customization switches off. An upstream rework of that paint would leave
     # the fork disabling rules that no longer exist.
@@ -2192,3 +2198,23 @@
   verify:
     - apps/web/src/__fork_guards__/forkDesignMode.test.ts
     - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
+
+- id: fork-right-panel-tabbar-divider
+  intent: >
+    The right-panel tab strip has a full-width hairline under it so the tabs
+    separate from the surface content below (Layers, preview chrome, Design,
+    terminal, diff, files). The rule lives in theme.custom.css and keys off
+    the existing data-right-panel-tabbar attribute on RightPanelTabs — no
+    upstream fence. Losing either the attribute or the fork-scoped
+    border-bottom: 1px solid var(--border) rule collapses the seam again.
+    The border token matches DiffPanelShell's chrome row.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Owns data-right-panel-tabbar. An upstream rename or drop of that
+    # attribute leaves the CSS compiling against nothing.
+    - apps/web/src/components/RightPanelTabs.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkRightPanelTabbarDivider.test.ts
