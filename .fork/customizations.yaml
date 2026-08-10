@@ -63,6 +63,7 @@
   shadows: []
   watch:
     - .github/workflows/ci.yml
+    - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts

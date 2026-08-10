@@ -4,8 +4,8 @@
  *
  * Upstream CI targets Blacksmith runners this fork has no access to; jobs on
  * those labels queue forever. A sync that reintroduces a blacksmith-* label
- * into ci.yml — including a brand-new upstream job this fork hasn't ported
- * yet — must fail here rather than hang silently in the Actions queue.
+ * into a workflow covered by this customization must fail here rather than
+ * hang silently in the Actions queue.
  */
 
 import * as NodeFS from "node:fs";
@@ -19,9 +19,15 @@ const repoRoot = NodePath.resolve(
 );
 
 describe("fork guard: ci-runners", () => {
-  it("keeps every ci.yml job off Blacksmith runner labels", () => {
-    const ci = NodeFS.readFileSync(NodePath.join(repoRoot, ".github/workflows/ci.yml"), "utf8");
-    const blacksmithLabels = ci.match(/runs-on:.*blacksmith-\S+/gu) ?? [];
-    expect(blacksmithLabels).toEqual([]);
-  });
+  it.each(["ci.yml", "mobile-fingerprint-check.yml"])(
+    "keeps every %s job off Blacksmith runner labels",
+    (workflow) => {
+      const contents = NodeFS.readFileSync(
+        NodePath.join(repoRoot, ".github/workflows", workflow),
+        "utf8",
+      );
+      const blacksmithLabels = contents.match(/runs-on:.*blacksmith-\S+/gu) ?? [];
+      expect(blacksmithLabels).toEqual([]);
+    },
+  );
 });
