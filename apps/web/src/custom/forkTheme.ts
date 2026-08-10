@@ -12,7 +12,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 import { syncBrowserChromeTheme } from "../hooks/useTheme";
-import { syncForkSidebarVibrancy } from "./forkSidebarVibrancy";
 
 export const FORK_THEME_ATTRIBUTE = "data-fork-theme";
 export const FORK_PALETTE_STORAGE_KEY = "t3code:fork-theme";
@@ -39,17 +38,12 @@ export type ForkPalettePreference = ForkPalette | null;
 export type AppearanceOption = "light" | "dark" | ForkPalette | "system";
 type UpstreamTheme = "light" | "dark" | "system";
 
+/** Settings derives its fork Appearance options from this — one row per palette. */
 export const FORK_PALETTE_LABELS = {
   [COOL_DARK_THEME]: COOL_DARK_LABEL,
   [NEUTRAL_DARK_THEME]: NEUTRAL_DARK_LABEL,
   [NEUTRAL_DARKER_THEME]: NEUTRAL_DARKER_LABEL,
-} as const;
-
-export const FORK_PALETTE_BACKGROUNDS = {
-  [COOL_DARK_THEME]: COOL_DARK_BACKGROUND,
-  [NEUTRAL_DARK_THEME]: NEUTRAL_DARK_BACKGROUND,
-  [NEUTRAL_DARKER_THEME]: NEUTRAL_DARKER_BACKGROUND,
-} as const;
+} as const satisfies Record<ForkPalette, string>;
 
 type AttributeRoot = {
   setAttribute(name: string, value: string): void;
@@ -163,16 +157,13 @@ function syncForkPaletteFromStorage(): void {
   const activePalette = resolveActiveForkPalette(readUpstreamTheme(), palette);
   if (typeof document !== "undefined") {
     applyForkPaletteAttribute(document.documentElement, activePalette);
+    // Synchronous, inside the suppressed-transition window: switching between
+    // two fork palettes keeps upstream theme at "dark", so applyTheme no-ops
+    // and this is the only repaint of html/body overscroll and theme-color.
+    syncBrowserChromeTheme();
   }
   lastPalette = palette;
   emitChange();
-  /* Clear any leftover Electron sidebar vibrancy from older builds, then
-     repaint chrome so html/body are not left transparent. */
-  void syncForkSidebarVibrancy(activePalette).then(() => {
-    if (typeof document !== "undefined") {
-      syncBrowserChromeTheme();
-    }
-  });
 }
 
 function suppressAppearanceTransitions(update: () => void): void {

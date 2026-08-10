@@ -88,10 +88,6 @@ export class DesktopWindow extends Context.Service<
     readonly flushMainWindowBounds: Effect.Effect<void>;
     readonly dispatchMenuAction: (action: string) => Effect.Effect<void, DesktopWindowError>;
     readonly syncAppearance: Effect.Effect<void>;
-    /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-    /** Enable macOS sidebar vibrancy for Neutral Dark. Returns whether it is active. */
-    readonly setSidebarVibrancy: (enabled: boolean) => Effect.Effect<boolean>;
-    /* fork:end fork-neutral-darker-theme */
   }
 >()("@t3tools/desktop/window/DesktopWindow") {}
 
@@ -113,19 +109,6 @@ function getIconOption(
 function getInitialWindowBackgroundColor(shouldUseDarkColors: boolean): string {
   return shouldUseDarkColors ? "#0a0a0a" : "#ffffff";
 }
-
-/* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-const SIDEBAR_VIBRANCY_BACKGROUND = "#00000000";
-
-function resolveWindowBackgroundColor(
-  shouldUseDarkColors: boolean,
-  sidebarVibrancy: boolean,
-): string {
-  return sidebarVibrancy
-    ? SIDEBAR_VIBRANCY_BACKGROUND
-    : getInitialWindowBackgroundColor(shouldUseDarkColors);
-}
-/* fork:end fork-neutral-darker-theme */
 
 type DisplayBounds = Pick<Electron.Rectangle, "x" | "y" | "width" | "height">;
 
@@ -232,21 +215,13 @@ function syncWindowAppearance(
   window: Electron.BrowserWindow,
   shouldUseDarkColors: boolean,
   platform: NodeJS.Platform,
-  /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-  sidebarVibrancy = false,
-  /* fork:end fork-neutral-darker-theme */
 ): Effect.Effect<void> {
   return Effect.sync(() => {
     if (window.isDestroyed()) {
       return;
     }
 
-    /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-    if (platform === "darwin") {
-      window.setVibrancy(sidebarVibrancy ? "sidebar" : null);
-    }
-    window.setBackgroundColor(resolveWindowBackgroundColor(shouldUseDarkColors, sidebarVibrancy));
-    /* fork:end fork-neutral-darker-theme */
+    window.setBackgroundColor(getInitialWindowBackgroundColor(shouldUseDarkColors));
     const { titleBarOverlay } = getWindowTitleBarOptions(shouldUseDarkColors, platform);
     if (typeof titleBarOverlay === "object") {
       window.setTitleBarOverlay(titleBarOverlay);
@@ -289,9 +264,6 @@ export const make = Effect.gen(function* () {
   // The transient "Connecting to WSL" splash window, tracked separately so it
   // is never mistaken for the real main window.
   const splashWindowRef = yield* Ref.make<Option.Option<Electron.BrowserWindow>>(Option.none());
-  /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-  const sidebarVibrancyRef = yield* Ref.make(false);
-  /* fork:end fork-neutral-darker-theme */
   const context = yield* Effect.context<DesktopWindowRuntimeServices>();
   const runFork = Effect.runForkWith(context);
   const runPromise = Effect.runPromiseWith(context);
@@ -355,9 +327,6 @@ export const make = Effect.gen(function* () {
     if (persistedBounds !== null && initialBounds === DesktopAppSettings.DEFAULT_MAIN_WINDOW_SIZE) {
       yield* logWindowWarning("saved main window bounds could not be restored; using defaults");
     }
-    /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-    const sidebarVibrancy = yield* Ref.get(sidebarVibrancyRef);
-    /* fork:end fork-neutral-darker-theme */
     const window = yield* electronWindow.create({
       ...initialBounds,
       minWidth: 840,
@@ -365,12 +334,7 @@ export const make = Effect.gen(function* () {
       show: false,
       autoHideMenuBar: true,
       ...(environment.platform === "darwin" ? { disableAutoHideCursor: true } : {}),
-      /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-      backgroundColor: resolveWindowBackgroundColor(shouldUseDarkColors, sidebarVibrancy),
-      ...(environment.platform === "darwin" && sidebarVibrancy
-        ? { vibrancy: "sidebar" as const }
-        : {}),
-      /* fork:end fork-neutral-darker-theme */
+      backgroundColor: getInitialWindowBackgroundColor(shouldUseDarkColors),
       ...iconOption,
       title: environment.displayName,
       ...getWindowTitleBarOptions(shouldUseDarkColors, environment.platform),
@@ -387,9 +351,6 @@ export const make = Effect.gen(function* () {
     if (environment.platform === "darwin") {
       window.setAutoHideCursor(false);
     }
-    /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-    yield* syncWindowAppearance(window, shouldUseDarkColors, environment.platform, sidebarVibrancy);
-    /* fork:end fork-neutral-darker-theme */
     let boundsPersistFiber: Fiber.Fiber<void, never> | undefined;
     let pendingBoundsPersistFiber: Fiber.Fiber<void, never> | undefined;
     let boundsPersistenceEnabled = persistedBounds === null || restoredPersistedBounds;
@@ -879,24 +840,10 @@ export const make = Effect.gen(function* () {
     }),
     syncAppearance: Effect.gen(function* () {
       const shouldUseDarkColors = yield* electronTheme.shouldUseDarkColors;
-      /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-      const sidebarVibrancy = yield* Ref.get(sidebarVibrancyRef);
       yield* electronWindow.syncAllAppearance((window) =>
-        syncWindowAppearance(window, shouldUseDarkColors, environment.platform, sidebarVibrancy),
+        syncWindowAppearance(window, shouldUseDarkColors, environment.platform),
       );
-      /* fork:end fork-neutral-darker-theme */
     }).pipe(Effect.withSpan("desktop.window.syncAppearance")),
-    /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-    setSidebarVibrancy: Effect.fn("desktop.window.setSidebarVibrancy")(function* (enabled) {
-      const active = enabled && environment.platform === "darwin";
-      yield* Ref.set(sidebarVibrancyRef, active);
-      const shouldUseDarkColors = yield* electronTheme.shouldUseDarkColors;
-      yield* electronWindow.syncAllAppearance((window) =>
-        syncWindowAppearance(window, shouldUseDarkColors, environment.platform, active),
-      );
-      return active;
-    }),
-    /* fork:end fork-neutral-darker-theme */
   });
 });
 

@@ -90,3 +90,43 @@ export function cssRules(css: string): ReadonlyArray<CssRule> {
   const source = stripComments(css);
   return parseBlock(source, 0, source.length, []);
 }
+
+/**
+ * Body of the leaf rule whose whole selector equals the given parts joined as
+ * a descendant selector (whitespace-normalized). Exact, not substring: a bare
+ * `:root[data-fork].dark` must find the stage block, never a longer dark-scoped
+ * selector that merely starts with it. Throws when no rule matches, so a guard
+ * fails loudly rather than asserting against an empty string. Use this instead
+ * of a per-file `selector { body }` regex — the naive regex is exactly what
+ * breaks on `theme.custom.css` (see the module comment above).
+ */
+export function ruleBodyFor(
+  rules: ReadonlyArray<CssRule>,
+  selectorParts: readonly string[],
+): string {
+  const wanted = selectorParts.join(" ").replace(/\s+/gu, " ").trim();
+  const rule = rules.find(
+    (candidate) => candidate.selector.replace(/\s+/gu, " ").trim() === wanted,
+  );
+  if (rule === undefined) {
+    throw new Error(`no rule found for selector: ${wanted}`);
+  }
+  return rule.body;
+}
+
+/** First 6-digit hex assigned to `prop` in a rule body. Throws when absent. */
+export function declarationHex(body: string, prop: string): string {
+  const escaped = prop.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const match = new RegExp(`${escaped}:\\s*(#[0-9a-f]{6})`, "iu").exec(body);
+  const hex = match?.[1];
+  if (hex === undefined) {
+    throw new Error(`no ${prop} hex declaration in body: ${body.slice(0, 120)}`);
+  }
+  return hex.toLowerCase();
+}
+
+/** `#rrggbb` → [r, g, b] bytes. */
+export function parseHex(hex: string): readonly [number, number, number] {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
+}

@@ -99,10 +99,6 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   pickFolder: (options) => ipcRenderer.invoke(IpcChannels.PICK_FOLDER_CHANNEL, options),
   confirm: (message) => ipcRenderer.invoke(IpcChannels.CONFIRM_CHANNEL, message),
   setTheme: (theme) => ipcRenderer.invoke(IpcChannels.SET_THEME_CHANNEL, theme),
-  /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-  setForkSidebarVibrancy: (enabled: boolean) =>
-    ipcRenderer.invoke(IpcChannels.SET_FORK_SIDEBAR_VIBRANCY_CHANNEL, enabled),
-  /* fork:end fork-neutral-darker-theme */
   showContextMenu: (items, position) =>
     ipcRenderer.invoke(IpcChannels.CONTEXT_MENU_CHANNEL, {
       items,

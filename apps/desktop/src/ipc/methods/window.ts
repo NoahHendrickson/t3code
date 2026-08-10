@@ -22,9 +22,6 @@ import * as ElectronMenu from "../../electron/ElectronMenu.ts";
 import * as ElectronShell from "../../electron/ElectronShell.ts";
 import * as ElectronTheme from "../../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../../electron/ElectronWindow.ts";
-/* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-import * as DesktopWindow from "../../window/DesktopWindow.ts";
-/* fork:end fork-neutral-darker-theme */
 import * as IpcChannels from "../channels.ts";
 import * as DesktopIpc from "../DesktopIpc.ts";
 import {
@@ -240,18 +237,6 @@ export const setTheme = DesktopIpc.makeIpcMethod({
     yield* electronTheme.setSource(theme);
   }),
 });
-
-/* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
-  channel: IpcChannels.SET_FORK_SIDEBAR_VIBRANCY_CHANNEL,
-  payload: Schema.Boolean,
-  result: Schema.Boolean,
-  handler: Effect.fn("desktop.ipc.window.setForkSidebarVibrancy")(function* (enabled) {
-    const desktopWindow = yield* DesktopWindow.DesktopWindow;
-    return yield* desktopWindow.setSidebarVibrancy(enabled);
-  }),
-});
-/* fork:end fork-neutral-darker-theme */
 
 export const showContextMenu = DesktopIpc.makeIpcMethod({
   channel: IpcChannels.CONTEXT_MENU_CHANNEL,

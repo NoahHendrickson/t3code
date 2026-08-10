@@ -1,9 +1,6 @@
 export const PICK_FOLDER_CHANNEL = "desktop:pick-folder";
 export const CONFIRM_CHANNEL = "desktop:confirm";
 export const SET_THEME_CHANNEL = "desktop:set-theme";
-/* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
-export const SET_FORK_SIDEBAR_VIBRANCY_CHANNEL = "desktop:set-fork-sidebar-vibrancy";
-/* fork:end fork-neutral-darker-theme */
 export const CONTEXT_MENU_CHANNEL = "desktop:context-menu";
 export const OPEN_EXTERNAL_CHANNEL = "desktop:open-external";
 export const MENU_ACTION_CHANNEL = "desktop:menu-action";

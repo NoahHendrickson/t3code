@@ -99,7 +99,6 @@ function makeFakeBrowserWindow() {
     setAutoHideCursor: vi.fn(),
     setTitle: vi.fn(),
     setTitleBarOverlay: vi.fn(),
-    setVibrancy: vi.fn(),
     show: vi.fn(),
     webContents,
   };

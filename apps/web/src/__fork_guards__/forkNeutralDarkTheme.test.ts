@@ -13,7 +13,9 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  FORK_PALETTE_LABELS,
   FORK_PALETTE_STORAGE_KEY,
+  FORK_PALETTES,
   FORK_THEME_ATTRIBUTE,
   NEUTRAL_DARK_BACKGROUND,
   NEUTRAL_DARK_LABEL,
@@ -23,7 +25,7 @@ import {
   resolveAppearanceOption,
 } from "../custom/forkTheme";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
-import { cssRules } from "./cssRules";
+import { cssRules, declarationHex, parseHex, ruleBodyFor } from "./cssRules";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -31,38 +33,11 @@ function readSibling(relativePath: string): string {
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
+const themeRules = cssRules(theme);
 const indexHtml = readSibling("../../index.html");
 const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
 const forkTheme = readSibling("../custom/forkTheme.ts");
 const customizations = readSibling("../../../../.fork/customizations.yaml");
-
-function blockFor(css: string, selectorParts: readonly string[]): string {
-  const pattern = new RegExp(
-    `${selectorParts.map(escapeRegExp).join("\\s*")}\\s*\\{([^}]*)\\}`,
-    "u",
-  );
-  const match = pattern.exec(css);
-  expect(match, `no block found for selector ${selectorParts.join(" ")}`).not.toBeNull();
-  return match?.[1] ?? "";
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-}
-
-function declarationHex(block: string, prop: string): string {
-  const pattern = new RegExp(`${escapeRegExp(prop)}:\\s*(#[0-9a-f]{6})`, "iu");
-  const match = pattern.exec(block);
-  expect(match, `no ${prop} hex in block`).not.toBeNull();
-  return (match?.[1] ?? "").toLowerCase();
-}
-
-function parseHex(hex: string): readonly [number, number, number] {
-  const match = /^#([0-9a-f]{6})$/iu.exec(hex.trim());
-  expect(match, `expected #rrggbb, got ${hex}`).not.toBeNull();
-  const n = Number.parseInt(match?.[1] ?? "0", 16);
-  return [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff];
-}
 
 const NEUTRAL_STAGE = [`${MARKER}.dark[${FORK_THEME_ATTRIBUTE}="${NEUTRAL_DARK_THEME}"]`];
 const NEUTRAL_PANEL = [
@@ -88,11 +63,12 @@ describe("fork guard: fork-neutral-dark-theme", () => {
   });
 
   it("offers Neutral Dark in Appearance via the fork palette adapter", () => {
-    expect(settingsPanels).toContain('value: "neutral-dark"');
-    expect(settingsPanels).toContain("NEUTRAL_DARK_LABEL");
-    expect(forkTheme).toContain(`export const NEUTRAL_DARK_LABEL = "${NEUTRAL_DARK_LABEL}"`);
+    // Appearance derives its fork rows from forkTheme's palette table, so
+    // membership there is what puts Neutral Dark in the Select.
+    expect(FORK_PALETTES).toContain(NEUTRAL_DARK_THEME);
+    expect(FORK_PALETTE_LABELS[NEUTRAL_DARK_THEME]).toBe(NEUTRAL_DARK_LABEL);
+    expect(settingsPanels).toContain("FORK_PALETTES.map");
     expect(settingsPanels).toContain("useForkAppearance");
-    expect(settingsPanels).toContain("fork:begin fork-neutral-dark-theme");
   });
 
   it("stamps and clears the fork theme attribute from the palette", () => {
@@ -112,8 +88,8 @@ describe("fork guard: fork-neutral-dark-theme", () => {
   });
 
   it("paints Neutral Dark through attribute-scoped stage and panel selectors", () => {
-    const stage = blockFor(theme, NEUTRAL_STAGE);
-    const panel = blockFor(theme, NEUTRAL_PANEL);
+    const stage = ruleBodyFor(themeRules, NEUTRAL_STAGE);
+    const panel = ruleBodyFor(themeRules, NEUTRAL_PANEL);
     expect(declarationHex(stage, "--background")).toBe(NEUTRAL_DARK_BACKGROUND);
     expect(declarationHex(panel, "--background")).toBe("#2a2a2a");
     expect(panel).toContain("--sidebar: #2a2a2a");
@@ -124,22 +100,24 @@ describe("fork guard: fork-neutral-dark-theme", () => {
   });
 
   it("keeps Neutral Dark lighter than the default Dark stage and distinct from Cool Dark", () => {
-    const defaultStage = declarationHex(blockFor(theme, DEFAULT_STAGE), "--background");
-    const coolStage = declarationHex(blockFor(theme, COOL_STAGE), "--background");
-    const neutralStage = declarationHex(blockFor(theme, NEUTRAL_STAGE), "--background");
+    const defaultStage = declarationHex(ruleBodyFor(themeRules, DEFAULT_STAGE), "--background");
+    const coolStage = declarationHex(ruleBodyFor(themeRules, COOL_STAGE), "--background");
+    const neutralStage = declarationHex(ruleBodyFor(themeRules, NEUTRAL_STAGE), "--background");
     expect(neutralStage).not.toBe(defaultStage);
     expect(neutralStage).not.toBe(coolStage);
     expect(neutralStage).toBe(NEUTRAL_DARK_BACKGROUND);
   });
 
   it("keeps Neutral Dark truly neutral (R = G = B on stage)", () => {
-    const [r, g, b] = parseHex(declarationHex(blockFor(theme, NEUTRAL_STAGE), "--background"));
+    const [r, g, b] = parseHex(
+      declarationHex(ruleBodyFor(themeRules, NEUTRAL_STAGE), "--background"),
+    );
     expect(r).toBe(g);
     expect(g).toBe(b);
   });
 
   it("states Neutral Dark row fills as opaque values", () => {
-    const panel = blockFor(theme, NEUTRAL_PANEL);
+    const panel = ruleBodyFor(themeRules, NEUTRAL_PANEL);
     expect(panel).toContain("--sidebar-row-hover: #383838");
     expect(panel).toContain("--sidebar-row-active: #3a3a3a");
     expect(panel).toContain("--sidebar-row-selected: #3a3a3a");
@@ -159,9 +137,13 @@ describe("fork guard: fork-neutral-dark-theme", () => {
 
   it("pre-paints Neutral Dark from the palette key so the load flash matches the stage", () => {
     expect(indexHtml).toContain(NEUTRAL_DARK_BACKGROUND);
-    expect(indexHtml).toContain('forkPalette === "neutral-dark" && theme === "dark"');
-    expect(indexHtml).not.toContain('forkPalette === "neutral-dark" && isDark');
-    expect(indexHtml).toContain(`data-fork-theme", "neutral-dark"`);
+    expect(indexHtml).toContain(
+      `forkPaletteBackgrounds["neutral-dark"] = "${NEUTRAL_DARK_BACKGROUND}"`,
+    );
+    expect(indexHtml).toMatch(
+      /theme === "dark" &&\s*Object\.prototype\.hasOwnProperty\.call\(forkPaletteBackgrounds, forkPalette\)/u,
+    );
+    expect(indexHtml).toContain('setAttribute("data-fork-theme", activeForkPalette)');
     expect(indexHtml).toContain(`html.dark[${FORK_THEME_ATTRIBUTE}="neutral-dark"] body`);
     expect(indexHtml).toMatch(
       /html\.dark\[data-fork-theme="neutral-dark"\] body\s*\{[^}]*background:\s*#1f1f1f/u,

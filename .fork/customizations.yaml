@@ -1019,27 +1019,21 @@
     data-fork-theme="neutral-darker"). theme.custom.css uses the two-block
     stage + v2 panel pattern. index.html pre-paints #1a1a1a.
 
-    Sidebar wallpaper glass via Electron vibrancy was attempted and removed.
-    Neutral Darker stays a solid opaque panel. custom/forkSidebarVibrancy.ts
-    only clears leftover native vibrancy + the old DOM marker on palette sync
-    so hot desktop sessions recover; desktop IPC remains for that clear path.
+    Sidebar wallpaper glass via Electron vibrancy was attempted and removed
+    without residue: Neutral Darker is a solid opaque panel, the desktop app
+    carries no vibrancy IPC or window plumbing, and the guard asserts the
+    absence. A window can only gain native vibrancy while code sets it, and
+    no shipped build ever did, so there is no leftover state to recover.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
-    - apps/web/src/custom/forkSidebarVibrancy.ts
     - apps/web/src/theme.custom.css
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html
-    - apps/desktop/src/window/DesktopWindow.ts
-    - apps/desktop/src/ipc/channels.ts
-    - apps/desktop/src/ipc/methods/window.ts
-    - apps/desktop/src/ipc/DesktopIpcHandlers.ts
-    - apps/desktop/src/preload.ts
   verify:
     - apps/web/src/__fork_guards__/forkNeutralDarkerTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
-    - apps/web/src/custom/forkSidebarVibrancy.test.ts
 
 - id: fork-sidebar-type-size
   intent: >

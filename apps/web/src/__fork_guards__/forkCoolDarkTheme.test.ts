@@ -16,7 +16,9 @@ import {
   COOL_DARK_BACKGROUND,
   COOL_DARK_LABEL,
   COOL_DARK_THEME,
+  FORK_PALETTE_LABELS,
   FORK_PALETTE_STORAGE_KEY,
+  FORK_PALETTES,
   FORK_THEME_ATTRIBUTE,
   applyForkPaletteAttribute,
   resolveActiveForkPalette,
@@ -105,8 +107,11 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("offers Cool Dark in Appearance via the fork palette adapter", () => {
-    expect(settingsPanels).toContain('value: "cool-dark"');
-    expect(settingsPanels).toContain("COOL_DARK_LABEL");
+    // Appearance derives its fork rows from forkTheme's palette table, so
+    // membership there is what puts Cool Dark in the Select.
+    expect(FORK_PALETTES).toContain(COOL_DARK_THEME);
+    expect(FORK_PALETTE_LABELS[COOL_DARK_THEME]).toBe(COOL_DARK_LABEL);
+    expect(settingsPanels).toContain("FORK_PALETTES.map");
     expect(forkTheme).toContain(`export const COOL_DARK_LABEL = "${COOL_DARK_LABEL}"`);
     expect(settingsPanels).toContain("useForkAppearance");
     expect(settingsPanels).toContain("setAppearance");
@@ -189,9 +194,11 @@ describe("fork guard: fork-cool-dark-theme", () => {
   it("pre-paints Cool Dark from the palette key so the load flash matches the stage", () => {
     expect(indexHtml).toContain(COOL_DARK_BACKGROUND);
     expect(indexHtml).toContain('t3code:fork-theme"');
-    expect(indexHtml).toContain('forkPalette === "cool-dark" && theme === "dark"');
-    expect(indexHtml).not.toContain('forkPalette === "cool-dark" && isDark');
-    expect(indexHtml).toContain(`data-fork-theme", "cool-dark"`);
+    expect(indexHtml).toContain(`"cool-dark": "${COOL_DARK_BACKGROUND}"`);
+    expect(indexHtml).toMatch(
+      /theme === "dark" &&\s*Object\.prototype\.hasOwnProperty\.call\(forkPaletteBackgrounds, forkPalette\)/u,
+    );
+    expect(indexHtml).toContain('setAttribute("data-fork-theme", activeForkPalette)');
     expect(indexHtml).toContain(`html.dark[${FORK_THEME_ATTRIBUTE}="cool-dark"] body`);
     expect(indexHtml).toMatch(
       /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*background:\s*#1c1e20/u,
