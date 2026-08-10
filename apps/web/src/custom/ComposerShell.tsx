@@ -31,7 +31,7 @@ type ComposerShellProps = ComposerShellVisibilityInput & {
   readoutControls: ReactNode;
 };
 
-/** Owns the fork's context → surface → controls composition and state gates. */
+/** Owns the fork's context → vessel(surface + controls) composition and state gates. */
 export const ComposerShell = memo(function ComposerShell({
   approvalPending,
   children,
@@ -67,28 +67,30 @@ export const ComposerShell = memo(function ComposerShell({
           {context}
         </div>
       ) : null}
-      {children}
-      {left || right ? (
-        <div
-          data-fork-composer-control-row="true"
-          className="flex min-h-6 min-w-0 items-center justify-between gap-2 pt-2"
-        >
+      <div data-fork-composer-vessel="true" className="flex min-w-0 flex-col">
+        {children}
+        {left || right ? (
           <div
-            data-fork-composer-control-row-slot="left"
-            className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            data-fork-composer-control-row="true"
+            className="flex min-w-0 items-center justify-between gap-2 p-2"
           >
-            {left}
-          </div>
-          {right ? (
             <div
-              data-fork-composer-control-row-slot="right"
-              className="flex min-w-0 shrink-0 items-center justify-end"
+              data-fork-composer-control-row-slot="left"
+              className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {right}
+              {left}
             </div>
-          ) : null}
-        </div>
-      ) : null}
+            {right ? (
+              <div
+                data-fork-composer-control-row-slot="right"
+                className="flex min-w-0 shrink-0 items-center justify-end"
+              >
+                {right}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </>
   );
 });

@@ -410,7 +410,12 @@ export const BranchToolbar = memo(function BranchToolbar({
     <div
       ref={setStripElement}
       data-compact={labelsOverflow ? "" : undefined}
-      className="chat-composer-context-strip group/composer-context -mt-4 mx-auto flex w-[calc(100%-2.75rem)] max-w-[calc(48rem-2.75rem)] items-center gap-2 ps-1 pe-2 pt-5 pb-1"
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+         Upstream sizes this for a strip stitched under the glass vessel
+         (narrower width, negative margin, clearance padding). In the fork
+         context row it is a packed chip row that spans the composer. */
+      className="chat-composer-context-strip group/composer-context flex w-full min-w-0 items-center gap-2"
+      /* fork:end fork-composer-shell */
     >
       {isMobile ? (
         <MobileRunContextSelector

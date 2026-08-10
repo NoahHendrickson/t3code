@@ -76,15 +76,21 @@ function promptMarkup(input: { approvalPending?: boolean; mobilePendingActionsVi
 }
 
 describe("fork guard: fork-composer-shell", () => {
-  it("orders context, surface, and controls in the fork-owned shell", () => {
+  it("orders context, then a vessel wrapping surface and controls", () => {
     const markup = shellMarkup();
     const context = markup.indexOf("data-test-context");
+    const vessel = markup.indexOf('data-fork-composer-vessel="true"');
     const surface = markup.indexOf("data-test-surface");
     const controls = markup.indexOf("data-fork-composer-control-row");
+    const vesselClose = markup.indexOf("</div>", controls);
 
     expect(context).toBeGreaterThanOrEqual(0);
-    expect(context).toBeLessThan(surface);
+    expect(context).toBeLessThan(vessel);
+    expect(vessel).toBeGreaterThanOrEqual(0);
+    expect(vessel).toBeLessThan(surface);
     expect(surface).toBeLessThan(controls);
+    expect(controls).toBeGreaterThanOrEqual(0);
+    expect(vesselClose).toBeGreaterThan(controls);
   });
 
   it("gates every interactive control during approvals but keeps readouts", () => {
@@ -154,6 +160,16 @@ describe("fork guard: fork-composer-shell", () => {
     expect(composerOverlayIdx).toBeGreaterThan(-1);
     expect(headlineIdx).toBeLessThan(composerOverlayIdx);
     expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
+    expect(chatView).toContain('"chat-composer-glass-shell relative mx-auto w-full max-w-3xl"');
+  });
+
+  it("flattens BranchToolbar strip layout for the fork context row", () => {
+    const toolbar = readSibling("../components/BranchToolbar.tsx");
+    expect(toolbar).toContain(
+      'className="chat-composer-context-strip group/composer-context flex w-full min-w-0 items-center gap-2"',
+    );
+    expect(toolbar).not.toContain("w-[calc(100%-2.75rem)]");
+    expect(toolbar).not.toContain("max-w-[calc(48rem-2.75rem)]");
   });
 
   it("keeps the context strip mounted when the thread's worktree is gone", () => {
@@ -261,6 +277,17 @@ describe("fork guard: fork-composer-shell", () => {
     expect(geometry?.selector).not.toContain("data-fork-composer-action");
     expect(geometry?.body).toMatch(/border-radius:\s*4px/u);
     expect(geometry?.body).toMatch(/font-size:\s*12px/u);
+    expect(geometry?.body).toMatch(/padding-inline:\s*4px/u);
+  });
+
+  it("paints the outer vessel that floors the control row", () => {
+    const vessel = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-vessel]") && rule.body.includes("background"),
+    );
+    expect(vessel?.body).toMatch(/border-radius:\s*var\(--fork-composer-radius\)/u);
+    expect(vessel?.body).toMatch(/background:\s*var\(--fork-composer-vessel-bg\)/u);
+    expect(styles).toMatch(/--fork-composer-vessel-bg:/u);
   });
 
   it("owns runtime-mode geometry in the component and maps every mode to tokens", () => {
@@ -270,6 +297,7 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("height: 20px"),
     );
     expect(modeRule?.body).toMatch(/border-radius:\s*4px/u);
+    expect(modeRule?.body).toMatch(/padding-inline:\s*4px/u);
     expect(modeRule?.body).toMatch(/background:\s*var\(--fork-mode-bg\)/u);
     const tokens = [
       getRuntimeModeChipStyle("auto"),
@@ -305,7 +333,7 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("height: 24px"),
     );
     expect(context?.body).toMatch(/border-radius:\s*6px/u);
-    expect(context?.body).toMatch(/padding-inline:\s*6px/u);
+    expect(context?.body).toMatch(/padding-inline:\s*8px/u);
     const chipPad = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
@@ -313,7 +341,7 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes('[data-slot="combobox-trigger"]') &&
         rule.selector.includes("[data-fork-context-chip]"),
     );
-    expect(chipPad?.body).toMatch(/padding-inline:\s*6px/u);
+    expect(chipPad?.body).toMatch(/padding-inline:\s*8px/u);
     // Workspace + branch chips share white ink in dark (including locked spans).
     const chipInk = rules.find(
       (rule) =>
