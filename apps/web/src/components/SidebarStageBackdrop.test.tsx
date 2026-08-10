@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
+  StageBackdropButtonArt,
   StageBackdropArt,
 } from "./SidebarStageBackdrop";
 
@@ -44,4 +45,12 @@ describe("SidebarStageBackdrop", () => {
       expect(new Set(ids).size).toBe(ids.length);
     },
   );
+
+  it("uses a compact Nightly crop for composer buttons", () => {
+    const backdrop = renderToStaticMarkup(<StageBackdropArt variant="nightly" />);
+    const button = renderToStaticMarkup(<StageBackdropButtonArt variant="nightly" />);
+
+    expect(backdrop).toContain('viewBox="0 0 8192 96"');
+    expect(button).toContain('viewBox="96 0 8192 96"');
+  });
 });

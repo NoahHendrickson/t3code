@@ -2981,7 +2981,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                         "min-w-0 flex-1 truncate bg-transparent py-1.5 text-left text-sm",
                         activePendingProgress?.customAnswer
                           ? "text-foreground"
-                          : "text-muted-foreground/60",
+                          : "text-placeholder",
                         !activePendingProgress?.activeQuestion?.multiSelect && "px-3 py-2",
                       )}
                       onPointerDown={(event) => event.preventDefault()}
@@ -3026,7 +3026,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     "min-w-0 flex-1 truncate bg-transparent p-0 text-left text-[14px] focus:outline-none",
                     (activePendingProgress ? activePendingProgress.customAnswer : prompt.trim())
                       ? "text-foreground"
-                      : "text-muted-foreground/35",
+                      : "text-placeholder",
                   )}
                   onPointerDown={(event) => event.preventDefault()}
                   onClick={expandMobileComposer}
@@ -3040,7 +3040,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 </button>
                 <button
                   type="button"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/90 text-primary-foreground disabled:opacity-30"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-message-action text-message-action-foreground hover:bg-message-action-hover disabled:opacity-30"
                   disabled={collapsedComposerPrimaryActionDisabled}
                   aria-label={collapsedComposerPrimaryActionLabel}
                   onPointerDown={(event) => event.preventDefault()}
@@ -3202,7 +3202,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                               />
                             </button>
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-muted-foreground/70">
+                            <div className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] text-secondary-label">
                               {image.name}
                             </div>
                           )}
