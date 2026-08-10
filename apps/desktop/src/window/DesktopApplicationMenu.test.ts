@@ -81,6 +81,7 @@ const makeDesktopWindowLayer = (selectedAction: Deferred.Deferred<string>) =>
     flushMainWindowBounds: Effect.void,
     dispatchMenuAction: (action) => Deferred.succeed(selectedAction, action).pipe(Effect.asVoid),
     syncAppearance: Effect.void,
+    setSidebarVibrancy: () => Effect.succeed(false),
   } satisfies DesktopWindow.DesktopWindow["Service"]);
 
 const makeElectronMenuLayer = (

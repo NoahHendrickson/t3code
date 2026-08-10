@@ -74,7 +74,12 @@ import { isElectron } from "../../env";
 import { buildHostedChannelSelectionUrl, type HostedAppChannel } from "../../hostedPairing";
 import { useTheme } from "../../hooks/useTheme";
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-import { COOL_DARK_LABEL, useForkAppearance } from "../../custom/forkTheme";
+import {
+  COOL_DARK_LABEL,
+  NEUTRAL_DARK_LABEL,
+  NEUTRAL_DARKER_LABEL,
+  useForkAppearance,
+} from "../../custom/forkTheme";
 /* fork:end fork-cool-dark-theme */
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
@@ -186,6 +191,18 @@ const THEME_OPTIONS = [
     label: COOL_DARK_LABEL,
   },
   /* fork:end fork-cool-dark-theme */
+  /* fork:begin fork-neutral-dark-theme — see .fork/customizations.yaml#fork-neutral-dark-theme */
+  {
+    value: "neutral-dark",
+    label: NEUTRAL_DARK_LABEL,
+  },
+  /* fork:end fork-neutral-dark-theme */
+  /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
+  {
+    value: "neutral-darker",
+    label: NEUTRAL_DARKER_LABEL,
+  },
+  /* fork:end fork-neutral-darker-theme */
 ] as const;
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
@@ -1053,7 +1070,9 @@ export function AppearanceSettingsPanel() {
                   value === "system" ||
                   value === "light" ||
                   value === "dark" ||
-                  value === "cool-dark"
+                  value === "cool-dark" ||
+                  value === "neutral-dark" ||
+                  value === "neutral-darker"
                 ) {
                   setAppearance(value);
                 }

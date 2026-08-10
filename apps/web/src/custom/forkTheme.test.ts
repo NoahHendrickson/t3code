@@ -91,21 +91,24 @@ describe("fork theme synchronization", () => {
 
     const { FORK_THEME_ATTRIBUTE, initializeForkTheme } = await import("./forkTheme");
     initializeForkTheme();
+    await vi.waitFor(() => expect(syncBrowserChromeTheme).toHaveBeenCalledTimes(1));
     expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("cool-dark");
 
     values.delete("t3code:fork-theme");
     values.set("t3code:theme", "system");
     storageHandler?.({ key: "t3code:fork-theme" } as StorageEvent);
+    await vi.waitFor(() => expect(syncBrowserChromeTheme).toHaveBeenCalledTimes(2));
     expect(attributes.has(FORK_THEME_ATTRIBUTE)).toBe(false);
 
     values.set("t3code:fork-theme", "cool-dark");
     storageHandler?.({ key: "t3code:fork-theme" } as StorageEvent);
+    await vi.waitFor(() => expect(syncBrowserChromeTheme).toHaveBeenCalledTimes(3));
     expect(attributes.has(FORK_THEME_ATTRIBUTE)).toBe(false);
 
     values.set("t3code:theme", "dark");
     storageHandler?.({ key: "t3code:theme" } as StorageEvent);
+    await vi.waitFor(() => expect(syncBrowserChromeTheme).toHaveBeenCalledTimes(4));
     expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("cool-dark");
-    expect(syncBrowserChromeTheme).toHaveBeenCalledTimes(4);
   });
 
   it("uses the retained storage value after a failed palette write and suppresses repaint", async () => {
@@ -142,5 +145,53 @@ describe("fork theme synchronization", () => {
 
     animationFrame?.(0);
     expect(classes.has("no-transitions")).toBe(false);
+  });
+
+  it("stamps Neutral Dark on the shared palette key", async () => {
+    const { storage, values } = createStorage({ "t3code:theme": "system" });
+    const { attributes, root } = createDocumentRoot();
+    vi.stubGlobal("window", {
+      localStorage: storage,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+    });
+    vi.stubGlobal("document", { documentElement: root });
+    vi.doMock("../hooks/useTheme", () => ({ syncBrowserChromeTheme: vi.fn() }));
+
+    const { FORK_THEME_ATTRIBUTE, readForkPalette, resolveAppearanceOption, setForkAppearance } =
+      await import("./forkTheme");
+    setForkAppearance("neutral-dark", (theme) => storage.setItem("t3code:theme", theme));
+
+    expect(values.get("t3code:theme")).toBe("dark");
+    expect(values.get("t3code:fork-theme")).toBe("neutral-dark");
+    expect(readForkPalette()).toBe("neutral-dark");
+    expect(resolveAppearanceOption("dark", readForkPalette())).toBe("neutral-dark");
+    expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("neutral-dark");
+  });
+
+  it("stamps Neutral Darker on the shared palette key", async () => {
+    const { storage, values } = createStorage({ "t3code:theme": "system" });
+    const { attributes, root } = createDocumentRoot();
+    vi.stubGlobal("window", {
+      localStorage: storage,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+    });
+    vi.stubGlobal("document", { documentElement: root });
+    vi.doMock("../hooks/useTheme", () => ({ syncBrowserChromeTheme: vi.fn() }));
+
+    const { FORK_THEME_ATTRIBUTE, readForkPalette, resolveAppearanceOption, setForkAppearance } =
+      await import("./forkTheme");
+    setForkAppearance("neutral-darker", (theme) => storage.setItem("t3code:theme", theme));
+
+    expect(values.get("t3code:theme")).toBe("dark");
+    expect(values.get("t3code:fork-theme")).toBe("neutral-darker");
+    expect(readForkPalette()).toBe("neutral-darker");
+    expect(resolveAppearanceOption("dark", readForkPalette())).toBe("neutral-darker");
+    expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("neutral-darker");
   });
 });
