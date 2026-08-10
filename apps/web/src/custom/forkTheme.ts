@@ -1,14 +1,20 @@
 /**
  * Fork dark-palette preference — see `.fork/customizations.yaml#fork-cool-dark-theme`.
  *
- * Cool Dark is a CSS palette overlay (`data-fork-theme="cool-dark"` + `.dark`), not a
- * fourth upstream `ThemePreference`. Upstream `t3code:theme` stays `light|dark|system`;
- * this module owns `t3code:fork-theme` (`cool-dark` | absent) and the DOM attribute.
+ * Cool Dark is a CSS palette overlay (`data-fork-theme="cool-dark"` + `.dark`), not an
+ * upstream theme definition. Upstream `t3code:theme` may contain a standard, built-in,
+ * or imported theme id; this module owns `t3code:fork-theme` (`cool-dark` | absent)
+ * and the DOM attribute.
  */
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
-import { syncBrowserChromeTheme } from "../hooks/useTheme";
+import {
+  readThemePreference,
+  subscribeToThemeChanges,
+  syncBrowserChromeTheme,
+} from "../hooks/useTheme";
+import type { ThemePreference } from "../themePalette";
 
 export const FORK_THEME_ATTRIBUTE = "data-fork-theme";
 export const FORK_PALETTE_STORAGE_KEY = "t3code:fork-theme";
@@ -22,7 +28,7 @@ export const COOL_DARK_BACKGROUND = "#1c1e20";
 export type ForkPalette = typeof COOL_DARK_THEME;
 export type ForkPalettePreference = ForkPalette | null;
 export type AppearanceOption = "light" | "dark" | "cool-dark" | "system";
-type UpstreamTheme = string;
+export type ResolvedAppearanceOption = AppearanceOption | ThemePreference;
 
 type AttributeRoot = {
   setAttribute(name: string, value: string): void;
@@ -41,11 +47,10 @@ function isCoolDarkPalette(value: string | null | undefined): value is typeof CO
   return value === COOL_DARK_THEME;
 }
 
-function readUpstreamTheme(): UpstreamTheme {
+function readUpstreamTheme(): ThemePreference {
   if (typeof window === "undefined") return "system";
   try {
-    const raw = window.localStorage.getItem(UPSTREAM_THEME_STORAGE_KEY);
-    return raw === "light" || raw === "dark" || raw === "system" ? raw : "system";
+    return readThemePreference();
   } catch {
     return "system";
   }
@@ -101,16 +106,17 @@ export function applyForkPaletteAttribute(
 }
 
 export function resolveActiveForkPalette(
-  theme: UpstreamTheme,
+  theme: ThemePreference,
   palette: ForkPalettePreference,
+  isDark = theme === "dark",
 ): ForkPalettePreference {
-  return theme === "dark" && palette === COOL_DARK_THEME ? COOL_DARK_THEME : null;
+  return theme === "dark" && isDark && palette === COOL_DARK_THEME ? COOL_DARK_THEME : null;
 }
 
 export function resolveAppearanceOption(
-  theme: UpstreamTheme,
+  theme: ThemePreference,
   palette: ForkPalettePreference,
-): string {
+): ResolvedAppearanceOption {
   return resolveActiveForkPalette(theme, palette) ?? theme;
 }
 
@@ -130,8 +136,17 @@ function subscribePalette(listener: () => void): () => void {
 
 /** Reconcile the DOM and React subscribers to values storage actually retained. */
 function syncForkPaletteFromStorage(): void {
-  const palette = readForkPalette();
-  const activePalette = resolveActiveForkPalette(readUpstreamTheme(), palette);
+  const theme = readUpstreamTheme();
+  let palette = readForkPalette();
+  if (theme !== "dark" && palette !== null) {
+    writeForkPalette(null);
+    palette = readForkPalette();
+  }
+  const activePalette = resolveActiveForkPalette(
+    theme,
+    palette,
+    typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
+  );
   if (typeof document !== "undefined") {
     applyForkPaletteAttribute(document.documentElement, activePalette);
     syncBrowserChromeTheme();
@@ -160,7 +175,10 @@ function suppressAppearanceTransitions(update: () => void): void {
 }
 
 /** Apply an Appearance option and reconcile partial storage failures to one visible state. */
-export function setForkAppearance(next: AppearanceOption, setTheme: (theme: string) => void): void {
+export function setForkAppearance(
+  next: AppearanceOption,
+  setTheme: (theme: ThemePreference) => boolean,
+): void {
   suppressAppearanceTransitions(() => {
     writeForkPalette(next === COOL_DARK_THEME ? COOL_DARK_THEME : null);
     setTheme(next === COOL_DARK_THEME ? "dark" : next);
@@ -177,30 +195,21 @@ export function initializeForkTheme(): void {
   initialized = true;
   migrateLegacyCoolDarkTheme();
   syncForkPaletteFromStorage();
+  subscribeToThemeChanges(syncForkPaletteFromStorage);
   window.addEventListener("storage", (event) => {
-    if (
-      event.key === null ||
-      event.key === FORK_PALETTE_STORAGE_KEY ||
-      event.key === UPSTREAM_THEME_STORAGE_KEY
-    ) {
+    if (event.key === FORK_PALETTE_STORAGE_KEY) {
       syncForkPaletteFromStorage();
     }
   });
 }
 
-/** Appearance Select adapter over the upstream theme and fork palette stores. */
-export function useForkAppearance(theme: UpstreamTheme, setTheme: (theme: string) => void) {
+/** Appearance adapter over the upstream theme and fork palette stores. */
+export function useForkAppearance(
+  theme: ThemePreference,
+  setTheme: (theme: ThemePreference) => boolean,
+) {
   const palette = useSyncExternalStore(subscribePalette, getPaletteSnapshot, () => null);
   const appearance = resolveAppearanceOption(theme, palette);
-
-  // Upstream's modular theme library can replace the base preference without
-  // going through this adapter. Clear the fork overlay as soon as that happens
-  // so it cannot paint over a newly selected built-in or imported theme.
-  useEffect(() => {
-    if (theme === "dark" || palette === null) return;
-    writeForkPalette(null);
-    syncForkPaletteFromStorage();
-  }, [palette, theme]);
 
   const setAppearance = useCallback(
     (next: AppearanceOption) => setForkAppearance(next, setTheme),

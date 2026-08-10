@@ -123,7 +123,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
   it("keeps the search and project rows fork-owned", () => {
     // Pure presentation. Fenced in place it left SidebarV2 carrying the whole
     // rewrite; here the fence is two call sites (actions + projects filter).
-    const sidebarV2 = readSibling("../components/SidebarV2.tsx");
+    const sidebarV2 = readSibling("../components/Sidebar.tsx");
     expect(sidebarV2).toContain("<SidebarV2ChromeActionRows");
     expect(sidebarV2).toContain("<SidebarV2ProjectScopeRow");
     expect(sidebarV2).toContain("scopedProjectDisplayName=");
@@ -147,7 +147,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // The end padding gives that width back, and the gutter has to stay: the
     // compensation is meaningless without the thing it compensates for, so the
     // two only make sense together.
-    const sidebarV2 = readSibling("../components/SidebarV2.tsx");
+    const sidebarV2 = readSibling("../components/Sidebar.tsx");
     expect(sidebarV2).toContain("[scrollbar-gutter:stable]");
     // One source for the 8. Spelling it once as a variable and reading it from
     // both sides is what stops a retune of the start padding leaving the end

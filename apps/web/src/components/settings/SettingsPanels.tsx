@@ -477,7 +477,9 @@ export function useSettingsRestore(onRestored?: () => void) {
   const changedSettingLabels = useMemo(
     () => [
       ...(theme !== "system" ? ["Theme"] : []),
+      /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
       ...(appearance === "cool-dark" ? [COOL_DARK_LABEL] : []),
+      /* fork:end fork-cool-dark-theme */
       ...(!followSystem ? ["Follow system"] : []),
       ...(themeHalves !== null ? ["Theme mix"] : []),
       ...(settings.glassOpacity !== DEFAULT_UNIFIED_SETTINGS.glassOpacity ? ["Glass opacity"] : []),
@@ -567,7 +569,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.timestampFormat,
       settings.wordWrap,
       followSystem,
+      /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
       appearance,
+      /* fork:end fork-cool-dark-theme */
       theme,
       themeHalves,
     ],
@@ -667,12 +671,16 @@ export function useSettingsRestore(onRestored?: () => void) {
     });
     onRestored?.();
   }, [
+    /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
     appearance,
+    /* fork:end fork-cool-dark-theme */
     changedSettingLabels,
     clearThemeHalves,
     onRestored,
     setFollowSystem,
+    /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
     setAppearance,
+    /* fork:end fork-cool-dark-theme */
     setTheme,
     setThemeHalf,
     theme,

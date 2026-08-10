@@ -6,7 +6,7 @@
  * The thread card's branch/worktree mark pulses working-green to foreground
  * while the port scanner attributes a listening server to one of the thread's
  * own T3 terminals. Three pieces have to stay joined — the fenced subscription
- * in upstream's `SidebarV2.tsx`, the gate in the fork-owned meta component,
+ * in upstream's `Sidebar.tsx`, the gate in the fork-owned meta component,
  * and the animation in the Tier 1 stylesheet — and a sync can drop any one
  * while the other two keep compiling.
  *
@@ -38,7 +38,7 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const sidebarV2 = readSibling("../components/SidebarV2.tsx");
+const sidebarV2 = readSibling("../components/Sidebar.tsx");
 const theme = readSibling("../theme.custom.css");
 
 /** Every fenced hunk for this customization, concatenated, so assertions can
@@ -57,7 +57,7 @@ function readPulseHunks(): string {
     hunks.push(sidebarV2.slice(start, stop));
     cursor = stop + end.length;
   }
-  if (hunks.length === 0) throw new Error("no sidebar-v2-dev-server-pulse hunks in SidebarV2.tsx");
+  if (hunks.length === 0) throw new Error("no sidebar-v2-dev-server-pulse hunks in Sidebar.tsx");
   return hunks.join("\n");
 }
 

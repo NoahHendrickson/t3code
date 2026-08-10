@@ -317,7 +317,7 @@
                   ? prefersDark
                   : appearanceMode === "dark";
           /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-          const isCoolDark = forkPalette === "cool-dark" && theme === "dark";
+          const isCoolDark = forkPalette === "cool-dark" && theme === "dark" && isDark;
           if (isCoolDark) {
             document.documentElement.setAttribute("data-fork-theme", "cool-dark");
           } else {
@@ -404,7 +404,9 @@
           }
           delete document.documentElement.dataset.themeId;
           delete document.documentElement.dataset.themeSelected;
+          /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
           document.documentElement.removeAttribute("data-fork-theme");
+          /* fork:end fork-cool-dark-theme */
           document.documentElement.classList.toggle("dark", prefersDark);
           const fallbackColor = prefersDark ? DARK_BACKGROUND : LIGHT_BACKGROUND;
           document.documentElement.style.backgroundColor = fallbackColor;

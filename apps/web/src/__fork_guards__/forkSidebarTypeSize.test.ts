@@ -24,6 +24,13 @@ function readSibling(relativePath: string): string {
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
+const sidebarLayout = readSibling("../components/AppSidebarLayout.tsx");
+const canonicalSidebarPath = NodeURL.fileURLToPath(
+  new URL("../components/Sidebar.tsx", import.meta.url),
+);
+const orphanedSidebarPath = NodeURL.fileURLToPath(
+  new URL("../components/SidebarV2.tsx", import.meta.url),
+);
 
 const TEXT_SIZE_PROPS = [
   "--text-xs",
@@ -45,6 +52,20 @@ function textSizeRules() {
 }
 
 describe("fork guard: fork-sidebar-type-size", () => {
+  it("mounts one canonical Sidebar V2 path and stamps its palette selector", () => {
+    expect(NodeFS.existsSync(canonicalSidebarPath)).toBe(true);
+    expect(NodeFS.existsSync(orphanedSidebarPath)).toBe(false);
+    expect(sidebarLayout).toContain('import ThreadSidebar from "./Sidebar";');
+    expect(sidebarLayout).not.toContain('from "./SidebarV2"');
+    expect(sidebarLayout).toContain("<ThreadSidebar />");
+    expect(sidebarLayout).toContain(
+      'data-sidebar-version={legacySidebarEnabled && !isOnSettings ? "v1" : "v2"}',
+    );
+    expect(sidebarLayout).toMatch(
+      /fork:begin fork-sidebar-type-size[\s\S]*data-sidebar-version[\s\S]*fork:end fork-sidebar-type-size/u,
+    );
+  });
+
   it("remaps sidebar body type to 0.8125rem / 1rem on the v2 panel", () => {
     const panel = textSizeRules().find((rule) =>
       rule.selector.includes('[data-sidebar-version="v2"]'),

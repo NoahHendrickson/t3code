@@ -18,8 +18,8 @@ import { useLegacySidebarEnabled } from "../hooks/useSettings";
 /* fork:begin narrow-workspace-layout — see .fork/customizations.yaml#narrow-workspace-layout */
 import { useSidebarOverlayOnNarrowChat } from "../custom/narrowChatOverlay";
 /* fork:end narrow-workspace-layout */
-import ThreadSidebarV2 from "./SidebarV2";
 import LegacyThreadSidebar from "./LegacySidebar";
+import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { useProjects } from "../state/entities";
@@ -216,7 +216,9 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         side="left"
         collapsible="offcanvas"
         data-app-sidebar=""
+        /* fork:begin fork-sidebar-type-size — see .fork/customizations.yaml#fork-sidebar-type-size */
         data-sidebar-version={legacySidebarEnabled && !isOnSettings ? "v1" : "v2"}
+        /* fork:end fork-sidebar-type-size */
         className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
         resizable={{
           maxWidth: sidebarMaximumWidth,
@@ -236,7 +238,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         ) : legacySidebarEnabled ? (
           <LegacyThreadSidebar />
         ) : (
-          <ThreadSidebarV2 />
+          <ThreadSidebar />
         )}
         <SidebarRail />
       </Sidebar>

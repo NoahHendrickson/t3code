@@ -13,7 +13,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 const sidebarV2 = NodeFS.readFileSync(
-  NodeURL.fileURLToPath(new URL("../components/SidebarV2.tsx", import.meta.url)),
+  NodeURL.fileURLToPath(new URL("../components/Sidebar.tsx", import.meta.url)),
   "utf8",
 );
 

@@ -30,6 +30,7 @@ function createDocumentRoot() {
     root: {
       classList: {
         add: (name: string) => classes.add(name),
+        contains: (name: string) => classes.has(name),
         remove: (name: string) => classes.delete(name),
       },
       get offsetHeight() {
@@ -61,7 +62,11 @@ describe("fork theme synchronization", () => {
       },
     );
     vi.stubGlobal("window", { localStorage: storage });
-    vi.doMock("../hooks/useTheme", () => ({ syncBrowserChromeTheme: vi.fn() }));
+    vi.doMock("../hooks/useTheme", () => ({
+      readThemePreference: () => storage.getItem("t3code:theme") ?? "system",
+      subscribeToThemeChanges: vi.fn(() => () => {}),
+      syncBrowserChromeTheme: vi.fn(),
+    }));
 
     const { migrateLegacyCoolDarkTheme, readForkPalette } = await import("./forkTheme");
     expect(readForkPalette()).toBeNull();
@@ -77,9 +82,11 @@ describe("fork theme synchronization", () => {
       "t3code:theme": "dark",
       "t3code:fork-theme": "cool-dark",
     });
-    const { attributes, root } = createDocumentRoot();
+    const { attributes, classes, root } = createDocumentRoot();
+    classes.add("dark");
     let storageHandler: ((event: StorageEvent) => void) | undefined;
     const syncBrowserChromeTheme = vi.fn();
+    let themeChangeHandler: (() => void) | undefined;
     vi.stubGlobal("window", {
       addEventListener: (type: string, listener: (event: StorageEvent) => void) => {
         if (type === "storage") storageHandler = listener;
@@ -87,24 +94,36 @@ describe("fork theme synchronization", () => {
       localStorage: storage,
     });
     vi.stubGlobal("document", { documentElement: root });
-    vi.doMock("../hooks/useTheme", () => ({ syncBrowserChromeTheme }));
+    vi.doMock("../hooks/useTheme", () => ({
+      readThemePreference: () => storage.getItem("t3code:theme") ?? "system",
+      subscribeToThemeChanges: (listener: () => void) => {
+        themeChangeHandler = listener;
+        return () => {};
+      },
+      syncBrowserChromeTheme,
+    }));
 
     const { FORK_THEME_ATTRIBUTE, initializeForkTheme } = await import("./forkTheme");
     initializeForkTheme();
+    expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("cool-dark");
+
+    // ThemeEditorHost writes through upstream's same-tab store, where the
+    // browser does not emit a storage event. The document-level subscription
+    // must clear both the visible overlay and its latent preference.
+    values.set("t3code:theme", "custom-theme");
+    themeChangeHandler?.();
+    expect(attributes.has(FORK_THEME_ATTRIBUTE)).toBe(false);
+    expect(values.has("t3code:fork-theme")).toBe(false);
+
+    values.set("t3code:theme", "dark");
+    values.set("t3code:fork-theme", "cool-dark");
+    storageHandler?.({ key: "t3code:fork-theme" } as StorageEvent);
     expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("cool-dark");
 
     values.delete("t3code:fork-theme");
     values.set("t3code:theme", "system");
     storageHandler?.({ key: "t3code:fork-theme" } as StorageEvent);
     expect(attributes.has(FORK_THEME_ATTRIBUTE)).toBe(false);
-
-    values.set("t3code:fork-theme", "cool-dark");
-    storageHandler?.({ key: "t3code:fork-theme" } as StorageEvent);
-    expect(attributes.has(FORK_THEME_ATTRIBUTE)).toBe(false);
-
-    values.set("t3code:theme", "dark");
-    storageHandler?.({ key: "t3code:theme" } as StorageEvent);
-    expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("cool-dark");
     expect(syncBrowserChromeTheme).toHaveBeenCalledTimes(4);
   });
 
@@ -128,11 +147,18 @@ describe("fork theme synchronization", () => {
       },
     });
     vi.stubGlobal("document", { documentElement: root });
-    vi.doMock("../hooks/useTheme", () => ({ syncBrowserChromeTheme: vi.fn() }));
+    vi.doMock("../hooks/useTheme", () => ({
+      readThemePreference: () => storage.getItem("t3code:theme") ?? "system",
+      subscribeToThemeChanges: vi.fn(() => () => {}),
+      syncBrowserChromeTheme: vi.fn(),
+    }));
 
     const { FORK_THEME_ATTRIBUTE, readForkPalette, resolveAppearanceOption, setForkAppearance } =
       await import("./forkTheme");
-    setForkAppearance("cool-dark", (theme) => storage.setItem("t3code:theme", theme));
+    setForkAppearance("cool-dark", (theme) => {
+      storage.setItem("t3code:theme", theme);
+      return true;
+    });
 
     expect(values.get("t3code:theme")).toBe("dark");
     expect(readForkPalette()).toBeNull();

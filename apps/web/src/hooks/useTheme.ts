@@ -458,6 +458,13 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
+/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+/** Subscribe the document-level fork palette owner to same-tab theme writes. */
+export function subscribeToThemeChanges(listener: () => void): () => void {
+  return subscribe(listener);
+}
+/* fork:end fork-cool-dark-theme */
+
 export function useTheme() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const theme = snapshot.theme;

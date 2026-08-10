@@ -44,6 +44,7 @@ import {
   ArrowSquareOut as PhArrowSquareOut,
   ArrowUUpLeft as PhArrowUUpLeft,
   ArrowUp as PhArrowUp,
+  ArrowUpRight as PhArrowUpRight,
   ArrowsClockwise as PhArrowsClockwise,
   ArrowsDownUp as PhArrowsDownUp,
   ArrowsInLineHorizontal as PhArrowsInLineHorizontal,
@@ -147,10 +148,12 @@ import {
   PlugsConnected as PhPlugsConnected,
   Plus as PhPlus,
   PlusCircle as PhPlusCircle,
+  Prohibit as PhProhibit,
   Pulse as PhPulse,
   PushPin as PhPushPin,
   PushPinSlash as PhPushPinSlash,
   QrCode as PhQrCode,
+  Record as PhRecord,
   Robot as PhRobot,
   Rows as PhRows,
   Selection as PhSelection,
@@ -220,9 +223,9 @@ export type LucideProps = LucideCompatProps;
  * `MessagesTimeline.test.tsx` expects `lucide-x` on a failed tool call. Keeping
  * the class contract here means those tests, and future ones like them, pass
  * unmodified: the swap stays a Tier 1 customization instead of leaking edits
- * into upstream test files. Names are the lucide export kebab-cased, which is
- * exact for canonical icons; lucide's deprecated aliases (`MoreVertical` ->
- * `ellipsis-vertical`) get the alias name rather than the canonical one.
+ * into upstream test files. Names are the lucide export kebab-cased. Pure
+ * lucide aliases share their canonical wrapper so the same glyph cannot drift
+ * between two export names.
  */
 function icon(lucideName: string, Base: PhosphorIcon, weight: IconWeight): LucideIcon {
   const lucideClasses = `lucide lucide-${lucideName}`;
@@ -260,7 +263,7 @@ export const Check = icon("check", PhCheck, "bold");
 export const CircleCheckIcon = icon("circle-check", PhCheckCircle, "duotone");
 export const CircleIcon = icon("circle", PhCircle, "duotone");
 export const CircleDashedIcon = icon("circle-dashed", PhCircleDashed, "duotone");
-export const CircleDotIcon = icon("circle-dot", PhCircle, "duotone");
+export const CircleDotIcon = icon("circle-dot", PhRecord, "duotone");
 export const CheckCircle2Icon = icon("check-circle-2", PhCheckCircle, "duotone");
 export const PinIcon = icon("pin", PhPushPin, "duotone");
 export const PinOffIcon = icon("pin-off", PhPushPinSlash, "duotone");
@@ -280,7 +283,7 @@ export const ArrowRightIcon = icon("arrow-right", PhArrowRight, "bold");
 export const ArrowRight = icon("arrow-right", PhArrowRight, "bold");
 export const ArrowUpDownIcon = icon("arrow-up-down", PhArrowsDownUp, "bold");
 export const ArrowDownUpIcon = icon("arrow-down-up", PhArrowsDownUp, "bold");
-export const ArrowUpRightIcon = icon("arrow-up-right", PhArrowSquareOut, "bold");
+export const ArrowUpRightIcon = icon("arrow-up-right", PhArrowUpRight, "bold");
 export const ArrowUpCircleIcon = icon("arrow-up-circle", PhArrowCircleUp, "duotone");
 export const CornerLeftUpIcon = icon("corner-left-up", PhArrowElbowLeftUp, "bold");
 export const Undo2Icon = icon("undo-2", PhArrowUUpLeft, "bold");
@@ -334,12 +337,8 @@ export const GitCommitIcon = icon("git-commit", PhGitCommit, "duotone");
 export const GitCommitHorizontalIcon = icon("git-commit-horizontal", PhGitCommit, "duotone");
 export const GitPullRequestIcon = icon("git-pull-request", PhGitPullRequest, "duotone");
 export const GitPullRequest = icon("git-pull-request", PhGitPullRequest, "duotone");
-export const GitPullRequestClosedIcon = icon(
-  "git-pull-request-closed",
-  PhGitPullRequest,
-  "duotone",
-);
-export const GitPullRequestDraftIcon = icon("git-pull-request-draft", PhGitPullRequest, "duotone");
+export const GitPullRequestClosedIcon = icon("git-pull-request-closed", PhProhibit, "duotone");
+export const GitPullRequestDraftIcon = icon("git-pull-request-draft", PhCircleDashed, "duotone");
 export const GitMergeIcon = icon("git-merge", PhGitMerge, "duotone");
 export const TerminalIcon = icon("terminal", PhTerminal, "duotone");
 export const TerminalSquare = icon("terminal-square", PhTerminalWindow, "duotone");
@@ -413,7 +412,7 @@ export const MessageCircleQuestionIcon = icon(
   "duotone",
 );
 export const EllipsisIcon = icon("ellipsis", PhDotsThree, "bold");
-export const MoreHorizontalIcon = icon("more-horizontal", PhDotsThree, "bold");
+export const MoreHorizontalIcon = EllipsisIcon;
 export const MoreVertical = icon("more-vertical", PhDotsThreeVertical, "bold");
 export const PlayIcon = icon("play", PhPlay, "duotone");
 export const ListChecksIcon = icon("list-checks", PhListChecks, "duotone");
@@ -473,4 +472,4 @@ export const BookOpenIcon = icon("book-open", PhBookOpen, "duotone");
 export const MoonIcon = icon("moon", PhMoon, "duotone");
 export const SunIcon = icon("sun", PhSun, "duotone");
 export const ChartNoAxesColumnIcon = icon("chart-no-axes-column", PhChartBar, "duotone");
-export const XCircleIcon = icon("x-circle", PhXCircle, "duotone");
+export const XCircleIcon = CircleXIcon;

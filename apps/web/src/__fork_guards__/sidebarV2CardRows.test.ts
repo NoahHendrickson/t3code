@@ -9,7 +9,7 @@
  *
  * Assertions are outcome-shaped where they can be. The fork-owned meta
  * component is exercised as a module, and only its call site inside upstream's
- * `SidebarV2.tsx` is checked textually — a rebase quietly dropping that call is
+ * `Sidebar.tsx` is checked textually — a rebase quietly dropping that call is
  * precisely the failure this file exists to catch, and it is not observable any
  * other way without standing up the whole sidebar.
  */
@@ -26,11 +26,22 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const sidebarV2 = readSibling("../components/SidebarV2.tsx");
+const sidebarV2 = readSibling("../components/Sidebar.tsx");
 const theme = readSibling("../theme.custom.css");
 const upstreamCss = readSibling("../index.css");
 
 describe("fork guard: sidebar-v2-card-rows", () => {
+  it("keeps upstream wake and monitoring semantics in the customized row", () => {
+    expect(sidebarV2).toContain('prState !== "merged"');
+    expect(sidebarV2).toContain('prState !== "closed"');
+    expect(sidebarV2).toMatch(
+      /status === "ready" \|\| status === "working" \|\| status === "monitoring"/u,
+    );
+    expect(sidebarV2).toContain('? { label: "Monitoring", mark: "monitoring" }');
+    expect(sidebarV2).toContain("text-sky-600 dark:text-sky-400");
+    expect(sidebarV2).not.toContain("group-hover/sidebar-row:");
+  });
+
   it("keeps the card's lower two lines in the fork-owned component", () => {
     expect(typeof SidebarV2ThreadCardMeta).toBe("function");
     expect(sidebarV2).toContain("<SidebarV2ThreadCardMeta");

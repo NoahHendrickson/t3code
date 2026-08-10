@@ -4,7 +4,7 @@
  * `.fork/customizations.yaml#sidebar-v2-draft-rows`.
  *
  * Projection helpers are tested next to the module. This file guards only the
- * seam inside upstream's `SidebarV2.tsx`: drafts enter the active partition,
+ * seam inside upstream's `Sidebar.tsx`: drafts enter the active partition,
  * draft cards navigate to `/draft/$draftId`, the open draft highlights, and
  * server lifecycle actions stay off the row.
  */
@@ -17,7 +17,7 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const sidebar = readSibling("../components/SidebarV2.tsx");
+const sidebar = readSibling("../components/Sidebar.tsx");
 
 describe("fork guard: sidebar-v2-draft-rows", () => {
   it("folds unpromoted drafts into the active partition", () => {

@@ -25,8 +25,7 @@ Churn concentrates in exactly the files a real UI overhaul wants to edit:
 | ----------------------------------------------- | ------------- | ----- | ---------------- |
 | `apps/web/src/components/ChatView.tsx`          | 24            | 6,053 | +6,633 / −580    |
 | `apps/web/src/index.css`                        | 23            | 1,580 | +1,943 / −363    |
-| `apps/web/src/components/SidebarV2.tsx`         | 21            | 2,732 | —                |
-| `apps/web/src/components/Sidebar.tsx`           | 16            | —     | —                |
+| `apps/web/src/components/Sidebar.tsx`           | 21            | 3,704 | —                |
 | `apps/web/src/components/chat/ChatComposer.tsx` | 15            | 2,747 | —                |
 
 `ChatView.tsx` more than doubled in size in two months. It is not a file — it is a moving target.

@@ -5,7 +5,7 @@
  *
  * The animation math lives next to the plugin
  * (`custom/sidebarV2ListAnimation.test.ts`). This file only guards the seam
- * inside upstream's `SidebarV2.tsx`: that the list still mounts AutoAnimate,
+ * inside upstream's `Sidebar.tsx`: that the list still mounts AutoAnimate,
  * and that it uses the fork plugin rather than the options object whose insert
  * path holds at opacity 0 for half of a 1.5× ease-in.
  */
@@ -18,7 +18,7 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const sidebar = readSibling("../components/SidebarV2.tsx");
+const sidebar = readSibling("../components/Sidebar.tsx");
 const animation = readSibling("../custom/sidebarV2ListAnimation.ts");
 
 describe("fork guard: sidebar-v2-list-animation", () => {

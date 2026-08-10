@@ -99,6 +99,18 @@ describe("fork guard: phosphor-duotone-icons", () => {
     expect(shim).not.toMatch(/^\s*(?:import|export)\b[^\n]*from "lucide-react"/m);
   });
 
+  it("keeps PR, review-thread, and alias glyphs semantically distinct", () => {
+    const shim = read(SHIM_PATH);
+    expect(shim).toContain('CircleDotIcon = icon("circle-dot", PhRecord');
+    expect(shim).toContain('GitPullRequestClosedIcon = icon("git-pull-request-closed", PhProhibit');
+    expect(shim).toContain(
+      'GitPullRequestDraftIcon = icon("git-pull-request-draft", PhCircleDashed',
+    );
+    expect(shim).toContain('ArrowUpRightIcon = icon("arrow-up-right", PhArrowUpRight');
+    expect(shim).toContain("MoreHorizontalIcon = EllipsisIcon");
+    expect(shim).toContain("XCircleIcon = CircleXIcon");
+  });
+
   it("stamps lucide's class names so upstream icon assertions still pass", () => {
     const shim = read(SHIM_PATH);
     // Upstream identifies icons in tests by these classes (e.g. `lucide-x` in

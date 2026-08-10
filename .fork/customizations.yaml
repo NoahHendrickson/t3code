@@ -491,10 +491,8 @@
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
-    # Upstream renamed its default Sidebar V2 implementation to Sidebar.tsx.
-    # Keep watching it while the fork-owned customized copy remains SidebarV2.
+    # The fork customizes upstream's canonical Sidebar V2 implementation in place.
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/index.css
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
@@ -516,7 +514,6 @@
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ErrorTooltip.test.ts
 
@@ -599,7 +596,6 @@
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/portDiscoveryState.ts
   verify:
     - apps/web/src/__fork_guards__/sidebarV2DevServerPulse.test.ts
@@ -699,7 +695,7 @@
     on the clock, capability descriptors and per-row PR states, none of which
     change which project a ref belongs to.
 
-    Four Tier-4 fences carry this in SidebarV2.tsx: the import, the row prop,
+    Four Tier-4 fences carry this in Sidebar.tsx: the import, the row prop,
     the section/order memos, and the render hunk. The render hunk is the one
     that sits inside upstream's own list body and so the one most likely to be
     lost in a sync; the guard test asserts it emits headers from the same
@@ -716,7 +712,6 @@
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
 
@@ -737,7 +732,7 @@
     gate, so the plugin itself collapses duration to 0 when that preference
     is set.
 
-    One Tier-4 fence in SidebarV2.tsx carries the import and the
+    One Tier-4 fence in Sidebar.tsx carries the import and the
     `autoAnimate(node, …)` call. A sync that restores the options object
     silently brings the asymmetric open back.
   tier: 4
@@ -746,7 +741,6 @@
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ListAnimation.test.ts
     - apps/web/src/custom/sidebarV2ListAnimation.test.ts
@@ -786,7 +780,6 @@
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2DraftRows.test.ts
     - apps/web/src/custom/sidebarV2DraftRows.test.ts
@@ -891,7 +884,6 @@
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2RowActionHitArea.test.ts
 
@@ -953,16 +945,18 @@
     (barely cool, not blue-slate) that coexists with the default fork Dark —
     selecting it must not replace or alter Dark's #191919 / #1e1e1e fills.
 
-    Cool Dark is a fork palette overlay, not a widened upstream ThemePreference.
-    Upstream t3code:theme stays light|dark|system. The palette is persisted
-    separately in t3code:fork-theme (cool-dark | absent) by custom/forkTheme.ts.
+    Cool Dark is a fork palette overlay, not an upstream theme definition.
+    Upstream t3code:theme may hold a standard, built-in, or imported theme id.
+    The palette is persisted separately in t3code:fork-theme (cool-dark | absent)
+    by custom/forkTheme.ts.
     Selecting Cool Dark sets upstream theme to dark and stamps
     data-fork-theme="cool-dark" on :root; selecting another built-in or imported
     theme clears that attribute. A legacy t3code:theme=cool-dark value migrates
     to theme=dark plus the palette key. main.tsx starts one document-level owner
-    after the fork marker is stamped; it reconciles storage events in every
-    route, while React subscriptions only report the stored preference. Palette
-    snapshots never migrate or write during render. No useTheme override.
+    after the fork marker is stamped; it subscribes to upstream same-tab theme
+    writes and reconciles storage events in every route, while React subscriptions
+    only report the stored preference. Palette snapshots never migrate or write
+    during render. No useTheme override.
 
     The palette lives in theme.custom.css under
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
@@ -977,6 +971,7 @@
     - apps/web/src/theme.custom.css
   watch:
     - apps/web/src/main.tsx
+    - apps/web/src/hooks/useTheme.ts
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
@@ -1033,7 +1028,7 @@
     AppSidebarLayout. Hanging it off the button would unmount it with the
     sidebar and leave a collapsed panel with no way back but the rail.
 
-    Moving the chrome out took its imports with it, so SidebarV2.tsx's import
+    Moving the chrome out took its imports with it, so Sidebar.tsx's import
     header is deliberately shorter than upstream's: the ./ui/command, ./ui/kbd
     and ./ui/menu statements are gone entirely, along with EllipsisIcon, and
     upstream still imports and uses all of them. That header is the highest
@@ -1133,7 +1128,6 @@
     - apps/web/src/components/SidebarStageBackdrop.tsx
     - apps/web/src/components/SidebarStageBackdrop.test.tsx
     - apps/web/src/components/Sidebar.tsx
-    - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     # Styles ::-webkit-scrollbar { width: var(--app-scrollbar-width) }, which
     # is what makes the thread list's reserved lane a styled 6px at all — and
@@ -1452,7 +1446,7 @@
     quietly — a gate pointed at the wrong paths still exits 0 — and it checks
     selection by walking the tree independently, not by spot-checks.
     The motivating incident (nine dead imports surviving three PRs in
-    SidebarV2.tsx) is in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+    Sidebar.tsx) is in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 1
   files:
     - .fork/lint-owned.mjs
@@ -1514,9 +1508,8 @@
     so hover fills square off). The runtime mode renders as the design's 20px
     accent chip — label only, no icon or caret — with its hue selected by a
     typed fork-owned token map: auto green, full access yellow, auto-accept
-    edits purple, supervised red. The interaction and plan-sidebar toggles
-    are text-only ghost chips,
-    the model and effort selects share the row's 12px type (Noey's call over
+    edits purple, supervised red. The model and effort selects share the row's
+    12px type (Noey's call over
     the drawn 10px), and the composer's effort trigger joins its trait labels
     with a plain space ("High 1M") while Settings keeps upstream's " · "
     separator. The runtime-mode chip and the composer's model and effort

@@ -91,11 +91,11 @@ describe("fork guard: fork-lint-cleanliness", () => {
   it("covers the fork hunks that live at upstream paths", () => {
     const files = selectForkOwnedFiles(manifestText, repoRoot);
     // The gate's whole reason for existing. The nine dead imports it was built
-    // for were in SidebarV2.tsx — an upstream path, named in the manifest only
+    // for were in Sidebar.tsx — an upstream path, named in the manifest only
     // under watch:, which the selector does not read. Scoped to directories
     // alone this gate would have printed "no warnings" while all nine were
     // live, which is what review of #19 caught.
-    expect(files).toContain("apps/web/src/components/SidebarV2.tsx");
+    expect(files).toContain("apps/web/src/components/Sidebar.tsx");
     for (const adopted of adoptedFiles) {
       expect(files).toContain(adopted);
     }

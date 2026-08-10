@@ -4,7 +4,7 @@
  *
  * Pure functions, deliberately: everything here is a decision about how a row
  * should look given what it is, with no React, no upstream state and no DOM. It
- * lives in `custom/` so `SidebarV2.tsx` carries the call sites rather than the
+ * lives in `custom/` so `Sidebar.tsx` carries the call sites rather than the
  * rules — the same shape the meta rows and the status marks already use.
  *
  * ## The two recede rules, and why they are two

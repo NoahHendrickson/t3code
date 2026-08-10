@@ -67,7 +67,7 @@ Measured upstream churn over 60 days (see `.fork/README.md` §1):
 | ---------------------------------- | ------------------------ | -------------------------------------------------------------------- |
 | `components/ui/*.tsx`              | low, stable `cva` tables | **Best target.** Restyling a primitive propagates to every consumer. |
 | `components/chat/ChatComposer.tsx` | 15                       | Viable if you intend to own the composer.                            |
-| `components/SidebarV2.tsx`         | 21                       | Costly. Prefer wrapping.                                             |
+| `components/Sidebar.tsx`           | 21                       | Costly. Prefer wrapping.                                             |
 | `components/ChatView.tsx`          | 24, +6,633 lines         | Avoid. You would inherit a file that doubled in two months.          |
 
 Shadow the smallest thing that achieves the change. Before shadowing a large component, check
