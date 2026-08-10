@@ -2,7 +2,7 @@
  * The lower two lines of a Sidebar V2 thread card — see
  * `.fork/customizations.yaml#sidebar-v2-card-rows`.
  *
- * Fork-owned so the fenced region inside upstream's `SidebarV2.tsx` stays a
+ * Fork-owned so the fenced region inside upstream's `Sidebar.tsx` stays a
  * single element rather than forty lines of layout. The seam is deliberately
  * narrow: everything here is presentational, and the one interactive control
  * (the PR badge, which opens a link) arrives pre-built as `prSlot`. No

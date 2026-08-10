@@ -43,7 +43,7 @@ export const FORK_OWNED_DIRECTORIES = [
  * The fork's largest authored surface is not the directories above — it is
  * hunks inside files at upstream paths, and a file-level scope cannot say "the
  * fork owns these lines but not this file". The nine dead imports that
- * motivated this gate lived here, in SidebarV2.tsx, in unfenced lines the
+ * motivated this gate lived here, in Sidebar.tsx, in unfenced lines the
  * sidebar extraction stranded. A gate that skipped this list would have
  * printed "no warnings" while all nine were live.
  *
@@ -59,7 +59,7 @@ export const FORK_OWNED_DIRECTORIES = [
  */
 export const FORK_ADOPTED_FILES = [
   "apps/web/src/components/AppSidebarLayout.tsx",
-  "apps/web/src/components/SidebarV2.tsx",
+  "apps/web/src/components/Sidebar.tsx",
   "apps/web/src/components/sidebar/SidebarChrome.tsx",
 ];
 

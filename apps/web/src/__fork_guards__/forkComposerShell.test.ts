@@ -11,7 +11,7 @@ import {
   COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX,
   COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX,
   shouldUseCompactComposerFooter,
-} from "../components/composerFooterLayout";
+} from "../overrides/components/composerFooterLayout";
 import {
   COMPOSER_MODEL_SLOT_COMPACT_BREAKPOINT_PX,
   COMPOSER_MODEL_SLOT_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX,
@@ -42,6 +42,7 @@ const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
 const envModeSelector = readSibling("../components/BranchToolbarEnvModeSelector.tsx");
+const stageBackdrop = readSibling("../components/SidebarStageBackdrop.tsx");
 
 function shellMarkup(input: { approvalPending?: boolean; collapsedMobile?: boolean } = {}) {
   return renderToStaticMarkup(
@@ -146,6 +147,29 @@ describe("fork guard: fork-composer-shell", () => {
     expect(markup).toContain("data-test-readout");
   });
 
+  it("keeps collapsed-mobile controls on upstream theme-role tokens", () => {
+    expect([...chatComposer.matchAll(/text-placeholder/gu)]).toHaveLength(2);
+    expect(chatComposer).not.toContain("text-muted-foreground/60");
+    expect(chatComposer).not.toContain("text-muted-foreground/35");
+    expect(chatComposer).toContain(
+      "bg-message-action text-message-action-foreground hover:bg-message-action-hover",
+    );
+    expect(chatComposer).not.toContain("bg-primary/90 text-primary-foreground");
+    expect(chatComposer).toContain(
+      "items-center justify-center px-1 text-center text-[10px] text-secondary-label",
+    );
+  });
+
+  it("fences the compact Nightly artwork seam used by the send button", () => {
+    expect(stageBackdrop).toContain("<NightlySkyArt compact />");
+    expect(stageBackdrop).toMatch(
+      /fork:begin fork-composer-shell[^\n]*\nfunction NightlySkyArt\(\{ compact = false \}: \{ compact\?: boolean \}\) \{\n\s*\/\* fork:end fork-composer-shell/u,
+    );
+    expect(stageBackdrop).toMatch(
+      /fork:begin fork-composer-shell[^\n]*\n\s*viewBox=\{compact \? "96 0 8192 96" : STAGE_BACKDROP_VIEW_BOX\}\n\s*\/\* fork:end fork-composer-shell/u,
+    );
+  });
+
   it("renders only one primary-action cluster for a mobile pending answer", () => {
     expect(promptMarkup({})).toContain("data-test-primary-action");
     expect(promptMarkup({ mobilePendingActionsVisible: true })).not.toContain(
@@ -197,9 +221,9 @@ describe("fork guard: fork-composer-shell", () => {
     // A deleted worktree answers "not a repo" for its own cwd rather than
     // failing, so gating on that alone unmounted the strip and stranded the
     // thread there. A worktree path in play must keep the strip rendered.
-    expect(chatView).toMatch(
-      /showComposerContextStrip\s*=\s*\(\s*isGitRepo \|\| activeThreadWorktreePath !== null\s*\)\s*&&\s*activeProject !== null/u,
-    );
+    expect(chatView).toMatch(/showComposerContextStrip\s*=\s*shouldShowComposerContextStrip/u);
+    expect(chatView).toMatch(/hasActiveProject:\s*activeProject !== null/u);
+    expect(chatView).toMatch(/isGitRepo:\s*isGitRepo \|\| activeThreadWorktreePath !== null/u);
   });
 
   it("keeps composer styling scoped to the fork marker", () => {

@@ -141,7 +141,7 @@ describe("fork guard: fork-neutral-dark-theme", () => {
       `forkPaletteBackgrounds["neutral-dark"] = "${NEUTRAL_DARK_BACKGROUND}"`,
     );
     expect(indexHtml).toMatch(
-      /theme === "dark" &&\s*Object\.prototype\.hasOwnProperty\.call\(forkPaletteBackgrounds, forkPalette\)/u,
+      /theme === "dark" &&\s*isDark &&\s*Object\.prototype\.hasOwnProperty\.call\(forkPaletteBackgrounds, forkPalette\)/u,
     );
     expect(indexHtml).toContain('setAttribute("data-fork-theme", activeForkPalette)');
     expect(indexHtml).toContain(`html.dark[${FORK_THEME_ATTRIBUTE}="neutral-dark"] body`);

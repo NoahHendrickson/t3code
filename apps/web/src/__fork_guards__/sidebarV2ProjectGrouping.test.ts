@@ -5,7 +5,7 @@
  *
  * The bucketing itself is behaviour, and it is tested as behaviour next to the
  * module it lives in (`custom/sidebarV2ProjectGrouping.test.ts`). This file
- * guards only the seam inside upstream's `SidebarV2.tsx`, which nothing else
+ * guards only the seam inside upstream's `Sidebar.tsx`, which nothing else
  * can observe without standing up the whole sidebar: that the switch is wired,
  * that the rendered sequence and the keyboard-order sequence are the same one,
  * and that grouping stays off the two shelves.
@@ -27,7 +27,7 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const sidebar = readSibling("../components/SidebarV2.tsx");
+const sidebar = readSibling("../components/Sidebar.tsx");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 
 describe("fork guard: sidebar-v2-project-grouping", () => {

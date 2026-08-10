@@ -70,9 +70,11 @@ export function StageBackdropArt({ variant }: { variant: SidebarStageBackdropVar
   return variant === "nightly" ? <NightlySkyArt /> : <DevBlueprintArt />;
 }
 
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 export function StageBackdropButtonArt({ variant }: { variant: SidebarStageBackdropVariant }) {
   return variant === "nightly" ? <NightlySkyArt compact /> : <DevBlueprintArt compact />;
 }
+/* fork:end fork-composer-shell */
 
 const NIGHTLY_STARS: ReadonlyArray<{
   cx: number;
@@ -105,7 +107,9 @@ const NIGHTLY_SPARKLES: ReadonlyArray<{ x: number; y: number }> = [
   { x: 246, y: 26 },
 ];
 
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 function NightlySkyArt({ compact = false }: { compact?: boolean }) {
+  /* fork:end fork-composer-shell */
   const idPrefix = useId().replaceAll(":", "");
   const skyId = `${idPrefix}-stage-night-sky`;
   const glowId = `${idPrefix}-stage-night-glow`;
@@ -119,7 +123,9 @@ function NightlySkyArt({ compact = false }: { compact?: boolean }) {
       className="h-full w-full"
       fill="none"
       preserveAspectRatio="xMinYMin slice"
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
       viewBox={compact ? "96 0 8192 96" : STAGE_BACKDROP_VIEW_BOX}
+      /* fork:end fork-composer-shell */
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>

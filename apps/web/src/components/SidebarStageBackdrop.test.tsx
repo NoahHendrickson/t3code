@@ -4,8 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
-  StageBackdropArt,
   StageBackdropButtonArt,
+  StageBackdropArt,
 } from "./SidebarStageBackdrop";
 
 describe("SidebarStageBackdrop", () => {
@@ -29,7 +29,7 @@ describe("SidebarStageBackdrop", () => {
       const markup = renderToStaticMarkup(
         <>
           <StageBackdropArt variant={variant} />
-          <StageBackdropButtonArt variant={variant} />
+          <StageBackdropArt variant={variant} />
         </>,
       );
       const ids = Array.from(markup.matchAll(/\sid="([^"]+)"/g), (match) => match[1]);
@@ -45,4 +45,12 @@ describe("SidebarStageBackdrop", () => {
       expect(new Set(ids).size).toBe(ids.length);
     },
   );
+
+  it("uses a compact Nightly crop for composer buttons", () => {
+    const backdrop = renderToStaticMarkup(<StageBackdropArt variant="nightly" />);
+    const button = renderToStaticMarkup(<StageBackdropButtonArt variant="nightly" />);
+
+    expect(backdrop).toContain('viewBox="0 0 8192 96"');
+    expect(button).toContain('viewBox="96 0 8192 96"');
+  });
 });

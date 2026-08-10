@@ -9,7 +9,7 @@
  * card `px-1`).
  *
  * Fork-owned rather than fenced in place: this is pure presentation, and
- * leaving it inline meant `SidebarV2.tsx` carried the whole rewrite while the
+ * leaving it inline meant `Sidebar.tsx` carried the whole rewrite while the
  * manifest could only watch the file it sat in. Here the fence upstream
  * carries collapses to call sites.
  *
