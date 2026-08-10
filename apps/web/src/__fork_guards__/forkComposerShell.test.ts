@@ -75,16 +75,52 @@ function promptMarkup(input: { approvalPending?: boolean; mobilePendingActionsVi
   );
 }
 
+/** Index of the `</div>` that balances the div whose opening tag contains `openIndex`. */
+function balancedDivClose(markup: string, openIndex: number): number {
+  const tags = /<div\b|<\/div>/gu;
+  tags.lastIndex = markup.lastIndexOf("<div", openIndex);
+  let depth = 0;
+  for (let match = tags.exec(markup); match !== null; match = tags.exec(markup)) {
+    depth += match[0] === "</div>" ? -1 : 1;
+    if (depth === 0) return match.index;
+  }
+  return -1;
+}
+
 describe("fork guard: fork-composer-shell", () => {
-  it("orders context, surface, and controls in the fork-owned shell", () => {
+  it("orders context, then a vessel wrapping surface and controls", () => {
     const markup = shellMarkup();
     const context = markup.indexOf("data-test-context");
+    const vessel = markup.indexOf('data-fork-composer-vessel="true"');
     const surface = markup.indexOf("data-test-surface");
     const controls = markup.indexOf("data-fork-composer-control-row");
 
     expect(context).toBeGreaterThanOrEqual(0);
-    expect(context).toBeLessThan(surface);
+    expect(context).toBeLessThan(vessel);
+    expect(vessel).toBeGreaterThanOrEqual(0);
+    expect(vessel).toBeLessThan(surface);
     expect(surface).toBeLessThan(controls);
+    expect(controls).toBeGreaterThanOrEqual(0);
+
+    // Containment, not just ordering: the surface and the whole control row
+    // (open through balanced close) must fall inside the vessel's own close.
+    // An indexOf("</div>") from the control row would only find the left
+    // slot's close and pass with the controls re-orphaned outside the vessel.
+    const vesselClose = balancedDivClose(markup, vessel);
+    const controlsClose = balancedDivClose(markup, controls);
+    expect(vesselClose).toBeGreaterThan(-1);
+    expect(controlsClose).toBeGreaterThan(-1);
+    expect(surface).toBeLessThan(vesselClose);
+    expect(controlsClose).toBeLessThan(vesselClose);
+  });
+
+  it("keeps the vessel paint off the collapsed mobile pill", () => {
+    // The collapsed tap target rounds to 12px over the vessel's 8px corners;
+    // an unconditional vessel would expose background wedges behind the pill
+    // and slab any live readout row onto it.
+    const markup = shellMarkup({ collapsedMobile: true });
+    expect(markup).not.toContain('data-fork-composer-vessel="true"');
+    expect(shellMarkup()).toContain('data-fork-composer-vessel="true"');
   });
 
   it("gates every interactive control during approvals but keeps readouts", () => {
@@ -154,6 +190,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(composerOverlayIdx).toBeGreaterThan(-1);
     expect(headlineIdx).toBeLessThan(composerOverlayIdx);
     expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
+    expect(chatView).toContain('"chat-composer-glass-shell relative mx-auto w-full max-w-3xl"');
   });
 
   it("keeps the context strip mounted when the thread's worktree is gone", () => {
@@ -261,16 +298,38 @@ describe("fork guard: fork-composer-shell", () => {
     expect(geometry?.selector).not.toContain("data-fork-composer-action");
     expect(geometry?.body).toMatch(/border-radius:\s*4px/u);
     expect(geometry?.body).toMatch(/font-size:\s*12px/u);
+    expect(geometry?.body).toMatch(/padding-inline:\s*4px/u);
   });
 
-  it("owns runtime-mode geometry in the component and maps every mode to tokens", () => {
+  it("paints the outer vessel that floors the control row", () => {
+    const vessel = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-vessel]") && rule.body.includes("background"),
+    );
+    expect(vessel?.body).toMatch(/border-radius:\s*var\(--fork-composer-radius\)/u);
+    expect(vessel?.body).toMatch(/background:\s*var\(--fork-composer-vessel-bg\)/u);
+    // Dark-only: the designs are dark-only and a light fork build keeps
+    // upstream's unpainted flow.
+    expect(vessel?.selector).toContain(".dark");
+    expect(styles).toMatch(/--fork-composer-vessel-bg:/u);
+  });
+
+  it("keeps the mode chip colour-only on shared geometry and maps every mode to tokens", () => {
     const modeRule = rules.find(
       (rule) =>
         rule.selector.endsWith("[data-fork-composer-mode-chip]") &&
+        rule.body.includes("background: var(--fork-mode-bg)"),
+    );
+    expect(modeRule?.body).toMatch(/color:\s*var\(--fork-mode-fg\)/u);
+    // Geometry has one owner — the shared ghost-control rule, which must not
+    // exclude the chip, and the chip block must not re-declare it.
+    expect(modeRule?.body).not.toMatch(/height:|padding-inline:|border-radius:|font-size:/u);
+    const sharedGeometry = rules.find(
+      (rule) =>
+        rule.selector.includes('[data-fork-composer-control-row-slot="left"]') &&
         rule.body.includes("height: 20px"),
     );
-    expect(modeRule?.body).toMatch(/border-radius:\s*4px/u);
-    expect(modeRule?.body).toMatch(/background:\s*var\(--fork-mode-bg\)/u);
+    expect(sharedGeometry?.selector).not.toContain(":not([data-fork-composer-mode-chip])");
     const tokens = [
       getRuntimeModeChipStyle("auto"),
       getRuntimeModeChipStyle("full-access"),
@@ -305,7 +364,7 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("height: 24px"),
     );
     expect(context?.body).toMatch(/border-radius:\s*6px/u);
-    expect(context?.body).toMatch(/padding-inline:\s*6px/u);
+    expect(context?.body).toMatch(/padding-inline:\s*8px/u);
     const chipPad = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
@@ -313,7 +372,17 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes('[data-slot="combobox-trigger"]') &&
         rule.selector.includes("[data-fork-context-chip]"),
     );
-    expect(chipPad?.body).toMatch(/padding-inline:\s*6px/u);
+    expect(chipPad?.body).toMatch(/padding-inline:\s*8px/u);
+    // The ghost xs trigger's Tailwind before-utility stamps a real in-flow
+    // pseudo-element; left in the flex row it opens phantom gap space ahead
+    // of the folder glyph (Current checkout only — the locked span and the
+    // branch chip carry no before utility).
+    const triggerBefore = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes('[data-slot="select-trigger"]::before'),
+    );
+    expect(triggerBefore?.body).toMatch(/display:\s*none/u);
     // Workspace + branch chips share white ink in dark (including locked spans).
     const chipInk = rules.find(
       (rule) =>
@@ -426,7 +495,13 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes(".chat-composer-context-strip") &&
         !/>\s*(?:\.flex|\*)/u.test(rule.selector),
     );
+    // The CSS belt is the single owner of the flattened strip geometry —
+    // upstream's className (negative margin, inset widths, clearance padding)
+    // ships untouched and every reset happens here.
     expect(strip?.body).toMatch(/margin:\s*0/u);
+    expect(strip?.body).toMatch(/padding:\s*0/u);
+    expect(strip?.body).toMatch(/width:\s*auto/u);
+    expect(strip?.body).toMatch(/max-width:\s*none/u);
     expect(strip?.body).toMatch(/gap:\s*8px/u);
     // Flattening the wrapper must not let the strip shrink-to-fit: upstream's
     // label-collapse heuristic measures the strip's own clientWidth as the
