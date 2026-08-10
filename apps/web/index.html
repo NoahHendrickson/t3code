@@ -22,13 +22,24 @@
         const DARK_BACKGROUND = "#161616";
         /* fork:end fork-surface-palette */
         /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-        const COOL_DARK_BACKGROUND = "#1c1e20";
+        // Fork palettes: data-fork-theme value → pre-paint background (each
+        // hex matches that palette's stage `--background`). Every palette
+        // contributes one fenced row; the stamping below reads the map, so a
+        // new palette is a row here — not another boolean, branch, and
+        // ternary arm.
+        const forkPaletteBackgrounds = { "cool-dark": "#1c1e20" };
         /* fork:end fork-cool-dark-theme */
+        /* fork:begin fork-neutral-dark-theme — see .fork/customizations.yaml#fork-neutral-dark-theme */
+        forkPaletteBackgrounds["neutral-dark"] = "#1f1f1f";
+        /* fork:end fork-neutral-dark-theme */
+        /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
+        forkPaletteBackgrounds["neutral-darker"] = "#1a1a1a";
+        /* fork:end fork-neutral-darker-theme */
         const themeColorMeta = document.querySelector('meta[name="theme-color"]');
         try {
           const storedTheme = window.localStorage.getItem("t3code:theme");
           /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-          // Cool Dark is a separate palette key; migrate legacy t3code:theme=cool-dark.
+          // Fork palettes live in t3code:fork-theme; migrate legacy t3code:theme=cool-dark.
           let forkPalette = window.localStorage.getItem("t3code:fork-theme");
           if (storedTheme === "cool-dark") {
             window.localStorage.setItem("t3code:theme", "dark");
@@ -43,18 +54,23 @@
                 : "system";
           const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           const isDark = theme === "dark" || (theme === "system" && prefersDark);
-          const isCoolDark = forkPalette === "cool-dark" && theme === "dark";
+          const activeForkPalette =
+            theme === "dark" &&
+            Object.prototype.hasOwnProperty.call(forkPaletteBackgrounds, forkPalette)
+              ? forkPalette
+              : null;
           document.documentElement.classList.toggle("dark", isDark);
-          if (isCoolDark) {
-            document.documentElement.setAttribute("data-fork-theme", "cool-dark");
+          if (activeForkPalette !== null) {
+            document.documentElement.setAttribute("data-fork-theme", activeForkPalette);
           } else {
             document.documentElement.removeAttribute("data-fork-theme");
           }
-          const chromeColor = isCoolDark
-            ? COOL_DARK_BACKGROUND
-            : isDark
-              ? DARK_BACKGROUND
-              : LIGHT_BACKGROUND;
+          const chromeColor =
+            activeForkPalette !== null
+              ? forkPaletteBackgrounds[activeForkPalette]
+              : isDark
+                ? DARK_BACKGROUND
+                : LIGHT_BACKGROUND;
           /* fork:end fork-cool-dark-theme */
           document.documentElement.style.backgroundColor = chromeColor;
           themeColorMeta?.setAttribute("content", chromeColor);
@@ -96,6 +112,20 @@
         color: #e9eaec;
       }
       /* fork:end fork-cool-dark-theme */
+
+      /* fork:begin fork-neutral-dark-theme — see .fork/customizations.yaml#fork-neutral-dark-theme */
+      html.dark[data-fork-theme="neutral-dark"] body {
+        background: #1f1f1f;
+        color: #e8e8e8;
+      }
+      /* fork:end fork-neutral-dark-theme */
+
+      /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
+      html.dark[data-fork-theme="neutral-darker"] body {
+        background: #1a1a1a;
+        color: #e8e8e8;
+      }
+      /* fork:end fork-neutral-darker-theme */
 
       #boot-shell {
         display: flex;

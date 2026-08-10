@@ -74,7 +74,12 @@ import { isElectron } from "../../env";
 import { buildHostedChannelSelectionUrl, type HostedAppChannel } from "../../hostedPairing";
 import { useTheme } from "../../hooks/useTheme";
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-import { COOL_DARK_LABEL, useForkAppearance } from "../../custom/forkTheme";
+import {
+  FORK_PALETTE_LABELS,
+  FORK_PALETTES,
+  isForkPalette,
+  useForkAppearance,
+} from "../../custom/forkTheme";
 /* fork:end fork-cool-dark-theme */
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
@@ -180,11 +185,11 @@ const THEME_OPTIONS = [
     value: "dark",
     label: "Dark",
   },
-  /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-  {
-    value: "cool-dark",
-    label: COOL_DARK_LABEL,
-  },
+  /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme
+     One derived row per fork palette (Cool Dark, Neutral Dark, Neutral
+     Darker, …) — the palette list and its labels live in custom/forkTheme.ts,
+     so adding a palette never edits this file. */
+  ...FORK_PALETTES.map((palette) => ({ value: palette, label: FORK_PALETTE_LABELS[palette] })),
   /* fork:end fork-cool-dark-theme */
 ] as const;
 
@@ -1053,7 +1058,7 @@ export function AppearanceSettingsPanel() {
                   value === "system" ||
                   value === "light" ||
                   value === "dark" ||
-                  value === "cool-dark"
+                  isForkPalette(value)
                 ) {
                   setAppearance(value);
                 }

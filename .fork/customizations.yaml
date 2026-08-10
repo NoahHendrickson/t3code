@@ -946,14 +946,17 @@
 
     Cool Dark is a fork palette overlay, not a widened upstream ThemePreference.
     Upstream t3code:theme stays light|dark|system. The palette is persisted
-    separately in t3code:fork-theme (cool-dark | absent) by custom/forkTheme.ts.
-    Selecting Cool Dark sets upstream theme to dark and stamps
-    data-fork-theme="cool-dark" on :root; Light / Dark / System clear that
-    attribute. A legacy t3code:theme=cool-dark value migrates to theme=dark plus
-    the palette key. main.tsx starts one document-level owner after the fork
-    marker is stamped; it reconciles storage events in every route, while React
-    subscriptions only report the stored preference. Palette snapshots never
-    migrate or write during render. No useTheme override.
+    separately in t3code:fork-theme
+    (cool-dark | neutral-dark | neutral-darker | absent) by custom/forkTheme.ts
+    — Neutral Dark / Neutral Darker share that key (see
+    fork-neutral-dark-theme, fork-neutral-darker-theme). Selecting Cool Dark
+    sets upstream theme to dark
+    and stamps data-fork-theme="cool-dark" on :root; Light / Dark / System
+    clear that attribute. A legacy t3code:theme=cool-dark value migrates to
+    theme=dark plus the palette key. main.tsx starts one document-level owner
+    after the fork marker is stamped; it reconciles storage events in every
+    route, while React subscriptions only report the stored preference. Palette
+    snapshots never migrate or write during render. No useTheme override.
 
     The palette lives in theme.custom.css under
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
@@ -972,6 +975,64 @@
     - apps/web/index.html
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
+    - apps/web/src/custom/forkTheme.test.ts
+
+- id: fork-neutral-dark-theme
+  intent: >
+    Appearance offers Neutral Dark alongside System, Light, Dark, and Cool Dark.
+    Neutral Dark is a true-neutral gray palette from Figma t3-fork node
+    264:11816 — no cool undertone. Selecting it must not replace or alter
+    default Dark (#191919 / #1e1e1e) or Cool Dark (#1c1e20 / #232628).
+
+    Neutral Dark reuses the fork palette overlay in custom/forkTheme.ts
+    (t3code:fork-theme = neutral-dark, upstream theme = dark,
+    data-fork-theme="neutral-dark"). Stage #1f1f1f, sidebar panel and composer
+    vessel #2a2a2a (slightly darker than Figma's #2e2e2e), prompt surface
+    #3d3d3d (frosted), context chips #414141,
+    row hover/selected as opaque white-8% lifts (#383838 / #3a3a3a), borders
+    #3f3f3f. Accents stay monochrome (white primary/ring) with neutral muted
+    text. theme.custom.css uses the same two-block stage + v2 panel pattern as
+    Cool Dark. index.html pre-paints #1f1f1f so the load flash matches. The
+    sidebar stays opaque solid — wallpaper glass belongs to Neutral Darker.
+  tier: 2
+  files:
+    - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/theme.custom.css
+  watch:
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/index.html
+  verify:
+    - apps/web/src/__fork_guards__/forkNeutralDarkTheme.test.ts
+    - apps/web/src/custom/forkTheme.test.ts
+
+- id: fork-neutral-darker-theme
+  intent: >
+    Appearance offers Neutral Darker as a deeper sibling of Neutral Dark.
+    True-neutral grays only. Chat stage #1a1a1a (slightly darker than Neutral
+    Dark's #1f1f1f); sidebar #1d1d1d (much darker than Neutral Dark's #2a2a2a,
+    still slightly lighter than the stage). Composer vessel tracks the sidebar;
+    prompt/chips lift from that darker base. Must not alter Neutral Dark, Cool
+    Dark, or default Dark fills.
+
+    Same fork palette overlay as Cool Dark / Neutral Dark
+    (t3code:fork-theme = neutral-darker, upstream theme = dark,
+    data-fork-theme="neutral-darker"). theme.custom.css uses the two-block
+    stage + v2 panel pattern. index.html pre-paints #1a1a1a.
+
+    Sidebar wallpaper glass via Electron vibrancy was attempted and removed
+    without residue: Neutral Darker is a solid opaque panel, the desktop app
+    carries no vibrancy IPC or window plumbing, and the guard asserts the
+    absence. A window can only gain native vibrancy while code sets it, and
+    no shipped build ever did, so there is no leftover state to recover.
+  tier: 2
+  files:
+    - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/theme.custom.css
+  watch:
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/index.html
+  verify:
+    - apps/web/src/__fork_guards__/forkNeutralDarkerTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
 
 - id: fork-sidebar-type-size

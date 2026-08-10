@@ -759,6 +759,142 @@
   color: #ffffff;
 }
 
+/* ---------------------------------------------------------------------------
+   Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
+
+   Figma t3-fork node 264:11816: true-neutral grays (no cool undertone). Stage
+   #1f1f1f, sidebar/composer vessel #2a2a2a (slightly darker than the drawn
+   #2e2e2e), prompt surface #3d3d3d, context chips #414141. Same two-block
+   pattern and data-fork-theme keying as Cool Dark so Dark / Cool Dark /
+   Neutral Dark can coexist. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
+  --background: #1f1f1f;
+  --app-chrome-background: #1f1f1f;
+  --foreground: #e8e8e8;
+  --card: #2e2e2e;
+  --card-foreground: #e8e8e8;
+  --popover: #2e2e2e;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1f1f1f;
+  --ring: #ffffff;
+  --secondary: #383838;
+  --secondary-foreground: #e8e8e8;
+  --muted: #383838;
+  --muted-foreground: #9a9a9a;
+  --accent: #383838;
+  --accent-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --input: #3f3f3f;
+  --surface-grain: none;
+  --fork-pill-border: #4a4a4a;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #383838;
+  --fork-composer-vessel-bg: #2a2a2a;
+  --fork-composer-bg: rgb(61 61 61 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 8%);
+  --fork-composer-border-focus: #525252;
+  /* Opaque sibling of the Neutral Dark composer fill — see default-dark note. */
+  --fork-context-chip-bg: rgb(65 65 65);
+  --fork-context-chip-bg-hover: #4a4a4a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-sidebar-version="v2"] {
+  --background: #2a2a2a;
+  --foreground: #e8e8e8;
+  --card: #2a2a2a;
+  --card-foreground: #e8e8e8;
+  --sidebar: #2a2a2a;
+  --sidebar-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --sidebar-border: #3f3f3f;
+  --sidebar-stage-fade: #2a2a2a;
+  --muted: #383838;
+  --accent: #383838;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #9a9a9a;
+  --sidebar-muted-foreground: #d6d6d6;
+  --fork-sidebar-card-title-receded: #b0b0b0;
+  --sidebar-control-surface: #414141;
+  --sidebar-row-hover: #383838;
+  --sidebar-row-active: #3a3a3a;
+  --sidebar-row-selected: #3a3a3a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
+
+   Same true-neutral family as Neutral Dark, pushed down: chat stage #1a1a1a
+   (slightly darker than Neutral Dark's #1f1f1f), sidebar #1d1d1d (much darker
+   than Neutral Dark's #2a2a2a, still a hair lighter than the stage). Composer
+   vessel tracks the sidebar; prompt/chips lift from that darker base. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"] {
+  --background: #1a1a1a;
+  --app-chrome-background: #1a1a1a;
+  --foreground: #e8e8e8;
+  --card: #1d1d1d;
+  --card-foreground: #e8e8e8;
+  --popover: #1d1d1d;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1a1a1a;
+  --ring: #ffffff;
+  --secondary: #2b2b2b;
+  --secondary-foreground: #e8e8e8;
+  --muted: #2b2b2b;
+  --muted-foreground: #8a8a8a;
+  --accent: #2b2b2b;
+  --accent-foreground: #e8e8e8;
+  --border: #2f2f2f;
+  --input: #2f2f2f;
+  --surface-grain: none;
+  --fork-pill-border: #3a3a3a;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #2b2b2b;
+  --fork-composer-vessel-bg: #1d1d1d;
+  --fork-composer-bg: rgb(42 42 42 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 8%);
+  --fork-composer-border-focus: #4a4a4a;
+  --fork-context-chip-bg: rgb(48 48 48);
+  --fork-context-chip-bg-hover: #3a3a3a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
+  [data-sidebar-version="v2"] {
+  --background: #1d1d1d;
+  --foreground: #e8e8e8;
+  --card: #1d1d1d;
+  --card-foreground: #e8e8e8;
+  --sidebar: #1d1d1d;
+  --sidebar-foreground: #e8e8e8;
+  --border: #2f2f2f;
+  --sidebar-border: #2f2f2f;
+  --sidebar-stage-fade: #1d1d1d;
+  --muted: #2b2b2b;
+  --accent: #2b2b2b;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #8a8a8a;
+  --sidebar-muted-foreground: #d0d0d0;
+  --fork-sidebar-card-title-receded: #a8a8a8;
+  --sidebar-control-surface: #303030;
+  --sidebar-row-hover: #2b2b2b;
+  --sidebar-row-active: #2e2e2e;
+  --sidebar-row-selected: #2e2e2e;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
 /* Lucide glyphs on these triggers ship with opacity-70 / opacity-50; force
    full ink so white chip labels don't wash back to gray. */
 :root[data-fork="noahhendrickson-t3code"]
