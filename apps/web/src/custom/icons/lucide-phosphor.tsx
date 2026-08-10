@@ -53,7 +53,9 @@ import {
   BatteryEmpty as PhBatteryEmpty,
   BellSlash as PhBellSlash,
   BookmarkSimple as PhBookmarkSimple,
+  BookOpen as PhBookOpen,
   BoxArrowUp as PhBoxArrowUp,
+  BracketsCurly as PhBracketsCurly,
   Broadcast as PhBroadcast,
   Bug as PhBug,
   Camera as PhCamera,
@@ -63,9 +65,13 @@ import {
   CaretUp as PhCaretUp,
   CaretUpDown as PhCaretUpDown,
   ChatCircle as PhChatCircle,
+  ChatCircleDots as PhChatCircleDots,
+  ChatCircleSlash as PhChatCircleSlash,
   ChatText as PhChatText,
   Check as PhCheck,
   CheckCircle as PhCheckCircle,
+  Circle as PhCircle,
+  CircleDashed as PhCircleDashed,
   CircleNotch as PhCircleNotch,
   ClipboardText as PhClipboardText,
   Clock as PhClock,
@@ -105,6 +111,7 @@ import {
   GitCommit as PhGitCommit,
   GitDiff as PhGitDiff,
   GitFork as PhGitFork,
+  GitMerge as PhGitMerge,
   GitPullRequest as PhGitPullRequest,
   Globe as PhGlobe,
   GlobeHemisphereWest as PhGlobeHemisphereWest,
@@ -115,6 +122,7 @@ import {
   Keyboard as PhKeyboard,
   Laptop as PhLaptop,
   Lightning as PhLightning,
+  Lightbulb as PhLightbulb,
   Link as PhLink,
   LinkSimple as PhLinkSimple,
   ListChecks as PhListChecks,
@@ -126,9 +134,12 @@ import {
   Minus as PhMinus,
   Monitor as PhMonitor,
   NotePencil as PhNotePencil,
+  Moon as PhMoon,
   PaintBrush as PhPaintBrush,
   Palette as PhPalette,
   Paragraph as PhParagraph,
+  Paperclip as PhPaperclip,
+  PaperPlaneTilt as PhPaperPlaneTilt,
   PencilRuler as PhPencilRuler,
   PencilSimpleLine as PhPencilSimpleLine,
   PictureInPicture as PhPictureInPicture,
@@ -148,21 +159,28 @@ import {
   SidebarSimple as PhSidebarSimple,
   SignIn as PhSignIn,
   Sparkle as PhSparkle,
+  Stack as PhStack,
   SquareHalf as PhSquareHalf,
   SquareHalfBottom as PhSquareHalfBottom,
   SquareSplitHorizontal as PhSquareSplitHorizontal,
   SquareSplitVertical as PhSquareSplitVertical,
   Star as PhStar,
+  Sun as PhSun,
   Terminal as PhTerminal,
   TerminalWindow as PhTerminalWindow,
   Trash as PhTrash,
   TreeStructure as PhTreeStructure,
   Warning as PhWarning,
   WarningCircle as PhWarningCircle,
+  WarningOctagon as PhWarningOctagon,
   WifiSlash as PhWifiSlash,
   Wrench as PhWrench,
   X as PhX,
   XCircle as PhXCircle,
+  ChartBar as PhChartBar,
+  UploadSimple as PhUploadSimple,
+  UserPlus as PhUserPlus,
+  Users as PhUsers,
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
@@ -222,6 +240,7 @@ function icon(lucideName: string, Base: PhosphorIcon, weight: IconWeight): Lucid
 }
 
 export const ChevronDownIcon = icon("chevron-down", PhCaretDown, "bold");
+export const ChevronDown = icon("chevron-down", PhCaretDown, "bold");
 export const ChevronUpIcon = icon("chevron-up", PhCaretUp, "bold");
 export const ChevronLeftIcon = icon("chevron-left", PhCaretLeft, "bold");
 export const ChevronRightIcon = icon("chevron-right", PhCaretRight, "bold");
@@ -237,7 +256,11 @@ export const XIcon = icon("x", PhX, "bold");
 export const X = icon("x", PhX, "bold");
 export const CircleXIcon = icon("circle-x", PhXCircle, "duotone");
 export const CheckIcon = icon("check", PhCheck, "bold");
+export const Check = icon("check", PhCheck, "bold");
 export const CircleCheckIcon = icon("circle-check", PhCheckCircle, "duotone");
+export const CircleIcon = icon("circle", PhCircle, "duotone");
+export const CircleDashedIcon = icon("circle-dashed", PhCircleDashed, "duotone");
+export const CircleDotIcon = icon("circle-dot", PhCircle, "duotone");
 export const CheckCircle2Icon = icon("check-circle-2", PhCheckCircle, "duotone");
 export const PinIcon = icon("pin", PhPushPin, "duotone");
 export const PinOffIcon = icon("pin-off", PhPushPinSlash, "duotone");
@@ -256,6 +279,8 @@ export const ArrowLeft = icon("arrow-left", PhArrowLeft, "bold");
 export const ArrowRightIcon = icon("arrow-right", PhArrowRight, "bold");
 export const ArrowRight = icon("arrow-right", PhArrowRight, "bold");
 export const ArrowUpDownIcon = icon("arrow-up-down", PhArrowsDownUp, "bold");
+export const ArrowDownUpIcon = icon("arrow-down-up", PhArrowsDownUp, "bold");
+export const ArrowUpRightIcon = icon("arrow-up-right", PhArrowSquareOut, "bold");
 export const ArrowUpCircleIcon = icon("arrow-up-circle", PhArrowCircleUp, "duotone");
 export const CornerLeftUpIcon = icon("corner-left-up", PhArrowElbowLeftUp, "bold");
 export const Undo2Icon = icon("undo-2", PhArrowUUpLeft, "bold");
@@ -266,12 +291,14 @@ export const RotateCw = icon("rotate-cw", PhArrowClockwise, "bold");
 export const RefreshCwIcon = icon("refresh-cw", PhArrowsClockwise, "bold");
 export const RefreshCw = icon("refresh-cw", PhArrowsClockwise, "bold");
 export const HistoryIcon = icon("history", PhClockCounterClockwise, "duotone");
+export const History = icon("history", PhClockCounterClockwise, "duotone");
 export const ClockIcon = icon("clock", PhClock, "duotone");
 export const AlarmClockIcon = icon("alarm-clock", PhAlarm, "duotone");
 export const AlarmClockOffIcon = icon("alarm-clock-off", PhBellSlash, "duotone");
 export const TriangleAlertIcon = icon("triangle-alert", PhWarning, "duotone");
 export const AlertTriangleIcon = icon("alert-triangle", PhWarning, "duotone");
 export const CircleAlertIcon = icon("circle-alert", PhWarningCircle, "duotone");
+export const OctagonAlertIcon = icon("octagon-alert", PhWarningOctagon, "duotone");
 export const InfoIcon = icon("info", PhInfo, "duotone");
 export const BugIcon = icon("bug", PhBug, "duotone");
 export const LoaderIcon = icon("loader", PhCircleNotch, "bold");
@@ -283,6 +310,7 @@ export const Files = icon("files", PhFiles, "duotone");
 export const FileDiff = icon("file-diff", PhGitDiff, "duotone");
 export const FileDiffIcon = icon("file-diff", PhGitDiff, "duotone");
 export const FileJsonIcon = icon("file-json", PhFileCode, "duotone");
+export const FileCode2Icon = icon("file-code-2", PhFileCode, "duotone");
 export const FileSearchIcon = icon("file-search", PhFileMagnifyingGlass, "duotone");
 // Text search — phosphor has no text-magnifier; the list-lines magnifier is
 // the closest read of "search within content".
@@ -303,7 +331,16 @@ export const FolderTree = icon("folder-tree", PhTreeStructure, "duotone");
 export const GitBranchIcon = icon("git-branch", PhGitBranch, "duotone");
 export const GitBranchPlusIcon = icon("git-branch-plus", PhGitFork, "duotone");
 export const GitCommitIcon = icon("git-commit", PhGitCommit, "duotone");
+export const GitCommitHorizontalIcon = icon("git-commit-horizontal", PhGitCommit, "duotone");
 export const GitPullRequestIcon = icon("git-pull-request", PhGitPullRequest, "duotone");
+export const GitPullRequest = icon("git-pull-request", PhGitPullRequest, "duotone");
+export const GitPullRequestClosedIcon = icon(
+  "git-pull-request-closed",
+  PhGitPullRequest,
+  "duotone",
+);
+export const GitPullRequestDraftIcon = icon("git-pull-request-draft", PhGitPullRequest, "duotone");
+export const GitMergeIcon = icon("git-merge", PhGitMerge, "duotone");
 export const TerminalIcon = icon("terminal", PhTerminal, "duotone");
 export const TerminalSquare = icon("terminal-square", PhTerminalWindow, "duotone");
 export const Code2 = icon("code-2", PhCode, "duotone");
@@ -341,6 +378,9 @@ export const GaugeIcon = icon("gauge", PhGauge, "duotone");
 export const HardDriveIcon = icon("hard-drive", PhHardDrive, "duotone");
 export const MemoryStickIcon = icon("memory-stick", PhMemory, "duotone");
 export const BotIcon = icon("bot", PhRobot, "duotone");
+export const Bot = icon("bot", PhRobot, "duotone");
+export const Braces = icon("braces", PhBracketsCurly, "duotone");
+export const LightbulbIcon = icon("lightbulb", PhLightbulb, "duotone");
 export const SparklesIcon = icon("sparkles", PhSparkle, "duotone");
 export const ZapIcon = icon("zap", PhLightning, "duotone");
 export const StarIcon = icon("star", PhStar, "duotone");
@@ -356,15 +396,24 @@ export const Search = icon("search", PhMagnifyingGlass, "duotone");
 export const SettingsIcon = icon("settings", PhGear, "duotone");
 export const Settings2Icon = icon("settings-2", PhGearSix, "duotone");
 export const DownloadIcon = icon("download", PhDownloadSimple, "bold");
+export const UploadIcon = icon("upload", PhUploadSimple, "bold");
 export const ExternalLinkIcon = icon("external-link", PhArrowSquareOut, "duotone");
 export const ExternalLink = icon("external-link", PhArrowSquareOut, "duotone");
 export const LinkIcon = icon("link", PhLink, "duotone");
 export const Link2 = icon("link-2", PhLinkSimple, "duotone");
 export const Link2Icon = icon("link-2", PhLinkSimple, "duotone");
 export const MessageSquareIcon = icon("message-square", PhChatText, "duotone");
+export const MessageSquareWarningIcon = icon("message-square-warning", PhWarningCircle, "duotone");
+export const MessageSquareOffIcon = icon("message-square-off", PhChatCircleSlash, "duotone");
 export const MessageCircle = icon("message-circle", PhChatCircle, "duotone");
 export const MessageCircleIcon = icon("message-circle", PhChatCircle, "duotone");
+export const MessageCircleQuestionIcon = icon(
+  "message-circle-question",
+  PhChatCircleDots,
+  "duotone",
+);
 export const EllipsisIcon = icon("ellipsis", PhDotsThree, "bold");
+export const MoreHorizontalIcon = icon("more-horizontal", PhDotsThree, "bold");
 export const MoreVertical = icon("more-vertical", PhDotsThreeVertical, "bold");
 export const PlayIcon = icon("play", PhPlay, "duotone");
 export const ListChecksIcon = icon("list-checks", PhListChecks, "duotone");
@@ -372,6 +421,11 @@ export const ListTodoIcon = icon("list-todo", PhListChecks, "duotone");
 // Figma FunnelSimple — lucide's ListFilter (three descending bars).
 export const ListFilterIcon = icon("list-filter", PhFunnelSimple, "bold");
 export const Camera = icon("camera", PhCamera, "duotone");
+export const PaperclipIcon = icon("paperclip", PhPaperclip, "duotone");
+export const SendIcon = icon("send", PhPaperPlaneTilt, "duotone");
+export const UserPlusIcon = icon("user-plus", PhUserPlus, "duotone");
+export const UsersIcon = icon("users", PhUsers, "duotone");
+export const LayersIcon = icon("layers", PhStack, "duotone");
 export const PipetteIcon = icon("pipette", PhEyedropper, "duotone");
 export const PaletteIcon = icon("palette", PhPalette, "duotone");
 export const PaintbrushIcon = icon("paintbrush", PhPaintBrush, "duotone");
@@ -390,6 +444,7 @@ export const Frame = icon("frame", PhSelection, "duotone");
 export const MousePointerClick = icon("mouse-pointer-click", PhCursorClick, "duotone");
 export const MousePointerClickIcon = icon("mouse-pointer-click", PhCursorClick, "duotone");
 export const MousePointer2 = icon("mouse-pointer-2", PhCursor, "duotone");
+export const MousePointer2Icon = icon("mouse-pointer-2", PhCursor, "duotone");
 export const Maximize2Icon = icon("maximize-2", PhArrowsOutSimple, "bold");
 export const Minimize2Icon = icon("minimize-2", PhArrowsInSimple, "bold");
 export const PanelLeftIcon = icon("panel-left", PhSidebar, "duotone");
@@ -414,3 +469,8 @@ export const SquareSplitVertical = icon("square-split-vertical", PhSquareSplitVe
 export const TextWrapIcon = icon("text-wrap", PhArrowElbowDownLeft, "bold");
 export const WrapTextIcon = icon("wrap-text", PhArrowElbowDownLeft, "bold");
 export const PilcrowIcon = icon("pilcrow", PhParagraph, "duotone");
+export const BookOpenIcon = icon("book-open", PhBookOpen, "duotone");
+export const MoonIcon = icon("moon", PhMoon, "duotone");
+export const SunIcon = icon("sun", PhSun, "duotone");
+export const ChartNoAxesColumnIcon = icon("chart-no-axes-column", PhChartBar, "duotone");
+export const XCircleIcon = icon("x-circle", PhXCircle, "duotone");

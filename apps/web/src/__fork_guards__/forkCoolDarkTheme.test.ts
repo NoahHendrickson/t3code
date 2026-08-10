@@ -105,7 +105,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("offers Cool Dark in Appearance via the fork palette adapter", () => {
-    expect(settingsPanels).toContain('value: "cool-dark"');
+    expect(settingsPanels).toContain('checked={appearance === "cool-dark"}');
+    expect(settingsPanels).toContain(
+      'onCheckedChange={(checked) => setAppearance(checked ? "cool-dark" : "dark")}',
+    );
     expect(settingsPanels).toContain("COOL_DARK_LABEL");
     expect(forkTheme).toContain(`export const COOL_DARK_LABEL = "${COOL_DARK_LABEL}"`);
     expect(settingsPanels).toContain("useForkAppearance");

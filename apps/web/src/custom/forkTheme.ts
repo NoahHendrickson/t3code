@@ -6,7 +6,7 @@
  * this module owns `t3code:fork-theme` (`cool-dark` | absent) and the DOM attribute.
  */
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 import { syncBrowserChromeTheme } from "../hooks/useTheme";
 
@@ -22,7 +22,7 @@ export const COOL_DARK_BACKGROUND = "#1c1e20";
 export type ForkPalette = typeof COOL_DARK_THEME;
 export type ForkPalettePreference = ForkPalette | null;
 export type AppearanceOption = "light" | "dark" | "cool-dark" | "system";
-type UpstreamTheme = "light" | "dark" | "system";
+type UpstreamTheme = string;
 
 type AttributeRoot = {
   setAttribute(name: string, value: string): void;
@@ -110,7 +110,7 @@ export function resolveActiveForkPalette(
 export function resolveAppearanceOption(
   theme: UpstreamTheme,
   palette: ForkPalettePreference,
-): AppearanceOption {
+): string {
   return resolveActiveForkPalette(theme, palette) ?? theme;
 }
 
@@ -160,10 +160,7 @@ function suppressAppearanceTransitions(update: () => void): void {
 }
 
 /** Apply an Appearance option and reconcile partial storage failures to one visible state. */
-export function setForkAppearance(
-  next: AppearanceOption,
-  setTheme: (theme: UpstreamTheme) => void,
-): void {
+export function setForkAppearance(next: AppearanceOption, setTheme: (theme: string) => void): void {
   suppressAppearanceTransitions(() => {
     writeForkPalette(next === COOL_DARK_THEME ? COOL_DARK_THEME : null);
     setTheme(next === COOL_DARK_THEME ? "dark" : next);
@@ -192,9 +189,18 @@ export function initializeForkTheme(): void {
 }
 
 /** Appearance Select adapter over the upstream theme and fork palette stores. */
-export function useForkAppearance(theme: UpstreamTheme, setTheme: (theme: UpstreamTheme) => void) {
+export function useForkAppearance(theme: UpstreamTheme, setTheme: (theme: string) => void) {
   const palette = useSyncExternalStore(subscribePalette, getPaletteSnapshot, () => null);
   const appearance = resolveAppearanceOption(theme, palette);
+
+  // Upstream's modular theme library can replace the base preference without
+  // going through this adapter. Clear the fork overlay as soon as that happens
+  // so it cannot paint over a newly selected built-in or imported theme.
+  useEffect(() => {
+    if (theme === "dark" || palette === null) return;
+    writeForkPalette(null);
+    syncForkPaletteFromStorage();
+  }, [palette, theme]);
 
   const setAppearance = useCallback(
     (next: AppearanceOption) => setForkAppearance(next, setTheme),

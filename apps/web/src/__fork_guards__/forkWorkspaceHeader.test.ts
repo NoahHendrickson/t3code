@@ -95,7 +95,7 @@ describe("fork guard: fork-workspace-header", () => {
     // after the name reverts to upstream's font-medium — the exact
     // tripwire-dressed-as-proof failure the pill-scoping test above was
     // rewritten to eliminate.
-    expect(chatHeader).toMatch(/text-sm font-semibold">\{activeProjectName\}/u);
+    expect(chatHeader).toMatch(/text-sm font-semibold">\s*\{activeProjectName\}/u);
     // The muted colour lives on the breadcrumb trigger and cascades to the
     // name; hover restores foreground, which is upstream's affordance.
     expect(chatHeader).toMatch(

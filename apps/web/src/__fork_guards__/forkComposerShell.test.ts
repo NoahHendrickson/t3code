@@ -11,7 +11,7 @@ import {
   COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX,
   COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX,
   shouldUseCompactComposerFooter,
-} from "../components/composerFooterLayout";
+} from "../overrides/components/composerFooterLayout";
 import {
   COMPOSER_MODEL_SLOT_COMPACT_BREAKPOINT_PX,
   COMPOSER_MODEL_SLOT_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX,
@@ -160,9 +160,9 @@ describe("fork guard: fork-composer-shell", () => {
     // A deleted worktree answers "not a repo" for its own cwd rather than
     // failing, so gating on that alone unmounted the strip and stranded the
     // thread there. A worktree path in play must keep the strip rendered.
-    expect(chatView).toMatch(
-      /showComposerContextStrip\s*=\s*\(\s*isGitRepo \|\| activeThreadWorktreePath !== null\s*\)\s*&&\s*activeProject !== null/u,
-    );
+    expect(chatView).toMatch(/showComposerContextStrip\s*=\s*shouldShowComposerContextStrip/u);
+    expect(chatView).toMatch(/hasActiveProject:\s*activeProject !== null/u);
+    expect(chatView).toMatch(/isGitRepo:\s*isGitRepo \|\| activeThreadWorktreePath !== null/u);
   });
 
   it("keeps composer styling scoped to the fork marker", () => {

@@ -27,7 +27,7 @@ import {
   THREAD_SIDEBAR_DEFAULT_WIDTH,
   THREAD_SIDEBAR_MIN_WIDTH,
   THREAD_SIDEBAR_WIDTH_STORAGE_KEY,
-} from "../components/threadSidebarWidth";
+} from "../overrides/components/threadSidebarWidth";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import {
   resolveOverlayTargets,

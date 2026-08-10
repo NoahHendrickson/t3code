@@ -491,6 +491,9 @@
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
+    # Upstream renamed its default Sidebar V2 implementation to Sidebar.tsx.
+    # Keep watching it while the fork-owned customized copy remains SidebarV2.
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/index.css
   verify:
@@ -512,6 +515,7 @@
   files: []
   shadows: []
   watch:
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ErrorTooltip.test.ts
@@ -594,6 +598,7 @@
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/portDiscoveryState.ts
   verify:
@@ -710,6 +715,7 @@
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
   shadows: []
   watch:
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
@@ -739,6 +745,7 @@
     - apps/web/src/custom/sidebarV2ListAnimation.ts
   shadows: []
   watch:
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ListAnimation.test.ts
@@ -778,6 +785,7 @@
     - apps/web/src/custom/sidebarV2DraftRows.ts
   shadows: []
   watch:
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2DraftRows.test.ts
@@ -882,6 +890,7 @@
     - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
   shadows: []
   watch:
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2RowActionHitArea.test.ts
@@ -939,21 +948,21 @@
 
 - id: fork-cool-dark-theme
   intent: >
-    Appearance offers Cool Dark as a fourth option alongside System, Light, and
-    Dark. Cool Dark is a lighter, cool-gray dark palette (barely cool, not
-    blue-slate) that coexists with the default fork Dark — selecting it must
-    not replace or alter Dark's #191919 / #1e1e1e fills.
+    Appearance offers Cool Dark as an optional palette alongside upstream's
+    modular theme library. Cool Dark is a lighter, cool-gray dark palette
+    (barely cool, not blue-slate) that coexists with the default fork Dark —
+    selecting it must not replace or alter Dark's #191919 / #1e1e1e fills.
 
     Cool Dark is a fork palette overlay, not a widened upstream ThemePreference.
     Upstream t3code:theme stays light|dark|system. The palette is persisted
     separately in t3code:fork-theme (cool-dark | absent) by custom/forkTheme.ts.
     Selecting Cool Dark sets upstream theme to dark and stamps
-    data-fork-theme="cool-dark" on :root; Light / Dark / System clear that
-    attribute. A legacy t3code:theme=cool-dark value migrates to theme=dark plus
-    the palette key. main.tsx starts one document-level owner after the fork
-    marker is stamped; it reconciles storage events in every route, while React
-    subscriptions only report the stored preference. Palette snapshots never
-    migrate or write during render. No useTheme override.
+    data-fork-theme="cool-dark" on :root; selecting another built-in or imported
+    theme clears that attribute. A legacy t3code:theme=cool-dark value migrates
+    to theme=dark plus the palette key. main.tsx starts one document-level owner
+    after the fork marker is stamped; it reconciles storage events in every
+    route, while React subscriptions only report the stored preference. Palette
+    snapshots never migrate or write during render. No useTheme override.
 
     The palette lives in theme.custom.css under
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
@@ -969,6 +978,7 @@
   watch:
     - apps/web/src/main.tsx
     - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
@@ -1122,6 +1132,7 @@
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx
     - apps/web/src/components/SidebarStageBackdrop.test.tsx
+    - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/SidebarV2.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     # Styles ::-webkit-scrollbar { width: var(--app-scrollbar-width) }, which
@@ -1592,6 +1603,8 @@
     # data-fork-composer-send-tone ("channel" with stage art, "flat"
     # otherwise) for the dark-mode white/black fill.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    # Keeps the compact stage-art renderer used inside the 24px send button.
+    - apps/web/src/components/SidebarStageBackdrop.tsx
     # The effort trigger's label join: a plain space instead of " · ".
     - apps/web/src/components/chat/TraitsPicker.tsx
     # Passes the composer-only label separator through to TraitsPicker.

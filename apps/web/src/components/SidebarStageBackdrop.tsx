@@ -70,9 +70,11 @@ export function StageBackdropArt({ variant }: { variant: SidebarStageBackdropVar
   return variant === "nightly" ? <NightlySkyArt /> : <DevBlueprintArt />;
 }
 
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 export function StageBackdropButtonArt({ variant }: { variant: SidebarStageBackdropVariant }) {
   return variant === "nightly" ? <NightlySkyArt compact /> : <DevBlueprintArt compact />;
 }
+/* fork:end fork-composer-shell */
 
 const NIGHTLY_STARS: ReadonlyArray<{
   cx: number;
