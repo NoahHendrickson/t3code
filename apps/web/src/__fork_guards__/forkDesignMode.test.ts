@@ -19,6 +19,7 @@ import {
 } from "@t3tools/contracts";
 import { build } from "esbuild";
 import * as NodeBuffer from "node:buffer";
+import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
@@ -49,6 +50,7 @@ import {
 } from "../custom/designMode/protocol";
 
 const webRoot = NodePath.resolve(NodeURL.fileURLToPath(new URL(".", import.meta.url)), "../..");
+const repoRoot = NodePath.resolve(webRoot, "../..");
 const read = (relative: string) => NodeFS.readFileSync(NodePath.join(webRoot, relative), "utf8");
 /** Every fork theme rule is scoped under this; an unscoped one leaks into upstream. Derived
  * from the marker module rather than hardcoded, like the sibling theme guards. */
@@ -796,12 +798,52 @@ describe("fork guard: design mode", () => {
     // webview is sandboxed, so a leftover external require() throws before the preload
     // installs the picker or the resolver global — the whole preview-pick path dies, and
     // only in packaged builds where a dev server never catches it.
+    // Sliced to the preview-pick pack entry FIRST: other entries carry their own
+    // alwaysBundle clauses (src/main.ts already bundles `@t3tools/*`), so asserting against
+    // the whole file would pass on a neighbour's copy while this entry lost its own.
     const desktopViteConfig = NodeFS.readFileSync(
       NodePath.join(desktopRoot, "vite.config.ts"),
       "utf8",
     );
+    const pickEntryStart = desktopViteConfig.indexOf('entry: ["src/preview-pick-preload.ts"]');
+    expect(pickEntryStart).toBeGreaterThan(-1);
+    const pickEntry = desktopViteConfig.slice(
+      pickEntryStart,
+      desktopViteConfig.indexOf("entry:", pickEntryStart + 1),
+    );
     for (const bundled of ["react-grab", "bippy"]) {
-      expect(desktopViteConfig).toContain(`id === "${bundled}"`);
+      expect(pickEntry).toContain(`id === "${bundled}"`);
+    }
+    // ...including the workspace package carrying the shared props policy, which is just
+    // as unresolvable from a sandboxed preload as an npm one.
+    expect(pickEntry).toContain('id.startsWith("@t3tools/")');
+
+    // The exports map is an unfenced edit of an upstream-owned JSON file, so no fork fence
+    // can mark it and an upstream sync that takes their version of this block would drop
+    // the subpath silently — surfacing as a resolution error far from the sync, and on the
+    // pack path only in packaged builds.
+    const sharedPackageJson = JSON.parse(
+      NodeFS.readFileSync(NodePath.join(webRoot, "../../packages/shared/package.json"), "utf8"),
+    ) as { exports?: Record<string, unknown> };
+    expect(sharedPackageJson.exports?.["./forkDesignProps"]).toEqual({
+      types: "./src/forkDesignProps.ts",
+      import: "./src/forkDesignProps.ts",
+    });
+
+    // The props policy has exactly ONE implementation. Both trust boundaries still call
+    // it independently — that is the point — but neither may re-declare the rules.
+    const policyPath = NodePath.join(webRoot, "../../packages/shared/src/forkDesignProps.ts");
+    expect(NodeFS.readFileSync(policyPath, "utf8")).toContain(
+      "export function normalizeForkDesignProps",
+    );
+    for (const caller of [
+      read("src/custom/designMode/designProps.ts"),
+      NodeFS.readFileSync(NodePath.join(desktopRoot, "src/preview/DesignSourceResult.ts"), "utf8"),
+    ]) {
+      expect(caller).toContain('from "@t3tools/shared/forkDesignProps"');
+      // Asserting the outcome, not one spelling of a loop condition: a caller that pasted
+      // the policy back in would have to re-declare its name pattern to do so.
+      expect(caller).not.toContain("PROP_NAME_PATTERN");
     }
 
     // react-grab stays a desktop-preload dependency only — never bundled into the web app.
@@ -812,6 +854,22 @@ describe("fork guard: design mode", () => {
     const designModeToggle = read("src/custom/designMode/ForkPreviewDesignMode.tsx");
     expect(designModeToggle).not.toContain("forge-mode init");
     expect(designModeToggle).not.toContain("SETUP.md");
+  });
+
+  it("keeps the props policy to a single definition repo-wide", () => {
+    // Genuinely repo-wide, via the tracked-file index rather than a hand-rolled walk: a
+    // third copy in packages/client-runtime, apps/mobile or apps/server is exactly the
+    // case a fixed list of roots would miss, and git ls-files/grep also cannot see
+    // gitignored scratch files that only exist on one machine. Same idiom as
+    // customizationsManifest.test.ts. Line-anchored so a mention inside a string literal
+    // (this guard quotes the signature above) is not counted as a definition.
+    const definitions = NodeChildProcess.execSync(
+      'git grep --text -lE "^export function normalizeForkDesignProps" -- "*.ts" "*.tsx"',
+      { cwd: repoRoot, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    )
+      .split("\n")
+      .filter(Boolean);
+    expect(definitions).toEqual(["packages/shared/src/forkDesignProps.ts"]);
   });
 
   it("round-trips and rejects ready messages (source modes)", () => {

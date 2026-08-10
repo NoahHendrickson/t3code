@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  describeResolvedSource,
-  MAX_PROP_VALUE_LENGTH,
-  MAX_PROPS,
-  normalizeResolvedProps,
-  normalizeResolvedSource,
-} from "./DesignSourceResult.ts";
+import { describeResolvedSource, normalizeResolvedSource } from "./DesignSourceResult.ts";
 
 const VALID = {
   filePath: "/src/components/Button.tsx",
@@ -185,52 +179,34 @@ describe("describeResolvedSource — props", () => {
       column: 4,
     });
   });
-});
 
-describe("normalizeResolvedProps", () => {
-  it("keeps primitive props and drops everything else", () => {
-    expect(
-      normalizeResolvedProps({
-        variant: "ghost",
-        count: 3,
-        disabled: false,
-        onClick: () => {},
-        style: { color: "red" },
-        items: [1, 2],
-        nested: null,
-        big: Number.POSITIVE_INFINITY,
-      }),
-    ).toEqual({ variant: "ghost", count: 3, disabled: false });
-  });
-
-  it("excludes children even when primitive — the request already carries Text:", () => {
-    expect(normalizeResolvedProps({ children: "Save", variant: "ghost" })).toEqual({
+  // The policy's own rules are asserted once, in @t3tools/shared. What belongs HERE is that
+  // this boundary actually routes props through it: the host half of the deliberate dual
+  // validation. Without this, rebinding normalizeResolvedProps to something permissive — or
+  // simply not calling it — leaves every desktop test and every textual fork guard green.
+  it("filters a hostile props bag on the way across the bridge", () => {
+    const hostile: Record<string, unknown> = {
       variant: "ghost",
-    });
-  });
-
-  it("drops names that are not JSX-attribute-shaped and strings carrying control characters", () => {
-    expect(
-      normalizeResolvedProps({
-        "a b": "spaced-name",
-        "data-testid": "composer-send",
-        label: "line\nbreak",
-      }),
-    ).toEqual({ "data-testid": "composer-send" });
-  });
-
-  it("caps the entry count and slices oversized string values", () => {
-    const bag: Record<string, string> = {};
-    for (let i = 0; i < MAX_PROPS + 5; i += 1) bag[`p${i}`] = "x".repeat(200);
-    const out = normalizeResolvedProps(bag);
-    expect(Object.keys(out ?? {})).toHaveLength(MAX_PROPS);
-    expect(out?.p0).toBe("x".repeat(MAX_PROP_VALUE_LENGTH));
-  });
-
-  it("returns null for non-objects and for bags where nothing survives", () => {
-    expect(normalizeResolvedProps(null)).toBeNull();
-    expect(normalizeResolvedProps("variant=ghost")).toBeNull();
-    expect(normalizeResolvedProps([1, 2, 3])).toBeNull();
-    expect(normalizeResolvedProps({ onClick: () => {} })).toBeNull();
+      children: "Save", // the element's own text already rides the request
+      "not a name": "skipped", // not JSX-attribute-shaped
+      injected: "line\nbreak", // control characters: request-injection guard
+      onClick: () => {}, // never a primitive
+      long: "x".repeat(200), // sliced to the cap
+    };
+    for (let i = 0; i < 20; i += 1) hostile[`p${i}`] = i; // over the entry cap
+    const resolved = describeResolvedSource({
+      ...VALID,
+      componentName: "Btn",
+      props: hostile,
+    } as typeof VALID);
+    const props = (resolved as { props?: Record<string, string | number | boolean> }).props ?? {};
+    expect(Object.keys(props).length).toBeLessThanOrEqual(12);
+    expect(props).not.toHaveProperty("children");
+    expect(props).not.toHaveProperty("not a name");
+    expect(props).not.toHaveProperty("injected");
+    expect(props).not.toHaveProperty("onClick");
+    for (const value of Object.values(props)) {
+      expect(typeof value === "string" ? value.length : 0).toBeLessThanOrEqual(64);
+    }
   });
 });

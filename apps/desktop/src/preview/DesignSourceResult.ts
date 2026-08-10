@@ -7,6 +7,13 @@
  * PickLabelPosition.ts uses beside PickPreload.ts).
  */
 
+// The props policy has ONE implementation, shared with the guest engine. The CALLS stay
+// dual on purpose: this side cannot vouch for what the page later writes into the
+// `data-t3-props` attribute the engine reads back off the DOM, so each boundary validates
+// independently. Called under its own name here — no local alias, nothing outside this
+// file consumed one.
+import { type ForkDesignProps, normalizeForkDesignProps } from "@t3tools/shared/forkDesignProps";
+
 export const DESIGN_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
 
 const MAX_FILE_LENGTH = 4096;
@@ -25,52 +32,7 @@ export interface DesignSourceResult {
   line: number;
   column: number;
   componentName?: string;
-  props?: ResolvedProps;
-}
-
-/** The rendering component's primitive props, snapshotted at resolution time. Strings,
- * numbers and booleans ONLY — the design-system vocabulary (`variant="ghost" size="sm"`)
- * is primitive-shaped, and the primitives-only rule is also what keeps functions, elements,
- * styles and refs from ever crossing the bridge. Context for the agent's component-vs-one-off
- * scope judgment (SCOPE_GUARDRAIL), not an oracle: the snapshot can go stale with state and
- * that is fine. */
-export type ResolvedProps = Record<string, string | number | boolean>;
-
-/** Caps are the flood control for a page-controlled object: a hostile (or just enormous)
- * props bag must not balloon the request text. TWINNED in readResolvedProps
- * (apps/web/src/custom/designMode/designProps.ts) — same trust-boundary duplication as
- * normalizeFilePath/readSourceFile; keep the two in step. */
-export const MAX_PROPS = 12;
-export const MAX_PROP_VALUE_LENGTH = 64;
-
-/** JSX-attribute-shaped names only (identifier, plus the `-` that `data-*`/`aria-*` carry).
- * Same posture as COMPONENT_NAME_PATTERN: the name lands in the agent's request text. */
-const PROP_NAME_PATTERN = /^[A-Za-z_$][\w$-]{0,63}$/;
-
-/** Validates an unknown value into the primitive props snapshot, or null when nothing
- * usable survives. Non-conforming ENTRIES are skipped, not fatal — props are best-effort
- * context, unlike the location, where a wrong value poisons the request. `children` is
- * excluded even when primitive: the element's own text already rides the request as `Text:`.
- * String values are control-character-rejected (the request-injection threat model every
- * page-controlled string here shares) and sliced to the cap, the same plain-slice treatment
- * contextText applies. */
-export function normalizeResolvedProps(value: unknown): ResolvedProps | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  const out: ResolvedProps = {};
-  let count = 0;
-  for (const [name, raw] of Object.entries(value)) {
-    if (count >= MAX_PROPS) break;
-    if (name === "children" || !PROP_NAME_PATTERN.test(name)) continue;
-    if (typeof raw === "boolean") out[name] = raw;
-    else if (typeof raw === "number" && Number.isFinite(raw)) out[name] = raw;
-    else if (typeof raw === "string") {
-      // eslint-disable-next-line no-control-regex
-      if (/[\u0000-\u001f\u007f]/.test(raw)) continue;
-      out[name] = raw.slice(0, MAX_PROP_VALUE_LENGTH);
-    } else continue;
-    count += 1;
-  }
-  return count === 0 ? null : out;
+  props?: ForkDesignProps;
 }
 
 /**
@@ -109,7 +71,7 @@ export function normalizeResolvedSource(
   const componentName = normalizeComponentName(value.componentName);
   // Gated on the component name: props are rendered as `<Name> — props: ...` in the request,
   // and a props bag with no component to hang it on has nowhere honest to appear.
-  const props = componentName === null ? null : normalizeResolvedProps(value.props);
+  const props = componentName === null ? null : normalizeForkDesignProps(value.props);
   return {
     file,
     line: lineNumber,
@@ -239,7 +201,7 @@ export function isSymbolicated(
 export interface DesignSourceHint {
   file?: string;
   componentName?: string;
-  props?: ResolvedProps;
+  props?: ForkDesignProps;
   line?: never;
   column?: never;
 }
@@ -268,7 +230,7 @@ export function describeResolvedSource(
   // Props survive a rejected location exactly like the component name does — both come off
   // the fiber, and both matter MOST when there is no line to point at. Same component-name
   // gate as the full-location arm.
-  const props = componentName === null ? null : normalizeResolvedProps(value?.props);
+  const props = componentName === null ? null : normalizeForkDesignProps(value?.props);
   return {
     ...(componentName === null ? {} : { componentName }),
     ...(file === null ? {} : { file }),

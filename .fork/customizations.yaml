@@ -2072,13 +2072,21 @@
     64 chars per string) off the composite fiber whose displayName matches
     the reported component name — no match, no props, so the request never
     labels props with a component they do not belong to. The snapshot crosses
-    the bridge only beside a component name, is re-validated by the guest
-    twin (designProps.ts's readDesignProps, mirroring DesignSourceResult.ts's
-    normalizeResolvedProps), rides the element as `data-t3-props`, is
+    the bridge only beside a component name, is re-validated on the guest
+    side, rides the element as `data-t3-props`, is
     re-validated AGAIN when the request builder reads that page-controlled
     attribute back, and renders as "Rendered by `<Button>` — props:
     `variant="ghost" size="sm"`". It exists to ground the SCOPE guardrail's
     component-vs-one-off judgment in the design system's own vocabulary.
+    The props POLICY (caps, JSX-shaped name pattern, `children` exclusion,
+    control-character rejection) has ONE implementation —
+    `normalizeForkDesignProps` in packages/shared/src/forkDesignProps.ts,
+    the only module graph both the desktop preload and the web engine island
+    can reach. What stays duplicated is the CALL at each trust boundary, not
+    the rules; the five-line predicate twins beside it
+    (normalizeFilePath/readSourceFile, normalizeComponentName/
+    readComponentName) stay copied, because a copy is cheaper than a
+    dependency at that size and twenty lines of policy is not.
     bippy is imported by its root export on purpose (the mangled-name d.ts of
     bippy/core cannot be imported by name; the root's hook-install side
     effect is guarded double work beside react-grab's bundled copy).
@@ -2102,6 +2110,12 @@
     - apps/web/src/custom/designMode/cssOrigin.ts
     - apps/web/src/custom/designMode/designProps.ts
     - apps/web/src/custom/designMode/designProps.test.ts
+    # Fork-owned NEW file inside an upstream package. It lives here rather than
+    # under apps/web/src/custom/** because apps/desktop's preload and the web
+    # engine island are separate module graphs, and @t3tools/shared is the only
+    # one both reach. Named with a fork prefix so upstream cannot collide with it.
+    - packages/shared/src/forkDesignProps.ts
+    - packages/shared/src/forkDesignProps.test.ts
     - apps/web/src/custom/designMode/designModeStore.ts
     - apps/web/src/custom/designMode/designModeBridge.ts
     - apps/web/src/custom/designMode/designModeBridge.test.ts
@@ -2187,6 +2201,13 @@
     # fibers with. An upstream dep sweep dropping it breaks the packaged
     # preload, not just a type import.
     - apps/desktop/package.json
+    # Unfenced (strict JSON): the `./forkDesignProps` subpath export. This block
+    # churns whenever upstream adds a subpath, and JSON carries no fence — a sync
+    # that takes upstream's version drops the export with no drift signal, and
+    # the failure then surfaces as a resolution error far from the sync (on the
+    # desktop pack path, only in packaged builds). Guarded by an exports-map
+    # assertion in forkDesignMode.test.ts, not just by this entry.
+    - packages/shared/package.json
     # Thin fenced import + <ForkPreviewDesignMode> in the chrome row's
     # trailingActions slot, plus <ForkPreviewLayersToggle> in its leadingActions
     # slot; the browser surface tree stays untouched.
