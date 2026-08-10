@@ -57,6 +57,10 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(chrome).toContain("pl-[var(--workspace-controls-left)]");
     expect(layout).toContain('MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px"');
     // y=18 shares the header's optical axis with the toggle/brand; y=20 sat ~2pt low.
+    // The fence stays even when the number matches upstream — unfenced, a sync
+    // retune lands silently and the value assert only fails after the fact.
+    expect(desktopWindow).toContain("fork:begin fork-sidebar-chrome");
+    expect(desktopWindow).toContain("fork:end fork-sidebar-chrome");
     expect(desktopWindow).toContain("trafficLightPosition: { x: 16, y: 18 }");
     expect(desktopWindow).not.toContain("trafficLightPosition: { x: 16, y: 20 }");
     const start = chrome.indexOf("<SidebarTrigger");
