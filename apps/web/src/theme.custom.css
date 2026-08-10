@@ -257,20 +257,20 @@
 /* ---------------------------------------------------------------------------
    Chat composer shell — see `.fork/customizations.yaml#fork-composer-shell`.
 
-   The designs draw the composer as a discrete bordered box with its run
-   controls floating on their own line 4px underneath. Upstream draws something
-   quite different: one "glass shell" whose ::before paints a single frosted
-   layer and whose ::after traces a single outline, clipped by a shape() path so
-   the composer and the branch strip below it read as one continuous vessel
-   joined by a notch. That is the thing being replaced, so the shell's two
-   painted pseudo-elements are switched off here and the box paints itself.
+   The designs draw the composer as one outer vessel (prompt surface + control
+   row) with context chips sitting 8px above it. Upstream draws something quite
+   different: one "glass shell" whose ::before paints a single frosted layer and
+   whose ::after traces a single outline, clipped by a shape() path so the
+   composer and the branch strip below it read as one continuous vessel joined
+   by a notch. That is the thing being replaced, so the shell's two painted
+   pseudo-elements are switched off here and the fork vessel paints itself.
 
-   The blur is not dropped with them — the drawn fill is 80% opaque, which only
-   works over a blurred backdrop — it just moves onto the box. Without the
-   stitched shell, the floating control row (and the gap around the box) would
-   otherwise leave timeline rows readable underneath the docked composer, so the
+   The prompt surface keeps its own fill and inset hairline inside the vessel;
+   the control row shares the vessel floor beneath it. Without the stitched
+   shell, timeline rows would otherwise read through the docked composer, so the
    overlay itself paints an opaque page-colored floor that fades in over its top
-   edge — messages end above the composer without bringing the vessel back.
+   edge — messages end above the composer without bringing upstream's vessel
+   back.
 
    Everything below is dark-scoped: the designs are dark-only, and an unmarked
    or light build keeps upstream's shell untouched. */
@@ -303,11 +303,23 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
+  /* Vessel is the outer floor under the control row; the prompt surface sits
+     a step lighter on top with its own hairline. Both resolve through the
+     fork palette — not the Figma hexes. */
+  --fork-composer-vessel-bg: var(--card);
   --fork-composer-bg: rgb(41 41 41 / 80%);
   --fork-composer-border: rgb(255 255 255 / 8%);
   /* A step above the resting hairline, a step below the old #595959 — the
      focus recolour should register, not glow. */
   --fork-composer-border-focus: #474747;
+}
+
+/* Outer vessel: prompt surface + control row share one 8px floor. Dark-only,
+   honouring the section contract above — a light fork build keeps upstream's
+   unpainted flow, so the vessel token is declared solely in `.dark` tiers. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-vessel] {
+  border-radius: var(--fork-composer-radius);
+  background: var(--fork-composer-vessel-bg);
 }
 
 /* The frame div is upstream's 1px gradient-border trick: a p-px shim whose
@@ -347,13 +359,10 @@
     border-radius 200ms;
 }
 
-/* The blur is dark-only, matching the fill it exists for. In light mode
-   --fork-composer-bg resolves to an opaque --card, so the filter would allocate
-   a compositing layer to blur something nothing can see through. */
-:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-surface] {
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-}
+/* No backdrop-filter on the surface in either scheme. Light resolves
+   --fork-composer-bg to an opaque --card; dark now sits on the vessel's own
+   opaque floor at the same rect, so a blur pass would composite a layer to
+   blur a uniform solid — pure GPU cost with no visible output. */
 
 /* The drag-over state, restored. Upstream paints it with `bg-accent/45 ring-1
    ring-primary/70` on this element; both are swallowed here, because this
@@ -419,9 +428,9 @@
     [data-fork-composer-box]
     :is([data-testid="composer-editor"], [data-testid="composer-editor"] ~ div) {
     /* The design's body/md: 14px Geist on a 23px line. The 24px action is
-       what sets the 40px base row (8 + 24 + 8); the one-line 23px prompt sits
-       centred beside it, and each wrapped line adds 23px. Below sm the type
-       stays 16px so iOS does not zoom on focus. */
+       what sets the 44px base row (10 + 24 + 10); the one-line 23px prompt
+       sits centred beside it, and each wrapped line adds 23px. Below sm the
+       type stays 16px so iOS does not zoom on focus. */
     font-size: 14px;
     line-height: 23px;
   }
@@ -464,34 +473,22 @@
   }
 }
 
-/* The control row's ghost controls: 20px tall, 12px medium type on a 16px
-   line, a 12px glyph, 8px inline padding, at a 4px radius (Noey's call over
-   the drawn full pill). The named mode and model groups contain only ghost
-   controls; the mode chip is the single exception and owns its styling in
-   `custom/ComposerShell.css`. */
+/* The control row's ghost controls: 20px tall, 12px medium on a 16px line,
+   4px inline padding, 4px radius (Noey's call over the drawn full pill).
+   Mode/Build and model/effort share this — including the mode chip, which is
+   geometrically identical and differs only in ink and fill; its colour lives
+   in `custom/ComposerShell.css`, so geometry has exactly one owner here. */
 :root[data-fork="noahhendrickson-t3code"]
   :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
-  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  :is(button, [data-slot="button"]) {
   height: 20px;
   min-height: 20px;
   gap: 6px;
-  padding-inline: 8px;
+  padding-inline: 4px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
-}
-
-/* The model group packs tighter than the mode group: 4px inline padding so the
-   model and effort controls read as one cluster. Split out rather than
-   folded into the rule above because the left (mode) slot keeps 8px. This is
-   the geometry owner for these controls — it is unlayered while Tailwind's
-   utilities are in `@layer utilities`, so a `px-*` class at the call site
-   cannot reach them no matter how specific it is. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-model-controls]
-  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
-  padding-inline: 4px;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
@@ -571,10 +568,10 @@
   display: none;
 }
 
-/* BranchToolbar still ships the wrapper that hung it off the composer's
-   underside — a negative top margin, a fixed inset width, and the padding that
-   cleared the stitched outline. Inside the control row it is just the row's
-   right-hand group, so the wrapper flattens to nothing.
+/* BranchToolbar's strip used to hang under the glass vessel with a negative
+   top margin, fixed inset width, and clearance padding. The fork className
+   drops those at the source; these rules stay so a sync that restores the
+   upstream classes cannot re-open the inset.
 
    It must still span the row. Upstream collapses the chip labels to icons by
    comparing the width its content needs against the strip's own clientWidth,
@@ -645,11 +642,11 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
-  /* Same RGB as --fork-composer-bg, but opaque. The composer can frost with
-     backdrop-filter; chips cannot — design-mode canvas puts transform on
-     <body>, which disables backdrop-filter on descendants, and a translucent
-     chip then disappears (Local checkout looked unstyled until design mode
-     / canvas turned off). Hover stays a step lighter. */
+  /* Same RGB as --fork-composer-bg, but opaque. The composer's translucent
+     fill works because it sits on the vessel's own opaque floor; chips sit on
+     the stage, and a translucent chip disappears under design-mode canvas
+     (transform on <body> once made Local checkout look unstyled until canvas
+     turned off). Hover stays a step lighter. */
   --fork-context-chip-bg: rgb(41 41 41);
   --fork-context-chip-bg-hover: #303030;
 }
@@ -663,10 +660,9 @@
   height: 24px;
   min-height: 24px;
   gap: 6px;
-  padding-inline: 6px;
+  padding-inline: 8px;
   border-radius: 6px;
-  /* 12px, matching the control row's Auto/Build type — Noey's bump over the
-     drawn 10px. */
+  /* 12px, matching the control row's Auto/Build type. */
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
@@ -759,6 +755,142 @@
   color: #ffffff;
 }
 
+/* ---------------------------------------------------------------------------
+   Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
+
+   Figma t3-fork node 264:11816: true-neutral grays (no cool undertone). Stage
+   #1f1f1f, sidebar/composer vessel #2a2a2a (slightly darker than the drawn
+   #2e2e2e), prompt surface #3d3d3d, context chips #414141. Same two-block
+   pattern and data-fork-theme keying as Cool Dark so Dark / Cool Dark /
+   Neutral Dark can coexist. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
+  --background: #1f1f1f;
+  --app-chrome-background: #1f1f1f;
+  --foreground: #e8e8e8;
+  --card: #2e2e2e;
+  --card-foreground: #e8e8e8;
+  --popover: #2e2e2e;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1f1f1f;
+  --ring: #ffffff;
+  --secondary: #383838;
+  --secondary-foreground: #e8e8e8;
+  --muted: #383838;
+  --muted-foreground: #9a9a9a;
+  --accent: #383838;
+  --accent-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --input: #3f3f3f;
+  --surface-grain: none;
+  --fork-pill-border: #4a4a4a;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #383838;
+  --fork-composer-vessel-bg: #2a2a2a;
+  --fork-composer-bg: rgb(61 61 61 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 8%);
+  --fork-composer-border-focus: #525252;
+  /* Opaque sibling of the Neutral Dark composer fill — see default-dark note. */
+  --fork-context-chip-bg: rgb(65 65 65);
+  --fork-context-chip-bg-hover: #4a4a4a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-sidebar-version="v2"] {
+  --background: #2a2a2a;
+  --foreground: #e8e8e8;
+  --card: #2a2a2a;
+  --card-foreground: #e8e8e8;
+  --sidebar: #2a2a2a;
+  --sidebar-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --sidebar-border: #3f3f3f;
+  --sidebar-stage-fade: #2a2a2a;
+  --muted: #383838;
+  --accent: #383838;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #9a9a9a;
+  --sidebar-muted-foreground: #d6d6d6;
+  --fork-sidebar-card-title-receded: #b0b0b0;
+  --sidebar-control-surface: #414141;
+  --sidebar-row-hover: #383838;
+  --sidebar-row-active: #3a3a3a;
+  --sidebar-row-selected: #3a3a3a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
+
+   Same true-neutral family as Neutral Dark, pushed down: chat stage #1a1a1a
+   (slightly darker than Neutral Dark's #1f1f1f), sidebar #1d1d1d (much darker
+   than Neutral Dark's #2a2a2a, still a hair lighter than the stage). Composer
+   vessel tracks the sidebar; prompt/chips lift from that darker base. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"] {
+  --background: #1a1a1a;
+  --app-chrome-background: #1a1a1a;
+  --foreground: #e8e8e8;
+  --card: #1d1d1d;
+  --card-foreground: #e8e8e8;
+  --popover: #1d1d1d;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1a1a1a;
+  --ring: #ffffff;
+  --secondary: #2b2b2b;
+  --secondary-foreground: #e8e8e8;
+  --muted: #2b2b2b;
+  --muted-foreground: #8a8a8a;
+  --accent: #2b2b2b;
+  --accent-foreground: #e8e8e8;
+  --border: #2f2f2f;
+  --input: #2f2f2f;
+  --surface-grain: none;
+  --fork-pill-border: #3a3a3a;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #2b2b2b;
+  --fork-composer-vessel-bg: #1d1d1d;
+  --fork-composer-bg: rgb(42 42 42 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 8%);
+  --fork-composer-border-focus: #4a4a4a;
+  --fork-context-chip-bg: rgb(48 48 48);
+  --fork-context-chip-bg-hover: #3a3a3a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
+  [data-sidebar-version="v2"] {
+  --background: #1d1d1d;
+  --foreground: #e8e8e8;
+  --card: #1d1d1d;
+  --card-foreground: #e8e8e8;
+  --sidebar: #1d1d1d;
+  --sidebar-foreground: #e8e8e8;
+  --border: #2f2f2f;
+  --sidebar-border: #2f2f2f;
+  --sidebar-stage-fade: #1d1d1d;
+  --muted: #2b2b2b;
+  --accent: #2b2b2b;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #8a8a8a;
+  --sidebar-muted-foreground: #d0d0d0;
+  --fork-sidebar-card-title-receded: #a8a8a8;
+  --sidebar-control-surface: #303030;
+  --sidebar-row-hover: #2b2b2b;
+  --sidebar-row-active: #2e2e2e;
+  --sidebar-row-selected: #2e2e2e;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
 /* Lucide glyphs on these triggers ship with opacity-70 / opacity-50; force
    full ink so white chip labels don't wash back to gray. */
 :root[data-fork="noahhendrickson-t3code"]
@@ -768,12 +900,27 @@
   opacity: 1;
 }
 
-/* Same inline padding on every chip. The old folder-glyph optical start of 0
-   left Local checkout tight on the leading edge next to a 6px branch chip. */
+/* Same inline padding on every chip. The folder glyph sits flush in its
+   12px frame, so the workspace select needs real start padding — not the
+   old optical 0 that left Current checkout tight on the pill edge. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
   :is([data-slot="select-trigger"], [data-slot="combobox-trigger"], [data-fork-context-chip]) {
-  padding-inline: 6px;
+  padding-inline: 8px;
+}
+
+/* The xs select trigger carries a Tailwind `before:rounded-*` utility, and the
+   before variant stamps `content: ''` — a real pseudo-element. The default
+   variant positions it absolute (it paints the inset highlight there), but the
+   ghost variant never takes it out of flow, so it sits in the flex row as a
+   zero-width first item and the chip gap opens 6px of phantom space before the
+   folder glyph. Only the workspace select is built this way — the locked span
+   and the branch chip have no before utility — which made Current checkout the
+   one chip with a fat leading edge. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="select-trigger"]::before {
+  display: none;
 }
 
 /* The workspace select keeps its popup but drops the trigger caret — the drawn

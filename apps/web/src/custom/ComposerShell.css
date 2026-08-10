@@ -1,12 +1,9 @@
+/* Colour only. The chip's geometry (20px, 4px inline padding, 4px radius,
+   12px/500/16px type) comes from the shared ghost-control rule in
+   `theme.custom.css` — the chip is a left-slot button like its neighbours,
+   and duplicating those values here once meant every tweak was a
+   synchronized two-file edit. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-mode-chip] {
-  height: 20px;
-  min-height: 20px;
-  gap: 6px;
-  padding-inline: 4px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
   background: var(--fork-mode-bg);
   color: var(--fork-mode-fg);
 }

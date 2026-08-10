@@ -169,4 +169,68 @@ describe("fork theme synchronization", () => {
     animationFrame?.(0);
     expect(classes.has("no-transitions")).toBe(false);
   });
+
+  it("stamps Neutral Dark on the shared palette key", async () => {
+    const { storage, values } = createStorage({ "t3code:theme": "system" });
+    const { attributes, classes, root } = createDocumentRoot();
+    vi.stubGlobal("window", {
+      localStorage: storage,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+    });
+    vi.stubGlobal("document", { documentElement: root });
+    vi.doMock("../hooks/useTheme", () => ({
+      readThemePreference: () => storage.getItem("t3code:theme") ?? "system",
+      subscribeToThemeChanges: vi.fn(() => () => {}),
+      syncBrowserChromeTheme: vi.fn(),
+    }));
+
+    const { FORK_THEME_ATTRIBUTE, readForkPalette, resolveAppearanceOption, setForkAppearance } =
+      await import("./forkTheme");
+    setForkAppearance("neutral-dark", (theme) => {
+      storage.setItem("t3code:theme", theme);
+      classes.add("dark");
+      return true;
+    });
+
+    expect(values.get("t3code:theme")).toBe("dark");
+    expect(values.get("t3code:fork-theme")).toBe("neutral-dark");
+    expect(readForkPalette()).toBe("neutral-dark");
+    expect(resolveAppearanceOption("dark", readForkPalette())).toBe("neutral-dark");
+    expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("neutral-dark");
+  });
+
+  it("stamps Neutral Darker on the shared palette key", async () => {
+    const { storage, values } = createStorage({ "t3code:theme": "system" });
+    const { attributes, classes, root } = createDocumentRoot();
+    vi.stubGlobal("window", {
+      localStorage: storage,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+    });
+    vi.stubGlobal("document", { documentElement: root });
+    vi.doMock("../hooks/useTheme", () => ({
+      readThemePreference: () => storage.getItem("t3code:theme") ?? "system",
+      subscribeToThemeChanges: vi.fn(() => () => {}),
+      syncBrowserChromeTheme: vi.fn(),
+    }));
+
+    const { FORK_THEME_ATTRIBUTE, readForkPalette, resolveAppearanceOption, setForkAppearance } =
+      await import("./forkTheme");
+    setForkAppearance("neutral-darker", (theme) => {
+      storage.setItem("t3code:theme", theme);
+      classes.add("dark");
+      return true;
+    });
+
+    expect(values.get("t3code:theme")).toBe("dark");
+    expect(values.get("t3code:fork-theme")).toBe("neutral-darker");
+    expect(readForkPalette()).toBe("neutral-darker");
+    expect(resolveAppearanceOption("dark", readForkPalette())).toBe("neutral-darker");
+    expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("neutral-darker");
+  });
 });

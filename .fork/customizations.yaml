@@ -948,16 +948,18 @@
 
     Cool Dark is a fork palette overlay, not an upstream theme definition.
     Upstream t3code:theme may hold a standard, built-in, or imported theme id.
-    The palette is persisted separately in t3code:fork-theme (cool-dark | absent)
-    by custom/forkTheme.ts.
-    Selecting Cool Dark sets upstream theme to dark and stamps
-    data-fork-theme="cool-dark" on :root; selecting another built-in or imported
-    theme clears that attribute. A legacy t3code:theme=cool-dark value migrates
-    to theme=dark plus the palette key. main.tsx starts one document-level owner
-    after the fork marker is stamped; it subscribes to upstream same-tab theme
-    writes and reconciles storage events in every route, while React subscriptions
-    only report the stored preference. Palette snapshots never migrate or write
-    during render. No useTheme override.
+    The palette is persisted separately in t3code:fork-theme
+    (cool-dark | neutral-dark | neutral-darker | absent) by custom/forkTheme.ts
+    — Neutral Dark / Neutral Darker share that key (see
+    fork-neutral-dark-theme, fork-neutral-darker-theme). Selecting Cool Dark
+    sets upstream theme to dark and stamps data-fork-theme="cool-dark" on
+    :root; selecting another built-in or imported theme clears that attribute.
+    A legacy t3code:theme=cool-dark value migrates to theme=dark plus the
+    palette key. main.tsx starts one document-level owner after the fork marker
+    is stamped; it subscribes to upstream same-tab theme writes and reconciles
+    storage events in every route, while React subscriptions only report the
+    stored preference. Palette snapshots never migrate or write during render.
+    No useTheme override.
 
     The palette lives in theme.custom.css under
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
@@ -978,6 +980,64 @@
     - apps/web/index.html
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
+    - apps/web/src/custom/forkTheme.test.ts
+
+- id: fork-neutral-dark-theme
+  intent: >
+    Appearance offers Neutral Dark alongside System, Light, Dark, and Cool Dark.
+    Neutral Dark is a true-neutral gray palette from Figma t3-fork node
+    264:11816 — no cool undertone. Selecting it must not replace or alter
+    default Dark (#191919 / #1e1e1e) or Cool Dark (#1c1e20 / #232628).
+
+    Neutral Dark reuses the fork palette overlay in custom/forkTheme.ts
+    (t3code:fork-theme = neutral-dark, upstream theme = dark,
+    data-fork-theme="neutral-dark"). Stage #1f1f1f, sidebar panel and composer
+    vessel #2a2a2a (slightly darker than Figma's #2e2e2e), prompt surface
+    #3d3d3d (frosted), context chips #414141,
+    row hover/selected as opaque white-8% lifts (#383838 / #3a3a3a), borders
+    #3f3f3f. Accents stay monochrome (white primary/ring) with neutral muted
+    text. theme.custom.css uses the same two-block stage + v2 panel pattern as
+    Cool Dark. index.html pre-paints #1f1f1f so the load flash matches. The
+    sidebar stays opaque solid — wallpaper glass belongs to Neutral Darker.
+  tier: 2
+  files:
+    - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/theme.custom.css
+  watch:
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/index.html
+  verify:
+    - apps/web/src/__fork_guards__/forkNeutralDarkTheme.test.ts
+    - apps/web/src/custom/forkTheme.test.ts
+
+- id: fork-neutral-darker-theme
+  intent: >
+    Appearance offers Neutral Darker as a deeper sibling of Neutral Dark.
+    True-neutral grays only. Chat stage #1a1a1a (slightly darker than Neutral
+    Dark's #1f1f1f); sidebar #1d1d1d (much darker than Neutral Dark's #2a2a2a,
+    still slightly lighter than the stage). Composer vessel tracks the sidebar;
+    prompt/chips lift from that darker base. Must not alter Neutral Dark, Cool
+    Dark, or default Dark fills.
+
+    Same fork palette overlay as Cool Dark / Neutral Dark
+    (t3code:fork-theme = neutral-darker, upstream theme = dark,
+    data-fork-theme="neutral-darker"). theme.custom.css uses the two-block
+    stage + v2 panel pattern. index.html pre-paints #1a1a1a.
+
+    Sidebar wallpaper glass via Electron vibrancy was attempted and removed
+    without residue: Neutral Darker is a solid opaque panel, the desktop app
+    carries no vibrancy IPC or window plumbing, and the guard asserts the
+    absence. A window can only gain native vibrancy while code sets it, and
+    no shipped build ever did, so there is no leftover state to recover.
+  tier: 2
+  files:
+    - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/theme.custom.css
+  watch:
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/index.html
+  verify:
+    - apps/web/src/__fork_guards__/forkNeutralDarkerTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
 
 - id: fork-sidebar-type-size
@@ -1081,10 +1141,12 @@
 
     The header follows Figma node 157:4536. It is flat and transparent on every
     build, so the panel surface shows through with no stage artwork. Its native
-    macOS traffic lights start at x=16, y=20; a 28px trigger starts at x=80 so
-    its exact 20px Phosphor SidebarSimple glyph begins at x=84 — 16px after the
-    traffic-light group's 52px box. Non-macOS surfaces keep the same safe-area
-    variable and place the glyph at the ordinary 16px edge inset.
+    macOS traffic lights start at x=16, y=18 (same as upstream; y=20 sat ~2pt
+    below the header's toggle/brand axis on Tahoe's 13.5pt lights); a 28px
+    trigger starts at x=80 so its exact 20px Phosphor SidebarSimple glyph begins
+    at x=84 — 16px after the traffic-light group's 52px box. Non-macOS surfaces
+    keep the same safe-area variable and place the glyph at the ordinary 16px
+    edge inset.
 
     The brand stays on the trailing edge and ends 16px from it. It is the
     designer-exported 24px pixel mark, a 4px gap, then APP_BASE_NAME at literal
@@ -1465,20 +1527,26 @@
 
 - id: fork-composer-shell
   intent: >
-    The chat composer is a discrete 8px bordered surface with one compact base
-    layout in every thread state, including a brand-new draft. ChatView always
-    docks it to the bottom instead of centering it as a new-chat hero. The
-    empty-draft greeting ("What should we build…") is a separate absolute layer
-    centered in the chat column, not stacked above the docked input. The base
-    row is 40px tall: 8px padding around a one-line prompt and the 24px
-    send/stop button. The prompt and action remain in that same row as text
-    wraps — the action pinned bottom-right so it stays with the last line —
-    so the surface grows naturally with the editor; there is no tall/slim
-    density switch, resize observer, or wrap latch. Upstream's collapsed mobile tap
-    target remains a separate functional state.
+    The chat composer is one outer 8px vessel that wraps the prompt surface and
+    the control row, with context chips sitting 8px above the vessel. One
+    compact base layout in every thread state, including a brand-new draft.
+    ChatView always docks it to the bottom instead of centering it as a
+    new-chat hero. The empty-draft greeting ("What should we build…") is a
+    separate absolute layer centered in the chat column, not stacked above the
+    docked input. BranchToolbar's source className ships untouched; the
+    context-row CSS flatten is the single owner of the strip geometry
+    (width/margin/padding resets, unlayered so they beat the Tailwind
+    utilities) so the chips share the composer's max-w-3xl rail instead of
+    the old under-glass inset. The prompt surface is 44px tall at rest: 10px
+    block and 8px inline padding (px-2 py-2.5) around a
+    one-line prompt and the 24px send/stop button. The prompt and action remain
+    in that same row as text wraps — the action pinned bottom-right so it stays
+    with the last line — so the surface grows naturally with the editor; there
+    is no tall/slim density switch, resize observer, or wrap latch. Upstream's
+    collapsed mobile tap target remains a separate functional state.
 
     Which controls sit where is the main design contract. BranchToolbar's
-    worktree, PR, and branch chips sit above the surface as filled chips
+    worktree, PR, and branch chips sit above the vessel as filled chips
     sharing one selected-surface fill with no hairline, 8px apart (matching
     the context row's pb-2 under the pills — including the nested PR+branch
     pair that upstream keeps at gap-1). Upstream's strip children use flex-1
@@ -1495,37 +1563,35 @@
     covers every direct child rather than only the ones carrying `.flex` —
     below `md` the workspace slot is an inline-flex Button or span, and left to
     upstream's flex-1 it would claim that space and gap the cluster open.
-    Chips use the Auto chip's container at
-    4px/6px inline padding (24px tall, 6px radius — extra 2px on the end so
-    the trailing chevron clears the curve; branch combobox takes 6px start,
-    workspace select 0 for its roomier folder glyph) at 12px type matching
-    the control row's ghost pills, and the workspace chip's trigger caret is
-    dropped. The workspace select opens above the chip row (side top, no
-    align-item-with-trigger) so its glass menu clears the neighboring branch
-    pill instead of overlapping it. Only the prompt and primary action sit
-    inside the base row. Runtime and interaction modes sit below-left;
-    context usage, model, and effort sit below-right in a 24px control row of
-    20px, 4px-radius controls (Noey's radius over the drawn full-pill ghosts,
-    so hover fills square off). The runtime mode renders as the design's 20px
-    accent chip — label only, no icon or caret — with its hue selected by a
-    typed fork-owned token map: auto green, full access yellow, auto-accept
-    edits purple, supervised red. The model and effort selects share the row's
-    12px type (Noey's call over
-    the drawn 10px), and the composer's effort trigger joins its trait labels
-    with a plain space ("High 1M") while Settings keeps upstream's " · "
-    separator. The runtime-mode chip and the composer's model and effort
-    triggers sit at 4px inline padding, tighter than the mode group's 8px, so
-    the right side of the row reads as one packed cluster. Both are CSS-only
-    changes, because the fork's own stylesheets — not the call sites — own this
-    geometry: theme.custom.css styles every ghost control under the mode and
-    model groups, ComposerShell.css styles the mode chip it excludes, and both
-    are imported unlayered while Tailwind's utilities live in `@layer
-    utilities`. Unlayered beats layered regardless of specificity, so a `px-*`
-    class passed at a call site cannot move these controls at all; the model
-    group takes its 4px from its own rule in theme.custom.css, split from the
-    shared ghost-control rule so the left (mode) slot keeps 8px. The Build/Plan
-    toggles are in that left slot and stay on the fork's 8px — not upstream's
-    px-2.5, which no control in this row has ever rendered.
+    Chips use 8px inline padding (24px tall, 6px radius) at 12px type matching
+    the mode row's Auto/Build pills, and the workspace chip's trigger caret is
+    dropped. The folder glyph sits flush in its 12px frame, so that start
+    padding is real — not the old optical 0 that left Current checkout tight
+    on the pill edge. The workspace select opens above the chip row (side top,
+    no align-item-with-trigger) so its glass menu clears the neighboring
+    branch pill instead of overlapping it. Only the prompt and primary action sit
+    inside the prompt surface. Runtime and interaction modes sit below-left
+    inside the vessel; context usage, model, and effort sit below-right in a
+    control row with 8px padding — 36px tall over the 20px ghost controls,
+    40px whenever the 24px context-usage meter renders (4px-radius controls —
+    Noey's radius over the drawn full-pill ghosts, so hover fills square
+    off). The
+    runtime mode renders as the design's 20px accent chip — label only, no
+    icon or caret — with its hue selected by a typed fork-owned token map:
+    auto green, full access yellow, auto-accept edits purple, supervised red.
+    The interaction toggles are text-only ghost chips. Mode,
+    Build, model, and effort all share 12px medium on a 16px line and 4px
+    inline padding (including the runtime-mode chip). The composer's effort
+    trigger joins its trait labels with a plain space ("High 1M") while
+    Settings keeps upstream's " · " separator. Geometry is CSS-owned:
+    theme.custom.css styles every ghost control under the mode and model
+    groups — the mode chip included, so geometry has exactly one owner —
+    while ComposerShell.css carries only the chip's per-mode fill and ink.
+    Both are imported unlayered while Tailwind's utilities live in `@layer
+    utilities`.
+    Unlayered beats layered regardless of specificity, so a `px-*` class
+    passed at a call site cannot move these controls at all — not upstream's
+    px-2.5.
     The branch strip is still passed into ChatComposer as
     the memoised contextStrip element, preserving ChatComposer's memo boundary
     and keeping branch controls reachable while mobile is collapsed. It also
@@ -1542,10 +1608,15 @@
 
     Upstream's stitched glass-shell paint is disabled under the fork marker.
     The docked composer overlay paints an opaque page-colored floor (soft fade
-    over its top edge) so timeline rows cannot read through the floating
-    control row once that vessel is gone. The prompt surface keeps its own
-    translucent fill, inset hairline, focus-border recolour, backdrop blur,
-    and explicit drag-over outline.
+    over its top edge) so timeline rows cannot read through the composer once
+    that upstream vessel is gone. The fork vessel paints `--fork-composer-vessel-bg`
+    in dark only — the designs are dark-only and a light fork build keeps
+    upstream's unpainted flow — and never behind the collapsed mobile pill,
+    whose 12px corners would expose the vessel's 8px arcs as background
+    wedges. The prompt surface keeps its own translucent fill, inset
+    hairline, focus-border recolour, and explicit drag-over outline on top of
+    that floor; it carries no backdrop blur, because its backdrop is the
+    vessel's own opaque fill and blurring a uniform solid is pure GPU cost.
     BranchToolbar's stitched-strip spacing is flattened in the named context
     row. Send and stop remain 24px square at 4px radius; dark builds without
     stage-channel art use a flat white send button with a black icon, while
@@ -1554,16 +1625,17 @@
 
     Type follows the design system's dark tokens: the prompt is body/md — 14px
     on a 23px line at >=40rem with a full muted-foreground placeholder (16px
-    mobile type stays, avoiding iOS focus zoom) — and the ghost controls and
-    mode chip are 12px medium on 16px with 12px glyphs. The prompt wrapper
-    owns the 12.5rem scroll cap so a one-line Lexical editor never paints a
-    phantom scrollbar, and the placeholder/spacer overflow containment remains
-    in place.     Attachment and pending-state content may add height above the
-    base row, but ordinary composer height changes only when prompt content
-    wraps. Pill styling stays narrowly scoped so pending-state primary actions
-    retain their upstream geometry.
+    mobile type stays, avoiding iOS focus zoom) — and the ghost controls,
+    mode chip, model, and effort are 12px medium on 16px with 12px glyphs.
+    The prompt wrapper owns the 12.5rem scroll cap so a one-line Lexical
+    editor never paints a phantom scrollbar, and the placeholder/spacer
+    overflow containment remains in place. Attachment and pending-state
+    content may add height above the base row inside the surface, but ordinary
+    composer height changes only when prompt content wraps. Pill styling stays
+    narrowly scoped so pending-state primary actions retain their upstream
+    geometry.
 
-    Compact ⋯ collapse for the below-surface mode row uses fork-lowered
+    Compact ⋯ collapse for the in-vessel mode row uses fork-lowered
     form-width thresholds (400px normal / 520px with wide primary actions),
     not upstream's 620/780. Upstream's numbers pack denser in-box footers;
     here mode chips sit opposite the model picker on a dedicated row, so

@@ -3066,10 +3066,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               ref={setComposerMenuAnchor}
               className={cn(
                 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                // Eight pixels around a one-line prompt and 24px send button
-                // produces the design's single 40px base surface. The editor
-                // grows this same row naturally when the prompt wraps.
-                "relative p-2",
+                // 10px block / 8px inline around a one-line prompt and 24px
+                // send button: 10 + 24 + 10 is the 44px base surface. The
+                // editor grows this same row naturally when the prompt wraps.
+                "relative px-2 py-2.5",
                 /* fork:end fork-composer-shell */
                 isComposerCollapsedMobile && "hidden",
               )}
@@ -3285,7 +3285,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                               : phase === "disconnected"
                                 ? "Ask for follow-up changes or attach images"
                                 : /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                                  "Ask anything,"
+                                  "Ask anything"
                     /* fork:end fork-composer-shell */
                   }
                   disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}

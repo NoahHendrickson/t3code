@@ -62,7 +62,12 @@ import {
   useTheme,
 } from "../../hooks/useTheme";
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-import { COOL_DARK_LABEL, useForkAppearance } from "../../custom/forkTheme";
+import {
+  FORK_PALETTE_LABELS,
+  FORK_PALETTES,
+  isForkPalette,
+  useForkAppearance,
+} from "../../custom/forkTheme";
 /* fork:end fork-cool-dark-theme */
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { usePrimarySettings, useUpdatePrimarySettings } from "../../hooks/useSettings";
@@ -144,6 +149,15 @@ import {
 } from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 import { ProjectFavicon } from "../ProjectFavicon";
+/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme
+   One derived option per fork palette (Cool Dark, Neutral Dark, Neutral
+   Darker, …) — the palette list and its labels live in custom/forkTheme.ts,
+   so adding a palette never edits this file. */
+const FORK_PALETTE_OPTIONS = [
+  { value: "dark", label: "Default Dark" },
+  ...FORK_PALETTES.map((palette) => ({ value: palette, label: FORK_PALETTE_LABELS[palette] })),
+] as const;
+/* fork:end fork-cool-dark-theme */
 
 const ENVIRONMENT_IDENTIFICATION_LABELS: Record<EnvironmentIdentificationMode, string> = {
   artwork: "Artwork",
@@ -478,7 +492,7 @@ export function useSettingsRestore(onRestored?: () => void) {
     () => [
       ...(theme !== "system" ? ["Theme"] : []),
       /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-      ...(appearance === "cool-dark" ? [COOL_DARK_LABEL] : []),
+      ...(isForkPalette(appearance) ? [FORK_PALETTE_LABELS[appearance]] : []),
       /* fork:end fork-cool-dark-theme */
       ...(!followSystem ? ["Follow system"] : []),
       ...(themeHalves !== null ? ["Theme mix"] : []),
@@ -1009,19 +1023,35 @@ export function AppearanceSettingsPanel() {
 
         {/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */}
         <SettingsRow
-          title={COOL_DARK_LABEL}
-          description="Use the fork's cooler, slightly lifted dark palette."
+          title="Dark palette"
+          description="Use one of the fork's alternate dark palettes."
           resetAction={
-            appearance === "cool-dark" ? (
-              <SettingResetButton label={COOL_DARK_LABEL} onClick={() => setAppearance("dark")} />
+            isForkPalette(appearance) ? (
+              <SettingResetButton label="dark palette" onClick={() => setAppearance("dark")} />
             ) : null
           }
           control={
-            <Switch
-              checked={appearance === "cool-dark"}
-              onCheckedChange={(checked) => setAppearance(checked ? "cool-dark" : "dark")}
-              aria-label={`Enable ${COOL_DARK_LABEL}`}
-            />
+            <Select
+              value={isForkPalette(appearance) ? appearance : "dark"}
+              onValueChange={(value) => {
+                if (value === "dark" || isForkPalette(value)) {
+                  setAppearance(value);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-44" aria-label="Fork dark palette">
+                <SelectValue>
+                  {isForkPalette(appearance) ? FORK_PALETTE_LABELS[appearance] : "Default Dark"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                {FORK_PALETTE_OPTIONS.map((option) => (
+                  <SelectItem hideIndicator key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
           }
         />
         {/* fork:end fork-cool-dark-theme */}
