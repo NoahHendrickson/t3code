@@ -777,6 +777,20 @@
   padding-inline: 8px;
 }
 
+/* The xs select trigger carries a Tailwind `before:rounded-*` utility, and the
+   before variant stamps `content: ''` — a real pseudo-element. The default
+   variant positions it absolute (it paints the inset highlight there), but the
+   ghost variant never takes it out of flow, so it sits in the flex row as a
+   zero-width first item and the chip gap opens 6px of phantom space before the
+   folder glyph. Only the workspace select is built this way — the locked span
+   and the branch chip have no before utility — which made Current checkout the
+   one chip with a fat leading edge. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-slot="select-trigger"]::before {
+  display: none;
+}
+
 /* The workspace select keeps its popup but drops the trigger caret — the drawn
    chip is icon + label only. The branch chip's caret is its own Lucide glyph,
    not a select icon, so it stays. */

@@ -342,6 +342,16 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes("[data-fork-context-chip]"),
     );
     expect(chipPad?.body).toMatch(/padding-inline:\s*8px/u);
+    // The ghost xs trigger's Tailwind before-utility stamps a real in-flow
+    // pseudo-element; left in the flex row it opens phantom gap space ahead
+    // of the folder glyph (Current checkout only — the locked span and the
+    // branch chip carry no before utility).
+    const triggerBefore = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes('[data-slot="select-trigger"]::before'),
+    );
+    expect(triggerBefore?.body).toMatch(/display:\s*none/u);
     // Workspace + branch chips share white ink in dark (including locked spans).
     const chipInk = rules.find(
       (rule) =>
