@@ -1075,10 +1075,12 @@
 
     The header follows Figma node 157:4536. It is flat and transparent on every
     build, so the panel surface shows through with no stage artwork. Its native
-    macOS traffic lights start at x=16, y=20; a 28px trigger starts at x=80 so
-    its exact 20px Phosphor SidebarSimple glyph begins at x=84 — 16px after the
-    traffic-light group's 52px box. Non-macOS surfaces keep the same safe-area
-    variable and place the glyph at the ordinary 16px edge inset.
+    macOS traffic lights start at x=16, y=18 (same as upstream; y=20 sat ~2pt
+    below the header's toggle/brand axis on Tahoe's 13.5pt lights); a 28px
+    trigger starts at x=80 so its exact 20px Phosphor SidebarSimple glyph begins
+    at x=84 — 16px after the traffic-light group's 52px box. Non-macOS surfaces
+    keep the same safe-area variable and place the glyph at the ordinary 16px
+    edge inset.
 
     The brand stays on the trailing edge and ends 16px from it. It is the
     designer-exported 24px pixel mark, a 4px gap, then APP_BASE_NAME at literal
