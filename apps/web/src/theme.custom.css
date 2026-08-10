@@ -297,8 +297,6 @@
 
 :root[data-fork="noahhendrickson-t3code"] {
   --fork-composer-radius: 8px;
-  /* Vessel floors the control row; the prompt surface sits above it. */
-  --fork-composer-vessel-bg: var(--muted);
   --fork-composer-bg: var(--card);
   --fork-composer-border: var(--border);
   --fork-composer-border-focus: var(--ring);
@@ -316,8 +314,10 @@
   --fork-composer-border-focus: #474747;
 }
 
-/* Outer vessel: prompt surface + control row share one 8px floor. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-vessel] {
+/* Outer vessel: prompt surface + control row share one 8px floor. Dark-only,
+   honouring the section contract above — a light fork build keeps upstream's
+   unpainted flow, so the vessel token is declared solely in `.dark` tiers. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-vessel] {
   border-radius: var(--fork-composer-radius);
   background: var(--fork-composer-vessel-bg);
 }
@@ -359,13 +359,10 @@
     border-radius 200ms;
 }
 
-/* The blur is dark-only, matching the fill it exists for. In light mode
-   --fork-composer-bg resolves to an opaque --card, so the filter would allocate
-   a compositing layer to blur something nothing can see through. */
-:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-surface] {
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-}
+/* No backdrop-filter on the surface in either scheme. Light resolves
+   --fork-composer-bg to an opaque --card; dark now sits on the vessel's own
+   opaque floor at the same rect, so a blur pass would composite a layer to
+   blur a uniform solid — pure GPU cost with no visible output. */
 
 /* The drag-over state, restored. Upstream paints it with `bg-accent/45 ring-1
    ring-primary/70` on this element; both are swallowed here, because this
@@ -478,12 +475,12 @@
 
 /* The control row's ghost controls: 20px tall, 12px medium on a 16px line,
    4px inline padding, 4px radius (Noey's call over the drawn full pill).
-   Mode/Build and model/effort share this. The named mode and model groups
-   contain only ghost controls; the mode chip is the single exception and
-   owns its styling in `custom/ComposerShell.css`. */
+   Mode/Build and model/effort share this — including the mode chip, which is
+   geometrically identical and differs only in ink and fill; its colour lives
+   in `custom/ComposerShell.css`, so geometry has exactly one owner here. */
 :root[data-fork="noahhendrickson-t3code"]
   :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
-  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  :is(button, [data-slot="button"]) {
   height: 20px;
   min-height: 20px;
   gap: 6px;
@@ -645,11 +642,11 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
-  /* Same RGB as --fork-composer-bg, but opaque. The composer can frost with
-     backdrop-filter; chips cannot — design-mode canvas puts transform on
-     <body>, which disables backdrop-filter on descendants, and a translucent
-     chip then disappears (Local checkout looked unstyled until design mode
-     / canvas turned off). Hover stays a step lighter. */
+  /* Same RGB as --fork-composer-bg, but opaque. The composer's translucent
+     fill works because it sits on the vessel's own opaque floor; chips sit on
+     the stage, and a translucent chip disappears under design-mode canvas
+     (transform on <body> once made Local checkout look unstyled until canvas
+     turned off). Hover stays a step lighter. */
   --fork-context-chip-bg: rgb(41 41 41);
   --fork-context-chip-bg-hover: #303030;
 }
@@ -721,7 +718,6 @@
   --fork-pill-border: #3c4045;
   --fork-pill-fg: #e6e7e9;
   --fork-pill-hover: #2c2f33;
-  --fork-composer-vessel-bg: var(--card);
   --fork-composer-bg: rgb(44 47 51 / 80%);
   --fork-composer-border: rgb(220 222 226 / 10%);
   --fork-composer-border-focus: #52565c;

@@ -1465,10 +1465,12 @@
     ChatView always docks it to the bottom instead of centering it as a
     new-chat hero. The empty-draft greeting ("What should we build…") is a
     separate absolute layer centered in the chat column, not stacked above the
-    docked input. BranchToolbar drops upstream's stitched-strip
-    width/margin/padding classes at the source (the context-row CSS flatten
-    remains as a belt) so the chips share the composer's max-w-3xl rail
-    instead of the old under-glass inset. The prompt surface is 44px tall at rest: 10px padding around a
+    docked input. BranchToolbar's source className ships untouched; the
+    context-row CSS flatten is the single owner of the strip geometry
+    (width/margin/padding resets, unlayered so they beat the Tailwind
+    utilities) so the chips share the composer's max-w-3xl rail instead of
+    the old under-glass inset. The prompt surface is 44px tall at rest: 10px
+    block and 8px inline padding (px-2 py-2.5) around a
     one-line prompt and the 24px send/stop button. The prompt and action remain
     in that same row as text wraps — the action pinned bottom-right so it stays
     with the last line — so the surface grows naturally with the editor; there
@@ -1502,8 +1504,10 @@
     branch pill instead of overlapping it. Only the prompt and primary action sit
     inside the prompt surface. Runtime and interaction modes sit below-left
     inside the vessel; context usage, model, and effort sit below-right in a
-    36px control row (8px padding around 20px, 4px-radius controls — Noey's
-    radius over the drawn full-pill ghosts, so hover fills square off). The
+    control row with 8px padding — 36px tall over the 20px ghost controls,
+    40px whenever the 24px context-usage meter renders (4px-radius controls —
+    Noey's radius over the drawn full-pill ghosts, so hover fills square
+    off). The
     runtime mode renders as the design's 20px accent chip — label only, no
     icon or caret — with its hue selected by a typed fork-owned token map:
     auto green, full access yellow, auto-accept edits purple, supervised red.
@@ -1513,8 +1517,10 @@
     trigger joins its trait labels with a plain space ("High 1M") while
     Settings keeps upstream's " · " separator. Geometry is CSS-owned:
     theme.custom.css styles every ghost control under the mode and model
-    groups, ComposerShell.css styles the mode chip it excludes, and both are
-    imported unlayered while Tailwind's utilities live in `@layer utilities`.
+    groups — the mode chip included, so geometry has exactly one owner —
+    while ComposerShell.css carries only the chip's per-mode fill and ink.
+    Both are imported unlayered while Tailwind's utilities live in `@layer
+    utilities`.
     Unlayered beats layered regardless of specificity, so a `px-*` class
     passed at a call site cannot move these controls at all — not upstream's
     px-2.5.
@@ -1536,9 +1542,13 @@
     The docked composer overlay paints an opaque page-colored floor (soft fade
     over its top edge) so timeline rows cannot read through the composer once
     that upstream vessel is gone. The fork vessel paints `--fork-composer-vessel-bg`
-    (theme card/muted); the prompt surface keeps its own translucent fill,
-    inset hairline, focus-border recolour, backdrop blur, and explicit
-    drag-over outline on top of that floor.
+    in dark only — the designs are dark-only and a light fork build keeps
+    upstream's unpainted flow — and never behind the collapsed mobile pill,
+    whose 12px corners would expose the vessel's 8px arcs as background
+    wedges. The prompt surface keeps its own translucent fill, inset
+    hairline, focus-border recolour, and explicit drag-over outline on top of
+    that floor; it carries no backdrop blur, because its backdrop is the
+    vessel's own opaque fill and blurring a uniform solid is pure GPU cost.
     BranchToolbar's stitched-strip spacing is flattened in the named context
     row. Send and stop remain 24px square at 4px radius; dark builds without
     stage-channel art use a flat white send button with a black icon, while

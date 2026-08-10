@@ -67,7 +67,13 @@ export const ComposerShell = memo(function ComposerShell({
           {context}
         </div>
       ) : null}
-      <div data-fork-composer-vessel="true" className="flex min-w-0 flex-col">
+      {/* No vessel paint while collapsed: the mobile pill rounds to 12px and
+          the vessel's 8px corners would peek out as background wedges (and a
+          live readout row would slab onto the pill). */}
+      <div
+        {...(collapsedMobile ? {} : { "data-fork-composer-vessel": "true" })}
+        className="flex min-w-0 flex-col"
+      >
         {children}
         {left || right ? (
           <div
