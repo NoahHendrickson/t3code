@@ -56,7 +56,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
   it("matches the macOS control geometry from the header design", () => {
     expect(chrome).toContain("pl-[var(--workspace-controls-left)]");
     expect(layout).toContain('MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px"');
-    expect(desktopWindow).toContain("trafficLightPosition: { x: 16, y: 20 }");
+    // y=18 shares the header's optical axis with the toggle/brand; y=20 sat ~2pt low.
+    expect(desktopWindow).toContain("trafficLightPosition: { x: 16, y: 18 }");
+    expect(desktopWindow).not.toContain("trafficLightPosition: { x: 16, y: 20 }");
     const start = chrome.indexOf("<SidebarTrigger");
     const trigger = chrome.slice(start, chrome.indexOf("/>", start));
     expect(trigger).toContain("[&_svg]:size-5!");

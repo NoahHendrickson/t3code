@@ -195,9 +195,7 @@ function getWindowTitleBarOptions(
   if (platform === "darwin") {
     return {
       titleBarStyle: "hiddenInset",
-      /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
-      trafficLightPosition: { x: 16, y: 20 },
-      /* fork:end fork-sidebar-chrome */
+      trafficLightPosition: { x: 16, y: 18 },
     };
   }
 
