@@ -32,18 +32,23 @@ describe("fork guard: fork-pending-user-input", () => {
   it("keeps a thin shadow that owns the Questions chrome", () => {
     expect(override).toContain('data-fork-pending-user-input="true"');
     expect(override).toContain(">Questions</");
-    expect(override).toContain("answeredQuestionCount");
-    expect(override).toContain("prompt.questions.length");
+    expect(override).toContain("questionIndex + 1");
+    expect(override).toContain("prompt.questions.length > 1");
     expect(override).toContain("useComposerPendingUserInputCard");
+    // Theme-adaptive selection — not white-alpha that disappears in Light.
+    expect(override).toContain("border-foreground/24");
+    expect(override).toContain("bg-foreground/8");
+    expect(override).not.toContain("border-white/");
+    expect(override).not.toContain("bg-white/");
     // Card interaction lives in custom/; the override must not re-own it.
     expect(override).not.toContain("autoAdvanceTimerRef");
     expect(override).not.toContain('addEventListener("keydown"');
     expect(hook).toContain("autoAdvanceTimerRef");
     expect(hook).toContain('addEventListener("keydown"');
-    // Upstream still shows number-key badges and the question header chip;
-    // the shadow must not regress to that layout.
-    expect(upstream).toContain("shortcutKey");
+    // Number keys stay wired; announce via aria-keyshortcuts without kbd badges.
+    expect(override).toContain("aria-keyshortcuts");
     expect(override).not.toContain("shortcutKey");
+    expect(upstream).toContain("shortcutKey");
     expect(upstream).toContain("activeQuestion.header");
     expect(override).not.toContain("activeQuestion.header");
   });
@@ -52,10 +57,8 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(override).toContain('role={multiSelect ? "checkbox" : "radio"}');
     expect(override).toContain('role={multiSelect ? "group" : "radiogroup"}');
     expect(override).toContain('multiSelect ? "Select one or more" : "Select one"');
-    // Decorative control: square checkbox vs circular radio.
-    expect(override).toContain("rounded-[4px]");
-    expect(override).toContain("rounded-full");
-    expect(override).toMatch(/multiSelect[\s\S]{0,200}rounded-\[4px\]/u);
+    expect(override).toContain("border-input");
+    expect(override).toContain('multiSelect ? "rounded-[4px]" : "rounded-full"');
   });
 
   it("clears the upstream muted strip via a fenced ChatComposer hook", () => {
@@ -74,10 +77,13 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(theme).toMatch(
       /\[data-fork-pending-user-input-strip\][\s\S]{0,200}background:\s*transparent/u,
     );
+    expect(theme).toMatch(
+      /\[data-fork-pending-user-input-strip\][\s\S]{0,200}border-bottom-color:\s*var\(--fork-composer-border\)/u,
+    );
     expect(theme).not.toContain(":has([data-fork-pending-user-input])");
   });
 
-  it("marks pending Previous/Next so CSS can outline and center them", () => {
+  it("marks pending Previous/Next and dark-scopes the true-outline chrome", () => {
     expect(primaryActions).toContain('data-fork-pending-user-input-action="previous"');
     expect(primaryActions).toContain('data-fork-pending-user-input-action="advance"');
     const begin = primaryActions.match(/fork:begin fork-pending-user-input/gu) ?? [];
@@ -85,14 +91,20 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(begin.length).toBeGreaterThan(0);
     expect(end.length).toBe(begin.length);
 
-    const previous = cssRules(theme).find((rule) =>
-      rule.selector.includes('[data-fork-pending-user-input-action="previous"]'),
-    );
-    expect(previous?.selector).toContain(MARKER);
-    expect(previous?.body).toMatch(/background:\s*transparent/u);
     expect(theme).toMatch(/\[data-fork-pending-user-input-action\][\s\S]{0,200}height:\s*24px/u);
+    // Compact Previous stays square.
     expect(theme).toMatch(
-      /\[data-fork-pending-user-input-action\][\s\S]{0,200}align-items:\s*center/u,
+      /\[data-fork-pending-user-input-action="previous"\]\[aria-label="Previous question"\][\s\S]{0,120}width:\s*24px/u,
     );
+
+    const outline = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes('[data-fork-pending-user-input-action="previous"]') &&
+        rule.body.includes("background: transparent"),
+    );
+    expect(outline?.selector).toContain(MARKER);
+    expect(outline?.selector).toContain(".dark");
+    expect(outline?.selector).toContain("[data-changed-files-header]");
+    expect(outline?.body).toMatch(/border-color:\s*var\(--fork-outline-border\)/u);
   });
 });

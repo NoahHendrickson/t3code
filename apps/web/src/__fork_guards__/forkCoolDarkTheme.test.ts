@@ -142,6 +142,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(settingsPanels).toMatch(
       /fork:begin fork-cool-dark-theme[^\n]*\n\s*setAppearance,\n\s*\/\* fork:end fork-cool-dark-theme/u,
     );
+    // Restore Defaults clears every fork palette, not only Cool Dark.
+    expect(settingsPanels).toMatch(
+      /fork:begin fork-cool-dark-theme[^\n]*\n\s*if \(isForkPalette\(appearance\)\) setAppearance\("dark"\);\n\s*\/\* fork:end fork-cool-dark-theme/u,
+    );
   });
 
   it("stamps and clears the fork theme attribute from the palette", () => {
@@ -229,6 +233,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(indexHtml).toMatch(
       /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*background:\s*#202326/u,
     );
+    expect(indexHtml).toMatch(
+      /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*color:\s*#e8e8e8/u,
+    );
+    expect(indexHtml).not.toContain("#e9eaec");
     expect(indexHtml).toContain("fork:begin fork-cool-dark-theme");
     expect(indexHtml).toMatch(
       /delete document\.documentElement\.dataset\.themeSelected;\s*\/\* fork:begin fork-cool-dark-theme[^]*?removeAttribute\("data-fork-theme"\);\s*\/\* fork:end fork-cool-dark-theme/u,

@@ -118,6 +118,10 @@ describe("fork guard: fork-neutral-darker-theme", () => {
     expect(relativeLuminance(panelBg)).toBeLessThan(relativeLuminance(neutralPanelBg));
     expect(relativeLuminance(panelBg)).toBeGreaterThan(relativeLuminance(stageBg));
 
+    // Stage card/popover match the panel so menus open at the same lift.
+    expect(declarationHex(stage, "--card")).toBe(panelBg);
+    expect(declarationHex(stage, "--popover")).toBe(panelBg);
+
     // Vessel is a step above the sidebar so the control row reads against the stage.
     expect(stage).toContain("--fork-composer-vessel-bg: #252525");
     expect(relativeLuminance(declarationHex(stage, "--fork-composer-vessel-bg"))).toBeGreaterThan(
@@ -178,7 +182,7 @@ describe("fork guard: fork-neutral-darker-theme", () => {
   });
 
   it("does not leak Neutral Darker fills into light mode", () => {
-    const darkerHexes = ["#1a1a1a", "#1d1d1d", "#212121", "#2b2b2b", "#2f2f2f", "#303030"];
+    const darkerHexes = ["#1a1a1a", "#212121", "#252525", "#2b2b2b", "#2f2f2f", "#303030"];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
     );

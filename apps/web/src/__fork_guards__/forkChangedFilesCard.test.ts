@@ -28,6 +28,9 @@ describe("fork guard: fork-changed-files-card", () => {
     expect(changedFiles).toContain('data-changed-files-header=""');
     // Upstream still ships the translucent wash the fork overrides.
     expect(changedFiles).toContain("dark:bg-input/32");
+    // Outline actions are Tooltip triggers — CSS must select `button`, not
+    // data-slot="button" (TooltipTrigger wins the slot).
+    expect(changedFiles).toContain("TooltipTrigger");
   });
 
   it("paints the card from --card under the fork dark marker", () => {
@@ -35,29 +38,34 @@ describe("fork guard: fork-changed-files-card", () => {
       (rule) =>
         rule.selector.includes("[data-changed-files-state]") &&
         !rule.selector.includes("button") &&
+        !rule.selector.includes("span.truncate") &&
         rule.body.includes("background"),
     );
     expect(card?.selector).toContain(MARKER);
     expect(card?.selector).toContain(".dark");
     expect(card?.body).toMatch(/background:\s*var\(--card\)/u);
     expect(card?.body).toMatch(/border-radius:\s*8px/u);
+    expect(card?.body).toMatch(/border-color:\s*var\(--fork-composer-border\)/u);
   });
 
-  it("lifts path labels and clears outline button fills", () => {
+  it("lifts path labels outside the header and outlines header action buttons", () => {
     const label = cssRules(theme).find(
       (rule) =>
         rule.selector.includes("[data-changed-files-state]") &&
-        rule.selector.includes("span.truncate"),
+        rule.selector.includes("span.truncate") &&
+        rule.selector.includes(":not([data-changed-files-header])"),
     );
     expect(label?.selector).toContain(MARKER);
     expect(label?.body).toMatch(/color:\s*var\(--foreground\)/u);
 
     const button = cssRules(theme).find(
       (rule) =>
-        rule.selector.includes("[data-changed-files-state]") &&
-        rule.selector.includes('[data-slot="button"]') &&
+        rule.selector.includes("[data-changed-files-header] > div button") &&
         rule.body.includes("background: transparent"),
     );
     expect(button?.selector).toContain(MARKER);
+    expect(button?.selector).toContain(".dark");
+    // Must not key off data-slot="button" — TooltipTrigger overwrites it.
+    expect(theme).not.toMatch(/\[data-changed-files-state\][^{]*\[data-slot="button"\]/u);
   });
 });

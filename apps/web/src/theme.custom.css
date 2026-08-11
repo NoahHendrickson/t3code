@@ -372,9 +372,13 @@
    which loses to unlayered rules whatever their specificity — and the ring is
    a box-shadow, i.e. the exact property the hairline occupies. Repainting it
    here keeps the drop target legible and keeps the hairline in the same
-   shadow, so the box does not gain a second one. */
+   shadow, so the box does not gain a second one.
+
+   Use the chip-hover lift, not `--accent`: on Cool Dark / Cool Darker,
+   `--accent` is bit-identical to `--fork-composer-bg`, so a drag would show
+   only the outline. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-drag-over] {
-  background: var(--accent);
+  background: var(--fork-context-chip-bg-hover);
   /* Outline, not box-shadow, and that is empirical rather than stylistic. The
      tint above lands from this same rule while a box-shadow declaration beside
      it measurably does not — something on this element composes that property
@@ -1580,6 +1584,14 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Shared dark outline chrome for pending Previous and changed-files actions.
+   White-alpha only under `.dark` — Light keeps upstream outline fills. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-outline-border: rgb(255 255 255 / 24%);
+  --fork-outline-border-hover: rgb(255 255 255 / 32%);
+  --fork-outline-hover-bg: rgb(255 255 255 / 4%);
+}
+
 /* ── Pending user-input questions (fork-pending-user-input) ───────────────────
    Upstream wraps the panel in a muted rounded strip inside the surface. Under
    the fork the questions block is the top of the same vessel: drop the tint
@@ -1590,47 +1602,63 @@
   [data-fork-pending-user-input-strip] {
   border-radius: 0;
   background: transparent;
-  border-bottom-color: rgb(255 255 255 / 12%);
+  border-bottom-color: var(--fork-composer-border);
 }
 
 /* Pending Previous / Next sit in the prompt row with items-end. Upstream's
    sm outline pills are taller than the one-line prompt, so the placeholder
-   hangs low in the surface. Pin both actions to the 24px composer control
-   height so the row and the text share one midline. */
+   hangs low in the surface. Pin height to the 24px composer control row.
+   Compact Previous is icon-sm (a square) — also pin width so it stays 24×24
+   beside stop/send rather than a 28×24 squat pill. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action] {
   height: 24px;
-  min-height: 24px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   line-height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* True outline: upstream outline still paints dark:bg-input/32 + inset
-   shadow, which reads as a muddy fill next to the stop/send squares. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action="previous"] {
-  background: transparent;
-  border-color: rgb(255 255 255 / 24%);
-  color: var(--foreground);
-  box-shadow: none;
-  padding-inline: 8px;
-}
-
-:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action="previous"]::before {
-  display: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-pending-user-input-action="previous"]:is(:hover, [data-pressed]) {
-  background: rgb(255 255 255 / 4%);
-  border-color: rgb(255 255 255 / 32%);
+  [data-fork-pending-user-input-action="previous"][aria-label="Previous question"] {
+  width: 24px;
+  padding: 0;
 }
 
 :root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action="advance"] {
   padding-inline: 10px;
+}
+
+/* True outline (dark only): upstream outline still paints dark:bg-input/32.
+   Selected as `button`, not `[data-slot="button"]` — see fork-workspace-header
+   note: TooltipTrigger stamps data-slot="tooltip-trigger" over Button. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is([data-fork-pending-user-input-action="previous"], [data-changed-files-header] > div button) {
+  background: transparent;
+  border-color: var(--fork-outline-border);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-fork-pending-user-input-action="previous"],
+    [data-changed-files-header] > div button
+  )::before {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-fork-pending-user-input-action="previous"],
+    [data-changed-files-header] > div button
+  ):is(:hover, [data-pressed]) {
+  background: var(--fork-outline-hover-bg);
+  border-color: var(--fork-outline-border-hover);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-pending-user-input-action="previous"]:not([aria-label="Previous question"]) {
+  padding-inline: 8px;
 }
 
 /* ── Changed-files card in the chat column ───────────────────────────────────
@@ -1638,10 +1666,11 @@
    Dark's --input is neutral #3f3f3f (border gray), so the card never lands on
    the cool opaque ladder (--card #2b3033 / --secondary #353a3d). Same miss on
    every fork dark palette: freeze the card to --card so each palette's stage
-   tokens actually show. Hairline + 8px match the composer vessel. */
+   tokens actually show. Hairline uses --fork-composer-border (12% cool / 8%
+   neutral) so the card matches the vessel per palette. */
 :root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] {
   background: var(--card);
-  border-color: rgb(255 255 255 / 12%);
+  border-color: var(--fork-composer-border);
   border-radius: 8px;
 }
 
@@ -1649,29 +1678,11 @@
   background: var(--card);
 }
 
-/* File/folder names were muted-foreground/@80 — too soft on the lifted card.
-   Keep diff stats on their own green/red; only the path labels lift. */
-:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] button > span.truncate {
-  color: var(--foreground);
-}
-
-/* Open diff / expand-collapse: true outline, not upstream's dark:bg-input/32. */
-:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] [data-slot="button"] {
-  background: transparent;
-  border-color: rgb(255 255 255 / 24%);
-  color: var(--foreground);
-  box-shadow: none;
-}
-
+/* File/folder path labels — not the header's deliberately-receded Show/Hide
+   hint (that span is also `.truncate`). Scope to siblings of the header. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-changed-files-state]
-  [data-slot="button"]::before {
-  display: none;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-changed-files-state]
-  [data-slot="button"]:is(:hover, [data-pressed]) {
-  background: rgb(255 255 255 / 4%);
-  border-color: rgb(255 255 255 / 32%);
+  > :not([data-changed-files-header])
+  span.truncate {
+  color: var(--foreground);
 }

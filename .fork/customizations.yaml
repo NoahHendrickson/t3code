@@ -1045,10 +1045,11 @@
     Appearance offers Neutral Darker as a deeper sibling of Neutral Dark.
     True-neutral grays only. Chat stage #1a1a1a (slightly darker than Neutral
     Dark's #1f1f1f); sidebar #212121 (much darker than Neutral Dark's #2a2a2a,
-    still a step lighter than the stage). Composer vessel sits a step above
-    the sidebar at #252525 so the control row (mode / model / effort) contrasts
-    against the stage; prompt/chips lift from that vessel. Must not alter
-    Neutral Dark, Cool Dark, or default Dark fills.
+    still a step lighter than the stage). Stage --card/--popover match the
+    sidebar (#212121) so menus open at the same lift. Composer vessel sits a
+    step above the sidebar at #252525 so the control row contrasts against the
+    stage; prompt/chips lift from that vessel. Must not alter Neutral Dark,
+    Cool Dark, or default Dark fills.
 
     Same fork palette overlay as Cool Dark / Neutral Dark
     (t3code:fork-theme = neutral-darker, upstream theme = dark,
@@ -2389,21 +2390,20 @@
   intent: >
     When an agent asks the user to answer questions, the composer pending
     user-input panel matches the fork Questions design: a Questions header
-    with answered/total progress, the active question prompt, and option
-    rows with the control on the left (checkbox for multi-select, radio for
-    single-select), label beside it, and description indented under the
-    label. Selection uses a light fill and hairline rather than the
-    upstream primary tint and trailing check/number-key badges. Behavior
-    stays the same — multi toggles in place, single auto-advances — only
-    the chrome changes. Card interaction (auto-advance, optimistic single-
-    select, number keys) lives in custom/useComposerPendingUserInputCard.ts;
-    the override is a presentational shadow of the upstream leaf. The vessel
-    strip that wraps it is cleared via a fenced
-    data-fork-pending-user-input-strip attribute on ChatComposer so the
-    questions block sits flush in the 8px composer shell. Pending Previous
-    is a true outline (transparent fill, hairline border) and both Previous
-    and Next/Submit are 24px so the prompt placeholder stays vertically
-    centered beside them instead of hanging low under items-end.
+    with position/total progress (questionIndex + 1, only when there are 2+
+    questions), the active question prompt, and option rows with the control
+    on the left (checkbox for multi-select, radio for single-select), label
+    beside it, and description indented under the label. Selection uses a
+    theme-adaptive foreground/alpha fill and hairline (readable in Light and
+    Dark) rather than upstream primary tint or white-alpha. Number-key
+    handlers stay; options announce them via aria-keyshortcuts without kbd
+    badges. Behavior stays the same — multi toggles in place, single
+    auto-advances — only the chrome changes. Card interaction lives in
+    custom/useComposerPendingUserInputCard.ts; the override is presentational.
+    The vessel strip is cleared via fenced data-fork-pending-user-input-strip
+    on ChatComposer. Dark-only true-outline Previous (and shared outline
+    tokens with changed-files) keep Previous/Next at 24px; compact Previous
+    is pinned to a 24×24 square.
   tier: 2
   files:
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
@@ -2426,12 +2426,12 @@
     instead of upstream's translucent dark:bg-input/32 wash. Cool Dark's
     --input is neutral #3f3f3f, so that wash never lands on the cool opaque
     card/secondary fills; under the fork marker the card and sticky header
-    paint var(--card), an 8px radius, and a white/12 hairline so Cool Dark
-    (#2b3033), Cool Darker, Neutral Dark, and default Dark all show through
-    their own --card token. File/folder path labels use --foreground; outline
-    actions inside the card are transparent with a hairline rather than the
-    muddy input fill. Keys off data-changed-files-state / -header that
-    upstream already ships.
+    paint var(--card), an 8px radius, and border-color var(--fork-composer-
+    border) so Cool / Neutral palettes keep their own hairline weight. Path
+    labels outside the header lift to --foreground (not the Show/Hide hint).
+    Outline actions are header > div button (TooltipTrigger overwrites
+    data-slot="button") and share the dark --fork-outline-* recipe with
+    pending Previous. Keys off data-changed-files-state / -header.
   tier: 1
   files:
     - apps/web/src/theme.custom.css

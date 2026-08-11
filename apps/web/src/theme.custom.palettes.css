@@ -228,9 +228,10 @@
   --background: #1a1a1a;
   --app-chrome-background: #1a1a1a;
   --foreground: #e8e8e8;
-  --card: #1d1d1d;
+  /* Match the sidebar panel so popovers / ⌘K / cards open at the same lift. */
+  --card: #212121;
   --card-foreground: #e8e8e8;
-  --popover: #1d1d1d;
+  --popover: #212121;
   --popover-foreground: #e8e8e8;
   --primary: #ffffff;
   --primary-foreground: #1a1a1a;

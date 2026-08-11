@@ -603,7 +603,7 @@ export function useSettingsRestore(onRestored?: () => void) {
     if (!confirmed) return;
 
     /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
-    if (appearance === "cool-dark") setAppearance("dark");
+    if (isForkPalette(appearance)) setAppearance("dark");
     /* fork:end fork-cool-dark-theme */
 
     // Only touch the theme keys that are actually dirty, so a theme-storage
