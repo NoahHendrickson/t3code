@@ -32,7 +32,11 @@ function readSibling(relativePath: string): string {
 }
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
-const theme = readSibling("../theme.custom.css");
+// Default Dark stage lives in theme.custom.css; Neutral/Cool overlays live in palettes.
+const theme = [
+  readSibling("../theme.custom.css"),
+  readSibling("../theme.custom.palettes.css"),
+].join("\n");
 const themeRules = cssRules(theme);
 const indexHtml = readSibling("../../index.html");
 const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
@@ -94,7 +98,7 @@ describe("fork guard: fork-neutral-dark-theme", () => {
     expect(declarationHex(panel, "--background")).toBe("#2a2a2a");
     expect(panel).toContain("--sidebar: #2a2a2a");
     expect(panel).toContain("--sidebar-stage-fade: #2a2a2a");
-    expect(stage).toContain("--fork-composer-vessel-bg: #2a2a2a");
+    expect(stage).toContain("--fork-composer-vessel-bg: #323232");
     expect(stage).toContain("--fork-composer-bg: rgb(61 61 61 / 80%)");
     expect(stage).toContain("--fork-context-chip-bg: rgb(65 65 65)");
   });

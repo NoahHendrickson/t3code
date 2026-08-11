@@ -1,0 +1,287 @@
+/* Fork dark palette overlays — see .fork/customizations.yaml#fork-cool-dark-theme
+   (and sibling palette ids). Kept out of theme.custom.css so a new sibling is a
+   token table here, not another 60-line clone in the megafile. Loaded after
+   theme.custom.css from main.tsx so these win on source order. */
+
+/* ---------------------------------------------------------------------------
+   Cool Dark — see `.fork/customizations.yaml#fork-cool-dark-theme`.
+
+   Figma t3-fork node 291:18763. Cool-gray stage #202326, sidebar/vessel
+   #2b3033, prompt surface + context chips #353a3d. Barely cool (B−R ≤ 6),
+   not blue-slate. Placed after the default dark surface / pill / composer /
+   context-chip tokens so Cool Dark wins on both specificity and source order.
+   Same two-block pattern (stage + v2 panel) for the upstream re-declaration
+   reason. Keyed on data-fork-theme so Dark and Cool Dark can coexist; both
+   still carry `.dark` for Tailwind. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] {
+  --background: #202326;
+  --app-chrome-background: #202326;
+  --foreground: #e8e8e8;
+  --card: #2b3033;
+  --card-foreground: #e8e8e8;
+  --popover: #2b3033;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #202326;
+  --ring: #ffffff;
+  --secondary: #353a3d;
+  --secondary-foreground: #e8e8e8;
+  --muted: #353a3d;
+  --muted-foreground: #9a9a9a;
+  --accent: #353a3d;
+  --accent-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --input: #3f3f3f;
+  --surface-grain: none;
+  --fork-pill-border: #3f3f3f;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #353a3d;
+  /* Vessel matches the sidebar; prompt surface is the drawn #353a3d lift. */
+  --fork-composer-vessel-bg: #2b3033;
+  --fork-composer-bg: #353a3d;
+  --fork-composer-border: rgb(255 255 255 / 12%);
+  --fork-composer-border-focus: #5c6368;
+  /* Opaque match of the prompt surface — see default-dark note. */
+  --fork-context-chip-bg: #353a3d;
+  --fork-context-chip-bg-hover: #3c4143;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-sidebar-version="v2"] {
+  --background: #2b3033;
+  --foreground: #e8e8e8;
+  --card: #2b3033;
+  --card-foreground: #e8e8e8;
+  --sidebar: #2b3033;
+  --sidebar-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --sidebar-border: #3f3f3f;
+  --sidebar-stage-fade: #2b3033;
+  --muted: #353a3d;
+  --accent: #353a3d;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #9a9a9a;
+  --sidebar-muted-foreground: #d5d7da;
+  --fork-sidebar-card-title-receded: #b2b5ba;
+  /* white @ 8% over sidebar #2b3033 — matches Figma thread-card / ⌘K lift. */
+  --sidebar-control-surface: #3c4143;
+  --sidebar-row-hover: #353a3d;
+  --sidebar-row-active: #3c4143;
+  --sidebar-row-selected: #3c4143;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Cool Darker — see `.fork/customizations.yaml#fork-cool-darker-theme`.
+
+   Deeper sibling of Cool Dark: same cool-gray family (B ≥ R, low chroma),
+   pushed down. Stage #1a1c1e (below Cool Dark's #202326); sidebar #222528;
+   composer vessel #282c2f (a step above the sidebar so the control row
+   contrasts); prompt/chips #2e3336. Must not alter Cool Dark, Neutral Dark,
+   Neutral Darker, or default Dark fills. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
+  --background: #1a1c1e;
+  --app-chrome-background: #1a1c1e;
+  --foreground: #e8e8e8;
+  --card: #222528;
+  --card-foreground: #e8e8e8;
+  --popover: #222528;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1a1c1e;
+  --ring: #ffffff;
+  --secondary: #2e3336;
+  --secondary-foreground: #e8e8e8;
+  --muted: #2e3336;
+  --muted-foreground: #8a8a8a;
+  --accent: #2e3336;
+  --accent-foreground: #e8e8e8;
+  --border: #35393c;
+  --input: #35393c;
+  --surface-grain: none;
+  --fork-pill-border: #35393c;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #2e3336;
+  --fork-composer-vessel-bg: #282c2f;
+  --fork-composer-bg: #2e3336;
+  --fork-composer-border: rgb(255 255 255 / 12%);
+  --fork-composer-border-focus: #4a5055;
+  --fork-context-chip-bg: #2e3336;
+  --fork-context-chip-bg-hover: #353a3d;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"] {
+  --background: #222528;
+  --foreground: #e8e8e8;
+  --card: #222528;
+  --card-foreground: #e8e8e8;
+  --sidebar: #222528;
+  --sidebar-foreground: #e8e8e8;
+  --border: #35393c;
+  --sidebar-border: #35393c;
+  --sidebar-stage-fade: #222528;
+  --muted: #2e3336;
+  --accent: #2e3336;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #8a8a8a;
+  --sidebar-muted-foreground: #d0d4d6;
+  --fork-sidebar-card-title-receded: #aeb2b6;
+  --sidebar-control-surface: #353a3d;
+  --sidebar-row-hover: #2e3336;
+  --sidebar-row-active: #353a3d;
+  --sidebar-row-selected: #353a3d;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
+
+   Figma t3-fork node 264:11816: true-neutral grays (no cool undertone). Stage
+   #1f1f1f, sidebar #2a2a2a (slightly darker than the drawn #2e2e2e), composer
+   vessel #323232, prompt surface #3d3d3d, context chips #414141. Same two-block
+   pattern and data-fork-theme keying as Cool Dark so Dark / Cool Dark /
+   Neutral Dark can coexist. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
+  --background: #1f1f1f;
+  --app-chrome-background: #1f1f1f;
+  --foreground: #e8e8e8;
+  --card: #2e2e2e;
+  --card-foreground: #e8e8e8;
+  --popover: #2e2e2e;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1f1f1f;
+  --ring: #ffffff;
+  --secondary: #383838;
+  --secondary-foreground: #e8e8e8;
+  --muted: #383838;
+  --muted-foreground: #9a9a9a;
+  --accent: #383838;
+  --accent-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --input: #3f3f3f;
+  --surface-grain: none;
+  --fork-pill-border: #4a4a4a;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #383838;
+  /* A step above the sidebar panel: the control row reads as part of the
+     composer rather than as more chrome. */
+  --fork-composer-vessel-bg: #323232;
+  --fork-composer-bg: rgb(61 61 61 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 8%);
+  --fork-composer-border-focus: #525252;
+  /* Opaque sibling of the Neutral Dark composer fill — see default-dark note. */
+  --fork-context-chip-bg: rgb(65 65 65);
+  --fork-context-chip-bg-hover: #4a4a4a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-sidebar-version="v2"] {
+  --background: #2a2a2a;
+  --foreground: #e8e8e8;
+  --card: #2a2a2a;
+  --card-foreground: #e8e8e8;
+  --sidebar: #2a2a2a;
+  --sidebar-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --sidebar-border: #3f3f3f;
+  --sidebar-stage-fade: #2a2a2a;
+  --muted: #383838;
+  --accent: #383838;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #9a9a9a;
+  --sidebar-muted-foreground: #d6d6d6;
+  --fork-sidebar-card-title-receded: #b0b0b0;
+  --sidebar-control-surface: #414141;
+  --sidebar-row-hover: #383838;
+  --sidebar-row-active: #3a3a3a;
+  --sidebar-row-selected: #3a3a3a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
+
+   Same true-neutral family as Neutral Dark, pushed down: chat stage #1a1a1a
+   (slightly darker than Neutral Dark's #1f1f1f), sidebar #212121 (much darker
+   than Neutral Dark's #2a2a2a, still a step lighter than the stage). Composer
+   vessel sits a step above the sidebar (#252525) so the control row (mode /
+   model / effort) contrasts against the stage; prompt/chips lift from that
+   vessel. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"] {
+  --background: #1a1a1a;
+  --app-chrome-background: #1a1a1a;
+  --foreground: #e8e8e8;
+  /* Match the sidebar panel so popovers / ⌘K / cards open at the same lift. */
+  --card: #212121;
+  --card-foreground: #e8e8e8;
+  --popover: #212121;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1a1a1a;
+  --ring: #ffffff;
+  --secondary: #2b2b2b;
+  --secondary-foreground: #e8e8e8;
+  --muted: #2b2b2b;
+  --muted-foreground: #8a8a8a;
+  --accent: #2b2b2b;
+  --accent-foreground: #e8e8e8;
+  --border: #2f2f2f;
+  --input: #2f2f2f;
+  --surface-grain: none;
+  --fork-pill-border: #3a3a3a;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #2b2b2b;
+  /* A step above the sidebar so the control row reads as composer, not chrome. */
+  --fork-composer-vessel-bg: #252525;
+  --fork-composer-bg: rgb(42 42 42 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 8%);
+  --fork-composer-border-focus: #4a4a4a;
+  --fork-context-chip-bg: rgb(48 48 48);
+  --fork-context-chip-bg-hover: #3a3a3a;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
+  [data-sidebar-version="v2"] {
+  --background: #212121;
+  --foreground: #e8e8e8;
+  --card: #212121;
+  --card-foreground: #e8e8e8;
+  --sidebar: #212121;
+  --sidebar-foreground: #e8e8e8;
+  --border: #2f2f2f;
+  --sidebar-border: #2f2f2f;
+  --sidebar-stage-fade: #212121;
+  --muted: #2b2b2b;
+  --accent: #2b2b2b;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #8a8a8a;
+  --sidebar-muted-foreground: #d0d0d0;
+  --fork-sidebar-card-title-receded: #a8a8a8;
+  --sidebar-control-surface: #303030;
+  --sidebar-row-hover: #2b2b2b;
+  --sidebar-row-active: #2e2e2e;
+  --sidebar-row-selected: #2e2e2e;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}

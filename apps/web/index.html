@@ -25,7 +25,7 @@
         // contributes one fenced row; the stamping below reads the map, so a
         // new palette is a row here — not another boolean, branch, and
         // ternary arm.
-        const forkPaletteBackgrounds = { "cool-dark": "#1c1e20" };
+        const forkPaletteBackgrounds = { "cool-dark": "#202326" };
         /* fork:end fork-cool-dark-theme */
         /* fork:begin fork-neutral-dark-theme — see .fork/customizations.yaml#fork-neutral-dark-theme */
         forkPaletteBackgrounds["neutral-dark"] = "#1f1f1f";
@@ -33,6 +33,9 @@
         /* fork:begin fork-neutral-darker-theme — see .fork/customizations.yaml#fork-neutral-darker-theme */
         forkPaletteBackgrounds["neutral-darker"] = "#1a1a1a";
         /* fork:end fork-neutral-darker-theme */
+        /* fork:begin fork-cool-darker-theme — see .fork/customizations.yaml#fork-cool-darker-theme */
+        forkPaletteBackgrounds["cool-darker"] = "#1a1c1e";
+        /* fork:end fork-cool-darker-theme */
         const CUSTOM_THEMES_STORAGE_KEY = "t3code:themes:v1";
         const THEME_FOLLOW_SYSTEM_STORAGE_KEY = "t3code:theme-follow-system";
         const THEME_APPEARANCE_MODE_STORAGE_KEY = "t3code:theme-appearance-mode";
@@ -461,8 +464,8 @@
 
       /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
       html.dark[data-fork-theme="cool-dark"] body {
-        background: #1c1e20;
-        color: #e9eaec;
+        background: #202326;
+        color: #e8e8e8;
       }
       /* fork:end fork-cool-dark-theme */
 
@@ -479,6 +482,13 @@
         color: #e8e8e8;
       }
       /* fork:end fork-neutral-darker-theme */
+
+      /* fork:begin fork-cool-darker-theme — see .fork/customizations.yaml#fork-cool-darker-theme */
+      html.dark[data-fork-theme="cool-darker"] body {
+        background: #1a1c1e;
+        color: #e8e8e8;
+      }
+      /* fork:end fork-cool-darker-theme */
 
       #boot-shell {
         position: relative;

@@ -32,7 +32,11 @@ function readSibling(relativePath: string): string {
 }
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
-const theme = readSibling("../theme.custom.css");
+// Default Dark stage lives in theme.custom.css; Cool Dark overlays live in palettes.
+const theme = [
+  readSibling("../theme.custom.css"),
+  readSibling("../theme.custom.palettes.css"),
+].join("\n");
 const indexHtml = readSibling("../../index.html");
 const main = readSibling("../main.tsx");
 const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
@@ -138,6 +142,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(settingsPanels).toMatch(
       /fork:begin fork-cool-dark-theme[^\n]*\n\s*setAppearance,\n\s*\/\* fork:end fork-cool-dark-theme/u,
     );
+    // Restore Defaults clears every fork palette, not only Cool Dark.
+    expect(settingsPanels).toMatch(
+      /fork:begin fork-cool-dark-theme[^\n]*\n\s*if \(isForkPalette\(appearance\)\) setAppearance\("dark"\);\n\s*\/\* fork:end fork-cool-dark-theme/u,
+    );
   });
 
   it("stamps and clears the fork theme attribute from the palette", () => {
@@ -160,12 +168,14 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const stage = blockFor(theme, COOL_STAGE);
     const panel = blockFor(theme, COOL_PANEL);
     expect(declarationHex(stage, "--background")).toBe(COOL_DARK_BACKGROUND);
-    expect(declarationHex(panel, "--background")).toBe("#232628");
-    expect(panel).toContain("--sidebar: #232628");
-    expect(panel).toContain("--sidebar-stage-fade: #232628");
+    expect(declarationHex(panel, "--background")).toBe("#2b3033");
+    expect(panel).toContain("--sidebar: #2b3033");
+    expect(panel).toContain("--sidebar-stage-fade: #2b3033");
     expect(relativeLuminance(declarationHex(panel, "--background"))).toBeGreaterThan(
       relativeLuminance(declarationHex(stage, "--background")),
     );
+    expect(stage).toContain("--fork-composer-vessel-bg: #2b3033");
+    expect(stage).toContain("--fork-composer-bg: #353a3d");
   });
 
   it("keeps Cool Dark lighter than the default Dark stage", () => {
@@ -184,9 +194,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
 
   it("states Cool Dark row fills as opaque values", () => {
     const panel = blockFor(theme, COOL_PANEL);
-    expect(panel).toContain("--sidebar-row-hover: #2c2f33");
-    expect(panel).toContain("--sidebar-row-active: #32363a");
-    expect(panel).toContain("--sidebar-row-selected: #32363a");
+    expect(panel).toContain("--sidebar-row-hover: #353a3d");
+    expect(panel).toContain("--sidebar-row-active: #3c4143");
+    expect(panel).toContain("--sidebar-row-selected: #3c4143");
     expect(panel).not.toMatch(
       /--sidebar-row-(?:hover|active|selected):[^;]*(?:color-mix|--alpha)/u,
     );
@@ -201,7 +211,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const defaultDark = contextRules.find((rule) => rule.selector === `${MARKER}.dark`);
     const coolDark = contextRules.find((rule) => rule.selector === COOL_STAGE[0]);
     expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(41 41 41)");
-    expect(coolDark?.body).toContain("--fork-context-chip-bg: rgb(44 47 51)");
+    expect(coolDark?.body).toContain("--fork-context-chip-bg: #353a3d");
     expect(defaultDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
     const chipBlur = cssRules(theme).find(
       (rule) =>
@@ -221,8 +231,12 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(indexHtml).toContain('setAttribute("data-fork-theme", activeForkPalette)');
     expect(indexHtml).toContain(`html.dark[${FORK_THEME_ATTRIBUTE}="cool-dark"] body`);
     expect(indexHtml).toMatch(
-      /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*background:\s*#1c1e20/u,
+      /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*background:\s*#202326/u,
     );
+    expect(indexHtml).toMatch(
+      /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*color:\s*#e8e8e8/u,
+    );
+    expect(indexHtml).not.toContain("#e9eaec");
     expect(indexHtml).toContain("fork:begin fork-cool-dark-theme");
     expect(indexHtml).toMatch(
       /delete document\.documentElement\.dataset\.themeSelected;\s*\/\* fork:begin fork-cool-dark-theme[^]*?removeAttribute\("data-fork-theme"\);\s*\/\* fork:end fork-cool-dark-theme/u,
@@ -232,7 +246,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("does not leak Cool Dark fills into light mode", () => {
-    const coolHexes = ["#1c1e20", "#232628", "#2c2f33", "#32363a", "#34383c", "#393d42"];
+    const coolHexes = ["#202326", "#2b3033", "#353a3d", "#3c4143", "#3f3f3f", "#5c6368"];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
     );

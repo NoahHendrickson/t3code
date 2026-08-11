@@ -173,14 +173,14 @@
    The three header controls (Add action / Open / PR) are already built from the
    right primitives: a `Group` wrapping an outline `Button size="xs"`, a
    separator, and a caret `Button size="icon-xs"`. `Group` flattens the inner
-   corners so the pair paints as one control, and `size="xs"` is already 24px
-   and 12px at >=sm — which is exactly the design's spec. So nothing structural
-   changes; the only fork edit in those three files is a `data-fork-pill`
-   attribute, and everything visual happens here.
+   corners so the pair paints as one control. Upstream `size="xs"` is 24px at
+   >=sm; the fork lifts them to 28px here. The only edit in those three files
+   is a `data-fork-pill` attribute, and everything visual happens here.
 
-   What is left to say: round the outer corners to 4px, drop the raised
-   treatment (border tint, popover fill, inset highlight) that reads as a button
-   floating above a page, and open the padding out to the drawn 10px/7px.
+   What is left to say: pin the height to 28px, round the outer corners to 4px,
+   drop the raised treatment (border tint, popover fill, inset highlight) that
+   reads as a button floating above a page, and open the padding out to the
+   drawn 10px/7px.
 
    Selected as `button`, not `[data-slot="button"]`: Base UI's `render` prop
    merges the trigger's own props over the rendered element's, so a `Button`
@@ -188,6 +188,8 @@
    `data-slot="tooltip-trigger"` / `"menu-trigger"`. Two of the three pills are
    built that way, so a slot-based selector silently matches nothing. */
 :root[data-fork="noahhendrickson-t3code"] :is(button[data-fork-pill], [data-fork-pill] > button) {
+  height: 28px;
+  min-height: 28px;
   border-color: var(--fork-pill-border);
   background: transparent;
   color: var(--fork-pill-fg);
@@ -228,7 +230,7 @@
 }
 
 /* The caret half: 7px each side of a 14px glyph, so 28px wide rather than the
-   square 24px `size="icon-xs"` gives it. */
+   square that `size="icon-xs"` would keep after the height lift. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button:last-child:not(:first-child) {
   width: auto;
   padding-inline: 7px;
@@ -370,9 +372,13 @@
    which loses to unlayered rules whatever their specificity — and the ring is
    a box-shadow, i.e. the exact property the hairline occupies. Repainting it
    here keeps the drop target legible and keeps the hairline in the same
-   shadow, so the box does not gain a second one. */
+   shadow, so the box does not gain a second one.
+
+   Use the chip-hover lift, not `--accent`: on Cool Dark / Cool Darker,
+   `--accent` is bit-identical to `--fork-composer-bg`, so a drag would show
+   only the outline. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-drag-over] {
-  background: var(--accent);
+  background: var(--fork-context-chip-bg-hover);
   /* Outline, not box-shadow, and that is empirical rather than stylistic. The
      tint above lands from this same rule while a box-shadow declaration beside
      it measurably does not — something on this element composes that property
@@ -684,208 +690,6 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
-  color: #ffffff;
-}
-
-/* ---------------------------------------------------------------------------
-   Cool Dark — see `.fork/customizations.yaml#fork-cool-dark-theme`.
-
-   A selectable alternate dark palette: lighter and a touch cooler (cool gray,
-   not blue-slate) than the default fork dark. Placed after the default dark
-   surface / pill / composer / context-chip tokens so Cool Dark wins on both
-   specificity and source order. Same two-block pattern (stage + v2 panel) for
-   the upstream re-declaration reason. Keyed on data-fork-theme so Dark and
-   Cool Dark can coexist; both still carry `.dark` for Tailwind. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] {
-  --background: #1c1e20;
-  --app-chrome-background: #1c1e20;
-  --foreground: #e9eaec;
-  --card: #232628;
-  --card-foreground: #e9eaec;
-  --popover: #232628;
-  --popover-foreground: #e9eaec;
-  --secondary: #2c2f33;
-  --secondary-foreground: #e9eaec;
-  --muted: #2c2f33;
-  --muted-foreground: #90949a;
-  --accent: #2c2f33;
-  --accent-foreground: #e9eaec;
-  --border: #34383c;
-  --input: #34383c;
-  --surface-grain: none;
-  --fork-pill-border: #3c4045;
-  --fork-pill-fg: #e6e7e9;
-  --fork-pill-hover: #2c2f33;
-  --fork-composer-bg: rgb(44 47 51 / 80%);
-  --fork-composer-border: rgb(220 222 226 / 10%);
-  --fork-composer-border-focus: #52565c;
-  /* Opaque sibling of the Cool Dark composer fill — see default-dark note. */
-  --fork-context-chip-bg: rgb(44 47 51);
-  --fork-context-chip-bg-hover: #34383c;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-  [data-sidebar-version="v2"] {
-  --background: #232628;
-  --foreground: #e9eaec;
-  --card: #232628;
-  --card-foreground: #e9eaec;
-  --sidebar: #232628;
-  --sidebar-foreground: #e9eaec;
-  --border: #34383c;
-  --sidebar-border: #34383c;
-  --sidebar-stage-fade: #232628;
-  --muted: #2c2f33;
-  --accent: #2c2f33;
-  --accent-foreground: #e9eaec;
-  --muted-foreground: #90949a;
-  --sidebar-muted-foreground: #d5d7da;
-  --fork-sidebar-card-title-receded: #b2b5ba;
-  --sidebar-control-surface: #393d42;
-  --sidebar-row-hover: #2c2f33;
-  --sidebar-row-active: #32363a;
-  --sidebar-row-selected: #32363a;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-  [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
-  color: #ffffff;
-}
-
-/* ---------------------------------------------------------------------------
-   Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
-
-   Figma t3-fork node 264:11816: true-neutral grays (no cool undertone). Stage
-   #1f1f1f, sidebar/composer vessel #2a2a2a (slightly darker than the drawn
-   #2e2e2e), prompt surface #3d3d3d, context chips #414141. Same two-block
-   pattern and data-fork-theme keying as Cool Dark so Dark / Cool Dark /
-   Neutral Dark can coexist. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
-  --background: #1f1f1f;
-  --app-chrome-background: #1f1f1f;
-  --foreground: #e8e8e8;
-  --card: #2e2e2e;
-  --card-foreground: #e8e8e8;
-  --popover: #2e2e2e;
-  --popover-foreground: #e8e8e8;
-  --primary: #ffffff;
-  --primary-foreground: #1f1f1f;
-  --ring: #ffffff;
-  --secondary: #383838;
-  --secondary-foreground: #e8e8e8;
-  --muted: #383838;
-  --muted-foreground: #9a9a9a;
-  --accent: #383838;
-  --accent-foreground: #e8e8e8;
-  --border: #3f3f3f;
-  --input: #3f3f3f;
-  --surface-grain: none;
-  --fork-pill-border: #4a4a4a;
-  --fork-pill-fg: #e8e8e8;
-  --fork-pill-hover: #383838;
-  --fork-composer-vessel-bg: #2a2a2a;
-  --fork-composer-bg: rgb(61 61 61 / 80%);
-  --fork-composer-border: rgb(255 255 255 / 8%);
-  --fork-composer-border-focus: #525252;
-  /* Opaque sibling of the Neutral Dark composer fill — see default-dark note. */
-  --fork-context-chip-bg: rgb(65 65 65);
-  --fork-context-chip-bg-hover: #4a4a4a;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
-  [data-sidebar-version="v2"] {
-  --background: #2a2a2a;
-  --foreground: #e8e8e8;
-  --card: #2a2a2a;
-  --card-foreground: #e8e8e8;
-  --sidebar: #2a2a2a;
-  --sidebar-foreground: #e8e8e8;
-  --border: #3f3f3f;
-  --sidebar-border: #3f3f3f;
-  --sidebar-stage-fade: #2a2a2a;
-  --muted: #383838;
-  --accent: #383838;
-  --accent-foreground: #e8e8e8;
-  --muted-foreground: #9a9a9a;
-  --sidebar-muted-foreground: #d6d6d6;
-  --fork-sidebar-card-title-receded: #b0b0b0;
-  --sidebar-control-surface: #414141;
-  --sidebar-row-hover: #383838;
-  --sidebar-row-active: #3a3a3a;
-  --sidebar-row-selected: #3a3a3a;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
-  [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
-  color: #ffffff;
-}
-
-/* ---------------------------------------------------------------------------
-   Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
-
-   Same true-neutral family as Neutral Dark, pushed down: chat stage #1a1a1a
-   (slightly darker than Neutral Dark's #1f1f1f), sidebar #1d1d1d (much darker
-   than Neutral Dark's #2a2a2a, still a hair lighter than the stage). Composer
-   vessel tracks the sidebar; prompt/chips lift from that darker base. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"] {
-  --background: #1a1a1a;
-  --app-chrome-background: #1a1a1a;
-  --foreground: #e8e8e8;
-  --card: #1d1d1d;
-  --card-foreground: #e8e8e8;
-  --popover: #1d1d1d;
-  --popover-foreground: #e8e8e8;
-  --primary: #ffffff;
-  --primary-foreground: #1a1a1a;
-  --ring: #ffffff;
-  --secondary: #2b2b2b;
-  --secondary-foreground: #e8e8e8;
-  --muted: #2b2b2b;
-  --muted-foreground: #8a8a8a;
-  --accent: #2b2b2b;
-  --accent-foreground: #e8e8e8;
-  --border: #2f2f2f;
-  --input: #2f2f2f;
-  --surface-grain: none;
-  --fork-pill-border: #3a3a3a;
-  --fork-pill-fg: #e8e8e8;
-  --fork-pill-hover: #2b2b2b;
-  --fork-composer-vessel-bg: #1d1d1d;
-  --fork-composer-bg: rgb(42 42 42 / 80%);
-  --fork-composer-border: rgb(255 255 255 / 8%);
-  --fork-composer-border-focus: #4a4a4a;
-  --fork-context-chip-bg: rgb(48 48 48);
-  --fork-context-chip-bg-hover: #3a3a3a;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
-  [data-sidebar-version="v2"] {
-  --background: #1d1d1d;
-  --foreground: #e8e8e8;
-  --card: #1d1d1d;
-  --card-foreground: #e8e8e8;
-  --sidebar: #1d1d1d;
-  --sidebar-foreground: #e8e8e8;
-  --border: #2f2f2f;
-  --sidebar-border: #2f2f2f;
-  --sidebar-stage-fade: #1d1d1d;
-  --muted: #2b2b2b;
-  --accent: #2b2b2b;
-  --accent-foreground: #e8e8e8;
-  --muted-foreground: #8a8a8a;
-  --sidebar-muted-foreground: #d0d0d0;
-  --fork-sidebar-card-title-receded: #a8a8a8;
-  --sidebar-control-surface: #303030;
-  --sidebar-row-hover: #2b2b2b;
-  --sidebar-row-active: #2e2e2e;
-  --sidebar-row-selected: #2e2e2e;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
   [data-fork-composer-context-row]
   :is(button, [data-slot="button"], [data-fork-context-chip]) {
   color: #ffffff;
@@ -1742,7 +1546,7 @@
   /* Surface and field follow the THEME, not the palette the Figma file happened to be
      drawn in: the panel docks inside the workspace, so a pinned #232527 read as a lighter
      slab bolted onto it — and drifted further with every alternate theme (Cool Dark's
-     background is #1c1e20). Deriving them means the panel matches whatever surface it is
+     background is #202326). Deriving them means the panel matches whatever surface it is
      sitting on, including themes that don't exist yet. */
   --fork-design-surface: var(--background);
   --fork-design-field: var(--muted);
@@ -1778,4 +1582,107 @@
    (Layers / preview chrome / Design). Same --border token DiffPanelShell uses. */
 :root[data-fork="noahhendrickson-t3code"] [data-right-panel-tabbar] {
   border-bottom: 1px solid var(--border);
+}
+
+/* Shared dark outline chrome for pending Previous and changed-files actions.
+   White-alpha only under `.dark` — Light keeps upstream outline fills. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-outline-border: rgb(255 255 255 / 24%);
+  --fork-outline-border-hover: rgb(255 255 255 / 32%);
+  --fork-outline-hover-bg: rgb(255 255 255 / 4%);
+}
+
+/* ── Pending user-input questions (fork-pending-user-input) ───────────────────
+   Upstream wraps the panel in a muted rounded strip inside the surface. Under
+   the fork the questions block is the top of the same vessel: drop the tint
+   and the 19px top radius so it reads flush with the 8px composer shell.
+   Keys off the fenced strip attribute in ChatComposer — not an anonymous :has(). */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-surface]
+  [data-fork-pending-user-input-strip] {
+  border-radius: 0;
+  background: transparent;
+  border-bottom-color: var(--fork-composer-border);
+}
+
+/* Pending Previous / Next sit in the prompt row with items-end. Upstream's
+   sm outline pills are taller than the one-line prompt, so the placeholder
+   hangs low in the surface. Pin height to the 24px composer control row.
+   Compact Previous is icon-sm (a square) — also pin width so it stays 24×24
+   beside stop/send rather than a 28×24 squat pill. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action] {
+  height: 24px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-pending-user-input-action="previous"][aria-label="Previous question"] {
+  width: 24px;
+  padding: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action="advance"] {
+  padding-inline: 10px;
+}
+
+/* True outline (dark only): upstream outline still paints dark:bg-input/32.
+   Selected as `button`, not `[data-slot="button"]` — see fork-workspace-header
+   note: TooltipTrigger stamps data-slot="tooltip-trigger" over Button. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is([data-fork-pending-user-input-action="previous"], [data-changed-files-header] > div button) {
+  background: transparent;
+  border-color: var(--fork-outline-border);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-fork-pending-user-input-action="previous"],
+    [data-changed-files-header] > div button
+  )::before {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-fork-pending-user-input-action="previous"],
+    [data-changed-files-header] > div button
+  ):is(:hover, [data-pressed]) {
+  background: var(--fork-outline-hover-bg);
+  border-color: var(--fork-outline-border-hover);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-pending-user-input-action="previous"]:not([aria-label="Previous question"]) {
+  padding-inline: 8px;
+}
+
+/* ── Changed-files card in the chat column ───────────────────────────────────
+   Upstream paints `dark:bg-input/32` — a translucent wash of --input. Cool
+   Dark's --input is neutral #3f3f3f (border gray), so the card never lands on
+   the cool opaque ladder (--card #2b3033 / --secondary #353a3d). Same miss on
+   every fork dark palette: freeze the card to --card so each palette's stage
+   tokens actually show. Hairline uses --fork-composer-border (12% cool / 8%
+   neutral) so the card matches the vessel per palette. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] {
+  background: var(--card);
+  border-color: var(--fork-composer-border);
+  border-radius: 8px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-header] {
+  background: var(--card);
+}
+
+/* File/folder path labels — not the header's deliberately-receded Show/Hide
+   hint (that span is also `.truncate`). Scope to siblings of the header. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-changed-files-state]
+  > :not([data-changed-files-header])
+  span.truncate {
+  color: var(--foreground);
 }

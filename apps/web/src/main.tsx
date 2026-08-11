@@ -8,6 +8,7 @@ import { createHashHistory, createBrowserHistory } from "@tanstack/react-router"
 import "./index.css";
 /* fork:begin fork-marker — see .fork/customizations.yaml#fork-marker */
 import "./theme.custom.css";
+import "./theme.custom.palettes.css";
 import { applyForkMarker } from "./custom/forkMarker";
 /* fork:end fork-marker */
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */

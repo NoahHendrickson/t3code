@@ -32,6 +32,7 @@ describe("fork guard: fork-marker", () => {
   it("stays wired into main.tsx across upstream rebases", () => {
     const main = readSibling("../main.tsx");
     expect(main).toContain('import "./theme.custom.css"');
+    expect(main).toContain('import "./theme.custom.palettes.css"');
     expect(main).toContain("applyForkMarker(document.documentElement)");
   });
 
@@ -39,12 +40,16 @@ describe("fork guard: fork-marker", () => {
     const main = readSibling("../main.tsx");
     const upstreamCss = main.indexOf('import "./index.css"');
     const forkCss = main.indexOf('import "./theme.custom.css"');
+    const paletteCss = main.indexOf('import "./theme.custom.palettes.css"');
     expect(upstreamCss).toBeGreaterThanOrEqual(0);
     expect(forkCss).toBeGreaterThan(upstreamCss);
+    expect(paletteCss).toBeGreaterThan(forkCss);
   });
 
   it("keeps every fork theme rule scoped under the marker attribute", () => {
     const theme = readSibling("../theme.custom.css");
+    const palettes = readSibling("../theme.custom.palettes.css");
     expect(theme).toContain(`[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`);
+    expect(palettes).toContain(`[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`);
   });
 });

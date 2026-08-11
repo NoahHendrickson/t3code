@@ -33,7 +33,10 @@ function readSibling(relativePath: string): string {
 }
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
-const theme = readSibling("../theme.custom.css");
+const theme = [
+  readSibling("../theme.custom.css"),
+  readSibling("../theme.custom.palettes.css"),
+].join("\n");
 const themeRules = cssRules(theme);
 const indexHtml = readSibling("../../index.html");
 const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
@@ -110,12 +113,20 @@ describe("fork guard: fork-neutral-darker-theme", () => {
     expect(stageBg).not.toBe(NEUTRAL_DARK_BACKGROUND);
     expect(relativeLuminance(stageBg)).toBeLessThan(relativeLuminance(NEUTRAL_DARK_BACKGROUND));
 
-    expect(panelBg).toBe("#1d1d1d");
-    expect(panel).toContain("--sidebar: #1d1d1d");
+    expect(panelBg).toBe("#212121");
+    expect(panel).toContain("--sidebar: #212121");
     expect(relativeLuminance(panelBg)).toBeLessThan(relativeLuminance(neutralPanelBg));
     expect(relativeLuminance(panelBg)).toBeGreaterThan(relativeLuminance(stageBg));
 
-    expect(stage).toContain("--fork-composer-vessel-bg: #1d1d1d");
+    // Stage card/popover match the panel so menus open at the same lift.
+    expect(declarationHex(stage, "--card")).toBe(panelBg);
+    expect(declarationHex(stage, "--popover")).toBe(panelBg);
+
+    // Vessel is a step above the sidebar so the control row reads against the stage.
+    expect(stage).toContain("--fork-composer-vessel-bg: #252525");
+    expect(relativeLuminance(declarationHex(stage, "--fork-composer-vessel-bg"))).toBeGreaterThan(
+      relativeLuminance(panelBg),
+    );
   });
 
   it("keeps Neutral Darker sidebar solid (no wallpaper vibrancy glass)", () => {
@@ -130,7 +141,7 @@ describe("fork guard: fork-neutral-darker-theme", () => {
     expect(theme).not.toContain("rgb(29 29 29 / 45%)");
 
     const panel = ruleBodyFor(themeRules, DARKER_PANEL);
-    expect(panel).toContain("--sidebar: #1d1d1d");
+    expect(panel).toContain("--sidebar: #212121");
     expect(panel).toContain("--sidebar-row-selected: #2e2e2e");
 
     // The wallpaper-through-sidebar Electron vibrancy experiment is gone
@@ -171,7 +182,7 @@ describe("fork guard: fork-neutral-darker-theme", () => {
   });
 
   it("does not leak Neutral Darker fills into light mode", () => {
-    const darkerHexes = ["#1a1a1a", "#1d1d1d", "#2b2b2b", "#2f2f2f", "#303030"];
+    const darkerHexes = ["#1a1a1a", "#212121", "#252525", "#2b2b2b", "#2f2f2f", "#303030"];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
     );

@@ -1,11 +1,12 @@
 /**
  * Fork dark-palette preferences — see `.fork/customizations.yaml#fork-cool-dark-theme`,
- * `#fork-neutral-dark-theme`, and `#fork-neutral-darker-theme`.
+ * `#fork-cool-darker-theme`, `#fork-neutral-dark-theme`, and `#fork-neutral-darker-theme`.
  *
- * Cool Dark / Neutral Dark / Neutral Darker are CSS palette overlays
+ * Cool Dark / Cool Darker / Neutral Dark / Neutral Darker are CSS palette overlays
  * (`data-fork-theme` + `.dark`), not upstream theme definitions. Upstream
  * `t3code:theme` may contain a standard, built-in, or imported theme id; this
- * module owns `t3code:fork-theme` (`cool-dark` | `neutral-dark` | `neutral-darker` | absent)
+ * module owns `t3code:fork-theme`
+ * (`cool-dark` | `cool-darker` | `neutral-dark` | `neutral-darker` | absent)
  * and the DOM attribute.
  */
 
@@ -25,7 +26,12 @@ export const UPSTREAM_THEME_STORAGE_KEY = "t3code:theme";
 export const COOL_DARK_THEME = "cool-dark" as const;
 export const COOL_DARK_LABEL = "Cool Dark";
 /** Pre-paint / overscroll colour for Cool Dark — matches stage `--background`. */
-export const COOL_DARK_BACKGROUND = "#1c1e20";
+export const COOL_DARK_BACKGROUND = "#202326";
+
+export const COOL_DARKER_THEME = "cool-darker" as const;
+export const COOL_DARKER_LABEL = "Cool Darker";
+/** Pre-paint / overscroll colour for Cool Darker — matches stage `--background`. */
+export const COOL_DARKER_BACKGROUND = "#1a1c1e";
 
 export const NEUTRAL_DARK_THEME = "neutral-dark" as const;
 export const NEUTRAL_DARK_LABEL = "Neutral Dark";
@@ -37,7 +43,12 @@ export const NEUTRAL_DARKER_LABEL = "Neutral Darker";
 /** Pre-paint / overscroll colour for Neutral Darker — matches stage `--background`. */
 export const NEUTRAL_DARKER_BACKGROUND = "#1a1a1a";
 
-export const FORK_PALETTES = [COOL_DARK_THEME, NEUTRAL_DARK_THEME, NEUTRAL_DARKER_THEME] as const;
+export const FORK_PALETTES = [
+  COOL_DARK_THEME,
+  COOL_DARKER_THEME,
+  NEUTRAL_DARK_THEME,
+  NEUTRAL_DARKER_THEME,
+] as const;
 export type ForkPalette = (typeof FORK_PALETTES)[number];
 export type ForkPalettePreference = ForkPalette | null;
 export type AppearanceOption = "light" | "dark" | ForkPalette | "system";
@@ -46,6 +57,7 @@ export type ResolvedAppearanceOption = AppearanceOption | ThemePreference;
 /** Settings derives its fork Appearance options from this — one row per palette. */
 export const FORK_PALETTE_LABELS = {
   [COOL_DARK_THEME]: COOL_DARK_LABEL,
+  [COOL_DARKER_THEME]: COOL_DARKER_LABEL,
   [NEUTRAL_DARK_THEME]: NEUTRAL_DARK_LABEL,
   [NEUTRAL_DARKER_THEME]: NEUTRAL_DARKER_LABEL,
 } as const satisfies Record<ForkPalette, string>;
@@ -64,9 +76,7 @@ function emitChange() {
 }
 
 export function isForkPalette(value: string | null | undefined): value is ForkPalette {
-  return (
-    value === COOL_DARK_THEME || value === NEUTRAL_DARK_THEME || value === NEUTRAL_DARKER_THEME
-  );
+  return value != null && (FORK_PALETTES as readonly string[]).includes(value);
 }
 
 function readUpstreamTheme(): ThemePreference {
