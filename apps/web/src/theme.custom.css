@@ -173,14 +173,14 @@
    The three header controls (Add action / Open / PR) are already built from the
    right primitives: a `Group` wrapping an outline `Button size="xs"`, a
    separator, and a caret `Button size="icon-xs"`. `Group` flattens the inner
-   corners so the pair paints as one control, and `size="xs"` is already 24px
-   and 12px at >=sm — which is exactly the design's spec. So nothing structural
-   changes; the only fork edit in those three files is a `data-fork-pill`
-   attribute, and everything visual happens here.
+   corners so the pair paints as one control. Upstream `size="xs"` is 24px at
+   >=sm; the fork lifts them to 28px here. The only edit in those three files
+   is a `data-fork-pill` attribute, and everything visual happens here.
 
-   What is left to say: round the outer corners to 4px, drop the raised
-   treatment (border tint, popover fill, inset highlight) that reads as a button
-   floating above a page, and open the padding out to the drawn 10px/7px.
+   What is left to say: pin the height to 28px, round the outer corners to 4px,
+   drop the raised treatment (border tint, popover fill, inset highlight) that
+   reads as a button floating above a page, and open the padding out to the
+   drawn 10px/7px.
 
    Selected as `button`, not `[data-slot="button"]`: Base UI's `render` prop
    merges the trigger's own props over the rendered element's, so a `Button`
@@ -188,6 +188,8 @@
    `data-slot="tooltip-trigger"` / `"menu-trigger"`. Two of the three pills are
    built that way, so a slot-based selector silently matches nothing. */
 :root[data-fork="noahhendrickson-t3code"] :is(button[data-fork-pill], [data-fork-pill] > button) {
+  height: 28px;
+  min-height: 28px;
   border-color: var(--fork-pill-border);
   background: transparent;
   color: var(--fork-pill-fg);
@@ -228,7 +230,7 @@
 }
 
 /* The caret half: 7px each side of a 14px glyph, so 28px wide rather than the
-   square 24px `size="icon-xs"` gives it. */
+   square that `size="icon-xs"` would keep after the height lift. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button:last-child:not(:first-child) {
   width: auto;
   padding-inline: 7px;
@@ -692,61 +694,68 @@
 /* ---------------------------------------------------------------------------
    Cool Dark — see `.fork/customizations.yaml#fork-cool-dark-theme`.
 
-   A selectable alternate dark palette: lighter and a touch cooler (cool gray,
-   not blue-slate) than the default fork dark. Placed after the default dark
-   surface / pill / composer / context-chip tokens so Cool Dark wins on both
-   specificity and source order. Same two-block pattern (stage + v2 panel) for
-   the upstream re-declaration reason. Keyed on data-fork-theme so Dark and
-   Cool Dark can coexist; both still carry `.dark` for Tailwind. */
+   Figma t3-fork node 291:18763. Cool-gray stage #202326, sidebar/vessel
+   #2b3033, prompt surface + context chips #353a3d. Barely cool (B−R ≤ 6),
+   not blue-slate. Placed after the default dark surface / pill / composer /
+   context-chip tokens so Cool Dark wins on both specificity and source order.
+   Same two-block pattern (stage + v2 panel) for the upstream re-declaration
+   reason. Keyed on data-fork-theme so Dark and Cool Dark can coexist; both
+   still carry `.dark` for Tailwind. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] {
-  --background: #1c1e20;
-  --app-chrome-background: #1c1e20;
-  --foreground: #e9eaec;
-  --card: #232628;
-  --card-foreground: #e9eaec;
-  --popover: #232628;
-  --popover-foreground: #e9eaec;
-  --secondary: #2c2f33;
-  --secondary-foreground: #e9eaec;
-  --muted: #2c2f33;
-  --muted-foreground: #90949a;
-  --accent: #2c2f33;
-  --accent-foreground: #e9eaec;
-  --border: #34383c;
-  --input: #34383c;
+  --background: #202326;
+  --app-chrome-background: #202326;
+  --foreground: #e8e8e8;
+  --card: #2b3033;
+  --card-foreground: #e8e8e8;
+  --popover: #2b3033;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #202326;
+  --ring: #ffffff;
+  --secondary: #353a3d;
+  --secondary-foreground: #e8e8e8;
+  --muted: #353a3d;
+  --muted-foreground: #9a9a9a;
+  --accent: #353a3d;
+  --accent-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --input: #3f3f3f;
   --surface-grain: none;
-  --fork-pill-border: #3c4045;
-  --fork-pill-fg: #e6e7e9;
-  --fork-pill-hover: #2c2f33;
-  --fork-composer-bg: rgb(44 47 51 / 80%);
-  --fork-composer-border: rgb(220 222 226 / 10%);
-  --fork-composer-border-focus: #52565c;
-  /* Opaque sibling of the Cool Dark composer fill — see default-dark note. */
-  --fork-context-chip-bg: rgb(44 47 51);
-  --fork-context-chip-bg-hover: #34383c;
+  --fork-pill-border: #3f3f3f;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #353a3d;
+  /* Vessel matches the sidebar; prompt surface is the drawn #353a3d lift. */
+  --fork-composer-vessel-bg: #2b3033;
+  --fork-composer-bg: #353a3d;
+  --fork-composer-border: rgb(255 255 255 / 12%);
+  --fork-composer-border-focus: #5c6368;
+  /* Opaque match of the prompt surface — see default-dark note. */
+  --fork-context-chip-bg: #353a3d;
+  --fork-context-chip-bg-hover: #3c4143;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-sidebar-version="v2"] {
-  --background: #232628;
-  --foreground: #e9eaec;
-  --card: #232628;
-  --card-foreground: #e9eaec;
-  --sidebar: #232628;
-  --sidebar-foreground: #e9eaec;
-  --border: #34383c;
-  --sidebar-border: #34383c;
-  --sidebar-stage-fade: #232628;
-  --muted: #2c2f33;
-  --accent: #2c2f33;
-  --accent-foreground: #e9eaec;
-  --muted-foreground: #90949a;
+  --background: #2b3033;
+  --foreground: #e8e8e8;
+  --card: #2b3033;
+  --card-foreground: #e8e8e8;
+  --sidebar: #2b3033;
+  --sidebar-foreground: #e8e8e8;
+  --border: #3f3f3f;
+  --sidebar-border: #3f3f3f;
+  --sidebar-stage-fade: #2b3033;
+  --muted: #353a3d;
+  --accent: #353a3d;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #9a9a9a;
   --sidebar-muted-foreground: #d5d7da;
   --fork-sidebar-card-title-receded: #b2b5ba;
-  --sidebar-control-surface: #393d42;
-  --sidebar-row-hover: #2c2f33;
-  --sidebar-row-active: #32363a;
-  --sidebar-row-selected: #32363a;
+  /* white @ 8% over sidebar #2b3033 — matches Figma thread-card / ⌘K lift. */
+  --sidebar-control-surface: #3c4143;
+  --sidebar-row-hover: #353a3d;
+  --sidebar-row-active: #3c4143;
+  --sidebar-row-selected: #3c4143;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
@@ -756,11 +765,79 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Cool Darker — see `.fork/customizations.yaml#fork-cool-darker-theme`.
+
+   Deeper sibling of Cool Dark: same cool-gray family (B ≥ R, low chroma),
+   pushed down. Stage #1a1c1e (below Cool Dark's #202326); sidebar #222528;
+   composer vessel #282c2f (a step above the sidebar so the control row
+   contrasts); prompt/chips #2e3336. Must not alter Cool Dark, Neutral Dark,
+   Neutral Darker, or default Dark fills. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
+  --background: #1a1c1e;
+  --app-chrome-background: #1a1c1e;
+  --foreground: #e8e8e8;
+  --card: #222528;
+  --card-foreground: #e8e8e8;
+  --popover: #222528;
+  --popover-foreground: #e8e8e8;
+  --primary: #ffffff;
+  --primary-foreground: #1a1c1e;
+  --ring: #ffffff;
+  --secondary: #2e3336;
+  --secondary-foreground: #e8e8e8;
+  --muted: #2e3336;
+  --muted-foreground: #8a8a8a;
+  --accent: #2e3336;
+  --accent-foreground: #e8e8e8;
+  --border: #35393c;
+  --input: #35393c;
+  --surface-grain: none;
+  --fork-pill-border: #35393c;
+  --fork-pill-fg: #e8e8e8;
+  --fork-pill-hover: #2e3336;
+  --fork-composer-vessel-bg: #282c2f;
+  --fork-composer-bg: #2e3336;
+  --fork-composer-border: rgb(255 255 255 / 12%);
+  --fork-composer-border-focus: #4a5055;
+  --fork-context-chip-bg: #2e3336;
+  --fork-context-chip-bg-hover: #353a3d;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"] {
+  --background: #222528;
+  --foreground: #e8e8e8;
+  --card: #222528;
+  --card-foreground: #e8e8e8;
+  --sidebar: #222528;
+  --sidebar-foreground: #e8e8e8;
+  --border: #35393c;
+  --sidebar-border: #35393c;
+  --sidebar-stage-fade: #222528;
+  --muted: #2e3336;
+  --accent: #2e3336;
+  --accent-foreground: #e8e8e8;
+  --muted-foreground: #8a8a8a;
+  --sidebar-muted-foreground: #d0d4d6;
+  --fork-sidebar-card-title-receded: #aeb2b6;
+  --sidebar-control-surface: #353a3d;
+  --sidebar-row-hover: #2e3336;
+  --sidebar-row-active: #353a3d;
+  --sidebar-row-selected: #353a3d;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
    Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
 
    Figma t3-fork node 264:11816: true-neutral grays (no cool undertone). Stage
-   #1f1f1f, sidebar/composer vessel #2a2a2a (slightly darker than the drawn
-   #2e2e2e), prompt surface #3d3d3d, context chips #414141. Same two-block
+   #1f1f1f, sidebar #2a2a2a (slightly darker than the drawn #2e2e2e), composer
+   vessel #323232, prompt surface #3d3d3d, context chips #414141. Same two-block
    pattern and data-fork-theme keying as Cool Dark so Dark / Cool Dark /
    Neutral Dark can coexist. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
@@ -786,7 +863,9 @@
   --fork-pill-border: #4a4a4a;
   --fork-pill-fg: #e8e8e8;
   --fork-pill-hover: #383838;
-  --fork-composer-vessel-bg: #2a2a2a;
+  /* A step above the sidebar panel: the control row reads as part of the
+     composer rather than as more chrome. */
+  --fork-composer-vessel-bg: #323232;
   --fork-composer-bg: rgb(61 61 61 / 80%);
   --fork-composer-border: rgb(255 255 255 / 8%);
   --fork-composer-border-focus: #525252;
@@ -828,9 +907,11 @@
    Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
 
    Same true-neutral family as Neutral Dark, pushed down: chat stage #1a1a1a
-   (slightly darker than Neutral Dark's #1f1f1f), sidebar #1d1d1d (much darker
-   than Neutral Dark's #2a2a2a, still a hair lighter than the stage). Composer
-   vessel tracks the sidebar; prompt/chips lift from that darker base. */
+   (slightly darker than Neutral Dark's #1f1f1f), sidebar #212121 (much darker
+   than Neutral Dark's #2a2a2a, still a step lighter than the stage). Composer
+   vessel sits a step above the sidebar (#252525) so the control row (mode /
+   model / effort) contrasts against the stage; prompt/chips lift from that
+   vessel. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"] {
   --background: #1a1a1a;
   --app-chrome-background: #1a1a1a;
@@ -854,7 +935,8 @@
   --fork-pill-border: #3a3a3a;
   --fork-pill-fg: #e8e8e8;
   --fork-pill-hover: #2b2b2b;
-  --fork-composer-vessel-bg: #1d1d1d;
+  /* A step above the sidebar so the control row reads as composer, not chrome. */
+  --fork-composer-vessel-bg: #252525;
   --fork-composer-bg: rgb(42 42 42 / 80%);
   --fork-composer-border: rgb(255 255 255 / 8%);
   --fork-composer-border-focus: #4a4a4a;
@@ -864,15 +946,15 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
   [data-sidebar-version="v2"] {
-  --background: #1d1d1d;
+  --background: #212121;
   --foreground: #e8e8e8;
-  --card: #1d1d1d;
+  --card: #212121;
   --card-foreground: #e8e8e8;
-  --sidebar: #1d1d1d;
+  --sidebar: #212121;
   --sidebar-foreground: #e8e8e8;
   --border: #2f2f2f;
   --sidebar-border: #2f2f2f;
-  --sidebar-stage-fade: #1d1d1d;
+  --sidebar-stage-fade: #212121;
   --muted: #2b2b2b;
   --accent: #2b2b2b;
   --accent-foreground: #e8e8e8;
@@ -1742,7 +1824,7 @@
   /* Surface and field follow the THEME, not the palette the Figma file happened to be
      drawn in: the panel docks inside the workspace, so a pinned #232527 read as a lighter
      slab bolted onto it — and drifted further with every alternate theme (Cool Dark's
-     background is #1c1e20). Deriving them means the panel matches whatever surface it is
+     background is #202326). Deriving them means the panel matches whatever surface it is
      sitting on, including themes that don't exist yet. */
   --fork-design-surface: var(--background);
   --fork-design-field: var(--muted);
@@ -1778,4 +1860,99 @@
    (Layers / preview chrome / Design). Same --border token DiffPanelShell uses. */
 :root[data-fork="noahhendrickson-t3code"] [data-right-panel-tabbar] {
   border-bottom: 1px solid var(--border);
+}
+
+/* ── Pending user-input questions (fork-pending-user-input) ───────────────────
+   Upstream wraps the panel in a muted rounded strip inside the surface. Under
+   the fork the questions block is the top of the same vessel: drop the tint
+   and the 19px top radius so it reads flush with the 8px composer shell. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-surface]
+  > div:has([data-fork-pending-user-input]) {
+  border-radius: 0;
+  background: transparent;
+  border-bottom-color: rgb(255 255 255 / 12%);
+}
+
+/* Pending Previous / Next sit in the prompt row with items-end. Upstream's
+   sm outline pills are taller than the one-line prompt, so the placeholder
+   hangs low in the surface. Pin both actions to the 24px composer control
+   height so the row and the text share one midline. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action] {
+  height: 24px;
+  min-height: 24px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* True outline: upstream outline still paints dark:bg-input/32 + inset
+   shadow, which reads as a muddy fill next to the stop/send squares. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action="previous"] {
+  background: transparent;
+  border-color: rgb(255 255 255 / 24%);
+  color: var(--foreground);
+  box-shadow: none;
+  padding-inline: 8px;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action="previous"]::before {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-pending-user-input-action="previous"]:is(:hover, [data-pressed]) {
+  background: rgb(255 255 255 / 4%);
+  border-color: rgb(255 255 255 / 32%);
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pending-user-input-action="advance"] {
+  padding-inline: 10px;
+}
+
+/* ── Changed-files card in the chat column ───────────────────────────────────
+   Upstream paints `dark:bg-input/32` — a translucent wash of --input. Cool
+   Dark's --input is neutral #3f3f3f (border gray), so the card never lands on
+   the cool opaque ladder (--card #2b3033 / --secondary #353a3d). Same miss on
+   every fork dark palette: freeze the card to --card so each palette's stage
+   tokens actually show. Hairline + 8px match the composer vessel. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] {
+  background: var(--card);
+  border-color: rgb(255 255 255 / 12%);
+  border-radius: 8px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-header] {
+  background: var(--card);
+}
+
+/* File/folder names were muted-foreground/@80 — too soft on the lifted card.
+   Keep diff stats on their own green/red; only the path labels lift. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] button > span.truncate {
+  color: var(--foreground);
+}
+
+/* Open diff / expand-collapse: true outline, not upstream's dark:bg-input/32. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] [data-slot="button"] {
+  background: transparent;
+  border-color: rgb(255 255 255 / 24%);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-changed-files-state]
+  [data-slot="button"]::before {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-changed-files-state]
+  [data-slot="button"]:is(:hover, [data-pressed]) {
+  background: rgb(255 255 255 / 4%);
+  border-color: rgb(255 255 255 / 32%);
 }

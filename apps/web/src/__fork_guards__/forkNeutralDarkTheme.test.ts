@@ -94,7 +94,7 @@ describe("fork guard: fork-neutral-dark-theme", () => {
     expect(declarationHex(panel, "--background")).toBe("#2a2a2a");
     expect(panel).toContain("--sidebar: #2a2a2a");
     expect(panel).toContain("--sidebar-stage-fade: #2a2a2a");
-    expect(stage).toContain("--fork-composer-vessel-bg: #2a2a2a");
+    expect(stage).toContain("--fork-composer-vessel-bg: #323232");
     expect(stage).toContain("--fork-composer-bg: rgb(61 61 61 / 80%)");
     expect(stage).toContain("--fork-context-chip-bg: rgb(65 65 65)");
   });

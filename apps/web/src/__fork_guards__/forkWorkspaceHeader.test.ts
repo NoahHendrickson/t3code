@@ -67,6 +67,16 @@ describe("fork guard: fork-workspace-header", () => {
     expect(theme).toMatch(/\[data-fork-pill\][\s\S]{0,600}box-shadow:\s*none/u);
   });
 
+  it("pins the pills to 28px tall", () => {
+    // Upstream size="xs" is 24px at >=sm; the fork lifts the three header
+    // controls without changing their Button size prop.
+    const pill = cssRules(theme).find(
+      (rule) => rule.selector.includes("[data-fork-pill]") && rule.body.includes("height: 28px"),
+    );
+    expect(pill?.body).toMatch(/height:\s*28px/u);
+    expect(pill?.body).toMatch(/min-height:\s*28px/u);
+  });
+
   it("takes the drawn pill colours in dark and defers to upstream in light", () => {
     // Dark-only design. The light build must fall through to --border /
     // --foreground / --accent rather than inherit a hardcoded dark border.

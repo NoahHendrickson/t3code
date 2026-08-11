@@ -170,6 +170,38 @@ describe("fork theme synchronization", () => {
     expect(classes.has("no-transitions")).toBe(false);
   });
 
+  it("stamps Cool Darker on the shared palette key", async () => {
+    const { storage, values } = createStorage({ "t3code:theme": "system" });
+    const { attributes, classes, root } = createDocumentRoot();
+    vi.stubGlobal("window", {
+      localStorage: storage,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      },
+    });
+    vi.stubGlobal("document", { documentElement: root });
+    vi.doMock("../hooks/useTheme", () => ({
+      readThemePreference: () => storage.getItem("t3code:theme") ?? "system",
+      subscribeToThemeChanges: vi.fn(() => () => {}),
+      syncBrowserChromeTheme: vi.fn(),
+    }));
+
+    const { FORK_THEME_ATTRIBUTE, readForkPalette, resolveAppearanceOption, setForkAppearance } =
+      await import("./forkTheme");
+    setForkAppearance("cool-darker", (theme) => {
+      storage.setItem("t3code:theme", theme);
+      classes.add("dark");
+      return true;
+    });
+
+    expect(values.get("t3code:theme")).toBe("dark");
+    expect(values.get("t3code:fork-theme")).toBe("cool-darker");
+    expect(readForkPalette()).toBe("cool-darker");
+    expect(resolveAppearanceOption("dark", readForkPalette())).toBe("cool-darker");
+    expect(attributes.get(FORK_THEME_ATTRIBUTE)).toBe("cool-darker");
+  });
+
   it("stamps Neutral Dark on the shared palette key", async () => {
     const { storage, values } = createStorage({ "t3code:theme": "system" });
     const { attributes, classes, root } = createDocumentRoot();

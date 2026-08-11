@@ -949,11 +949,12 @@
     Cool Dark is a fork palette overlay, not an upstream theme definition.
     Upstream t3code:theme may hold a standard, built-in, or imported theme id.
     The palette is persisted separately in t3code:fork-theme
-    (cool-dark | neutral-dark | neutral-darker | absent) by custom/forkTheme.ts
-    — Neutral Dark / Neutral Darker share that key (see
-    fork-neutral-dark-theme, fork-neutral-darker-theme). Selecting Cool Dark
-    sets upstream theme to dark and stamps data-fork-theme="cool-dark" on
-    :root; selecting another built-in or imported theme clears that attribute.
+    (cool-dark | cool-darker | neutral-dark | neutral-darker | absent) by
+    custom/forkTheme.ts — Cool Darker / Neutral Dark / Neutral Darker share
+    that key (see fork-cool-darker-theme, fork-neutral-dark-theme,
+    fork-neutral-darker-theme). Selecting Cool Dark sets upstream theme to dark
+    and stamps data-fork-theme="cool-dark" on :root; selecting another built-in
+    or imported theme clears that attribute.
     A legacy t3code:theme=cool-dark value migrates to theme=dark plus the
     palette key. main.tsx starts one document-level owner after the fork marker
     is stamped; it subscribes to upstream same-tab theme writes and reconciles
@@ -965,9 +966,10 @@
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
     selector plus [data-sidebar-version="v2"] (panel) — the doubled selector is
     required for the same upstream re-declaration reason as fork-surface-palette.
-    Stage is #1c1e20, panel #232628 (panel above stage), with cool-gray borders,
-    row fills, composer, pills, and context chips. index.html pre-paints Cool
-    Dark so the load flash matches the stage.
+    Figma t3-fork node 291:18763. Stage is #202326, panel/sidebar #2b3033
+    (panel above stage), prompt surface + context chips #353a3d, border
+    #3f3f3f, with matching cool-gray row fills, composer vessel, and pills.
+    index.html pre-paints Cool Dark so the load flash matches the stage.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
@@ -982,18 +984,42 @@
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
 
+- id: fork-cool-darker-theme
+  intent: >
+    Appearance offers Cool Darker as a deeper sibling of Cool Dark. Same
+    cool-gray family (barely cool, not blue-slate). Chat stage #1a1c1e
+    (darker than Cool Dark's #202326); sidebar #222528; composer vessel
+    #282c2f (a step above the sidebar so the control row contrasts); prompt
+    surface + context chips #2e3336. Must not alter Cool Dark, Neutral Dark,
+    Neutral Darker, or default Dark fills.
+
+    Same fork palette overlay as Cool Dark (t3code:fork-theme = cool-darker,
+    upstream theme = dark, data-fork-theme="cool-darker"). theme.custom.css
+    uses the two-block stage + v2 panel pattern. index.html pre-paints
+    #1a1c1e.
+  tier: 2
+  files:
+    - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/theme.custom.css
+  watch:
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/index.html
+  verify:
+    - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
+    - apps/web/src/custom/forkTheme.test.ts
+
 - id: fork-neutral-dark-theme
   intent: >
     Appearance offers Neutral Dark alongside System, Light, Dark, and Cool Dark.
     Neutral Dark is a true-neutral gray palette from Figma t3-fork node
     264:11816 — no cool undertone. Selecting it must not replace or alter
-    default Dark (#191919 / #1e1e1e) or Cool Dark (#1c1e20 / #232628).
+    default Dark (#191919 / #1e1e1e) or Cool Dark (#202326 / #2b3033).
 
     Neutral Dark reuses the fork palette overlay in custom/forkTheme.ts
     (t3code:fork-theme = neutral-dark, upstream theme = dark,
-    data-fork-theme="neutral-dark"). Stage #1f1f1f, sidebar panel and composer
-    vessel #2a2a2a (slightly darker than Figma's #2e2e2e), prompt surface
-    #3d3d3d (frosted), context chips #414141,
+    data-fork-theme="neutral-dark"). Stage #1f1f1f, sidebar panel #2a2a2a
+    (slightly darker than Figma's #2e2e2e), composer vessel #323232 (a step
+    above the panel), prompt surface #3d3d3d (frosted), context chips #414141,
     row hover/selected as opaque white-8% lifts (#383838 / #3a3a3a), borders
     #3f3f3f. Accents stay monochrome (white primary/ring) with neutral muted
     text. theme.custom.css uses the same two-block stage + v2 panel pattern as
@@ -1014,10 +1040,11 @@
   intent: >
     Appearance offers Neutral Darker as a deeper sibling of Neutral Dark.
     True-neutral grays only. Chat stage #1a1a1a (slightly darker than Neutral
-    Dark's #1f1f1f); sidebar #1d1d1d (much darker than Neutral Dark's #2a2a2a,
-    still slightly lighter than the stage). Composer vessel tracks the sidebar;
-    prompt/chips lift from that darker base. Must not alter Neutral Dark, Cool
-    Dark, or default Dark fills.
+    Dark's #1f1f1f); sidebar #212121 (much darker than Neutral Dark's #2a2a2a,
+    still a step lighter than the stage). Composer vessel sits a step above
+    the sidebar at #252525 so the control row (mode / model / effort) contrasts
+    against the stage; prompt/chips lift from that vessel. Must not alter
+    Neutral Dark, Cool Dark, or default Dark fills.
 
     Same fork palette overlay as Cool Dark / Neutral Dark
     (t3code:fork-theme = neutral-darker, upstream theme = dark,
@@ -1225,15 +1252,15 @@
     fork fence, so a sync will not re-apply upstream changes to them
     automatically; port upstream's intent by hand when that hunk drifts.
 
-    Those three controls (Add action / Open / PR) become 4px-radius split
-    pills. They were already built from the right primitives — a Group wrapping
-    an outline Button size="xs", a separator, and a caret Button size="icon-xs",
-    where Group flattens the inner corners and size="xs" is already 24px and
-    12px at >=sm — so nothing structural changes. The only edit in those three
-    files is a data-fork-pill attribute; the styling is all in the Tier 1
-    stylesheet, which rounds the outer corners to 4px, drops the raised
-    treatment that reads as a button floating above a page, and opens padding
-    to 10px/7px.
+    Those three controls (Add action / Open / PR) become 28px-tall, 4px-radius
+    split pills. They were already built from the right primitives — a Group
+    wrapping an outline Button size="xs", a separator, and a caret Button
+    size="icon-xs", where Group flattens the inner corners — so nothing
+    structural changes. The only edit in those three files is a data-fork-pill
+    attribute; the styling is all in the Tier 1 stylesheet, which pins height
+    to 28px (upstream xs is 24px at >=sm), rounds the outer corners to 4px,
+    drops the raised treatment that reads as a button floating above a page,
+    and opens padding to 10px/7px.
 
     The two panel toggles render at 16px, and their glyphs become SquareHalf and
     SquareHalfBottom via the Phosphor shim rather than at the call site — see
@@ -2352,3 +2379,54 @@
     - apps/web/src/components/RightPanelTabs.tsx
   verify:
     - apps/web/src/__fork_guards__/forkRightPanelTabbarDivider.test.ts
+
+- id: fork-pending-user-input
+  intent: >
+    When an agent asks the user to answer questions, the composer pending
+    user-input panel matches the fork Questions design: a Questions header
+    with answered/total progress, the active question prompt, and option
+    rows with the control on the left (checkbox for multi-select, radio for
+    single-select), label beside it, and description indented under the
+    label. Selection uses a light fill and hairline rather than the
+    upstream primary tint and trailing check/number-key badges. Behavior
+    stays the same — multi toggles in place, single auto-advances — only
+    the chrome changes. The panel is a shadow of the upstream leaf; the
+    vessel strip that wraps it is cleared by a fork-scoped :has() rule so
+    the questions block sits flush in the 8px composer shell. Pending
+    Previous is a true outline (transparent fill, hairline border) and both
+    Previous and Next/Submit are 24px so the prompt placeholder stays
+    vertically centered beside them instead of hanging low under items-end.
+  tier: 2
+  files:
+    - apps/web/src/overrides/components/chat/ComposerPendingUserInputPanel.tsx
+    - apps/web/src/theme.custom.css
+  shadows:
+    - apps/web/src/components/chat/ComposerPendingUserInputPanel.tsx
+  watch:
+    # data-fork-pending-user-input-action on Previous and Next/Submit; the
+    # outline + 24px restyle hangs off those attributes.
+    - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkPendingUserInput.test.ts
+
+- id: fork-changed-files-card
+  intent: >
+    The chat-column changed-files card uses the fork dark surface ladder
+    instead of upstream's translucent dark:bg-input/32 wash. Cool Dark's
+    --input is neutral #3f3f3f, so that wash never lands on the cool opaque
+    card/secondary fills; under the fork marker the card and sticky header
+    paint var(--card), an 8px radius, and a white/12 hairline so Cool Dark
+    (#2b3033), Cool Darker, Neutral Dark, and default Dark all show through
+    their own --card token. File/folder path labels use --foreground; outline
+    actions inside the card are transparent with a hairline rather than the
+    muddy input fill. Keys off data-changed-files-state / -header that
+    upstream already ships.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Owns data-changed-files-state and data-changed-files-header.
+    - apps/web/src/components/chat/ChangedFilesTree.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkChangedFilesCard.test.ts

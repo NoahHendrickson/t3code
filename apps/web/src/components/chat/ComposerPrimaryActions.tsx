@@ -111,6 +111,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
               size="icon-sm"
               variant="outline"
               className="rounded-full"
+              /* fork:begin fork-pending-user-input — see .fork/customizations.yaml#fork-pending-user-input */
+              data-fork-pending-user-input-action="previous"
+              /* fork:end fork-pending-user-input */
               {...pointerFocusProps}
               onClick={onPreviousPendingQuestion}
               disabled={pendingAction.isResponding}
@@ -123,6 +126,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
               size="sm"
               variant="outline"
               className="rounded-full"
+              /* fork:begin fork-pending-user-input — see .fork/customizations.yaml#fork-pending-user-input */
+              data-fork-pending-user-input-action="previous"
+              /* fork:end fork-pending-user-input */
               {...pointerFocusProps}
               onClick={onPreviousPendingQuestion}
               disabled={pendingAction.isResponding}
@@ -138,6 +144,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
             "rounded-full bg-message-action text-message-action-foreground hover:bg-message-action-hover",
             compact ? "px-3" : "px-4",
           )}
+          /* fork:begin fork-pending-user-input — see .fork/customizations.yaml#fork-pending-user-input */
+          data-fork-pending-user-input-action="advance"
+          /* fork:end fork-pending-user-input */
           {...pointerFocusProps}
           disabled={
             isEnvironmentUnavailable ||
