@@ -2,11 +2,11 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-pending-user-input`.
  *
- * The questions chrome is a full shadow of the upstream leaf. A sync that
- * deletes the override (or the :has() strip rule) silently falls back to
- * upstream's primary-tint options and number-key badges — everything still
- * compiles. Assert the outcomes the design depends on: Questions progress,
- * checkbox vs radio affordances, and the vessel-strip clear.
+ * The questions chrome is a presentational shadow over shared card logic in
+ * custom/. A sync that deletes the override (or the strip attribute/CSS) silently
+ * falls back to upstream's primary-tint options and number-key badges —
+ * everything still compiles. Assert the outcomes the design depends on:
+ * Questions progress, checkbox vs radio affordances, and the vessel-strip clear.
  */
 
 import * as NodeFS from "node:fs";
@@ -23,15 +23,23 @@ function readSibling(relativePath: string): string {
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
 const override = readSibling("../overrides/components/chat/ComposerPendingUserInputPanel.tsx");
+const hook = readSibling("../custom/useComposerPendingUserInputCard.ts");
 const upstream = readSibling("../components/chat/ComposerPendingUserInputPanel.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
+const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 
 describe("fork guard: fork-pending-user-input", () => {
-  it("keeps a shadow that owns the Questions chrome", () => {
+  it("keeps a thin shadow that owns the Questions chrome", () => {
     expect(override).toContain('data-fork-pending-user-input="true"');
     expect(override).toContain(">Questions</");
     expect(override).toContain("answeredQuestionCount");
     expect(override).toContain("prompt.questions.length");
+    expect(override).toContain("useComposerPendingUserInputCard");
+    // Card interaction lives in custom/; the override must not re-own it.
+    expect(override).not.toContain("autoAdvanceTimerRef");
+    expect(override).not.toContain('addEventListener("keydown"');
+    expect(hook).toContain("autoAdvanceTimerRef");
+    expect(hook).toContain('addEventListener("keydown"');
     // Upstream still shows number-key badges and the question header chip;
     // the shadow must not regress to that layout.
     expect(upstream).toContain("shortcutKey");
@@ -50,20 +58,23 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(override).toMatch(/multiSelect[\s\S]{0,200}rounded-\[4px\]/u);
   });
 
-  it("clears the upstream muted strip around the panel under the fork marker", () => {
+  it("clears the upstream muted strip via a fenced ChatComposer hook", () => {
+    expect(chatComposer).toContain('data-fork-pending-user-input-strip=""');
+    expect(chatComposer).toContain("fork:begin fork-pending-user-input");
     const stripRules = cssRules(theme).filter((rule) =>
-      rule.selector.includes("[data-fork-pending-user-input]"),
+      rule.selector.includes("[data-fork-pending-user-input-strip]"),
     );
     expect(stripRules.length).toBeGreaterThan(0);
     for (const rule of stripRules) {
       expect(rule.selector, `unscoped pending-user-input rule: ${rule.selector}`).toContain(MARKER);
     }
     expect(theme).toMatch(
-      /\[data-fork-composer-surface\]\s*>\s*div:has\(\[data-fork-pending-user-input\]\)/u,
+      /\[data-fork-composer-surface\]\s*\[data-fork-pending-user-input-strip\]/u,
     );
     expect(theme).toMatch(
-      /div:has\(\[data-fork-pending-user-input\]\)[\s\S]{0,200}background:\s*transparent/u,
+      /\[data-fork-pending-user-input-strip\][\s\S]{0,200}background:\s*transparent/u,
     );
+    expect(theme).not.toContain(":has([data-fork-pending-user-input])");
   });
 
   it("marks pending Previous/Next so CSS can outline and center them", () => {

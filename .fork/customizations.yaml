@@ -336,6 +336,7 @@
   files:
     - apps/web/src/custom/forkMarker.ts
     - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.palettes.css
   shadows: []
   watch:
     - apps/web/src/main.tsx
@@ -962,7 +963,7 @@
     stored preference. Palette snapshots never migrate or write during render.
     No useTheme override.
 
-    The palette lives in theme.custom.css under
+    Palette tokens live in theme.custom.palettes.css under
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
     selector plus [data-sidebar-version="v2"] (panel) — the doubled selector is
     required for the same upstream re-declaration reason as fork-surface-palette.
@@ -974,6 +975,7 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.palettes.css
   watch:
     - apps/web/src/main.tsx
     - apps/web/src/hooks/useTheme.ts
@@ -994,13 +996,14 @@
     Neutral Darker, or default Dark fills.
 
     Same fork palette overlay as Cool Dark (t3code:fork-theme = cool-darker,
-    upstream theme = dark, data-fork-theme="cool-darker"). theme.custom.css
-    uses the two-block stage + v2 panel pattern. index.html pre-paints
-    #1a1c1e.
+    upstream theme = dark, data-fork-theme="cool-darker"). Palette tokens
+    live in theme.custom.palettes.css (two-block stage + v2 panel). index.html
+    pre-paints #1a1c1e.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.palettes.css
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html
@@ -1022,13 +1025,14 @@
     above the panel), prompt surface #3d3d3d (frosted), context chips #414141,
     row hover/selected as opaque white-8% lifts (#383838 / #3a3a3a), borders
     #3f3f3f. Accents stay monochrome (white primary/ring) with neutral muted
-    text. theme.custom.css uses the same two-block stage + v2 panel pattern as
-    Cool Dark. index.html pre-paints #1f1f1f so the load flash matches. The
-    sidebar stays opaque solid — wallpaper glass belongs to Neutral Darker.
+    text. theme.custom.palettes.css uses the same two-block stage + v2 panel
+    pattern as Cool Dark. index.html pre-paints #1f1f1f so the load flash matches.
+    The sidebar stays opaque solid — wallpaper glass belongs to Neutral Darker.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.palettes.css
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html
@@ -1048,8 +1052,8 @@
 
     Same fork palette overlay as Cool Dark / Neutral Dark
     (t3code:fork-theme = neutral-darker, upstream theme = dark,
-    data-fork-theme="neutral-darker"). theme.custom.css uses the two-block
-    stage + v2 panel pattern. index.html pre-paints #1a1a1a.
+    data-fork-theme="neutral-darker"). theme.custom.palettes.css uses the
+    two-block stage + v2 panel pattern. index.html pre-paints #1a1a1a.
 
     Sidebar wallpaper glass via Electron vibrancy was attempted and removed
     without residue: Neutral Darker is a solid opaque panel, the desktop app
@@ -1060,6 +1064,7 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.palettes.css
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html
@@ -2390,19 +2395,25 @@
     label. Selection uses a light fill and hairline rather than the
     upstream primary tint and trailing check/number-key badges. Behavior
     stays the same — multi toggles in place, single auto-advances — only
-    the chrome changes. The panel is a shadow of the upstream leaf; the
-    vessel strip that wraps it is cleared by a fork-scoped :has() rule so
-    the questions block sits flush in the 8px composer shell. Pending
-    Previous is a true outline (transparent fill, hairline border) and both
-    Previous and Next/Submit are 24px so the prompt placeholder stays
-    vertically centered beside them instead of hanging low under items-end.
+    the chrome changes. Card interaction (auto-advance, optimistic single-
+    select, number keys) lives in custom/useComposerPendingUserInputCard.ts;
+    the override is a presentational shadow of the upstream leaf. The vessel
+    strip that wraps it is cleared via a fenced
+    data-fork-pending-user-input-strip attribute on ChatComposer so the
+    questions block sits flush in the 8px composer shell. Pending Previous
+    is a true outline (transparent fill, hairline border) and both Previous
+    and Next/Submit are 24px so the prompt placeholder stays vertically
+    centered beside them instead of hanging low under items-end.
   tier: 2
   files:
+    - apps/web/src/custom/useComposerPendingUserInputCard.ts
     - apps/web/src/overrides/components/chat/ComposerPendingUserInputPanel.tsx
     - apps/web/src/theme.custom.css
   shadows:
     - apps/web/src/components/chat/ComposerPendingUserInputPanel.tsx
   watch:
+    # data-fork-pending-user-input-strip on the muted vessel wrappers.
+    - apps/web/src/components/chat/ChatComposer.tsx
     # data-fork-pending-user-input-action on Previous and Next/Submit; the
     # outline + 24px restyle hangs off those attributes.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx

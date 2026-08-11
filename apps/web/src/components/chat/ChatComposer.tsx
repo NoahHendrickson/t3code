@@ -2918,7 +2918,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   />
                 </div>
               ) : pendingUserInputs.length > 0 ? (
-                <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                <div
+                  className="rounded-t-[19px] border-b border-border/65 bg-muted/20"
+                  /* fork:begin fork-pending-user-input — see .fork/customizations.yaml#fork-pending-user-input */
+                  data-fork-pending-user-input-strip=""
+                  /* fork:end fork-pending-user-input */
+                >
                   <ComposerPendingUserInputPanel
                     pendingUserInputs={pendingUserInputs}
                     respondingRequestIds={respondingRequestIds}
@@ -2958,6 +2963,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               <div
                 className="rounded-t-[19px] border-b border-border/65 bg-muted/20"
                 data-chat-composer-collapsed-controls="true"
+                /* fork:begin fork-pending-user-input — see .fork/customizations.yaml#fork-pending-user-input */
+                data-fork-pending-user-input-strip=""
+                /* fork:end fork-pending-user-input */
               >
                 <ComposerPendingUserInputPanel
                   pendingUserInputs={pendingUserInputs}

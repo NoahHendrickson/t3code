@@ -32,7 +32,11 @@ function readSibling(relativePath: string): string {
 }
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
-const theme = readSibling("../theme.custom.css");
+// Default Dark stage lives in theme.custom.css; Neutral/Cool overlays live in palettes.
+const theme = [
+  readSibling("../theme.custom.css"),
+  readSibling("../theme.custom.palettes.css"),
+].join("\n");
 const themeRules = cssRules(theme);
 const indexHtml = readSibling("../../index.html");
 const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");

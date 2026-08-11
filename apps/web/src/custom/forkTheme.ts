@@ -76,12 +76,7 @@ function emitChange() {
 }
 
 export function isForkPalette(value: string | null | undefined): value is ForkPalette {
-  return (
-    value === COOL_DARK_THEME ||
-    value === COOL_DARKER_THEME ||
-    value === NEUTRAL_DARK_THEME ||
-    value === NEUTRAL_DARKER_THEME
-  );
+  return value != null && (FORK_PALETTES as readonly string[]).includes(value);
 }
 
 function readUpstreamTheme(): ThemePreference {

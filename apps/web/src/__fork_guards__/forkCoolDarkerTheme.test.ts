@@ -33,7 +33,10 @@ function readSibling(relativePath: string): string {
 }
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
-const theme = readSibling("../theme.custom.css");
+const theme = [
+  readSibling("../theme.custom.css"),
+  readSibling("../theme.custom.palettes.css"),
+].join("\n");
 const themeRules = cssRules(theme);
 const indexHtml = readSibling("../../index.html");
 const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
@@ -69,6 +72,10 @@ describe("fork guard: fork-cool-darker-theme", () => {
       `export const COOL_DARKER_BACKGROUND = "${COOL_DARKER_BACKGROUND}"`,
     );
     expect(forkTheme).toContain(`FORK_PALETTE_STORAGE_KEY = "${FORK_PALETTE_STORAGE_KEY}"`);
+    // FORK_PALETTES is the single source of truth — no hand-extended || chain.
+    expect(forkTheme).toMatch(
+      /function isForkPalette[\s\S]*?\(FORK_PALETTES as readonly string\[\]\)\.includes\(value\)/u,
+    );
     expect(resolveAppearanceOption("dark", "cool-darker")).toBe("cool-darker");
     expect(resolveAppearanceOption("system", "cool-darker")).toBe("system");
     expect(resolveActiveForkPalette("system", "cool-darker")).toBeNull();
