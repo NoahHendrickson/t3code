@@ -562,4 +562,30 @@ describe("fork guard: fork-composer-shell", () => {
     // own 6px gap and the mobile slot's 48% cap.
     expect(everyChild?.body).not.toMatch(/gap:|max-width:/u);
   });
+
+  it("moves background liveness off the banner stack onto a context-strip pill with stop", () => {
+    const pill = readSibling("../custom/ComposerMonitoringPill.tsx");
+    const branchToolbar = readSibling("../components/BranchToolbar.tsx");
+    expect(pill).toContain("export const ComposerBackgroundLivenessPill");
+    expect(pill).toContain("kind: ComposerBackgroundLivenessKind");
+    expect(pill).toContain('"monitoring"');
+    expect(pill).toContain('"working"');
+    expect(pill).toContain("SidebarV2WorkingRain");
+    expect(pill).toContain("data-fork-liveness-mark");
+    expect(pill).toContain("data-fork-monitoring-pill");
+    expect(pill).toContain("data-fork-monitoring-stop");
+    expect(pill).toContain("data-fork-monitoring-pulse");
+    expect(pill).toContain("Stop background work");
+    expect(branchToolbar).toContain("trailing?: ReactNode");
+    expect(branchToolbar).toContain("{trailing ?? null}");
+    expect(chatView).toContain("<ComposerBackgroundLivenessPill");
+    expect(chatView).toContain("trailing: composerLivenessPill");
+    expect(chatView).toContain("rainSeed=");
+    expect(chatView).not.toContain("backgroundLivenessBannerItem");
+    expect(chatView).not.toContain('"Monitoring in the background"');
+    expect(chatView).not.toContain('"Background work running"');
+    expect(theme).toContain("[data-fork-monitoring-pill]");
+    expect(theme).toContain("button[data-fork-monitoring-stop]");
+    expect(theme).toContain("[data-fork-liveness-mark]");
+  });
 });

@@ -246,3 +246,16 @@ export function SidebarV2WokeMark() {
     </span>
   );
 }
+
+/** Monitoring — background watch work that is still alive but not actively
+    turning. Same 8px / 14px geometry as the other dots so the title column
+    stays aligned; the slow white opacity breath (50% → 20%) is the signal,
+    not a hue or a text label. Keyframes in `theme.custom.css` are duty-cycled
+    and stepped so the compositor is not woken every vsync. */
+export function SidebarV2MonitoringMark() {
+  return (
+    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
+      <span data-fork-monitoring-pulse className="size-2 rounded-full" />
+    </span>
+  );
+}

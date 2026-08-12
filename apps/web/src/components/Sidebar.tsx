@@ -177,6 +177,7 @@ import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 import {
   SidebarV2IdleMark,
+  SidebarV2MonitoringMark,
   SidebarV2StatusDot,
   SidebarV2WokeMark,
   SidebarV2WorkingRain,
@@ -675,8 +676,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // Only two of these were drawn (working, approval); the rest are extended
   // from the same vocabulary. `rain` = the agent is moving, `dot` = it
   // stopped and the row is waiting on something, `woke` keeps its own glyph.
-  // Labels are no longer painted except for upstream's live Monitoring state;
-  // the others survive only as accessible names for aria-hidden marks.
+  // Labels are no longer painted — every status is a leading mark (rain, dot,
+  // woke clock, idle ring, or the slow monitoring pulse). The label strings
+  // survive only as accessible names for aria-hidden marks.
   //
   // Discriminated on `mark` so the dot branch cannot be handed the `working`
   // tone, which has no dot rendering.
@@ -705,7 +707,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
   // the surface consumes it too: title and surface dim together, or a Working
   // card would recede its surface while forcing its title forward. Monitoring
-  // has no tone, so discriminate on its mark before reading the dot tone.
+  // keeps its title forward (not idle, not done).
   const cardRecedes = threadCardTitleRecedes({
     isDone: topStatus?.mark === "dot" && topStatus.tone === "done",
     isIdle: topStatus === null,
@@ -1076,15 +1078,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 fallbackIcon={MessageSquareIcon}
               />
             </span>
-            {title}
             {topStatus?.mark === "monitoring" ? (
-              <span
-                role="status"
-                className="shrink-0 text-xs font-medium text-sky-600 dark:text-sky-400"
-              >
-                Monitoring
-              </span>
+              <>
+                <span role="status" className="sr-only">
+                  Monitoring
+                </span>
+                <SidebarV2MonitoringMark />
+              </>
             ) : null}
+            {title}
             {terminalStatusIcon}
             {isRegeneratingTitle ? (
               <span role="status" className="sr-only">
@@ -1266,13 +1268,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   target. Explicit px so DevTools / rem remaps cannot leave
                   this at 16. */}
               <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
-                {topStatus?.mark === "monitoring" ? null : topStatus ? (
+                {topStatus ? (
                   <>
                     <span role="status" className="sr-only">
                       {topStatus.label}
                     </span>
                     {topStatus.mark === "rain" ? (
                       <SidebarV2WorkingRain seed={threadKey} />
+                    ) : topStatus.mark === "monitoring" ? (
+                      <SidebarV2MonitoringMark />
                     ) : topStatus.mark === "woke" ? (
                       <SidebarV2WokeMark />
                     ) : (
@@ -1292,14 +1296,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 )}
               </span>
               {title}
-              {topStatus?.mark === "monitoring" ? (
-                <span
-                  role="status"
-                  className="shrink-0 text-xs font-medium text-sky-600 dark:text-sky-400"
-                >
-                  Monitoring
-                </span>
-              ) : null}
               {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                   Pinned state rides the title line as a 12px glyph after the
                   prompt: the pinned block above the divider carries the

@@ -134,8 +134,8 @@
   --fork-sidebar-card-title-receded: #aeb2b6;
   --sidebar-control-surface: #353a3d;
   --sidebar-row-hover: #2e3336;
-  --sidebar-row-active: #353a3d;
-  --sidebar-row-selected: #353a3d;
+  --sidebar-row-active: #32373a;
+  --sidebar-row-selected: #32373a;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]

@@ -8,8 +8,8 @@
  *
  * `@keyframes` are the one exception: they are global by definition and cannot
  * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-`
- * (`sidebar-v2-rain-*`, `sidebar-v2-dev-server-pulse`) so the names cannot
- * collide with upstream's.
+ * (`sidebar-v2-rain-*`, `sidebar-v2-dev-server-pulse`,
+ * `sidebar-v2-monitoring-pulse`) so the names cannot collide with upstream's.
  *
  * `@font-face` is the second exception, for the same reason: a face
  * *registration* is global — there is no selector to hang it off. What matters
@@ -744,6 +744,83 @@
   height: 12px;
 }
 
+/* Monitoring chip — see `.fork/customizations.yaml#fork-composer-shell`.
+   Same 24×6 pill as the branch/checkout chips, packed after the branch. The
+   stop control is a nested icon button, so it must opt out of the chip button
+   rules above or it would paint a second full pill. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-monitoring-pill] {
+  height: 24px;
+  min-height: 24px;
+  gap: 6px;
+  padding-block: 0;
+  padding-inline: 8px 4px;
+  border-radius: 6px;
+  background: var(--fork-context-chip-bg);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+  color: var(--fork-pill-fg, var(--foreground));
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-context-row]
+  [data-fork-monitoring-pill] {
+  color: #ffffff;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop] {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop]:hover:not(:disabled) {
+  background: var(--fork-context-chip-bg-hover);
+  opacity: 1;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop]:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop]
+  svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Working rain inside the liveness pill keeps its native 14px mark size —
+   the context-row chip SVG rule only targets button/chip triggers, but pin
+   the mark box so a future broader glyph rule cannot squash the grid. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-liveness-mark]
+  svg {
+  width: auto;
+  height: 14px;
+}
+
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-control-row-slot="right"] {
   gap: 0;
 }
@@ -937,6 +1014,53 @@
   }
   to {
     color: var(--foreground);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Monitoring pulse — see `.fork/customizations.yaml#sidebar-v2-card-rows`.
+
+   Leading status dot for a thread that is watching in the background. White at
+   50% → 20% opacity — ambient "still going", not an alert. Light mode uses ink
+   so the same breath stays visible on a pale panel. Reduced motion keeps the
+   brighter pole statically.
+
+   Performance (same contract as upstream `ghost-pulse` / `status-pulse`):
+   opacity-only on an 8px box, long holds with stepped ramps, so the compositor
+   draws a handful of discrete frames per cycle rather than one per vsync —
+   which on a 120Hz display is the difference between ~10 and ~480 updates.
+   No `will-change` (would pin a layer for every monitoring row). Offscreen
+   rows pay nothing via `content-visibility: auto` on the li. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-monitoring-pulse] {
+  background-color: #ffffff;
+  opacity: 0.5;
+  contain: paint;
+  animation: sidebar-v2-monitoring-pulse 4s infinite;
+}
+
+:root[data-fork="noahhendrickson-t3code"]:not(.dark) [data-fork-monitoring-pulse] {
+  background-color: #000000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-monitoring-pulse] {
+    animation: none;
+  }
+}
+
+@keyframes sidebar-v2-monitoring-pulse {
+  0%,
+  42% {
+    opacity: 0.5;
+    animation-timing-function: steps(4);
+  }
+  50%,
+  92% {
+    opacity: 0.2;
+    animation-timing-function: steps(4);
+  }
+  100% {
+    opacity: 0.5;
   }
 }
 

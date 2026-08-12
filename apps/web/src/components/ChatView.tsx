@@ -179,6 +179,9 @@ import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
 /* fork:end fork-design-mode */
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { ComposerBackgroundLivenessPill } from "~/custom/ComposerMonitoringPill";
+/* fork:end fork-composer-shell */
 import { useBrowserHistoryStore } from "~/browserHistoryStore";
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
 import { NO_PROVIDER_MODEL_SELECTION } from "../providerInstances";
@@ -4331,10 +4334,11 @@ function ChatViewContent(props: ChatViewProps) {
     updateThreadMetadata,
   ]);
   // Background work (subagent fleets, workflow runs, watch loops) can outlive
-  // the turn; once it settles, the composer stop button is gone, so this
-  // banner is the only visible stop affordance. Stop routes through the
-  // stop-everything interrupt: it kills every live background task before
-  // interrupting, and works by session, so no active turn is needed.
+  // the turn; once it settles, the composer stop button is gone, so the
+  // context-strip liveness pill is the remaining stop affordance. Stop routes
+  // through the stop-everything interrupt: it kills every live background
+  // task before interrupting, and works by session, so no active turn is
+  // needed.
   const activeBackgroundLiveness =
     !isWorking && activeThread ? (activeThreadShell?.backgroundLiveness ?? null) : null;
   const [isStoppingBackgroundWork, setIsStoppingBackgroundWork] = useState(false);
@@ -4371,37 +4375,29 @@ function ChatViewContent(props: ChatViewProps) {
       }
     }
   }, [activeThread, environmentId, interruptThreadTurn, setThreadError]);
-  const backgroundLivenessBannerItem = useMemo<ComposerBannerStackItem | null>(() => {
-    if (activeBackgroundLiveness === null || !activeThread) {
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  // Working fleets and monitoring both leave the banner stack and ride the
+  // context strip as a pill beside the branch chip.
+  const showComposerLivenessPill =
+    activeBackgroundLiveness === "monitoring" || activeBackgroundLiveness === "working";
+  const composerLivenessPill = useMemo(() => {
+    if (
+      !activeThread ||
+      (activeBackgroundLiveness !== "monitoring" && activeBackgroundLiveness !== "working")
+    ) {
       return null;
     }
-    const working = activeBackgroundLiveness === "working";
-    const liveCount = agentPanelModel.liveCount;
-    return {
-      id: `background-liveness:${activeThread.id}`,
-      variant: "default",
-      icon: (
-        <span
-          className={cn("size-1.5 rounded-full bg-foreground", working && "animate-status-pulse")}
-          aria-hidden="true"
-        />
-      ),
-      title: working
-        ? liveCount > 0
-          ? `${liveCount} ${liveCount === 1 ? "agent" : "agents"} working in the background`
-          : "Background work running"
-        : "Monitoring in the background",
-      actions: (
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={isStoppingBackgroundWork}
-          onClick={() => void handleStopBackgroundWork()}
-        >
-          {isStoppingBackgroundWork ? "Stopping..." : "Stop"}
-        </Button>
-      ),
-    };
+    return (
+      <ComposerBackgroundLivenessPill
+        kind={activeBackgroundLiveness}
+        rainSeed={`${activeThread.environmentId}:${activeThread.id}`}
+        {...(activeBackgroundLiveness === "working"
+          ? { liveCount: agentPanelModel.liveCount }
+          : {})}
+        stopping={isStoppingBackgroundWork}
+        onStop={() => void handleStopBackgroundWork()}
+      />
+    );
   }, [
     activeBackgroundLiveness,
     activeThread,
@@ -4409,6 +4405,7 @@ function ChatViewContent(props: ChatViewProps) {
     handleStopBackgroundWork,
     isStoppingBackgroundWork,
   ]);
+  /* fork:end fork-composer-shell */
   // A woken thread announces itself in the open view, not just the sidebar
   // pill. Dismissing marks the wake as seen (same acknowledgment as the
   // pill); sending a message clears it as a side effect of the send path.
@@ -4429,10 +4426,10 @@ function ChatViewContent(props: ChatViewProps) {
   // The stack renders items[0] front-most and tucks the rest behind hover, so
   // ordering is priority: urgent system banners (error/warning variants plus
   // calm-styled live states flagged `urgent`, like update progress), then
-  // background liveness — its Stop button is the only stop affordance for
-  // settled turns, so a passive "update available" notice must not cover it —
-  // then calm system banners, the woke and branch-mismatch notices, and the
+  // calm system banners, the woke and branch-mismatch notices, and the
   // informational parked-thread banner last — it must never cover another.
+  // Background liveness (working / monitoring) lives on the context-strip
+  // pill, not in this stack.
   const parkedThreadBannerItem = useMemo<ComposerBannerStackItem | null>(() => {
     if (!activeThreadSnoozed && !activeThreadSettled) {
       return null;
@@ -4486,22 +4483,13 @@ function ChatViewContent(props: ChatViewProps) {
       item.urgent === true || item.variant === "error" || item.variant === "warning";
     const urgentSystemItems = systemComposerBannerItems.filter(isUrgentSystemItem);
     const calmSystemItems = systemComposerBannerItems.filter((item) => !isUrgentSystemItem(item));
-    const backgroundLivenessItems =
-      backgroundLivenessBannerItem === null ? [] : [backgroundLivenessBannerItem];
     const wokeThreadItems = wokeThreadBannerItem === null ? [] : [wokeThreadBannerItem];
     const parkedThreadItems = parkedThreadBannerItem === null ? [] : [parkedThreadBannerItem];
     if (!localCheckoutBranchMismatch || !showBranchMismatchBanner || !activeBranchMismatchKey) {
-      return [
-        ...urgentSystemItems,
-        ...backgroundLivenessItems,
-        ...calmSystemItems,
-        ...wokeThreadItems,
-        ...parkedThreadItems,
-      ];
+      return [...urgentSystemItems, ...calmSystemItems, ...wokeThreadItems, ...parkedThreadItems];
     }
     return [
       ...urgentSystemItems,
-      ...backgroundLivenessItems,
       ...calmSystemItems,
       ...wokeThreadItems,
       {
@@ -4547,7 +4535,6 @@ function ChatViewContent(props: ChatViewProps) {
     ];
   }, [
     activeBranchMismatchKey,
-    backgroundLivenessBannerItem,
     handleRestoreThreadBranch,
     isRestoringThreadBranch,
     localCheckoutBranchMismatch,
@@ -6159,9 +6146,12 @@ function ChatViewContent(props: ChatViewProps) {
    * single new object identity per render, defeating that memo entirely on a
    * ~2900-line component that re-renders throughout a streaming turn.
    */
-  const composerContextStrip = useMemo(
-    () =>
-      showComposerContextStrip && activeThread ? (
+  const composerContextStrip = useMemo(() => {
+    if (!activeThread) {
+      return null;
+    }
+    if (showComposerContextStrip) {
+      return (
         <BranchToolbar
           environmentId={activeThread.environmentId}
           threadId={activeThread.id}
@@ -6184,30 +6174,42 @@ function ChatViewContent(props: ChatViewProps) {
             : {})}
           {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
           availableEnvironments={logicalProjectEnvironments}
+          {...(composerLivenessPill ? { trailing: composerLivenessPill } : {})}
         />
-      ) : null,
-    [
-      showComposerContextStrip,
-      activeThread,
-      isGitRepo,
-      routeKind,
-      draftId,
-      onEnvModeChange,
-      startFromOrigin,
-      onStartFromOriginChange,
-      canOverrideServerThreadEnvMode,
-      envMode,
-      activeThreadBranch,
-      setPendingServerThreadBranch,
-      envLocked,
-      scheduleComposerFocus,
-      canCheckoutPullRequestIntoThread,
-      openPullRequestDialog,
-      hasMultipleEnvironments,
-      onEnvironmentChange,
-      logicalProjectEnvironments,
-    ],
-  );
+      );
+    }
+    // Liveness can outlive a git strip (non-repo project). Keep the pill on
+    // the same context row geometry so stop stays reachable.
+    if (composerLivenessPill) {
+      return (
+        <div className="chat-composer-context-strip group/composer-context flex min-w-0 items-center gap-2">
+          {composerLivenessPill}
+        </div>
+      );
+    }
+    return null;
+  }, [
+    showComposerContextStrip,
+    activeThread,
+    isGitRepo,
+    routeKind,
+    draftId,
+    onEnvModeChange,
+    startFromOrigin,
+    onStartFromOriginChange,
+    canOverrideServerThreadEnvMode,
+    envMode,
+    activeThreadBranch,
+    setPendingServerThreadBranch,
+    envLocked,
+    scheduleComposerFocus,
+    canCheckoutPullRequestIntoThread,
+    openPullRequestDialog,
+    hasMultipleEnvironments,
+    onEnvironmentChange,
+    logicalProjectEnvironments,
+    composerLivenessPill,
+  ]);
   /* fork:end fork-composer-shell */
 
   return (
@@ -6400,7 +6402,8 @@ function ChatViewContent(props: ChatViewProps) {
                     <div
                       className={cn(
                         "chat-composer-glass-shell relative mx-auto w-full max-w-3xl",
-                        showComposerContextStrip && "chat-composer-glass-shell-with-context",
+                        (showComposerContextStrip || showComposerLivenessPill) &&
+                          "chat-composer-glass-shell-with-context",
                       )}
                     >
                       <div className="chat-composer-glass-host relative z-10 w-full rounded-[22px]">

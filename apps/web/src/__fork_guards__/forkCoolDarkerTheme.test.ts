@@ -138,8 +138,8 @@ describe("fork guard: fork-cool-darker-theme", () => {
   it("states Cool Darker row fills as opaque values", () => {
     const panel = ruleBodyFor(themeRules, DARKER_PANEL);
     expect(panel).toContain("--sidebar-row-hover: #2e3336");
-    expect(panel).toContain("--sidebar-row-active: #353a3d");
-    expect(panel).toContain("--sidebar-row-selected: #353a3d");
+    expect(panel).toContain("--sidebar-row-active: #32373a");
+    expect(panel).toContain("--sidebar-row-selected: #32373a");
     expect(panel).not.toMatch(
       /--sidebar-row-(?:hover|active|selected):[^;]*(?:color-mix|--alpha)/u,
     );

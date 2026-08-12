@@ -9,7 +9,7 @@ import {
   HistoryIcon,
   MonitorIcon,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
 import { useProject, useThread, useThreadShellsForProjectRefs } from "../state/entities";
@@ -57,6 +57,10 @@ interface BranchToolbarProps {
   onComposerFocusRequest?: () => void;
   availableEnvironments?: readonly EnvironmentOption[];
   onEnvironmentChange?: (environmentId: EnvironmentId) => void;
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /** Optional chip after the branch pill (e.g. monitoring stop). */
+  trailing?: ReactNode;
+  /* fork:end fork-composer-shell */
 }
 
 interface MobileRunContextSelectorProps {
@@ -332,6 +336,9 @@ export const BranchToolbar = memo(function BranchToolbar({
   onComposerFocusRequest,
   availableEnvironments,
   onEnvironmentChange,
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  trailing,
+  /* fork:end fork-composer-shell */
 }: BranchToolbarProps) {
   const threadRef = useMemo(
     () => scopeThreadRef(environmentId, threadId),
@@ -473,6 +480,9 @@ export const BranchToolbar = memo(function BranchToolbar({
           {...(onComposerFocusRequest ? { onComposerFocusRequest } : {})}
         />
       ) : null}
+      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      {trailing ?? null}
+      {/* fork:end fork-composer-shell */}
     </div>
   );
 });
