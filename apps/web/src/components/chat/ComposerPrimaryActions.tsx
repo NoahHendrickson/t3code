@@ -1,5 +1,8 @@
 import { memo, type PointerEventHandler } from "react";
 import { ChevronDownIcon, ChevronLeftIcon } from "lucide-react";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { StopSquareIcon } from "~/custom/StopSquareIcon";
+/* fork:end fork-composer-shell */
 import { useEnvironmentIdentificationMode } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
 import { StageBackdropButtonArt, useSidebarStageBackdropVariant } from "../SidebarStageBackdrop";
@@ -95,9 +98,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
       onClick={onInterrupt}
       aria-label="Stop generation"
     >
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-        <rect x="2" y="2" width="8" height="8" rx="1.5" />
-      </svg>
+      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+      <StopSquareIcon />
+      {/* fork:end fork-composer-shell */}
     </button>
   );
 

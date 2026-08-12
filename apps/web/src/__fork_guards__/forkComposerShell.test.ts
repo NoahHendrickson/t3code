@@ -562,4 +562,44 @@ describe("fork guard: fork-composer-shell", () => {
     // own 6px gap and the mobile slot's 48% cap.
     expect(everyChild?.body).not.toMatch(/gap:|max-width:/u);
   });
+
+  it("moves background liveness off the banner stack onto a context-strip pill with stop", () => {
+    const pill = readSibling("../custom/ComposerMonitoringPill.tsx");
+    const strip = readSibling("../custom/composerContextStrip.tsx");
+    const branchToolbar = readSibling("../components/BranchToolbar.tsx");
+    expect(pill).toContain("export function ComposerBackgroundLivenessPill");
+    expect(pill).toContain('readonly kind: "monitoring"');
+    expect(pill).toContain('readonly kind: "working"');
+    expect(pill).toContain("SidebarV2WorkingRain");
+    expect(pill).toContain("SidebarV2MonitoringMark");
+    expect(pill).toContain("StopSquareIcon");
+    expect(pill).toContain('role="status"');
+    expect(pill).toContain("data-fork-liveness-mark");
+    expect(pill).toContain("data-fork-monitoring-pill");
+    expect(pill).toContain("data-fork-monitoring-stop");
+    expect(pill).toContain("Stop background work");
+    expect(strip).toContain("resolveComposerLivenessPillProps");
+    expect(strip).toContain("COMPOSER_CONTEXT_STRIP_CLASSNAME");
+    expect(strip).toContain("renderComposerLivenessStripFallback");
+    expect(branchToolbar).toContain("trailing?: ReactNode");
+    expect(branchToolbar).toContain("{trailing ?? null}");
+    expect(branchToolbar).toContain("COMPOSER_CONTEXT_STRIP_CLASSNAME");
+    expect(chatView).toContain("resolveComposerLivenessPillProps");
+    expect(chatView).toContain("renderComposerLivenessPill");
+    expect(chatView).toContain("trailing: composerLivenessPill");
+    expect(chatView).not.toContain("backgroundLivenessBannerItem");
+    expect(chatView).not.toContain('"Monitoring in the background"');
+    expect(chatView).not.toContain('"Background work running"');
+    // Pill chrome lives with fork-composer-shell, not theme.custom.css sprawl.
+    expect(shellCss).toContain("[data-fork-monitoring-pill]");
+    expect(shellCss).toContain("button[data-fork-monitoring-stop]");
+    expect(shellCss).toContain("[data-fork-liveness-mark]");
+    expect(shellCss).toMatch(
+      /button\[data-fork-monitoring-stop\]\s*\{[^}]*width:\s*24px[^}]*height:\s*24px/u,
+    );
+    expect(shellCss).toMatch(
+      /button\[data-fork-monitoring-stop\]:disabled\s*\{[^}]*background:\s*transparent/u,
+    );
+    expect(theme).not.toContain("[data-fork-monitoring-pill]");
+  });
 });

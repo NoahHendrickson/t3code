@@ -8,8 +8,8 @@
  *
  * `@keyframes` are the one exception: they are global by definition and cannot
  * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-`
- * (`sidebar-v2-rain-*`, `sidebar-v2-dev-server-pulse`) so the names cannot
- * collide with upstream's.
+ * (`sidebar-v2-rain-*`, `sidebar-v2-dev-server-pulse`,
+ * `sidebar-v2-monitoring-pulse`) so the names cannot collide with upstream's.
  *
  * `@font-face` is the second exception, for the same reason: a face
  * *registration* is global — there is no selector to hang it off. What matters
@@ -685,7 +685,7 @@
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"]):is(:hover, [data-pressed], [data-popup-open]) {
+  :is(button, [data-slot="button"]):is(:hover, [data-pressed], [data-popup-open]):not(:disabled) {
   background: var(--fork-context-chip-bg-hover);
 }
 
@@ -937,6 +937,57 @@
   }
   to {
     color: var(--foreground);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Monitoring pulse — see `.fork/customizations.yaml#sidebar-v2-card-rows`.
+
+   Leading status dot for a thread that is watching in the background. White at
+   50% → 20% opacity — ambient "still going", not an alert. Light mode uses ink
+   so the same breath stays visible on a pale panel. Reduced motion keeps the
+   brighter pole statically.
+
+   Performance (same contract as upstream `ghost-pulse` / `status-pulse`):
+   opacity-only on an 8px box, long holds with stepped ramps, so the compositor
+   draws a handful of discrete frames per cycle rather than one per vsync —
+   which on a 120Hz display is the difference between ~10 and ~480 updates.
+   No `will-change` (would pin a layer for every monitoring row). Offscreen
+   rows pay nothing via `content-visibility: auto` on the li. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-monitoring-pulse] {
+  background-color: #ffffff;
+  opacity: 0.5;
+  contain: paint;
+  animation: sidebar-v2-monitoring-pulse 4s infinite;
+}
+
+:root[data-fork="noahhendrickson-t3code"]:not(.dark) [data-fork-monitoring-pulse] {
+  background-color: #000000;
+  opacity: 0.5;
+  contain: paint;
+  animation: sidebar-v2-monitoring-pulse 4s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"].dark [data-fork-monitoring-pulse],
+  :root[data-fork="noahhendrickson-t3code"]:not(.dark) [data-fork-monitoring-pulse] {
+    animation: none;
+  }
+}
+
+@keyframes sidebar-v2-monitoring-pulse {
+  0%,
+  42% {
+    opacity: 0.5;
+    animation-timing-function: steps(4);
+  }
+  50%,
+  92% {
+    opacity: 0.2;
+    animation-timing-function: steps(4);
+  }
+  100% {
+    opacity: 0.5;
   }
 }
 

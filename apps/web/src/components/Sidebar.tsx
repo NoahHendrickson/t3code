@@ -175,20 +175,16 @@ import {
 } from "./Sidebar.snooze";
 import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
-import {
-  SidebarV2IdleMark,
-  SidebarV2StatusDot,
-  SidebarV2WokeMark,
-  SidebarV2WorkingRain,
-  type SidebarV2DotTone,
-} from "~/custom/SidebarV2StatusIndicator";
+/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+import { SidebarV2StatusMark, type SidebarV2DotTone } from "~/custom/SidebarV2StatusIndicator";
 import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "~/custom/SidebarV2ThreadCardMeta";
-import { SidebarV2ChromeActionRows, SidebarV2ProjectScopeRow } from "~/custom/SidebarV2ChromeRows";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
   threadRowSurfaceClassName,
 } from "~/custom/sidebarV2RowPolicy";
+/* fork:end sidebar-v2-card-rows */
+import { SidebarV2ChromeActionRows, SidebarV2ProjectScopeRow } from "~/custom/SidebarV2ChromeRows";
 /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
 import {
   SIDEBAR_V2_ICON_BUTTON_CLASS,
@@ -675,8 +671,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // Only two of these were drawn (working, approval); the rest are extended
   // from the same vocabulary. `rain` = the agent is moving, `dot` = it
   // stopped and the row is waiting on something, `woke` keeps its own glyph.
-  // Labels are no longer painted except for upstream's live Monitoring state;
-  // the others survive only as accessible names for aria-hidden marks.
+  // Labels are no longer painted — every status is a leading mark (rain, dot,
+  // woke clock, idle ring, or the slow monitoring pulse). The label strings
+  // survive only as accessible names for aria-hidden marks.
   //
   // Discriminated on `mark` so the dot branch cannot be handed the `working`
   // tone, which has no dot rendering.
@@ -705,7 +702,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
   // the surface consumes it too: title and surface dim together, or a Working
   // card would recede its surface while forcing its title forward. Monitoring
-  // has no tone, so discriminate on its mark before reading the dot tone.
+  // keeps its title forward (not idle, not done).
   const cardRecedes = threadCardTitleRecedes({
     isDone: topStatus?.mark === "dot" && topStatus.tone === "done",
     isIdle: topStatus === null,
@@ -1076,15 +1073,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 fallbackIcon={MessageSquareIcon}
               />
             </span>
+            {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                Fixed 14px leading slot (same as the card) so a monitoring mark
+                cannot shove the title 24px right of every neighboring slim row. */}
+            <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
+              <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="empty" />
+            </span>
+            {/* fork:end sidebar-v2-card-rows */}
             {title}
-            {topStatus?.mark === "monitoring" ? (
-              <span
-                role="status"
-                className="shrink-0 text-xs font-medium text-sky-600 dark:text-sky-400"
-              >
-                Monitoring
-              </span>
-            ) : null}
             {terminalStatusIcon}
             {isRegeneratingTitle ? (
               <span role="status" className="sr-only">
@@ -1266,40 +1262,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   target. Explicit px so DevTools / rem remaps cannot leave
                   this at 16. */}
               <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
-                {topStatus?.mark === "monitoring" ? null : topStatus ? (
-                  <>
-                    <span role="status" className="sr-only">
-                      {topStatus.label}
-                    </span>
-                    {topStatus.mark === "rain" ? (
-                      <SidebarV2WorkingRain seed={threadKey} />
-                    ) : topStatus.mark === "woke" ? (
-                      <SidebarV2WokeMark />
-                    ) : (
-                      <SidebarV2StatusDot tone={topStatus.tone} />
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Deliberately not role="status": idle is a resting
-                        state, not an event, and a live region per settled row
-                        means a long list mounts dozens of them and announces
-                        on every settle. The label exists to name the
-                        aria-hidden ring, which a plain sr-only span does. */}
-                    <span className="sr-only">Idle</span>
-                    <SidebarV2IdleMark />
-                  </>
-                )}
+                {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
+                <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="ring" />
+                {/* fork:end sidebar-v2-card-rows */}
               </span>
               {title}
-              {topStatus?.mark === "monitoring" ? (
-                <span
-                  role="status"
-                  className="shrink-0 text-xs font-medium text-sky-600 dark:text-sky-400"
-                >
-                  Monitoring
-                </span>
-              ) : null}
               {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                   Pinned state rides the title line as a 12px glyph after the
                   prompt: the pinned block above the divider carries the

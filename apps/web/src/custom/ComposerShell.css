@@ -26,3 +26,84 @@
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-mode-chip] [data-slot="select-icon"] {
   display: none;
 }
+
+/* ---------------------------------------------------------------------------
+   Background-liveness pill — see `.fork/customizations.yaml#fork-composer-shell`.
+
+   Same 24×6 pill as the branch/checkout chips, packed after the branch. The
+   stop control is a nested icon button, so it must opt out of the chip button
+   rules in theme.custom.css or it would paint a second full pill. Hit target
+   is 24px (WCAG 2.5.8 floor); the glyph stays 10px inside. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-monitoring-pill] {
+  height: 24px;
+  min-height: 24px;
+  gap: 6px;
+  padding-block: 0;
+  padding-inline: 8px 2px;
+  border-radius: 6px;
+  background: var(--fork-context-chip-bg);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+  color: var(--fork-pill-fg, var(--foreground));
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-context-row]
+  [data-fork-monitoring-pill] {
+  color: #ffffff;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop] {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop]:hover:not(:disabled) {
+  background: var(--fork-context-chip-bg-hover);
+  opacity: 1;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop]:disabled {
+  background: transparent;
+  cursor: default;
+  opacity: 0.45;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-stop]
+  svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Working rain inside the liveness pill keeps its native 14px mark size —
+   the context-row chip SVG rule only targets button/chip triggers, but pin
+   the mark box so a future broader glyph rule cannot squash the grid. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-liveness-mark]
+  svg {
+  width: auto;
+  height: 14px;
+}

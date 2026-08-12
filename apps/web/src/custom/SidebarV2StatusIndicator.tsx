@@ -246,3 +246,59 @@ export function SidebarV2WokeMark() {
     </span>
   );
 }
+
+/** Monitoring — background watch work that is still alive but not actively
+    turning. Same 8px / 14px geometry as the other dots so the title column
+    stays aligned; the slow white opacity breath (50% → 20%) is the signal,
+    not a hue or a text label. Keyframes in `theme.custom.css` are duty-cycled
+    and stepped so the compositor is not woken every vsync. */
+export function SidebarV2MonitoringMark() {
+  return (
+    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
+      <span data-fork-monitoring-pulse className="size-2 rounded-full" />
+    </span>
+  );
+}
+
+export type SidebarV2TopStatusMark =
+  | { readonly label: string; readonly mark: "rain"; readonly tone?: "working" }
+  | { readonly label: string; readonly mark: "monitoring" }
+  | { readonly label: string; readonly mark: "woke"; readonly tone?: SidebarV2DotTone }
+  | { readonly label: string; readonly mark: "dot"; readonly tone: SidebarV2DotTone };
+
+/** One mark renderer for card and slim rows so monitoring is never a second path. */
+export function SidebarV2StatusMark(props: {
+  readonly status: SidebarV2TopStatusMark | null;
+  readonly rainSeed: string;
+  /** Card rows draw the idle ring; slim only paints a mark when something is live. */
+  readonly idle?: "ring" | "empty";
+}) {
+  const status = props.status;
+  if (status === null) {
+    if (props.idle === "ring") {
+      return (
+        <>
+          <span className="sr-only">Idle</span>
+          <SidebarV2IdleMark />
+        </>
+      );
+    }
+    return null;
+  }
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {status.label}
+      </span>
+      {status.mark === "rain" ? (
+        <SidebarV2WorkingRain seed={props.rainSeed} />
+      ) : status.mark === "monitoring" ? (
+        <SidebarV2MonitoringMark />
+      ) : status.mark === "woke" ? (
+        <SidebarV2WokeMark />
+      ) : (
+        <SidebarV2StatusDot tone={status.tone} />
+      )}
+    </>
+  );
+}

@@ -396,16 +396,21 @@
     brightness still encodes unread-ness — the card delegates unread to the
     Done dot.
 
-    Status text labels ("Working", "Approval") are replaced by a single 14px
-    mark in a fixed leading slot on the title line, and the slot is never empty
-    — idle draws a hollow ring rather than falling back to a variable-width
-    relative-time string, so the title text and the rows below share one left
-    edge. Repo and meta rows indent 24px (the mark's 14 plus the title gap's
-    10) so they align under the prompt rather than under the mark. The mark's
-    form carries the state — falling pixels while the agent runs, a static
-    dot once it stops, a clock for woke, a ring for idle — and the hue only
-    reinforces it. Working is emerald, deliberately diverging from the sky
-    the mobile Live Activity still uses; mobile has not been migrated.
+    Status text labels ("Working", "Approval", "Monitoring") are replaced by a
+    single 14px mark in a fixed leading slot on the title line, and the slot is
+    never empty — idle draws a hollow ring rather than falling back to a
+    variable-width relative-time string, so the title text and the rows below
+    share one left edge. Repo and meta rows indent 24px (the mark's 14 plus
+    the title gap's 10) so they align under the prompt rather than under the
+    mark. The mark's form carries the state — falling pixels while the agent
+    runs, a static dot once it stops, a slow white opacity breath (50% → 20%)
+    while monitoring, a clock for woke, a ring for idle — and the hue only
+    reinforces it. The monitoring breath is duty-cycled and stepped (same
+    compositor contract as upstream ghost-pulse / status-pulse): long holds
+    with a short steps(4) ramp, opacity-only, contain:paint, no will-change —
+    so it does not repaint every vsync on high-refresh displays. Working is
+    emerald, deliberately diverging from the sky the mobile Live Activity
+    still uses; mobile has not been migrated.
 
     Working duration and the hover actions stay on the title line's trailing
     cell. Status no longer shares that cell, so the opacity-crossfade hit-path
@@ -1582,7 +1587,14 @@
     worktree, PR, and branch chips sit above the vessel as filled chips
     sharing one selected-surface fill with no hairline, 8px apart (matching
     the context row's pb-2 under the pills — including the nested PR+branch
-    pair that upstream keeps at gap-1). Upstream's strip children use flex-1
+    pair that upstream keeps at gap-1). When a settled turn still has
+    background liveness (monitoring watch or working fleets), a pill (leading
+    mark + label + small stop square) sits immediately after the branch pill
+    via BranchToolbar's optional trailing slot — not in the ComposerBannerStack.
+    Working uses the sidebar pixel-rain mark; monitoring uses the duty-cycled
+    white pulse. Labels stay short for the chip: Monitoring, N agent(s), or
+    Working.
+    Upstream's strip children use flex-1
     and the branch's justify-end / md:ml-auto, which opens a large empty gap
     between checkout and branch at narrower widths while the checkout label
     truncates; the fork forces those direct flex children to flex 0 1 auto,
@@ -1685,6 +1697,9 @@
   files:
     - apps/web/src/custom/ComposerShell.tsx
     - apps/web/src/custom/ComposerShell.css
+    - apps/web/src/custom/ComposerMonitoringPill.tsx
+    - apps/web/src/custom/composerContextStrip.tsx
+    - apps/web/src/custom/StopSquareIcon.tsx
     - apps/web/src/custom/composerModelSlotCompact.ts
     - apps/web/src/theme.custom.css
     - apps/web/src/overrides/components/composerFooterLayout.ts
@@ -1694,8 +1709,8 @@
     # Carries the base row, the context/control rows, and contextStrip prop.
     - apps/web/src/components/chat/ChatComposer.tsx
     # Docks the composer for new drafts, centers the draft greeting on its own
-    # layer, passes BranchToolbar as contextStrip, and keeps that strip mounted
-    # when the thread's worktree directory is missing.
+    # layer, passes BranchToolbar as contextStrip (with monitoring trailing),
+    # and keeps that strip mounted when the thread's worktree directory is missing.
     - apps/web/src/components/ChatView.tsx
     # data-fork-composer-action on the send and stop buttons; the whole 24px
     # square restyle hangs off it. Send also carries
