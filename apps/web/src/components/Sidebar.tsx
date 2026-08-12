@@ -175,21 +175,16 @@ import {
 } from "./Sidebar.snooze";
 import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
-import {
-  SidebarV2IdleMark,
-  SidebarV2MonitoringMark,
-  SidebarV2StatusDot,
-  SidebarV2WokeMark,
-  SidebarV2WorkingRain,
-  type SidebarV2DotTone,
-} from "~/custom/SidebarV2StatusIndicator";
+/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+import { SidebarV2StatusMark, type SidebarV2DotTone } from "~/custom/SidebarV2StatusIndicator";
 import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "~/custom/SidebarV2ThreadCardMeta";
-import { SidebarV2ChromeActionRows, SidebarV2ProjectScopeRow } from "~/custom/SidebarV2ChromeRows";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
   threadRowSurfaceClassName,
 } from "~/custom/sidebarV2RowPolicy";
+/* fork:end sidebar-v2-card-rows */
+import { SidebarV2ChromeActionRows, SidebarV2ProjectScopeRow } from "~/custom/SidebarV2ChromeRows";
 /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
 import {
   SIDEBAR_V2_ICON_BUTTON_CLASS,
@@ -1078,14 +1073,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 fallbackIcon={MessageSquareIcon}
               />
             </span>
-            {topStatus?.mark === "monitoring" ? (
-              <>
-                <span role="status" className="sr-only">
-                  Monitoring
-                </span>
-                <SidebarV2MonitoringMark />
-              </>
-            ) : null}
+            {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                Fixed 14px leading slot (same as the card) so a monitoring mark
+                cannot shove the title 24px right of every neighboring slim row. */}
+            <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
+              <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="empty" />
+            </span>
+            {/* fork:end sidebar-v2-card-rows */}
             {title}
             {terminalStatusIcon}
             {isRegeneratingTitle ? (
@@ -1268,32 +1262,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   target. Explicit px so DevTools / rem remaps cannot leave
                   this at 16. */}
               <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
-                {topStatus ? (
-                  <>
-                    <span role="status" className="sr-only">
-                      {topStatus.label}
-                    </span>
-                    {topStatus.mark === "rain" ? (
-                      <SidebarV2WorkingRain seed={threadKey} />
-                    ) : topStatus.mark === "monitoring" ? (
-                      <SidebarV2MonitoringMark />
-                    ) : topStatus.mark === "woke" ? (
-                      <SidebarV2WokeMark />
-                    ) : (
-                      <SidebarV2StatusDot tone={topStatus.tone} />
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Deliberately not role="status": idle is a resting
-                        state, not an event, and a live region per settled row
-                        means a long list mounts dozens of them and announces
-                        on every settle. The label exists to name the
-                        aria-hidden ring, which a plain sr-only span does. */}
-                    <span className="sr-only">Idle</span>
-                    <SidebarV2IdleMark />
-                  </>
-                )}
+                {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
+                <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="ring" />
+                {/* fork:end sidebar-v2-card-rows */}
               </span>
               {title}
               {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows

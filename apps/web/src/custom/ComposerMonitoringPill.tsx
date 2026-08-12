@@ -1,31 +1,35 @@
-import { memo } from "react";
+import { type ReactNode } from "react";
 
-import { SidebarV2WorkingRain } from "./SidebarV2StatusIndicator";
+import { SidebarV2MonitoringMark, SidebarV2WorkingRain } from "./SidebarV2StatusIndicator";
+import { StopSquareIcon } from "./StopSquareIcon";
 
 export type ComposerBackgroundLivenessKind = "monitoring" | "working";
 
-type ComposerBackgroundLivenessPillProps = {
-  readonly kind: ComposerBackgroundLivenessKind;
-  /** Stable seed for the working rain so remounts keep the same phase. */
-  readonly rainSeed: string;
-  readonly liveCount?: number;
+type ComposerBackgroundLivenessPillBase = {
   readonly stopping: boolean;
   readonly onStop: () => void;
 };
 
-function resolveLivenessLabel(
-  kind: ComposerBackgroundLivenessKind,
-  liveCount: number | undefined,
-  stopping: boolean,
-): string {
-  if (stopping) {
+export type ComposerBackgroundLivenessPillProps = ComposerBackgroundLivenessPillBase &
+  (
+    | { readonly kind: "monitoring" }
+    | {
+        readonly kind: "working";
+        /** Stable seed for the working rain so remounts keep the same phase. */
+        readonly rainSeed: string;
+        readonly liveCount: number;
+      }
+  );
+
+function resolveLivenessLabel(props: ComposerBackgroundLivenessPillProps): string {
+  if (props.stopping) {
     return "Stopping...";
   }
-  if (kind === "monitoring") {
+  if (props.kind === "monitoring") {
     return "Monitoring";
   }
-  if (liveCount != null && liveCount > 0) {
-    return `${liveCount} ${liveCount === 1 ? "agent" : "agents"}`;
+  if (props.liveCount > 0) {
+    return `${props.liveCount} ${props.liveCount === 1 ? "agent" : "agents"}`;
   }
   return "Working";
 }
@@ -33,41 +37,40 @@ function resolveLivenessLabel(
 /**
  * Context-row chip for background liveness (monitoring watch or working
  * fleets). Sits to the right of the branch pill: leading mark + label + a
- * small stop square. Working uses the sidebar rain; monitoring uses the
- * duty-cycled pulse. See `.fork/customizations.yaml#fork-composer-shell`.
+ * small stop square. Working uses the sidebar rain (accepted always-on
+ * composer repaint — same SVG opacity contract as the sidebar mark, but the
+ * composer has no content-visibility escape); monitoring reuses
+ * `SidebarV2MonitoringMark`. See `.fork/customizations.yaml#fork-composer-shell`.
  */
-export const ComposerBackgroundLivenessPill = memo(function ComposerBackgroundLivenessPill({
-  kind,
-  rainSeed,
-  liveCount,
-  stopping,
-  onStop,
-}: ComposerBackgroundLivenessPillProps) {
-  const label = resolveLivenessLabel(kind, liveCount, stopping);
+export function ComposerBackgroundLivenessPill(props: ComposerBackgroundLivenessPillProps) {
+  const label = resolveLivenessLabel(props);
+  const mark: ReactNode =
+    props.kind === "working" ? (
+      <SidebarV2WorkingRain seed={props.rainSeed} />
+    ) : (
+      <SidebarV2MonitoringMark />
+    );
+
   return (
-    <span data-fork-monitoring-pill role="status" className="inline-flex shrink-0 items-center">
+    <span data-fork-monitoring-pill className="inline-flex shrink-0 items-center">
       <span
         data-fork-liveness-mark
         className="flex size-[14px] shrink-0 items-center justify-center"
       >
-        {kind === "working" ? (
-          <SidebarV2WorkingRain seed={rainSeed} />
-        ) : (
-          <span data-fork-monitoring-pulse className="size-1.5 rounded-full" aria-hidden />
-        )}
+        {mark}
       </span>
-      <span className="min-w-0 truncate">{label}</span>
+      <span role="status" className="min-w-0 truncate">
+        {label}
+      </span>
       <button
         type="button"
         data-fork-monitoring-stop
-        aria-label={stopping ? "Stopping background work" : "Stop background work"}
-        disabled={stopping}
-        onClick={onStop}
+        aria-label={props.stopping ? "Stopping background work" : "Stop background work"}
+        disabled={props.stopping}
+        onClick={props.onStop}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-          <rect x="2" y="2" width="8" height="8" rx="1.5" />
-        </svg>
+        <StopSquareIcon size={10} />
       </button>
     </span>
   );
-});
+}

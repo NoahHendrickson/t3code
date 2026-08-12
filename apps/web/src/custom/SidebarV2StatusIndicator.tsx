@@ -259,3 +259,46 @@ export function SidebarV2MonitoringMark() {
     </span>
   );
 }
+
+export type SidebarV2TopStatusMark =
+  | { readonly label: string; readonly mark: "rain"; readonly tone?: "working" }
+  | { readonly label: string; readonly mark: "monitoring" }
+  | { readonly label: string; readonly mark: "woke"; readonly tone?: SidebarV2DotTone }
+  | { readonly label: string; readonly mark: "dot"; readonly tone: SidebarV2DotTone };
+
+/** One mark renderer for card and slim rows so monitoring is never a second path. */
+export function SidebarV2StatusMark(props: {
+  readonly status: SidebarV2TopStatusMark | null;
+  readonly rainSeed: string;
+  /** Card rows draw the idle ring; slim only paints a mark when something is live. */
+  readonly idle?: "ring" | "empty";
+}) {
+  const status = props.status;
+  if (status === null) {
+    if (props.idle === "ring") {
+      return (
+        <>
+          <span className="sr-only">Idle</span>
+          <SidebarV2IdleMark />
+        </>
+      );
+    }
+    return null;
+  }
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {status.label}
+      </span>
+      {status.mark === "rain" ? (
+        <SidebarV2WorkingRain seed={props.rainSeed} />
+      ) : status.mark === "monitoring" ? (
+        <SidebarV2MonitoringMark />
+      ) : status.mark === "woke" ? (
+        <SidebarV2WokeMark />
+      ) : (
+        <SidebarV2StatusDot tone={status.tone} />
+      )}
+    </>
+  );
+}

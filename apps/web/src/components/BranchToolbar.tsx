@@ -9,7 +9,11 @@ import {
   HistoryIcon,
   MonitorIcon,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import type { ReactNode } from "react";
+import { COMPOSER_CONTEXT_STRIP_CLASSNAME } from "~/custom/composerContextStrip";
+/* fork:end fork-composer-shell */
 
 import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
 import { useProject, useThread, useThreadShellsForProjectRefs } from "../state/entities";
@@ -413,13 +417,29 @@ export const BranchToolbar = memo(function BranchToolbar({
   const [stripElement, setStripElement] = useState<HTMLDivElement | null>(null);
   const labelsOverflow = useLabelsOverflow(stripElement);
 
-  if (!hasActiveThread || !activeProject) return null;
+  if (!hasActiveThread || !activeProject) {
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    // Trailing (liveness stop) must still mount while the thread shell is live
+    // but useThread has not resolved yet — otherwise the only stop affordance
+    // vanishes during detail loading.
+    if (trailing) {
+      return (
+        <div ref={setStripElement} className={COMPOSER_CONTEXT_STRIP_CLASSNAME}>
+          {trailing}
+        </div>
+      );
+    }
+    /* fork:end fork-composer-shell */
+    return null;
+  }
 
   return (
     <div
       ref={setStripElement}
       data-compact={labelsOverflow ? "" : undefined}
-      className="chat-composer-context-strip group/composer-context -mt-4 mx-auto flex w-[calc(100%-2.75rem)] max-w-[calc(48rem-2.75rem)] items-center gap-2 ps-1 pe-2 pt-5 pb-1"
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+      className={COMPOSER_CONTEXT_STRIP_CLASSNAME}
+      /* fork:end fork-composer-shell */
     >
       {isMobile && showGitControls ? (
         <MobileRunContextSelector

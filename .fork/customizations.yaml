@@ -1698,6 +1698,8 @@
     - apps/web/src/custom/ComposerShell.tsx
     - apps/web/src/custom/ComposerShell.css
     - apps/web/src/custom/ComposerMonitoringPill.tsx
+    - apps/web/src/custom/composerContextStrip.tsx
+    - apps/web/src/custom/StopSquareIcon.tsx
     - apps/web/src/custom/composerModelSlotCompact.ts
     - apps/web/src/theme.custom.css
     - apps/web/src/overrides/components/composerFooterLayout.ts

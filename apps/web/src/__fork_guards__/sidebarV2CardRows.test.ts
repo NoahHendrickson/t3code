@@ -38,19 +38,22 @@ describe("fork guard: sidebar-v2-card-rows", () => {
       /status === "ready" \|\| status === "working" \|\| status === "monitoring"/u,
     );
     expect(sidebarV2).toContain('? { label: "Monitoring", mark: "monitoring" }');
-    // Monitoring is a leading pulsing dot, not a sky text label.
-    expect(sidebarV2).toContain("<SidebarV2MonitoringMark");
+    // Monitoring is a leading pulsing dot via the shared mark renderer, not a
+    // sky text label — and both card and slim use the same fixed 14px slot.
+    expect(sidebarV2).toContain("<SidebarV2StatusMark");
     expect(sidebarV2).not.toContain("text-sky-600 dark:text-sky-400");
     expect(sidebarV2).not.toContain("group-hover/sidebar-row:");
+    expect(sidebarV2.match(/<SidebarV2StatusMark/gu)?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 
   it("pulses the monitoring mark between white 50% and 20% opacity", () => {
     const indicator = readSibling("../custom/SidebarV2StatusIndicator.tsx");
     expect(indicator).toContain("export function SidebarV2MonitoringMark");
+    expect(indicator).toContain("export function SidebarV2StatusMark");
     expect(indicator).toContain("data-fork-monitoring-pulse");
     expect(theme).toContain("@keyframes sidebar-v2-monitoring-pulse");
     expect(theme).toMatch(
-      /\[data-fork-monitoring-pulse\]\s*\{[^}]*opacity:\s*0\.5[^}]*contain:\s*paint[^}]*animation:\s*sidebar-v2-monitoring-pulse/u,
+      /\.dark \[data-fork-monitoring-pulse\]\s*\{[^}]*opacity:\s*0\.5[^}]*contain:\s*paint[^}]*animation:\s*sidebar-v2-monitoring-pulse/u,
     );
     // Duty-cycled + stepped (ghost-pulse / status-pulse): holds at each pole
     // with a short steps() ramp, not ease-in-out every vsync.
@@ -220,7 +223,10 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // share one edge. 14px slot: at 16px the rain read as hanging below the
     // title. overflow-hidden is load-bearing — the native grid is taller.
     expect(typeof SidebarV2IdleMark).toBe("function");
-    expect(sidebarV2).toContain("<SidebarV2IdleMark />");
+    // Card and slim both go through SidebarV2StatusMark; idle="ring" is the
+    // card's hollow-ring path so the leading column is never empty.
+    expect(sidebarV2).toContain('idle="ring"');
+    expect(sidebarV2).toContain("<SidebarV2StatusMark");
     expect(sidebarV2).toContain(
       "pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden",
     );

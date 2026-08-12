@@ -180,7 +180,11 @@ import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
 /* fork:end fork-design-mode */
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-import { ComposerBackgroundLivenessPill } from "~/custom/ComposerMonitoringPill";
+import {
+  renderComposerLivenessPill,
+  renderComposerLivenessStripFallback,
+  resolveComposerLivenessPillProps,
+} from "~/custom/composerContextStrip";
 /* fork:end fork-composer-shell */
 import { useBrowserHistoryStore } from "~/browserHistoryStore";
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
@@ -4333,6 +4337,7 @@ function ChatViewContent(props: ChatViewProps) {
     switchGitRef,
     updateThreadMetadata,
   ]);
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
   // Background work (subagent fleets, workflow runs, watch loops) can outlive
   // the turn; once it settles, the composer stop button is gone, so the
   // context-strip liveness pill is the remaining stop affordance. Stop routes
@@ -4343,60 +4348,52 @@ function ChatViewContent(props: ChatViewProps) {
     !isWorking && activeThread ? (activeThreadShell?.backgroundLiveness ?? null) : null;
   const [isStoppingBackgroundWork, setIsStoppingBackgroundWork] = useState(false);
   useEffect(() => {
-    // "Stopping..." holds until the liveness clears; the interrupt command
-    // returning only means the request was accepted.
-    if (activeBackgroundLiveness === null) {
-      setIsStoppingBackgroundWork(false);
-    }
+    // Clear when liveness ends or flips kind (monitoring→working) so a failed
+    // stop-everything cannot latch "Stopping..." across a new live state.
+    setIsStoppingBackgroundWork(false);
   }, [activeBackgroundLiveness]);
   useEffect(() => {
     // Per-thread state: switching threads while A's stop is pending must not
     // disable B's Stop button (review finding).
     setIsStoppingBackgroundWork(false);
   }, [activeThreadId]);
-  const handleStopBackgroundWork = useCallback(async () => {
+  const handleStopBackgroundWork = useCallback(() => {
     if (!activeThread) return;
     setIsStoppingBackgroundWork(true);
-    const result = await interruptThreadTurn({
+    void interruptThreadTurn({
       environmentId,
       input: buildThreadTurnInterruptInput(activeThread),
-    });
-    if (result._tag === "Failure") {
-      // Every failure clears the pending state — an interrupted command
-      // never reached the server, so liveness would hold "Stopping..."
-      // forever. Only real failures toast.
-      setIsStoppingBackgroundWork(false);
-      if (!isAtomCommandInterrupted(result)) {
-        const error = squashAtomCommandFailure(result);
-        setThreadError(
-          activeThread.id,
-          error instanceof Error ? error.message : "Failed to stop background work.",
-        );
+    }).then((result) => {
+      if (result._tag === "Failure") {
+        // Every failure clears the pending state — an interrupted command
+        // never reached the server, so liveness would hold "Stopping..."
+        // forever. Only real failures toast.
+        setIsStoppingBackgroundWork(false);
+        if (!isAtomCommandInterrupted(result)) {
+          const error = squashAtomCommandFailure(result);
+          setThreadError(
+            activeThread.id,
+            error instanceof Error ? error.message : "Failed to stop background work.",
+          );
+        }
       }
-    }
+    });
   }, [activeThread, environmentId, interruptThreadTurn, setThreadError]);
-  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
   // Working fleets and monitoring both leave the banner stack and ride the
-  // context strip as a pill beside the branch chip.
-  const showComposerLivenessPill =
-    activeBackgroundLiveness === "monitoring" || activeBackgroundLiveness === "working";
+  // context strip as a pill beside the branch chip. One derived node — ChatView
+  // only wires props; assembly lives in custom/composerContextStrip.
   const composerLivenessPill = useMemo(() => {
-    if (
-      !activeThread ||
-      (activeBackgroundLiveness !== "monitoring" && activeBackgroundLiveness !== "working")
-    ) {
+    if (!activeThread) {
       return null;
     }
-    return (
-      <ComposerBackgroundLivenessPill
-        kind={activeBackgroundLiveness}
-        rainSeed={`${activeThread.environmentId}:${activeThread.id}`}
-        {...(activeBackgroundLiveness === "working"
-          ? { liveCount: agentPanelModel.liveCount }
-          : {})}
-        stopping={isStoppingBackgroundWork}
-        onStop={() => void handleStopBackgroundWork()}
-      />
+    return renderComposerLivenessPill(
+      resolveComposerLivenessPillProps({
+        liveness: activeBackgroundLiveness,
+        rainSeed: `${activeThread.environmentId}:${activeThread.id}`,
+        liveCount: agentPanelModel.liveCount,
+        stopping: isStoppingBackgroundWork,
+        onStop: handleStopBackgroundWork,
+      }),
     );
   }, [
     activeBackgroundLiveness,
@@ -4428,8 +4425,10 @@ function ChatViewContent(props: ChatViewProps) {
   // calm-styled live states flagged `urgent`, like update progress), then
   // calm system banners, the woke and branch-mismatch notices, and the
   // informational parked-thread banner last — it must never cover another.
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
   // Background liveness (working / monitoring) lives on the context-strip
   // pill, not in this stack.
+  /* fork:end fork-composer-shell */
   const parkedThreadBannerItem = useMemo<ComposerBannerStackItem | null>(() => {
     if (!activeThreadSnoozed && !activeThreadSettled) {
       return null;
@@ -4485,6 +4484,10 @@ function ChatViewContent(props: ChatViewProps) {
     const calmSystemItems = systemComposerBannerItems.filter((item) => !isUrgentSystemItem(item));
     const wokeThreadItems = wokeThreadBannerItem === null ? [] : [wokeThreadBannerItem];
     const parkedThreadItems = parkedThreadBannerItem === null ? [] : [parkedThreadBannerItem];
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+       Both returns below omit background-liveness banner items — Monitoring /
+       Working ride the context-strip pill (`composerLivenessPill`) instead. */
+    /* fork:end fork-composer-shell */
     if (!localCheckoutBranchMismatch || !showBranchMismatchBanner || !activeBranchMismatchKey) {
       return [...urgentSystemItems, ...calmSystemItems, ...wokeThreadItems, ...parkedThreadItems];
     }
@@ -6178,16 +6181,7 @@ function ChatViewContent(props: ChatViewProps) {
         />
       );
     }
-    // Liveness can outlive a git strip (non-repo project). Keep the pill on
-    // the same context row geometry so stop stays reachable.
-    if (composerLivenessPill) {
-      return (
-        <div className="chat-composer-context-strip group/composer-context flex min-w-0 items-center gap-2">
-          {composerLivenessPill}
-        </div>
-      );
-    }
-    return null;
+    return renderComposerLivenessStripFallback(composerLivenessPill);
   }, [
     showComposerContextStrip,
     activeThread,
@@ -6402,8 +6396,10 @@ function ChatViewContent(props: ChatViewProps) {
                     <div
                       className={cn(
                         "chat-composer-glass-shell relative mx-auto w-full max-w-3xl",
-                        (showComposerContextStrip || showComposerLivenessPill) &&
+                        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                        (showComposerContextStrip || composerLivenessPill != null) &&
                           "chat-composer-glass-shell-with-context",
+                        /* fork:end fork-composer-shell */
                       )}
                     >
                       <div className="chat-composer-glass-host relative z-10 w-full rounded-[22px]">
