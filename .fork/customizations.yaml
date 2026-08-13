@@ -2461,10 +2461,11 @@
   intent: >
     A thread started from Mobile in Current checkout mode records the branch
     currently checked out on the selected environment, even when the user did
-    not explicitly open the branch picker. The composer already presents that
-    branch as the effective selection; immediate and offline-outbox creation
-    must send the same value so web and desktop thread rows can render branch
-    identity. New worktree mode still requires its explicit base-branch flow.
+    not explicitly open the branch picker. Immediate and offline-outbox
+    creation must resolve that current ref so web and desktop thread rows can
+    render branch identity. Detached HEAD remains null rather than borrowing
+    the default-branch display fallback. New worktree mode still requires its
+    explicit base-branch flow.
   tier: 4
   files:
     - apps/mobile/src/custom/projectThreadBranch.ts
@@ -2473,4 +2474,5 @@
     - apps/mobile/src/features/threads/new-task-flow-provider.tsx
     - apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
   verify:
+    - apps/mobile/src/custom/projectThreadBranch.test.ts
     - apps/web/src/__fork_guards__/mobileCurrentCheckoutBranch.test.ts

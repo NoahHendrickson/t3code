@@ -5,8 +5,6 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
-import { resolveProjectThreadBranch } from "../../../mobile/src/custom/projectThreadBranch";
-
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
@@ -31,36 +29,6 @@ function readCustomizationHunks(source: string): string {
 }
 
 describe("fork guard: mobile-current-checkout-branch", () => {
-  it("uses the current checkout branch when local mode has no explicit selection", () => {
-    expect(
-      resolveProjectThreadBranch({
-        workspaceMode: "local",
-        selectedBranchName: null,
-        availableBranches: [
-          { name: "main", current: false },
-          { name: "custom", current: true },
-        ],
-      }),
-    ).toBe("custom");
-  });
-
-  it("keeps explicit selections and does not bypass worktree branch selection", () => {
-    expect(
-      resolveProjectThreadBranch({
-        workspaceMode: "local",
-        selectedBranchName: "feature/explicit",
-        availableBranches: [{ name: "custom", current: true }],
-      }),
-    ).toBe("feature/explicit");
-    expect(
-      resolveProjectThreadBranch({
-        workspaceMode: "worktree",
-        selectedBranchName: null,
-        availableBranches: [{ name: "custom", current: true }],
-      }),
-    ).toBeNull();
-  });
-
   it("applies the resolver to immediate and offline creation", () => {
     expect(readCustomizationHunks(draftScreen)).toContain(
       "const selectedBranchName = resolveProjectThreadBranch({",
