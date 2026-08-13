@@ -42,6 +42,9 @@ import {
 import { useEnvironmentServerConfig, useProjects } from "../../state/entities";
 import { resolveSelectableModelSelection } from "../../lib/modelOptions";
 import { deriveThreadTitleFromPrompt } from "../../lib/projectThreadStartTurn";
+/* fork:begin mobile-current-checkout-branch — see .fork/customizations.yaml#mobile-current-checkout-branch */
+import { resolveProjectThreadBranch } from "../../custom/projectThreadBranch";
+/* fork:end mobile-current-checkout-branch */
 import { armAgentAwarenessLiveActivityForLocalWork } from "../agent-awareness/remoteRegistration";
 import { enqueueThreadOutboxMessage, removeThreadOutboxMessage } from "../../state/thread-outbox";
 import { useRemoteConnectionStatus } from "../../state/use-remote-environment-registry";
@@ -724,7 +727,13 @@ export function NewTaskDraftScreen(props: {
         draft.modelSelection ?? null,
       ) ?? flow.selectedModel;
     const workspaceMode = draft.workspaceSelection?.mode ?? flow.workspaceMode;
-    const selectedBranchName = draft.workspaceSelection?.branch ?? flow.selectedBranchName;
+    /* fork:begin mobile-current-checkout-branch — see .fork/customizations.yaml#mobile-current-checkout-branch */
+    const selectedBranchName = resolveProjectThreadBranch({
+      workspaceMode,
+      selectedBranchName: draft.workspaceSelection?.branch ?? flow.selectedBranchName,
+      availableBranches: flow.availableBranches,
+    });
+    /* fork:end mobile-current-checkout-branch */
     const selectedWorktreePath =
       draft.workspaceSelection?.worktreePath ?? flow.selectedWorktreePath;
     const startFromOrigin = draft.workspaceSelection?.startFromOrigin ?? flow.startFromOrigin;
