@@ -605,8 +605,7 @@ describe("fork guard: design mode", () => {
     // a vendor re-sync that drops the fork's zoomAnchor call brings the drift back.
     const result = await build({
       stdin: {
-        contents:
-          'export { zoomAnchor, zoomAt } from "./src/custom/designMode/engine/vendor/canvas";',
+        contents: 'export { CanvasMode } from "./src/custom/designMode/engine/vendor/canvas";',
         resolveDir: webRoot,
         sourcefile: "design-mode-canvas-guard.ts",
         loader: "ts",
@@ -620,33 +619,118 @@ describe("fork guard: design mode", () => {
     });
     const code = result.outputFiles[0]?.text ?? "";
     const moduleUrl = `data:text/javascript;base64,${NodeBuffer.Buffer.from(code).toString("base64")}`;
-    type Point = { x: number; y: number };
-    type CanvasState = { x: number; y: number; scale: number };
     const engine = (await import(moduleUrl)) as {
-      zoomAnchor: (pointer: Point | null, fallback: Point) => Point;
-      zoomAt: (state: CanvasState, cx: number, cy: number, nextScale: number) => CanvasState;
+      CanvasMode: new (opts: {
+        dock: { mode: () => string; width: () => number };
+        onCanvasActive: (on: boolean) => void;
+        hostContains: (target: unknown) => boolean;
+        onChange: () => void;
+        selectionRect: () => null;
+      }) => { setOn: (on: boolean) => void };
     };
 
-    const cursor = { x: 900, y: 400 };
-    // What a pinch at that cursor actually reports through a webview scaled to fit the pane.
-    const asReported = { x: 495, y: 220 };
-    expect(engine.zoomAnchor(cursor, asReported)).toEqual(cursor);
-    // No pointer seen yet (pinch before the cursor ever moved): the event is all there is.
-    expect(engine.zoomAnchor(null, asReported)).toEqual(asReported);
-
-    // The invariant the anchor exists for: the page point under the CURSOR holds still.
-    const before: CanvasState = { x: -120, y: -60, scale: 1.25 };
-    const anchor = engine.zoomAnchor(cursor, asReported);
-    const after = engine.zoomAt(before, anchor.x, anchor.y, before.scale * 1.4);
-    const pageUnder = (state: CanvasState, point: Point) => ({
-      x: (point.x - state.x) / state.scale,
-      y: (point.y - state.y) / state.scale,
+    // Driven through CanvasMode's OWN listeners rather than the anchor helper alone: the
+    // wiring (tracking the pointer, reaching for it on the zoom path, dropping it on
+    // teardown) is precisely what a re-sync drops, and a helper-only guard would still pass.
+    // Hand-rolled page because this project runs in node — the gesture path needs a window
+    // that dispatches, a body whose transform it writes, and storage. Nothing else.
+    const listeners = new Map<string, Set<(event: unknown) => void>>();
+    const dispatch = (type: string, event: Record<string, unknown>) => {
+      for (const listener of listeners.get(type) ?? []) listener(event);
+    };
+    const blankStyle = () => ({
+      transform: "",
+      transformOrigin: "",
+      willChange: "",
+      boxShadow: "",
+      backgroundColor: "",
+      overflow: "",
+      cursor: "",
     });
-    expect(pageUnder(after, cursor).x).toBeCloseTo(pageUnder(before, cursor).x, 6);
-    expect(pageUnder(after, cursor).y).toBeCloseTo(pageUnder(before, cursor).y, 6);
-    // ...and the reported coordinates, had they been trusted, would have held a different one.
-    const drifted = engine.zoomAt(before, asReported.x, asReported.y, before.scale * 1.4);
-    expect(pageUnder(drifted, cursor).x).not.toBeCloseTo(pageUnder(before, cursor).x, 1);
+    const body = { style: blankStyle(), scrollWidth: 1512, scrollHeight: 982 };
+    const fakeWindow = {
+      innerWidth: 1512,
+      innerHeight: 982,
+      scrollX: 0,
+      scrollY: 0,
+      scrollTo: () => {},
+      addEventListener: (type: string, listener: (event: unknown) => void) => {
+        const set = listeners.get(type) ?? new Set<(event: unknown) => void>();
+        set.add(listener);
+        listeners.set(type, set);
+      },
+      removeEventListener: (type: string, listener: (event: unknown) => void) => {
+        listeners.get(type)?.delete(listener);
+      },
+    };
+    const globals = globalThis as Record<string, unknown>;
+    const saved = {
+      window: globals.window,
+      document: globals.document,
+      sessionStorage: globals.sessionStorage,
+      getComputedStyle: globals.getComputedStyle,
+    };
+    // The artboard transform, back as the state that produced it.
+    const readState = () => {
+      const match = /translate\((-?[\d.e-]+)px, (-?[\d.e-]+)px\) scale\(([\d.e-]+)\)/u.exec(
+        body.style.transform,
+      );
+      if (!match) throw new Error(`unparseable transform: ${body.style.transform}`);
+      return { x: Number(match[1]), y: Number(match[2]), scale: Number(match[3]) };
+    };
+    const pageUnder = (point: { x: number; y: number }) => {
+      const state = readState();
+      return { x: (point.x - state.x) / state.scale, y: (point.y - state.y) / state.scale };
+    };
+    const pinch = (at: { x: number; y: number }) =>
+      dispatch("wheel", {
+        clientX: at.x,
+        clientY: at.y,
+        deltaY: -12,
+        deltaMode: 0,
+        ctrlKey: true,
+        preventDefault: () => {},
+      });
+
+    try {
+      globals.window = fakeWindow;
+      globals.document = { body, documentElement: { style: blankStyle() } };
+      globals.sessionStorage = { getItem: () => null, setItem: () => {} };
+      globals.getComputedStyle = () => ({ backgroundColor: "rgb(255, 255, 255)" });
+
+      const canvas = new engine.CanvasMode({
+        dock: { mode: () => "floating", width: () => 0 },
+        onCanvasActive: () => {},
+        hostContains: () => false,
+        onChange: () => {},
+        selectionRect: () => null,
+      });
+      canvas.setOn(true);
+
+      const cursor = { x: 900, y: 400 };
+      // Where a pinch at that cursor reports itself once the host scales the webview to fit.
+      const asReported = { x: 495, y: 220 };
+      dispatch("pointermove", { clientX: cursor.x, clientY: cursor.y });
+      pinch(asReported);
+
+      expect(readState().scale).toBeGreaterThan(1);
+      // Seeded from an unscrolled page, so the page point under the cursor started as itself.
+      expect(pageUnder(cursor).x).toBeCloseTo(cursor.x, 6);
+      expect(pageUnder(cursor).y).toBeCloseTo(cursor.y, 6);
+      // ...and the event's own coordinates, had they been trusted, would have held another.
+      expect(pageUnder(asReported).x).not.toBeCloseTo(asReported.x, 1);
+
+      // Teardown drops the tracked cursor, so the next session cannot anchor on a stale one:
+      // with no pointer move after it, the event's coordinates are all there is, and hold.
+      canvas.setOn(false);
+      canvas.setOn(true);
+      pinch(asReported);
+      expect(readState().scale).toBeGreaterThan(1);
+      expect(pageUnder(asReported).x).toBeCloseTo(asReported.x, 6);
+      expect(pageUnder(asReported).y).toBeCloseTo(asReported.y, 6);
+    } finally {
+      Object.assign(globals, saved);
+    }
   });
 
   it("restores a persisted draft's ORIGINAL rather than re-deriving it", async () => {
