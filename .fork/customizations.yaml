@@ -2032,25 +2032,46 @@
     What the block LEADS with, though, is not the report but an
     invitation to look at the page — a success-variant Alert whose one
     button is "View live changes" — and only a measured CONTRADICTION
-    (unchanged or diverged: the page provably does not render what was
-    asked) downgrades it to the verdict rows. 'unverifiable' and 'missing'
-    deliberately do not qualify: both are absences of evidence rather than
-    failures — an intent-shaped ask, a page-authored inline slot, an
-    element a structural delete legitimately removed — and leading with
-    them turned the overwhelmingly common good outcome into a warning
-    about work that was fine, which is the opposite of this feature's job.
-    Seeing the real page is also better evidence than any verdict line,
-    which is why the default is an invitation rather than a claim; the
-    green says "the turn is over, go look", never "your edit is correct",
-    and the copy still asserts nothing the page did not produce.
+    downgrades it to the verdict rows. That question is verify vocabulary,
+    not presentation: isMeasuredContradiction lives in designSentPreviews
+    beside verifySummaryLine and the label map, so the panel asks it
+    rather than re-deciding it. Contradiction means unchanged or diverged
+    — the page provably does not render what was asked. 'unverifiable' and
+    'missing' deliberately do not qualify: both are absences of evidence
+    rather than failures — an intent-shaped ask, a page-authored inline
+    slot, an element a structural delete legitimately removed — and
+    leading with them turned the overwhelmingly common good outcome into a
+    warning about work that was fine, which is the opposite of this
+    feature's job. Seeing the real page is also better evidence than any
+    verdict line, which is why the default is an invitation rather than a
+    claim; the green says "the turn is over, go look", never "your edit is
+    correct", and the copy still asserts nothing the page did not produce.
+    The block renders exactly one of three modes — contradiction, peek,
+    invitation — and WAITING (no measurement yet) folds into the
+    invitation rather than becoming a fourth: the invitation is already
+    true before any reading arrives, and that choice is what makes the
+    report path's summary non-null by construction rather than a nullable
+    local with unreachable false arms.
     Looking is a PEEK, not a resolution: the button drives the panel's
-    existing compare mode (one writer — the panel's setComparing, so the
-    guest, the host flag and the footer's Before/After label cannot
-    disagree), which suppresses the drafts without destroying them, so an
-    ask the agent missed can still be re-sent from the drafts the user
-    already made. Both exits from the peek — Show previews, Discard
-    previews — forget the record, so the block resolves rather than
-    asking twice about a page the user already looked at. The offer is gated on the thread's own projected turn, never
+    existing compare mode, which suppresses the drafts without destroying
+    them, so an ask the agent missed can still be re-sent from the drafts
+    the user already made. The selective drop stays reachable from the
+    peek whenever the report counts anything landed, so a mixed result
+    (applied beside unverifiable) never forces a choice between restoring
+    every preview and discarding every edit on the tab. While the block
+    offers, LEAVING compare is the answer to the question by whatever
+    route it happens — the block's own Show previews, the footer's
+    Before/After, or the mutation gate's leave-compare when the user
+    starts editing again — so one effect owns that transition rather than
+    each button, and the invitation can never reappear over a page already
+    looked at. A late contradiction can swap the block from peek to report
+    mid-look, so the report's keep-exit restores the page first: answering
+    "keep previews" while they are still suppressed would leave the page
+    contradicting the button just pressed. Compare has exactly ONE host
+    writer, the panel's setComparing — the footer button, the mutation
+    gate's leave-compare rule, Discard and the sent-preview block all
+    route through it, so the guest, the host flag and the Before/After
+    label cannot disagree about what the page is showing. The offer is gated on the thread's own projected turn, never
     on wall clock or observed status flips: the record carries the sent
     message's client-minted createdAt, adoption stamps the turn's
     requestedAt from that same time, and the prompt waits for a projected
@@ -2402,6 +2423,7 @@
   verify:
     - apps/web/src/__fork_guards__/forkDesignMode.test.ts
     - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
+    - apps/web/src/__fork_guards__/forkDesignSentPreviewResolution.test.ts
 
 - id: fork-right-panel-tabbar-divider
   intent: >

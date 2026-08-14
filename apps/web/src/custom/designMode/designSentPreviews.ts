@@ -129,6 +129,25 @@ export const VERIFY_REASON_LABELS = {
   inline: "the page styles this inline",
 } as const;
 
+/**
+ * Whether the page CONTRADICTS the request: measured with the previews suppressed, it
+ * provably does not render what was asked. The one question that earns a report instead
+ * of an invitation to go and look, so it lives here beside the vocabulary rather than in
+ * a panel — the same reasoning that gives the verdict wording one home.
+ *
+ * `unverifiable` and `missing` deliberately do not qualify. Both are absences of evidence
+ * rather than failures — an intent-shaped ask (`auto` resolves to a px, so exact
+ * comparison judges the wrong thing), a property the page authors inline, or an element
+ * the strict locator can no longer find, which for a structural delete is the ask
+ * succeeding. Leading with them rendered a change that landed correctly as a warning.
+ *
+ * Null (nothing measured yet, or an engine too old to measure) is not a contradiction:
+ * absence of a reading is not a reading.
+ */
+export function isMeasuredContradiction(summary: DesignVerifySummary | null): boolean {
+  return summary !== null && (summary.unchanged > 0 || summary.diverged > 0);
+}
+
 /** The counts line ("2 landed · 1 didn't land"), zero counts skipped. Iterates the label
  * map so a new verdict is a one-line change, and takes the exported summary type so a
  * stale structural copy can never drift silently. Empty string when there is nothing to
