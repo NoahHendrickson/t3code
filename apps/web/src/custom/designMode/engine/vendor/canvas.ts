@@ -28,6 +28,27 @@ export function panBy(state: CanvasState, dx: number, dy: number): CanvasState {
   return { x: state.x + dx, y: state.y + dy, scale: state.scale }
 }
 
+/**
+ * t3-fork: the viewport point a pinch/wheel zoom holds fixed.
+ *
+ * The zoom event's own client coordinates are the obvious answer, and they are the right one
+ * for a real mouse wheel. They are NOT trustworthy for a trackpad pinch in T3's preview: with
+ * a screen size picked, the host renders the guest webview CSS-scaled to fit the pane
+ * (HostedBrowserWebview's viewportScale), and the pinch's synthesized ctrl+wheel arrives
+ * without that scale applied — so its coordinates sit up and left of the cursor, and the
+ * artboard reads as zooming toward the top left. Ordinary pointer events DO map correctly
+ * (design mode's hover and selection ride on them, and land where you click), and the cursor
+ * cannot move during a pinch — so the last pointer position IS the cursor, and it is the
+ * anchor. For a mouse wheel the two agree, which is why this is one rule rather than a
+ * per-device branch.
+ */
+export function zoomAnchor(
+  pointer: { x: number; y: number } | null,
+  fallback: { x: number; y: number }
+): { x: number; y: number } {
+  return pointer ?? fallback
+}
+
 /** px per DOM_DELTA_LINE wheel step — Firefox mouse wheels report ±3 LINES per notch, not
  *  pixels; without this a Firefox pan crawls at ~3px/notch (30× slower than Chrome). */
 export const WHEEL_LINE_PX = 16
@@ -415,6 +436,15 @@ export class CanvasMode {
     this.setState(next)
   }
 
+  /** t3-fork: the cursor, in viewport coordinates, from the last pointer event this session
+   *  saw — the zoom anchor (see zoomAnchor). Null until the pointer first moves over the
+   *  page, and again after teardown so a stale cursor never anchors the next session. */
+  private lastPointer: { x: number; y: number } | null = null
+
+  private onPointerTrack = (e: PointerEvent): void => {
+    this.lastPointer = { x: e.clientX, y: e.clientY }
+  }
+
   private onWheel = (e: WheelEvent): void => {
     if (this.opts.hostContains(this.realTarget(e))) return // panel scrolls itself
     e.preventDefault()
@@ -427,7 +457,9 @@ export class CanvasMode {
       // the clamp tames discrete mouse notches without touching pinch (see ZOOM_WHEEL_CLAMP).
       const dy = Math.max(-ZOOM_WHEEL_CLAMP, Math.min(ZOOM_WHEEL_CLAMP, e.deltaY * unit))
       const factor = Math.exp(-dy * 0.01)
-      this.setStateIfChanged(zoomAt(this.state, e.clientX, e.clientY, this.state.scale * factor))
+      // t3-fork: anchor on the tracked cursor, not the event — see zoomAnchor.
+      const a = zoomAnchor(this.lastPointer, { x: e.clientX, y: e.clientY })
+      this.setStateIfChanged(zoomAt(this.state, a.x, a.y, this.state.scale * factor))
     } else {
       let dx = e.deltaX * unit
       let dy = e.deltaY * unit
@@ -459,7 +491,10 @@ export class CanvasMode {
     if (typeof g.scale !== 'number' || !Number.isFinite(g.scale) || g.scale <= 0) return
     const cx = typeof g.clientX === 'number' ? g.clientX : window.innerWidth / 2
     const cy = typeof g.clientY === 'number' ? g.clientY : window.innerHeight / 2
-    this.setStateIfChanged(zoomAt(this.state, cx, cy, this.gestureStartScale * g.scale))
+    // t3-fork: same anchor rule as the wheel pinch — see zoomAnchor. The event's own
+    // coordinates stay the fallback, so a gesture before any pointer move still zooms.
+    const a = zoomAnchor(this.lastPointer, { x: cx, y: cy })
+    this.setStateIfChanged(zoomAt(this.state, a.x, a.y, this.gestureStartScale * g.scale))
     this.armPersistDebounce()
   }
 
@@ -604,6 +639,9 @@ export class CanvasMode {
     window.addEventListener('keyup', this.onKeyUp, true)
     window.addEventListener('blur', this.onBlur)
     window.addEventListener('pointerdown', this.onPointerDown, true)
+    // t3-fork: cursor tracking for the zoom anchor. Passive and capture: it only reads two
+    // numbers, and must see moves the page would otherwise stop.
+    window.addEventListener('pointermove', this.onPointerTrack, { capture: true, passive: true })
     // Safari-only pinch path — feature-detected so other engines never pay for it.
     if ('GestureEvent' in window) {
       window.addEventListener('gesturestart', this.onGestureStart, { capture: true, passive: false })
@@ -626,6 +664,8 @@ export class CanvasMode {
     window.removeEventListener('keyup', this.onKeyUp, true)
     window.removeEventListener('blur', this.onBlur)
     window.removeEventListener('pointerdown', this.onPointerDown, true)
+    window.removeEventListener('pointermove', this.onPointerTrack, true)
+    this.lastPointer = null // t3-fork: never anchor the next session on a stale cursor
     // Unconditional (no feature gate) — removing a never-added listener is a no-op.
     window.removeEventListener('gesturestart', this.onGestureStart, true)
     window.removeEventListener('gesturechange', this.onGestureChange, true)

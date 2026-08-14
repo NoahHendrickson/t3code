@@ -597,6 +597,58 @@ describe("fork guard: design mode", () => {
     expect(budget).toEqual({ left: 7, truncated: true });
   });
 
+  it("anchors a pinch on the tracked cursor, not the zoom event's coordinates", async () => {
+    // A trackpad pinch reaches the guest as a synthesized ctrl+wheel whose coordinates do NOT
+    // carry the CSS scale the host renders the webview at when a screen size is picked, so
+    // trusting them anchors the zoom up and left of the cursor. Ordinary pointer events map
+    // correctly and the cursor cannot move mid-pinch, so the tracked pointer is the anchor —
+    // a vendor re-sync that drops the fork's zoomAnchor call brings the drift back.
+    const result = await build({
+      stdin: {
+        contents:
+          'export { zoomAnchor, zoomAt } from "./src/custom/designMode/engine/vendor/canvas";',
+        resolveDir: webRoot,
+        sourcefile: "design-mode-canvas-guard.ts",
+        loader: "ts",
+      },
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "es2022",
+      write: false,
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]?.text ?? "";
+    const moduleUrl = `data:text/javascript;base64,${NodeBuffer.Buffer.from(code).toString("base64")}`;
+    type Point = { x: number; y: number };
+    type CanvasState = { x: number; y: number; scale: number };
+    const engine = (await import(moduleUrl)) as {
+      zoomAnchor: (pointer: Point | null, fallback: Point) => Point;
+      zoomAt: (state: CanvasState, cx: number, cy: number, nextScale: number) => CanvasState;
+    };
+
+    const cursor = { x: 900, y: 400 };
+    // What a pinch at that cursor actually reports through a webview scaled to fit the pane.
+    const asReported = { x: 495, y: 220 };
+    expect(engine.zoomAnchor(cursor, asReported)).toEqual(cursor);
+    // No pointer seen yet (pinch before the cursor ever moved): the event is all there is.
+    expect(engine.zoomAnchor(null, asReported)).toEqual(asReported);
+
+    // The invariant the anchor exists for: the page point under the CURSOR holds still.
+    const before: CanvasState = { x: -120, y: -60, scale: 1.25 };
+    const anchor = engine.zoomAnchor(cursor, asReported);
+    const after = engine.zoomAt(before, anchor.x, anchor.y, before.scale * 1.4);
+    const pageUnder = (state: CanvasState, point: Point) => ({
+      x: (point.x - state.x) / state.scale,
+      y: (point.y - state.y) / state.scale,
+    });
+    expect(pageUnder(after, cursor).x).toBeCloseTo(pageUnder(before, cursor).x, 6);
+    expect(pageUnder(after, cursor).y).toBeCloseTo(pageUnder(before, cursor).y, 6);
+    // ...and the reported coordinates, had they been trusted, would have held a different one.
+    const drifted = engine.zoomAt(before, asReported.x, asReported.y, before.scale * 1.4);
+    expect(pageUnder(drifted, cursor).x).not.toBeCloseTo(pageUnder(before, cursor).x, 1);
+  });
+
   it("restores a persisted draft's ORIGINAL rather than re-deriving it", async () => {
     // The engine's own restore contract, and the one place it can be wrong invisibly.
     //
