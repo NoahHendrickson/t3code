@@ -3,6 +3,7 @@ import { scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 import { useCallback, useEffect } from "react";
 
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
 import { useThreadSession } from "~/state/entities";
@@ -46,13 +47,25 @@ function occurrenceKeyed(elements: readonly DesignVerifyElementReport[]): Resolu
  * on: the page is measured with the previews suppressed and every sent property gets a
  * verdict, re-measured per page settle so a late reload corrects a wrong verdict. The
  * copy renders MEASUREMENTS in the one shared vocabulary (VERIFY_VERDICT_LABELS), never
- * the agent's account; an engine too old to measure keeps the unmeasured copy.
+ * the agent's account.
+ *
+ * What the block LEADS with is decided by `measuredFailure` alone. The default is an
+ * invitation to look at the page (`View live changes`), because for the overwhelmingly
+ * common outcome — the ask landed, or was never measurable in the first place — a report
+ * full of hedged verdicts reads as an alarm about work that is fine, which is the exact
+ * opposite of this feature's job. Seeing the real page is also better evidence than any
+ * verdict line: the detailed report stays, but behind a measured contradiction.
+ *
+ * Looking is a peek, not a resolution: it drives the panel's existing compare mode, which
+ * suppresses the drafts without destroying them, so a request the agent missed can still
+ * be re-sent from the drafts the user already made. Both exits from the peek answer the
+ * question (the record is forgotten either way), so the block never asks twice.
  *
  * The verification switch is symmetric and effect-owned: mounted-and-offering turns it
- * on, and the cleanup — unmount, Keep, resolution, thread switch — turns it off, so the
- * guest never keeps measuring for a question nobody is looking at. A page reload while
- * offering re-arms guest-side from the persisted ledger; a turn that ran while this was
- * unmounted gets measured on remount.
+ * on, and the cleanup — unmount, resolution, thread switch — turns it off, so the guest
+ * never keeps measuring for a question nobody is looking at. A page reload while offering
+ * re-arms guest-side from the persisted ledger; a turn that ran while this was unmounted
+ * gets measured on remount.
  *
  * A child component rather than panel state on purpose: its subscriptions — the thread's
  * session and projected latest turn — churn hardest exactly while a turn runs, and here
@@ -63,11 +76,17 @@ export function SentPreviewResolution({
   runtimeTabId,
   threadRef,
   draftCount,
+  comparing,
+  onSetComparing,
   onDiscard,
 }: {
   runtimeTabId: string;
   threadRef: ScopedThreadRef;
   draftCount: number;
+  /** Panel-owned compare state: true means the drafts are suppressed and the page is
+   * showing what the code actually renders. */
+  comparing: boolean;
+  onSetComparing: (next: boolean) => void;
   onDiscard: () => void;
 }) {
   const record = useDesignSentPreviews((state) => selectSentPreview(state.byTabId, runtimeTabId));
@@ -93,6 +112,18 @@ export function SentPreviewResolution({
     useDesignSentPreviews.getState().forget(runtimeTabId);
   }, [runtimeTabId]);
 
+  /** Suppress the drafts so the page shows what the code renders. Deliberately does NOT
+   * resolve the record: this is the peek, and the answer comes after looking. */
+  const onViewLive = useCallback(() => {
+    onSetComparing(true);
+  }, [onSetComparing]);
+
+  /** Back to the drafts, question answered — the user looked and chose their previews. */
+  const onRestorePreviews = useCallback(() => {
+    onSetComparing(false);
+    useDesignSentPreviews.getState().forget(runtimeTabId);
+  }, [onSetComparing, runtimeTabId]);
+
   const onDropVerified = useCallback(() => {
     // Commit is a mutation the undo history cannot reverse — same clear-first rule as
     // every other unrecorded verb (designUndoHistory's own contract).
@@ -116,6 +147,52 @@ export function SentPreviewResolution({
   const summary = report && report.elements.length > 0 ? summarizeVerifyReport(report) : null;
   const summaryLine = summary ? verifySummaryLine(summary) : "";
   const rows = report ? occurrenceKeyed(report.elements) : [];
+
+  /**
+   * A measured CONTRADICTION: the page was read with the previews off and provably does
+   * not render what the request asked for. Only this earns the report.
+   *
+   * `unverifiable` and `missing` deliberately do not qualify. Both are absences of
+   * evidence, not failures — an intent-shaped ask (`auto` resolves to a px, so exact
+   * comparison judges the wrong thing), a property the page authors inline, or an element
+   * the locator can no longer find, which for a structural delete is the ask succeeding.
+   * Leading with them turned a change that landed correctly into a warning.
+   */
+  const measuredFailure = summary !== null && (summary.unchanged > 0 || summary.diverged > 0);
+
+  if (!measuredFailure) {
+    return (
+      <Alert variant="success" className="rounded-md px-2.5 py-2" data-fork-design-resolve-previews>
+        <AlertTitle className="text-[11px] leading-relaxed">
+          {comparing
+            ? "Showing the live page — your previews are hidden."
+            : "The agent finished this turn."}
+        </AlertTitle>
+        {comparing ? (
+          /* The peek's two exits, both of which answer the question. The discard's blast
+             radius is stated beside the button that has it, on this path as on every
+             other — a user who kept editing after the send must read it. */
+          <AlertDescription className="gap-1.5 text-[11px] leading-relaxed">
+            <p>Discarding clears every edit on this tab — including any made after the send.</p>
+            <div className="flex items-center gap-1">
+              <Button variant="secondary" size="xs" onClick={onRestorePreviews} type="button">
+                Show previews
+              </Button>
+              <Button variant="ghost" size="xs" onClick={onDiscard} type="button">
+                Discard previews
+              </Button>
+            </div>
+          </AlertDescription>
+        ) : (
+          <AlertAction>
+            <Button variant="secondary" size="xs" onClick={onViewLive} type="button">
+              View live changes
+            </Button>
+          </AlertAction>
+        )}
+      </Alert>
+    );
+  }
 
   return (
     <div

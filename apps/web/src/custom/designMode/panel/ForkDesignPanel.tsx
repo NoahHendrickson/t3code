@@ -189,12 +189,19 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
     [unrecorded, tab.selection],
   );
 
-  const onCompare = useCallback(() => {
-    if (!runtimeTabId) return;
-    const next = !tab.comparing;
-    designModeBridge.compareAll(runtimeTabId, next);
-    useDesignModeStore.getState().setComparing(runtimeTabId, next);
-  }, [runtimeTabId, tab.comparing]);
+  /** Compare as an explicit set rather than a toggle: the footer's button flips it, but the
+   * sent-preview block needs to drive it to a known state ("show me the live page") and a
+   * toggle cannot express that. One writer either way, so the guest and the label agree. */
+  const setComparing = useCallback(
+    (next: boolean) => {
+      if (!runtimeTabId) return;
+      designModeBridge.compareAll(runtimeTabId, next);
+      useDesignModeStore.getState().setComparing(runtimeTabId, next);
+    },
+    [runtimeTabId],
+  );
+
+  const onCompare = useCallback(() => setComparing(!tab.comparing), [setComparing, tab.comparing]);
 
   const onDiscard = useCallback(() => {
     if (!runtimeTabId) return;
@@ -392,6 +399,8 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
           runtimeTabId={runtimeTabId}
           threadRef={threadRef}
           draftCount={tab.draftCount}
+          comparing={tab.comparing}
+          onSetComparing={setComparing}
           onDiscard={onDiscard}
         />
         <div className="flex items-center justify-between">

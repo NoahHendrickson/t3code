@@ -2028,7 +2028,29 @@
     names its full blast radius (every edit on the tab, including ones
     made after the send), because an unverified drop has no smaller honest
     unit: a hot reload re-mints element ids, so host-side sent identity
-    alone is stale exactly when the prompt appears. The offer is gated on the thread's own projected turn, never
+    alone is stale exactly when the prompt appears.
+    What the block LEADS with, though, is not the report but an
+    invitation to look at the page — a success-variant Alert whose one
+    button is "View live changes" — and only a measured CONTRADICTION
+    (unchanged or diverged: the page provably does not render what was
+    asked) downgrades it to the verdict rows. 'unverifiable' and 'missing'
+    deliberately do not qualify: both are absences of evidence rather than
+    failures — an intent-shaped ask, a page-authored inline slot, an
+    element a structural delete legitimately removed — and leading with
+    them turned the overwhelmingly common good outcome into a warning
+    about work that was fine, which is the opposite of this feature's job.
+    Seeing the real page is also better evidence than any verdict line,
+    which is why the default is an invitation rather than a claim; the
+    green says "the turn is over, go look", never "your edit is correct",
+    and the copy still asserts nothing the page did not produce.
+    Looking is a PEEK, not a resolution: the button drives the panel's
+    existing compare mode (one writer — the panel's setComparing, so the
+    guest, the host flag and the footer's Before/After label cannot
+    disagree), which suppresses the drafts without destroying them, so an
+    ask the agent missed can still be re-sent from the drafts the user
+    already made. Both exits from the peek — Show previews, Discard
+    previews — forget the record, so the block resolves rather than
+    asking twice about a page the user already looked at. The offer is gated on the thread's own projected turn, never
     on wall clock or observed status flips: the record carries the sent
     message's client-minted createdAt, adoption stamps the turn's
     requestedAt from that same time, and the prompt waits for a projected

@@ -444,6 +444,42 @@ describe("fork guard: design mode", () => {
     );
   });
 
+  it("leads a settled send with the live-page invitation, and peeks without destroying", () => {
+    const panel = read("src/custom/designMode/panel/SentPreviewResolution.tsx");
+
+    // What the block LEADS with is one predicate, and only a measured CONTRADICTION earns
+    // the verdict report. 'unverifiable' and 'missing' must never downgrade the invitation:
+    // both are absences of evidence (an intent-shaped ask whose computed form inverts it, a
+    // property the page authors inline, an element a structural delete legitimately removed),
+    // and leading with them rendered a change that landed correctly as a warning.
+    expect(panel).toContain(
+      "const measuredFailure = summary !== null && (summary.unchanged > 0 || summary.diverged > 0)",
+    );
+    expect(panel).toContain("if (!measuredFailure) {");
+    expect(panel).toContain('<Alert variant="success"');
+    expect(panel).toContain("View live changes");
+
+    // Looking is a PEEK, not a resolution: it drives the panel's compare mode, which
+    // suppresses the drafts without destroying them, so an ask the agent missed can still be
+    // re-sent from the drafts the user already made. A discard wired to this button instead
+    // would make "just show me the page" an unrecoverable click.
+    expect(panel).toContain("onSetComparing(true)");
+    expect(panel).not.toContain("designModeBridge.discardAll");
+
+    // Every way in has its way out, and both exits from the peek answer the question — so
+    // the block resolves rather than asking again about a page the user already looked at.
+    expect(panel).toContain("Show previews");
+    expect(panel).toContain("useDesignSentPreviews.getState().forget(runtimeTabId)");
+
+    // Compare has ONE writer. The block drives it to a known state through the panel's own
+    // setter rather than reaching for the bridge, so the guest, the host flag and the
+    // footer's Before/After label cannot disagree about what the page is showing.
+    expect(panel).not.toContain("designModeBridge.compareAll");
+    const forkPanel = read("src/custom/designMode/panel/ForkDesignPanel.tsx");
+    expect(forkPanel).toContain("comparing={tab.comparing}");
+    expect(forkPanel).toContain("onSetComparing={setComparing}");
+  });
+
   it("renders sent design changes as transcript chips, not raw markdown", () => {
     const timeline = read("src/components/chat/MessagesTimeline.tsx");
     expect(timeline).toContain(
