@@ -76,6 +76,24 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   comparingRef.current = tab.comparing;
 
   /**
+   * THE compare writer. Every host-side compare change goes through here — the footer's
+   * button, the mutation gate's leave-compare rule, Discard, and the sent-preview block —
+   * so the guest, the host flag and the Before/After label cannot disagree about what the
+   * page is showing. Declared above `mutate` because the gate itself is a caller.
+   *
+   * A setter rather than a toggle: the sent-preview block needs to drive compare to a
+   * KNOWN state ("show me the live page"), which a toggle cannot express.
+   */
+  const setComparing = useCallback(
+    (next: boolean) => {
+      if (!runtimeTabId) return;
+      designModeBridge.compareAll(runtimeTabId, next);
+      useDesignModeStore.getState().setComparing(runtimeTabId, next);
+    },
+    [runtimeTabId],
+  );
+
+  /**
    * THE mutation gate. Every write the panel makes goes through this — there is no second way
    * in — so the rules a mutation owes are structural rather than a checklist each new verb has
    * to remember (Cursor review, PR #74).
@@ -95,15 +113,12 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
   const mutate = useCallback(
     (run: (verbTarget: string) => void, record?: (verbTarget: string) => void) => {
       if (!target) return;
-      if (runtimeTabId && comparingRef.current) {
-        designModeBridge.compareAll(runtimeTabId, false);
-        useDesignModeStore.getState().setComparing(runtimeTabId, false);
-      }
+      if (comparingRef.current) setComparing(false);
       if (record) record(target);
       else designUndoHistory.clear(target);
       run(target);
     },
-    [runtimeTabId, target],
+    [setComparing, target],
   );
 
   const apply = useCallback(
@@ -189,12 +204,7 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
     [unrecorded, tab.selection],
   );
 
-  const onCompare = useCallback(() => {
-    if (!runtimeTabId) return;
-    const next = !tab.comparing;
-    designModeBridge.compareAll(runtimeTabId, next);
-    useDesignModeStore.getState().setComparing(runtimeTabId, next);
-  }, [runtimeTabId, tab.comparing]);
+  const onCompare = useCallback(() => setComparing(!tab.comparing), [setComparing, tab.comparing]);
 
   const onDiscard = useCallback(() => {
     if (!runtimeTabId) return;
@@ -202,9 +212,9 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
     // refuses — but it too is a mutation the history cannot reverse.
     designUndoHistory.clear(runtimeTabId);
     designModeBridge.discardAll(runtimeTabId);
-    useDesignModeStore.getState().setComparing(runtimeTabId, false);
+    setComparing(false);
     useDesignSentPreviews.getState().forget(runtimeTabId);
-  }, [runtimeTabId]);
+  }, [runtimeTabId, setComparing]);
 
   // Cmd+Z / Cmd+Shift+Z while Design mode is on. Window-level because after a scrub the
   // focus is wherever the pointer left it, not inside the panel; editable targets are
@@ -392,6 +402,8 @@ export function ForkDesignPanel({ runtimeTabId, threadRef, tabId }: Props) {
           runtimeTabId={runtimeTabId}
           threadRef={threadRef}
           draftCount={tab.draftCount}
+          comparing={tab.comparing}
+          onSetComparing={setComparing}
           onDiscard={onDiscard}
         />
         <div className="flex items-center justify-between">
