@@ -602,4 +602,58 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(theme).not.toContain("[data-fork-monitoring-pill]");
   });
+
+  it("ends the transcript above the composer instead of hiding it behind", () => {
+    // The transcript used to scroll the full column height and rely on the
+    // composer to cover it. That fails wherever the composer is translucent —
+    // under glass it is a 5% wash — and it can never work for the context row,
+    // which sits outside the vessel. The mask removes the content instead, so
+    // there is nothing to cover in any palette.
+    const cutoff = rules.find(
+      (rule) =>
+        rule.selector.includes(".fork-timeline-cutoff") &&
+        !rule.selector.includes(".chat-timeline-scroll-fade"),
+    );
+    expect(cutoff, "the timeline cutoff mask must exist").toBeDefined();
+    expect(cutoff?.selector).toContain(MARKER);
+
+    // Driven by the measured composer, not a guessed constant: the composer
+    // grows with the editor and with the context row, and a fixed inset would
+    // cut in the wrong place the moment it does.
+    expect(cutoff?.body, "the cutoff must follow the measured composer").toContain(
+      "var(--fork-composer-inset",
+    );
+    // Both spellings, or the fade is Chromium-only.
+    expect(cutoff?.body).toMatch(/(?<!-webkit-)mask-image:/u);
+    expect(cutoff?.body).toContain("-webkit-mask-image:");
+
+    // ChatView stamps the value the mask reads.
+    const chatView = readSibling("../components/ChatView.tsx");
+    expect(chatView).toContain('"--fork-composer-inset"');
+    expect(chatView).toContain("composerOverlayHeight");
+
+    // The class is unconditional. Upstream's top fade drops out whenever a
+    // banner sits above the timeline, and if the cutoff rode on that class the
+    // transcript would run under the composer again in exactly those states.
+    const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
+    expect(timeline).toContain('"fork-timeline-cutoff"');
+    expect(timeline, "the cutoff class must not be gated on the top fade").not.toMatch(
+      /topFadeEnabled\s*&&\s*"fork-timeline-cutoff"/u,
+    );
+
+    // Masks cannot be composed across rules, so the fork owns the whole stack
+    // and folds upstream's top fade back in by height. If that companion rule
+    // goes missing the top fade silently stops rendering.
+    const withTopFade = rules.find(
+      (rule) =>
+        rule.selector.includes(".fork-timeline-cutoff") &&
+        rule.selector.includes(".chat-timeline-scroll-fade"),
+    );
+    expect(
+      withTopFade,
+      "the top-fade height must be restored when upstream's class is on",
+    ).toBeDefined();
+    expect(withTopFade?.body).toContain("--topbar-scroll-fade-height");
+    expect(cutoff?.body).toContain("--fork-timeline-top-fade: 0px");
+  });
 });

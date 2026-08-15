@@ -22,16 +22,9 @@ import * as Electron from "electron";
 
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
-import { setForkGlassActive } from "./ForkGlassState.ts";
+import { FORK_VIBRANCY_MATERIAL, setForkGlassActive } from "./ForkGlassState.ts";
 
 export const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
-
-/**
- * `under-window` is the material Cursor-style sidebars use: it samples the
- * wallpaper rather than the windows stacked behind the app, so the glass stays
- * calm when other apps move underneath it.
- */
-const VIBRANCY_MATERIAL = "under-window" as const;
 
 /**
  * The window is created with an opaque `backgroundColor`. Vibrancy only reaches
@@ -83,7 +76,7 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
     const main = yield* electronWindow.main;
     const restore = opaqueWindowBackground();
     if (Option.isSome(main) && !main.value.isDestroyed()) {
-      main.value.setVibrancy(enabled ? VIBRANCY_MATERIAL : null);
+      main.value.setVibrancy(enabled ? FORK_VIBRANCY_MATERIAL : null);
       main.value.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : restore);
     }
 

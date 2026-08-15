@@ -596,6 +596,14 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             className={cn(
               "scrollbar-gutter-both h-full min-h-0 overflow-x-hidden overscroll-y-contain px-3 [overflow-anchor:none] sm:px-5",
               topFadeEnabled && "chat-timeline-scroll-fade",
+              /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+              // Unconditional, unlike the top fade beside it: theme.custom.css
+              // masks the transcript so it ends above the composer, and that
+              // has to hold whether or not a banner is suppressing the top
+              // fade. The fork rule owns the whole mask and folds the top layer
+              // in when the class above is present.
+              "fork-timeline-cutoff",
+              /* fork:end fork-composer-shell */
             )}
             ListHeaderComponent={
               loadEarlier !== null ? (

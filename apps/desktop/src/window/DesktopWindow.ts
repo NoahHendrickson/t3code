@@ -17,7 +17,7 @@ import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 /* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
-import { isForkGlassActive } from "../fork/ForkGlassState.ts";
+import { FORK_VIBRANCY_MATERIAL, isForkGlassActive } from "../fork/ForkGlassState.ts";
 /* fork:end fork-cool-darker-sidebar-vibrancy */
 import { MENU_ACTION_CHANNEL, WINDOW_FULLSCREEN_STATE_CHANNEL } from "../ipc/channels.ts";
 import * as PreviewManager from "../preview/Manager.ts";
@@ -361,7 +361,21 @@ export const make = Effect.gen(function* () {
       // attached here for every macOS window and switched on and off at runtime
       // instead. It costs nothing while the background stays opaque — nothing
       // shows through until ForkSidebarVibrancy clears the fill.
-      ...(environment.platform === "darwin" ? { vibrancy: "under-window" as const } : {}),
+      //
+      // Shared constant, not a literal: this and the runtime call have to name
+      // the same material, and they live in files that cannot import each other.
+      //
+      // `visualEffectState: "active"` keeps the material live while the window is
+      // not key. NSVisualEffectView defaults to following the window's active
+      // state, which drops the glass to a flat inactive fill the moment focus
+      // moves to another app — and since the CSS behind it stays translucent, the
+      // whole app reads as going opaque rather than as a window losing focus. The
+      // sidebar and the stage are meant to be materials, not a focus indicator.
+      // Construction-only, like `vibrancy`, and Electron requires the two to be
+      // set together.
+      ...(environment.platform === "darwin"
+        ? { vibrancy: FORK_VIBRANCY_MATERIAL, visualEffectState: "active" as const }
+        : {}),
       /* fork:end fork-cool-darker-sidebar-vibrancy */
       backgroundColor: getInitialWindowBackgroundColor(shouldUseDarkColors),
       ...iconOption,

@@ -1059,8 +1059,19 @@
   intent: >
     Cool Darker — and only Cool Darker — shows the macOS desktop wallpaper
     through its sidebar, the way Cursor does. Native NSVisualEffectView
-    vibrancy ("under-window"), not CSS: backdrop-filter can only blur what is
-    behind an element inside the page, so it can never reach the desktop.
+    vibrancy ("fullscreen-ui", named once in fork/ForkGlassState.ts because the
+    window's construction options and the runtime call must agree), not CSS:
+    backdrop-filter can only blur what is behind an element inside the page, so
+    it can never reach the desktop. It started on "under-window", the darkest
+    sampler macOS offers — measured through the app it returned a flat ~49 grey,
+    which caps every surface above it however the stylesheet is tuned.
+
+    The window is built with visualEffectState "active" alongside the vibrancy.
+    NSVisualEffectView otherwise follows the window's active state and drops to a
+    flat inactive fill whenever focus leaves the app; the CSS behind it stays
+    translucent either way, so it presents as the whole app going opaque rather
+    than as a window losing focus. Both options are construction-only and
+    Electron requires them together.
 
     The main process owns the material AND the window fill for as long as the
     glass is on. apps/desktop/src/fork/ForkSidebarVibrancy.ts registers a
@@ -1116,29 +1127,57 @@
 
     Glass is the one place the fork's flatten-alpha doctrine is suspended: an
     opaque row fill over a translucent panel renders as a rectangle of missing
-    wallpaper. The sidebar panel is a single rgb(24 27 30 / 75%) tint and rows
+    wallpaper. The sidebar panel is a single rgb(22 22 22 / 88%) tint and rows
     lift with white washes (5% hover, 8% active/selected) so the glass survives
-    selection. The chat stage is rgb(20 22 24 / 90%) so both surfaces carry the
-    same cast and the seam between them reads as depth, not as two materials.
-    The guard pins the relationship — stage alpha >= 80% and never below the
-    sidebar's — rather than either literal value, because the transcript is the
-    app's one long-form reading surface.
+    selection. The chat stage is a vertical gradient, rgb(22 22 22 / 95%) for its
+    top 70% easing to 85% across the bottom third where the cutoff mask has already
+    ended the transcript. That ramp is scoped to insets that carry the mask
+    (:has(.fork-timeline-cutoff)); Settings, Usage and the empty state are the
+    same element with no transcript to end, so they keep a flat 95%. SidebarInset
+    carries bg-background, so the rule clears background-color explicitly — a
+    background-image alone composites over that opaque fill and the glass does
+    nothing. Panel and stage share one triple, so both surfaces carry a single
+    cast and differ only in depth, and the seam between them reads as depth
+    rather than as two materials.
+    The guard pins the relationships rather than any literal value: every stage
+    stop >= 80%, the reading area never below the sidebar's, and every stop of an
+    unmasked inset never below it either. The licence to dip under the panel
+    belongs to the fade below the mask, and only there.
 
     Two arithmetic facts govern the tuning, and both cost several rounds to
     learn the hard way:
 
     Vibrancy darkens and desaturates its sample before either surface
-    composites over it, so the usable range is roughly 60-90%. 94%, 97% and 98%
-    all render as no glass at all rather than as subtle glass.
+    composites over it, and how much survives is the MATERIAL's answer, not a
+    constant. On "under-window" (a flat ~49 grey) the usable range was roughly
+    60-90%: 91%, 97% and 98% all rendered as no glass at all rather than as
+    subtle glass. "fullscreen-ui" returns ~99 and carries colour, so the same
+    contribution needs a much higher alpha — the stage tops out at 95% and still
+    reads as glass. Changing FORK_VIBRANCY_MATERIAL invalidates every number
+    here; hold the desktop's contribution constant and redo the arithmetic.
 
     Alpha compounds down the tree. Anything painting a fill ON the stage
     multiplies with it — a 90% scrim over the 90% stage composites to 99%
     against the stage's own 90%, which is why the composer band stayed visibly
     flatter than the column no matter what value the scrim used. Only zero
     matches the stage, so [data-chat-composer-overlay] paints `background:
-    none` under glass and the frosted vessel does its job instead. The same
-    compounding is why the vessel at 75% still reads as ~97% effective; it is
-    left that way deliberately, as a control that should read as an object.
+    none` under glass and the timeline cutoff mask ends the transcript above the
+    composer instead of anything covering it.
+
+    backdrop-filter and the native material are alternatives, not layers. The
+    NSVisualEffectView sits behind the window, outside anything the page
+    compositor owns, so Chromium cannot include it in a backdrop it filters — it
+    flattens the region to composite the filter, and the element keeps its
+    brightness while losing the desktop. The composer carried blur(48px)
+    saturate(2.6) and measured as a channel spread of 3 against 25 in the sidebar
+    and 14-20 in the stage beside it: a flat grey slab in a translucent window.
+    All of them are cleared explicitly — the composer, and upstream's own
+    .dropdown-glass / .dialog-glass / .alert-glass / .chat-composer-glass /
+    .dialog-backdrop utilities, which open over the sidebar and the stage and
+    flatten whatever patch they cover. Those four are made opaque in the same
+    rule (--glass-opacity: 100%): without the blur a translucent menu leaks the
+    text under it, which is worse than the grey card it replaces. The cutoff
+    mask is what makes clearing the composer's own filter safe.
 
     Three separate failures in this feature all present identically, as "the
     stylesheet is not reloading":
@@ -1895,8 +1934,13 @@
     - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
     # The glass-shell pseudo-elements and .chat-composer-context-strip this
     # customization switches off. An upstream rework of that paint would leave
-    # the fork disabling rules that no longer exist.
+    # the fork disabling rules that no longer exist. Also owns the top-fade
+    # mask the cutoff below folds into its own layer stack.
     - apps/web/src/index.css
+    # Carries .fork-timeline-cutoff on the scroller, unconditionally, so the
+    # transcript mask survives the banner states that drop upstream's top fade.
+    # Upstream reworking that className is what would silently un-mask it.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
     # min-h-17.5 on the prompt editor, the placeholder that has to track the
     # prompt's type ramp, and the max-h-50 / overflow-y-auto cap the fork
     # re-homes on the prompt wrapper at >=40rem by overriding — the classes

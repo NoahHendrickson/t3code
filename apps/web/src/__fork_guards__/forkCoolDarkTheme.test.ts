@@ -213,12 +213,20 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(41 41 41)");
     expect(coolDark?.body).toContain("--fork-context-chip-bg: #353a3d");
     expect(defaultDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
-    const chipBlur = cssRules(theme).find(
-      (rule) =>
-        rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.body.includes("backdrop-filter"),
-    );
-    expect(chipBlur).toBeUndefined();
+    // The chips never carry a real filter. Matching the property outright used
+    // to say that, until the vibrancy block started declaring `none` on them
+    // and tripped its own guard. So match the VALUE: `none` is the point, and
+    // anything else is the regression — dead weight under design-mode canvas,
+    // and under native vibrancy a filter flattens the wallpaper it sits on.
+    const chipFilters = cssRules(theme)
+      .filter((rule) => rule.selector.includes("[data-fork-composer-context-row]"))
+      .flatMap((rule) =>
+        [...rule.body.matchAll(/(?:-webkit-)?backdrop-filter:\s*([^;]+);/gu)].map((match) => ({
+          selector: rule.selector,
+          value: match[1]?.trim(),
+        })),
+      );
+    expect(chipFilters.filter((filter) => filter.value !== "none")).toEqual([]);
   });
 
   it("pre-paints Cool Dark from the palette key so the load flash matches the stage", () => {
