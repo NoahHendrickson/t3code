@@ -17,6 +17,7 @@ import {
   subscribeToThemeChanges,
   syncBrowserChromeTheme,
 } from "../hooks/useTheme";
+import { syncForkSidebarVibrancy } from "./forkSidebarVibrancy";
 import type { ThemePreference } from "../themePalette";
 
 export const FORK_THEME_ATTRIBUTE = "data-fork-theme";
@@ -31,7 +32,7 @@ export const COOL_DARK_BACKGROUND = "#202326";
 export const COOL_DARKER_THEME = "cool-darker" as const;
 export const COOL_DARKER_LABEL = "Cool Darker";
 /** Pre-paint / overscroll colour for Cool Darker — matches stage `--background`. */
-export const COOL_DARKER_BACKGROUND = "#1a1c1e";
+export const COOL_DARKER_BACKGROUND = "#141618";
 
 export const NEUTRAL_DARK_THEME = "neutral-dark" as const;
 export const NEUTRAL_DARK_LABEL = "Neutral Dark";
@@ -185,6 +186,14 @@ function syncForkPaletteFromStorage(): void {
     // two fork palettes keeps upstream theme at "dark", so applyTheme no-ops
     // and this is the only repaint of html/body overscroll and theme-color.
     syncBrowserChromeTheme();
+    // Native window glass rides an async IPC round trip, so it deliberately
+    // lands outside the synchronous repaint above. The helper stamps its own
+    // marker from the resolved answer; nothing here waits on it.
+    //
+    // Which palettes want glass is decided here rather than in the helper: this
+    // module owns palette semantics, and keeping the knowledge on this side is
+    // what lets the helper import nothing back from it.
+    void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME);
   }
   lastPalette = palette;
   emitChange();
