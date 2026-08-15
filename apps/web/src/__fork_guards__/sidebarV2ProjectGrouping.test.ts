@@ -179,8 +179,10 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     )?.[0];
     expect(headerRow).toBeDefined();
     expect(headerRow).not.toContain('role="heading"');
-    // Figma 113:3718: no own horizontal pad; 24px folder box + gap-1.
-    expect(headerRow).toContain("gap-1");
+    // Figma 293:20603: no own horizontal pad; the 24px folder box and the gap
+    // to the label come from custom/sidebarV2CardAlignment, which is what lands
+    // that label on the same 34px edge as each card's prompt below it.
+    expect(headerRow).toContain("SIDEBAR_V2_CARD_ALIGNMENT.headerGap");
     expect(headerRow).not.toContain("px-3");
     expect(headerRow).not.toContain("px-2.5");
   });

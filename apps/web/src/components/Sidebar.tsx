@@ -177,7 +177,8 @@ import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
 import { SidebarV2StatusMark, type SidebarV2DotTone } from "~/custom/SidebarV2StatusIndicator";
-import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "~/custom/SidebarV2ThreadCardMeta";
+import { SidebarV2ThreadCardMeta } from "~/custom/SidebarV2ThreadCardMeta";
+import { SIDEBAR_V2_CARD_ALIGNMENT } from "~/custom/sidebarV2CardAlignment";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
@@ -960,6 +961,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     // text while forcing its title forward — two opposite policies in one
     // rectangle. Slim shelves keep upstream's rule.
     recedes: variant === "card" ? cardRecedes : shouldRecede,
+    // Cards take the component set's 12px corner; slim shelf rows keep the 8px
+    // they were drawn at.
+    variant,
     /* fork:end sidebar-v2-card-rows */
   });
 
@@ -1011,7 +1015,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
         className={cn(
           // Sidebar chrome follows the interface font; tabular digits keep the
           // number from reflowing as PR states stream in.
-          "shrink-0 text-xs tabular-nums hover:underline",
+          "shrink-0 tabular-nums hover:underline",
+          /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+             On a card the badge rides the title line (Figma 113:728) at an
+             explicit 12px, so the panel's --text-xs → 13px remap cannot grow it
+             past the elapsed time beside it; pe-1 is the design's 4px, both to
+             the card's content edge and between the badge and that time. Slim
+             shelf rows keep upstream's text-xs. */
+          variant === "card" ? "pe-1 text-[0.75rem] leading-4" : "text-xs",
+          /* fork:end sidebar-v2-card-rows */
           variant === "slim" && variantAction === "unsettle"
             ? props.isActive
               ? "text-secondary-label"
@@ -1170,26 +1182,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     );
   }
 
-  const diff = latestTurnDiff(thread);
-  // "Has this thread a PR" is unknown only until the status query first
-  // answers — not on every later refresh. The query re-enters `waiting` each
-  // time it polls, and reading that alone would flip the card between two and
-  // three lines on every poll, which is the reflow this exists to avoid, on a
-  // loop. Once data has landed the height is settled either way.
-  const prUnknown = gitStatus.data === null && gitStatus.isPending;
-  // A card is three lines only when it has a PR or a diff to put on the third,
-  // or does not yet know whether it has a PR; the hint has to follow, or the
-  // scrollbar lies about every skipped row. The li carries no padding of its
-  // own (the ul's gap-1 is the 4px between cards — fork retune of Figma's
-  // 2px), so both values are the drawn card exactly: two lines are
-  // 8 + 14 + 8 + 16 + 8 = 54, and three lines add the meta row's 8 + 15 for 77.
-  const showsMetaRow = threadCardShowsMetaRow({
-    hasPr: prBadge !== null,
-    prUnknown,
-    insertions: diff?.insertions ?? null,
-    deletions: diff?.deletions ?? null,
-  });
-
   const sortable = props.sortable;
   return (
     <li
@@ -1207,8 +1199,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       className={cn(
         "list-none [content-visibility:auto]",
         sortable?.isDragging && "z-20 opacity-80",
-        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
-        showsMetaRow ? "[contain-intrinsic-size:auto_77px]" : "[contain-intrinsic-size:auto_54px]",
+        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+           content-visibility skips offscreen rows; this is what keeps the
+           scrollbar honest while they are skipped. One value, because the
+           component set draws one height: the li carries no padding of its own,
+           so it equals the drawn card exactly — 8 + 18 + 2 + 16 + 8 = 52. */
+        "[contain-intrinsic-size:auto_52px]",
         /* fork:end sidebar-v2-card-rows */
       )}
     >
@@ -1228,40 +1224,47 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             />
           }
         >
-          {/* Three rows: title, repo, meta. Status leads the title line; repo
-              and meta indent under the title text (14px mark + 10px gap). The
-              trailing cell on the title line holds elapsed time while working
-              and the hover actions — status no longer shares that cell, so the
-              opacity crossfade hit-path bug cannot return.
+          {/* Two rows: title and repo. Status leads the title line; the repo
+              line indents under the title text (16px mark + 6px gap). The
+              trailing cell on the title line holds the PR badge, elapsed time
+              while working, and the hover actions — status no longer shares
+              that cell, so the opacity crossfade hit-path bug cannot return.
 
-              Drawn heights: two-line 54 (8+14+8+16+8), three-line 77; the li
-              adds nothing, so contain-intrinsic-size is those exact values. */}
+              Drawn height 52 (8+18+2+16+8); the li adds nothing, so
+              contain-intrinsic-size is that exact value. */}
           {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-              Figma 113:3718: px-4 py-8 (4/8). List pad 8 puts the leading
-              status at 12px — same axis as Search and the group folder icon.
-              Row gap is 8px (gap-2), not Figma's 4 — retuned so the title and
-              branch breathe. Title line is 14px (status + prompt); repo stays
-              16px. Drawn heights (54/77) and the guards pin this retune. */}
-          <div className="relative z-10 flex flex-col gap-2 px-1 py-2">
+              Figma 113:725: px-4 py-8 (4/8), 2px between the rows. List pad 8
+              puts the leading status box at 12px, and a 16px box centres its
+              mark at 20 — the same axis as Search and the group folder icon. */}
+          <div className="relative z-10 flex flex-col gap-0.5 px-1 py-2">
             {/* fork:end sidebar-v2-card-rows */}
-            {/* Title line is 14px tall — the card draws at 54
-                (8 + 14 + 8 + 16 + 8). Status mark and title share that
-                height; a 16px line around a 14px rain made the mark look
-                oversized / low against the prompt. */}
-            {/* gap-2.5 (10px): 14px status + 10px gap keeps the prompt at
-                36px — same as the group header label (24px folder box +
-                4px gap). gap-2 would have walked it 2px left. */}
+            {/* Title line is 18px tall — the 14px prompt's own line box, and
+                what the card's 52 is measured from (8 + 18 + 2 + 16 + 8). */}
+            {/* Box and gap are derived in custom/sidebarV2CardAlignment: they
+                are what put the prompt on the same 34px edge as the group
+                header's label, so neither moves alone. */}
             {/* No overflow-hidden on the row: the trailing settle/X cell is
-                h-6 and must overhang into py-2/gap-2. Clipping here cut the
-                24px hover fill into a short rectangle. Rain clips itself in
-                the status slot below. */}
-            <div className="flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5">
-              {/* Leading 14px status column. Always present (idle draws the
-                  hollow ring) so the title text and the indented rows below
-                  share one left edge. pointer-events-none: a mark is never a
-                  target. Explicit px so DevTools / rem remaps cannot leave
-                  this at 16. */}
-              <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
+                h-6 and must overhang into py-2. Clipping here cut the 24px
+                hover fill into a short rectangle. Rain clips itself in the
+                status slot below. */}
+            <div
+              className={cn(
+                "flex h-[18px] min-h-[18px] min-w-0 items-center",
+                SIDEBAR_V2_CARD_ALIGNMENT.titleGap,
+              )}
+            >
+              {/* Leading status box (Figma 113:725 `indicator`). Always present
+                  (idle draws the hollow ring) so the title text and the
+                  indented row below share one left edge. The marks inside keep
+                  their own sizes — the rain is 14px tall, a status dot is 8px —
+                  and centre in the box. pointer-events-none: a mark is never a
+                  target. */}
+              <span
+                className={cn(
+                  "pointer-events-none flex shrink-0 items-center justify-center overflow-hidden",
+                  SIDEBAR_V2_CARD_ALIGNMENT.statusBox,
+                )}
+              >
                 {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
                 <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="ring" />
                 {/* fork:end sidebar-v2-card-rows */}
@@ -1284,134 +1287,162 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   Regenerating title
                 </span>
               ) : null}
-              {/* Trailing cell: elapsed while working, hover actions when
-                  offered. Stacked and right-aligned so the title truncates
-                  against whichever child is showing. Status used to live here
-                  too; moving it left is what let the indent below line up. */}
-              {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */}
-              {/* h-6, not the line's 14px: the hover actions share this cell
-                  and a 24px target cannot fit in a 14px one. The cell is
-                  centred in the title line, so it overhangs into the card's
-                  py-2 above and its gap-2 below — neither of which carries
-                  anything to collide with. */}
-              {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
-              {hasHoverActions ||
-              /* fork:end sidebar-v2-draft-rows */
-              status === "working" ? (
-                <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
-                  {/* fork:end sidebar-v2-row-action-hit-area */}
-                  {status === "working" ? (
-                    <span
-                      className={cn(
-                        "pointer-events-none col-start-1 row-start-1 flex items-center pr-1",
-                        // The fade exists to yield the cell to the hover
-                        // actions. When neither action is offered there is
-                        // nothing to yield to, and an unconditional fade
-                        // blanks the timer on hover with nothing in its place.
-                        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-                        hasHoverActions &&
-                          /* fork:end sidebar-v2-draft-rows */
-                          "transition-opacity group-hover/v2-row:opacity-0",
-                        snoozeMenuOpen && "opacity-0",
-                      )}
-                    >
-                      <span
-                        aria-hidden
-                        className="text-[11px] leading-[15px] text-foreground tabular-nums"
-                      >
-                        <WorkingDuration startedAt={resolveWorkingStartedAt(thread)} />
-                      </span>
-                    </span>
-                  ) : null}
+              {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                  Trailing group (Figma 113:728): the PR badge, then elapsed /
+                  hover actions. The design ends the group 4px in from the
+                  card's content edge and puts 4px between the badge and the
+                  time; the badge carries both as its own `pe-1`, so the group
+                  needs no gap of its own and the hover actions underneath keep
+                  their flush 24px box on the trailing axis.
+
+                  The badge does not fade with the elapsed time on hover: it is
+                  a link to the PR, and a control you can only reach by *not*
+                  pointing at its row is not a control. */}
+              {prBadge || hasHoverActions || status === "working" ? (
+                <span className="flex shrink-0 items-center">
+                  {prBadge}
+                  {/* fork:end sidebar-v2-card-rows */}
+                  {/* Elapsed while working, hover actions when offered.
+                      Stacked and right-aligned so the title truncates against
+                      whichever child is showing. Status used to live here too;
+                      moving it left is what let the indent below line up. */}
+                  {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */}
+                  {/* h-6, not the line's 18px: the hover actions share this
+                      cell and a 24px target cannot fit in an 18px one. The cell
+                      is centred in the title line, so it spans y 5→29 of the
+                      card's content box — 3px into the py-2 above, and below
+                      through the 2px row gap to exactly the top of the runtime
+                      glyph, which sits at y 29→43 on the same trailing axis.
+
+                      Flush, not overlapping, and deliberate: 0px is what the
+                      design's 52px height leaves once the hit target holds its
+                      24px WCAG floor (see custom/sidebarV2TrailingColumn — that
+                      floor is design-wide, not this cell's private call). The
+                      hover fill therefore meets the glyph without covering it.
+                      Nothing is stolen either: this wrapper is `relative` and
+                      the runtime span is not, so the actions hit-test above it
+                      regardless. Shrinking the cell to buy clearance would
+                      trade a visual seam for a sub-minimum target. */}
                   {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
-                  {hasHoverActions ? (
-                    /* fork:end sidebar-v2-draft-rows */
-                    <span
-                      className={cn(
-                        // Zero-width at rest so a settled row's title still runs
-                        // the full width of the card when nothing is pointing at
-                        // it; the column only widens once the actions are
-                        // actually showing, and the title re-truncates to match.
-                        // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
-                        // focus-within:overflow-visible, because the clip that
-                        // collapses this to zero width also cuts the focus ring:
-                        // it is a box-shadow 4px outside a button the wrapper
-                        // hugs exactly, so a keyboard user got no indicator at
-                        // all on the one control the ring was added for. Only
-                        // lifted while focus is inside, which is the same
-                        // condition that widens the wrapper.
-                        //
-                        // The offset is derived in custom/sidebarV2TrailingColumn
-                        // with the rest of the column's; `relative` keeps the
-                        // actions in the positioned layer with any opacity
-                        // crossfade sibling (elapsed) that shares this cell.
-                        // fork:end sidebar-v2-row-action-hit-area
-                        SIDEBAR_V2_TRAILING_OFFSET.cardActions,
-                        "relative col-start-1 row-start-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
-                        snoozeMenuOpen && "w-auto opacity-100",
-                      )}
-                    >
-                      {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                  {hasHoverActions ||
+                  /* fork:end sidebar-v2-draft-rows */
+                  status === "working" ? (
+                    <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
+                      {/* fork:end sidebar-v2-row-action-hit-area */}
+                      {status === "working" ? (
+                        <span
+                          className={cn(
+                            "pointer-events-none col-start-1 row-start-1 flex items-center pr-1",
+                            // The fade exists to yield the cell to the hover
+                            // actions. When neither action is offered there is
+                            // nothing to yield to, and an unconditional fade
+                            // blanks the timer on hover with nothing in its place.
+                            /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                            hasHoverActions &&
+                              /* fork:end sidebar-v2-draft-rows */
+                              "transition-opacity group-hover/v2-row:opacity-0",
+                            snoozeMenuOpen && "opacity-0",
+                          )}
+                        >
+                          <span
+                            aria-hidden
+                            className="text-[11px] leading-[15px] text-foreground tabular-nums"
+                          >
+                            <WorkingDuration startedAt={resolveWorkingStartedAt(thread)} />
+                          </span>
+                        </span>
+                      ) : null}
+                      {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
+                      {hasHoverActions ? (
+                        /* fork:end sidebar-v2-draft-rows */
+                        <span
+                          className={cn(
+                            // Zero-width at rest so a settled row's title still runs
+                            // the full width of the card when nothing is pointing at
+                            // it; the column only widens once the actions are
+                            // actually showing, and the title re-truncates to match.
+                            // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                            // focus-within:overflow-visible, because the clip that
+                            // collapses this to zero width also cuts the focus ring:
+                            // it is a box-shadow 4px outside a button the wrapper
+                            // hugs exactly, so a keyboard user got no indicator at
+                            // all on the one control the ring was added for. Only
+                            // lifted while focus is inside, which is the same
+                            // condition that widens the wrapper.
+                            //
+                            // The offset is derived in custom/sidebarV2TrailingColumn
+                            // with the rest of the column's; `relative` keeps the
+                            // actions in the positioned layer with any opacity
+                            // crossfade sibling (elapsed) that shares this cell.
+                            // fork:end sidebar-v2-row-action-hit-area
+                            SIDEBAR_V2_TRAILING_OFFSET.cardActions,
+                            "relative col-start-1 row-start-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                            snoozeMenuOpen && "w-auto opacity-100",
+                          )}
+                        >
+                          {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
                           Pin leads the cell, ahead of snooze: the two literal
                           labels are separate branches on purpose — the hit-area
                           guard counts each label's call sites. */}
-                      {props.pinningSupported ? (
-                        props.isPinned ? (
-                          <button
-                            type="button"
-                            aria-label="Unpin thread"
-                            onClick={handleUnpinClick}
-                            className={SIDEBAR_V2_ICON_BUTTON_CLASS}
-                          >
-                            <PinOffIcon className="size-3" />
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            aria-label="Pin thread"
-                            onClick={handlePinClick}
-                            className={SIDEBAR_V2_ICON_BUTTON_CLASS}
-                          >
-                            <PinIcon className="size-3" />
-                          </button>
-                        )
-                      ) : null}
-                      {/* fork:end sidebar-v2-row-action-hit-area */}
-                      {showSnoozeButton ? (
-                        <SnoozePopoverButton
-                          open={snoozeMenuOpen}
-                          onOpenChange={setSnoozeMenuOpen}
-                          onSnooze={handleSnoozePreset}
-                          timestampFormat={props.timestampFormat}
-                        />
-                      ) : null}
-                      {props.settlementSupported ? (
-                        <button
-                          type="button"
-                          aria-label="Settle thread"
-                          onClick={handleSettleClick}
-                          /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
-                          className={SIDEBAR_V2_ICON_BUTTON_CLASS}
-                          /* fork:end sidebar-v2-row-action-hit-area */
-                        >
-                          {/* Icon-only in v2: at 282px the "Settle" text pushed the
+                          {props.pinningSupported ? (
+                            props.isPinned ? (
+                              <button
+                                type="button"
+                                aria-label="Unpin thread"
+                                onClick={handleUnpinClick}
+                                className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                              >
+                                <PinOffIcon className="size-3" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                aria-label="Pin thread"
+                                onClick={handlePinClick}
+                                className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                              >
+                                <PinIcon className="size-3" />
+                              </button>
+                            )
+                          ) : null}
+                          {/* fork:end sidebar-v2-row-action-hit-area */}
+                          {showSnoozeButton ? (
+                            <SnoozePopoverButton
+                              open={snoozeMenuOpen}
+                              onOpenChange={setSnoozeMenuOpen}
+                              onSnooze={handleSnoozePreset}
+                              timestampFormat={props.timestampFormat}
+                            />
+                          ) : null}
+                          {props.settlementSupported ? (
+                            <button
+                              type="button"
+                              aria-label="Settle thread"
+                              onClick={handleSettleClick}
+                              /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
+                              className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                              /* fork:end sidebar-v2-row-action-hit-area */
+                            >
+                              {/* Icon-only in v2: at 282px the "Settle" text pushed the
                               hover actions over the title, which now shares their
                               line. `aria-label` carries the name. */}
-                          <CheckIcon className="size-3" />
-                        </button>
+                              <CheckIcon className="size-3" />
+                            </button>
+                          ) : null}
+                          {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
+                          {showDiscardDraft ? (
+                            <button
+                              type="button"
+                              aria-label="Discard draft"
+                              onClick={handleDiscardDraftClick}
+                              className={SIDEBAR_V2_ICON_BUTTON_CLASS}
+                            >
+                              <XIcon className="size-3" />
+                            </button>
+                          ) : null}
+                          {/* fork:end sidebar-v2-draft-rows */}
+                        </span>
                       ) : null}
-                      {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
-                      {showDiscardDraft ? (
-                        <button
-                          type="button"
-                          aria-label="Discard draft"
-                          onClick={handleDiscardDraftClick}
-                          className={SIDEBAR_V2_ICON_BUTTON_CLASS}
-                        >
-                          <XIcon className="size-3" />
-                        </button>
-                      ) : null}
-                      {/* fork:end sidebar-v2-draft-rows */}
                     </span>
                   ) : null}
                 </span>
@@ -1439,10 +1470,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                  the component boundary. */
               terminalSlot={terminalStatusIcon}
               /* fork:end sidebar-v2-card-rows */
-              prSlot={prBadge}
-              prUnknown={prUnknown}
-              insertions={diff?.insertions ?? null}
-              deletions={diff?.deletions ?? null}
               modelLabel={modelLabel}
               isRemote={isRemote}
             />
@@ -1455,14 +1482,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   );
 });
 
-function latestTurnDiff(
-  thread: SidebarThreadSummary,
-): { insertions: number; deletions: number } | null {
-  // Shells don't carry checkpoint summaries; diff stats render only when the
-  // shell projection grows them. Kept as a seam so the row layout is ready.
-  void thread;
-  return null;
-}
+/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+   Upstream's `latestTurnDiff` stub stood here. It always returned null — shells
+   carry no checkpoint summaries — and the fork card was its only caller, so it
+   went out with the row that displayed diff counts (Figma 113:724 draws none).
+   Port it back, with a call site, if the shell projection ever grows the field
+   and the design finds somewhere to put it. */
+/* fork:end sidebar-v2-card-rows */
 
 export default function SidebarV2() {
   const projects = useProjects();
@@ -3267,11 +3293,14 @@ export default function SidebarV2() {
             timeout={400}
           >
             {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-                gap-1 is the fork's 4px between cards and between a group
-                header and its first card (Figma 113:3718 drew 2px; retuned
-                for breathing room on the lifted panel). Rows carry no
-                vertical padding of their own. */}
-            <ul ref={attachListAutoAnimateRef} role="list" className="flex flex-col gap-1">
+                Rows carry no vertical padding of their own, so this gap is the
+                only space between them and the project header's margins are
+                derived from it — both live in custom/sidebarV2CardAlignment. */}
+            <ul
+              ref={attachListAutoAnimateRef}
+              role="list"
+              className={cn("flex flex-col", SIDEBAR_V2_CARD_ALIGNMENT.listGap)}
+            >
               {/* fork:end sidebar-v2-card-rows */}
               {(() => {
                 const renderThreadRow = (
@@ -3450,7 +3479,14 @@ export default function SidebarV2() {
                       key="pinned-divider"
                       aria-hidden
                       data-testid="sidebar-v2-pinned-divider"
-                      className="mx-2.5 my-1.5 h-px list-none bg-sidebar-border/60"
+                      /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                         Margin derived off the list gap so halving that gap did
+                         not quietly tighten this hairline too. */
+                      className={cn(
+                        "mx-2.5 h-px list-none bg-sidebar-border/60",
+                        SIDEBAR_V2_CARD_ALIGNMENT.pinnedDividerMargin,
+                      )}
+                      /* fork:end sidebar-v2-card-rows */
                     />,
                   );
                 }
@@ -3513,7 +3549,15 @@ export default function SidebarV2() {
                         onClick={toggleSnoozedShelf}
                         aria-expanded={snoozedShelfExpanded}
                         data-testid="sidebar-v2-snoozed-shelf-toggle"
-                        className="mb-1 mt-3 flex w-full cursor-pointer items-center gap-2 px-2.5 text-left"
+                        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                           Margins derived off the list gap, so halving that
+                           gap left this shelf's spacing where it was. */
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2 px-2.5 text-left",
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderLead,
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderTrail,
+                        )}
+                        /* fork:end sidebar-v2-card-rows */
                       >
                         <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                           {snoozedShelfExpanded ? "Snoozed" : `Snoozed (${snoozedThreads.length})`}
@@ -3549,7 +3593,15 @@ export default function SidebarV2() {
                         onClick={toggleSettledShelf}
                         aria-expanded={settledShelfExpanded}
                         data-testid="sidebar-v2-settled-shelf-toggle"
-                        className="mb-1 mt-3 flex w-full cursor-pointer items-center gap-2 px-2.5 text-left"
+                        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                           Margins derived off the list gap, so halving that
+                           gap left this shelf's spacing where it was. */
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2 px-2.5 text-left",
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderLead,
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderTrail,
+                        )}
+                        /* fork:end sidebar-v2-card-rows */
                       >
                         <span className="text-xs font-medium text-muted-foreground/50">
                           {settledShelfExpanded ? "Settled" : `Settled (${settledThreads.length})`}

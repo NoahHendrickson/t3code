@@ -209,6 +209,14 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // hit-tested above settle. Moving the mark to the leading column is the
     // structural fix — assert it stays there, and that the leading slot itself
     // is never a target.
+    // Both variants' leading slots, since either regressing puts the mark back
+    // in the trailing cell. The card's box is the design's 16px, sized from the
+    // shared alignment module (custom/sidebarV2CardAlignment); the slim shelf
+    // row's stays a literal 14px.
+    expect(sidebarV2).toContain(
+      "pointer-events-none flex shrink-0 items-center justify-center overflow-hidden",
+    );
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.statusBox");
     expect(sidebarV2).toContain(
       "pointer-events-none flex size-[14px] shrink-0 items-center justify-center",
     );

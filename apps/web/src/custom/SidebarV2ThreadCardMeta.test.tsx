@@ -7,54 +7,26 @@ const base = {
   projectTitle: "alpha-service",
   branch: "main",
   terminalSlot: null,
-  prSlot: null,
-  insertions: null,
-  deletions: null,
   modelLabel: "gpt-5.4",
   isRemote: false,
 } as const;
 
-/** Counted by the rows' own testid rather than by class-string sniffing: a
+/** Counted by the row's own testid rather than by class-string sniffing: a
     substring count over Tailwind spellings silently zeroed when `cn`
     reordered a class run, and the test kept passing with the wrong number. */
 const countRows = (markup: string) => markup.split('data-testid="sidebar-v2-card-line"').length - 1;
 
 describe("SidebarV2ThreadCardMeta", () => {
-  it("draws one row, carrying the model, when there is no PR and no diff", () => {
+  it("draws exactly one row, whatever the card carries", () => {
+    // The component set fixes the card at 52px, so this line never doubles and
+    // the card never reflows as per-row queries land. The PR badge lives on the
+    // title line above; the diff counts left the design with the row that
+    // carried them.
     const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} />);
 
     expect(countRows(markup)).toBe(1);
-    // The model and runtime move up rather than disappearing with the row they
-    // used to sit on.
     expect(markup).toContain("gpt-5.4");
     expect(markup).toContain("main");
-  });
-
-  it("draws the second row for a PR", () => {
-    const markup = renderToStaticMarkup(
-      <SidebarV2ThreadCardMeta {...base} prSlot={<button type="button">#12</button>} />,
-    );
-
-    expect(countRows(markup)).toBe(2);
-    expect(markup).toContain("#12");
-    expect(markup).toContain("gpt-5.4");
-  });
-
-  it("draws the second row for a diff, zero counts included", () => {
-    const markup = renderToStaticMarkup(
-      <SidebarV2ThreadCardMeta {...base} insertions={0} deletions={0} />,
-    );
-
-    expect(countRows(markup)).toBe(2);
-    expect(markup).toContain("+0");
-  });
-
-  it("holds the second row open while the PR is still unknown", () => {
-    // Collapsing on "no PR yet" and growing when the query lands would reflow
-    // the list under the pointer, once per PR-carrying card.
-    const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} prUnknown />);
-
-    expect(countRows(markup)).toBe(2);
   });
 
   it("omits the project when the caller has none to give", () => {
@@ -65,14 +37,23 @@ describe("SidebarV2ThreadCardMeta", () => {
     expect(countRows(markup)).toBe(1);
   });
 
+  it("leads the project name with the design's folder mark", () => {
+    // Ungrouped cards name their project on this line, and the mark is what
+    // separates that name from the branch beside it at a glance.
+    const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} />);
+
+    expect(markup).toContain("alpha-service");
+    expect(markup).toContain("lucide-folder");
+  });
+
   it("keeps a grouped card's project name for assistive tech only", () => {
     // What a card under a project header passes. The header names the project
-    // on screen; a screen reader has no "two rows up", so the name stays in the
-    // markup, out of the layout.
+    // on screen; a screen reader has no "one row up", so the name stays in the
+    // markup, out of the layout — and the folder mark goes with the layout.
     const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} projectTitleHidden />);
 
     expect(markup).toContain("alpha-service");
     expect(markup).toContain("sr-only");
-    expect(markup).not.toContain('class="max-w-[45%] shrink-0 truncate"');
+    expect(markup).not.toContain("lucide-folder");
   });
 });
