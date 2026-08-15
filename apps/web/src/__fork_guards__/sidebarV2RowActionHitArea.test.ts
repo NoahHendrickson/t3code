@@ -209,6 +209,12 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // hit-tested above settle. Moving the mark to the leading column is the
     // structural fix — assert it stays there, and that the leading slot itself
     // is never a target.
+    // Both variants' leading slots, since either regressing puts the mark back
+    // in the trailing cell: the card's box is the design's 16px (113:725) and
+    // the slim shelf row's stays 14px.
+    expect(sidebarV2).toContain(
+      "pointer-events-none flex size-4 shrink-0 items-center justify-center",
+    );
     expect(sidebarV2).toContain(
       "pointer-events-none flex size-[14px] shrink-0 items-center justify-center",
     );

@@ -369,16 +369,18 @@
 
 - id: sidebar-v2-card-rows
   intent: >
-    Sidebar V2 thread rows are three-line cards at 8px radius: a title line, a
-    repo line (project plus branch), and a meta line whose two halves sit in
-    fixed corners — PR number and diff counts on the left, model label and
-    runtime glyph on the right. Splitting repo from meta is the point: the two
-    things you compare across rows, what a thread is and how big it got, are
-    then always at the same x. Upstream's terminal-status glyph (#4712) rides
-    the repo line after the branch cluster, handed in pre-built as a required
-    `terminalSlot` — required like `prSlot`, so a sync resolution that drops
-    the call-site line fails the typecheck instead of silently un-porting the
-    feature from the card variant.
+    Sidebar V2 thread rows are two-line cards at 12px radius, drawn at a fixed
+    52px: a title line (status mark, prompt, then a trailing group carrying the
+    PR number and the elapsed time) and a repo line whose two halves sit in
+    fixed corners — project and branch on the left, model label and runtime
+    glyph on the right. Fixed corners are the point: the two things you compare
+    across rows, which checkout a thread is on and what is running it, are then
+    always at the same x. Slim shelf rows keep the 8px --radius-md they were
+    drawn at; 12px on a 36px row reads as a pill rather than as a card.
+    Upstream's terminal-status glyph (#4712) rides the repo line after the
+    branch cluster, handed in pre-built as a required `terminalSlot` — required
+    so a sync resolution that drops the call-site line fails the typecheck
+    instead of silently un-porting the feature from the card variant.
 
     Surface encodes interaction and nothing else. A row is filled on hover and
     when selected or routed to; it is never filled because of its status.
@@ -397,12 +399,14 @@
     Done dot.
 
     Status text labels ("Working", "Approval", "Monitoring") are replaced by a
-    single 14px mark in a fixed leading slot on the title line, and the slot is
+    single mark in a fixed 16px leading box on the title line, and the box is
     never empty — idle draws a hollow ring rather than falling back to a
-    variable-width relative-time string, so the title text and the rows below
-    share one left edge. Repo and meta rows indent 24px (the mark's 14 plus
-    the title gap's 10) so they align under the prompt rather than under the
-    mark. The mark's form carries the state — falling pixels while the agent
+    variable-width relative-time string, so the title text and the row below
+    share one left edge. The marks inside keep their own sizes and centre in
+    the box (the rain is 14px tall, a status dot 8px), so the box can set the
+    row's left edge without resizing them. The repo line indents 20px so it
+    aligns under the prompt rather than under the mark. The mark's form carries
+    the state — falling pixels while the agent
     runs, a static dot once it stops, a slow white opacity breath (50% → 20%)
     while monitoring, a clock for woke, a ring for idle — and the hue only
     reinforces it. The monitoring breath is duty-cycled and stepped (same
@@ -412,49 +416,55 @@
     emerald, deliberately diverging from the sky the mobile Live Activity
     still uses; mobile has not been migrated.
 
-    Working duration and the hover actions stay on the title line's trailing
-    cell. Status no longer shares that cell, so the opacity-crossfade hit-path
-    bug that used to eat settle clicks cannot return.
+    The PR badge, the working duration and the hover actions share the title
+    line's trailing group. Status no longer shares that cell, so the
+    opacity-crossfade hit-path bug that used to eat settle clicks cannot
+    return. The badge is not inside the stack that fades the duration out on
+    hover: it is a link to the PR, and a control you can reach only by not
+    pointing at its row is not a control.
 
-    Card metrics from Figma t3-fork node 113:3718: px-4 py-8 (4/8). The
-    title line (status + prompt) is 14px — status slot, rain, and title
-    leading all share that height; at 16px the rain read as hanging below
-    the prompt. Repo line stays 16px. Title-to-status gap is 10px
-    (gap-2.5) so 14+10 keeps the prompt lined up with the group header
-    label (24px folder + 4px gap); repo/meta indent 24px. Drawn card
-    heights are 54 / 77. Row gap is 8px (gap-2), not Figma's 4.
-    Cards sit 4px apart — the list ul's gap-1 (fork retune of Figma's 2px /
-    gap-0.5, for breathing room on the lifted panel); the li itself carries
-    no padding. List pad 8 puts the leading status at 12px — the same axis as
-    Search and the group folder icon. contain-intrinsic-size is 54 / 77 —
-    the drawn card exactly (same as the heights above). Branch and runtime
-    glyphs are 14px; the runtime mark sits in a 24px box flush with the
-    card edge so it shares the settle/discard centre on the trailing axis
-    (a lone 14px + pr-[3px] was 2px off once actions grew to size-6). The
-    model label is caption 11/15 on either line it lands on. The
-    branch/worktree cluster (mark plus name) reads at text-foreground/70 —
-    closer to the title than the surrounding muted-foreground/70 meta —
-    so the checkout stays legible without matching the prompt.
+    Card metrics from Figma t3-fork nodes 113:725 (the card) and 293:20603
+    (the list): px-4 py-8 (4/8), 2px between the two rows. The title line is
+    18px — the 14px prompt's own line box — and the repo line 16px, so the
+    card draws at 8+18+2+16+8 = 52. The status box is 16px and the gap to the
+    prompt 6px, which puts the prompt 34px in: the same edge as the group
+    header label (24px folder box + its 2px gap). List pad 8 plus the card's
+    px-1 puts that status box 12px in, centring its mark at 20 — the same axis
+    as Search and the group folder icon. The repo line indents 20px.
+    Cards sit 2px apart on the list ul's gap-0.5; the li itself carries no
+    padding, so contain-intrinsic-size is the drawn 52 exactly. Branch,
+    worktree and project marks are 16px; the runtime glyph stays 14px in a 24px
+    box flush with the card edge so it shares the settle/discard centre on the
+    trailing axis (a lone 14px + pr-[3px] was 2px off once actions grew to
+    size-6). The model label is caption 11/15. The PR badge is 12px, literal so
+    the panel's --text-xs remap cannot grow it past the duration beside it, and
+    carries pe-1 for the design's 4px — spent between badge and duration, or to
+    the card's content edge when it is alone. Project and branch read at
+    --muted-foreground with the model cluster a step behind at 70%, so the
+    checkout stays the brighter of the two without matching the prompt.
 
-    A card is three lines only when it has a PR or a diff for the third, or does
-    not yet know whether it has a PR; with a known-empty third line the model and
-    runtime move up beside the branch and the card closes at two lines. The
-    unknown case matters as much as the empty one: whether a thread has a PR is
-    the answer to a per-row VCS query, and collapsing before it lands would grow
-    every PR card 15px mid-scroll as the queries resolve. Nothing else varies the
-    height: an absent branch or model leaves its half of a row empty rather than
-    closing the row up. The li's contain-intrinsic-size is chosen by the same
-    predicate the component renders from, so it can never claim a height the row
-    does not have, and it measures the li — which carries no padding of its own,
-    so the hints equal the drawn heights of 54 and 77. Retune the card's
-    vertical padding or row gap and both hints move with it, or the scrollbar
-    misreports every skipped row by the difference.
+    Every card is that one height, whatever it carries. It used to grow a third
+    line for the PR badge and the turn's diff counts, which meant predicting
+    that line's presence before the per-row VCS query answered — and the list
+    reflowed under the pointer as those queries landed. The component set moved
+    the PR to the title line and dropped the diff counts, so there is no longer
+    a row whose presence has to be guessed; `prUnknown` and the predicate that
+    read it are gone with it. Nothing else varies the height either: an absent
+    branch or model leaves its half of the line empty rather than closing it
+    up. Retune the card's vertical padding, its row gap, or either row's height
+    and the intrinsic-size hint moves with them, or the scrollbar misreports
+    every skipped row by the difference.
+
+    Upstream's `latestTurnDiff` stub went out with the diff counts. It always
+    returned null (shells carry no checkpoint summaries) and the fork card was
+    its only caller; a fenced note stands where it was, so a sync that grows
+    the field has somewhere to land.
 
     A thread that runs in a worktree of its own draws a worktree mark where the
     branch mark otherwise goes — replacing it, not joining it. That slot already
     answers "which code is this on", and the two facts are not independent: a
     thread on a worktree is on that worktree's branch, so a second glyph would
-    spend ~14px of a line whose branch name is already capped and truncating to
+    spend ~16px of a line whose branch name is already capped and truncating to
     restate what the first implies. The predicate is the one the row's own git
     cwd and env mode come from, so the mark cannot claim a worktree the rest of
     the row is not treating as one, and the worktree case carries a `sr-only`
@@ -690,13 +700,15 @@
     cannot bury the thread you are viewing.
 
     The header has no own horizontal pad — the list's 8px is the edge. The
-    folder sits in a 24px box so its 16px glyph centres on the same 12px axis as
-    Search and each card's status; gap-1 to the label (FolderOpen at
-    icon tint, the label at foreground — Figma 113:3718 Frame 48); 4px to the
-    first card via the list ul's gap-1 (fork retune of Figma's 2px), and
-    mt-3.5 plus that gap makes 18px between groups. The trailing plus takes
-    no nudge: with no row padding to compensate for, a flush 24px button
-    already centres on the trailing axis.
+    folder sits in a 24px box so its 16px glyph centres on the same 20px axis as
+    Search and each card's status; gap-0.5 to the label (FolderOpen at icon
+    tint, the label at foreground — Figma 293:20603 Frame 48), which lands the
+    label 34px in, the same edge as each card's prompt below it. The list ul's
+    gap is 2px, so the header buys the rest of its own spacing: mb-0.5 makes
+    the 4px above its first card and mt-[18px] the 20px above itself. Both are
+    derived from that gap — change it and they have to be re-derived, or the
+    groups drift. The trailing plus takes no nudge: with no row padding to
+    compensate for, a flush 24px button already centres on the trailing axis.
 
     The ref index is memoized on the project list alone; the thread list churns
     on the clock, capability descriptors and per-row PR states, none of which

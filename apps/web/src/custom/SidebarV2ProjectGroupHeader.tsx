@@ -16,11 +16,11 @@
  * stripes the panel and competes with the card edges. The folder mark and the
  * space above carry the separation instead.
  *
- * Spacing from Figma t3-fork node 113:3718: list pad supplies the 8px inset;
- * the folder sits in a 24px box (16px glyph centred) so its ink shares the
- * 12px axis with Search and each card's status; gap-1 (4px) to the label;
- * 4px to the first card (the list ul's own gap-1 — fork retune of Figma's
- * 2px). Between groups that is 18px: the ul's 4px gap plus `mt-3.5` here.
+ * Spacing from Figma t3-fork node 293:20603: list pad supplies the 8px inset;
+ * the folder sits in a 24px box (16px glyph centred) so its ink centres on the
+ * 20px axis with Search and each card's status; gap-0.5 (2px) to the label;
+ * 4px to the first card and 20px above the header itself, both spent here on
+ * top of the list ul's 2px gap.
  *
  * It is a heading rather than a bare span, and its `li` drops the list
  * semantics it would otherwise inherit from upstream's thread `ul`: a screen
@@ -59,8 +59,15 @@ export function SidebarV2ProjectGroupHeader(props: {
       <div
         data-testid="sidebar-v2-project-group-header"
         className={cn(
-          "group/collapse relative flex w-full items-center gap-1 text-left",
-          props.isFirst ? "mt-0" : "mt-3.5",
+          // gap-0.5 (2px) puts the label 34px in — the same edge as each card's
+          // prompt (list pad 8 + card px-1 + the 16px status box + the title
+          // line's 6px gap). The two numbers are one alignment; retune either
+          // and the header steps off the cards under it.
+          "group/collapse relative flex w-full items-center gap-0.5 text-left",
+          // The ul's own gap is 2px, so the header buys the rest: mb-0.5 makes
+          // the 4px above its first card, and mt-[18px] the 20px above itself.
+          "mb-0.5",
+          props.isFirst ? "mt-0" : "mt-[18px]",
         )}
       >
         <button

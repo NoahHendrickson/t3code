@@ -4,8 +4,8 @@
  * `.fork/customizations.yaml#sidebar-v2-card-rows`.
  *
  * `sidebarV2Rain.test.ts` guards the working mark's motion. This file guards
- * the row it sits in: three lines, no status-driven surface, and a trailing
- * slot that is never empty.
+ * the row it sits in: two lines at a fixed height, no status-driven surface,
+ * and a leading status slot that is never empty.
  *
  * Assertions are outcome-shaped where they can be. The fork-owned meta
  * component is exercised as a module, and only its call site inside upstream's
@@ -19,8 +19,12 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
-import { threadCardTitleClassName, threadCardTitleRecedes } from "../custom/sidebarV2RowPolicy";
-import { SidebarV2ThreadCardMeta, threadCardShowsMetaRow } from "../custom/SidebarV2ThreadCardMeta";
+import {
+  threadCardTitleClassName,
+  threadCardTitleRecedes,
+  threadRowSurfaceClassName,
+} from "../custom/sidebarV2RowPolicy";
+import { SidebarV2ThreadCardMeta } from "../custom/SidebarV2ThreadCardMeta";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -66,18 +70,34 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(theme).not.toMatch(/\[data-fork-monitoring-pulse\]\s*\{[^}]*will-change/u);
   });
 
-  it("keeps the card's lower two lines in the fork-owned component", () => {
+  it("keeps the card's repo line in the fork-owned component", () => {
     expect(typeof SidebarV2ThreadCardMeta).toBe("function");
     expect(sidebarV2).toContain("<SidebarV2ThreadCardMeta");
   });
 
-  it("passes the meta line both halves the design gives fixed corners", () => {
-    // PR + diff on the left, model + runtime on the right. Losing any of these
-    // props silently empties half the line, which reads as "this thread has no
-    // PR" rather than as a bug.
-    for (const prop of ["prSlot=", "insertions=", "deletions=", "modelLabel=", "isRemote="]) {
+  it("passes the repo line both halves the design gives fixed corners", () => {
+    // Project + branch on the left, model + runtime on the right. Losing any of
+    // these props silently empties half the line, which reads as "this thread
+    // has no branch" rather than as a bug.
+    for (const prop of ["projectTitle=", "branch=", "modelLabel=", "isRemote="]) {
       expect(sidebarV2).toContain(prop);
     }
+  });
+
+  it("rides the PR badge on the title line, not on a row of its own", () => {
+    // Figma 113:728 moved it into the title row's trailing group, ahead of the
+    // elapsed time. That move is what let the card become a fixed 52px: with
+    // the diff counts gone from the design, the third row had nothing left to
+    // carry. The badge is a link to the PR, so it must NOT sit inside the
+    // hover-actions stack that fades the elapsed time out — a control you can
+    // reach only by not pointing at its row is not a control.
+    expect(sidebarV2).toContain('{prBadge || hasHoverActions || status === "working" ? (');
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).not.toContain("prSlot");
+    // pe-1 is the design's 4px, spent both between the badge and the elapsed
+    // time and, when it is alone, to the card's content edge. Explicit 12px so
+    // the panel's --text-xs → 13px remap cannot grow it past that time.
+    expect(sidebarV2).toContain('variant === "card" ? "pe-1 text-[0.75rem] leading-4" : "text-xs"');
   });
 
   it("keeps upstream's terminal-status glyph on the card's repo line", () => {
@@ -116,11 +136,13 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(meta).toContain("props.hasWorktree || props.branch ?");
     expect(meta).toContain("props.hasWorktree ?");
     expect(meta).toContain("<WorktreeIcon");
-    // Branch, worktree, and runtime marks are 14px — retuning them to size-4
-    // re-crowds the capped branch name and the model label. Runtime sits in a
-    // 24px box so its centre matches settle/discard on the trailing axis.
-    expect(meta).toContain('<WorktreeIcon aria-hidden className="size-3.5 shrink-0" />');
-    expect(meta).toContain('<GitBranchIcon aria-hidden className="size-3.5 shrink-0" />');
+    // Branch, worktree, and project marks are 16px per the component set — they
+    // name the two clusters on this line and share the prompt's axis above.
+    // The runtime glyph stays 14px in a 24px box so its centre matches
+    // settle/discard on the trailing axis.
+    expect(meta).toContain('<WorktreeIcon aria-hidden className="size-4 shrink-0" />');
+    expect(meta).toContain('<GitBranchIcon aria-hidden className="size-4 shrink-0" />');
+    expect(meta).toContain('<FolderIcon aria-hidden className="size-4 shrink-0" />');
     expect(meta).toContain("inline-flex size-6 shrink-0 items-center justify-center");
     expect(meta).toContain('<CloudIcon aria-hidden className="size-3.5" />');
     expect(meta).toContain('<LaptopIcon aria-hidden className="size-3.5" />');
@@ -176,14 +198,27 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(threadCardTitleClassName({ recedes: false })).not.toContain("font-medium");
   });
 
-  it("sizes the card title at 0.875rem / 14px line and the repo/branch line at 0.75rem", () => {
+  it("sizes the card title at 0.875rem / 18px line and the repo line at 0.75rem", () => {
     // Explicit rem so the panel's --text-xs/--text-sm → 13px remap cannot
-    // flatten title and branch to the chrome body size. Title leading matches
-    // the 14px status slot — leading-4 left a 16px line around the rain.
+    // flatten title and branch to the chrome body size. 18px is the title
+    // line's drawn box (Figma 113:726) and one of the four terms in the card's
+    // 52 — retune it without the container and the intrinsic-size hint lies.
     expect(threadCardTitleClassName({ recedes: false })).toContain("text-[0.875rem]");
-    expect(threadCardTitleClassName({ recedes: false })).toContain("leading-[14px]");
+    expect(threadCardTitleClassName({ recedes: false })).toContain("leading-[18px]");
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).toContain('REPO_ROW = "flex h-4 min-w-0 items-center text-[0.75rem] leading-4"');
+    expect(meta).toContain(
+      'REPO_ROW =\n  "flex h-4 min-w-0 items-center gap-4 text-[0.75rem] leading-4 text-muted-foreground"',
+    );
+  });
+
+  it("gives a card 12px corners and a slim shelf row 8px", () => {
+    // --radius is 10px, so neither is a rounded-* token: the card's is the
+    // component set's literal (113:725) and the slim rows keep --radius-md.
+    const at = (variant: "card" | "slim") =>
+      threadRowSurfaceClassName({ isActive: false, isSelected: false, recedes: false, variant });
+    expect(at("card")).toContain("rounded-[12px]");
+    expect(at("slim")).toContain("rounded-md");
+    expect(at("slim")).not.toContain("rounded-[12px]");
   });
 
   it("lifts receded titles via a dedicated token, not the shared muted channel", () => {
@@ -227,8 +262,10 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // card's hollow-ring path so the leading column is never empty.
     expect(sidebarV2).toContain('idle="ring"');
     expect(sidebarV2).toContain("<SidebarV2StatusMark");
+    // The box is the design's 16px (113:725 `indicator`); the marks inside keep
+    // their own sizes and centre in it — the rain is 14px tall, a dot is 8px.
     expect(sidebarV2).toContain(
-      "pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden",
+      "pointer-events-none flex size-4 shrink-0 items-center justify-center overflow-hidden",
     );
     const rain = readSibling("../custom/SidebarV2StatusIndicator.tsx");
     expect(rain).toContain('className="block h-[14px] w-auto shrink-0 overflow-hidden"');
@@ -236,18 +273,18 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(rain).not.toContain("overflow-visible");
   });
 
-  it("indents the card's lower rows under the title text", () => {
-    // 24px = the leading 14px status + the title row's 10px gap — matches the
-    // group header label once list pad is shared. Dropping the indent puts
-    // the branch under the rain instead of under the prompt.
+  it("indents the card's repo line under the title text", () => {
+    // 20px per Figma 113:741 — the prompt starts 22px in (16px status box + the
+    // title row's 6px gap) and the line's marks sit just under it. Dropping the
+    // indent puts the branch under the rain instead of under the prompt.
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).toContain('CONTENT_INDENT = "pl-6"');
+    expect(meta).toContain('CONTENT_INDENT = "pl-5"');
     expect(meta).toContain("${CONTENT_INDENT}");
     // No overflow-hidden: the trailing h-6 settle/X cell overhangs this line
     // on purpose; clipping it was what squashed the hover fill into a bar.
-    expect(sidebarV2).toContain("flex h-[14px] min-h-[14px] min-w-0 items-center gap-2.5");
+    expect(sidebarV2).toContain("flex h-[18px] min-h-[18px] min-w-0 items-center gap-1.5");
     expect(sidebarV2).not.toMatch(
-      /flex h-\[14px\] min-h-\[14px\] min-w-0 items-center gap-2\.5 overflow-hidden/u,
+      /flex h-\[18px\] min-h-\[18px\] min-w-0 items-center gap-1\.5 overflow-hidden/u,
     );
   });
 
@@ -265,70 +302,55 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(titleClass).toContain('"text-sm"');
   });
 
-  it("lifts the branch cluster closer to the title than the surrounding meta", () => {
-    // Project, model, and runtime stay at muted/70; the checkout mark+name
-    // shares the title's foreground channel at 70% so it stays readable
-    // without matching the prompt.
+  it("tones the repo line off the muted channel, branch a step above the model", () => {
+    // The component set paints project and branch at --muted-foreground and the
+    // model/runtime cluster at 70% of it. The branch stays the brighter of the
+    // two — checkout identity is what tells two threads on one project apart —
+    // but it carries that on the muted channel rather than on foreground/70,
+    // which drifted a step brighter than the design as the panel was retuned.
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).toContain('BRANCH = "text-foreground/70"');
-    expect(meta).toContain("${BRANCH}");
+    // The line's base tone rides REPO_ROW, pinned whole above; the model
+    // cluster is the only thing that steps behind it.
     expect(meta).toContain('MUTED = "text-muted-foreground/70"');
+    expect(meta).not.toContain("text-foreground/70");
   });
 
-  it("collapses to two lines only when it knows there is no PR and no diff", () => {
-    // The third line exists to carry the PR badge and the diff counts. With
-    // neither, drawing it leaves a blank 15px strip under every card.
-    const show = threadCardShowsMetaRow;
-    const known = { hasPr: false, prUnknown: false, insertions: null, deletions: null };
-    expect(show(known)).toBe(false);
-    expect(show({ ...known, hasPr: true })).toBe(true);
-    expect(show({ ...known, insertions: 3 })).toBe(true);
-    expect(show({ ...known, deletions: 3 })).toBe(true);
-    // Zero is a real count — "+0 −0" is a turn that touched nothing, not a
-    // thread with no diff at all.
-    expect(show({ ...known, insertions: 0, deletions: 0 })).toBe(true);
-    // The one that is not about content: whether a thread has a PR is the
-    // answer to a per-row VCS query, and collapsing before it lands makes every
-    // PR card grow 15px mid-scroll as the queries resolve.
-    expect(show({ ...known, prUnknown: true })).toBe(true);
-    // Unknown means "has never answered", not "is polling": the query re-enters
-    // waiting on every refresh, and reading that alone flips the height on a
-    // loop rather than once.
-    expect(sidebarV2).toContain(
-      "const prUnknown = gitStatus.data === null && gitStatus.isPending;",
-    );
+  it("draws every card at one height, whatever it carries", () => {
+    // The card used to grow a third line for the PR badge and the diff counts,
+    // and had to guess at that height before the per-row VCS query answered —
+    // which is what made the list reflow under the pointer as the queries
+    // landed. The component set fixes the card at 52px: the PR moved to the
+    // title line and the diff counts left the design, so there is no longer a
+    // row whose presence has to be predicted. Losing this is not a cosmetic
+    // regression; it brings the reflow back.
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).not.toContain("threadCardShowsMetaRow");
+    expect(meta).not.toContain("prUnknown");
+    expect(sidebarV2).not.toContain("prUnknown");
   });
 
   it("reserves each card's drawn height for offscreen rows", () => {
     // content-visibility skips offscreen rows; the intrinsic size is what keeps
     // the scrollbar honest while they are skipped. A stale value here makes the
-    // list jump as you scroll, so both heights are pinned. They measure the li,
-    // which carries no padding of its own and so equals the drawn card: title
-    // line 14px + repo 16px + gaps/pad → 54 two-line, 77 three-line. Change
-    // the card's vertical padding or gap and these move with it or the
-    // scrollbar starts lying by the difference on every row it skips.
-    expect(sidebarV2).toContain("gap-2 px-1 py-2");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_77px]");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_54px]");
-    // And the choice is made from the same predicate the component renders
-    // from, so the hint cannot drift from the row count it describes.
-    expect(sidebarV2).toContain("threadCardShowsMetaRow({");
+    // list jump as you scroll. It measures the li, which carries no padding of
+    // its own and so equals the drawn card: py-2 8 + title 18 + gap 2 + repo 16
+    // + 8 = 52. Change the card's padding, gap, or either row's height and this
+    // moves with them, or the scrollbar lies by the difference on every row it
+    // skips.
+    expect(sidebarV2).toContain("gap-0.5 px-1 py-2");
+    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_52px]");
+    expect(sidebarV2).not.toMatch(/contain-intrinsic-size:auto_(?:54|77)px/u);
   });
 
-  it("spaces cards 4px apart on the list, not Figma's 2px", () => {
-    // The ul's gap is the only vertical space between cards (and between a
-    // group header and its first card). Figma drew 2px (gap-0.5); the fork
-    // retunes to 4px (gap-1) for breathing room on the lifted panel. A sync
-    // that restores gap-0.5 would quietly tighten the list again.
-    expect(sidebarV2).toContain('className="flex flex-col gap-1"');
-    expect(sidebarV2).not.toContain('className="flex flex-col gap-0.5"');
-  });
-
-  it("binds diff counts to semantic tokens rather than palette literals", () => {
-    // emerald-400/red-400 are correct in dark and illegible on the light panel.
-    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).toContain("text-success-foreground");
-    expect(meta).toContain("text-destructive-foreground");
-    expect(meta).not.toMatch(/text-(?:emerald|red)-\d/u);
+  it("spaces cards 2px apart on the list, per the design", () => {
+    // The ul's gap is the only vertical space between cards; the design stacks
+    // 52px cards on a 54px pitch (293:20603). A project header buys the rest of
+    // its own spacing — 4px to its first card, 20px above itself — out of its
+    // margins, so it does not depend on this gap staying wrong for it.
+    expect(sidebarV2).toContain('className="flex flex-col gap-0.5"');
+    expect(sidebarV2).not.toContain('className="flex flex-col gap-1"');
+    const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
+    expect(header).toContain('"mb-0.5"');
+    expect(header).toContain('props.isFirst ? "mt-0" : "mt-[18px]"');
   });
 });

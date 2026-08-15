@@ -68,17 +68,22 @@ export function threadCardTitleRecedes(input: {
  * anything. The trailing mark already says a thread is working, in a fixed
  * column, without spending the background to say it.
  *
- * `rounded-md`, not `rounded-lg`: `--radius` is 10px here and the design's 8px
- * is `--radius-md`. */
+ * Corners are a literal, not a radius step: the component set draws a card at
+ * 12px (Figma 113:725) and `--radius` is 10px here, so no `rounded-*` token
+ * lands on it — `rounded-md` is 8 and `rounded-xl` is 14. Slim shelf rows keep
+ * `rounded-md`; they are 36px tall and half the card's corner on a row that
+ * dense reads as a pill rather than as a card. */
 export function threadRowSurfaceClassName(input: {
   readonly isActive: boolean;
   readonly isSelected: boolean;
   /** The variant's own recede rule — the card policy for cards, upstream's
       slim-shelf rule for shelves. See the note at the top of this file. */
   readonly recedes: boolean;
+  readonly variant: "card" | "slim";
 }): string {
   return cn(
-    "group/v2-row relative w-full cursor-pointer overflow-hidden rounded-md text-left outline-none select-none",
+    "group/v2-row relative w-full cursor-pointer overflow-hidden text-left outline-none select-none",
+    input.variant === "card" ? "rounded-[12px]" : "rounded-md",
     input.isActive
       ? "bg-sidebar-row-active text-sidebar-foreground"
       : input.isSelected
@@ -102,9 +107,11 @@ export function threadRowSurfaceClassName(input: {
     `--muted-foreground` via the var fallback. */
 export function threadCardTitleClassName(input: { readonly recedes: boolean }): string {
   return cn(
-    // leading-[14px] matches the 14px status slot — leading-4 (16px) made the
-    // title line box taller than the rain and read as the mark hanging low.
-    "truncate text-[0.875rem] leading-[14px] font-normal",
+    // leading-[18px] is the design's title line box (Figma 113:726) — the
+    // prompt's own 14px/normal leading, and the height the card's 52 is
+    // measured from. The 16px status box beside it centres its mark in the
+    // same line, so neither hangs against the other.
+    "truncate text-[0.875rem] leading-[18px] font-normal",
     input.recedes
       ? "text-[color:var(--fork-sidebar-card-title-receded,var(--muted-foreground))] group-hover/v2-row:text-foreground"
       : "text-foreground",
