@@ -488,7 +488,21 @@
    survives hover and selection. They sit on top of the panel fill instead of
    replacing it, which means moving the panel opacity carries the rows with it
    and their relative lift stays put. */
+/* Glass assumes the panel sits BESIDE the chat column, with the window (and so
+   the wallpaper) behind it. In the fork's overlay mode it does not: when pushing
+   would take the chat column under its minimum width, custom/narrowChatOverlay.ts
+   stamps [data-fork-sidebar-overlay="true"], theme.custom.css zeroes the
+   sidebar-gap and lifts the container to z-index 45, and the panel floats OVER
+   the transcript. A translucent fill there shows message text through the thread
+   rows — two overlapping text layers, not glass.
+
+   So the tint is gated on the panel not floating. narrowChatOverlay stamps the
+   flag on the wrapper and `data-sidebar-version` sits on the sidebar below it,
+   hence the ancestor form. While it floats the palette's opaque #181b1e applies,
+   which is the correct read for a panel over content. The window keeps its
+   vibrancy either way; only this fill changes. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-wrapper"]:not([data-fork-sidebar-overlay="true"])
   [data-sidebar-version="v2"] {
   --background: rgb(27 27 27 / 75%);
   --card: rgb(27 27 27 / 75%);

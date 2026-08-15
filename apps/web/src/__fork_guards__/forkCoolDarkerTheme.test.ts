@@ -161,7 +161,21 @@ describe("fork guard: fork-cool-darker-theme", () => {
   });
 
   it("does not leak Cool Darker fills into light mode", () => {
-    const darkerHexes = ["#141618", "#1c1f22", "#222629", "#282d30", "#2f3336", "#444a4f"];
+    // Every opaque fill the palette declares, stage block and v2 panel both.
+    // #1c1f22 used to cover the sidebar too — it was --card and --sidebar at
+    // once — so when they split, the sidebar fill and the row fills silently
+    // stopped being checked by the guard that exists to catch exactly this.
+    const darkerHexes = [
+      "#141618",
+      "#1c1f22",
+      "#181b1e",
+      "#222629",
+      "#282d30",
+      "#2c3134",
+      "#2f3336",
+      "#2f3437",
+      "#444a4f",
+    ];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
     );

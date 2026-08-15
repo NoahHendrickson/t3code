@@ -1042,6 +1042,19 @@
     repainting the window for Light, default Dark, Cool Dark and both Neutral
     palettes.
 
+    The material goes on the main window alone, not every BrowserWindow: the
+    preview picture-in-picture window and the WSL splash carry their own fills
+    and none of the fork's CSS, so a previewed page without an opaque background
+    would render see-through and restoring would repaint them with the app's
+    colour.
+
+    Glass also assumes the panel sits beside the chat column. In overlay mode
+    (custom/narrowChatOverlay.ts, when pushing would take the chat column under
+    its minimum width) the panel floats over the transcript instead, so the
+    translucent tint is gated on :not([data-fork-sidebar-overlay="true"]) and
+    the opaque #181b1e applies while it floats — otherwise message text reads
+    through the thread rows.
+
     syncWindowAppearance in window/DesktopWindow.ts writes the same fill on OS
     appearance changes. Two owners of one slot means the glass dies silently
     with the renderer's marker still set, so that write is gated on

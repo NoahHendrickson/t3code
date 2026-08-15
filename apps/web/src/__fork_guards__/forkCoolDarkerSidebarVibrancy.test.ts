@@ -168,6 +168,42 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     }
   });
 
+  it("goes opaque while the panel floats over the transcript", () => {
+    // Glass assumes the panel sits beside the chat column with the window behind
+    // it. In overlay mode (narrow window, or the right preview panel open) the
+    // panel floats OVER the transcript, and a translucent fill there shows
+    // message text through the thread rows rather than wallpaper.
+    const panel = glassRules.find((rule) => rule.selector.includes('[data-sidebar-version="v2"]'));
+    expect(panel).toBeDefined();
+    expect(
+      panel?.selector,
+      "the glass panel tint must not apply while the sidebar overlays the chat column",
+    ).toContain(':not([data-fork-sidebar-overlay="true"])');
+
+    // The flag is on the wrapper and the version attribute sits below it, so the
+    // gate has to be the ancestor form.
+    expect(panel?.selector).toMatch(
+      /\[data-slot="sidebar-wrapper"\]:not\(\[data-fork-sidebar-overlay="true"\]\)/u,
+    );
+    const overlay = readSibling("../custom/narrowChatOverlay.ts");
+    expect(overlay).toContain('SIDEBAR_OVERLAY_ATTRIBUTE = "data-fork-sidebar-overlay"');
+    expect(overlay).toContain("targets.wrapper.setAttribute(SIDEBAR_OVERLAY_ATTRIBUTE");
+  });
+
+  it("applies the material to the main window only", () => {
+    // syncAllAppearance walks every BrowserWindow, which includes the PiP
+    // preview window (its own fill, no fork CSS) and the WSL splash. Handing
+    // those the material makes a previewed page without an opaque background
+    // render see-through, and restoring repaints them with the app's fill.
+    expect(desktopMethod).not.toContain("electronWindow.syncAllAppearance");
+    expect(desktopMethod).toContain("electronWindow.main");
+    expect(desktopMethod).toContain("isDestroyed()");
+
+    // The PiP window really does carry its own fill, so this is not theoretical.
+    const previewManager = readSibling("../../../desktop/src/preview/Manager.ts");
+    expect(previewManager).toMatch(/backgroundColor:\s*"#[0-9a-f]{6}"/iu);
+  });
+
   it("keeps the transcript far more opaque than the sidebar", () => {
     // The stage carries a few percent of wallpaper so it shares the sidebar's
     // cast and the seam between them stops reading as a hard edge. It is not
