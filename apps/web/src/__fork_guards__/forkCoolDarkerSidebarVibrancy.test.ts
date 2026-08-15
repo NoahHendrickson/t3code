@@ -144,6 +144,114 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(sidebar).toMatch(/bg-sidebar[\s\S]*?data-slot="sidebar-inner"/u);
   });
 
+  it("clears the scrim and keeps every backdrop-filter out of the composer", () => {
+    // The scrim has to stay cleared: any fill there compounds with the stage
+    // and reads darker than the rest of the column. What used to make that safe
+    // was the vessel's blur hiding the transcript; the cutoff mask does that now
+    // (see forkComposerShell), which is also what makes the filter removable.
+    const scrim = glassRules.find((rule) =>
+      rule.selector.includes('[data-chat-composer-overlay="true"]'),
+    );
+    expect(scrim, "the transcript scrim must still be cleared under glass").toBeDefined();
+    expect(scrim?.body).toMatch(/background:\s*none/u);
+
+    // A filter and the native material are alternatives, not layers. The
+    // NSVisualEffectView is behind the window, so Chromium cannot include it in
+    // a backdrop it filters — it flattens the region instead, and the composer
+    // renders at the right brightness with the wallpaper gone. Measured with the
+    // frost on: channel spread 25 in the sidebar, 14-20 in the stage beside the
+    // composer, 3 inside it.
+    for (const rule of glassRules) {
+      for (const [, value] of rule.body.matchAll(/(?:-webkit-)?backdrop-filter:\s*([^;]+);/gu)) {
+        expect(
+          value?.trim(),
+          `a filter here flattens the vibrancy it sits on: ${rule.selector}`,
+        ).toBe("none");
+      }
+    }
+
+    // Stated rather than merely absent, so re-adding one is a deliberate act.
+    const cleared = glassRules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-vessel]") &&
+        /backdrop-filter:\s*none/u.test(rule.body),
+    );
+    expect(cleared, "the composer must clear backdrop-filter explicitly").toBeDefined();
+    expect(cleared?.body).toContain("-webkit-backdrop-filter: none");
+    expect(
+      cleared?.selector,
+      "the context chips carry the same clear — they are outside the vessel",
+    ).toContain("[data-fork-composer-context-row]");
+  });
+
+  it("builds the composer out of washes, never out of tints", () => {
+    // Figma 322:6306, with the recessed input of 322:6316. The tray is white 6%
+    // over the stage, the ring and the chips are that 6% compounded once more,
+    // and the input alone darkens back toward the column. Every one of them is
+    // an alpha over what is behind it: a tinted fill anywhere here stops the
+    // wallpaper at the composer's edge, which is the regression this has now
+    // been walked back from twice.
+    const stage = glassRules.find((rule) => rule.body.includes("--fork-context-chip-bg:"));
+    expect(stage, "glass must state its own composer fills").toBeDefined();
+    const valueOf = (token: string) => {
+      const declaration = new RegExp(`${token}:\\s*([^;]+);`, "u").exec(stage?.body ?? "")?.[1];
+      expect(declaration, `${token} must be stated under glass`).toBeDefined();
+      return declaration ?? "";
+    };
+    const alphaOf = (token: string) => {
+      const declaration = valueOf(token);
+      expect(declaration, `${token} must be a white wash`).toMatch(/^rgb\(255 255 255 \/ \d+%\)$/u);
+      return Number(/(\d+)%/u.exec(declaration)?.[1]);
+    };
+
+    // Thin enough that the glass reads through the tray. A dense fill here stops
+    // the wallpaper at the composer's edge, which is the whole reason the
+    // composer used to read as a slab.
+    const tray = alphaOf("--fork-composer-vessel-bg");
+    expect(tray).toBeLessThanOrEqual(12);
+
+    // The input is the one composer surface that darkens instead of lifting. A
+    // white wash here would compound with the tray into a lighter box; the well
+    // has to come back down toward the column, so it is the one fill that must
+    // NOT be white.
+    const well = valueOf("--fork-composer-bg");
+    expect(well, "the input must darken toward the stage, not lift off the tray").toContain(
+      "var(--background)",
+    );
+    expect(well, "a white wash here lifts the input instead of recessing it").not.toContain(
+      "255 255 255",
+    );
+
+    // The ring is the tray's alpha applied a second time. Below the tray would
+    // hide it; the drawing wants it visible.
+    expect(alphaOf("--fork-composer-border")).toBeGreaterThanOrEqual(tray);
+
+    // Focus has to read as the same ring brightening, not as a different
+    // material. The palette's opaque #444a4f was the only line in the composer
+    // that could not carry the wallpaper, and it looked pasted on.
+    expect(alphaOf("--fork-composer-border-focus")).toBeGreaterThan(
+      alphaOf("--fork-composer-border"),
+    );
+
+    // Chips have to reach the ring's colour from one layer lower: the context
+    // row sits on the bare stage while the ring sits on the already-washed tray,
+    // so the chips absorb both alphas and the ring only needs one.
+    expect(alphaOf("--fork-context-chip-bg")).toBeGreaterThan(alphaOf("--fork-composer-border"));
+    expect(alphaOf("--fork-context-chip-bg-hover")).toBeGreaterThan(
+      alphaOf("--fork-composer-vessel-bg"),
+    );
+
+    // The row is outside the vessel, which is why the chips need their own
+    // alpha rather than inheriting the tray's, and why the filter clear has to
+    // name them separately.
+    const shell = readSibling("../custom/ComposerShell.tsx");
+    const contextRow = shell.indexOf('data-fork-composer-context-row="true"');
+    const vessel = shell.indexOf('"data-fork-composer-vessel": "true"');
+    expect(contextRow).toBeGreaterThan(-1);
+    expect(vessel).toBeGreaterThan(-1);
+    expect(contextRow, "the context row must still precede the vessel").toBeLessThan(vessel);
+  });
+
   it("pins tokens that index.css derives from the panel fill", () => {
     // --sidebar-icon-color mixes in var(--sidebar). Once the panel fill carries
     // alpha, so does the glyph, and the wallpaper shows through the icons
@@ -204,6 +312,18 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(previewManager).toMatch(/backgroundColor:\s*"#[0-9a-f]{6}"/iu);
   });
 
+  it("keeps the material live while the window is not key", () => {
+    // NSVisualEffectView follows the window's active state by default, so the
+    // glass drops to a flat inactive fill as soon as focus leaves the app. The
+    // CSS behind it stays translucent either way, so it presents as the whole
+    // app going opaque rather than as a window losing focus.
+    const window = readSibling("../../../desktop/src/window/DesktopWindow.ts");
+    expect(window).toMatch(/visualEffectState:\s*"active"/u);
+    // Electron requires the pair; a visualEffectState without a vibrancy does
+    // nothing at all.
+    expect(window).toMatch(/vibrancy:\s*FORK_VIBRANCY_MATERIAL[\s\S]{0,120}visualEffectState/u);
+  });
+
   it("keeps the transcript far more opaque than the sidebar", () => {
     // The stage carries a few percent of wallpaper so it shares the sidebar's
     // cast and the seam between them stops reading as a hard edge. It is not
@@ -216,20 +336,65 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
 
     const inset = glassRules.find((rule) => rule.selector.includes('[data-slot="sidebar-inset"]'));
     expect(inset).toBeDefined();
-    const stageAlpha = readAlpha(inset?.body ?? "");
-    expect(stageAlpha, "the chat stage must declare an explicit alpha").not.toBeNull();
-    // Floor, not a target. Vibrancy darkens and desaturates its sample before
-    // the stage composites over it, so a few percent of wallpaper is below the
-    // perceptual threshold on a surface this large — the tuning range that does
-    // anything visible starts well under 90%.
-    expect(stageAlpha).toBeGreaterThanOrEqual(80);
+
+    // The stage is a gradient now — 90% down the reading area, thinning toward
+    // the floor where the cutoff mask has already ended the transcript. Every
+    // stop is held to the same rules the flat fill was.
+    const stops = [...(inset?.body ?? "").matchAll(/rgb\((\d+) (\d+) (\d+)\s*\/\s*(\d+)%\)/gu)].map(
+      (match) => ({
+        tint: [match[1], match[2], match[3]],
+        alpha: Number(match[4]),
+      }),
+    );
+    expect(stops.length, "the chat stage must declare explicit stops").toBeGreaterThan(0);
+
+    // SidebarInset carries `bg-background`, an opaque fill that paints UNDER a
+    // background-image. Without this the gradient composites over #141618 and
+    // the glass silently does nothing — the same class of failure as the
+    // !important on the chrome background.
+    expect(
+      inset?.body,
+      "the utility's opaque fill must be cleared for the gradient to show",
+    ).toMatch(/background-color:\s*transparent/u);
+
+    // `surface-grain` on the same element is three declarations. Overriding only
+    // background-image leaves its repeat and its 128px size aimed at this
+    // gradient, which then tiles down the column — it looks like the stage is
+    // repeating, not like a background-size bug, so it costs a round trip to
+    // find. Restating both is what stops it.
+    const grain = readSibling("../index.css");
+    expect(grain, "the grain utility still sets the properties this defends against").toMatch(
+      /@utility surface-grain \{[^}]*background-repeat:\s*repeat[^}]*background-size:/u,
+    );
+    expect(inset?.body, "the gradient must not inherit the grain's tiling").toMatch(
+      /background-repeat:\s*no-repeat/u,
+    );
+    expect(inset?.body, "the gradient must not inherit the grain's 128px size").toMatch(
+      /background-size:\s*100% 100%/u,
+    );
+
+    // An absolute floor for every stop. Vibrancy darkens and desaturates its
+    // sample before the stage composites over it, but below this the column
+    // stops being a reading surface at all.
+    const topAlpha = stops[0]?.alpha ?? 0;
+    for (const stop of stops) {
+      expect(stop.alpha, "no part of the stage may go below 80%").toBeGreaterThanOrEqual(80);
+      expect(stop.alpha, "no stop may exceed the reading area").toBeLessThanOrEqual(topAlpha);
+    }
 
     const panel = glassRules.find((rule) => rule.selector.includes('[data-sidebar-version="v2"]'));
     const panelAlpha = readAlpha(panel?.body ?? "", "--sidebar");
     expect(panelAlpha, "the glass panel must declare an explicit alpha").not.toBeNull();
+    // The READING AREA, not every stop. This used to cover the whole stage, back
+    // when the stage was one flat value and every part of it held transcript.
+    // The gradient's lower stops sit below the cutoff mask, where there is no
+    // long-form text to protect, so they are free to go under the panel — which
+    // is the point of the fade. The top stop is still where the reasoning
+    // applies: text reads there, over a desktop the panel is holding back more
+    // of.
     expect(
-      stageAlpha ?? 0,
-      "the transcript must never be more transparent than the sidebar",
+      topAlpha,
+      "the reading area must never be more transparent than the sidebar",
     ).toBeGreaterThanOrEqual(panelAlpha ?? 0);
 
     // Both surfaces must tint toward the same neutral, or they drift apart in
@@ -237,10 +402,12 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     // as a cast fighting the wallpaper rather than as a surface taking its
     // colour, so the glass tints flatten to R = G = B and let the desktop supply
     // the hue. The opaque palette stays cool — that is Cool Darker's identity.
-    const stageTint = /rgb\((\d+) (\d+) (\d+)\s*\//u.exec(inset?.body ?? "");
-    expect(stageTint, "the stage tint must be an explicit rgb triple").not.toBeNull();
-    const [, sr, sg, sb] = stageTint ?? [];
-    expect(new Set([sr, sg, sb]).size, "glass tints must be neutral (R = G = B)").toBe(1);
+    for (const stop of stops) {
+      expect(new Set(stop.tint).size, "glass tints must be neutral (R = G = B)").toBe(1);
+    }
+    // One triple across the gradient: a stop that also shifts hue reads as a
+    // colour wash down the column rather than as the stage thinning.
+    expect(new Set(stops.map((stop) => stop.tint.join(","))).size).toBe(1);
   });
 
   it("keeps sidebar fills translucent under glass so rows do not punch holes", () => {

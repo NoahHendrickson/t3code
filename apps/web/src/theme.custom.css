@@ -286,16 +286,141 @@
   box-shadow: none;
 }
 
-/* Opaque floor for the absolutely-docked composer overlay. Timeline content
-   still scrolls the full column height behind it; this background is what makes
-   the message area read as stopping above the composer once the glass vessel is
-   gone. The gradient reaches full opacity over the top 1.25rem — wider than the
-   overlay's 6–8px top padding on purpose — so the edge is a soft fade, not a
-   hard slab. A host background paints beneath every child by definition, so no
+/* Floor for the absolutely-docked composer overlay, kept as the composer's own
+   backing rather than as a cover: the cutoff mask below now ends the transcript
+   before it reaches here, so this paints over empty stage in every theme. The
+   gradient reaches full opacity over the top 1.25rem — wider than the overlay's
+   6–8px top padding on purpose — so the edge is a soft fade, not a hard slab. A
+   host background paints beneath every child by definition, so no
    pseudo-element or child stacking rules are needed. */
 :root[data-fork="noahhendrickson-t3code"] [data-chat-composer-overlay="true"] {
   background: linear-gradient(to bottom, transparent, var(--background) 1.25rem);
 }
+
+/* ---------------------------------------------------------------------------
+   Timeline cutoff — see `.fork/customizations.yaml#fork-composer-shell`.
+
+   Upstream scrolls the transcript the full height of the column and lets the
+   composer hide whatever passes under it. That is a cover, and a cover only
+   works while the thing covering it is opaque: under the glass palette the
+   composer is a 5% wash, so messages read straight through the prompt box and
+   the branch pills, two text layers deep. Frosting the vessel treats the
+   symptom and cannot reach the context row at all, since that row is a sibling
+   above the vessel rather than inside it.
+
+   So the content stops instead of being hidden. The scroller is masked to ramp
+   out and finish just above the pills, which means nothing is ever behind the
+   composer to hide and the fix holds for every palette, glass or flat.
+   --fork-composer-inset is the composer's measured height, stamped on the chat
+   column by ChatView.
+
+   The ramp is deliberately lopsided rather than linear. A straight fade over a
+   short distance reads as a torn edge, and over a long one it ghosts the line
+   you are still reading. Splitting it gives both: `edge` is a short steep drop
+   that ends the text on a definite line near the chips, and `ramp` is a long
+   shallow tail above it that only dims. Most of the distance is that tail, so
+   the transcript recedes well before anything about it looks cut.
+
+   One declaration covers both states. Upstream's top fade lives on a class that
+   comes and goes with the banner above the timeline, and mask layers cannot be
+   composed across rules, so the fork owns the whole mask and drives the top
+   layer from a variable that stays 0px while that class is absent — a
+   zero-height layer contributes nothing. The third layer is upstream's: it
+   holds the scrollbar gutter at full opacity so the fade never eats the
+   scrollbar. */
+:root[data-fork="noahhendrickson-t3code"] {
+  /* Gap to the pills, then the two halves of the ramp — see the note above on
+     why it is split rather than linear. */
+  --fork-timeline-cutoff-gap: 0.25rem;
+  --fork-timeline-cutoff-edge: 0.55rem;
+  --fork-timeline-cutoff-ramp: 5.5rem;
+}
+
+:root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff {
+  --fork-timeline-top-fade: 0px;
+  --fork-timeline-cutoff-inset: calc(
+    var(--fork-composer-inset, 0px) + var(--fork-timeline-cutoff-gap)
+  );
+  --fork-timeline-cutoff-knee: calc(
+    var(--fork-timeline-cutoff-inset) + var(--fork-timeline-cutoff-edge)
+  );
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgb(0 0 0 / 10%) 10%,
+      rgb(0 0 0 / 30%) 24%,
+      rgb(0 0 0 / 58%) 42%,
+      rgb(0 0 0 / 82%) 62%,
+      rgb(0 0 0 / 96%) 82%,
+      black 100%
+    ),
+    linear-gradient(
+      to top,
+      transparent 0,
+      transparent var(--fork-timeline-cutoff-inset),
+      rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
+      rgb(0 0 0 / 80%)
+        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.28),
+      rgb(0 0 0 / 93%)
+        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.6),
+      black calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp))
+    ),
+    linear-gradient(black, black);
+  -webkit-mask-position: top, bottom, right;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size:
+    100% var(--fork-timeline-top-fade),
+    100% calc(100% - var(--fork-timeline-top-fade)),
+    var(--app-scrollbar-width) 100%;
+  mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgb(0 0 0 / 10%) 10%,
+      rgb(0 0 0 / 30%) 24%,
+      rgb(0 0 0 / 58%) 42%,
+      rgb(0 0 0 / 82%) 62%,
+      rgb(0 0 0 / 96%) 82%,
+      black 100%
+    ),
+    linear-gradient(
+      to top,
+      transparent 0,
+      transparent var(--fork-timeline-cutoff-inset),
+      rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
+      rgb(0 0 0 / 80%)
+        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.28),
+      rgb(0 0 0 / 93%)
+        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.6),
+      black calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp))
+    ),
+    linear-gradient(black, black);
+  mask-position: top, bottom, right;
+  mask-repeat: no-repeat;
+  mask-size:
+    100% var(--fork-timeline-top-fade),
+    100% calc(100% - var(--fork-timeline-top-fade)),
+    var(--app-scrollbar-width) 100%;
+}
+
+:root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff.chat-timeline-scroll-fade {
+  --fork-timeline-top-fade: var(--topbar-scroll-fade-height);
+}
+
+/* No blur band over the tail, and that is a constraint rather than a
+   preference. The obvious way to soften the fade is a strip above the composer
+   carrying a backdrop-filter, masked so it ramps in with the dimming. It cannot
+   work here: a partially-masked backdrop-filter composites the FILTERED copy of
+   the backdrop over the unfiltered one, and under glass that backdrop is a 94%
+   stage over the desktop, so compositing it twice adds luminance. The result is
+   a lighter strip across the column with a hard edge where the band meets the
+   composer — brighter than the stage it sits on, and reading as a glow.
+
+   On an opaque palette the same rule is invisible, which is the trap: it looks
+   correct in flat themes and wrong in exactly the theme that motivated the
+   cutoff. Any future attempt at a blur ramp here has to solve the double
+   composite first; the graduated-opacity tail below is doing that job instead. */
 
 :root[data-fork="noahhendrickson-t3code"] {
   --fork-composer-radius: 8px;

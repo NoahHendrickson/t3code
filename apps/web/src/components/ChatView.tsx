@@ -49,6 +49,9 @@ import { nextTerminalId, resolveTerminalSessionLabel } from "@t3tools/shared/ter
 import { Debouncer } from "@tanstack/react-pacer";
 import { useAtomValue } from "@effect/atom-react";
 import {
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  type CSSProperties,
+  /* fork:end fork-composer-shell */
   lazy,
   memo,
   Suspense,
@@ -6271,6 +6274,14 @@ function ChatViewContent(props: ChatViewProps) {
           {/* Chat column */}
           <div
             className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+            /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+            // The transcript is masked to end above the docked composer rather
+            // than scrolling under it, and the mask needs the composer's height.
+            // Stamped here because this is the nearest element that contains
+            // both the scroller and the absolutely-docked overlay, so the value
+            // inherits down to the mask without another measurement.
+            style={{ "--fork-composer-inset": `${composerOverlayHeight}px` } as CSSProperties}
+            /* fork:end fork-composer-shell */
             /* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
             // The whole column takes file drops, not just the composer docked
             // in it: a screenshot released over the timeline attaches to the
@@ -6492,10 +6503,21 @@ function ChatViewContent(props: ChatViewProps) {
                           shell would have left two empty divs in the tree. */}
                       {/* fork:end fork-composer-shell */}
                     </div>
-                    <div
-                      aria-hidden
-                      className="h-[calc(env(safe-area-inset-bottom)+1rem)] sm:h-[calc(env(safe-area-inset-bottom)+1.25rem)]"
-                    />
+                    {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+                    {/* The composer's floor. Upstream docks it 1rem above the
+                        bottom edge (1.25rem from sm up); the fork lifts both to
+                        one 2rem value, so the composer reads as an object
+                        floating over the stage rather than as a bar attached to
+                        the window, and the breakpoint goes with them. The
+                        safe-area term stays: on a phone this has to clear the
+                        home indicator before the 32px starts.
+
+                        Height on a spacer, not padding on the overlay — the
+                        overlay's measured height is what drives the transcript's
+                        bottom inset and the cutoff mask, and it already counts
+                        this element. */}
+                    <div aria-hidden className="h-[calc(env(safe-area-inset-bottom)+2rem)]" />
+                    {/* fork:end fork-composer-shell */}
                   </div>
                 </div>
               </div>

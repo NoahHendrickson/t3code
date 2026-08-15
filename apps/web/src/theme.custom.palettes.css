@@ -321,55 +321,171 @@
 }
 
 /* The chat stage carries the same wallpaper cast as the sidebar, but weaker —
-   90% against the sidebar's 75%. Fully opaque it read as flat black butted
+   90% against the sidebar's 85%. Fully opaque it read as flat black butted
    against a coloured panel, and the seam between them was the loudest thing on
-   screen; sharing the tint makes them read as one material at two depths.
+   screen; sharing the tint makes them read as one material at two depths. Both
+   now state the same triple, so "sharing the tint" is literal and the alpha is
+   the only thing separating them.
 
    The stage must never be more transparent than the sidebar: it is the app's
    one long-form reading surface and has to survive a bright, busy desktop.
    Equal is the floor, and the guard pins that relationship rather than either
    literal value.
 
-   Both numbers are lower than they look. Vibrancy darkens and desaturates its
-   sample before either surface composites over it, so anything much above 90%
-   here is invisible rather than subtle — 97% and 98% both read as no glass at
-   all. The useful range is roughly 60–90%. */
+   Neither number means anything without the material behind it. Vibrancy
+   darkens and desaturates its sample before either surface composites over it,
+   and how much it keeps depends entirely on which material is mounted. Under
+   `under-window` the sample measured a flat ~49 grey, and 80% / 70% were the
+   first values with a cast worth having. `fullscreen-ui` returns ~99 — twice
+   the light, and chromatic — so the same alphas read as far too transparent.
+
+   The panel restores its previous level by holding the desktop's CONTRIBUTION
+   constant rather than the alpha: 15% of 99 is 14.8 where 30% of 49 was 14.7.
+   Same amount of desktop, twice the colour in it. Anyone changing
+   FORK_VIBRANCY_MATERIAL has to redo this arithmetic; the alphas are not
+   portable across materials.
+
+   The stage thins toward the floor rather than holding one value. Reading
+   happens at the top of the column and the transcript is masked off before the
+   bottom of it (.fork-timeline-cutoff), so the region the composer sits in has
+   no long-form text to protect and can afford to show more desktop than the
+   region above it. 95% holds for the top 70% and then ramps to 85%.
+
+   The ramp runs the bottom 30% of the column for 10 points of alpha — around
+   300px on a normal window, or one point of composited colour per 35px or so.
+   That distance is the whole trick: the same 10 points over a short run reads as
+   a band, and any hard stop reads as a seam across the column. Steepening this
+   is what to suspect first if the fade starts to show its edges.
+
+   The floor is allowed under the panel, and only the floor. The guard used to
+   hold the whole stage at or above the sidebar's alpha; that reasoning is about
+   protecting long-form text, and the cutoff mask means there is none down here.
+   So the reading area still answers to it and the lower stops do not — at 85%
+   against an 88% panel the very bottom of the column now sits a few points
+   lighter than the sidebar beside it, which is the fade doing its job rather
+   than a mistake. 80% remains the absolute floor for any stop. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"] {
-  background-color: rgb(22 22 22 / 90%);
+  /* Cleared, not merely unset. SidebarInset carries `bg-background` itself, and
+     that utility paints an opaque fill UNDER any background-image — the gradient
+     would composite over #141618 and none of this would show. The flat version
+     of this rule got away with it by overriding the colour directly. */
+  background-color: transparent;
+  background-image: linear-gradient(to bottom, rgb(22 22 22 / 95%) 0 70%, rgb(22 22 22 / 85%) 100%);
+  /* The same element carries `surface-grain`, which is three declarations, not
+     one: it sets background-image AND background-repeat: repeat AND a
+     background-size of 128px. Overriding only the image leaves the other two
+     pointing at this gradient, which then tiles every 128px down the column —
+     it presents as the stage "repeating weirdly", not as a background-size bug.
+     Both have to be restated here. Nothing is lost by doing so: Cool Darker sets
+     --surface-grain to none, so this element had no texture to keep. */
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
 }
 
 /* The composer is the last opaque object over the stage — a solid slab across
    the bottom of an otherwise translucent column, which reads as a band rather
-   than as a control. Vessel and prompt surface both take the stage's own 90% so
-   the whole composer is one glass object at the same depth as the transcript
-   behind it.
+   than as a control. Its surfaces are thin white washes over this stage, so the
+   whole composer is one glass object at the same depth as the transcript behind
+   it.
 
    These live on the stage rule, not the v2 panel block: the composer is in the
    chat column, outside the sidebar, so the panel-scoped tokens never reach it.
 
-   Context chips stay opaque on purpose — they are small controls that have to
-   stay legible, and at that size the wallpaper reads as noise rather than
-   depth. */
+   Context chips resolve to the same colour as the ring, so the row above the
+   composer reads as one material with the surface below it. They need their own
+   alpha to get there — the context row is a SIBLING above the vessel, so it sits
+   on the bare stage while the ring sits on the already-washed tray.
+
+   Nothing in here is frosted; see the backdrop-filter note further down for why
+   a filter and the native material cannot coexist. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"] {
-  /* White washes, not the palette's coloured fills — the same treatment the
-     sidebar rows get, and for the same reason. A coloured fill REPLACES what is
-     behind it, so the composer painted its own flat grey and lost the wallpaper
-     cast the surrounding column carries. A wash LIFTS what is behind it, so the
-     cast survives and the surface still reads a step above the stage.
+  /* Figma 322:6306. Every composer surface is white at one of two alphas over
+     whatever is behind it — nothing here carries a colour of its own, which is
+     what lets the wallpaper through all of it.
 
-     This is also as close to the stage as the composer can get. Sitting on a
-     90% stage caps it: the wash lets 0.95 x 10% = 9.5% of the wallpaper
-     through against the stage's own 10%. A coloured fill at 75% managed 2.5%,
-     which is why it read as a slab no matter how the alpha moved.
+     The drawing is flat, with an opaque stage at 12, so its numbers only mean
+     something as ratios of white: control row (30,32,34) is white 8% over that
+     stage; the input reads at the same lightness with no step between them; the
+     hairline and the context chips are one value at (57,58), which is white 8%
+     applied a second time. Two alphas, four surfaces.
 
-     The steps are relative, so the ladder holds whatever the stage does:
-     vessel lifts off the stage, prompt surface lifts off the vessel, chips
-     match the prompt surface, hover lifts once more. */
-  --fork-composer-vessel-bg: rgb(255 255 255 / 5%);
-  --fork-composer-bg: rgb(255 255 255 / 8%);
-  --fork-context-chip-bg: rgb(255 255 255 / 8%);
-  --fork-context-chip-bg-hover: rgb(255 255 255 / 12%);
+     Read that way it maps onto this stage without translation, at 6% rather
+     than the drawing's 8%. The stage under the composer is the gradient's thin
+     end (85%, resolving to ~34), so the same wash lands lighter here than it
+     would higher up the column:
+
+       tray    white 6% over the stage           -> (47,47,47)
+       well    40% stage colour over the tray    -> (36,37,38)   see below
+       ring    white 6% over the well            -> (49,50,50)
+       focus   white 12% over the well           -> (62,62,62)
+       chips   white 12% over the stage          -> (60,60,60)   drawing: 57
+
+     The chips take double the base alpha because they reach their value from one
+     layer lower: they sit on the bare stage, while the ring gets a wash of tray
+     underneath it for free. In 6306 that put the two on the same colour, which
+     was the drawing's own property. Giving the input a fill broke it — the ring
+     now composites over the well rather than over the tray, so it resolves ~11
+     points below the chips instead of level with them. That is the cost of the
+     recess, and it is a fair trade: the ring's job here is to bound the input,
+     not to rhyme with the row above it.
+
+     Superseded by the drawing above, each kept because it looked reasonable in
+     the file and wrong on screen: white washes resolving to a flat 53, then to
+     28/36 and 34/40 as lifting ladders; tinted cuts on #2f3437 at 55% and 70%,
+     which fixed the hue and stopped the glass at the composer's edge; and the
+     recessed well of 322:6316, whose darker input and invisible ring this
+     replaces.
+
+     What cannot be matched is the stage itself. The drawing's is 12 because
+     nothing is behind it; ours resolves to ~34 down here because a seventh of
+     the desktop is, and that seventh arrives with colour in it. Every surface is
+     therefore lighter than the drawing by about the same amount, and the ratios
+     are what hold. */
+  --fork-composer-vessel-bg: rgb(255 255 255 / 6%);
+  /* The well, and the one place this departs from 322:6306. That drawing puts
+     the input at the control row's own lightness and lets the hairline do all
+     the work; sitting in it, the input wanted to be a recess. So the fill comes
+     back from 322:6316 — the earlier drawing, which had one — while the ring and
+     the chips stay as 6306 draws them.
+
+     It darkens rather than lifts, and it darkens toward the stage's own colour,
+     so the recess reads as the column showing through the tray rather than as a
+     grey of its own. 40% over the tray resolves to ~(36,37,38) against a (47)
+     tray and a (34) stage: most of the way back down to the column, which is as
+     far as it can go before the input stops reading as part of the composer.
+
+     Alpha, not the opaque token: at 40% it still passes 60% of the tray, so the
+     wallpaper the tray carries survives into the input rather than stopping at
+     its edge. */
+  --fork-composer-bg: color-mix(in srgb, var(--background) 40%, transparent);
+  /* The hairline, and the one surface that gets its lift from compounding. The
+     same 6% painted over a tray that is already 6% resolves to (59,59,59): a
+     visible edge, where the previous cut deliberately hid it. That inverts on
+     purpose — with the well gone, this line is the only thing that says where
+     the input is. */
+  --fork-composer-border: rgb(255 255 255 / 6%);
+  /* Focus, which the palette leaves as an opaque #444a4f. That was the one line
+     in the composer that could not carry the wallpaper, and it read as a
+     different material rather than as the same ring brightening: cool where
+     everything around it is neutral, and 19 points above the resting ring in a
+     set whose steps are half that.
+
+     The chips' own alpha, reused rather than invented. It doubles the resting
+     ring, lands at ~(62) against its ~(49), and stays inside the composer's
+     range instead of stepping outside it. A wash also means the focus ring picks
+     up the desktop like everything else it sits beside. */
+  --fork-composer-border-focus: rgb(255 255 255 / 12%);
+  /* Chips match the ring, which takes 12% here rather than 6%: the context row
+     is a sibling above the vessel, so these sit on the bare stage while the ring
+     sits on the tray. Same resolved colour, one layer lower, so the alpha has to
+     absorb the tray the ring gets for free — 6% twice over, which compounds to
+     just under 12.
+     Nothing scrolls behind these to show through them: the cutoff mask ends the
+     transcript above the whole composer, the row included.
+     Hover keeps the ten-point step the sidebar rows use. */
+  --fork-context-chip-bg: rgb(255 255 255 / 12%);
+  --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
 }
 
 /* The changed-files card (theme.custom.css, [data-changed-files-state]) freezes
@@ -405,40 +521,47 @@
    never close it — only zero matches the stage. Matching the stage's value was
    the intuitive fix and it is arithmetically the wrong one.
 
-   What replaces it: the composer vessel is frosted (below), so content passing
-   behind the composer is blurred rather than hidden. The scrim's job of
-   stopping the transcript is done by the blur instead of by a fill. */
+   What replaces it: nothing here. The transcript is masked to end above the
+   composer (theme.custom.css, .fork-timeline-cutoff), so the scrim's job of
+   stopping it is done by removing the content rather than by covering it, and
+   there is nothing left under this element to hide. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-chat-composer-overlay="true"] {
   background: none;
 }
 
-/* The composer is the one translucent surface with app content moving behind it:
-   the transcript scrolls underneath. Plain alpha dilutes that content instead of
-   hiding it, so messages read straight through the composer as they pass — which
-   is worse than the solid slab it replaced.
+/* NO backdrop-filter anywhere in the composer, and this is the one rule in the
+   glass set that exists to say so.
 
-   Frosting fixes what alpha cannot. The blur destroys the legibility of whatever
-   is behind while keeping its colour, so the composer reads as glass over the
-   transcript and still picks up the wallpaper where the stage above it is
-   transparent. Reuses upstream's own --glass-blur / --glass-saturation rather
-   than inventing values, so it matches the composer glass elsewhere in the app.
+   `backdrop-filter` and native vibrancy cannot both work on the same element.
+   The NSVisualEffectView lives behind the window, outside anything the page
+   compositor owns, so it can never be part of a backdrop Chromium filters. Put a
+   filter on an element sitting over a transparent region and the region is
+   flattened to composite it: the element keeps its brightness and loses the
+   desktop entirely.
 
-   Static filter, no animation — it composites once per paint rather than
-   continuously, which is the distinction the perf rule in CLAUDE.md draws. */
+   That is not theory. With the vessel and the chips frosted at blur(48px)
+   saturate(2.6), the wallpaper measured through the app as a channel spread of
+   25 in the sidebar and 14–20 in the stage on either side of the composer, and 3
+   inside the composer — same lightness, no colour. A flat grey slab in a
+   translucent window, which is exactly what the frost was added to prevent.
+
+   The blur was load-bearing once: it destroyed transcript text passing under the
+   composer. The cutoff mask (theme.custom.css, .fork-timeline-cutoff) took that
+   job, which is what makes removing this safe — there is no longer anything
+   behind the composer to hide, so nothing replaces the filter. Saturation went
+   with it; there is now real chroma reaching the composer to not need
+   amplifying.
+
+   If a future palette wants frosted glass here, it has to give up the native
+   material for the whole window — the two are alternatives, not layers. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-fork-composer-vessel] {
-  /* Saturation well above upstream's --glass-saturation (1.08-1.14), because
-     the composer is colour-starved by construction. It sits ON the 90% stage,
-     so it can never see more than ~10% of the wallpaper — a quarter of what the
-     75% sidebar gets — and that little chroma reads as dead neutral next to a
-     visibly green panel. Amplifying what is there is the only way to add colour
-     without making the transcript itself more transparent.
-
-     This is the one place a filter does real work rather than decoration: the
-     blur hides the scrolling transcript, the saturation recovers the cast. */
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(2.6);
-  backdrop-filter: blur(var(--glass-blur)) saturate(2.6);
+  :is(
+    [data-fork-composer-vessel],
+    [data-fork-composer-context-row] :is(button, [data-slot="button"], [data-fork-context-chip])
+  ) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Exactly one layer in the chat column paints the glass, and it is the inset
@@ -479,10 +602,15 @@
   background: transparent;
 }
 
-/* 75% is the glass level: the wallpaper reads clearly through the panel while
+/* 85% is the glass level: the wallpaper reads clearly through the panel while
    the tint keeps sidebar text legible over a bright desktop. This percentage is
    the only dial — raise it toward 100% for a more solid panel, lower it toward
    0% for more wallpaper.
+
+   The tint is the stage's own 22, not a lighter step: both surfaces are meant
+   to read as one material at two depths, so they share a triple and differ only
+   in alpha. Depth is the alpha's job, and a second value here only drifted the
+   two apart in lightness.
 
    Row washes are white over that tint rather than opaque fills, so the glass
    survives hover and selection. They sit on top of the panel fill instead of
@@ -504,10 +632,10 @@
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-wrapper"]:not([data-fork-sidebar-overlay="true"])
   [data-sidebar-version="v2"] {
-  --background: rgb(27 27 27 / 75%);
-  --card: rgb(27 27 27 / 75%);
-  --sidebar: rgb(27 27 27 / 75%);
-  --sidebar-stage-fade: rgb(27 27 27 / 75%);
+  --background: rgb(22 22 22 / 88%);
+  --card: rgb(22 22 22 / 88%);
+  --sidebar: rgb(22 22 22 / 88%);
+  --sidebar-stage-fade: rgb(22 22 22 / 88%);
   /* Opaque, unlike everything else in this block. A white wash here lets the
      wallpaper through the line itself, so the seam shimmers with whatever is
      behind the window and reads as a gap rather than an edge — and the only way
@@ -523,8 +651,8 @@
   --sidebar-border: #3f3f3f;
   /* index.css derives this as
      `color-mix(in srgb, var(--sidebar-muted-foreground) 60%, var(--sidebar))`,
-     so a translucent --sidebar leaks its alpha into the glyph: at a 75% panel
-     that lands at 90%, and the remaining 10% is wallpaper showing through the icon
+     so a translucent --sidebar leaks its alpha into the glyph: at an 85% panel
+     that lands at 94%, and the remaining 6% is wallpaper showing through the icon
      itself, which reads as the icons taking on the desktop's colour. Frozen to
      the value that mix resolves to against the opaque panel (#d0d4d6 60% over
      #181b1e) so icons stay glass-independent. Anything else derived from the
@@ -534,4 +662,19 @@
   --sidebar-row-hover: rgb(255 255 255 / 5%);
   --sidebar-row-active: rgb(255 255 255 / 8%);
   --sidebar-row-selected: rgb(255 255 255 / 6%);
+}
+
+/* The seam itself, softer than the token that draws every other line in the
+   panel. `border-r` on the container and the ⌘K / ⇧⌘O pill rings both read
+   --sidebar-border, and this is the only one of them running the full height of
+   the window against a darker column — at the shared #3f3f3f it was the
+   brightest edge on screen while the rings, which are short and sit inside the
+   tint, read correctly. Halving the step above the panel (#2b2b2b) leaves the
+   two columns separated without the line announcing itself; the rings keep
+   #3f3f3f. Opaque for the reason the token above gives: alpha here lets the
+   wallpaper through the line and the seam shimmers. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-wrapper"]:not([data-fork-sidebar-overlay="true"])
+  [data-slot="sidebar-container"][data-sidebar-version="v2"] {
+  border-color: #2b2b2b;
 }

@@ -213,12 +213,18 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(41 41 41)");
     expect(coolDark?.body).toContain("--fork-context-chip-bg: #353a3d");
     expect(defaultDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
-    const chipBlur = cssRules(theme).find(
+    // The one place the chips do carry a filter is the vibrancy block, where
+    // they take the composer's wash and its frost as a pair. Everywhere else a
+    // blur here would be dead weight under design-mode canvas with an opaque
+    // fill behind it doing the work anyway.
+    const chipBlur = cssRules(theme).filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.body.includes("backdrop-filter"),
     );
-    expect(chipBlur).toBeUndefined();
+    for (const rule of chipBlur) {
+      expect(rule.selector).toContain('[data-fork-sidebar-vibrancy="true"]');
+    }
   });
 
   it("pre-paints Cool Dark from the palette key so the load flash matches the stage", () => {
