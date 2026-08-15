@@ -16,11 +16,12 @@
  * stripes the panel and competes with the card edges. The folder mark and the
  * space above carry the separation instead.
  *
- * Spacing from Figma t3-fork node 293:20603: list pad supplies the 8px inset;
- * the folder sits in a 24px box (16px glyph centred) so its ink centres on the
- * 20px axis with Search and each card's status; gap-0.5 (2px) to the label;
- * 4px to the first card and 20px above the header itself, both spent here on
- * top of the list ul's 2px gap.
+ * Spacing from Figma t3-fork node 293:20603, and every value of it is derived
+ * in custom/sidebarV2CardAlignment rather than chosen here: the list pad
+ * supplies the 8px inset, the folder's 24px box centres its 16px glyph on the
+ * same 20px axis as Search and each card's status, and the gap to the label is
+ * what puts that label on the cards' 34px edge. The margins buy this row's 4px
+ * above its first card and 20px above itself on top of the list ul's own gap.
  *
  * It is a heading rather than a bare span, and its `li` drops the list
  * semantics it would otherwise inherit from upstream's thread `ul`: a screen
@@ -32,6 +33,7 @@
 import { ChevronDownIcon, FolderClosedIcon, FolderOpenIcon, PlusIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
+import { SIDEBAR_V2_CARD_ALIGNMENT } from "./sidebarV2CardAlignment";
 import {
   SIDEBAR_V2_ICON_BUTTON_CLASS,
   SIDEBAR_V2_TRAILING_OFFSET,
@@ -59,15 +61,12 @@ export function SidebarV2ProjectGroupHeader(props: {
       <div
         data-testid="sidebar-v2-project-group-header"
         className={cn(
-          // gap-0.5 (2px) puts the label 34px in — the same edge as each card's
-          // prompt (list pad 8 + card px-1 + the 16px status box + the title
-          // line's 6px gap). The two numbers are one alignment; retune either
-          // and the header steps off the cards under it.
-          "group/collapse relative flex w-full items-center gap-0.5 text-left",
-          // The ul's own gap is 2px, so the header buys the rest: mb-0.5 makes
-          // the 4px above its first card, and mt-[18px] the 20px above itself.
-          "mb-0.5",
-          props.isFirst ? "mt-0" : "mt-[18px]",
+          // Gap and margins are all derived — see custom/sidebarV2CardAlignment
+          // for the arithmetic this row shares with the cards under it.
+          "group/collapse relative flex w-full items-center text-left",
+          SIDEBAR_V2_CARD_ALIGNMENT.headerGap,
+          SIDEBAR_V2_CARD_ALIGNMENT.headerTrail,
+          props.isFirst ? "mt-0" : SIDEBAR_V2_CARD_ALIGNMENT.headerLead,
         )}
       >
         <button
@@ -86,7 +85,12 @@ export function SidebarV2ProjectGroupHeader(props: {
             chevron on row-hover either way. Stacked in one 24px box so the
             swap does not shift the label. pointer-events none so clicks fall
             through to the collapse layer. */}
-        <span className="pointer-events-none relative z-[1] flex size-6 shrink-0 items-center justify-center text-sidebar-muted-foreground/80 group-hover/collapse:text-sidebar-foreground">
+        <span
+          className={cn(
+            "pointer-events-none relative z-[1] flex shrink-0 items-center justify-center text-sidebar-muted-foreground/80 group-hover/collapse:text-sidebar-foreground",
+            SIDEBAR_V2_CARD_ALIGNMENT.headerMarkBox,
+          )}
+        >
           <FolderOpenIcon
             aria-hidden
             className={cn(

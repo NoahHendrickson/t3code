@@ -20,6 +20,12 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
 import {
+  SIDEBAR_V2_CARD_ALIGNMENT,
+  SIDEBAR_V2_CARD_ALIGNMENT_PX,
+  sidebarV2HeaderLabelEdge,
+  sidebarV2PromptEdge,
+} from "../custom/sidebarV2CardAlignment";
+import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
   threadRowSurfaceClassName,
@@ -262,11 +268,14 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // card's hollow-ring path so the leading column is never empty.
     expect(sidebarV2).toContain('idle="ring"');
     expect(sidebarV2).toContain("<SidebarV2StatusMark");
-    // The box is the design's 16px (113:725 `indicator`); the marks inside keep
-    // their own sizes and centre in it — the rain is 14px tall, a dot is 8px.
+    // The box is the design's 16px (113:725 `indicator`), taken from the shared
+    // alignment module; the marks inside keep their own sizes and centre in it
+    // — the rain is 14px tall, a dot is 8px.
     expect(sidebarV2).toContain(
-      "pointer-events-none flex size-4 shrink-0 items-center justify-center overflow-hidden",
+      "pointer-events-none flex shrink-0 items-center justify-center overflow-hidden",
     );
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.statusBox");
+    expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.statusBox).toBe(16);
     const rain = readSibling("../custom/SidebarV2StatusIndicator.tsx");
     expect(rain).toContain('className="block h-[14px] w-auto shrink-0 overflow-hidden"');
     expect(rain).toContain("const SLOT = 14");
@@ -274,18 +283,42 @@ describe("fork guard: sidebar-v2-card-rows", () => {
   });
 
   it("indents the card's repo line under the title text", () => {
-    // 20px per Figma 113:741 — the prompt starts 22px in (16px status box + the
-    // title row's 6px gap) and the line's marks sit just under it. Dropping the
-    // indent puts the branch under the rain instead of under the prompt.
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).toContain('CONTENT_INDENT = "pl-5"');
+    expect(meta).toContain("CONTENT_INDENT = SIDEBAR_V2_CARD_ALIGNMENT.repoIndent");
     expect(meta).toContain("${CONTENT_INDENT}");
     // No overflow-hidden: the trailing h-6 settle/X cell overhangs this line
     // on purpose; clipping it was what squashed the hover fill into a bar.
-    expect(sidebarV2).toContain("flex h-[18px] min-h-[18px] min-w-0 items-center gap-1.5");
+    expect(sidebarV2).toContain("flex h-[18px] min-h-[18px] min-w-0 items-center");
     expect(sidebarV2).not.toMatch(
-      /flex h-\[18px\] min-h-\[18px\] min-w-0 items-center gap-1\.5 overflow-hidden/u,
+      /flex h-\[18px\] min-h-\[18px\] min-w-0 items-center[^"]*overflow-hidden/u,
     );
+  });
+
+  it("keeps the prompt and the group header label on one edge", () => {
+    // The invariant the leading column exists for: a card's prompt and a
+    // project header's label start at the same x, reached from two different
+    // sides. Asserted as arithmetic rather than as three class strings, because
+    // the failure this catches is retuning one side and not the other — which
+    // every substring assertion in this file would sail straight past.
+    expect(sidebarV2HeaderLabelEdge()).toBe(sidebarV2PromptEdge());
+    expect(sidebarV2PromptEdge()).toBe(34);
+
+    // And the classes still spell the px they claim to. A constant that drifts
+    // from its own derivation is the one way a named value is worse than a
+    // literal at the call site.
+    const px = SIDEBAR_V2_CARD_ALIGNMENT_PX;
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.statusBox).toBe(`size-${px.statusBox / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.titleGap).toBe(`gap-${px.titleGap / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.repoIndent).toBe(`pl-${px.repoIndent / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.headerMarkBox).toBe(`size-${px.headerMarkBox / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.headerGap).toBe(`gap-${px.headerGap / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.listGap).toBe(`gap-${px.listGap / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.headerLead).toBe(`mt-[${px.headerLead}px]`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.headerTrail).toBe(`mb-${px.headerTrail / 4}`);
+
+    // The repo line is deliberately 2px left of the prompt — the design's
+    // number, not a rounding slip, so it is pinned as a difference.
+    expect(px.cardPad + px.repoIndent).toBe(px.cardPad + px.statusBox + px.titleGap - 2);
   });
 
   it("does not layer text-xs onto card titles (that forced a 16px line box)", () => {
@@ -347,10 +380,14 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // 52px cards on a 54px pitch (293:20603). A project header buys the rest of
     // its own spacing — 4px to its first card, 20px above itself — out of its
     // margins, so it does not depend on this gap staying wrong for it.
-    expect(sidebarV2).toContain('className="flex flex-col gap-0.5"');
-    expect(sidebarV2).not.toContain('className="flex flex-col gap-1"');
+    expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.listGap).toBe(2);
+    expect(sidebarV2).toContain('cn("flex flex-col", SIDEBAR_V2_CARD_ALIGNMENT.listGap)');
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
-    expect(header).toContain('"mb-0.5"');
-    expect(header).toContain('props.isFirst ? "mt-0" : "mt-[18px]"');
+    expect(header).toContain("SIDEBAR_V2_CARD_ALIGNMENT.headerTrail");
+    expect(header).toContain('props.isFirst ? "mt-0" : SIDEBAR_V2_CARD_ALIGNMENT.headerLead');
+    // The two margins are only correct relative to the list gap they sit on.
+    const px = SIDEBAR_V2_CARD_ALIGNMENT_PX;
+    expect(px.listGap + px.headerTrail).toBe(4);
+    expect(px.listGap + px.headerLead).toBe(20);
   });
 });

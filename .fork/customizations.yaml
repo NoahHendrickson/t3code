@@ -443,6 +443,18 @@
     --muted-foreground with the model cluster a step behind at 70%, so the
     checkout stays the brighter of the two without matching the prompt.
 
+    The leading column's numbers are derived in custom/sidebarV2CardAlignment,
+    the way the trailing column's already were: the status box, the title gap,
+    the repo indent, the list gap and the project header's box, gap and margins
+    all live there with the arithmetic that ties them together. One invariant
+    justifies the module — a card's prompt and a project header's label start at
+    the same 34px, reached from two different sides (list pad 8 + card px-1 +
+    status box 16 + title gap 6, against list pad 8 + mark box 24 + gap 2) — and
+    the guard asserts that equality rather than the three class strings, so
+    retuning one side without the other fails instead of silently drifting. The
+    repo indent is deliberately 2px left of the prompt, per the design, and is
+    pinned as that difference.
+
     Every card is that one height, whatever it carries. It used to grow a third
     line for the PR badge and the turn's diff counts, which meant predicting
     that line's presence before the per-row VCS query answered — and the list
@@ -504,6 +516,7 @@
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
     - apps/web/src/custom/SidebarV2ThreadCardMeta.tsx
     - apps/web/src/custom/icons/WorktreeIcon.tsx
+    - apps/web/src/custom/sidebarV2CardAlignment.ts
     - apps/web/src/custom/sidebarV2RowPolicy.ts
     - apps/web/src/theme.custom.css
   shadows: []

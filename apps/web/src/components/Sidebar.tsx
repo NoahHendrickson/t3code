@@ -178,6 +178,7 @@ import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
 import { SidebarV2StatusMark, type SidebarV2DotTone } from "~/custom/SidebarV2StatusIndicator";
 import { SidebarV2ThreadCardMeta } from "~/custom/SidebarV2ThreadCardMeta";
+import { SIDEBAR_V2_CARD_ALIGNMENT } from "~/custom/sidebarV2CardAlignment";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
@@ -501,13 +502,7 @@ function SortablePinnedThreadRow(props: {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.id,
   });
-  return props.children({
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  });
+  return props.children({ listeners, setNodeRef, transform, transition, isDragging });
 }
 
 const SidebarThreadRow = memo(function SidebarThreadRow(props: {
@@ -1245,20 +1240,31 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             {/* fork:end sidebar-v2-card-rows */}
             {/* Title line is 18px tall — the 14px prompt's own line box, and
                 what the card's 52 is measured from (8 + 18 + 2 + 16 + 8). */}
-            {/* gap-1.5 (6px): 16px status box + 6px keeps the prompt at 34px —
-                same as the group header label (24px folder box + 2px gap). */}
+            {/* Box and gap are derived in custom/sidebarV2CardAlignment: they
+                are what put the prompt on the same 34px edge as the group
+                header's label, so neither moves alone. */}
             {/* No overflow-hidden on the row: the trailing settle/X cell is
                 h-6 and must overhang into py-2. Clipping here cut the 24px
                 hover fill into a short rectangle. Rain clips itself in the
                 status slot below. */}
-            <div className="flex h-[18px] min-h-[18px] min-w-0 items-center gap-1.5">
-              {/* Leading 16px status box (Figma 113:725 `indicator`). Always
-                  present (idle draws the hollow ring) so the title text and
-                  the indented row below share one left edge. The marks inside
-                  keep their own sizes — the rain is 14px tall, a status dot is
-                  8px — and centre in the box. pointer-events-none: a mark is
-                  never a target. */}
-              <span className="pointer-events-none flex size-4 shrink-0 items-center justify-center overflow-hidden">
+            <div
+              className={cn(
+                "flex h-[18px] min-h-[18px] min-w-0 items-center",
+                SIDEBAR_V2_CARD_ALIGNMENT.titleGap,
+              )}
+            >
+              {/* Leading status box (Figma 113:725 `indicator`). Always present
+                  (idle draws the hollow ring) so the title text and the
+                  indented row below share one left edge. The marks inside keep
+                  their own sizes — the rain is 14px tall, a status dot is 8px —
+                  and centre in the box. pointer-events-none: a mark is never a
+                  target. */}
+              <span
+                className={cn(
+                  "pointer-events-none flex shrink-0 items-center justify-center overflow-hidden",
+                  SIDEBAR_V2_CARD_ALIGNMENT.statusBox,
+                )}
+              >
                 {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
                 <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="ring" />
                 {/* fork:end sidebar-v2-card-rows */}
@@ -1503,9 +1509,7 @@ export default function SidebarV2() {
   const updateThreadMetadata = useAtomCommand(threadEnvironment.updateMetadata, {
     reportFailure: false,
   });
-  const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{
-    path: string;
-  }>({
+  const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{ path: string }>({
     onCopy: ({ path }) => {
       toastManager.add({
         type: "success",
@@ -1523,9 +1527,7 @@ export default function SidebarV2() {
       );
     },
   });
-  const { copyToClipboard: copyBranchToClipboard } = useCopyToClipboard<{
-    branch: string;
-  }>({
+  const { copyToClipboard: copyBranchToClipboard } = useCopyToClipboard<{ branch: string }>({
     target: "branch name",
     onCopy: ({ branch }) => {
       toastManager.add({
@@ -1863,11 +1865,7 @@ export default function SidebarV2() {
         pinned.push(thread);
       } else if (
         supportsSettlement &&
-        effectiveSettled(thread, {
-          now,
-          autoSettleAfterDays,
-          changeRequestState,
-        })
+        effectiveSettled(thread, { now, autoSettleAfterDays, changeRequestState })
       ) {
         settled.push(thread);
       } else {
@@ -2189,10 +2187,7 @@ export default function SidebarV2() {
         const trimmed = title.trim();
         setRenamingThreadKey(null);
         if (trimmed.length === 0) {
-          toastManager.add({
-            type: "warning",
-            title: "Thread title cannot be empty",
-          });
+          toastManager.add({ type: "warning", title: "Thread title cannot be empty" });
           return;
         }
         if (trimmed === originalTitle) return;
@@ -2589,10 +2584,7 @@ export default function SidebarV2() {
           // Never navigate away from a thread that did not snooze.
           return isAtomCommandInterrupted(result)
             ? ({ status: "interrupted" } as const)
-            : ({
-                status: "failure",
-                error: squashAtomCommandFailure(result),
-              } as const);
+            : ({ status: "failure", error: squashAtomCommandFailure(result) } as const);
         }
         // Only move forward if the user is still on the snoozed thread —
         // a navigation made during the await wins over ours.
@@ -2721,9 +2713,7 @@ export default function SidebarV2() {
           const outcomes = await Promise.all(
             selectedThreads.map(async (thread) => {
               const threadRef = scopeThreadRef(thread.environmentId, thread.id);
-              const outcome = await performSnooze(threadRef, preset, {
-                coSnoozingKeys,
-              });
+              const outcome = await performSnooze(threadRef, preset, { coSnoozingKeys });
               return { outcome, threadRef };
             }),
           );
@@ -2803,9 +2793,7 @@ export default function SidebarV2() {
         for (const threadKey of threadKeys) {
           const thread = threadByKeyRef.current.get(threadKey);
           if (!thread || thread.settledOverride === "settled") continue;
-          attemptSettle(scopeThreadRef(thread.environmentId, thread.id), {
-            coSettlingKeys,
-          });
+          attemptSettle(scopeThreadRef(thread.environmentId, thread.id), { coSettlingKeys });
         }
         clearSelection();
         return;
@@ -2885,14 +2873,7 @@ export default function SidebarV2() {
         if (draftIdByThreadKeyRef.current.has(threadKey)) {
           const clicked = await settlePromise(() =>
             api.contextMenu.show(
-              [
-                {
-                  id: "discard-draft",
-                  label: "Discard draft",
-                  destructive: true,
-                  icon: "trash",
-                },
-              ],
+              [{ id: "discard-draft", label: "Discard draft", destructive: true, icon: "trash" }],
               position,
             ),
           );
@@ -2939,9 +2920,7 @@ export default function SidebarV2() {
               isPinned,
               isSettled,
               isSnoozed,
-              canSnoozeNow: canSnooze(thread, {
-                now: new Date().toISOString(),
-              }),
+              canSnoozeNow: canSnooze(thread, { now: new Date().toISOString() }),
               isRegeneratingTitle,
               supports: {
                 settlement: supportsSettlement,
@@ -3036,9 +3015,7 @@ export default function SidebarV2() {
               );
               return;
             }
-            copyPathToClipboard(threadWorkspacePath, {
-              path: threadWorkspacePath,
-            });
+            copyPathToClipboard(threadWorkspacePath, { path: threadWorkspacePath });
             return;
           case "copy-branch":
             if (thread.branch) {
@@ -3306,12 +3283,14 @@ export default function SidebarV2() {
             timeout={400}
           >
             {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-                gap-0.5 is the design's 2px between cards (Figma 293:20603
-                stacks 52px cards on a 54px pitch). Rows carry no vertical
-                padding of their own, so this gap is the only space between
-                them; a project header spends its own margins to reach the 4px
-                it gets above its first card and the 20px above itself. */}
-            <ul ref={attachListAutoAnimateRef} role="list" className="flex flex-col gap-0.5">
+                Rows carry no vertical padding of their own, so this gap is the
+                only space between them and the project header's margins are
+                derived from it — both live in custom/sidebarV2CardAlignment. */}
+            <ul
+              ref={attachListAutoAnimateRef}
+              role="list"
+              className={cn("flex flex-col", SIDEBAR_V2_CARD_ALIGNMENT.listGap)}
+            >
               {/* fork:end sidebar-v2-card-rows */}
               {(() => {
                 const renderThreadRow = (

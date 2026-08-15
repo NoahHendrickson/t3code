@@ -22,8 +22,9 @@
  * The leading status mark carries busy-vs-blocked; metadata brightness does
  * not encode it.
  *
- * The line indents `pl-5` (20px, Figma `113:741`) so its content sits under
- * the title text rather than under the mark.
+ * The line's indent is shared with the title row and the group header through
+ * custom/sidebarV2CardAlignment, which carries the arithmetic the three of
+ * them have to agree on.
  */
 import type { ReactNode } from "react";
 
@@ -31,6 +32,7 @@ import type { ReactNode } from "react";
 // this file is fork-owned, so there is no upstream import site to preserve.
 import { CloudIcon, FolderIcon, GitBranchIcon, LaptopIcon } from "./icons/lucide-phosphor";
 import { WorktreeIcon } from "./icons/WorktreeIcon";
+import { SIDEBAR_V2_CARD_ALIGNMENT } from "./sidebarV2CardAlignment";
 
 export interface SidebarV2ThreadCardMetaProps {
   readonly projectTitle: string | null;
@@ -76,9 +78,9 @@ const REPO_ROW =
   "flex h-4 min-w-0 items-center gap-4 text-[0.75rem] leading-4 text-muted-foreground";
 /** The model/runtime cluster sits a step behind the branch beside it. */
 const MUTED = "text-muted-foreground/70";
-/** 20px per Figma 113:741 — puts the line's content under the prompt, which
-    starts 22px in (16px status box + the title row's 6px gap). */
-const CONTENT_INDENT = "pl-5";
+/** Shared with the title row above and the group header — see
+    custom/sidebarV2CardAlignment for why this one is not on the 34px edge. */
+const CONTENT_INDENT = SIDEBAR_V2_CARD_ALIGNMENT.repoIndent;
 
 export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
   /* Branch / worktree / project marks are 16px (size-4) per the component set,
