@@ -115,16 +115,16 @@ describe("fork guard: fork-cool-darker-theme", () => {
     expect(stageBg).not.toBe(COOL_DARK_BACKGROUND);
     expect(relativeLuminance(stageBg)).toBeLessThan(relativeLuminance(COOL_DARK_BACKGROUND));
 
-    expect(panelBg).toBe("#222528");
-    expect(panel).toContain("--sidebar: #222528");
+    expect(panelBg).toBe("#181b1e");
+    expect(panel).toContain("--sidebar: #181b1e");
     expect(relativeLuminance(panelBg)).toBeLessThan(relativeLuminance(coolPanelBg));
     expect(relativeLuminance(panelBg)).toBeGreaterThan(relativeLuminance(stageBg));
 
-    expect(stage).toContain("--fork-composer-vessel-bg: #282c2f");
+    expect(stage).toContain("--fork-composer-vessel-bg: #222629");
     expect(relativeLuminance(declarationHex(stage, "--fork-composer-vessel-bg"))).toBeGreaterThan(
       relativeLuminance(panelBg),
     );
-    expect(stage).toContain("--fork-composer-bg: #2e3336");
+    expect(stage).toContain("--fork-composer-bg: #282d30");
   });
 
   it("keeps Cool Darker barely cool without going blue-slate", () => {
@@ -137,9 +137,9 @@ describe("fork guard: fork-cool-darker-theme", () => {
 
   it("states Cool Darker row fills as opaque values", () => {
     const panel = ruleBodyFor(themeRules, DARKER_PANEL);
-    expect(panel).toContain("--sidebar-row-hover: #2e3336");
-    expect(panel).toContain("--sidebar-row-active: #32373a");
-    expect(panel).toContain("--sidebar-row-selected: #32373a");
+    expect(panel).toContain("--sidebar-row-hover: #282d30");
+    expect(panel).toContain("--sidebar-row-active: #2c3134");
+    expect(panel).toContain("--sidebar-row-selected: #2c3134");
     expect(panel).not.toMatch(
       /--sidebar-row-(?:hover|active|selected):[^;]*(?:color-mix|--alpha)/u,
     );
@@ -155,13 +155,13 @@ describe("fork guard: fork-cool-darker-theme", () => {
     );
     expect(indexHtml).toContain('setAttribute("data-fork-theme", activeForkPalette)');
     expect(indexHtml).toMatch(
-      /html\.dark\[data-fork-theme="cool-darker"\] body\s*\{[^}]*background:\s*#1a1c1e/u,
+      /html\.dark\[data-fork-theme="cool-darker"\] body\s*\{[^}]*background:\s*#141618/u,
     );
     expect(indexHtml).toContain("fork:begin fork-cool-darker-theme");
   });
 
   it("does not leak Cool Darker fills into light mode", () => {
-    const darkerHexes = ["#1a1c1e", "#222528", "#282c2f", "#2e3336", "#35393c", "#4a5055"];
+    const darkerHexes = ["#141618", "#1c1f22", "#222629", "#282d30", "#2f3336", "#444a4f"];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
     );

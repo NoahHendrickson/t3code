@@ -31,7 +31,7 @@ export const COOL_DARK_BACKGROUND = "#202326";
 export const COOL_DARKER_THEME = "cool-darker" as const;
 export const COOL_DARKER_LABEL = "Cool Darker";
 /** Pre-paint / overscroll colour for Cool Darker — matches stage `--background`. */
-export const COOL_DARKER_BACKGROUND = "#1a1c1e";
+export const COOL_DARKER_BACKGROUND = "#141618";
 
 export const NEUTRAL_DARK_THEME = "neutral-dark" as const;
 export const NEUTRAL_DARK_LABEL = "Neutral Dark";

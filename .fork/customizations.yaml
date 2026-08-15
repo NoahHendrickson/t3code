@@ -994,16 +994,22 @@
 - id: fork-cool-darker-theme
   intent: >
     Appearance offers Cool Darker as a deeper sibling of Cool Dark. Same
-    cool-gray family (barely cool, not blue-slate). Chat stage #1a1c1e
-    (darker than Cool Dark's #202326); sidebar #222528; composer vessel
-    #282c2f (a step above the sidebar so the control row contrasts); prompt
-    surface + context chips #2e3336. Must not alter Cool Dark, Neutral Dark,
-    Neutral Darker, or default Dark fills.
+    cool-gray family (barely cool, not blue-slate). Chat stage #141618
+    (well below Cool Dark's #202326); sidebar #181b1e; composer vessel
+    #222629 (a step above the sidebar so the control row contrasts); prompt
+    surface + context chips #282d30. Stage --card/--popover stay at #1c1f22, one
+    step above the sidebar, so menus and popovers float over the panel rather
+    than merging into it. The ladder moves as a unit — every surface
+    shifts by the same per-channel amount — so the steps between surfaces are
+    fixed and the floor is the only thing that travels. It sits 6 below its
+    first cut, having gone 14 down and then 8 back up once the glass sidebar
+    made the stage read as a hole beside it. Must not alter Cool Dark, Neutral
+    Dark, Neutral Darker, or default Dark fills.
 
     Same fork palette overlay as Cool Dark (t3code:fork-theme = cool-darker,
     upstream theme = dark, data-fork-theme="cool-darker"). Palette tokens
     live in theme.custom.palettes.css (two-block stage + v2 panel). index.html
-    pre-paints #1a1c1e.
+    pre-paints #141618.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts

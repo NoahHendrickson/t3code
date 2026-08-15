@@ -80,62 +80,68 @@
    Cool Darker — see `.fork/customizations.yaml#fork-cool-darker-theme`.
 
    Deeper sibling of Cool Dark: same cool-gray family (B ≥ R, low chroma),
-   pushed down. Stage #1a1c1e (below Cool Dark's #202326); sidebar #222528;
-   composer vessel #282c2f (a step above the sidebar so the control row
-   contrasts); prompt/chips #2e3336. Must not alter Cool Dark, Neutral Dark,
-   Neutral Darker, or default Dark fills. */
+   pushed down. Stage #141618 (well below Cool Dark's #202326); sidebar #181b1e;
+   composer vessel #222629 (a step above the sidebar so the control row
+   contrasts); prompt/chips #282d30. Stage --card/--popover stay at #1c1f22, one
+   step above the sidebar, so menus and popovers read as floating over the panel
+   rather than merging into it. The ladder moves as a unit — every surface
+   shifts by the same per-channel amount — so the steps between surfaces are
+   fixed and the floor is the only thing that travels. It sits 6 below its
+   first cut, having gone 14 down and then 8 back up once the glass sidebar
+   made the stage read as a hole beside it. Must not alter Cool Dark, Neutral
+   Dark, Neutral Darker, or default Dark fills. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
-  --background: #1a1c1e;
-  --app-chrome-background: #1a1c1e;
+  --background: #141618;
+  --app-chrome-background: #141618;
   --foreground: #e8e8e8;
-  --card: #222528;
+  --card: #1c1f22;
   --card-foreground: #e8e8e8;
-  --popover: #222528;
+  --popover: #1c1f22;
   --popover-foreground: #e8e8e8;
   --primary: #ffffff;
-  --primary-foreground: #1a1c1e;
+  --primary-foreground: #141618;
   --ring: #ffffff;
-  --secondary: #2e3336;
+  --secondary: #282d30;
   --secondary-foreground: #e8e8e8;
-  --muted: #2e3336;
+  --muted: #282d30;
   --muted-foreground: #8a8a8a;
-  --accent: #2e3336;
+  --accent: #282d30;
   --accent-foreground: #e8e8e8;
-  --border: #35393c;
-  --input: #35393c;
+  --border: #2f3336;
+  --input: #2f3336;
   --surface-grain: none;
-  --fork-pill-border: #35393c;
+  --fork-pill-border: #2f3336;
   --fork-pill-fg: #e8e8e8;
-  --fork-pill-hover: #2e3336;
-  --fork-composer-vessel-bg: #282c2f;
-  --fork-composer-bg: #2e3336;
+  --fork-pill-hover: #282d30;
+  --fork-composer-vessel-bg: #222629;
+  --fork-composer-bg: #282d30;
   --fork-composer-border: rgb(255 255 255 / 12%);
-  --fork-composer-border-focus: #4a5055;
-  --fork-context-chip-bg: #2e3336;
-  --fork-context-chip-bg-hover: #353a3d;
+  --fork-composer-border-focus: #444a4f;
+  --fork-context-chip-bg: #282d30;
+  --fork-context-chip-bg-hover: #2f3437;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"] {
-  --background: #222528;
+  --background: #181b1e;
   --foreground: #e8e8e8;
-  --card: #222528;
+  --card: #181b1e;
   --card-foreground: #e8e8e8;
-  --sidebar: #222528;
+  --sidebar: #181b1e;
   --sidebar-foreground: #e8e8e8;
-  --border: #35393c;
-  --sidebar-border: #35393c;
-  --sidebar-stage-fade: #222528;
-  --muted: #2e3336;
-  --accent: #2e3336;
+  --border: #2f3336;
+  --sidebar-border: #2f3336;
+  --sidebar-stage-fade: #181b1e;
+  --muted: #282d30;
+  --accent: #282d30;
   --accent-foreground: #e8e8e8;
   --muted-foreground: #8a8a8a;
   --sidebar-muted-foreground: #d0d4d6;
   --fork-sidebar-card-title-receded: #aeb2b6;
-  --sidebar-control-surface: #353a3d;
-  --sidebar-row-hover: #2e3336;
-  --sidebar-row-active: #32373a;
-  --sidebar-row-selected: #32373a;
+  --sidebar-control-surface: #2f3437;
+  --sidebar-row-hover: #282d30;
+  --sidebar-row-active: #2c3134;
+  --sidebar-row-selected: #2c3134;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
