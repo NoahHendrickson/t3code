@@ -31,6 +31,14 @@ Local edits are marked with `t3-fork:` comments. The load-bearing ones:
   - `shared/guardrails.ts` — `NO_PREVIEW_GUARDRAIL` must NOT promise that "The Forge
     verifies the changes automatically". True upstream, false here: `client/verifier.ts`
     is not vendored, so nothing checks. Restore the stronger wording only alongside it.
+- Zoom anchoring (2026-08-14): `canvas.ts` — `zoomAnchor` and the `lastPointer` the pointer
+  tracker feeds it. Upstream anchors a zoom on the wheel/gesture event's own coordinates,
+  which is right in a top-level page and wrong inside T3's preview: with a screen size
+  picked, the host renders the guest webview CSS-scaled to fit the pane, and the trackpad
+  pinch's synthesized ctrl+wheel arrives without that scale, so the artboard creeps toward
+  the top left as you pinch in. Ordinary pointer events DO map correctly, and the cursor
+  cannot move mid-pinch — hence the tracked cursor, with the event as the fallback for a
+  pinch before any pointer move. Guarded by `__fork_guards__/forkDesignMode.test.ts`.
 - `./shared/` import paths (were `../shared/` upstream).
 - A handful of mechanical lint fixes (snapshot spreads → `Array.from`, `toReversed()`,
   `Set#has`, two unused imports) — style-only, no behavior change.

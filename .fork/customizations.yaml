@@ -2112,7 +2112,15 @@
     setCanvas/canvasCommand handle calls, with a change-gated canvas
     message carrying the settled zoom readout back; the gesture modules'
     scale() hooks read the live canvas scale so drags stay accurate while
-    zoomed. Entering canvas mode commits UPSTREAM's viewport back to fill so
+    zoomed. "Cursor-anchored" is the fork's own zoomAnchor: a trackpad pinch
+    reaches the guest as a synthesized ctrl+wheel whose coordinates do NOT
+    carry the CSS scale the host renders the webview at once a screen size is
+    picked, so anchoring on the zoom event walks the artboard toward the top
+    left as you pinch in. Ordinary pointer events map correctly (hover and
+    selection land where you click) and the cursor cannot move mid-pinch, so
+    CanvasMode tracks the pointer and anchors on that, keeping the event's
+    coordinates only as the before-any-pointer-move fallback.
+    Entering canvas mode commits UPSTREAM's viewport back to fill so
     the webview owns the whole preview pane and the canvas with it (a stale
     device viewport would letterbox the canvas inside itself);
     theme.custom.css continues the same canvas gray across any letterbox that
