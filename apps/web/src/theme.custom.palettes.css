@@ -441,17 +441,29 @@
   backdrop-filter: blur(var(--glass-blur)) saturate(2.6);
 }
 
-/* ChatView's root (components/ChatView.tsx) fills the inset edge to edge with an
-   opaque `bg-background`, so the tint above renders behind a solid sheet and is
-   invisible no matter what alpha it carries. Clearing the direct child lets the
-   inset be the stage. Matched on the emitted Tailwind class rather than by
-   editing the upstream component, so this survives an upstream rewrite of that
-   element as long as it keeps painting `bg-background`. */
+/* Exactly one layer in the chat column paints the glass, and it is the inset
+   above. Everything inside it that fills with an opaque `bg-background` — the
+   ChatView root, the chat header, anything upstream adds later — is cleared by
+   this single rule rather than being named one at a time.
+
+   The named-selector version of this was a standing regression: each new opaque
+   child silently covered the stage, presenting as "the stylesheet is not
+   reloading" rather than as a layering bug, and cost a round trip to find. One
+   class match ends that.
+
+   Deliberately NOT done by redefining `--background` under the marker: every
+   `bg-background` user would then paint its own translucent fill, and nested
+   ones would multiply — a 90% child over the 90% stage composites to 99%, which
+   is the same compounding that forces the transcript scrim to paint nothing.
+   Glass has to be exactly one layer, so the token stays opaque and the extra
+   painters are cleared instead.
+
+   `.bg-background` matches full-opacity users only; Tailwind emits alpha
+   variants as separate classes (`.bg-background\/70`), so the small translucent
+   chips and inline cards inside the transcript keep their fills. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]
-  > .bg-background,
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-chat-header] {
+  .bg-background {
   background-color: transparent;
 }
 

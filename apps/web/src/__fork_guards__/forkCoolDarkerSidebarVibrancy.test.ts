@@ -102,27 +102,29 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(useTheme).toContain("document.body.style.backgroundColor");
   });
 
-  it("clears the full-bleed fills that would cover the stage tint", () => {
-    // Three times now a translucent surface has been defeated by an opaque
-    // child painted over it, and each one looked like "the CSS isn't loading"
-    // rather than a layering bug. These two cover the whole stage, so if either
-    // stops being cleared the tint is invisible at any alpha.
-    const cleared = glassRules
-      .filter((rule) => /background-color:\s*transparent/u.test(rule.body))
-      .map((rule) => rule.selector)
-      .join(" ");
-    expect(cleared, "ChatView's root fills the inset with bg-background").toContain(
-      '[data-slot="sidebar-inset"]',
+  it("clears every opaque bg-background inside the stage, by class not by name", () => {
+    // Glass is exactly one layer: the inset paints it, everything inside that
+    // fills opaquely is cleared. Enumerating those children by selector was a
+    // standing regression — each new one silently covered the stage and looked
+    // like "the CSS isn't loading". A single class match covers the ones
+    // upstream has today and the ones it adds later.
+    const clears = glassRules.filter((rule) => /background-color:\s*transparent;/u.test(rule.body));
+    const byClass = clears.find(
+      (rule) =>
+        rule.selector.includes('[data-slot="sidebar-inset"]') &&
+        rule.selector.includes(".bg-background"),
     );
-    expect(cleared, "the chat header paints its own bg-background band").toContain(
-      "[data-chat-header]",
-    );
+    expect(byClass, "the stage must clear bg-background descendants by class").toBeDefined();
+    expect(
+      byClass?.selector,
+      "a child combinator only reaches ChatView's root, not the header below it",
+    ).not.toMatch(/sidebar-inset"\]\s*>\s*\.bg-background/u);
 
+    // Both known painters really are descendants carrying that exact class: the
+    // chat header, and ChatView's own root that fills the inset edge to edge.
     const chatView = readSibling("../components/ChatView.tsx");
-    expect(chatView).toContain("data-chat-header");
-    // If upstream stops painting these, the overrides are dead weight and the
-    // next person should delete them rather than wonder what they defend.
     expect(chatView).toMatch(/data-chat-header[\s\S]{0,200}bg-background/u);
+    expect(chatView).toMatch(/className="relative flex min-h-0[^"]*bg-background"/u);
   });
 
   it("leaves the one element that paints the tint alone", () => {
@@ -224,32 +226,32 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge = {
       setSidebarVibrancy: () => Promise.resolve(true),
     };
-    await expect(syncForkSidebarVibrancy(COOL_DARKER_THEME, root)).resolves.toBe(true);
+    await expect(syncForkSidebarVibrancy(true, root)).resolves.toBe(true);
     expect(root.attributes.get(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE)).toBe("true");
 
     // Desktop says no (non-darwin): the marker must not survive.
     (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge = {
       setSidebarVibrancy: () => Promise.resolve(false),
     };
-    await expect(syncForkSidebarVibrancy(COOL_DARKER_THEME, root)).resolves.toBe(false);
+    await expect(syncForkSidebarVibrancy(true, root)).resolves.toBe(false);
     expect(root.attributes.has(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE)).toBe(false);
 
     // A rejecting bridge is not glass either.
     (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge = {
       setSidebarVibrancy: () => Promise.reject(new Error("no window")),
     };
-    await expect(syncForkSidebarVibrancy(COOL_DARKER_THEME, root)).resolves.toBe(false);
+    await expect(syncForkSidebarVibrancy(true, root)).resolves.toBe(false);
     expect(root.attributes.has(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE)).toBe(false);
 
     delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
   });
 
-  it("never asks for glass on a web client or a non-glass palette", async () => {
+  it("never asks for glass on a web client or when disabled", async () => {
     const root = makeRoot();
     delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
 
     // No bridge at all — the browser build.
-    await expect(syncForkSidebarVibrancy(COOL_DARKER_THEME, root)).resolves.toBe(false);
+    await expect(syncForkSidebarVibrancy(true, root)).resolves.toBe(false);
     expect(root.attributes.has(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE)).toBe(false);
 
     const requests: boolean[] = [];
@@ -259,13 +261,77 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
         return Promise.resolve(enabled);
       },
     };
-    for (const palette of ["cool-dark", "neutral-dark", "neutral-darker"] as const) {
-      await expect(syncForkSidebarVibrancy(palette, root)).resolves.toBe(false);
-    }
-    await expect(syncForkSidebarVibrancy(null, root)).resolves.toBe(false);
-    expect(requests).toEqual([false, false, false, false]);
+    await expect(syncForkSidebarVibrancy(false, root)).resolves.toBe(false);
+    expect(requests).toEqual([false]);
 
     delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
+  });
+
+  it("ignores a superseded sync so palette flips cannot stamp out of order", async () => {
+    // The caller fires this without awaiting, so Cool Darker -> Dark -> Cool
+    // Darker can resolve in any order. Only the newest request may write the
+    // marker, or a stale answer re-enables glass the user has already left.
+    const root = makeRoot();
+    let releaseFirst: ((value: boolean) => void) | undefined;
+    const gate = new Promise<boolean>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let call = 0;
+    (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge = {
+      setSidebarVibrancy: (enabled: boolean) => {
+        call += 1;
+        return call === 1 ? gate : Promise.resolve(enabled);
+      },
+    };
+
+    const stale = syncForkSidebarVibrancy(true, root);
+    const fresh = syncForkSidebarVibrancy(false, root);
+    await expect(fresh).resolves.toBe(false);
+
+    // The superseded call now answers "glass is on" — it must not be believed.
+    releaseFirst?.(true);
+    await expect(stale).resolves.toBe(true);
+    expect(root.attributes.has(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE)).toBe(false);
+
+    delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
+  });
+
+  it("never lets the renderer choose the window's opaque restore colour", () => {
+    // An earlier cut shipped Cool Darker's stage colour as the restore fill on
+    // every call, so switching to Light, Dark, Cool Dark or either Neutral
+    // palette repainted the window with #141618. The renderer only knows the
+    // palette it is moving to; the main process resolves the colour from
+    // nativeTheme instead.
+    expect(forkVibrancy).not.toMatch(/opaqueBackground|COOL_DARKER_BACKGROUND/u);
+    expect(desktopPreload).toMatch(/setSidebarVibrancy:\s*\(enabled: boolean\)/u);
+    expect(desktopMethod).toContain("Electron.nativeTheme.shouldUseDarkColors");
+
+    // The two colours are DesktopWindow's, mirrored because that helper is
+    // module-private. If it changes, this fails rather than drifting.
+    const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
+    const source =
+      /getInitialWindowBackgroundColor[^}]*?\?\s*"(#[0-9a-f]{6})"\s*:\s*"(#[0-9a-f]{6})"/iu.exec(
+        desktopWindow,
+      );
+    expect(source, "DesktopWindow's background helper changed shape").not.toBeNull();
+    expect(desktopMethod).toContain(`"${source?.[1]}"`);
+    expect(desktopMethod).toContain(`"${source?.[2]}"`);
+  });
+
+  it("keeps one owner for the window fill while glass is live", () => {
+    // syncWindowAppearance also writes setBackgroundColor. Without this gate an
+    // OS appearance change repaints the window opaque under a DOM that still
+    // says glass is on — it dies with no marker update.
+    const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
+    expect(desktopWindow).toContain("isForkGlassActive()");
+    expect(desktopWindow).toMatch(
+      /if \(!isForkGlassActive\(\)\) \{[\s\S]{0,160}setBackgroundColor\(getInitialWindowBackgroundColor/u,
+    );
+    // The flag lives apart from both writers; importing either from the other
+    // closes a cycle.
+    const glassState = readSibling("../../../desktop/src/fork/ForkGlassState.ts");
+    expect(glassState).toContain("export function isForkGlassActive");
+    expect(desktopMethod).toContain("setForkGlassActive(enabled)");
   });
 
   it("keeps the desktop method fork-owned and off the upstream contract", () => {
@@ -285,8 +351,11 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(desktopMethod).toContain('platform === "darwin"');
     expect(desktopMethod).toContain("return enabled;");
 
-    // forkTheme drives it outside the synchronous chrome repaint.
+    // forkTheme drives it outside the synchronous chrome repaint, and owns the
+    // palette decision so the helper imports nothing back — the cycle that
+    // previously forced call-time indirection to dodge a TDZ crash.
     expect(forkTheme).toContain("syncForkSidebarVibrancy");
+    expect(forkVibrancy).not.toContain('from "./forkTheme"');
     expect(forkVibrancy).toContain(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE);
   });
 });

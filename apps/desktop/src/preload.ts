@@ -257,7 +257,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
  * addition does not need a preload `alwaysBundle` entry.
  */
 contextBridge.exposeInMainWorld("forkDesktopBridge", {
-  setSidebarVibrancy: (enabled: boolean, opaqueBackground: string): Promise<boolean> =>
-    ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled, opaqueBackground }),
+  setSidebarVibrancy: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled }),
 });
 /* fork:end fork-cool-darker-sidebar-vibrancy */

@@ -15,8 +15,11 @@ import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
+import * as Electron from "electron";
+
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
+import { setForkGlassActive } from "./ForkGlassState.ts";
 
 export const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
 
@@ -30,14 +33,25 @@ const VIBRANCY_MATERIAL = "under-window" as const;
 /**
  * The window is created with an opaque `backgroundColor`. Vibrancy only reaches
  * the glass if that fill stops painting, so enabling swaps in a fully
- * transparent background and disabling restores the caller's stage colour.
+ * transparent background.
  */
 const TRANSPARENT_BACKGROUND = "#00000000";
 
+/**
+ * Mirrors `getInitialWindowBackgroundColor` in `window/DesktopWindow.ts`, which
+ * is module-private there. The renderer must NOT supply this: it only knows the
+ * palette it is switching to, and an earlier cut had it ship Cool Darker's stage
+ * colour on every call — which repainted the window fill for Light, default
+ * Dark, Cool Dark and both Neutral palettes. Resolving it here from
+ * `nativeTheme` keeps the restore correct for whatever theme is actually
+ * active. A fork guard pins these two values against DesktopWindow's.
+ */
+function opaqueWindowBackground(): string {
+  return Electron.nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff";
+}
+
 export const ForkSidebarVibrancyRequest = Schema.Struct({
   enabled: Schema.Boolean,
-  /** Stage colour to repaint with when the glass is turned back off. */
-  opaqueBackground: Schema.String,
 });
 
 export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
@@ -52,10 +66,15 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
     // error — the palette is still selectable, it just paints solid.
     const enabled = request.enabled && platform === "darwin";
 
+    // Set before painting, so an appearance sync racing this call sees the new
+    // owner and does not repaint the fill out from under the material.
+    setForkGlassActive(enabled);
+
+    const restore = opaqueWindowBackground();
     yield* electronWindow.syncAllAppearance((window) =>
       Effect.sync(() => {
         window.setVibrancy(enabled ? VIBRANCY_MATERIAL : null);
-        window.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : request.opaqueBackground);
+        window.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : restore);
       }),
     );
 

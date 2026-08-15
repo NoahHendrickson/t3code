@@ -16,6 +16,9 @@ import { getDesktopUrl } from "../electron/ElectronProtocol.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
+/* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
+import { isForkGlassActive } from "../fork/ForkGlassState.ts";
+/* fork:end fork-cool-darker-sidebar-vibrancy */
 import { MENU_ACTION_CHANNEL, WINDOW_FULLSCREEN_STATE_CHANNEL } from "../ipc/channels.ts";
 import * as PreviewManager from "../preview/Manager.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
@@ -229,7 +232,16 @@ function syncWindowAppearance(
       return;
     }
 
-    window.setBackgroundColor(getInitialWindowBackgroundColor(shouldUseDarkColors));
+    /* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
+    // The vibrancy material and this fill are the same slot. Repainting an
+    // opaque colour while the glass is on kills it with no marker update in the
+    // renderer, so the palette keeps claiming glass over a solid window. The
+    // fork handler owns the fill for as long as it owns the material, and
+    // restores this colour itself when the glass goes off.
+    if (!isForkGlassActive()) {
+      window.setBackgroundColor(getInitialWindowBackgroundColor(shouldUseDarkColors));
+    }
+    /* fork:end fork-cool-darker-sidebar-vibrancy */
     const { titleBarOverlay } = getWindowTitleBarOptions(shouldUseDarkColors, platform);
     if (typeof titleBarOverlay === "object") {
       window.setTitleBarOverlay(titleBarOverlay);

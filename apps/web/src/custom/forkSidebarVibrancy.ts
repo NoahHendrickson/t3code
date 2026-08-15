@@ -1,39 +1,26 @@
 /**
  * Fork sidebar glass — see `.fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy`.
  *
- * Cool Darker is the only palette that asks the desktop shell for native macOS
- * vibrancy, so its sidebar shows the wallpaper the way Cursor's does. Every
- * other palette — and every non-desktop client — stays opaque.
+ * Asks the desktop shell for native macOS vibrancy and records what it actually
+ * got. The renderer never assumes the glass turned on: the main process resolves
+ * `false` off macOS and with no bridge present, and only that resolved value
+ * stamps the DOM marker. The CSS gate hangs off the marker rather than off the
+ * palette, so a Linux or web client keeps solid fills instead of painting holes
+ * into an opaque window.
  *
- * The renderer never assumes the glass turned on. `setSidebarVibrancy` resolves
- * with what the main process actually applied (false off macOS, false with no
- * desktop bridge), and only that resolved value stamps the DOM marker. The CSS
- * gate hangs off the marker rather than off the palette, so a Linux or web
- * client running Cool Darker keeps solid fills instead of painting holes into
- * an opaque window.
+ * This module imports nothing from `forkTheme`, on purpose. It used to, and
+ * `forkTheme` imports it, so the cycle had to be worked around with functions
+ * that deferred reading the constants until call time. Taking `enabled` as an
+ * argument deletes the cycle instead of dodging it — and, more importantly,
+ * stops this module guessing at palette-specific values it has no business
+ * knowing. The window's opaque restore colour is resolved in the main process
+ * from `nativeTheme`, because only it knows the theme being restored to.
  */
-import { COOL_DARKER_BACKGROUND, COOL_DARKER_THEME, type ForkPalettePreference } from "./forkTheme";
 
 export const FORK_SIDEBAR_VIBRANCY_ATTRIBUTE = "data-fork-sidebar-vibrancy";
 
-/**
- * `forkTheme` imports this module to drive the sync, so both constants are read
- * inside the functions rather than at module scope. Hoisting either into a
- * top-level `const` reintroduces the import cycle as a TDZ crash on load.
- */
-
-/** Palettes that want wallpaper glass. Cool Darker is deliberately the only one. */
-function wantsVibrancy(palette: ForkPalettePreference): boolean {
-  return palette !== null && palette === COOL_DARKER_THEME;
-}
-
-/** Stage colour to repaint the window with whenever the glass goes away. */
-function opaqueFallback(): string {
-  return COOL_DARKER_BACKGROUND;
-}
-
 type ForkDesktopBridge = {
-  readonly setSidebarVibrancy: (enabled: boolean, opaqueBackground: string) => Promise<boolean>;
+  readonly setSidebarVibrancy: (enabled: boolean) => Promise<boolean>;
 };
 
 /**
@@ -57,37 +44,51 @@ function stampMarker(root: Element, enabled: boolean): void {
 }
 
 /**
- * Asks the desktop shell to match `palette`, then stamps the marker with the
+ * Monotonic id for in-flight syncs. Palette changes fire this without awaiting,
+ * so Cool Darker → Dark → Cool Darker can resolve out of order and stamp the
+ * marker from a superseded request. Only the newest sync is allowed to write.
+ */
+let latestSyncId = 0;
+
+/**
+ * Asks the desktop shell to match `enabled`, then stamps the marker with the
  * result. Resolves with whether the glass is actually on.
  *
- * Clearing runs synchronously before the request so switching away from Cool
- * Darker never leaves a frame of transparent CSS over an already-opaque window
- * — that flash reads as the sidebar blinking black.
+ * Clearing runs synchronously before the request so switching away from glass
+ * never leaves a frame of transparent CSS over an already-opaque window — that
+ * flash reads as the sidebar blinking black.
  */
 export async function syncForkSidebarVibrancy(
-  palette: ForkPalettePreference,
+  enabled: boolean,
   root: Element | null = typeof document === "undefined" ? null : document.documentElement,
 ): Promise<boolean> {
   if (root === null) return false;
 
-  const wants = wantsVibrancy(palette);
-  if (!wants) stampMarker(root, false);
+  latestSyncId += 1;
+  const syncId = latestSyncId;
+  const isStale = () => syncId !== latestSyncId;
+
+  if (!enabled) stampMarker(root, false);
 
   const bridge = readBridge();
   if (bridge === null) {
-    stampMarker(root, false);
+    if (!isStale()) stampMarker(root, false);
     return false;
   }
 
-  let enabled = false;
+  let applied = false;
   try {
-    enabled = await bridge.setSidebarVibrancy(wants, opaqueFallback());
+    applied = await bridge.setSidebarVibrancy(enabled);
   } catch {
     // A bridge that rejects (older shell, window already torn down) means no
     // glass. Falling through to the opaque marker keeps the sidebar readable.
-    enabled = false;
+    applied = false;
   }
 
-  stampMarker(root, enabled);
-  return enabled;
+  // A newer sync has already answered; this one's result describes a palette
+  // the user has left.
+  if (isStale()) return applied;
+
+  stampMarker(root, applied);
+  return applied;
 }

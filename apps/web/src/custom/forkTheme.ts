@@ -189,7 +189,11 @@ function syncForkPaletteFromStorage(): void {
     // Native window glass rides an async IPC round trip, so it deliberately
     // lands outside the synchronous repaint above. The helper stamps its own
     // marker from the resolved answer; nothing here waits on it.
-    void syncForkSidebarVibrancy(activePalette);
+    //
+    // Which palettes want glass is decided here rather than in the helper: this
+    // module owns palette semantics, and keeping the knowledge on this side is
+    // what lets the helper import nothing back from it.
+    void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME);
   }
   lastPalette = palette;
   emitChange();

@@ -1029,14 +1029,34 @@
     vibrancy ("under-window"), not CSS: backdrop-filter can only blur what is
     behind an element inside the page, so it can never reach the desktop.
 
-    The main process owns the material. apps/desktop/src/fork/
-    ForkSidebarVibrancy.ts registers a fork-only IPC method on the channel
-    fork:set-sidebar-vibrancy that calls setVibrancy + setBackgroundColor
-    across every window, and returns what it actually applied — false on any
-    non-darwin platform. It is deliberately NOT on packages/contracts'
+    The main process owns the material AND the window fill for as long as the
+    glass is on. apps/desktop/src/fork/ForkSidebarVibrancy.ts registers a
+    fork-only IPC method on the channel fork:set-sidebar-vibrancy that calls
+    setVibrancy + setBackgroundColor across every window, and returns what it
+    actually applied — false on any non-darwin platform.
+
+    The payload carries only `enabled`. The restore colour is resolved in the
+    main process from nativeTheme, never sent by the renderer: the renderer
+    knows the palette it is switching to, not the window fill that belongs to
+    it, and an earlier cut shipped Cool Darker's stage colour on every call,
+    repainting the window for Light, default Dark, Cool Dark and both Neutral
+    palettes.
+
+    syncWindowAppearance in window/DesktopWindow.ts writes the same fill on OS
+    appearance changes. Two owners of one slot means the glass dies silently
+    with the renderer's marker still set, so that write is gated on
+    fork/ForkGlassState.ts. The flag is its own module because both writers read
+    it and importing either from the other closes a cycle. It is deliberately NOT on packages/contracts'
     DesktopBridge: preload.ts exposes it on a separate forkDesktopBridge world
     key so upstream never has to merge a contract this fork invented, and it
     imports nothing from npm so it needs no preload alwaysBundle entry.
+
+    The renderer takes a boolean and imports nothing from forkTheme — forkTheme
+    owns which palettes want glass. That direction is load-bearing: the two
+    modules previously imported each other, and the cycle had to be dodged with
+    call-time indirection to avoid a TDZ crash on load. Palette switches fire it
+    without awaiting, so a monotonic sync id drops superseded answers rather
+    than letting a stale resolution stamp a marker the user has moved past.
 
     The renderer trusts the resolved value, never the request.
     custom/forkSidebarVibrancy.ts stamps :root with
@@ -1082,7 +1102,12 @@
     the sidebar fully transparent, so the panel opacity has nothing to apply to.
 
     ChatView's root and [data-chat-header] each fill the stage edge to edge with
-    an opaque bg-background. Either one covers the stage tint at any alpha.
+    an opaque bg-background. Either one covers the stage tint at any alpha, so
+    the stage clears .bg-background descendants by class rather than naming
+    them — enumerating them meant every new opaque child was a silent
+    regression. Not solved by redefining --background under the marker: every
+    bg-background user would then paint its own translucent fill and nested
+    ones would multiply. Glass has to be exactly one layer.
 
     A value above ~90% is invisible rather than subtle. Verify with computed
     styles before concluding a rule is not applying — and read background-image
@@ -1093,6 +1118,7 @@
     and must not make the window transparent for any other palette.
   tier: 2
   files:
+    - apps/desktop/src/fork/ForkGlassState.ts
     - apps/desktop/src/fork/ForkSidebarVibrancy.ts
     - apps/web/src/custom/forkSidebarVibrancy.ts
     - apps/web/src/custom/forkTheme.ts
