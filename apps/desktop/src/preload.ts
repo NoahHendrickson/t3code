@@ -248,3 +248,16 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     },
   },
 } satisfies DesktopBridge);
+
+/* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
+/**
+ * Separate world key on purpose: the fork's vibrancy call stays off
+ * `DesktopBridge` so `packages/contracts` never carries a fork-only method.
+ * No npm import here — only `electron` and a local channel string — so this
+ * addition does not need a preload `alwaysBundle` entry.
+ */
+contextBridge.exposeInMainWorld("forkDesktopBridge", {
+  setSidebarVibrancy: (enabled: boolean, opaqueBackground: string): Promise<boolean> =>
+    ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled, opaqueBackground }),
+});
+/* fork:end fork-cool-darker-sidebar-vibrancy */

@@ -291,3 +291,221 @@
   :is(button, [data-slot="button"], [data-fork-context-chip]) {
   color: #ffffff;
 }
+
+/* ---------------------------------------------------------------------------
+   Cool Darker sidebar glass — see
+   `.fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy`.
+
+   Gated on the marker `custom/forkSidebarVibrancy.ts` stamps from what the main
+   process actually applied, never on the palette alone: only a macOS desktop
+   window that really took the vibrancy material may go transparent. A web or
+   Linux client on Cool Darker never matches these rules and keeps the solid
+   panel above.
+
+   This is the one place the fork's flatten-alpha doctrine does not apply.
+   Glass needs real alpha end to end — an opaque row fill over a translucent
+   panel is a rectangle of missing wallpaper, which is exactly the "opaque
+   plaque" the first attempt at this feature ran into. Rows therefore lift with
+   white washes over the panel tint instead of the palette's opaque steps. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"],
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  body {
+  /* The window fill is the NSVisualEffectView now. Anything painted here hides it.
+     `!important` is load-bearing, not laziness: syncBrowserChromeTheme in
+     hooks/useTheme.ts assigns `documentElement.style.backgroundColor` and
+     `body.style.backgroundColor` as INLINE styles on every palette change, and
+     an inline declaration outranks any normal author rule regardless of
+     specificity. Without `!important` here the stage paints #141618 straight
+     over the vibrancy view and the glass silently does nothing. */
+  background-color: transparent !important;
+}
+
+/* The chat stage carries the same wallpaper cast as the sidebar, but weaker —
+   90% against the sidebar's 75%. Fully opaque it read as flat black butted
+   against a coloured panel, and the seam between them was the loudest thing on
+   screen; sharing the tint makes them read as one material at two depths.
+
+   The stage must never be more transparent than the sidebar: it is the app's
+   one long-form reading surface and has to survive a bright, busy desktop.
+   Equal is the floor, and the guard pins that relationship rather than either
+   literal value.
+
+   Both numbers are lower than they look. Vibrancy darkens and desaturates its
+   sample before either surface composites over it, so anything much above 90%
+   here is invisible rather than subtle — 97% and 98% both read as no glass at
+   all. The useful range is roughly 60–90%. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-inset"] {
+  background-color: rgb(22 22 22 / 90%);
+}
+
+/* The composer is the last opaque object over the stage — a solid slab across
+   the bottom of an otherwise translucent column, which reads as a band rather
+   than as a control. Vessel and prompt surface both take the stage's own 90% so
+   the whole composer is one glass object at the same depth as the transcript
+   behind it.
+
+   These live on the stage rule, not the v2 panel block: the composer is in the
+   chat column, outside the sidebar, so the panel-scoped tokens never reach it.
+
+   Context chips stay opaque on purpose — they are small controls that have to
+   stay legible, and at that size the wallpaper reads as noise rather than
+   depth. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"] {
+  /* White washes, not the palette's coloured fills — the same treatment the
+     sidebar rows get, and for the same reason. A coloured fill REPLACES what is
+     behind it, so the composer painted its own flat grey and lost the wallpaper
+     cast the surrounding column carries. A wash LIFTS what is behind it, so the
+     cast survives and the surface still reads a step above the stage.
+
+     This is also as close to the stage as the composer can get. Sitting on a
+     90% stage caps it: the wash lets 0.95 x 10% = 9.5% of the wallpaper
+     through against the stage's own 10%. A coloured fill at 75% managed 2.5%,
+     which is why it read as a slab no matter how the alpha moved.
+
+     The steps are relative, so the ladder holds whatever the stage does:
+     vessel lifts off the stage, prompt surface lifts off the vessel, chips
+     match the prompt surface, hover lifts once more. */
+  --fork-composer-vessel-bg: rgb(255 255 255 / 5%);
+  --fork-composer-bg: rgb(255 255 255 / 8%);
+  --fork-context-chip-bg: rgb(255 255 255 / 8%);
+  --fork-context-chip-bg-hover: rgb(255 255 255 / 12%);
+}
+
+/* The changed-files card (theme.custom.css, [data-changed-files-state]) freezes
+   itself to `var(--card)` so each palette's stage tokens show through it. Under
+   glass that is an opaque slab sitting in the middle of a translucent column —
+   same failure as the composer, same fix: a white wash lifts the card off the
+   stage while keeping the wallpaper cast, instead of replacing it with a flat
+   fill.
+
+   The header is cleared rather than washed. It nests inside the card, so
+   painting both would compound (5% over 5% reads as ~10%) and the header would
+   separate from the surface it is meant to sit flush with — the opaque version
+   keeps them the same colour for exactly that reason. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-changed-files-state] {
+  background: rgb(255 255 255 / 5%);
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-changed-files-header] {
+  background: none;
+}
+
+/* The transcript scrim (theme.custom.css, [data-chat-composer-overlay]) fades
+   the message area out above the composer and ends at `var(--background)` —
+   fully opaque. That is a full-width band across the bottom ~14% of the stage,
+   and it is why the lower half read as flat while the top half was glass.
+
+   Under glass it paints nothing at all, because alpha compounds. Any fill here
+   sits ON the stage rather than replacing it, so the two multiply: the stage's
+   90% under a 90% scrim composites to 1 − (0.10 × 0.10) = 99%, against 90% for
+   the rest of the column. Lowering the scrim's alpha narrows that gap but can
+   never close it — only zero matches the stage. Matching the stage's value was
+   the intuitive fix and it is arithmetically the wrong one.
+
+   What replaces it: the composer vessel is frosted (below), so content passing
+   behind the composer is blurred rather than hidden. The scrim's job of
+   stopping the transcript is done by the blur instead of by a fill. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-chat-composer-overlay="true"] {
+  background: none;
+}
+
+/* The composer is the one translucent surface with app content moving behind it:
+   the transcript scrolls underneath. Plain alpha dilutes that content instead of
+   hiding it, so messages read straight through the composer as they pass — which
+   is worse than the solid slab it replaced.
+
+   Frosting fixes what alpha cannot. The blur destroys the legibility of whatever
+   is behind while keeping its colour, so the composer reads as glass over the
+   transcript and still picks up the wallpaper where the stage above it is
+   transparent. Reuses upstream's own --glass-blur / --glass-saturation rather
+   than inventing values, so it matches the composer glass elsewhere in the app.
+
+   Static filter, no animation — it composites once per paint rather than
+   continuously, which is the distinction the perf rule in CLAUDE.md draws. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-vessel] {
+  /* Saturation well above upstream's --glass-saturation (1.08-1.14), because
+     the composer is colour-starved by construction. It sits ON the 90% stage,
+     so it can never see more than ~10% of the wallpaper — a quarter of what the
+     75% sidebar gets — and that little chroma reads as dead neutral next to a
+     visibly green panel. Amplifying what is there is the only way to add colour
+     without making the transcript itself more transparent.
+
+     This is the one place a filter does real work rather than decoration: the
+     blur hides the scrolling transcript, the saturation recovers the cast. */
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(2.6);
+  backdrop-filter: blur(var(--glass-blur)) saturate(2.6);
+}
+
+/* ChatView's root (components/ChatView.tsx) fills the inset edge to edge with an
+   opaque `bg-background`, so the tint above renders behind a solid sheet and is
+   invisible no matter what alpha it carries. Clearing the direct child lets the
+   inset be the stage. Matched on the emitted Tailwind class rather than by
+   editing the upstream component, so this survives an upstream rewrite of that
+   element as long as it keeps painting `bg-background`. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-inset"]
+  > .bg-background,
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-chat-header] {
+  background-color: transparent;
+}
+
+/* Structural wrappers must not repaint the stage colour over the glass.
+   `[data-slot="sidebar-inner"]` is deliberately NOT in this list: it is the one
+   element carrying `bg-sidebar`, so it is what actually paints the tint below.
+   Clearing it too makes the sidebar 100% transparent — the panel opacity then
+   has nothing to apply to and changing it appears to do nothing at all.
+   `sidebar-wrapper` spans the whole app and paints `bg-sidebar` in the inset
+   variant, which would tint the stage as well, so it stays cleared. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  :is([data-slot="sidebar-wrapper"], [data-slot="sidebar-gap"], [data-slot="sidebar-container"]) {
+  background: transparent;
+}
+
+/* 75% is the glass level: the wallpaper reads clearly through the panel while
+   the tint keeps sidebar text legible over a bright desktop. This percentage is
+   the only dial — raise it toward 100% for a more solid panel, lower it toward
+   0% for more wallpaper.
+
+   Row washes are white over that tint rather than opaque fills, so the glass
+   survives hover and selection. They sit on top of the panel fill instead of
+   replacing it, which means moving the panel opacity carries the rows with it
+   and their relative lift stays put. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"] {
+  --background: rgb(27 27 27 / 75%);
+  --card: rgb(27 27 27 / 75%);
+  --sidebar: rgb(27 27 27 / 75%);
+  --sidebar-stage-fade: rgb(27 27 27 / 75%);
+  /* Opaque, unlike everything else in this block. A white wash here lets the
+     wallpaper through the line itself, so the seam shimmers with whatever is
+     behind the window and reads as a gap rather than an edge — and the only way
+     to stop that with alpha is to push it so high the border turns bright
+     white. Alpha 1 removes the see-through quality outright, which leaves
+     lightness as the single dial for how loud the seam is. #3f3f3f is a step
+     above the glass panel: present, muted, and stable no matter what is on the
+     desktop behind it. Neutral like the rest of the glass set — see the panel
+     tint below. This is the fork's flatten-alpha doctrine applying
+     normally — the row washes are the exception, because they *want* to carry
+     wallpaper; a divider does not. */
+  --border: #3f3f3f;
+  --sidebar-border: #3f3f3f;
+  /* index.css derives this as
+     `color-mix(in srgb, var(--sidebar-muted-foreground) 60%, var(--sidebar))`,
+     so a translucent --sidebar leaks its alpha into the glyph: at a 75% panel
+     that lands at 90%, and the remaining 10% is wallpaper showing through the icon
+     itself, which reads as the icons taking on the desktop's colour. Frozen to
+     the value that mix resolves to against the opaque panel (#d0d4d6 60% over
+     #181b1e) so icons stay glass-independent. Anything else derived from the
+     panel fill needs the same treatment. */
+  --sidebar-icon-color: #8a8a8a;
+  --sidebar-control-surface: rgb(255 255 255 / 8%);
+  --sidebar-row-hover: rgb(255 255 255 / 5%);
+  --sidebar-row-active: rgb(255 255 255 / 8%);
+  --sidebar-row-selected: rgb(255 255 255 / 6%);
+}

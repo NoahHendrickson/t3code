@@ -129,7 +129,7 @@ describe("fork guard: fork-neutral-darker-theme", () => {
     );
   });
 
-  it("keeps Neutral Darker sidebar solid (no wallpaper vibrancy glass)", () => {
+  it("keeps Neutral Darker sidebar solid (wallpaper glass belongs to Cool Darker)", () => {
     const gap = cssRules(theme).find(
       (rule) =>
         rule.selector.includes(`[${FORK_THEME_ATTRIBUTE}="neutral-darker"]`) &&
@@ -137,23 +137,35 @@ describe("fork guard: fork-neutral-darker-theme", () => {
     );
     expect(gap).toBeUndefined();
 
-    expect(theme).not.toContain("data-fork-sidebar-vibrancy");
     expect(theme).not.toContain("rgb(29 29 29 / 45%)");
 
     const panel = ruleBodyFor(themeRules, DARKER_PANEL);
     expect(panel).toContain("--sidebar: #212121");
     expect(panel).toContain("--sidebar-row-selected: #2e2e2e");
 
-    // The wallpaper-through-sidebar Electron vibrancy experiment is gone
-    // without residue: no renderer helper, no vibrancy IPC anywhere in the
-    // desktop app, and the chrome repaint stays synchronous in forkTheme.
-    expect(forkTheme).not.toContain("Vibrancy");
-    expect(customizations).not.toContain("forkSidebarVibrancy");
-    const desktopPreload = readSibling("../../../desktop/src/preload.ts");
-    expect(desktopPreload).not.toContain("Vibrancy");
-    const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
-    expect(desktopWindow).not.toContain("Vibrancy");
+    // Vibrancy now exists for Cool Darker (see fork-cool-darker-sidebar-vibrancy),
+    // so these assertions are scoped rather than global: no rule may put the
+    // glass marker and the neutral-darker palette in the same selector, and the
+    // Neutral Darker panel fills stay opaque hexes.
+    for (const rule of cssRules(theme)) {
+      if (!rule.selector.includes(`[${FORK_THEME_ATTRIBUTE}="neutral-darker"]`)) continue;
+      expect(
+        rule.selector,
+        `neutral-darker must not opt into sidebar glass: ${rule.selector}`,
+      ).not.toContain("data-fork-sidebar-vibrancy");
+    }
+    expect(panel).not.toMatch(/--sidebar(?:-row-[a-z]+)?:\s*rgb\([^)]*\/[^)]*\)/u);
 
+    // Window construction does attach the vibrancy material on macOS — it is
+    // construction-only in Electron, so it cannot be added later. What must stay
+    // true is that attaching it changes nothing on its own: the window is still
+    // created with an opaque backgroundColor, so no palette shows wallpaper
+    // until ForkSidebarVibrancy explicitly clears that fill.
+    const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
+    expect(desktopWindow).toContain("backgroundColor: getInitialWindowBackgroundColor(");
+    expect(desktopWindow).not.toContain("transparent: true");
+
+    // The chrome repaint in useTheme stays synchronous and palette-agnostic.
     const useTheme = readSibling("../hooks/useTheme.ts");
     expect(useTheme).not.toContain("data-fork-sidebar-vibrancy");
   });

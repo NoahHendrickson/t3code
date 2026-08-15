@@ -17,6 +17,7 @@ import {
   subscribeToThemeChanges,
   syncBrowserChromeTheme,
 } from "../hooks/useTheme";
+import { syncForkSidebarVibrancy } from "./forkSidebarVibrancy";
 import type { ThemePreference } from "../themePalette";
 
 export const FORK_THEME_ATTRIBUTE = "data-fork-theme";
@@ -185,6 +186,10 @@ function syncForkPaletteFromStorage(): void {
     // two fork palettes keeps upstream theme at "dark", so applyTheme no-ops
     // and this is the only repaint of html/body overscroll and theme-color.
     syncBrowserChromeTheme();
+    // Native window glass rides an async IPC round trip, so it deliberately
+    // lands outside the synchronous repaint above. The helper stamps its own
+    // marker from the resolved answer; nothing here waits on it.
+    void syncForkSidebarVibrancy(activePalette);
   }
   lastPalette = palette;
   emitChange();
