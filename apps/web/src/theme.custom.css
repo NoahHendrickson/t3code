@@ -344,6 +344,20 @@
   --fork-timeline-cutoff-knee: calc(
     var(--fork-timeline-cutoff-inset) + var(--fork-timeline-cutoff-edge)
   );
+  /* The tail's two intermediate stops, named rather than inlined. They were
+     bare arithmetic repeated in both the prefixed and unprefixed mask, so the
+     ramp's shape could only be read by evaluating four expressions. Early and
+     late thirds: most of the fade happens in the first half of the tail, which
+     is what makes the transcript recede before anything about it looks cut. */
+  --fork-timeline-cutoff-tail-early: calc(
+    var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.28
+  );
+  --fork-timeline-cutoff-tail-late: calc(
+    var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.6
+  );
+  --fork-timeline-cutoff-tail-end: calc(
+    var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp)
+  );
   -webkit-mask-image:
     linear-gradient(
       to bottom,
@@ -360,11 +374,9 @@
       transparent 0,
       transparent var(--fork-timeline-cutoff-inset),
       rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
-      rgb(0 0 0 / 80%)
-        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.28),
-      rgb(0 0 0 / 93%)
-        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.6),
-      black calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp))
+      rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
+      rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
+      black var(--fork-timeline-cutoff-tail-end)
     ),
     linear-gradient(black, black);
   -webkit-mask-position: top, bottom, right;
@@ -389,11 +401,9 @@
       transparent 0,
       transparent var(--fork-timeline-cutoff-inset),
       rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
-      rgb(0 0 0 / 80%)
-        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.28),
-      rgb(0 0 0 / 93%)
-        calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp) * 0.6),
-      black calc(var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp))
+      rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
+      rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
+      black var(--fork-timeline-cutoff-tail-end)
     ),
     linear-gradient(black, black);
   mask-position: top, bottom, right;

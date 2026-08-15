@@ -332,30 +332,18 @@
    Equal is the floor, and the guard pins that relationship rather than either
    literal value.
 
-   Neither number means anything without the material behind it. Vibrancy
-   darkens and desaturates its sample before either surface composites over it,
-   and how much it keeps depends entirely on which material is mounted. Under
-   `under-window` the sample measured a flat ~49 grey, and 80% / 70% were the
-   first values with a cast worth having. `fullscreen-ui` returns ~99 — twice
-   the light, and chromatic — so the same alphas read as far too transparent.
+   THE ALPHAS ARE NOT PORTABLE ACROSS MATERIALS. How much light reaches these
+   surfaces depends entirely on which material is mounted: `under-window`
+   measured a flat ~49 grey, `fullscreen-ui` returns ~99. These were set by
+   holding the desktop's CONTRIBUTION constant rather than the alpha — 15% of 99
+   is 14.8 where 30% of 49 was 14.7 — so anyone changing FORK_VIBRANCY_MATERIAL
+   has to redo the arithmetic.
 
-   The panel restores its previous level by holding the desktop's CONTRIBUTION
-   constant rather than the alpha: 15% of 99 is 14.8 where 30% of 49 was 14.7.
-   Same amount of desktop, twice the colour in it. Anyone changing
-   FORK_VIBRANCY_MATERIAL has to redo this arithmetic; the alphas are not
-   portable across materials.
-
-   The stage thins toward the floor rather than holding one value. Reading
-   happens at the top of the column and the transcript is masked off before the
-   bottom of it (.fork-timeline-cutoff), so the region the composer sits in has
-   no long-form text to protect and can afford to show more desktop than the
-   region above it. 95% holds for the top 70% and then ramps to 85%.
-
-   The ramp runs the bottom 30% of the column for 10 points of alpha — around
-   300px on a normal window, or one point of composited colour per 35px or so.
-   That distance is the whole trick: the same 10 points over a short run reads as
-   a band, and any hard stop reads as a seam across the column. Steepening this
-   is what to suspect first if the fade starts to show its edges.
+   The stage thins toward the floor: 95% for the top 70%, ramping to 85%. The
+   transcript is masked off before the bottom (.fork-timeline-cutoff), so the
+   region the composer sits in has no long-form text to protect. The ramp is
+   deliberately long — 10 points of alpha over ~300px — because the same travel
+   over a short run reads as a band, and a hard stop reads as a seam.
 
    The floor is allowed under the panel, and only the floor. The guard used to
    hold the whole stage at or above the sidebar's alpha; that reasoning is about
@@ -383,107 +371,41 @@
   background-size: 100% 100%;
 }
 
-/* The composer is the last opaque object over the stage — a solid slab across
-   the bottom of an otherwise translucent column, which reads as a band rather
-   than as a control. Its surfaces are thin white washes over this stage, so the
-   whole composer is one glass object at the same depth as the transcript behind
-   it.
-
-   These live on the stage rule, not the v2 panel block: the composer is in the
-   chat column, outside the sidebar, so the panel-scoped tokens never reach it.
-
-   Context chips resolve to the same colour as the ring, so the row above the
-   composer reads as one material with the surface below it. They need their own
-   alpha to get there — the context row is a SIBLING above the vessel, so it sits
-   on the bare stage while the ring sits on the already-washed tray.
-
-   Nothing in here is frosted; see the backdrop-filter note further down for why
-   a filter and the native material cannot coexist. */
+/* Composer tokens live on the stage rule, not the v2 panel block: the composer
+   is in the chat column, so the panel-scoped tokens never reach it. Nothing here
+   is frosted — see the backdrop-filter note below. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"] {
-  /* Figma 322:6306. Every composer surface is white at one of two alphas over
-     whatever is behind it — nothing here carries a colour of its own, which is
-     what lets the wallpaper through all of it.
+  /* Composer surfaces — Figma 322:6306, with the recessed input of 322:6316.
+     Everything here is an alpha over what is behind it; a tinted fill anywhere
+     stops the wallpaper at the composer's edge.
 
-     The drawing is flat, with an opaque stage at 12, so its numbers only mean
-     something as ratios of white: control row (30,32,34) is white 8% over that
-     stage; the input reads at the same lightness with no step between them; the
-     hairline and the context chips are one value at (57,58), which is white 8%
-     applied a second time. Two alphas, four surfaces.
-
-     Read that way it maps onto this stage without translation, at 6% rather
-     than the drawing's 8%. The stage under the composer is the gradient's thin
-     end (85%, resolving to ~34), so the same wash lands lighter here than it
-     would higher up the column:
+     Resolved over the gradient's thin end (85%, ~34), which is where the
+     composer sits:
 
        tray    white 6% over the stage           -> (47,47,47)
-       well    40% stage colour over the tray    -> (36,37,38)   see below
+       well    40% stage colour over the tray    -> (36,37,38)
        ring    white 6% over the well            -> (49,50,50)
        focus   white 12% over the well           -> (62,62,62)
-       chips   white 12% over the stage          -> (60,60,60)   drawing: 57
+       chips   white 12% over the stage          -> (60,60,60)
 
-     The chips take double the base alpha because they reach their value from one
-     layer lower: they sit on the bare stage, while the ring gets a wash of tray
-     underneath it for free. In 6306 that put the two on the same colour, which
-     was the drawing's own property. Giving the input a fill broke it — the ring
-     now composites over the well rather than over the tray, so it resolves ~11
-     points below the chips instead of level with them. That is the cost of the
-     recess, and it is a fair trade: the ring's job here is to bound the input,
-     not to rhyme with the row above it.
-
-     Superseded by the drawing above, each kept because it looked reasonable in
-     the file and wrong on screen: white washes resolving to a flat 53, then to
-     28/36 and 34/40 as lifting ladders; tinted cuts on #2f3437 at 55% and 70%,
-     which fixed the hue and stopped the glass at the composer's edge; and the
-     recessed well of 322:6316, whose darker input and invisible ring this
-     replaces.
-
-     What cannot be matched is the stage itself. The drawing's is 12 because
-     nothing is behind it; ours resolves to ~34 down here because a seventh of
-     the desktop is, and that seventh arrives with colour in it. Every surface is
-     therefore lighter than the drawing by about the same amount, and the ratios
-     are what hold. */
+     Chips take double the base alpha because they reach their value from one
+     layer lower — they sit on the bare stage, while the ring gets a wash of tray
+     underneath it for free. Move the base and the chips move with it. */
   --fork-composer-vessel-bg: rgb(255 255 255 / 6%);
-  /* The well, and the one place this departs from 322:6306. That drawing puts
-     the input at the control row's own lightness and lets the hairline do all
-     the work; sitting in it, the input wanted to be a recess. So the fill comes
-     back from 322:6316 — the earlier drawing, which had one — while the ring and
-     the chips stay as 6306 draws them.
-
-     It darkens rather than lifts, and it darkens toward the stage's own colour,
-     so the recess reads as the column showing through the tray rather than as a
-     grey of its own. 40% over the tray resolves to ~(36,37,38) against a (47)
-     tray and a (34) stage: most of the way back down to the column, which is as
-     far as it can go before the input stops reading as part of the composer.
-
-     Alpha, not the opaque token: at 40% it still passes 60% of the tray, so the
-     wallpaper the tray carries survives into the input rather than stopping at
-     its edge. */
+  /* The only fill here that darkens rather than lifts, toward the stage's own
+     colour so the recess reads as the column showing through the tray. Alpha,
+     not the opaque token: at 40% it still passes 60% of the tray, so the
+     wallpaper survives into the input instead of stopping at its edge. */
   --fork-composer-bg: color-mix(in srgb, var(--background) 40%, transparent);
-  /* The hairline, and the one surface that gets its lift from compounding. The
-     same 6% painted over a tray that is already 6% resolves to (59,59,59): a
-     visible edge, where the previous cut deliberately hid it. That inverts on
-     purpose — with the well gone, this line is the only thing that says where
-     the input is. */
+  /* The base alpha compounded once more: the tray's own 6% painted over a tray
+     that is already 6%. */
   --fork-composer-border: rgb(255 255 255 / 6%);
-  /* Focus, which the palette leaves as an opaque #444a4f. That was the one line
-     in the composer that could not carry the wallpaper, and it read as a
-     different material rather than as the same ring brightening: cool where
-     everything around it is neutral, and 19 points above the resting ring in a
-     set whose steps are half that.
-
-     The chips' own alpha, reused rather than invented. It doubles the resting
-     ring, lands at ~(62) against its ~(49), and stays inside the composer's
-     range instead of stepping outside it. A wash also means the focus ring picks
-     up the desktop like everything else it sits beside. */
+  /* An alpha, not the palette's opaque #444a4f: that was the one line in the
+     composer that could not carry the wallpaper, and it read as a different
+     material rather than as the same ring brightening. */
   --fork-composer-border-focus: rgb(255 255 255 / 12%);
-  /* Chips match the ring, which takes 12% here rather than 6%: the context row
-     is a sibling above the vessel, so these sit on the bare stage while the ring
-     sits on the tray. Same resolved colour, one layer lower, so the alpha has to
-     absorb the tray the ring gets for free — 6% twice over, which compounds to
-     just under 12.
-     Nothing scrolls behind these to show through them: the cutoff mask ends the
-     transcript above the whole composer, the row included.
-     Hover keeps the ten-point step the sidebar rows use. */
+  /* Nothing scrolls behind these to show through them: the cutoff mask ends the
+     transcript above the whole composer, the row included. */
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
 }

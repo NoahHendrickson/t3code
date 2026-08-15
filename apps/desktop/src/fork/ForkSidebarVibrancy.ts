@@ -26,9 +26,6 @@ import { FORK_VIBRANCY_MATERIAL, setForkGlassActive } from "./ForkGlassState.ts"
 
 export const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
 
-/** Shared with the window's construction options — see ForkGlassState. */
-const VIBRANCY_MATERIAL = FORK_VIBRANCY_MATERIAL;
-
 /**
  * The window is created with an opaque `backgroundColor`. Vibrancy only reaches
  * the glass if that fill stops painting, so enabling swaps in a fully
@@ -79,7 +76,7 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
     const main = yield* electronWindow.main;
     const restore = opaqueWindowBackground();
     if (Option.isSome(main) && !main.value.isDestroyed()) {
-      main.value.setVibrancy(enabled ? VIBRANCY_MATERIAL : null);
+      main.value.setVibrancy(enabled ? FORK_VIBRANCY_MATERIAL : null);
       main.value.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : restore);
     }
 
