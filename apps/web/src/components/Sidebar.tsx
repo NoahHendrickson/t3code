@@ -1309,10 +1309,20 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   {/* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */}
                   {/* h-6, not the line's 18px: the hover actions share this
                       cell and a 24px target cannot fit in an 18px one. The cell
-                      is centred in the title line, so it overhangs 3px into the
-                      card's py-2 above and, below, into the 2px row gap and the
-                      first pixel of the repo line — which carries only the
-                      model label's own leading there. */}
+                      is centred in the title line, so it spans y 5→29 of the
+                      card's content box — 3px into the py-2 above, and below
+                      through the 2px row gap to exactly the top of the runtime
+                      glyph, which sits at y 29→43 on the same trailing axis.
+
+                      Flush, not overlapping, and deliberate: 0px is what the
+                      design's 52px height leaves once the hit target holds its
+                      24px WCAG floor (see custom/sidebarV2TrailingColumn — that
+                      floor is design-wide, not this cell's private call). The
+                      hover fill therefore meets the glyph without covering it.
+                      Nothing is stolen either: this wrapper is `relative` and
+                      the runtime span is not, so the actions hit-test above it
+                      regardless. Shrinking the cell to buy clearance would
+                      trade a visual seam for a sub-minimum target. */}
                   {/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */}
                   {hasHoverActions ||
                   /* fork:end sidebar-v2-draft-rows */
@@ -3469,7 +3479,14 @@ export default function SidebarV2() {
                       key="pinned-divider"
                       aria-hidden
                       data-testid="sidebar-v2-pinned-divider"
-                      className="mx-2.5 my-1.5 h-px list-none bg-sidebar-border/60"
+                      /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                         Margin derived off the list gap so halving that gap did
+                         not quietly tighten this hairline too. */
+                      className={cn(
+                        "mx-2.5 h-px list-none bg-sidebar-border/60",
+                        SIDEBAR_V2_CARD_ALIGNMENT.pinnedDividerMargin,
+                      )}
+                      /* fork:end sidebar-v2-card-rows */
                     />,
                   );
                 }
@@ -3532,7 +3549,15 @@ export default function SidebarV2() {
                         onClick={toggleSnoozedShelf}
                         aria-expanded={snoozedShelfExpanded}
                         data-testid="sidebar-v2-snoozed-shelf-toggle"
-                        className="mb-1 mt-3 flex w-full cursor-pointer items-center gap-2 px-2.5 text-left"
+                        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                           Margins derived off the list gap, so halving that
+                           gap left this shelf's spacing where it was. */
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2 px-2.5 text-left",
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderLead,
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderTrail,
+                        )}
+                        /* fork:end sidebar-v2-card-rows */
                       >
                         <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
                           {snoozedShelfExpanded ? "Snoozed" : `Snoozed (${snoozedThreads.length})`}
@@ -3568,7 +3593,15 @@ export default function SidebarV2() {
                         onClick={toggleSettledShelf}
                         aria-expanded={settledShelfExpanded}
                         data-testid="sidebar-v2-settled-shelf-toggle"
-                        className="mb-1 mt-3 flex w-full cursor-pointer items-center gap-2 px-2.5 text-left"
+                        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                           Margins derived off the list gap, so halving that
+                           gap left this shelf's spacing where it was. */
+                        className={cn(
+                          "flex w-full cursor-pointer items-center gap-2 px-2.5 text-left",
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderLead,
+                          SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderTrail,
+                        )}
+                        /* fork:end sidebar-v2-card-rows */
                       >
                         <span className="text-xs font-medium text-muted-foreground/50">
                           {settledShelfExpanded ? "Settled" : `Settled (${settledThreads.length})`}

@@ -455,6 +455,14 @@
     repo indent is deliberately 2px left of the prompt, per the design, and is
     pinned as that difference.
 
+    Five margins hang off the list gap, not one, and all five are derived in
+    that module: the project header's lead and trail, the pinned divider's, and
+    the snoozed/settled shelf headers' above and below. The last three keep the
+    totals they had before the gap halved (10px a side, 16px, 8px) — the design
+    draws neither shelves nor the pinned divider, so letting a card retune
+    tighten them would be a side effect rather than a decision. The guard pins
+    all five as totals, so changing the gap alone fails.
+
     Every card is that one height, whatever it carries. It used to grow a third
     line for the PR badge and the turn's diff counts, which meant predicting
     that line's presence before the per-row VCS query answered — and the list

@@ -33,8 +33,19 @@
  * - header to first card:  `listGap` 2 + `headerTrail` 2  = 4
  * - card to next header:   `listGap` 2 + `headerLead` 18  = 20
  *
- * Change `listGap` and both header margins have to be re-derived, or the
- * groups drift by the difference.
+ * The project header is not the only row that pays into this. Two other
+ * list-level separators sit on the same gap and were tuned against it when it
+ * was 4px, so they are derived here too rather than left to drift by the
+ * difference:
+ *
+ * - pinned divider:        `listGap` 2 + `pinnedDividerMargin` 8  = 10 a side
+ * - shelf header, above:   `listGap` 2 + `shelfHeaderLead` 14     = 16
+ * - shelf header, below:   `listGap` 2 + `shelfHeaderTrail` 6     = 8
+ *
+ * Those three totals are deliberately unchanged from before the card retune —
+ * the design says nothing about shelves or the pinned divider, so halving the
+ * gap out from under them would have been a side effect rather than a
+ * decision. Change `listGap` and all five margins have to be re-derived.
  *
  * Class names rather than numbers: the values have to reach the DOM as
  * Tailwind utilities, and a px→utility lookup at each call site would be one
@@ -61,6 +72,12 @@ export const SIDEBAR_V2_CARD_ALIGNMENT = {
   headerLead: "mt-[18px]",
   /** What a header adds below itself, on top of `listGap`, to reach 4. */
   headerTrail: "mb-0.5",
+  /** The pinned block's hairline, each side, on top of `listGap`, to reach 10. */
+  pinnedDividerMargin: "my-2",
+  /** A snoozed/settled shelf header above, on top of `listGap`, to reach 16. */
+  shelfHeaderLead: "mt-3.5",
+  /** A snoozed/settled shelf header below, on top of `listGap`, to reach 8. */
+  shelfHeaderTrail: "mb-1.5",
 } as const;
 
 /** The px behind each class above, so the guard can check the arithmetic
@@ -78,6 +95,9 @@ export const SIDEBAR_V2_CARD_ALIGNMENT_PX = {
   listGap: 2,
   headerLead: 18,
   headerTrail: 2,
+  pinnedDividerMargin: 8,
+  shelfHeaderLead: 14,
+  shelfHeaderTrail: 6,
 } as const;
 
 /** Where a card's prompt starts, measured from the panel's edge. */

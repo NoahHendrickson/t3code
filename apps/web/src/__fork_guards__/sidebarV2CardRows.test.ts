@@ -385,9 +385,21 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
     expect(header).toContain("SIDEBAR_V2_CARD_ALIGNMENT.headerTrail");
     expect(header).toContain('props.isFirst ? "mt-0" : SIDEBAR_V2_CARD_ALIGNMENT.headerLead');
-    // The two margins are only correct relative to the list gap they sit on.
+    // Every margin here is only correct relative to the list gap it sits on,
+    // so all five are pinned as totals rather than as their own values.
     const px = SIDEBAR_V2_CARD_ALIGNMENT_PX;
     expect(px.listGap + px.headerTrail).toBe(4);
     expect(px.listGap + px.headerLead).toBe(20);
+    // The shelves and the pinned divider are NOT part of the card retune — the
+    // design draws neither. Their totals are what they were before the gap
+    // halved, and that is the point: a design change to the cards must not
+    // reach them. Halving the gap without these three silently tightened all
+    // of them by 2px.
+    expect(px.listGap + px.pinnedDividerMargin).toBe(10);
+    expect(px.listGap + px.shelfHeaderLead).toBe(16);
+    expect(px.listGap + px.shelfHeaderTrail).toBe(8);
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.pinnedDividerMargin");
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderLead");
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderTrail");
   });
 });
