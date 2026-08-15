@@ -339,17 +339,29 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       return match?.[1] === undefined ? null : Number(match[1]);
     };
 
-    const inset = glassRules.find((rule) => rule.selector.includes('[data-slot="sidebar-inset"]'));
-    expect(inset).toBeDefined();
+    const stageRules = glassRules.filter(
+      (rule) =>
+        rule.selector.includes('[data-slot="sidebar-inset"]') &&
+        rule.body.includes("background-image:"),
+    );
+    const inset = stageRules.find((rule) => !rule.selector.includes(":has("));
+    const masked = stageRules.find((rule) => rule.selector.includes(":has(.fork-timeline-cutoff)"));
+    expect(inset, "the stage must paint a fill of its own").toBeDefined();
+    expect(
+      masked,
+      "the ramp must be scoped to the mask that licenses it, not to every inset",
+    ).toBeDefined();
 
-    // The stage is a gradient, thinning toward the floor where the cutoff mask
-    // has already ended the transcript. Every stop keeps the flat fill's rules.
-    const stops = [...(inset?.body ?? "").matchAll(/rgb\((\d+) (\d+) (\d+)\s*\/\s*(\d+)%\)/gu)].map(
-      (match) => ({
+    const stopsOf = (body: string) =>
+      [...body.matchAll(/rgb\((\d+) (\d+) (\d+)\s*\/\s*(\d+)%\)/gu)].map((match) => ({
         tint: [match[1], match[2], match[3]],
         alpha: Number(match[4]),
-      }),
-    );
+      }));
+
+    // The chat stage is a gradient, thinning toward the floor where the cutoff
+    // mask has already ended the transcript. Every stop keeps the flat fill's
+    // rules.
+    const stops = stopsOf(masked?.body ?? "");
     expect(stops.length, "the chat stage must declare explicit stops").toBeGreaterThan(0);
 
     // SidebarInset carries `bg-background`, an opaque fill that paints UNDER a
@@ -393,15 +405,28 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       "the reading area must never be more transparent than the sidebar",
     ).toBeGreaterThanOrEqual(panelAlpha ?? 0);
 
+    // Settings, Usage and the empty state share this element with no mask to
+    // end anything, so the licence the ramp takes does not reach them: every
+    // stop of the unmasked fill answers to the sidebar.
+    for (const stop of stopsOf(inset?.body ?? "")) {
+      expect(
+        stop.alpha,
+        "an unmasked stage holds long-form text and may not go under the sidebar",
+      ).toBeGreaterThanOrEqual(panelAlpha ?? 0);
+    }
+
     // Neutral on purpose under glass: the palette's cool base reads as a cast
     // fighting the wallpaper, so the tints flatten to R = G = B and let the
     // desktop supply the hue. The opaque palette stays cool.
-    for (const stop of stops) {
+    for (const stop of [...stops, ...stopsOf(inset?.body ?? "")]) {
       expect(new Set(stop.tint).size, "glass tints must be neutral (R = G = B)").toBe(1);
     }
-    // One triple across the gradient: a stop that also shifts hue reads as a
-    // colour wash down the column rather than as the stage thinning.
-    expect(new Set(stops.map((stop) => stop.tint.join(","))).size).toBe(1);
+    // One triple across both fills: a stop that also shifts hue reads as a
+    // colour wash down the column rather than as the stage thinning, and the
+    // masked and unmasked stages have to be the same material.
+    expect(
+      new Set([...stops, ...stopsOf(inset?.body ?? "")].map((stop) => stop.tint.join(","))).size,
+    ).toBe(1);
   });
 
   it("keeps sidebar fills translucent under glass so rows do not punch holes", () => {

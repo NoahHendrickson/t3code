@@ -1131,21 +1131,30 @@
     lift with white washes (5% hover, 8% active/selected) so the glass survives
     selection. The chat stage is a vertical gradient, rgb(22 22 22 / 95%) for its
     top 70% easing to 85% across the bottom third where the cutoff mask has already
-    ended the transcript. SidebarInset carries bg-background, so the rule clears
-    background-color explicitly — a background-image alone composites over that
-    opaque fill and the glass does nothing. Panel and stage share one triple, so
-    both surfaces carry a single cast and differ only in depth, and the seam
-    between them reads as depth rather than as two materials.
-    The guard pins the relationship — every stage stop >= 80% and never below the
-    sidebar's — rather than any literal value, because the transcript is the
-    app's one long-form reading surface.
+    ended the transcript. That ramp is scoped to insets that carry the mask
+    (:has(.fork-timeline-cutoff)); Settings, Usage and the empty state are the
+    same element with no transcript to end, so they keep a flat 95%. SidebarInset
+    carries bg-background, so the rule clears background-color explicitly — a
+    background-image alone composites over that opaque fill and the glass does
+    nothing. Panel and stage share one triple, so both surfaces carry a single
+    cast and differ only in depth, and the seam between them reads as depth
+    rather than as two materials.
+    The guard pins the relationships rather than any literal value: every stage
+    stop >= 80%, the reading area never below the sidebar's, and every stop of an
+    unmasked inset never below it either. The licence to dip under the panel
+    belongs to the fade below the mask, and only there.
 
     Two arithmetic facts govern the tuning, and both cost several rounds to
     learn the hard way:
 
     Vibrancy darkens and desaturates its sample before either surface
-    composites over it, so the usable range is roughly 60-90%. 91%, 97% and 98%
-    all render as no glass at all rather than as subtle glass.
+    composites over it, and how much survives is the MATERIAL's answer, not a
+    constant. On "under-window" (a flat ~49 grey) the usable range was roughly
+    60-90%: 91%, 97% and 98% all rendered as no glass at all rather than as
+    subtle glass. "fullscreen-ui" returns ~99 and carries colour, so the same
+    contribution needs a much higher alpha — the stage tops out at 95% and still
+    reads as glass. Changing FORK_VIBRANCY_MATERIAL invalidates every number
+    here; hold the desktop's contribution constant and redo the arithmetic.
 
     Alpha compounds down the tree. Anything painting a fill ON the stage
     multiplies with it — a 90% scrim over the 90% stage composites to 99%

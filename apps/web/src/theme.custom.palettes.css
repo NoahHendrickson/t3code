@@ -339,11 +339,10 @@
    is 14.8 where 30% of 49 was 14.7 — so anyone changing FORK_VIBRANCY_MATERIAL
    has to redo the arithmetic.
 
-   The stage thins toward the floor: 95% for the top 70%, ramping to 85%. The
-   transcript is masked off before the bottom (.fork-timeline-cutoff), so the
-   region the composer sits in has no long-form text to protect. The ramp is
-   deliberately long — 10 points of alpha over ~300px — because the same travel
-   over a short run reads as a band, and a hard stop reads as a seam.
+   The chat stage thins toward the floor: 95% for the top 70%, ramping to 85%.
+   The ramp is deliberately long — 10 points of alpha over ~300px — because the
+   same travel over a short run reads as a band, and a hard stop reads as a
+   seam.
 
    The floor is allowed under the panel, and only the floor. The guard used to
    hold the whole stage at or above the sidebar's alpha; that reasoning is about
@@ -351,7 +350,13 @@
    So the reading area still answers to it and the lower stops do not — at 85%
    against an 88% panel the very bottom of the column now sits a few points
    lighter than the sidebar beside it, which is the fade doing its job rather
-   than a mistake. 80% remains the absolute floor for any stop. */
+   than a mistake. 80% remains the absolute floor for any stop.
+
+   That licence is the mask's, so the ramp is scoped to elements that have one.
+   Settings, Usage and the empty state are the same inset with no transcript and
+   no cutoff, and a plain scrolling text panel there would have faded to 85%
+   under an 88% sidebar with nothing ending it. They keep the flat reading
+   value. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"] {
   /* Cleared, not merely unset. SidebarInset carries `bg-background` itself, and
@@ -359,7 +364,7 @@
      would composite over #141618 and none of this would show. The flat version
      of this rule got away with it by overriding the colour directly. */
   background-color: transparent;
-  background-image: linear-gradient(to bottom, rgb(22 22 22 / 95%) 0 70%, rgb(22 22 22 / 85%) 100%);
+  background-image: linear-gradient(to bottom, rgb(22 22 22 / 95%) 0 100%);
   /* The same element carries `surface-grain`, which is three declarations, not
      one: it sets background-image AND background-repeat: repeat AND a
      background-size of 128px. Overriding only the image leaves the other two
@@ -369,6 +374,17 @@
      --surface-grain to none, so this element had no texture to keep. */
   background-repeat: no-repeat;
   background-size: 100% 100%;
+}
+
+/* The ramp, on the one layout that earns it. `.fork-timeline-cutoff` is stamped
+   unconditionally on the transcript scroller, so it marks a chat column and
+   nothing else — a draft with no transcript reads as "no mask" and keeps the
+   flat fill, which is the right answer for the same reason.
+   The :has() argument names a class no message node carries, so streaming a
+   turn does not put this rule in the invalidation path. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-inset"]:has(.fork-timeline-cutoff) {
+  background-image: linear-gradient(to bottom, rgb(22 22 22 / 95%) 0 70%, rgb(22 22 22 / 85%) 100%);
 }
 
 /* Composer tokens live on the stage rule, not the v2 panel block: the composer
