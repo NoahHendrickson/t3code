@@ -1162,8 +1162,13 @@
     brightness while losing the desktop. The composer carried blur(48px)
     saturate(2.6) and measured as a channel spread of 3 against 25 in the sidebar
     and 14-20 in the stage beside it: a flat grey slab in a translucent window.
-    Both filters are now cleared explicitly, and the cutoff mask is what makes
-    that safe.
+    All of them are cleared explicitly — the composer, and upstream's own
+    .dropdown-glass / .dialog-glass / .alert-glass / .chat-composer-glass /
+    .dialog-backdrop utilities, which open over the sidebar and the stage and
+    flatten whatever patch they cover. Those four are made opaque in the same
+    rule (--glass-opacity: 100%): without the blur a translucent menu leaks the
+    text under it, which is worse than the grey card it replaces. The cutoff
+    mask is what makes clearing the composer's own filter safe.
 
     Three separate failures in this feature all present identically, as "the
     stylesheet is not reloading":

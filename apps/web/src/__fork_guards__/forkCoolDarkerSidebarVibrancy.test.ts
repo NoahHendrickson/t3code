@@ -167,6 +167,27 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       }
     }
 
+    // Upstream's own glass utilities carry filters as well, and they open OVER
+    // the sidebar and the stage — each one flattens the patch it covers. Read
+    // the class list out of index.css rather than hardcoding it, so a new
+    // `*-glass` utility upstream fails here instead of shipping a grey card.
+    const utilities = readSibling("../index.css");
+    const filtered = new Set(
+      [
+        ...utilities.matchAll(
+          /\.([a-z-]+)\s*\{[^}]*?(?<!-webkit-)backdrop-filter:\s*(?!none)[^;]+;/gu,
+        ),
+      ].map((match) => match[1] ?? ""),
+    );
+    const clearRule = glassRules.find((rule) => /backdrop-filter:\s*none/u.test(rule.body));
+    for (const name of filtered) {
+      expect(
+        clearRule?.selector ?? "",
+        `.${name} filters its backdrop and must be cleared under glass`,
+      ).toContain(`.${name}`);
+    }
+    expect(filtered.size, "index.css should still declare the glass utilities").toBeGreaterThan(2);
+
     // Stated rather than merely absent, so re-adding one is a deliberate act.
     const cleared = glassRules.find(
       (rule) =>

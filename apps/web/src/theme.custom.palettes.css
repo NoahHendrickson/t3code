@@ -452,6 +452,28 @@
   background: none;
 }
 
+/* Menus, dialogs, alerts and the scroll pill ask for their own blur too, and
+   they hit the same wall as the composer did: a filter cannot sample the native
+   material, so wherever one of these opens over the sidebar or the stage it
+   flattens that patch to grey and reads as a card sitting on the glass.
+
+   Cleared, and made opaque in the same breath. Every one of these computes its
+   fill from --glass-opacity, so overriding that to 100% here keeps each surface's
+   own recipe — the dropdown's denser popover tint, the alert's variant colour —
+   while removing the see-through part that has nothing good to show. Without the
+   blur a translucent menu would leak the text underneath it instead, which is
+   worse than either problem: these are transient overlays whose whole job is to
+   be read.
+
+   .dialog-backdrop keeps its own 60% dim; only its blur goes, since that blur
+   covers the entire window and flattens everything behind the modal. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  :is(.chat-composer-glass, .alert-glass, .dialog-glass, .dropdown-glass, .dialog-backdrop) {
+  --glass-opacity: 100%;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* NO backdrop-filter anywhere in the composer, and this is the one rule in the
    glass set that exists to say so.
 

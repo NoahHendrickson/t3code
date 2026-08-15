@@ -6506,17 +6506,17 @@ function ChatViewContent(props: ChatViewProps) {
                     {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
                     {/* The composer's floor. Upstream docks it 1rem above the
                         bottom edge (1.25rem from sm up); the fork lifts both to
-                        one 2rem value, so the composer reads as an object
+                        one 1.5rem value, so the composer reads as an object
                         floating over the stage rather than as a bar attached to
                         the window, and the breakpoint goes with them. The
                         safe-area term stays: on a phone this has to clear the
-                        home indicator before the 32px starts.
+                        home indicator before the 24px starts.
 
                         Height on a spacer, not padding on the overlay — the
                         overlay's measured height is what drives the transcript's
                         bottom inset and the cutoff mask, and it already counts
                         this element. */}
-                    <div aria-hidden className="h-[calc(env(safe-area-inset-bottom)+2rem)]" />
+                    <div aria-hidden className="h-[calc(env(safe-area-inset-bottom)+1.5rem)]" />
                     {/* fork:end fork-composer-shell */}
                   </div>
                 </div>
