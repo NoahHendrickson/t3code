@@ -28,6 +28,9 @@ import { pipe } from "effect/Function";
 import { useEnvironmentServerConfig, useProjects, useThreadShells } from "../../state/entities";
 import type { TurnCommandMetadata } from "../../lib/commandMetadata";
 import type { DraftComposerImageAttachment } from "../../lib/composerImages";
+/* fork:begin mobile-current-checkout-branch — see .fork/customizations.yaml#mobile-current-checkout-branch */
+import { resolveProjectThreadBranch } from "../../custom/projectThreadBranch";
+/* fork:end mobile-current-checkout-branch */
 import type { ModelOption, ProviderGroup } from "../../lib/modelOptions";
 import {
   buildModelOptions,
@@ -773,7 +776,13 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
           ...(projectTitle !== undefined ? { projectTitle } : {}),
           ...(projectCwd !== undefined ? { projectCwd } : {}),
           workspaceMode: mode,
-          branch: workspaceSelection?.branch ?? null,
+          /* fork:begin mobile-current-checkout-branch — see .fork/customizations.yaml#mobile-current-checkout-branch */
+          branch: resolveProjectThreadBranch({
+            workspaceMode: mode,
+            selectedBranchName: workspaceSelection?.branch ?? null,
+            availableBranches,
+          }),
+          /* fork:end mobile-current-checkout-branch */
           worktreePath: mode === "worktree" ? null : (workspaceSelection?.worktreePath ?? null),
           // The draft only carries the flag when the user touched it; fall
           // back to the resolved default (server settings) so queued tasks
@@ -786,6 +795,7 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
       };
     },
     [
+      availableBranches,
       editingPendingProject,
       editingPendingTask,
       selectedEnvironmentServerConfig,
