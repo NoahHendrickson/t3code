@@ -45,6 +45,19 @@ const glassRules = themeRules.filter((rule) =>
   rule.selector.includes(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE),
 );
 
+/**
+ * The panel block that carries the glass tint. Two glass rules now target the
+ * v2 panel — this one and the opaque neutral fill for while it floats — so they
+ * are told apart by the overlay gate rather than by which comes first in the
+ * file. Everything about alpha, derived tokens and row washes belongs to this
+ * one; the floating block deliberately gives alpha up.
+ */
+const glassPanelRule = glassRules.find(
+  (rule) =>
+    rule.selector.includes('[data-sidebar-version="v2"]') &&
+    rule.selector.includes(':not([data-fork-sidebar-overlay="true"])'),
+);
+
 /** Minimal Element stand-in — the helper only ever sets/removes one attribute. */
 function makeRoot() {
   const attributes = new Map<string, string>();
@@ -125,6 +138,49 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     const chatView = readSibling("../components/ChatView.tsx");
     expect(chatView).toMatch(/data-chat-header[\s\S]{0,200}bg-background/u);
     expect(chatView).toMatch(/className="relative flex min-h-0[^"]*bg-background"/u);
+
+    // A utility that @applies the fill inlines it into its own rule, so the
+    // class match above cannot see it and the surface paints an opaque slab
+    // across the column. Every such utility has to be named here explicitly —
+    // this is the one clear that does not maintain itself.
+    const indexCss = readSibling("../index.css");
+    const applied = [
+      ...indexCss.matchAll(/\.([a-z-]+)\s*\{\s*@apply[^;]*\bbg-background\b[^;]*;/gu),
+    ]
+      .map((match) => match[1])
+      .filter((name): name is string => name !== undefined);
+    expect(applied, "index.css should still @apply bg-background somewhere").toContain(
+      "surface-subheader",
+    );
+    for (const name of applied) {
+      expect(
+        byClass?.selector ?? "",
+        `.${name} @applies an opaque fill the class match cannot reach and must be cleared`,
+      ).toContain(`.${name}`);
+    }
+  });
+
+  it("washes the cards in the stage instead of leaving them opaque", () => {
+    // `--card` is an opaque #1c1f22, and roughly thirty components paint it
+    // inside the inset — the right panel's surface tiles most visibly. Each one
+    // reads as a rectangle of missing wallpaper. Washed rather than cleared,
+    // because a card is meant to sit a step above the stage.
+    const card = glassRules.find(
+      (rule) =>
+        rule.selector.includes('[data-slot="sidebar-inset"]') && rule.selector.includes(".bg-card"),
+    );
+    expect(card, "cards in the stage must be washed by class, not enumerated").toBeDefined();
+    expect(
+      card?.body,
+      "an opaque or tinted fill here stops the wallpaper at the card's edge",
+    ).toMatch(/background-color:\s*rgb\(255 255 255 \/ \d+%\)/u);
+
+    // Scoped to the inset: the sidebar block redefines --card to the panel tint,
+    // so a wash there would paint a second layer over surfaced glass.
+    expect(
+      card?.selector,
+      "the sidebar carries its own --card and must not take this wash",
+    ).not.toContain('[data-sidebar-version="v2"]');
   });
 
   it("leaves the one element that paints the tint alone", () => {
@@ -257,6 +313,63 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(contextRow, "the context row must still precede the vessel").toBeLessThan(vessel);
   });
 
+  it("hands the design-mode chrome the stage's own glass", () => {
+    // The panel is an ordinary child of the inset, so anything it paints
+    // composites ON the stage and can only move it toward opaque. Painting
+    // nothing is the most glass available to it, not the least effort.
+    const design = glassRules.find((rule) => rule.selector.includes("[data-fork-design-panel]"));
+    expect(design, "the design panel must take the glass").toBeDefined();
+    expect(
+      design?.selector,
+      "the layers rail takes the same treatment — half of this pair is the regression",
+    ).toContain("[data-fork-design-layers]");
+
+    const valueOf = (token: string) => {
+      const declaration = new RegExp(`${token}:\\s*([^;]+);`, "u").exec(design?.body ?? "")?.[1];
+      expect(declaration, `${token} must be stated under glass`).toBeDefined();
+      return declaration ?? "";
+    };
+    const alphaOf = (token: string) => {
+      const declaration = valueOf(token);
+      expect(declaration, `${token} must be a white wash`).toMatch(/^rgb\(255 255 255 \/ \d+%\)$/u);
+      return Number(/(\d+)%/u.exec(declaration)?.[1]);
+    };
+
+    // A wash here would make the panel LESS glassy than the column it docks into.
+    expect(valueOf("--fork-design-surface"), "the panel must paint nothing at all").toBe(
+      "transparent",
+    );
+
+    // Fields sit on the bare stage once the surface paints nothing, so they
+    // carry the chips' doubled alpha rather than a ring's single one.
+    const field = alphaOf("--fork-design-field");
+    // Only the colour picker's hex input reads --muted, at /40. Keeping the two
+    // equal preserves the relationship that makes that input recede.
+    expect(alphaOf("--muted"), "--muted must track the field token").toBe(field);
+
+    // A lift, not a fill: over a field it has to stay readable as a selected
+    // segment, which means it cannot be the heavier of the two.
+    expect(
+      alphaOf("--accent"),
+      "--accent lifts off the field it sits in; heavier than the field inverts them",
+    ).toBeLessThanOrEqual(field);
+
+    // The token is the single dial. A fill hardcoded onto the container would
+    // sail past this whole block, which is how the panel became a slab while the
+    // rail beside it went glassy — the rail happened to use the bg-background
+    // utility the class-based clear catches, and the panel did not.
+    const panel = readSibling("../custom/designMode/panel/ForkDesignPanel.tsx");
+    expect(panel).toContain("data-fork-design-panel");
+    expect(panel, "the panel surface must stay driven by the token").toContain(
+      "bg-[var(--fork-design-surface)]",
+    );
+    const rail = readSibling("../custom/designMode/ForkLayersTree.tsx");
+    expect(rail).toContain("data-fork-design-layers");
+    expect(rail, "the rail leans on the class-based bg-background clear").toContain(
+      "bg-background",
+    );
+  });
+
   it("pins tokens that index.css derives from the panel fill", () => {
     // --sidebar-icon-color mixes in var(--sidebar). Once the panel fill carries
     // alpha, so does the glyph, and the wallpaper shows through the icons
@@ -270,7 +383,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       .filter((name): name is string => name !== undefined);
     expect(derived).toContain("--sidebar-icon-color");
 
-    const panel = glassRules.find((rule) => rule.selector.includes('[data-sidebar-version="v2"]'));
+    const panel = glassPanelRule;
     for (const token of derived) {
       const declaration = new RegExp(`${token}:\\s*([^;]+);`, "u").exec(panel?.body ?? "");
       expect(
@@ -286,8 +399,16 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     // it. In overlay mode (narrow window, or the right preview panel open) the
     // panel floats OVER the transcript, and a translucent fill there shows
     // message text through the thread rows rather than wallpaper.
-    const panel = glassRules.find((rule) => rule.selector.includes('[data-sidebar-version="v2"]'));
-    expect(panel).toBeDefined();
+    // Found by the translucent fill rather than by glassPanelRule, which is
+    // defined by carrying this very gate — asserting it there would be
+    // circular. The invariant is the other direction: whatever rule paints a
+    // see-through panel must be gated off overlay.
+    const panel = glassRules.find(
+      (rule) =>
+        rule.selector.includes('[data-sidebar-version="v2"]') &&
+        /--sidebar:[^;]*\/\s*\d+%/u.test(rule.body),
+    );
+    expect(panel, "some glass rule must paint the translucent panel").toBeDefined();
     expect(
       panel?.selector,
       "the glass panel tint must not apply while the sidebar overlays the chat column",
@@ -301,6 +422,28 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     const overlay = readSibling("../custom/narrowChatOverlay.ts");
     expect(overlay).toContain('SIDEBAR_OVERLAY_ATTRIBUTE = "data-fork-sidebar-overlay"');
     expect(overlay).toContain("targets.wrapper.setAttribute(SIDEBAR_OVERLAY_ATTRIBUTE");
+  });
+
+  it("keeps the floating panel neutral rather than falling back to the palette tint", () => {
+    // Opaque is correct while it floats, cool-tinted is not: every surface
+    // around it under glass is neutral, so the palette's #181b1e reads as a
+    // different material rather than as the same panel without its glass.
+    const floating = glassRules.find(
+      (rule) =>
+        rule.selector.includes('[data-sidebar-version="v2"]') &&
+        rule.selector.includes('[data-fork-sidebar-overlay="true"]') &&
+        !rule.selector.includes(":not("),
+    );
+    expect(floating, "the floating panel must state its own fill").toBeDefined();
+
+    const fill = /--sidebar:\s*([^;]+);/u.exec(floating?.body ?? "")?.[1];
+    expect(fill, "--sidebar must be stated for the floating panel").toBeDefined();
+    // Opaque on purpose — alpha is exactly what this state gives up, so the
+    // "keep alpha" rule the docked block follows must not be applied here.
+    expect(fill, "the floating panel is opaque by design").toMatch(/^#[0-9a-f]{6}$/iu);
+
+    const channels = /^#(..)(..)(..)$/u.exec(fill ?? "")?.slice(1) ?? [];
+    expect(new Set(channels).size, `the floating panel must be neutral, got ${fill}`).toBe(1);
   });
 
   it("applies the material to the main window only", () => {
@@ -395,7 +538,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       expect(stop.alpha, "no stop may exceed the reading area").toBeLessThanOrEqual(topAlpha);
     }
 
-    const panel = glassRules.find((rule) => rule.selector.includes('[data-sidebar-version="v2"]'));
+    const panel = glassPanelRule;
     const panelAlpha = readAlpha(panel?.body ?? "", "--sidebar");
     expect(panelAlpha, "the glass panel must declare an explicit alpha").not.toBeNull();
     // The READING AREA, not every stop: the gradient's lower stops sit below the
@@ -430,7 +573,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
   });
 
   it("keeps sidebar fills translucent under glass so rows do not punch holes", () => {
-    const panel = glassRules.find((rule) => rule.selector.includes('[data-sidebar-version="v2"]'));
+    const panel = glassPanelRule;
     expect(panel).toBeDefined();
     // An opaque hex here is the "opaque plaque" regression: the row would hide
     // the wallpaper the panel is showing.
