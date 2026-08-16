@@ -181,6 +181,42 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       card?.selector,
       "the sidebar carries its own --card and must not take this wash",
     ).not.toContain('[data-sidebar-version="v2"]');
+
+    // State precedence. Written like every other rule here — unlayered and
+    // marker-scoped — this outranks `hover:bg-accent/60` as well, and the
+    // "Open a surface" tiles lose their hover feedback entirely. The wash has to
+    // join Tailwind's cascade rather than sit above it, so that every state
+    // variant keeps winning without being enumerated.
+    expect(
+      card?.atRules ?? [],
+      "the card wash must live in Tailwind's utilities layer, not above it",
+    ).toContain("@layer utilities");
+    expect(
+      card?.selector,
+      ":where() is what drops the marker to zero specificity so state variants still win",
+    ).toContain(":where(");
+
+    // The utility it must not beat is real, and still carries both classes.
+    const tabs = readSibling("../components/RightPanelTabs.tsx");
+    expect(tabs, "the surface tiles are the case this protects").toMatch(
+      /bg-card[^"]*hover:bg-accent\/60/u,
+    );
+
+    // Redefining --card instead would look tidier and take the transcript's code
+    // blocks with it, because index.css derives from that token.
+    const indexCss = readSibling("../index.css");
+    expect(indexCss, "--card is a derived token, so it must not be redefined under glass").toMatch(
+      /--code-background:\s*color-mix\([^;]*var\(--card\)/u,
+    );
+    // The sidebar's own blocks redefine --card for the panel deliberately, and
+    // nothing there derives from it. The stage is where the derived tokens land.
+    for (const rule of glassRules) {
+      if (!rule.selector.includes('[data-slot="sidebar-inset"]')) continue;
+      expect(
+        rule.body,
+        `--card feeds --code-background and --surface-raised: ${rule.selector}`,
+      ).not.toMatch(/^\s*--card:/mu);
+    }
   });
 
   it("leaves the one element that paints the tint alone", () => {

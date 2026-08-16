@@ -498,11 +498,35 @@
 
    Nested cards compound, exactly as the header note above describes. Today none
    nest inside the inset; the fix if one appears is to clear the inner one, not
-   to abandon the class match and enumerate. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-inset"]
-  .bg-card {
-  background-color: rgb(255 255 255 / 5%);
+   to abandon the class match and enumerate.
+
+   THE LAYER AND THE :where() ARE LOAD-BEARING, and this is the one rule in the
+   glass set that must NOT outrank the utilities it overrides. Written the way
+   every other rule here is — unlayered, marker-scoped, so (0,7,0) — it beats
+   `hover:bg-accent/60` too, and the "Open a surface" tiles in RightPanelTabs
+   stay at the base wash under the pointer. That is not a tint being wrong, it is
+   interaction feedback silently disappearing, and the same goes for any
+   focus/active/data-state background on an exact `bg-card` element.
+
+   So the wash joins Tailwind's cascade instead of sitting above it: `@layer
+   utilities` puts it in the same layer as `.bg-card`, and `:where()` drops the
+   marker's specificity to zero so the whole selector is (0,1,0) — a tie with
+   `.bg-card`, broken by source order because main.tsx imports this file after
+   index.css. Every state variant is (0,2,0) and still wins, so they all keep
+   working without being enumerated here.
+
+   Redefining `--card` under the marker looks like the tidier fix and is not one:
+   index.css derives --surface-raised, --code-background and a ring inset from
+   it, so a 5% wash would take the transcript's code blocks with it. Same trap
+   the --background note above describes. */
+@layer utilities {
+  :where(
+      :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+        [data-slot="sidebar-inset"]
+    )
+    .bg-card {
+    background-color: rgb(255 255 255 / 5%);
+  }
 }
 
 /* The transcript scrim (theme.custom.css, [data-chat-composer-overlay]) fades

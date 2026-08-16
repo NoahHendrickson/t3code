@@ -1234,6 +1234,31 @@
     so the two read as one kind of surface, and scoped to the inset because the
     sidebar block redefines --card to the panel tint.
 
+    That one rule is deliberately the ONLY glass rule that does not outrank what
+    it overrides, and it is the exception that proves why the others can. Every
+    other rule here is unlayered and marker-scoped, so it beats anything in
+    Tailwind's layers whatever the specificity — which is correct for a fill
+    nothing else contends for, and wrong the moment the element also carries a
+    state utility. Written that way the wash beat `hover:bg-accent/60` too and
+    the surface tiles simply stopped responding to the pointer: not a wrong
+    colour, but interaction feedback disappearing silently. So it sits in
+    `@layer utilities` with the marker wrapped in `:where()`, making the whole
+    selector (0,1,0) — a tie with `.bg-card` that source order wins, and a loss
+    to every (0,2,0) state variant, so hover/focus/active keep working without
+    being enumerated. A guard pins both the layer and the :where().
+
+    Redefining --card under the marker is the tidier-looking fix and is the same
+    trap as --background: index.css derives --surface-raised, --code-background
+    and a ring inset from it, so a wash there takes the transcript's code blocks
+    with it. Guarded — no inset-scoped glass rule may declare --card.
+
+    Known and NOT fixed here: the `.bg-background` clear has the same precedence
+    shape, so an element carrying both `bg-background` and a hover background
+    (ThreadTerminalDrawer's button, KeybindingsSettings' row) loses that hover
+    under glass. It predates this pass and the fix is the same layer treatment;
+    it is left alone rather than restructured blind, since the clear is load
+    bearing for the stage and nothing here can verify it visually.
+
     That class match has one blind spot, and it is the one the clear cannot fix
     for itself: a utility declared as `@apply ... bg-background` inlines the fill
     INTO its own rule, so the element never carries .bg-background and nothing
