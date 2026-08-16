@@ -426,6 +426,43 @@
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
 }
 
+/* Design-mode chrome — the second column in the inset to take the glass.
+
+   The panel paints NOTHING rather than taking a tint, and that is arithmetic
+   rather than taste. It is an ordinary child of the inset, so anything it paints
+   composites ON the stage and can only move it toward opaque — a wash here would
+   make the panel less glassy than the column it docks into. The sidebar reaches
+   88% against a 95% stage only because it is a separate paint layer outside the
+   inset entirely. Transparent is therefore the most glass available here, not
+   the least effort.
+
+   The layers rail was already transparent, by accident: it carries the
+   `bg-background` utility, which the class-based clear below catches. The panel
+   uses `bg-[var(--fork-design-surface)]`, an arbitrary value that same rule
+   cannot reach, which is why one of the two read as a slab. Both are named here
+   so the pair moves together.
+
+   Fields take the context chips' 12% for the same reason the chips do: with the
+   surface painting nothing they sit on the bare stage, one layer lower than a
+   composer ring, so they need the doubled alpha to land at the same lightness.
+   --muted matches it — the base block already keeps the two equal (both #282d30)
+   and only the colour picker's hex input reads it, at /40, so the relationship
+   that makes that input recede survives the move to a wash.
+
+   --accent is a lift, not a fill: 8% on the bare stage in the rail's rows, and
+   8% over a 12% field for a selected segment, which composites to ~19% so the
+   segment still reads against the field it sits in. --fork-design-selected and
+   --fork-design-accent-bg are already alphas and need nothing.
+   --fork-design-canvas stays opaque — it is pinned to the guest's CANVAS_BG and
+   the seam shows if it moves. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  :is([data-fork-design-panel], [data-fork-design-layers]) {
+  --fork-design-surface: transparent;
+  --fork-design-field: rgb(255 255 255 / 12%);
+  --muted: rgb(255 255 255 / 12%);
+  --accent: rgb(255 255 255 / 8%);
+}
+
 /* The changed-files card (theme.custom.css, [data-changed-files-state]) freezes
    itself to `var(--card)` so each palette's stage tokens show through it. Under
    glass that is an opaque slab sitting in the middle of a translucent column —
@@ -445,6 +482,51 @@
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-changed-files-header] {
   background: none;
+}
+
+/* Every other card in the stage, by class for the reason the `.bg-background`
+   clear gives: the right panel's "Open a surface" tiles, and 30-odd more, all
+   paint `--card` (an opaque #1c1f22) and each one reads as a rectangle of
+   missing wallpaper. Washed rather than cleared — a card is meant to sit a step
+   above the stage, and clearing it would erase that step along with the slab.
+   Same 5% as the changed-files card above, so the two read as one kind of
+   surface.
+
+   Scoped to the inset: the sidebar's own block redefines --card to the panel
+   tint, and a wash there would paint a second layer over a surface that is
+   already carrying the glass.
+
+   Nested cards compound, exactly as the header note above describes. Today none
+   nest inside the inset; the fix if one appears is to clear the inner one, not
+   to abandon the class match and enumerate.
+
+   THE LAYER AND THE :where() ARE LOAD-BEARING, and this is the one rule in the
+   glass set that must NOT outrank the utilities it overrides. Written the way
+   every other rule here is — unlayered, marker-scoped, so (0,7,0) — it beats
+   `hover:bg-accent/60` too, and the "Open a surface" tiles in RightPanelTabs
+   stay at the base wash under the pointer. That is not a tint being wrong, it is
+   interaction feedback silently disappearing, and the same goes for any
+   focus/active/data-state background on an exact `bg-card` element.
+
+   So the wash joins Tailwind's cascade instead of sitting above it: `@layer
+   utilities` puts it in the same layer as `.bg-card`, and `:where()` drops the
+   marker's specificity to zero so the whole selector is (0,1,0) — a tie with
+   `.bg-card`, broken by source order because main.tsx imports this file after
+   index.css. Every state variant is (0,2,0) and still wins, so they all keep
+   working without being enumerated here.
+
+   Redefining `--card` under the marker looks like the tidier fix and is not one:
+   index.css derives --surface-raised, --code-background and a ring inset from
+   it, so a 5% wash would take the transcript's code blocks with it. Same trap
+   the --background note above describes. */
+@layer utilities {
+  :where(
+      :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+        [data-slot="sidebar-inset"]
+    )
+    .bg-card {
+    background-color: rgb(255 255 255 / 5%);
+  }
 }
 
 /* The transcript scrim (theme.custom.css, [data-chat-composer-overlay]) fades
@@ -543,10 +625,18 @@
 
    `.bg-background` matches full-opacity users only; Tailwind emits alpha
    variants as separate classes (`.bg-background\/70`), so the small translucent
-   chips and inline cards inside the transcript keep their fills. */
+   chips and inline cards inside the transcript keep their fills.
+
+   `.surface-subheader` is named beside it because matching the class is not the
+   same as matching the fill. That utility is `@apply ... bg-background`, which
+   inlines the declaration INTO its own rule rather than putting the class on the
+   element, so nothing here can see it — the preview's browser bar, the diff and
+   file panels' headers and the PR code tab all painted an opaque slab across a
+   translucent column. Any future utility that @applies a fill needs the same
+   treatment; the class match cannot find them on its own. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]
-  .bg-background {
+  :is(.bg-background, .surface-subheader) {
   background-color: transparent;
 }
 
@@ -624,6 +714,29 @@
   --sidebar-row-selected: rgb(255 255 255 / 6%);
 }
 
+/* The floating panel stays opaque (see the gate above), but it should not also
+   be the only cool-tinted surface on screen. Under glass everything around it
+   is neutral rgb(22 22 22); the palette's #181b1e carries Cool Darker's blue
+   cast, so while floating the panel reads as a different material rather than
+   as the same panel with its glass suspended.
+
+   #1f1f1f is not a new colour, it is the docked panel's own resolved value:
+   88% of the neutral tint over the material's ~99 sample lands at 31 per
+   channel. So the panel keeps its apparent colour when it lifts off the column,
+   and only its transparency changes — which is the honest description of what
+   overlay mode does to it.
+
+   Opaque on purpose, so the "keep alpha" rule the docked block follows does not
+   apply here: alpha is exactly what this state gives up. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-wrapper"][data-fork-sidebar-overlay="true"]
+  [data-sidebar-version="v2"] {
+  --background: #1f1f1f;
+  --card: #1f1f1f;
+  --sidebar: #1f1f1f;
+  --sidebar-stage-fade: #1f1f1f;
+}
+
 /* The seam itself, softer than the token that draws every other line in the
    panel. `border-r` on the container and the ⌘K / ⇧⌘O pill rings both read
    --sidebar-border, and this is the only one of them running the full height of
@@ -632,9 +745,15 @@
    tint, read correctly. Halving the step above the panel (#2b2b2b) leaves the
    two columns separated without the line announcing itself; the rings keep
    #3f3f3f. Opaque for the reason the token above gives: alpha here lets the
-   wallpaper through the line and the seam shimmers. */
+   wallpaper through the line and the seam shimmers.
+
+   Unlike the tint above, this is NOT gated on the panel sitting beside the chat
+   column. The two rules answer different questions: the tint asks what is behind
+   the panel, which overlay mode changes, while the seam asks how loud its edge
+   is, which overlay mode does not. If anything it is louder there — the line
+   runs the full height of the window against the stage rather than against a
+   neighbouring column, and it is the panel's only edge. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-wrapper"]:not([data-fork-sidebar-overlay="true"])
   [data-slot="sidebar-container"][data-sidebar-version="v2"] {
   border-color: #2b2b2b;
 }

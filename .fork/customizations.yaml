@@ -1095,9 +1095,25 @@
     Glass also assumes the panel sits beside the chat column. In overlay mode
     (custom/narrowChatOverlay.ts, when pushing would take the chat column under
     its minimum width) the panel floats over the transcript instead, so the
-    translucent tint is gated on :not([data-fork-sidebar-overlay="true"]) and
-    the opaque #181b1e applies while it floats — otherwise message text reads
-    through the thread rows.
+    translucent tint is gated on :not([data-fork-sidebar-overlay="true"]) —
+    otherwise message text reads through the thread rows. Opening the right
+    panel is itself what triggers overlay at most window sizes, so the two
+    always appear together.
+
+    While it floats it paints an opaque neutral #1f1f1f rather than falling back
+    to the palette's #181b1e. Opaque is the point of the gate; the cool cast is
+    not, and against neighbouring surfaces that are all neutral rgb(22 22 22) it
+    read as a different material instead of the same panel with its glass
+    suspended. #1f1f1f is the docked panel's own resolved value (88% of the
+    neutral tint over the material's ~99 sample), so only transparency changes
+    when it lifts off the column. The seam colour is deliberately NOT gated on
+    overlay: the tint asks what is behind the panel, which overlay changes, while
+    the seam asks how loud its edge is, which it does not.
+
+    Two glass rules now target the v2 panel, so the guard picks the tinted one by
+    its overlay gate rather than by source order, and asserts the floating one is
+    both opaque and neutral (R=G=B) — the "keep alpha" rule belongs to the docked
+    block alone, since alpha is exactly what floating gives up.
 
     syncWindowAppearance in window/DesktopWindow.ts writes the same fill on OS
     appearance changes. Two owners of one slot means the glass dies silently
@@ -1143,6 +1159,23 @@
     stop >= 80%, the reading area never below the sidebar's, and every stop of an
     unmasked inset never below it either. The licence to dip under the panel
     belongs to the fade below the mask, and only there.
+
+    The design-mode chrome (fork-design-mode) is the second column in the inset
+    to take the glass, and it paints NOTHING rather than taking a tint. The panel
+    is an ordinary child of the inset, so anything it paints composites ON the
+    stage and can only move it toward opaque — a wash there would make it less
+    glassy than the column it docks into, and the sidebar reaches 88% against a
+    95% stage only by being a paint layer outside the inset entirely. So
+    --fork-design-surface is transparent, and its fields take the context chips'
+    12% for the chips' own reason: with the surface painting nothing they sit on
+    the bare stage, one layer lower than a composer ring. --muted matches the
+    field token (only the colour picker's hex input reads it, at /40) and
+    --accent is an 8% lift, which composites to ~19% over a field so a selected
+    segment still reads. The layers rail was already transparent by accident — it
+    carries the bg-background utility the class-based clear catches, while the
+    panel used bg-[var(--fork-design-surface)], which that rule cannot reach.
+    That is the whole reason one read as glass and the other as a slab, and it is
+    why the two are named in one selector now.
 
     Two arithmetic facts govern the tuning, and both cost several rounds to
     learn the hard way:
@@ -1194,6 +1227,47 @@
     bg-background user would then paint its own translucent fill and nested
     ones would multiply. Glass has to be exactly one layer.
 
+    `.bg-card` gets the same class treatment but a wash rather than a clear:
+    --card is an opaque #1c1f22 and about thirty components paint it inside the
+    inset, the right panel's "Open a surface" tiles most visibly, each reading as
+    a rectangle of missing wallpaper. 5% white, matching the changed-files card
+    so the two read as one kind of surface, and scoped to the inset because the
+    sidebar block redefines --card to the panel tint.
+
+    That one rule is deliberately the ONLY glass rule that does not outrank what
+    it overrides, and it is the exception that proves why the others can. Every
+    other rule here is unlayered and marker-scoped, so it beats anything in
+    Tailwind's layers whatever the specificity — which is correct for a fill
+    nothing else contends for, and wrong the moment the element also carries a
+    state utility. Written that way the wash beat `hover:bg-accent/60` too and
+    the surface tiles simply stopped responding to the pointer: not a wrong
+    colour, but interaction feedback disappearing silently. So it sits in
+    `@layer utilities` with the marker wrapped in `:where()`, making the whole
+    selector (0,1,0) — a tie with `.bg-card` that source order wins, and a loss
+    to every (0,2,0) state variant, so hover/focus/active keep working without
+    being enumerated. A guard pins both the layer and the :where().
+
+    Redefining --card under the marker is the tidier-looking fix and is the same
+    trap as --background: index.css derives --surface-raised, --code-background
+    and a ring inset from it, so a wash there takes the transcript's code blocks
+    with it. Guarded — no inset-scoped glass rule may declare --card.
+
+    Known and NOT fixed here: the `.bg-background` clear has the same precedence
+    shape, so an element carrying both `bg-background` and a hover background
+    (ThreadTerminalDrawer's button, KeybindingsSettings' row) loses that hover
+    under glass. It predates this pass and the fix is the same layer treatment;
+    it is left alone rather than restructured blind, since the clear is load
+    bearing for the stage and nothing here can verify it visually.
+
+    That class match has one blind spot, and it is the one the clear cannot fix
+    for itself: a utility declared as `@apply ... bg-background` inlines the fill
+    INTO its own rule, so the element never carries .bg-background and nothing
+    matches it. .surface-subheader is that case — the preview's browser bar, the
+    diff and file panel headers and the PR code tab all painted an opaque slab
+    across a translucent column. It is named explicitly beside .bg-background,
+    and a guard reads the @apply-ed utilities back out of index.css so a new one
+    fails the test instead of shipping a slab.
+
     A value above ~90% is invisible rather than subtle. Verify with computed
     styles before concluding a rule is not applying — and read background-image
     and ::before/::after, not just background-color, or gradient scrims and
@@ -1213,6 +1287,8 @@
     - apps/desktop/src/ipc/DesktopIpcHandlers.ts
     - apps/desktop/src/electron/ElectronWindow.ts
     - apps/desktop/src/window/DesktopWindow.ts
+    - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
+    - apps/web/src/custom/designMode/ForkLayersTree.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerSidebarVibrancy.test.ts
     - apps/web/src/__fork_guards__/forkNeutralDarkerTheme.test.ts
@@ -2484,6 +2560,15 @@
     padding usually means the Button, not one instance), prefers project
     tokens over hard-coded values, and states which scope it chose. The same
     guard test pins that wording too.
+
+    Under Cool Darker's wallpaper glass the panel and the layers rail paint
+    nothing and their fields become white washes — see
+    fork-cool-darker-sidebar-vibrancy, which owns those overrides in
+    theme.custom.palettes.css. Only --fork-design-canvas stays opaque there: it
+    is pinned to the guest's CANVAS_BG and the seam shows if it moves. The panel
+    surface must stay driven by --fork-design-surface for that to reach it — a
+    fill hardcoded onto the container sails past the glass block entirely, which
+    is exactly how the panel read as a slab while the rail beside it went glassy.
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
