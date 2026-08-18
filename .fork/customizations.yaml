@@ -2800,6 +2800,26 @@
   verify:
     - apps/web/src/__fork_guards__/forkChangedFilesCard.test.ts
 
+- id: fork-chat-working-rain
+  intent: >
+    The transcript's "Working for …" row leads with the same falling pixel
+    rain the Sidebar V2 thread cards draw while an agent runs, instead of
+    upstream's three staggered pulsing dots — one "agent is working" mark
+    across sidebar and chat. The mark is the fork-owned SidebarV2WorkingRain
+    (emerald, 14px, keyframes in theme.custom.css via sidebar-v2-card-rows),
+    seeded with the working row's stable id; the timer text and step label
+    beside it are untouched. Reduced motion gets the component's own still
+    frame, same as the sidebar.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    # Fenced import plus the rain replacing the dot cluster in
+    # WorkingTimelineRow.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkChatWorkingRain.test.ts
+
 - id: mobile-current-checkout-branch
   intent: >
     A thread started from Mobile in Current checkout mode records the branch

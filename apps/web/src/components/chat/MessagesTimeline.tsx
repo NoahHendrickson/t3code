@@ -10,6 +10,9 @@ import { parseScopedThreadKey } from "@t3tools/client-runtime/environment";
 import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript";
 import { ForkTranscriptDesignChanges } from "~/custom/designMode/ForkTranscriptDesignChanges";
 /* fork:end fork-design-mode */
+/* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain */
+import { SidebarV2WorkingRain } from "~/custom/SidebarV2StatusIndicator";
+/* fork:end fork-chat-working-rain */
 import type { AgentPanelModel } from "@t3tools/client-runtime/state/subagentRuntime";
 import {
   emptyAgentPanelModel,
@@ -1310,11 +1313,9 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
   return (
     <div className="py-0.5 pl-1.5">
       <div className="flex min-w-0 items-center gap-2 pt-1 text-secondary-label text-[11px] tabular-nums">
-        <span className="inline-flex items-center gap-[3px]">
-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-status-pulse" />
-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-status-pulse [animation-delay:200ms]" />
-          <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-status-pulse [animation-delay:400ms]" />
-        </span>
+        {/* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain */}
+        <SidebarV2WorkingRain seed={row.id} />
+        {/* fork:end fork-chat-working-rain */}
         <span className="shrink-0">
           {row.createdAt ? (
             <>
