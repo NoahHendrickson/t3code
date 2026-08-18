@@ -414,7 +414,7 @@
     var(--app-scrollbar-width) 100%;
 }
 
-:root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff.chat-timeline-scroll-fade {
+:root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff.topbar-scroll-fade {
   --fork-timeline-top-fade: var(--topbar-scroll-fade-height);
 }
 

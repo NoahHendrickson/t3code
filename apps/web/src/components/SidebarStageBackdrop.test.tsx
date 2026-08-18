@@ -4,8 +4,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   resolveEnvironmentIdentificationPillLabel,
   resolveSidebarStageBackdropVariant,
-  StageBackdropButtonArt,
+  resolveSidebarStageFocusRingOffsetClass,
   StageBackdropArt,
+  StageBackdropButtonArt,
 } from "./SidebarStageBackdrop";
 
 describe("SidebarStageBackdrop", () => {
@@ -21,6 +22,15 @@ describe("SidebarStageBackdrop", () => {
     expect(resolveEnvironmentIdentificationPillLabel("nightly")).toBe("Nightly");
     expect(resolveEnvironmentIdentificationPillLabel("Latest")).toBeNull();
     expect(resolveEnvironmentIdentificationPillLabel("Alpha")).toBeNull();
+  });
+
+  it("matches the focus-ring offset to each artwork palette", () => {
+    expect(resolveSidebarStageFocusRingOffsetClass("nightly")).toBe(
+      "focus-visible:ring-offset-(--stage-night-bottom)",
+    );
+    expect(resolveSidebarStageFocusRingOffsetClass("dev")).toBe(
+      "focus-visible:ring-offset-(--stage-art-bottom)",
+    );
   });
 
   it.each(["nightly", "dev"] as const)(
@@ -46,11 +56,29 @@ describe("SidebarStageBackdrop", () => {
     },
   );
 
-  it("uses a compact Nightly crop for composer buttons", () => {
-    const backdrop = renderToStaticMarkup(<StageBackdropArt variant="nightly" />);
-    const button = renderToStaticMarkup(<StageBackdropButtonArt variant="nightly" />);
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+     The dev variant renders the fork's PNG dither (SidebarStageDitherArt), not
+     upstream's blueprint SVG, so upstream's token and viewBox assertions apply
+     to the Nightly sky only; the dev cases assert the dither's own contract. */
+  it("paints the nightly artwork with theme-owned color tokens", () => {
+    const nightlyMarkup = renderToStaticMarkup(<StageBackdropArt variant="nightly" />);
 
-    expect(backdrop).toContain('viewBox="0 0 8192 96"');
-    expect(button).toContain('viewBox="96 0 8192 96"');
+    expect(nightlyMarkup).toContain("var(--stage-night-bottom)");
+    expect(nightlyMarkup).toContain("var(--stage-night-line)");
+    expect(nightlyMarkup).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
+
+  it("uses the compact nightly crop inside the send button", () => {
+    const markup = renderToStaticMarkup(<StageBackdropButtonArt variant="nightly" />);
+
+    expect(markup).toContain('viewBox="96 0 8192 96"');
+    expect(markup).toContain("stage-nightly");
+  });
+
+  it("uses the dither's light corner inside the send button for dev", () => {
+    const markup = renderToStaticMarkup(<StageBackdropButtonArt variant="dev" />);
+
+    expect(markup).toContain("right top");
+  });
+  /* fork:end fork-sidebar-chrome */
 });

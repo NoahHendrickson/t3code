@@ -9,7 +9,7 @@ import {
  * under `[data-fork-composer-context-row]`, so fallbacks must reuse this string
  * rather than a hand-copied subset. */
 export const COMPOSER_CONTEXT_STRIP_CLASSNAME =
-  "chat-composer-context-strip group/composer-context -mt-4 mx-auto flex w-[calc(100%-2.75rem)] max-w-[calc(48rem-2.75rem)] items-center gap-2 ps-1 pe-2 pt-5 pb-1";
+  "chat-composer-context-strip group/composer-context -mt-4 mx-auto flex w-[calc(100%-2.75rem)] max-w-[calc(48rem-2.75rem)] items-center gap-2 overflow-x-clip overflow-y-visible ps-1 pe-2 pt-5 pb-1";
 
 export type ComposerBackgroundLiveness =
   | { readonly kind: "monitoring" }

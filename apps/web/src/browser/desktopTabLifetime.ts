@@ -3,7 +3,7 @@ import { previewBridge } from "~/components/preview/previewBridge";
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { disposeDesignModeTab } from "~/custom/designMode/designModeTabLifetime";
 /* fork:end fork-design-mode */
-
+import { browserDefaultTabState, resolveBrowserDefaults } from "./browserDefaults";
 import { stopBrowserRecording } from "./browserRecording";
 
 interface DesktopTabLease {
@@ -45,7 +45,11 @@ export function acquireDesktopTab(tabId: string): AcquiredDesktopTab {
     ({
       references: 0,
       closeTimer: null,
-      ready: enqueueDesktopTabOperation(tabId, () => previewBridge?.createTab(tabId)),
+      // Zoom/appearance defaults travel with creation so the guest never
+      // paints a frame at 100%/system before the preference is applied.
+      ready: enqueueDesktopTabOperation(tabId, async () =>
+        previewBridge?.createTab(tabId, browserDefaultTabState(await resolveBrowserDefaults())),
+      ),
     } satisfies DesktopTabLease);
   if (current.closeTimer !== null) window.clearTimeout(current.closeTimer);
   current.references += 1;
