@@ -61,16 +61,23 @@ const resolveResourcePath = Effect.fn("desktop.assets.resolveResourcePath")(func
   return Option.none<string>();
 });
 
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// Source-tree icons come from assets/fork, not upstream's assets/{dev,prod}:
+// on darwin dev this path is the runtime dock icon (DesktopAppIdentity), the
+// slot the retired DesktopEnvironment.developmentDockIconPath used to fill.
+// Development keeps the orange dock art so installed variants stay
+// distinguishable; the fork ships no per-channel ico/universal variants, so
+// both brands share the release ico and universal render.
 const sourceTreeIconFileNames = {
   dev: {
-    ico: "blueprint-windows.ico",
-    macPng: "blueprint-macos-1024.png",
-    universalPng: "blueprint-universal-1024.png",
+    ico: "n3-windows.ico",
+    macPng: "n3-dev-macos-dock.png",
+    universalPng: "n3-universal-1024.png",
   },
   prod: {
-    ico: "t3-black-windows.ico",
-    macPng: "black-macos-1024.png",
-    universalPng: "black-universal-1024.png",
+    ico: "n3-windows.ico",
+    macPng: "n3-macos-dock.png",
+    universalPng: "n3-universal-1024.png",
   },
 } as const;
 
@@ -87,8 +94,9 @@ function resolveSourceTreeIconPath(
       : environment.platform === "darwin"
         ? fileNames.macPng
         : fileNames.universalPng;
-  return environment.path.join(environment.rootDir, "assets", brand, fileName);
+  return environment.path.join(environment.rootDir, "assets", "fork", fileName);
 }
+// fork:end fork-app-identity
 
 const resolveIconPath = Effect.fn("desktop.assets.resolveIconPath")(function* (
   ext: keyof DesktopIconPaths,

@@ -122,9 +122,14 @@ describe("fork guard: fork-app-identity", () => {
     expect(launcher).toContain('"n3-dev-macos-dock.png"');
     expect(launcher).not.toContain("blueprint-macos-1024.png");
 
-    const desktopEnvironment = read(DESKTOP_ENVIRONMENT);
-    expect(desktopEnvironment).toContain('"n3-dev-macos-dock.png"');
-    expect(desktopEnvironment).not.toContain('"blueprint-macos-1024.png"');
+    // The runtime dock icon in dev resolves through DesktopAssets'
+    // source-tree table (upstream retired DesktopEnvironment's
+    // developmentDockIconPath in the v0.0.33 cycle).
+    const desktopAssets = read("apps/desktop/src/app/DesktopAssets.ts");
+    expect(desktopAssets).toContain('"n3-dev-macos-dock.png"');
+    expect(desktopAssets).toContain('"n3-macos-dock.png"');
+    expect(desktopAssets).toContain('"assets", "fork"');
+    expect(desktopAssets).not.toContain('"blueprint-macos-1024.png"');
 
     // Linux and Windows have no runtime icon override, so their packaged
     // rasters must themselves carry the current release artwork — a path

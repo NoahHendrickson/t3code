@@ -2895,10 +2895,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             "group rounded-[22px] p-px transition-colors duration-200",
             composerProviderState.composerFrameClassName,
           )}
-          onDragEnter={onComposerDragEnter}
-          onDragOver={onComposerDragOver}
-          onDragLeave={onComposerDragLeave}
-          onDrop={onComposerDrop}
           onDragEnterCapture={composerMentionDragHandlers.onDragEnter}
           onDragOverCapture={composerMentionDragHandlers.onDragOver}
           onDragLeaveCapture={onComposerMentionDragLeaveCapture}

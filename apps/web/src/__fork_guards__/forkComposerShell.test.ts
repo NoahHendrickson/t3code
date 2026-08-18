@@ -612,7 +612,7 @@ describe("fork guard: fork-composer-shell", () => {
     const cutoff = rules.find(
       (rule) =>
         rule.selector.includes(".fork-timeline-cutoff") &&
-        !rule.selector.includes(".chat-timeline-scroll-fade"),
+        !rule.selector.includes(".topbar-scroll-fade"),
     );
     expect(cutoff, "the timeline cutoff mask must exist").toBeDefined();
     expect(cutoff?.selector).toContain(MARKER);
@@ -647,7 +647,7 @@ describe("fork guard: fork-composer-shell", () => {
     const withTopFade = rules.find(
       (rule) =>
         rule.selector.includes(".fork-timeline-cutoff") &&
-        rule.selector.includes(".chat-timeline-scroll-fade"),
+        rule.selector.includes(".topbar-scroll-fade"),
     );
     expect(
       withTopFade,

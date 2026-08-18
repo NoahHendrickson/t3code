@@ -302,7 +302,7 @@ describe("fork guard: narrow-workspace-layout", () => {
     expect(released?.body).toMatch(/-webkit-app-region:\s*no-drag\s*;/u);
     // The class it releases, and the two owners that claim it under the panel.
     expect(baseStyles).toContain("-webkit-app-region: drag;");
-    expect(chatView).toContain("workspace-topbar drag-region");
+    expect(chatView).toContain("drag-region relative flex h-[var(--workspace-topbar-height)]");
   });
 
   it("shows the floating layer's shadow only while the panel is open", () => {

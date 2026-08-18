@@ -564,9 +564,20 @@
    be read.
 
    .dialog-backdrop keeps its own 60% dim; only its blur goes, since that blur
-   covers the entire window and flattens everything behind the modal. */
+   covers the entire window and flattens everything behind the modal.
+
+   .surface-glass and .sidebar-stage-backdrop arrived with upstream's v0.0.33
+   restyle and carry the same filter problem, so they join the clear. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  :is(.chat-composer-glass, .alert-glass, .dialog-glass, .dropdown-glass, .dialog-backdrop) {
+  :is(
+    .chat-composer-glass,
+    .surface-glass,
+    .alert-glass,
+    .dialog-glass,
+    .dropdown-glass,
+    .dialog-backdrop,
+    .sidebar-stage-backdrop
+  ) {
   --glass-opacity: 100%;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -627,16 +638,16 @@
    variants as separate classes (`.bg-background\/70`), so the small translucent
    chips and inline cards inside the transcript keep their fills.
 
-   `.surface-subheader` is named beside it because matching the class is not the
-   same as matching the fill. That utility is `@apply ... bg-background`, which
-   inlines the declaration INTO its own rule rather than putting the class on the
-   element, so nothing here can see it — the preview's browser bar, the diff and
-   file panels' headers and the PR code tab all painted an opaque slab across a
-   translucent column. Any future utility that @applies a fill needs the same
-   treatment; the class match cannot find them on its own. */
+   `.surface-subheader` used to be named beside it because that utility
+   `@apply`-ed the fill — inlining the declaration INTO its own rule where the
+   class match cannot see it. Upstream retired it in the v0.0.33 cycle (the
+   subheaders carry literal `bg-background` now, which the class match catches).
+   Any future utility that @applies a fill needs the old treatment back; the
+   class match cannot find them on its own, and the vibrancy guard enumerates
+   index.css for exactly that. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]
-  :is(.bg-background, .surface-subheader) {
+  .bg-background {
   background-color: transparent;
 }
 

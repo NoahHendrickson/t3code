@@ -149,9 +149,10 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     ]
       .map((match) => match[1])
       .filter((name): name is string => name !== undefined);
-    expect(applied, "index.css should still @apply bg-background somewhere").toContain(
-      "surface-subheader",
-    );
+    // surface-subheader was the canary here until upstream retired it in the
+    // v0.0.33 cycle (the subheaders carry literal bg-background now). The list
+    // is empty today; the loop below is what matters — any future utility that
+    // @applies the fill must be named in the fork's clear rule.
     for (const name of applied) {
       expect(
         byClass?.selector ?? "",
@@ -196,11 +197,12 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       ":where() is what drops the marker to zero specificity so state variants still win",
     ).toContain(":where(");
 
-    // The utility it must not beat is real, and still carries both classes.
+    // The utility it must not beat is real. Upstream's v0.0.33 restyle split
+    // the tile into a shared bg-card surface constant plus a per-tile
+    // hover:bg-accent/60 className, so the two classes are asserted apart.
     const tabs = readSibling("../components/RightPanelTabs.tsx");
-    expect(tabs, "the surface tiles are the case this protects").toMatch(
-      /bg-card[^"]*hover:bg-accent\/60/u,
-    );
+    expect(tabs, "the surface tiles are the case this protects").toContain("bg-card");
+    expect(tabs, "the surface tiles are the case this protects").toContain("hover:bg-accent/60");
 
     // Redefining --card instead would look tidier and take the transcript's code
     // blocks with it, because index.css derives from that token.
@@ -263,11 +265,13 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     // the sidebar and the stage — each one flattens the patch it covers. Read
     // the class list out of index.css rather than hardcoding it, so a new
     // `*-glass` utility upstream fails here instead of shipping a grey card.
+    // Upstream's v0.0.33 index.css declares these as Tailwind v4 @utility
+    // blocks rather than bare classes, so the scan matches that syntax.
     const utilities = readSibling("../index.css");
     const filtered = new Set(
       [
         ...utilities.matchAll(
-          /\.([a-z-]+)\s*\{[^}]*?(?<!-webkit-)backdrop-filter:\s*(?!none)[^;]+;/gu,
+          /@utility ([a-z-]+)\s*\{[^}]*?(?<!-webkit-)backdrop-filter:\s*(?!none)[^;]+;/gu,
         ),
       ].map((match) => match[1] ?? ""),
     );

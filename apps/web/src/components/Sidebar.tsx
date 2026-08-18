@@ -788,7 +788,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
 
   const modelInstanceId = thread.session?.providerInstanceId ?? thread.modelSelection.instanceId;
   const providerEntry = props.providerEntryByInstanceId.get(modelInstanceId) ?? null;
-  const driverKind = providerEntry?.driverKind ?? null;
   const showInstanceBadge =
     providerEntry !== null &&
     shouldShowInstanceBadge(providerEntry, props.providerEntryByInstanceId.values());
@@ -3379,7 +3378,11 @@ export default function Sidebar() {
   const newThreadShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.new") ??
     (projectGroups.length <= 1 ? shortcutLabelForCommand(keybindings, "chat.newLocal") : undefined);
-  const newThreadInProjectShortcutLabel = shortcutLabelForCommand(keybindings, "chat.newLocal");
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+     The chrome rows' Search is a CommandDialogTrigger, so it advertises the
+     palette shortcut. */
+  const commandPaletteShortcutLabel = shortcutLabelForCommand(keybindings, "commandPalette.toggle");
+  /* fork:end fork-sidebar-chrome */
   return (
     <>
       <SidebarChromeHeader isElectron={isElectron} />
@@ -3389,7 +3392,7 @@ export default function Sidebar() {
             See custom/SidebarV2ChromeRows.tsx. */}
         <SidebarV2ChromeActionRows
           commandPaletteShortcutLabel={commandPaletteShortcutLabel}
-          newThreadShortcutLabel={newThreadShortcutLabel}
+          newThreadShortcutLabel={newThreadShortcutLabel ?? null}
           newThreadDisabled={projects.length === 0}
           onNewThread={handleNewThreadClick}
           onAddProject={openAddProjectCommandPalette}
@@ -3497,6 +3500,7 @@ export default function Sidebar() {
                             ? "unsettle"
                             : "settle"
                       }
+                      autoSettleOnMerge={autoSettleOnMerge}
                       settlementSupported={
                         /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
                         draftCaps.canSettle &&
@@ -3582,7 +3586,8 @@ export default function Sidebar() {
                       onSnooze={attemptSnooze}
                       onUnsnooze={attemptUnsnooze}
                       onAcknowledgeWoke={acknowledgeWoke}
-                      onChangeRequestState={handleChangeRequestState}
+                      changeRequestSnapshot={changeRequestSnapshotByKey.get(threadKey) ?? null}
+                      onChangeRequestSnapshot={setThreadChangeRequestSnapshot}
                     />
                   );
                 };

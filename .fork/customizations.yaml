@@ -301,9 +301,11 @@
     - apps/web/public/favicon-16x16.png
     - apps/web/public/favicon-32x32.png
     - apps/web/public/favicon.ico
-    - apps/desktop/resources/icon.png
-    - apps/desktop/resources/icon.ico
-    - apps/desktop/resources/icon.icns
+    # Upstream retired the static desktop resource icons in the v0.0.33 cycle;
+    # source-tree icon resolution (incl. the darwin dev dock icon) moved into
+    # DesktopAssets, which the fork fences onto assets/fork.
+    - apps/desktop/src/app/DesktopAssets.ts
+    - apps/desktop/src/app/DesktopAssets.test.ts
     - packages/shared/src/devHome.ts
     - packages/shared/src/hostProcess.ts
     - scripts/build-desktop-artifact.ts
