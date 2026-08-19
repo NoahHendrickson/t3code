@@ -143,9 +143,12 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     // class match above cannot see it and the surface paints an opaque slab
     // across the column. Every such utility has to be named here explicitly —
     // this is the one clear that does not maintain itself.
+    // Tailwind v4 @utility syntax, matching the backdrop-filter scan below —
+    // the old `.class {` form matched nothing against upstream's v0.0.33
+    // index.css and left this clause silently dead.
     const indexCss = readSibling("../index.css");
     const applied = [
-      ...indexCss.matchAll(/\.([a-z-]+)\s*\{\s*@apply[^;]*\bbg-background\b[^;]*;/gu),
+      ...indexCss.matchAll(/@utility ([a-z-]+)\s*\{[^}]*?@apply[^;]*\bbg-background\b[^;]*;/gu),
     ]
       .map((match) => match[1])
       .filter((name): name is string => name !== undefined);

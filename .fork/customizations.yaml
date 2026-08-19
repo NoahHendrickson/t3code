@@ -293,9 +293,13 @@
     - apps/desktop/src/app/DesktopLinuxUrlHandler.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
     - apps/desktop/scripts/electron-launcher.mjs
+    # Fenced icon-path assertions matching the launcher's fork art.
+    - apps/desktop/scripts/electron-launcher.test.mjs
     - apps/server/src/config.ts
     - apps/web/src/branding.ts
     - apps/web/src/branding.test.ts
+    # Fenced wordmark-visibility assertions adapted to the fork brand lockup.
+    - apps/web/src/components/threadSidebarWidth.test.ts
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     - apps/web/public/apple-touch-icon.png
     - apps/web/public/favicon-16x16.png
@@ -2029,52 +2033,33 @@
 
 - id: fork-chat-file-drop
   intent: >
-    A file dragged in from outside the app can be released anywhere over the
-    chat column — the timeline as well as the composer docked under it — and
-    attaches to the composer, instead of having to be aimed at the composer
-    box the way upstream requires. Releasing it over the timeline used to hit
-    the browser default and navigate the app away to the dropped file, so a
-    missed drop cost the whole session. The zone is the chat column and
-    nothing else: the sidebar, the header, and the right panel do not attach,
-    leaving the right panel free to claim its own file drops later.
+    A file drop that nothing claimed cannot navigate the app away to the
+    dropped file. Upstream's v0.0.33 chat column
+    (data-chat-workspace-drop-target + makeWorkspaceFileDropHandlers) now
+    owns attaching drops over the whole column — which was this
+    customization's original job, so the fork's parallel drop system was
+    retired at that sync. What survives is the piece upstream still lacks: a
+    window-level guard, mounted from ChatView, that preventDefaults file
+    drags on dragover and drop when no nested target claimed them
+    (defaultPrevented), with dropEffect "none" so the cursor does not promise
+    an attachment. A missed drop over the sidebar, header, or right panel is
+    discarded instead of replacing the session with the file.
 
-    The window listens in the bubble phase and the customization is purely
-    additive: upstream's composer-scoped drag handlers stay, see every drop
-    aimed at them first, and a drop a nested target already claimed
-    (defaultPrevented) is left alone — which is also what keeps the file
-    tree's mention-drag channel untouched. Only drags carrying files are
-    claimed. Membership is hit-tested per event against the marker attribute
-    on ChatView's chat column, so the region survives layout changes as long
-    as the marker rides the column. No drag state accumulates: every handler
-    writes whether the pointer is over the chat right now, read off the
-    element the event names, with the leave reading relatedTarget — the
-    element being entered — because a drag leaving the window is the one
-    transition no enter or over reports.
-
-    Drags outside the zone are still preventDefault-ed on both dragover and
-    drop and then discarded, because a drop that is never handled is one the
-    browser opens — the dragover half is what makes the drop event fire at
-    all. Their dropEffect is "none" so the cursor does not promise an
-    attachment that will not happen. Because the window handlers run after
-    the composer's, the two share one drag-active state without fighting: the
-    composer keeps painting its drag-over tint for as long as the pointer is
-    over the chat, so where the file will land stays obvious. Files are handed
-    to the composer's existing attachment path unfiltered, so unsupported
-    types and the attachment limit keep reporting the same way a paste does.
-    Preview panes render in a webview and swallow their own drags; that is
-    upstream behaviour and out of scope here.
+    The guard listens in the bubble phase and stays purely additive: every
+    real target — upstream's column, the file tree's mention-drag channel,
+    any future surface — sees the event first, and only drags carrying files
+    are touched. It holds no drag state and paints nothing; highlighting
+    belongs to upstream's own column overlay and composer tint. Mounting from
+    ChatView is the enablement gate: no chat column on screen, no guard, so
+    drops elsewhere in the app keep their usual browser behaviour.
   tier: 4
   files:
     - apps/web/src/custom/chatFileDrop.ts
     - apps/web/src/custom/chatFileDrop.test.ts
   shadows: []
   watch:
-    # Carries the useChatFileDrop call and its import. Upstream's own composer
-    # drag handlers and isDragOverComposer state live here too — the hook
-    # shares that state, so a rename of it breaks the shared highlight.
-    - apps/web/src/components/chat/ChatComposer.tsx
-    # Carries data-fork-chat-drop-zone on the chat column. An upstream rework
-    # of that column drops the marker, and with it the whole drop region.
+    # Carries the fenced useStrayFileDropGuard mount and upstream's own column
+    # drop target the guard defers to.
     - apps/web/src/components/ChatView.tsx
   verify:
     - apps/web/src/__fork_guards__/forkChatFileDrop.test.ts
@@ -2764,6 +2749,12 @@
     on ChatComposer. Dark-only true-outline Previous (and shared outline
     tokens with changed-files) keep Previous/Next at 24px; compact Previous
     is pinned to a 24×24 square.
+    Upstream's v0.0.33 disclosure header (#6773, collapse the question prompt
+    from its header) is deliberately not ported: the fork card has its own
+    Questions header and no collapse affordance, and its tests assert the
+    shared outcome — question and options visible without interaction —
+    instead of upstream's toggle markup. Revisit if long prompts start
+    crowding the fork card.
   tier: 2
   files:
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
@@ -2774,6 +2765,10 @@
   watch:
     # data-fork-pending-user-input-strip on the muted vessel wrappers.
     - apps/web/src/components/chat/ChatComposer.tsx
+    # Upstream's panel tests resolve through the alias to the shadow; fenced
+    # there to assert the fork card's contract (see the declined-disclosure
+    # note in intent).
+    - apps/web/src/components/chat/ComposerPendingUserInputPanel.test.tsx
     # data-fork-pending-user-input-action on Previous and Next/Submit; the
     # outline + 24px restyle hangs off those attributes.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
@@ -2824,20 +2819,35 @@
 
 - id: mobile-current-checkout-branch
   intent: >
-    A thread started from Mobile in Current checkout mode records the branch
-    currently checked out on the selected environment, even when the user did
-    not explicitly open the branch picker. Immediate and offline-outbox
-    creation must resolve that current ref so web and desktop thread rows can
-    render branch identity. Detached HEAD remains null rather than borrowing
-    the default-branch display fallback. New worktree mode still requires its
-    explicit base-branch flow.
+    A thread QUEUED OFFLINE from Mobile in Current checkout mode records the
+    branch checked out at compose time, so web and desktop thread rows can
+    render branch identity for outbox threads too.
+
+    Scope shrank in the v0.0.33 sync: upstream shipped the immediate-creation
+    half natively (resolveProjectThreadCreationBranch fed by
+    currentCheckoutBranchName from the live status stream), which also
+    retired the fork's own resolver — its availableBranches.find(current)
+    source was cache-served (listRefs lags an out-of-band git switch) and
+    paginated (a current branch off the loaded page silently resolved to no
+    branch), and passing its result into upstream's resolver short-circuited
+    the correct live source. The one surviving fence is the offline-outbox
+    path, which reuses upstream's resolver and live source verbatim.
+
+    Upstream deliberately leaves queued tasks unlabeled — a task drained days
+    later runs against whatever is checked out then, so a queue-time guess
+    can pin a stale label. The fork keeps the compose-time checkout anyway:
+    its users triage threads from sidebar rows where an unlabeled thread
+    costs more day-to-day than a rarely-stale label, and an explicit picker
+    choice (which upstream does record) is exactly as stale-prone. Detached
+    HEAD, non-repository projects, and an unarrived status stay null rather
+    than fabricating a branch. New worktree mode still requires its explicit
+    base-branch flow.
   tier: 4
-  files:
-    - apps/mobile/src/custom/projectThreadBranch.ts
+  files: []
   shadows: []
   watch:
     - apps/mobile/src/features/threads/new-task-flow-provider.tsx
     - apps/mobile/src/features/threads/NewTaskDraftScreen.tsx
+    - apps/mobile/src/features/threads/projectThreadCreationValidation.ts
   verify:
-    - apps/mobile/src/custom/projectThreadBranch.test.ts
     - apps/web/src/__fork_guards__/mobileCurrentCheckoutBranch.test.ts

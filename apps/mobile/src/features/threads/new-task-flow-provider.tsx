@@ -29,7 +29,7 @@ import { useEnvironmentServerConfig, useProjects, useThreadShells } from "../../
 import type { TurnCommandMetadata } from "../../lib/commandMetadata";
 import type { DraftComposerImageAttachment } from "../../lib/composerImages";
 /* fork:begin mobile-current-checkout-branch — see .fork/customizations.yaml#mobile-current-checkout-branch */
-import { resolveProjectThreadBranch } from "../../custom/projectThreadBranch";
+import { resolveProjectThreadCreationBranch } from "./projectThreadCreationValidation";
 /* fork:end mobile-current-checkout-branch */
 import type { ModelOption, ProviderGroup } from "../../lib/modelOptions";
 import {
@@ -880,11 +880,18 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
           ...(projectTitle !== undefined ? { projectTitle } : {}),
           ...(projectCwd !== undefined ? { projectCwd } : {}),
           workspaceMode: mode,
-          /* fork:begin mobile-current-checkout-branch — see .fork/customizations.yaml#mobile-current-checkout-branch */
-          branch: resolveProjectThreadBranch({
+          /* fork:begin mobile-current-checkout-branch — see .fork/customizations.yaml#mobile-current-checkout-branch
+             Upstream records only an explicit picker choice here: a queued
+             task drains later against whatever is checked out then, so a
+             queue-time guess can pin a stale label. The fork keeps the
+             compose-time checkout deliberately — an unlabeled queued thread
+             costs more day-to-day than a rarely-stale one; the manifest
+             intent carries the full trade-off. Sourced from the live status
+             stream, not listRefs' cache-served `current` flag. */
+          branch: resolveProjectThreadCreationBranch({
             workspaceMode: mode,
-            selectedBranchName: workspaceSelection?.branch ?? null,
-            availableBranches,
+            selectedBranch: workspaceSelection?.branch ?? null,
+            currentCheckoutBranch: currentCheckoutBranchName,
           }),
           /* fork:end mobile-current-checkout-branch */
           worktreePath: mode === "worktree" ? null : (workspaceSelection?.worktreePath ?? null),
@@ -899,7 +906,7 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
       };
     },
     [
-      availableBranches,
+      currentCheckoutBranchName,
       editingPendingProject,
       editingPendingTask,
       selectedEnvironmentServerConfig,

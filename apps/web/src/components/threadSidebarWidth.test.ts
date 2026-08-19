@@ -51,8 +51,14 @@ describe("thread sidebar width", () => {
       "utf8",
     );
 
-    expect(sidebarSource).toContain("hidden h-7 w-fit min-w-0 shrink-0 items-center gap-1");
-    expect(sidebarSource).toContain("md:flex");
+    /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+       Upstream asserts its T3Wordmark link classes; the fork brand is its own
+       mark + APP_BASE_NAME lockup (fork-sidebar-chrome), truncating rather
+       than hiding, so the outcome under test — a brand that survives the
+       sidebar's minimum width — is carried by min-w-0 + truncate instead. */
+    expect(sidebarSource).toContain("sidebar-brand ml-auto h-6 w-fit min-w-0 shrink-0");
+    expect(sidebarSource).toContain('className="truncate');
+    /* fork:end fork-app-identity */
     expect(THREAD_SIDEBAR_MIN_WIDTH).toBe(13 * 16);
   });
 });

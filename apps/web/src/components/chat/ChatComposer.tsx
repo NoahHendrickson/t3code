@@ -97,9 +97,6 @@ import {
   ComposerShell,
 } from "../../custom/ComposerShell";
 /* fork:end fork-composer-shell */
-/* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
-import { useChatFileDrop } from "../../custom/chatFileDrop";
-/* fork:end fork-chat-file-drop */
 import { ProviderModelPicker } from "./ProviderModelPicker";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
@@ -2547,21 +2544,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     return () => window.removeEventListener("dragend", onWindowDragEnd);
   }, [isDragOverComposer]);
 
-  /* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
-  // The composer box above is not the only place a screenshot may be released:
-  // a file dropped anywhere over the chat column lands here too. The window
-  // listeners run after the composer's own, so a drop on the composer is still
-  // the composer's (this one bows out of it), and the shared drag state keeps
-  // the composer lit the whole time so where the file will land stays obvious.
-  useChatFileDrop({
-    enabled: activeThreadId !== null,
-    setDragActive: setIsDragOverComposer,
-    onFiles: (files) => {
-      void addComposerImages([...files]);
-      focusComposer();
-    },
-  });
-  /* fork:end fork-chat-file-drop */
   const handleInterruptPrimaryAction = useCallback(() => {
     void onInterrupt();
   }, [onInterrupt]);
@@ -2859,6 +2841,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         isPreparingWorktree={isPreparingWorktree}
         hasSendableContent={composerSendState.hasSendableContent}
         preserveComposerFocusOnPointerDown={isMobileViewport}
+        showSendWhileRunning={isMobileViewport}
         onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
         onInterrupt={handleInterruptPrimaryAction}
         onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}

@@ -145,6 +145,9 @@ import { ThreadPreviewMiniPlayer } from "./preview/ThreadPreviewMiniPlayer";
 import { subscribePreviewAction } from "./preview/previewActionBus";
 import { getConfiguredPreviewUrls } from "./preview/previewEmptyStateLogic";
 import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
+/* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
+import { useStrayFileDropGuard } from "~/custom/chatFileDrop";
+/* fork:end fork-chat-file-drop */
 import {
   selectThreadPreviewMiniPlayer,
   usePreviewMiniPlayerStore,
@@ -6321,6 +6324,12 @@ function ChatViewContent(props: ChatViewProps) {
     setDragActive: setIsWorkspaceFileDragActive,
     addFiles: (files) => composerRef.current?.addDroppedFiles(files),
   });
+  /* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
+  // Upstream's column handlers above own attaching; this window-level guard
+  // only swallows file drops they (or any nested target) did not claim, so a
+  // missed drop over the sidebar or header cannot navigate the app away.
+  useStrayFileDropGuard();
+  /* fork:end fork-chat-file-drop */
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
@@ -6399,15 +6408,6 @@ function ChatViewContent(props: ChatViewProps) {
             // inherits down to the mask without another measurement.
             style={{ "--fork-composer-inset": `${composerOverlayHeight}px` } as CSSProperties}
             /* fork:end fork-composer-shell */
-            /* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
-            // The whole column takes file drops, not just the composer docked
-            // in it: a screenshot released over the timeline attaches to the
-            // next message. ChatComposer owns the window listeners; this marks
-            // the region they accept. Upstream's own drop target below claims
-            // drops inside the column first (defaultPrevented), so the fork
-            // hook only backstops drops outside it.
-            data-fork-chat-drop-zone="true"
-            /* fork:end fork-chat-file-drop */
             data-chat-workspace-drop-target="true"
             onDragEnter={workspaceFileDropHandlers.onDragEnter}
             onDragOver={workspaceFileDropHandlers.onDragOver}

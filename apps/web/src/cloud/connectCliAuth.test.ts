@@ -96,6 +96,12 @@ describe("connectCliAuth", () => {
 
   it("falls back to the current URL when the authorize URL cannot be built", () => {
     vi.stubEnv("VITE_CLERK_PUBLISHABLE_KEY", TEST_PUBLISHABLE_KEY);
+    // fork:begin t3-connect-official-config — see .fork/customizations.yaml#t3-connect-official-config
+    // Blank the baked client id from the fork's tracked .env, same as the
+    // missing-client-id test above — with it set the authorize URL builds and
+    // the fallback under test never happens.
+    vi.stubEnv("VITE_CLERK_CLI_OAUTH_CLIENT_ID", "");
+    // fork:end t3-connect-official-config
 
     const connectUrl = "https://app.t3.codes/connect#state=state-1&challenge=challenge-1";
     expect(

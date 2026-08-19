@@ -498,7 +498,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         "**/node_modules/.bin/**",
       ]);
       assert.deepStrictEqual(mac.dmg, {
-        title: "T3 Code (Alpha) 1.2.3 Installer",
+        // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+        title: "no3y Code 1.2.3 Installer",
+        // fork:end fork-app-identity
         background: "dmg/dmg-background-latest.png",
         window: { width: 540, height: 412 },
         contents: [
@@ -511,7 +513,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // Linux must register the renderer schemes so the generated .desktop
       // entry advertises MimeType=x-scheme-handler/t3code; for OAuth deep links.
       assert.deepStrictEqual((linux.linux as Record<string, unknown>).protocols, [
-        { name: "T3 Code", schemes: ["t3code", "t3code-dev"] },
+        // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+        // Shared schemes, fork display name — same rationale as the macOS block.
+        { name: "no3y Code", schemes: ["t3code", "t3code-dev"] },
+        // fork:end fork-app-identity
       ]);
       for (const config of [mac, linux, win]) {
         assert.deepStrictEqual(config.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);

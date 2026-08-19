@@ -2133,10 +2133,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       target: [target],
       // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
       // Upstream's executableName would install /usr/bin/t3code over the real
-      // app's binary from a fork .deb/AppImage. StartupWMClass must match the
-      // runtime `class` switch (DesktopEnvironment.linuxWmClass, "t3code-fork"
-      // for packaged builds) or window grouping breaks.
+      // app's binary from a fork .deb/AppImage.
       executableName: "n3code",
+      // fork:end fork-app-identity
       icon: "icons",
       category: "Development",
       // electron-builder turns these into MimeType=x-scheme-handler/<scheme>;
@@ -2144,16 +2143,25 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       // t3code:// OAuth callbacks to the app.
       protocols: [
         {
-          name: "T3 Code",
+          // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+          // The schemes stay deliberately shared with upstream, so the OS can
+          // show two handlers — the display name must be the fork's, the same
+          // rationale the macOS block records.
+          name: "no3y Code",
+          // fork:end fork-app-identity
           schemes: ["t3code", "t3code-dev"],
         },
       ],
       desktop: {
         entry: {
+          // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+          // Must match the runtime `class` switch (DesktopEnvironment
+          // .linuxWmClass, "t3code-fork" for packaged builds) or window
+          // grouping breaks.
           StartupWMClass: "t3code-fork",
+          // fork:end fork-app-identity
         },
       },
-      // fork:end fork-app-identity
     };
   }
 

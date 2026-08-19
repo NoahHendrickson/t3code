@@ -62,12 +62,13 @@ const resolveResourcePath = Effect.fn("desktop.assets.resolveResourcePath")(func
 });
 
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-// Source-tree icons come from assets/fork, not upstream's assets/{dev,prod}:
-// on darwin dev this path is the runtime dock icon (DesktopAppIdentity), the
-// slot the retired DesktopEnvironment.developmentDockIconPath used to fill.
-// Development keeps the orange dock art so installed variants stay
-// distinguishable; the fork ships no per-channel ico/universal variants, so
-// both brands share the release ico and universal render.
+// Fork art in place of upstream's blueprint/black tables: on darwin dev this
+// is the runtime dock icon (DesktopAppIdentity), the slot the retired
+// DesktopEnvironment.developmentDockIconPath used to fill. Dev keeps the
+// orange dock art so installed variants stay distinguishable; the fork ships
+// no per-channel ico/universal variants, so both brands share the release
+// ico and universal render. Only the values and the directory segment below
+// are fork-owned — the resolver logic is upstream's verbatim.
 const sourceTreeIconFileNames = {
   dev: {
     ico: "n3-windows.ico",
@@ -80,6 +81,8 @@ const sourceTreeIconFileNames = {
     universalPng: "n3-universal-1024.png",
   },
 } as const;
+const sourceTreeIconDirectory = "fork";
+// fork:end fork-app-identity
 
 function resolveSourceTreeIconPath(
   environment: DesktopEnvironment.DesktopEnvironment["Service"],
@@ -94,9 +97,10 @@ function resolveSourceTreeIconPath(
       : environment.platform === "darwin"
         ? fileNames.macPng
         : fileNames.universalPng;
-  return environment.path.join(environment.rootDir, "assets", "fork", fileName);
+  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+  return environment.path.join(environment.rootDir, "assets", sourceTreeIconDirectory, fileName);
+  // fork:end fork-app-identity
 }
-// fork:end fork-app-identity
 
 const resolveIconPath = Effect.fn("desktop.assets.resolveIconPath")(function* (
   ext: keyof DesktopIconPaths,
