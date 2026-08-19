@@ -1,208 +1,75 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+/** Unit tests for the stray file-drop navigation guard — see
+ * `.fork/customizations.yaml#fork-chat-file-drop`. */
+import { describe, expect, it } from "vite-plus/test";
 
-import {
-  makeChatFileDropHandlers,
-  type ChatFileDragEvent,
-  type ChatFileDropHost,
-} from "./chatFileDrop";
+import { makeStrayFileDropGuardHandlers, type StrayFileDragEvent } from "./chatFileDrop";
 
-/** Stand in for "inside the chat column" without a DOM: the target is the answer. */
-const INSIDE = { name: "inside-chat" } as unknown as EventTarget;
-const OTHER_INSIDE = { name: "also-inside-chat" } as unknown as EventTarget;
-const OUTSIDE = { name: "outside-chat" } as unknown as EventTarget;
-
-function makeHost() {
-  const host = {
-    isInsideDropZone: (target: EventTarget | null) => target === INSIDE || target === OTHER_INSIDE,
-    onFiles: vi.fn(),
-    setDragActive: vi.fn(),
-  } satisfies ChatFileDropHost;
-  return { host, handlers: makeChatFileDropHandlers(host) };
-}
-
-function dragEvent(
-  input: {
-    target?: EventTarget;
-    relatedTarget?: EventTarget | null;
-    types?: ReadonlyArray<string>;
-    files?: ReadonlyArray<File>;
-    defaultPrevented?: boolean;
-    dataTransfer?: null;
-  } = {},
-): ChatFileDragEvent & { dropEffect: string } {
-  const dropEffect = { value: "none" };
+function makeEvent(input: {
+  types?: ReadonlyArray<string>;
+  defaultPrevented?: boolean;
+}): StrayFileDragEvent & { prevented: boolean; dropEffect: string | null } {
   const event = {
+    prevented: false,
+    dropEffect: null as string | null,
     dataTransfer:
-      input.dataTransfer === null
+      input.types === undefined
         ? null
         : {
-            types: input.types ?? ["Files"],
-            files: input.files ?? [],
+            types: input.types,
             get dropEffect() {
-              return dropEffect.value;
+              return event.dropEffect ?? "";
             },
-            set dropEffect(next: string) {
-              dropEffect.value = next;
+            set dropEffect(value: string) {
+              event.dropEffect = value;
             },
           },
-    target: input.target ?? INSIDE,
-    relatedTarget: input.relatedTarget ?? null,
     defaultPrevented: input.defaultPrevented ?? false,
-    preventDefault: vi.fn(() => {
-      Object.assign(event, { defaultPrevented: true });
-    }),
-    get dropEffect() {
-      return dropEffect.value;
+    preventDefault() {
+      event.prevented = true;
     },
   };
-  return event as unknown as ChatFileDragEvent & { dropEffect: string };
+  return event;
 }
 
-const imageFile = (name: string) => new File([new Uint8Array([1])], name, { type: "image/png" });
+describe("stray file-drop guard", () => {
+  const handlers = makeStrayFileDropGuardHandlers();
 
-describe("makeChatFileDropHandlers", () => {
-  it("lights the drag state over the chat column and allows the drop", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent());
-    expect(host.setDragActive).toHaveBeenLastCalledWith(true);
-
-    const over = dragEvent();
+  it("swallows an unclaimed file drag so the browser cannot navigate", () => {
+    const over = makeEvent({ types: ["Files"] });
     handlers.onDragOver(over);
-    expect(over.preventDefault).toHaveBeenCalled();
-    expect(over.dropEffect).toBe("copy");
-    expect(host.setDragActive).toHaveBeenLastCalledWith(true);
+    // preventDefault on dragover is what makes `drop` fire at all; "none"
+    // keeps the cursor honest that nothing will be attached here.
+    expect(over.prevented).toBe(true);
+    expect(over.dropEffect).toBe("none");
+
+    const drop = makeEvent({ types: ["Files"] });
+    handlers.onDrop(drop);
+    expect(drop.prevented).toBe(true);
+  });
+
+  it("leaves a claimed drag to the target that claimed it", () => {
+    // Upstream's chat-column handlers (and any nested target) run first in
+    // the bubble phase; defaultPrevented is their claim.
+    const over = makeEvent({ types: ["Files"], defaultPrevented: true });
+    handlers.onDragOver(over);
+    expect(over.prevented).toBe(false);
+    expect(over.dropEffect).toBeNull();
+
+    const drop = makeEvent({ types: ["Files"], defaultPrevented: true });
+    handlers.onDrop(drop);
+    expect(drop.prevented).toBe(false);
   });
 
   it("ignores drags that carry no files", () => {
-    const { host, handlers } = makeHost();
-
-    const mention = dragEvent({ types: ["application/x-t3code-composer-mention"] });
-    handlers.onDragEnter(mention);
-    handlers.onDragOver(mention);
-    handlers.onDragLeave(mention);
-    handlers.onDrop(mention);
-
-    expect(host.setDragActive).not.toHaveBeenCalled();
-    expect(host.onFiles).not.toHaveBeenCalled();
-    expect(mention.preventDefault).not.toHaveBeenCalled();
-  });
-
-  it("holds the drag state while the pointer crosses nested chat elements", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent());
-    // Leaving one child of the column for another fires a leave too; the
-    // element being entered is what says the drag is still over the chat.
-    handlers.onDragLeave(dragEvent({ target: INSIDE, relatedTarget: OTHER_INSIDE }));
-
-    expect(host.setDragActive).toHaveBeenLastCalledWith(true);
-  });
-
-  it("clears the drag state when the drag leaves the window", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent());
-    // No element is entered, so this leave is the only event that reports it.
-    handlers.onDragLeave(dragEvent({ target: INSIDE, relatedTarget: null }));
-
-    expect(host.setDragActive).toHaveBeenLastCalledWith(false);
-  });
-
-  it("hands every file dropped on the chat column to the host", () => {
-    const { host, handlers } = makeHost();
-    const files = [imageFile("shot.png"), imageFile("other.png")];
-
-    handlers.onDragEnter(dragEvent());
-    const drop = dragEvent({ files });
-    handlers.onDrop(drop);
-
-    expect(drop.preventDefault).toHaveBeenCalled();
-    expect(host.onFiles).toHaveBeenCalledWith(files);
-    expect(host.setDragActive).toHaveBeenLastCalledWith(false);
-  });
-
-  it("stays dark and refuses the drop outside the chat column", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent({ target: OUTSIDE }));
-    const over = dragEvent({ target: OUTSIDE });
+    // The file tree's mention channel and text drags must keep their own
+    // semantics untouched.
+    const over = makeEvent({ types: ["text/plain"] });
     handlers.onDragOver(over);
+    expect(over.prevented).toBe(false);
 
-    expect(host.setDragActive).not.toHaveBeenCalledWith(true);
-    expect(over.dropEffect).toBe("none");
-  });
-
-  it("swallows a drop outside the chat column so the app cannot navigate to it", () => {
-    const { host, handlers } = makeHost();
-
-    // preventDefault on both is what stops the browser opening the file: the
-    // dragover one is what makes the drop event fire at all.
-    const over = dragEvent({ target: OUTSIDE });
-    handlers.onDragOver(over);
-    const drop = dragEvent({ target: OUTSIDE, files: [imageFile("shot.png")] });
-    handlers.onDrop(drop);
-
-    expect(over.preventDefault).toHaveBeenCalled();
-    expect(drop.preventDefault).toHaveBeenCalled();
-    expect(host.onFiles).not.toHaveBeenCalled();
-  });
-
-  it("follows the pointer out of the chat column mid-drag", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent());
-    handlers.onDragEnter(dragEvent({ target: OUTSIDE }));
-    expect(host.setDragActive).toHaveBeenLastCalledWith(false);
-
-    handlers.onDragOver(dragEvent({ target: INSIDE }));
-    expect(host.setDragActive).toHaveBeenLastCalledWith(true);
-  });
-
-  it("leaves a drop a nested target already claimed alone", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent());
-    handlers.onDrop(dragEvent({ files: [imageFile("shot.png")], defaultPrevented: true }));
-
-    expect(host.onFiles).not.toHaveBeenCalled();
-    expect(host.setDragActive).toHaveBeenLastCalledWith(false);
-  });
-
-  it("does not restate the drop effect a nested target chose", () => {
-    const { handlers } = makeHost();
-
-    const over = dragEvent({ defaultPrevented: true });
-    handlers.onDragOver(over);
-
-    expect(over.preventDefault).not.toHaveBeenCalled();
-    expect(over.dropEffect).toBe("none");
-  });
-
-  it("clears the drag state when a drag ends without a leave", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent());
-    handlers.onDragEnd();
-
-    expect(host.setDragActive).toHaveBeenLastCalledWith(false);
-  });
-
-  it("ignores an event with no data transfer", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDragEnter(dragEvent({ dataTransfer: null }));
-    handlers.onDrop(dragEvent({ dataTransfer: null }));
-
-    expect(host.setDragActive).not.toHaveBeenCalled();
-    expect(host.onFiles).not.toHaveBeenCalled();
-  });
-
-  it("does not raise an empty drop", () => {
-    const { host, handlers } = makeHost();
-
-    handlers.onDrop(dragEvent({ files: [] }));
-
-    expect(host.onFiles).not.toHaveBeenCalled();
+    const bare = makeEvent({});
+    handlers.onDragOver(bare);
+    handlers.onDrop(bare);
+    expect(bare.prevented).toBe(false);
   });
 });

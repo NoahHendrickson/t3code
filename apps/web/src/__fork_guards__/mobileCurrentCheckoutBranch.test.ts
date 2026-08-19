@@ -29,10 +29,19 @@ function readCustomizationHunks(source: string): string {
 }
 
 describe("fork guard: mobile-current-checkout-branch", () => {
-  it("applies the resolver to immediate and offline creation", () => {
-    expect(readCustomizationHunks(draftScreen)).toContain(
-      "const selectedBranchName = resolveProjectThreadBranch({",
-    );
-    expect(readCustomizationHunks(flowProvider)).toContain("branch: resolveProjectThreadBranch({");
+  it("records the live checkout on queued tasks via upstream's resolver", () => {
+    // Immediate creation is upstream's own path now
+    // (resolveProjectThreadCreationBranch + currentCheckoutBranchName); the
+    // fork's one surviving divergence is the offline-outbox path, which
+    // upstream deliberately leaves unlabeled. The fence must feed upstream's
+    // resolver from the live status stream — never from listRefs'
+    // cache-served `current` flag, which the retired fork resolver read.
+    const hunks = readCustomizationHunks(flowProvider);
+    expect(hunks).toContain("branch: resolveProjectThreadCreationBranch({");
+    expect(hunks).toContain("currentCheckoutBranch: currentCheckoutBranchName");
+    expect(hunks).not.toContain("availableBranches");
+    // The draft screen carries no fork hunks anymore; a reappearing one means
+    // a sync resurrected the retired resolver.
+    expect(readCustomizationHunks(draftScreen)).toBe("");
   });
 });

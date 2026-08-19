@@ -78,6 +78,7 @@ import {
   Clock as PhClock,
   ClockCounterClockwise as PhClockCounterClockwise,
   Cloud as PhCloud,
+  CloudArrowDown as PhCloudArrowDown,
   CloudArrowUp as PhCloudArrowUp,
   Code as PhCode,
   Columns as PhColumns,
@@ -126,6 +127,7 @@ import {
   Lightbulb as PhLightbulb,
   Link as PhLink,
   LinkSimple as PhLinkSimple,
+  LinkBreak as PhLinkBreak,
   ListChecks as PhListChecks,
   ListMagnifyingGlass as PhListMagnifyingGlass,
   Lock as PhLock,
@@ -148,7 +150,12 @@ import {
   PlugsConnected as PhPlugsConnected,
   Plus as PhPlus,
   PlusCircle as PhPlusCircle,
+  PencilSimple as PhPencilSimple,
   Prohibit as PhProhibit,
+  PuzzlePiece as PhPuzzlePiece,
+  ShieldCheck as PhShieldCheck,
+  Smiley as PhSmiley,
+  Tag as PhTag,
   Pulse as PhPulse,
   PushPin as PhPushPin,
   PushPinSlash as PhPushPinSlash,
@@ -472,4 +479,12 @@ export const BookOpenIcon = icon("book-open", PhBookOpen, "duotone");
 export const MoonIcon = icon("moon", PhMoon, "duotone");
 export const SunIcon = icon("sun", PhSun, "duotone");
 export const ChartNoAxesColumnIcon = icon("chart-no-axes-column", PhChartBar, "duotone");
+export const Unlink2 = icon("unlink-2", PhLinkBreak, "duotone");
+export const CloudDownloadIcon = icon("cloud-download", PhCloudArrowDown, "duotone");
+export const PencilIcon = icon("pencil", PhPencilSimple, "duotone");
+export const CircleSlashIcon = icon("circle-slash", PhProhibit, "duotone");
+export const SmilePlusIcon = icon("smile-plus", PhSmiley, "duotone");
+export const TagIcon = icon("tag", PhTag, "duotone");
+export const ShieldCheckIcon = icon("shield-check", PhShieldCheck, "duotone");
+export const BlocksIcon = icon("blocks", PhPuzzlePiece, "duotone");
 export const XCircleIcon = CircleXIcon;

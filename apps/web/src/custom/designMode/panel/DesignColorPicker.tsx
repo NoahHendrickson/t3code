@@ -1,3 +1,4 @@
+// oxlint-disable t3code/no-native-title-tooltip -- Vendored design-mode island (see .fork/customizations.yaml#fork-design-mode); native titles kept to stay close to the Forge source.
 import { useCallback, useRef, useState, type PointerEvent } from "react";
 
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";

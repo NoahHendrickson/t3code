@@ -126,9 +126,9 @@ export const RightPanelMaximizeControl = memo(function RightPanelMaximizeControl
             size="sm"
           >
             {maximized ? (
-              <Minimize2Icon className="size-3.5" />
+              <Minimize2Icon className="size-4" />
             ) : (
-              <Maximize2Icon className="size-3.5" />
+              <Maximize2Icon className="size-4" />
             )}
           </Toggle>
         }

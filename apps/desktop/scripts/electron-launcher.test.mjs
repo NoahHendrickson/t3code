@@ -3,6 +3,7 @@ import { assert, describe, it } from "vite-plus/test";
 import {
   makeDevelopmentLauncherScript,
   resolveElectronBinaryPath,
+  resolveMacLauncherIconPaths,
   resolveMacLauncherPaths,
 } from "./electron-launcher.mjs";
 
@@ -77,5 +78,17 @@ describe("electron development launcher", () => {
       "exec '/repo/apps/desktop/.electron-runtime/T3 Code (Dev).app/Contents/MacOS/Electron'",
     );
     assert.notInclude(script, "node_modules/electron");
+  });
+
+  it("derives launcher icons from canonical development and production assets", () => {
+    const development = resolveMacLauncherIconPaths("/runtime", true);
+    const production = resolveMacLauncherIconPaths("/runtime", false);
+
+    // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+    assert.match(development.sourceIconPath, /assets\/fork\/n3-dev-macos-dock\.png$/);
+    assert.equal(development.generatedIconPath, "/runtime/icon-dev.icns");
+    assert.match(production.sourceIconPath, /assets\/fork\/n3-macos-dock\.png$/);
+    assert.equal(production.generatedIconPath, "/runtime/icon-prod.icns");
+    // fork:end fork-app-identity
   });
 });

@@ -1,3 +1,6 @@
+// @effect-diagnostics nodeBuiltinImport:off - Regression coverage compares the sidebar component with its width contract.
+import * as NodeFS from "node:fs";
+
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -40,5 +43,22 @@ describe("thread sidebar width", () => {
       THREAD_SIDEBAR_MIN_WIDTH,
     );
     /* fork:end narrow-workspace-layout */
+  });
+
+  it("shows the desktop wordmark across the sidebar's full legal width range", () => {
+    const sidebarSource = NodeFS.readFileSync(
+      new URL("./sidebar/SidebarChrome.tsx", import.meta.url),
+      "utf8",
+    );
+
+    /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+       Upstream asserts its T3Wordmark link classes; the fork brand is its own
+       mark + APP_BASE_NAME lockup (fork-sidebar-chrome), truncating rather
+       than hiding, so the outcome under test — a brand that survives the
+       sidebar's minimum width — is carried by min-w-0 + truncate instead. */
+    expect(sidebarSource).toContain("sidebar-brand ml-auto h-6 w-fit min-w-0 shrink-0");
+    expect(sidebarSource).toContain('className="truncate');
+    /* fork:end fork-app-identity */
+    expect(THREAD_SIDEBAR_MIN_WIDTH).toBe(13 * 16);
   });
 });
