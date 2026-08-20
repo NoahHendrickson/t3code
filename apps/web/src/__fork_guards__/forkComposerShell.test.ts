@@ -36,6 +36,7 @@ function readSibling(relativePath: string): string {
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
 const shellCss = readSibling("../custom/ComposerShell.css");
+const palettes = readSibling("../theme.custom.palettes.css");
 const styles = `${theme}\n${shellCss}`;
 const rules = cssRules(styles);
 const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
@@ -336,6 +337,37 @@ describe("fork guard: fork-composer-shell", () => {
     // upstream's unpainted flow.
     expect(vessel?.selector).toContain(".dark");
     expect(styles).toMatch(/--fork-composer-vessel-bg:/u);
+  });
+
+  it("hovers the ghost controls on the chip lift, not upstream's accent", () => {
+    // `--accent` is bit-identical to `--fork-composer-bg` on the Cool palettes,
+    // so upstream's ghost hover paints the model / effort trigger the colour the
+    // composer already wears. The chips one row up hover on the chip lift.
+    const hover = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-model-controls]") &&
+        rule.selector.includes(":hover") &&
+        rule.body.includes("background"),
+    );
+    expect(hover?.selector).toContain('[data-fork-composer-control-row-slot="left"]');
+    expect(hover?.body).toMatch(/background:\s*var\(--fork-context-chip-bg-hover\)/u);
+    // Open triggers hold the fill; disabled ones never take it.
+    expect(hover?.selector).toContain("[data-popup-open]");
+    expect(hover?.selector).toContain(":not(:disabled)");
+    // The chip owns its own per-mode hover hue.
+    expect(hover?.selector).toContain(":not([data-fork-composer-mode-chip])");
+    // The rule reads a per-palette token, so every palette has to declare one
+    // on its stage block or that theme falls back to the default dark lift.
+    const paletteRules = cssRules(palettes);
+    for (const palette of ["cool-dark", "cool-darker", "neutral-dark", "neutral-darker"]) {
+      const stage = paletteRules.find(
+        (rule) =>
+          rule.selector.includes(`[data-fork-theme="${palette}"]`) &&
+          rule.body.includes("--fork-context-chip-bg-hover:"),
+      );
+      expect(stage, palette).toBeDefined();
+    }
+    expect(theme).toMatch(/--fork-context-chip-bg-hover:/u);
   });
 
   it("keeps the mode chip colour-only on shared geometry and maps every mode to tokens", () => {
