@@ -820,12 +820,19 @@
     /draft/$id races the draft route's missing-session redirect to `/`,
     and `_chat.index` immediately opens a fresh draft, so the card
     animates out and back in while the workspace stays on "New thread".
+
+    The status slot on a draft row draws a pencil (SidebarV2DraftMark)
+    instead of the idle ring. A draft is inert by construction, so the ring
+    read as "nothing happening" when the truth is "nothing sent yet"; the
+    pencil outranks status for the same reason the woke clock does — it is a
+    row kind, not one of the five statuses.
   tier: 4
   files:
     - apps/web/src/custom/sidebarV2DraftRows.ts
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
+    - apps/web/src/custom/SidebarV2StatusIndicator.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2DraftRows.test.ts
     - apps/web/src/custom/sidebarV2DraftRows.test.ts

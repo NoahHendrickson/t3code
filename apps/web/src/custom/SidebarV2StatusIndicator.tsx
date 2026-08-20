@@ -1,7 +1,7 @@
 // Imported through the shim's own path rather than the `lucide-react` alias.
 // This file is fork-owned, so there is no upstream import site to preserve —
 // the alias exists to keep *upstream's* imports untouched, not this one.
-import { AlarmClockIcon } from "./icons/lucide-phosphor";
+import { AlarmClockIcon, PenLineIcon } from "./icons/lucide-phosphor";
 import type { CSSProperties } from "react";
 import { cn } from "~/lib/utils";
 
@@ -247,6 +247,19 @@ export function SidebarV2WokeMark() {
   );
 }
 
+/** Draft — a thread that exists only client-side until its first send. Like
+    Woke it is a row *kind* rather than one of the five statuses, so it keeps a
+    glyph instead of a dot: a pencil says "unsent, still being written", which
+    no hue in the settled palette can. Muted like the idle ring, since a draft
+    is waiting on the user and not on the agent. */
+export function SidebarV2DraftMark() {
+  return (
+    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
+      <PenLineIcon className="size-3 text-muted-foreground/70" />
+    </span>
+  );
+}
+
 /** Monitoring — background watch work that is still alive but not actively
     turning. Same 8px / 14px geometry as the other dots so the title column
     stays aligned; the slow white opacity breath (50% → 20%) is the signal,
@@ -272,7 +285,23 @@ export function SidebarV2StatusMark(props: {
   readonly rainSeed: string;
   /** Card rows draw the idle ring; slim only paints a mark when something is live. */
   readonly idle?: "ring" | "empty";
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  /** Unpromoted drafts take the pencil ahead of any status: the row is inert
+      until its first send, so an idle ring here reads as "nothing happening"
+      when the truth is "nothing sent yet". */
+  readonly isDraft?: boolean;
+  /* fork:end sidebar-v2-draft-rows */
 }) {
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+  if (props.isDraft === true) {
+    return (
+      <>
+        <span className="sr-only">Draft</span>
+        <SidebarV2DraftMark />
+      </>
+    );
+  }
+  /* fork:end sidebar-v2-draft-rows */
   const status = props.status;
   if (status === null) {
     if (props.idle === "ring") {

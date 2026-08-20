@@ -18,6 +18,7 @@ function readSibling(relativePath: string): string {
 }
 
 const sidebar = readSibling("../components/Sidebar.tsx");
+const indicator = readSibling("../custom/SidebarV2StatusIndicator.tsx");
 
 describe("fork guard: sidebar-v2-draft-rows", () => {
   it("folds unpromoted drafts into the active partition", () => {
@@ -73,6 +74,17 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
     expect(discardBody.indexOf("await navigateToThread(")).toBeLessThan(
       discardBody.indexOf("clearDraftThread(draftId)"),
     );
+  });
+
+  it("marks draft rows with the pencil instead of an idle ring", () => {
+    // Both row variants, since either one falling back to the idle ring makes
+    // a draft indistinguishable from a thread with nothing pending.
+    const draftMark = /<SidebarV2StatusMark\b[^>]*isDraft=\{showDiscardDraft\}[^>]*\/>/gu;
+    expect(sidebar.match(draftMark)?.length ?? 0).toBe(2);
+    expect(indicator).toContain("export function SidebarV2DraftMark");
+    // The pencil outranks status: a pre-promotion draft is inert, so an idle
+    // ring here would read as "nothing happening" rather than "nothing sent".
+    expect(indicator).toMatch(/if \(props\.isDraft === true\)[\s\S]{0,200}SidebarV2DraftMark/u);
   });
 
   it("computes trailing hover actions once on the card", () => {
