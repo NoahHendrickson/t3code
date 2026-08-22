@@ -646,6 +646,27 @@
   color: #a6a6a6;
 }
 
+/* Hover / open fill. Upstream's ghost variant paints `--accent`, which is the
+   wrong channel on this row: on Cool Dark and Cool Darker `--accent` is
+   bit-identical to `--fork-composer-bg`, so hovering the model or effort
+   trigger lands it on a fill the composer already wears rather than lifting it
+   off the vessel — the same trap the drag-over state hit above. The chip-hover
+   lift is the fork's per-theme "raised control" step and is what the branch and
+   workspace chips one row up use on hover, so the whole composer hovers on one
+   channel instead of two.
+
+   The mode chip opts out: it is the only filled control here, and its fill and
+   hover are per-mode hues owned by `custom/ComposerShell.css`. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]):is(
+    :hover,
+    [data-pressed],
+    [data-popup-open]
+  ):not(:disabled) {
+  background: var(--fork-context-chip-bg-hover);
+}
+
 /* Send and stop are the one exception to the pill rule: 24px squares at a 4px
    radius, drawn as the only filled controls in the composer. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {

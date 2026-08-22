@@ -1915,7 +1915,11 @@
     auto green, full access yellow, auto-accept edits purple, supervised red.
     The interaction toggles are text-only ghost chips. Mode,
     Build, model, and effort all share 12px medium on a 16px line and 4px
-    inline padding (including the runtime-mode chip). The composer's effort
+    inline padding (including the runtime-mode chip). They also share one hover
+    channel — the chip lift the branch and workspace chips use, not upstream's
+    ghost `--accent`, which the Cool palettes resolve to the composer's own
+    prompt-surface fill. The runtime-mode chip is the one opt-out; its hover is
+    a per-mode hue. The composer's effort
     trigger joins its trait labels with a plain space ("High 1M") while
     Settings keeps upstream's " · " separator. Geometry is CSS-owned:
     theme.custom.css styles every ghost control under the mode and model
