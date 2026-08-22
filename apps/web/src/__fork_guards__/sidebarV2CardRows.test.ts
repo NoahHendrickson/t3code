@@ -263,9 +263,9 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // share one edge. 14px slot: at 16px the rain read as hanging below the
     // title. overflow-hidden is load-bearing — the native grid is taller.
     expect(typeof SidebarV2IdleMark).toBe("function");
-    // Card and slim both go through SidebarV2StatusMark; idle="ring" is the
-    // card's hollow-ring path so the leading column is never empty.
-    expect(sidebarV2).toContain('idle="ring"');
+    // Card and slim both go through SidebarV2StatusMark; a regular idle card
+    // takes the hollow-ring path so the leading column is never empty.
+    expect(sidebarV2).toContain('idle={showDiscardDraft ? "draft" : "ring"}');
     expect(sidebarV2).toContain("<SidebarV2StatusMark");
     // The box is the design's 16px (113:725 `indicator`), taken from the shared
     // alignment module; the marks inside keep their own sizes and centre in it

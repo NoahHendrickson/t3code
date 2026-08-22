@@ -824,8 +824,7 @@
     The status slot on a draft row draws a pencil (SidebarV2DraftMark)
     instead of the idle ring. A draft is inert by construction, so the ring
     read as "nothing happening" when the truth is "nothing sent yet"; the
-    pencil outranks status for the same reason the woke clock does — it is a
-    row kind, not one of the five statuses.
+    pencil is the draft-specific idle glyph.
   tier: 4
   files:
     - apps/web/src/custom/sidebarV2DraftRows.ts

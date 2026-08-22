@@ -224,7 +224,7 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // card rows drawing the idle ring and slim rows leaving the slot empty.
     const statusMark = (idle: string) =>
       new RegExp(
-        `<SidebarV2StatusMark\\b[^>]*status=\\{topStatus\\}[^>]*idle="${idle}"[^>]*/>`,
+        `<SidebarV2StatusMark\\b[^>]*status=\\{topStatus\\}[^>]*idle=\\{showDiscardDraft \\? "draft" : "${idle}"\\}[^>]*/>`,
         "u",
       );
     expect(sidebarV2).toMatch(statusMark("ring"));

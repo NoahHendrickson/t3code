@@ -79,12 +79,15 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
   it("marks draft rows with the pencil instead of an idle ring", () => {
     // Both row variants, since either one falling back to the idle ring makes
     // a draft indistinguishable from a thread with nothing pending.
-    const draftMark = /<SidebarV2StatusMark\b[^>]*isDraft=\{showDiscardDraft\}[^>]*\/>/gu;
+    const draftMark =
+      /<SidebarV2StatusMark\b[^>]*idle=\{showDiscardDraft \? "draft" : "(?:empty|ring)"\}[^>]*\/>/gu;
     expect(sidebar.match(draftMark)?.length ?? 0).toBe(2);
     expect(indicator).toContain("export function SidebarV2DraftMark");
-    // The pencil outranks status: a pre-promotion draft is inert, so an idle
-    // ring here would read as "nothing happening" rather than "nothing sent".
-    expect(indicator).toMatch(/if \(props\.isDraft === true\)[\s\S]{0,200}SidebarV2DraftMark/u);
+    // A pre-promotion draft is inert, so the pencil belongs in the existing
+    // idle channel instead of introducing a separate status-precedence flag.
+    expect(indicator).toContain('readonly idle?: "ring" | "empty" | "draft";');
+    expect(indicator).toMatch(/if \(props\.idle === "draft"\)[\s\S]{0,200}SidebarV2DraftMark/u);
+    expect(indicator).not.toContain("isDraft");
   });
 
   it("computes trailing hover actions once on the card", () => {

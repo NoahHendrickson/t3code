@@ -247,11 +247,10 @@ export function SidebarV2WokeMark() {
   );
 }
 
-/** Draft — a thread that exists only client-side until its first send. Like
-    Woke it is a row *kind* rather than one of the five statuses, so it keeps a
-    glyph instead of a dot: a pencil says "unsent, still being written", which
-    no hue in the settled palette can. Muted like the idle ring, since a draft
-    is waiting on the user and not on the agent. */
+/** Draft — a thread that exists only client-side until its first send. A pencil
+    says "unsent, still being written", which no hue in the settled palette can.
+    Muted like the idle ring, since a draft is waiting on the user and not on
+    the agent. */
 export function SidebarV2DraftMark() {
   return (
     <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
@@ -283,27 +282,20 @@ export type SidebarV2TopStatusMark =
 export function SidebarV2StatusMark(props: {
   readonly status: SidebarV2TopStatusMark | null;
   readonly rainSeed: string;
-  /** Card rows draw the idle ring; slim only paints a mark when something is live. */
-  readonly idle?: "ring" | "empty";
-  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-  /** Unpromoted drafts take the pencil ahead of any status: the row is inert
-      until its first send, so an idle ring here reads as "nothing happening"
-      when the truth is "nothing sent yet". */
-  readonly isDraft?: boolean;
-  /* fork:end sidebar-v2-draft-rows */
+  /** Card rows draw the idle ring; slim leaves the slot empty. Unpromoted
+      drafts use the pencil as their idle glyph. */
+  readonly idle?: "ring" | "empty" | "draft";
 }) {
-  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-  if (props.isDraft === true) {
-    return (
-      <>
-        <span className="sr-only">Draft</span>
-        <SidebarV2DraftMark />
-      </>
-    );
-  }
-  /* fork:end sidebar-v2-draft-rows */
   const status = props.status;
   if (status === null) {
+    if (props.idle === "draft") {
+      return (
+        <>
+          <span className="sr-only">Draft</span>
+          <SidebarV2DraftMark />
+        </>
+      );
+    }
     if (props.idle === "ring") {
       return (
         <>

@@ -1161,8 +1161,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               <SidebarV2StatusMark
                 status={topStatus}
                 rainSeed={threadKey}
-                idle="empty"
-                isDraft={showDiscardDraft}
+                idle={showDiscardDraft ? "draft" : "empty"}
               />
             </span>
             {/* fork:end sidebar-v2-card-rows */}
@@ -1349,8 +1348,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 <SidebarV2StatusMark
                   status={topStatus}
                   rainSeed={threadKey}
-                  idle="ring"
-                  isDraft={showDiscardDraft}
+                  idle={showDiscardDraft ? "draft" : "ring"}
                 />
                 {/* fork:end sidebar-v2-card-rows */}
               </span>
