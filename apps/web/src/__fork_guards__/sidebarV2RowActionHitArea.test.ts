@@ -222,12 +222,13 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     );
     // Idle and live marks alike render through the shared status-mark switch,
     // card rows drawing the idle ring and slim rows leaving the slot empty.
-    expect(sidebarV2).toContain(
-      '<SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="ring" />',
-    );
-    expect(sidebarV2).toContain(
-      '<SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="empty" />',
-    );
+    const statusMark = (idle: string) =>
+      new RegExp(
+        `<SidebarV2StatusMark\\b[^>]*status=\\{topStatus\\}[^>]*idle=\\{showDiscardDraft \\? "draft" : "${idle}"\\}[^>]*/>`,
+        "u",
+      );
+    expect(sidebarV2).toMatch(statusMark("ring"));
+    expect(sidebarV2).toMatch(statusMark("empty"));
     // The trailing cell still fades elapsed on a working row when the hover
     // actions will replace it; that decoration must stay out of the hit path
     // for the same reason status used to. The fade class is gated separately

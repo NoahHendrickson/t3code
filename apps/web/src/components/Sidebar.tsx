@@ -1158,7 +1158,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 Fixed 14px leading slot (same as the card) so a monitoring mark
                 cannot shove the title 24px right of every neighboring slim row. */}
             <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
-              <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="empty" />
+              <SidebarV2StatusMark
+                status={topStatus}
+                rainSeed={threadKey}
+                idle={showDiscardDraft ? "draft" : "empty"}
+              />
             </span>
             {/* fork:end sidebar-v2-card-rows */}
             {title}
@@ -1341,7 +1345,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 )}
               >
                 {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
-                <SidebarV2StatusMark status={topStatus} rainSeed={threadKey} idle="ring" />
+                <SidebarV2StatusMark
+                  status={topStatus}
+                  rainSeed={threadKey}
+                  idle={showDiscardDraft ? "draft" : "ring"}
+                />
                 {/* fork:end sidebar-v2-card-rows */}
               </span>
               {title}
