@@ -30,12 +30,9 @@ const repoRoot = NodePath.resolve(
 
 const UPSTREAM_GATE = "github.repository == 'pingdotgg/t3code'";
 
-/** Split the `jobs:` mapping into one entry per job, keyed by job id. */
-const readReleaseJobs = (): ReadonlyArray<{ id: string; body: string }> => {
-  const yaml = NodeFS.readFileSync(
-    NodePath.join(repoRoot, ".github/workflows/release.yml"),
-    "utf8",
-  );
+/** Split a workflow's `jobs:` mapping into one entry per job, keyed by job id. */
+const readWorkflowJobs = (workflow: string): ReadonlyArray<{ id: string; body: string }> => {
+  const yaml = NodeFS.readFileSync(NodePath.join(repoRoot, ".github/workflows", workflow), "utf8");
   const jobsSection = yaml.slice(yaml.search(/^jobs:$/mu));
   const jobs: Array<{ id: string; body: string }> = [];
   // Job ids sit at exactly two spaces of indent; anything deeper is job body.
@@ -51,11 +48,20 @@ const readReleaseJobs = (): ReadonlyArray<{ id: string; body: string }> => {
   return jobs;
 };
 
+const readReleaseJobs = () => readWorkflowJobs("release.yml");
+
 describe("fork guard: release-upstream-only", () => {
   it("gates both release entry points on the upstream repository", () => {
     const jobs = readReleaseJobs();
     const gated = jobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id);
-    expect(gated).toEqual(["check_changes", "preflight"]);
+    // relay_public_config and build_wsl_node_pty run alongside preflight since
+    // upstream #7975, so they carry the gate themselves instead of inheriting it.
+    expect(gated).toEqual([
+      "check_changes",
+      "preflight",
+      "relay_public_config",
+      "build_wsl_node_pty",
+    ]);
   });
 
   it("leaves no job able to run without the gate", () => {
@@ -70,6 +76,17 @@ describe("fork guard: release-upstream-only", () => {
       )
       .map((job) => job.id);
     expect(ungated).toEqual([]);
+  });
+
+  it("gates the macOS preview workflow at its two entry jobs", () => {
+    // desktop-macos-preview.yml (upstream #8182) builds from a PR label on
+    // Blacksmith runners and publishes to a rolling prerelease. Neither can
+    // happen here: the label would queue forever, and the fork has its own
+    // release path (fork-desktop-release). publish only runs after build.
+    const jobs = readWorkflowJobs("desktop-macos-preview.yml");
+    const gated = jobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id);
+    expect(gated).toEqual(["build", "cleanup"]);
+    expect(jobs.find((job) => job.id === "publish")?.body).toContain("needs: build");
   });
 
   it("reads every job in the workflow", () => {

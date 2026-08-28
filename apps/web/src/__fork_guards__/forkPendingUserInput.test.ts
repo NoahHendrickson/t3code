@@ -3,10 +3,10 @@
  * Fork guard — see `.fork/customizations.yaml#fork-pending-user-input`.
  *
  * The questions chrome is a presentational shadow over shared card logic in
- * custom/. A sync that deletes the override (or the strip attribute/CSS) silently
- * falls back to upstream's primary-tint options and number-key badges —
- * everything still compiles. Assert the outcomes the design depends on:
- * Questions progress, checkbox vs radio affordances, and the vessel-strip clear.
+ * custom/. A sync that deletes the override silently falls back to upstream's
+ * primary-tint options and number-key badges — everything still compiles.
+ * Assert the outcomes the design depends on: Questions progress, checkbox vs
+ * radio affordances, and the outline Previous/Next chrome.
  */
 
 import * as NodeFS from "node:fs";
@@ -26,7 +26,6 @@ const override = readSibling("../overrides/components/chat/ComposerPendingUserIn
 const hook = readSibling("../custom/useComposerPendingUserInputCard.ts");
 const upstream = readSibling("../components/chat/ComposerPendingUserInputPanel.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
-const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 
 describe("fork guard: fork-pending-user-input", () => {
   it("keeps a thin shadow that owns the Questions chrome", () => {
@@ -59,28 +58,6 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(override).toContain('multiSelect ? "Select one or more" : "Select one"');
     expect(override).toContain("border-input");
     expect(override).toContain('multiSelect ? "rounded-[4px]" : "rounded-full"');
-  });
-
-  it("clears the upstream muted strip via a fenced ChatComposer hook", () => {
-    expect(chatComposer).toContain('data-fork-pending-user-input-strip=""');
-    expect(chatComposer).toContain("fork:begin fork-pending-user-input");
-    const stripRules = cssRules(theme).filter((rule) =>
-      rule.selector.includes("[data-fork-pending-user-input-strip]"),
-    );
-    expect(stripRules.length).toBeGreaterThan(0);
-    for (const rule of stripRules) {
-      expect(rule.selector, `unscoped pending-user-input rule: ${rule.selector}`).toContain(MARKER);
-    }
-    expect(theme).toMatch(
-      /\[data-fork-composer-surface\]\s*\[data-fork-pending-user-input-strip\]/u,
-    );
-    expect(theme).toMatch(
-      /\[data-fork-pending-user-input-strip\][\s\S]{0,200}background:\s*transparent/u,
-    );
-    expect(theme).toMatch(
-      /\[data-fork-pending-user-input-strip\][\s\S]{0,200}border-bottom-color:\s*var\(--fork-composer-border\)/u,
-    );
-    expect(theme).not.toContain(":has([data-fork-pending-user-input])");
   });
 
   it("marks pending Previous/Next and dark-scopes the true-outline chrome", () => {

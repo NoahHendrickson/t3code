@@ -1799,19 +1799,6 @@
   --fork-outline-hover-bg: rgb(255 255 255 / 4%);
 }
 
-/* ── Pending user-input questions (fork-pending-user-input) ───────────────────
-   Upstream wraps the panel in a muted rounded strip inside the surface. Under
-   the fork the questions block is the top of the same vessel: drop the tint
-   and the 19px top radius so it reads flush with the 8px composer shell.
-   Keys off the fenced strip attribute in ChatComposer — not an anonymous :has(). */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-surface]
-  [data-fork-pending-user-input-strip] {
-  border-radius: 0;
-  background: transparent;
-  border-bottom-color: var(--fork-composer-border);
-}
-
 /* Pending Previous / Next sit in the prompt row with items-end. Upstream's
    sm outline pills are taller than the one-line prompt, so the placeholder
    hangs low in the surface. Pin height to the 24px composer control row.
