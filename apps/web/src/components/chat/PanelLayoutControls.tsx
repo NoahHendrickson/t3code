@@ -49,9 +49,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
               size="sm"
               disabled={!terminalAvailable}
             >
-              {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */}
               <PanelBottomIcon className="size-4" />
-              {/* fork:end fork-workspace-header */}
             </Toggle>
           </TooltipTrigger>
           <TooltipPopup side="bottom">
@@ -76,9 +74,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
             size="sm"
             disabled={!rightPanelAvailable}
           >
-            {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */}
             <PanelRightIcon className="size-4" />
-            {/* fork:end fork-workspace-header */}
             {liveAgentCount > 0 ? (
               <span
                 aria-hidden

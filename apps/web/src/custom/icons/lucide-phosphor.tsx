@@ -496,9 +496,10 @@ export const XCircleIcon = CircleXIcon;
 
 // Added at the 2026-08-28 sync: skills sections in the `$` menu (#8009), tab mute (#7252),
 // the terminal close confirm (#7592), and the theme library's install action (#7580).
-// Phosphor has no package-plus; the install action reads as a download.
+// Phosphor has no package-plus; the install action reads as a download, at
+// the same bold weight DownloadIcon already pins for that glyph.
 export const PackageIcon = icon("package", PhPackage, "duotone");
-export const PackagePlusIcon = icon("package-plus", PhDownloadSimple, "duotone");
+export const PackagePlusIcon = DownloadIcon;
 export const UserRoundIcon = icon("user-round", PhUserCircle, "duotone");
 export const Volume2 = icon("volume-2", PhSpeakerHigh, "duotone");
 export const VolumeOff = icon("volume-off", PhSpeakerSlash, "duotone");

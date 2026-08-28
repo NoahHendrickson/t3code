@@ -3147,7 +3147,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       onDragOverCapture={composerMentionDragHandlers.onDragOver}
       onDragLeaveCapture={onComposerMentionDragLeaveCapture}
       onDropCapture={composerMentionDragHandlers.onDrop}
-      className={cn("mx-auto w-full min-w-0 max-w-3xl", hasShoulderTab && "pt-7")}
+      className={cn(
+        "mx-auto w-full min-w-0 max-w-3xl",
+        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+        // With a context row, ComposerShell reserves the shoulder clearance
+        // between that row and the surface instead (shoulderClearance).
+        hasShoulderTab && contextStrip == null && "pt-7",
+        /* fork:end fork-composer-shell */
+      )}
       data-chat-composer-form="true"
     >
       {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
@@ -3159,6 +3166,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         modeControls={composerModeControls}
         modelControls={composerModelControls}
         readoutControls={composerReadoutControls}
+        shoulderClearance={hasShoulderTab}
       >
         {/* fork:end fork-composer-shell */}
         {showComposerTopDrawer && (!isTasksDrawerOpen || hasBlockingComposerTopDrawer) ? (
@@ -3183,20 +3191,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 </div>
               </div>
             ) : !isComposerCollapsedMobile && pendingUserInputs.length > 0 ? (
-              <div
-                /* fork:begin fork-pending-user-input — see .fork/customizations.yaml#fork-pending-user-input */
-                data-fork-pending-user-input-strip=""
-                /* fork:end fork-pending-user-input */
-              >
-                <ComposerPendingUserInputPanel
-                  pendingUserInputs={pendingUserInputs}
-                  respondingRequestIds={respondingRequestIds}
-                  answers={activePendingDraftAnswers}
-                  questionIndex={activePendingQuestionIndex}
-                  onToggleOption={onSelectActivePendingUserInputOption}
-                  onAdvance={onAdvanceActivePendingUserInput}
-                />
-              </div>
+              <ComposerPendingUserInputPanel
+                pendingUserInputs={pendingUserInputs}
+                respondingRequestIds={respondingRequestIds}
+                answers={activePendingDraftAnswers}
+                questionIndex={activePendingQuestionIndex}
+                onToggleOption={onSelectActivePendingUserInputOption}
+                onAdvance={onAdvanceActivePendingUserInput}
+              />
             ) : !isComposerCollapsedMobile && showPlanFollowUpPrompt && activeProposedPlan ? (
               <ComposerPlanFollowUpBanner
                 key={activeProposedPlan.id}
@@ -3219,12 +3221,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 </div>
               </div>
             ) : isComposerCollapsedMobile && pendingUserInputs.length > 0 ? (
-              <div
-                data-chat-composer-collapsed-controls="true"
-                /* fork:begin fork-pending-user-input — see .fork/customizations.yaml#fork-pending-user-input */
-                data-fork-pending-user-input-strip=""
-                /* fork:end fork-pending-user-input */
-              >
+              <div data-chat-composer-collapsed-controls="true">
                 <ComposerPendingUserInputPanel
                   pendingUserInputs={pendingUserInputs}
                   respondingRequestIds={respondingRequestIds}
@@ -3699,12 +3696,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               <ComposerPromptLengthValidation
                 message={providerInputSubmissionError ?? composerSubmissionError}
               />
-              {/* fork:end fork-composer-shell */}
-
-              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
-                Upstream's bottom toolbar is not rendered: ComposerShell draws the
-                mode, model, and readout controls on its own control row below
-                this surface, and the primary action rides the prompt row. */}
               {/* fork:end fork-composer-shell */}
             </div>
           </div>

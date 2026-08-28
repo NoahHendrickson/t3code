@@ -43,6 +43,8 @@ const upstreamCss = readSibling("../index.css");
 describe("fork guard: sidebar-v2-card-rows", () => {
   it("keeps upstream wake and monitoring semantics in the customized row", () => {
     expect(sidebarV2).toContain("!changeRequestAutoSettles(pr, {");
+    // An omitted autoSettleOnMerge reads as true, so the setting must be forwarded.
+    expect(sidebarV2).toContain("autoSettleOnMerge: props.autoSettleOnMerge,");
     expect(sidebarV2).toMatch(
       /status === "ready" \|\| status === "working" \|\| status === "monitoring"/u,
     );
@@ -121,7 +123,9 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // The pinned block above the divider carries the grouping; the glyph
     // names the state per card. A sync dropping just this hunk leaves pinned
     // cards marked only by position, and nothing else fails.
-    const pinGlyph = /\{props\.isPinned \? \([\s\S]{0,400}?<PinIcon/u.exec(sidebarV2)?.[0];
+    const pinGlyph = /Pinned state rides the title line[\s\S]{0,400}?\{pinIndicator\}/u.exec(
+      sidebarV2,
+    )?.[0];
     expect(pinGlyph).toBeDefined();
   });
 

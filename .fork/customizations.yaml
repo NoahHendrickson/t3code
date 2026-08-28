@@ -54,10 +54,12 @@
     timeout to fail deterministically on the slower hosted runners; those get
     a fenced per-test timeout raise rather than a product change, because the
     underlying cost is upstream's to fix and diverging in hot upstream logic
-    buys a conflict on every sync. Current carrier:
-    imageCompression.test.ts's give-up path (~15 encodes of an 8 MB stub
-    through chunked base64 — deterministic work, not flake). No guard asserts
-    these hunks; losing one turns CI red by itself, which is the enforcement.
+    buys a conflict on every sync. Current carriers: imageCompression.test.ts's
+    give-up path (~15 encodes of an 8 MB stub through chunked base64 —
+    deterministic work, not flake) and session-logic.test.ts's 20,000-entry
+    work-log benchmark (100 ms budget, 106 ms on a hosted runner). No guard
+    asserts these hunks; losing one turns CI red by itself, which is the
+    enforcement.
   tier: 4
   files: []
   shadows: []
@@ -65,6 +67,7 @@
     - .github/workflows/ci.yml
     - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
+    - apps/web/src/session-logic.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
@@ -120,6 +123,8 @@
   shadows: []
   watch:
     - .github/workflows/release.yml
+    # PR-label macOS preview builds (#8182): gated at build and cleanup.
+    - .github/workflows/desktop-macos-preview.yml
   verify:
     - apps/web/src/__fork_guards__/releaseUpstreamOnly.test.ts
 
@@ -1669,9 +1674,11 @@
     # Carries the gap spacer, every data-slot the rules select on, the
     # data-sidebar-state the decision reads, and the isMobile Sheet swap.
     - apps/web/src/components/ui/sidebar.tsx
-    # The measured column (data-chat-column-maximized-away) and one of the two
-    # title-bar drag owners the overlay releases.
+    # The measured column (data-chat-column-maximized-away).
     - apps/web/src/components/ChatView.tsx
+    # Owns the workspace title-bar drag strip (electron && "drag-region") the
+    # overlay releases; moved out of ChatView by upstream #7153.
+    - apps/web/src/components/WorkspacePageHeader.tsx
     # Defines .drag-region itself — the class the release rule overrides.
     - apps/web/src/index.css
   verify:
@@ -2755,8 +2762,7 @@
     badges. Behavior stays the same — multi toggles in place, single
     auto-advances — only the chrome changes. Card interaction lives in
     custom/useComposerPendingUserInputCard.ts; the override is presentational.
-    The vessel strip is cleared via fenced data-fork-pending-user-input-strip
-    on ChatComposer. Dark-only true-outline Previous (and shared outline
+    Dark-only true-outline Previous (and shared outline
     tokens with changed-files) keep Previous/Next at 24px; compact Previous
     is pinned to a 24×24 square.
     Upstream's v0.0.33 disclosure header (#6773, collapse the question prompt
@@ -2765,11 +2771,9 @@
     shared outcome — question and options visible without interaction —
     instead of upstream's toggle markup. Revisit if long prompts start
     crowding the fork card.
-    Since upstream #7150 the Questions panel renders in the attached top
-    drawer above the prompt surface, which upstream already paints
-    transparent. The strip hook marks that drawer wrapper so the fence and
-    its guard stay put, but the surface-scoped clearing rule is dormant
-    until a panel renders inside the surface again.
+    Since upstream #7150 the panel renders in the attached top drawer, which
+    upstream already paints transparent, so the fork no longer clears a
+    muted strip around it; ChatComposer carries no hunk for this entry.
   tier: 2
   files:
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
@@ -2778,8 +2782,6 @@
   shadows:
     - apps/web/src/components/chat/ComposerPendingUserInputPanel.tsx
   watch:
-    # data-fork-pending-user-input-strip on the muted vessel wrappers.
-    - apps/web/src/components/chat/ChatComposer.tsx
     # Upstream's panel tests resolve through the alias to the shadow; fenced
     # there to assert the fork card's contract (see the declined-disclosure
     # note in intent).

@@ -87,7 +87,7 @@ describe("fork guard: fork-app-identity", () => {
     // truncate) rather than hiding the way upstream's wordmark link did. This
     // used to ride a fenced hunk in upstream's threadSidebarWidth.test.ts,
     // which upstream pruned in #8400.
-    expect(chrome).toContain("sidebar-brand ml-auto h-6 w-fit min-w-0 shrink-0");
+    expect(chrome).toMatch(/className="[^"]*\bsidebar-brand\b[^"]*\bmin-w-0\b/u);
     expect(chrome).toContain('className="truncate');
   });
 

@@ -2318,6 +2318,11 @@ describe("session activity performance", () => {
 
     const startedAt = performance.now();
     expect(deriveWorkLogEntries(updatedActivities)).toHaveLength(20_001);
-    expect(performance.now() - startedAt).toBeLessThan(100);
+    // fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+    // Upstream tunes this budget against Blacksmith; a GitHub-hosted runner
+    // landed at 106 ms on the 2026-08-28 sync. 250 ms still catches the
+    // quadratic regression this benchmark exists for.
+    expect(performance.now() - startedAt).toBeLessThan(250);
+    // fork:end ci-runners
   });
 });

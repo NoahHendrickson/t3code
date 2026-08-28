@@ -1135,8 +1135,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
      Upstream hoists one pin marker that doubles as an unpin button in every
      row variant. Unpin stays a card hover action (below) and a context-menu
-     item here, so the slim shelves draw the passive marker only: a settled or
-     snoozed thread still shows it is pinned without growing a 12px target. */
+     item here, so both the card's title line and the slim shelves draw this
+     passive marker: a pinned thread shows it wherever it sits, without a
+     second 12px target. */
   const pinIndicator = props.isPinned ? (
     <PinIcon aria-label="Pinned" role="img" className="size-3 shrink-0 text-muted-foreground/65" />
   ) : null;
@@ -1392,13 +1393,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   Pinned state rides the title line as a 12px glyph after the
                   prompt: the pinned block above the divider carries the
                   grouping, the glyph names the state per card. */}
-              {props.isPinned ? (
-                <PinIcon
-                  aria-label="Pinned"
-                  role="img"
-                  className="size-3 shrink-0 text-muted-foreground/65"
-                />
-              ) : null}
+              {pinIndicator}
               {/* fork:end sidebar-v2-card-rows */}
               {isRegeneratingTitle ? (
                 <span role="status" className="sr-only">

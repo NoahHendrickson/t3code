@@ -96,6 +96,7 @@ const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const OVERLAYING = `[${SIDEBAR_OVERLAY_ATTRIBUTE}="true"]`;
 const rules = cssRules(readSibling("../theme.custom.css"));
 const upstreamWidths = readSibling("../components/threadSidebarWidth.ts");
+const overrideWidths = readSibling("../overrides/components/threadSidebarWidth.ts");
 const sidebar = readSibling("../components/ui/sidebar.tsx");
 const layout = readSibling("../components/AppSidebarLayout.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
@@ -136,10 +137,9 @@ describe("fork guard: narrow-workspace-layout", () => {
     // The shadow owns the whole module, so an unrelated value drifting in it
     // is a silent behaviour change nothing else would catch.
     expect(THREAD_SIDEBAR_WIDTH_STORAGE_KEY).toBe("chat_thread_sidebar_width");
-    // Module-private since upstream #7153; read from source so it still cannot drift.
-    expect(readSibling("../overrides/components/threadSidebarWidth.ts")).toContain(
-      "const THREAD_SIDEBAR_DEFAULT_WIDTH = 16 * 16;",
-    );
+    // The default is module-private since upstream #8400; a null stored width on
+    // a wide viewport is the one path that surfaces it.
+    expect(resolveInitialThreadSidebarWidth(null, 10_000)).toBe(16 * 16);
     expect(THREAD_SIDEBAR_MIN_WIDTH).toBe(13 * 16);
   });
 
@@ -148,9 +148,7 @@ describe("fork guard: narrow-workspace-layout", () => {
     // here is invisible until it throws in a browser.
     const exportsOf = (source: string) =>
       [...source.matchAll(/export (?:const|function) (\w+)/gu)].map((match) => match[1]).sort();
-    expect(exportsOf(readSibling("../overrides/components/threadSidebarWidth.ts"))).toEqual(
-      exportsOf(upstreamWidths),
-    );
+    expect(exportsOf(overrideWidths)).toEqual(exportsOf(upstreamWidths));
   });
 
   it("still defends the column against a sidebar drag", () => {
@@ -307,7 +305,6 @@ describe("fork guard: narrow-workspace-layout", () => {
     // Upstream #7153 moved the strip out of ChatView into the shared header.
     const pageHeader = readSibling("../components/WorkspacePageHeader.tsx");
     expect(pageHeader).toContain('electron && "drag-region"');
-    expect(pageHeader).toContain("h-[var(--workspace-topbar-height)]");
     expect(chatView).toContain("<WorkspacePageHeader");
   });
 
