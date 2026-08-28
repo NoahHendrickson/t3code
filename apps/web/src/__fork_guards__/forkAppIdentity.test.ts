@@ -83,6 +83,12 @@ describe("fork guard: fork-app-identity", () => {
     expect(chrome).toContain("{APP_BASE_NAME}");
     // The borrowed T3 glyph, which read as a mismatch beside a different name.
     expect(chrome).not.toContain("T3Wordmark");
+    // The brand survives the sidebar's minimum width by truncating (min-w-0 +
+    // truncate) rather than hiding the way upstream's wordmark link did. This
+    // used to ride a fenced hunk in upstream's threadSidebarWidth.test.ts,
+    // which upstream pruned in #8400.
+    expect(chrome).toContain("sidebar-brand ml-auto h-6 w-fit min-w-0 shrink-0");
+    expect(chrome).toContain('className="truncate');
   });
 
   it("keeps the release workflow on the fork's install name", () => {

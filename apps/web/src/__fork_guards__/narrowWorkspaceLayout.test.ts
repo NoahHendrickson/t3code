@@ -24,7 +24,6 @@ import {
   resolveInitialThreadSidebarWidth,
   resolveThreadSidebarMaximumWidth,
   THREAD_MAIN_CONTENT_MIN_WIDTH,
-  THREAD_SIDEBAR_DEFAULT_WIDTH,
   THREAD_SIDEBAR_MIN_WIDTH,
   THREAD_SIDEBAR_WIDTH_STORAGE_KEY,
 } from "../overrides/components/threadSidebarWidth";
@@ -137,7 +136,10 @@ describe("fork guard: narrow-workspace-layout", () => {
     // The shadow owns the whole module, so an unrelated value drifting in it
     // is a silent behaviour change nothing else would catch.
     expect(THREAD_SIDEBAR_WIDTH_STORAGE_KEY).toBe("chat_thread_sidebar_width");
-    expect(THREAD_SIDEBAR_DEFAULT_WIDTH).toBe(16 * 16);
+    // Module-private since upstream #7153; read from source so it still cannot drift.
+    expect(readSibling("../overrides/components/threadSidebarWidth.ts")).toContain(
+      "const THREAD_SIDEBAR_DEFAULT_WIDTH = 16 * 16;",
+    );
     expect(THREAD_SIDEBAR_MIN_WIDTH).toBe(13 * 16);
   });
 
@@ -302,7 +304,11 @@ describe("fork guard: narrow-workspace-layout", () => {
     expect(released?.body).toMatch(/-webkit-app-region:\s*no-drag\s*;/u);
     // The class it releases, and the two owners that claim it under the panel.
     expect(baseStyles).toContain("-webkit-app-region: drag;");
-    expect(chatView).toContain("drag-region relative flex h-[var(--workspace-topbar-height)]");
+    // Upstream #7153 moved the strip out of ChatView into the shared header.
+    const pageHeader = readSibling("../components/WorkspacePageHeader.tsx");
+    expect(pageHeader).toContain('electron && "drag-region"');
+    expect(pageHeader).toContain("h-[var(--workspace-topbar-height)]");
+    expect(chatView).toContain("<WorkspacePageHeader");
   });
 
   it("shows the floating layer's shadow only while the panel is open", () => {

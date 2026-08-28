@@ -42,7 +42,7 @@ const upstreamCss = readSibling("../index.css");
 
 describe("fork guard: sidebar-v2-card-rows", () => {
   it("keeps upstream wake and monitoring semantics in the customized row", () => {
-    expect(sidebarV2).toContain("!changeRequestAutoSettles(prState, props.autoSettleOnMerge)");
+    expect(sidebarV2).toContain("!changeRequestAutoSettles(pr, {");
     expect(sidebarV2).toMatch(
       /status === "ready" \|\| status === "working" \|\| status === "monitoring"/u,
     );

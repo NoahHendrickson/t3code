@@ -719,6 +719,14 @@
      #181b1e) so icons stay glass-independent. Anything else derived from the
      panel fill needs the same treatment. */
   --sidebar-icon-color: #8a8a8a;
+  /* Upstream's appearance-contrast control (#7906) derives these two from
+     --sidebar the same way, so they inherit the panel's alpha and every
+     label goes faintly see-through. Frozen to what the mix resolves to at
+     the default contrast (base 100%, boost 0%): the palette's own opaque
+     foregrounds. Under glass the contrast slider therefore does not move
+     sidebar text; it still applies everywhere else. */
+  --contrast-sidebar-foreground: #e8e8e8;
+  --contrast-sidebar-muted-foreground: #d0d4d6;
   --sidebar-control-surface: rgb(255 255 255 / 8%);
   --sidebar-row-hover: rgb(255 255 255 / 5%);
   --sidebar-row-active: rgb(255 255 255 / 8%);

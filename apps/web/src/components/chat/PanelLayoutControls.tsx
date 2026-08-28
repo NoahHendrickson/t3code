@@ -12,6 +12,7 @@ interface PanelLayoutControlsProps {
   rightPanelAvailable: boolean;
   rightPanelOpen: boolean;
   rightPanelShortcutLabel: string | null;
+  rightPanelUnavailableLabel?: string;
   /** Running + waiting subagents in this thread; badges the right panel toggle. */
   liveAgentCount: number;
   onToggleTerminal: () => void;
@@ -26,6 +27,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
   rightPanelAvailable,
   rightPanelOpen,
   rightPanelShortcutLabel,
+  rightPanelUnavailableLabel = "Right panel is unavailable",
   liveAgentCount,
   onToggleTerminal,
   onToggleRightPanel,
@@ -37,23 +39,21 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
     >
       {showTerminalControl ? (
         <Tooltip>
-          <TooltipTrigger
-            render={
-              <Toggle
-                className="shrink-0 [-webkit-app-region:no-drag]"
-                pressed={terminalOpen}
-                onPressedChange={onToggleTerminal}
-                aria-label="Toggle terminal drawer"
-                variant="ghost"
-                size="sm"
-                disabled={!terminalAvailable}
-              >
-                {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */}
-                <PanelBottomIcon className="size-4" />
-                {/* fork:end fork-workspace-header */}
-              </Toggle>
-            }
-          />
+          <TooltipTrigger render={<span className="flex shrink-0" />}>
+            <Toggle
+              className="shrink-0 [-webkit-app-region:no-drag]"
+              pressed={terminalOpen}
+              onPressedChange={onToggleTerminal}
+              aria-label="Toggle terminal drawer"
+              variant="ghost"
+              size="sm"
+              disabled={!terminalAvailable}
+            >
+              {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */}
+              <PanelBottomIcon className="size-4" />
+              {/* fork:end fork-workspace-header */}
+            </Toggle>
+          </TooltipTrigger>
           <TooltipPopup side="bottom">
             {terminalAvailable
               ? `Toggle terminal drawer${terminalShortcutLabel ? ` (${terminalShortcutLabel})` : ""}`
@@ -62,35 +62,33 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
         </Tooltip>
       ) : null}
       <Tooltip>
-        <TooltipTrigger
-          render={
-            <Toggle
-              className="shrink-0 [-webkit-app-region:no-drag]"
-              pressed={rightPanelOpen}
-              onPressedChange={onToggleRightPanel}
-              aria-label={
-                liveAgentCount > 0
-                  ? `Toggle right panel, ${liveAgentCount} ${liveAgentCount === 1 ? "agent" : "agents"} working`
-                  : "Toggle right panel"
-              }
-              variant="ghost"
-              size="sm"
-              disabled={!rightPanelAvailable}
-            >
-              {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */}
-              <PanelRightIcon className="size-4" />
-              {/* fork:end fork-workspace-header */}
-              {liveAgentCount > 0 ? (
-                <span
-                  aria-hidden
-                  className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-info px-1 text-[9px] font-semibold tabular-nums text-white"
-                >
-                  {liveAgentCount}
-                </span>
-              ) : null}
-            </Toggle>
-          }
-        />
+        <TooltipTrigger render={<span className="flex shrink-0" />}>
+          <Toggle
+            className="shrink-0 [-webkit-app-region:no-drag]"
+            pressed={rightPanelOpen}
+            onPressedChange={onToggleRightPanel}
+            aria-label={
+              liveAgentCount > 0
+                ? `Toggle right panel, ${liveAgentCount} ${liveAgentCount === 1 ? "agent" : "agents"} working`
+                : "Toggle right panel"
+            }
+            variant="ghost"
+            size="sm"
+            disabled={!rightPanelAvailable}
+          >
+            {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header */}
+            <PanelRightIcon className="size-4" />
+            {/* fork:end fork-workspace-header */}
+            {liveAgentCount > 0 ? (
+              <span
+                aria-hidden
+                className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-info px-1 text-[9px] font-semibold tabular-nums text-white"
+              >
+                {liveAgentCount}
+              </span>
+            ) : null}
+          </Toggle>
+        </TooltipTrigger>
         <TooltipPopup side="bottom">
           {rightPanelAvailable
             ? `Toggle right panel${rightPanelShortcutLabel ? ` (${rightPanelShortcutLabel})` : ""}${
@@ -98,7 +96,7 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
                   ? ` · ${liveAgentCount} ${liveAgentCount === 1 ? "agent" : "agents"} working`
                   : ""
               }`
-            : "Right panel is unavailable"}
+            : rightPanelUnavailableLabel}
         </TooltipPopup>
       </Tooltip>
     </div>

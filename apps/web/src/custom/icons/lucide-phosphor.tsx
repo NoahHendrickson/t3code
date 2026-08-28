@@ -138,6 +138,7 @@ import {
   Monitor as PhMonitor,
   NotePencil as PhNotePencil,
   Moon as PhMoon,
+  Package as PhPackage,
   PaintBrush as PhPaintBrush,
   Palette as PhPalette,
   Paragraph as PhParagraph,
@@ -155,6 +156,9 @@ import {
   PuzzlePiece as PhPuzzlePiece,
   ShieldCheck as PhShieldCheck,
   Smiley as PhSmiley,
+  SpeakerHigh as PhSpeakerHigh,
+  SpeakerSlash as PhSpeakerSlash,
+  Square as PhSquare,
   Tag as PhTag,
   Pulse as PhPulse,
   PushPin as PhPushPin,
@@ -180,6 +184,7 @@ import {
   TerminalWindow as PhTerminalWindow,
   Trash as PhTrash,
   TreeStructure as PhTreeStructure,
+  UserCircle as PhUserCircle,
   Warning as PhWarning,
   WarningCircle as PhWarningCircle,
   WarningOctagon as PhWarningOctagon,
@@ -488,3 +493,13 @@ export const TagIcon = icon("tag", PhTag, "duotone");
 export const ShieldCheckIcon = icon("shield-check", PhShieldCheck, "duotone");
 export const BlocksIcon = icon("blocks", PhPuzzlePiece, "duotone");
 export const XCircleIcon = CircleXIcon;
+
+// Added at the 2026-08-28 sync: skills sections in the `$` menu (#8009), tab mute (#7252),
+// the terminal close confirm (#7592), and the theme library's install action (#7580).
+// Phosphor has no package-plus; the install action reads as a download.
+export const PackageIcon = icon("package", PhPackage, "duotone");
+export const PackagePlusIcon = icon("package-plus", PhDownloadSimple, "duotone");
+export const UserRoundIcon = icon("user-round", PhUserCircle, "duotone");
+export const Volume2 = icon("volume-2", PhSpeakerHigh, "duotone");
+export const VolumeOff = icon("volume-off", PhSpeakerSlash, "duotone");
+export const Square = icon("square", PhSquare, "duotone");

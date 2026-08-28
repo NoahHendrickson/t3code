@@ -55,7 +55,14 @@ describe("fork guard: release-upstream-only", () => {
   it("gates both release entry points on the upstream repository", () => {
     const jobs = readReleaseJobs();
     const gated = jobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id);
-    expect(gated).toEqual(["check_changes", "preflight"]);
+    // relay_public_config and build_wsl_node_pty run alongside preflight since
+    // upstream #7975, so they carry the gate themselves instead of inheriting it.
+    expect(gated).toEqual([
+      "check_changes",
+      "preflight",
+      "relay_public_config",
+      "build_wsl_node_pty",
+    ]);
   });
 
   it("leaves no job able to run without the gate", () => {

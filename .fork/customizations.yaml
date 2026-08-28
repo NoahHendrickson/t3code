@@ -298,8 +298,6 @@
     - apps/server/src/config.ts
     - apps/web/src/branding.ts
     - apps/web/src/branding.test.ts
-    # Fenced wordmark-visibility assertions adapted to the fork brand lockup.
-    - apps/web/src/components/threadSidebarWidth.test.ts
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     - apps/web/public/apple-touch-icon.png
     - apps/web/public/favicon-16x16.png
@@ -1676,12 +1674,6 @@
     - apps/web/src/components/ChatView.tsx
     # Defines .drag-region itself — the class the release rule overrides.
     - apps/web/src/index.css
-    # Fenced: upstream's own test for this module, which imports it relatively
-    # and therefore runs against the shadow. One case hardcoded a 700px viewport
-    # that is only narrower than the two minimums combined while the reserve is
-    # 40rem, so at 400px it asserted the opposite of its own name. Derived from
-    # the constants instead, which holds for either value.
-    - apps/web/src/components/threadSidebarWidth.test.ts
   verify:
     - apps/web/src/__fork_guards__/narrowWorkspaceLayout.test.ts
 
@@ -1986,6 +1978,14 @@
     right slot does not grow in the newly expanded 400–620 band. Traits stay
     gated with the mode row (inline when expanded, CompactComposerControlsMenu
     when collapsed) so they are never stranded between the two thresholds.
+
+    Upstream's attached composer drawers (#7150: the approval / questions /
+    plan top drawer, the tasks drawer, and the task/stash shoulder tabs)
+    render inside the vessel above the prompt surface, gated by upstream's
+    own drawer state. Upstream's bottom toolbar is not rendered at all —
+    the control row owns those controls — and its inline task/stash badges
+    ride the prompt row's action cluster instead. The context-usage meter
+    carries upstream's compact action (#8144) in the readout slot.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
@@ -2765,6 +2765,11 @@
     shared outcome — question and options visible without interaction —
     instead of upstream's toggle markup. Revisit if long prompts start
     crowding the fork card.
+    Since upstream #7150 the Questions panel renders in the attached top
+    drawer above the prompt surface, which upstream already paints
+    transparent. The strip hook marks that drawer wrapper so the fence and
+    its guard stay put, but the surface-scoped clearing rule is dormant
+    until a panel renders inside the surface again.
   tier: 2
   files:
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
