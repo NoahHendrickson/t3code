@@ -8,6 +8,12 @@
     "verbatimModuleSyntax": false,
     "jsx": "react-jsx",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    // Fork-only: the shadow tree is a transparent overlay for relative imports
+    // too. `../ui/tooltip` inside an override — or inside an upstream file —
+    // resolves override-first, then upstream, exactly as the `fork:overrides`
+    // Vite plugin loads it, so a shadow keeps its copy's imports verbatim and
+    // still type-checks. See `.fork/README.md` §3.
+    "rootDirs": ["./src/overrides", "./src"],
     "paths": {
       // Fork-only: mirrors the `fork:overrides` Vite plugin so TypeScript and
       // editor navigation follow the same shadow tree the bundler does.

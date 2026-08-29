@@ -166,10 +166,11 @@ Three behaviours worth knowing, each covered by a test:
   override importing its own path gets upstream rather than recursing. Both matter because the
   tsconfig mapping is also override-first, so deferring to normal resolution would loop.
 
-**Known gap:** tsconfig gives type parity for `~/` imports only. Relative imports type-check
-against upstream while the bundler loads the override, so an override that changes a module's
-_public API_ type-checks clean and breaks at runtime. Keep overrides API-compatible until this is
-closed by generated contract assertions (`typeof import(…)` assignability per shadowed module).
+**Type parity:** tsconfig maps `~/*` override-first and lists
+`rootDirs: ["src/overrides", "src"]`, so relative imports resolve through the same overlay —
+`../ui/button` from anywhere in `src` type-checks against the override when one exists. An override
+that changes a module's _public API_ therefore fails typecheck at its import sites rather than at
+runtime. Keep overrides API-compatible regardless.
 
 **The honest trade-off:** a shadowed file is a hard fork of that file. You stop receiving upstream
 improvements to it. This is unavoidable for genuinely divergent UI, but it must be _visible_ rather

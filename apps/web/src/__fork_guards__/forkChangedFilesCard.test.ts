@@ -48,6 +48,33 @@ describe("fork guard: fork-changed-files-card", () => {
     expect(card?.body).toMatch(/border-color:\s*var\(--fork-composer-border\)/u);
   });
 
+  it("paints the user's sent bubble from --card too", () => {
+    // MessagesTimeline's bubble is `bg-message` → --message-surface, which
+    // upstream aliases to --accent (one rung brighter than the card). The
+    // fill has to be set on the element: --color-message is declared on
+    // :root, so a token retarget computes var(--card) at the root, while the
+    // card reads the --card rescoped under [data-sidebar-version="v2"].
+    const bubble = cssRules(theme).find((rule) => rule.selector === `${MARKER}.dark .bg-message`);
+    expect(bubble?.body).toMatch(/background-color:\s*var\(--card\)/u);
+    expect(theme).not.toMatch(/--message-surface:/u);
+    expect(readSibling("../components/chat/MessagesTimeline.tsx")).toContain("bg-message ");
+  });
+
+  it("hovers as a 4% white lift, never a darker fill", () => {
+    const rules = cssRules(theme);
+    const hover = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-changed-files-state] button:hover") &&
+        rule.body.includes("--fork-outline-hover-bg"),
+    );
+    expect(hover?.selector).toContain(MARKER);
+    expect(hover?.selector).toContain(".dark");
+    expect(hover?.body).toMatch(/background-color:\s*var\(--fork-outline-hover-bg\)/u);
+    const token = rules.find((rule) => rule.body.includes("--fork-outline-hover-bg:"));
+    expect(token?.selector).toContain(".dark");
+    expect(token?.body).toMatch(/--fork-outline-hover-bg:\s*rgb\(255 255 255 \/ 4%\)/u);
+  });
+
   it("lifts path labels outside the header and outlines header action buttons", () => {
     const label = cssRules(theme).find(
       (rule) =>

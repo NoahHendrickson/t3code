@@ -424,6 +424,15 @@
      transcript above the whole composer, the row included. */
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
+  /* The stage as it reads ON SCREEN — the 85–95% tint with the wallpaper's
+     light through it — not the tint itself. Popups (rule below) stand on
+     this instead of the translucent stage, because they open over the
+     transcript and anything less than opaque shows the text through them.
+     Measured off the running app against a warm wallpaper — read the bare
+     stage beside the composer, not the composer itself; the branch pill above
+     it should resolve to white 12% over this value. This is the one dial if
+     the desktop changes and the menus drift from the composer. */
+  --fork-popup-glass-floor: rgb(33 28 33);
 }
 
 /* Design-mode chrome — the second column in the inset to take the glass.
@@ -482,6 +491,17 @@
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-changed-files-header] {
   background: none;
+}
+
+/* The user's sent bubble shares the card's fill (theme.custom.css paints
+   `.bg-message` from --card, the same rung the card sits on). Under glass
+   --card is the 88% slab, so the bubble follows the card onto the 5% wash or
+   it reads as the one opaque block in a translucent column. Unlayered and
+   marker-scoped on purpose: the bubble has no hover/focus fill to preserve,
+   so the :where() note below does not apply. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  .bg-message {
+  background-color: rgb(255 255 255 / 5%);
 }
 
 /* Every other card in the stage, by class for the reason the `.bg-background`
@@ -581,6 +601,33 @@
   --glass-opacity: 100%;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* Popup menus under glass (theme.custom.css, fork-popup-surface). The base
+   rule paints the composer stack — well over tray — and closes it with an
+   opaque `var(--background)`, which is the palette's stage tint with no
+   wallpaper in it. Under glass the Questions card and the prompt surface are
+   those same two alphas over a stage the wallpaper lights from behind, so a
+   menu on the bare tint opens beside them several points darker and flatter
+   — the model picker was the visible case.
+
+   The menu cannot simply go translucent to match: the card sits where the
+   cutoff mask has already ended the transcript, while a menu opens straight
+   over the message text, and even the card's 56% pass-through reads that
+   text clearly. So the floor stays opaque and changes colour instead —
+   `--fork-popup-glass-floor`, the stage as it reads on screen — and the two
+   alphas over it resolve to the card's own value. The blur is already
+   cleared by the glass-set rule above. Same three arms as the base rule. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  :is(
+    :is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass,
+    [data-slot="select-popup"] > .dropdown-glass,
+    .dropdown-glass:has(> [data-slot="combobox-popup"])
+  ) {
+  background:
+    linear-gradient(var(--fork-composer-bg), var(--fork-composer-bg)),
+    linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
+    var(--fork-popup-glass-floor);
 }
 
 /* NO backdrop-filter anywhere in the composer, and this is the one rule in the

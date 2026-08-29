@@ -339,10 +339,12 @@ describe("fork guard: fork-composer-shell", () => {
     expect(styles).toMatch(/--fork-composer-vessel-bg:/u);
   });
 
-  it("hovers the ghost controls on the chip lift, not upstream's accent", () => {
+  it("hovers the ghost controls on a faint white wash, not upstream's accent", () => {
     // `--accent` is bit-identical to `--fork-composer-bg` on the Cool palettes,
     // so upstream's ghost hover paints the model / effort trigger the colour the
-    // composer already wears. The chips one row up hover on the chip lift.
+    // composer already wears. The ghosts get their own token: white 4% in dark
+    // (the context chips' raised lift read nearly solid on these text-only
+    // controls), falling back to the chip lift in light.
     const hover = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-model-controls]") &&
@@ -350,7 +352,12 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("background"),
     );
     expect(hover?.selector).toContain('[data-fork-composer-control-row-slot="left"]');
-    expect(hover?.body).toMatch(/background:\s*var\(--fork-context-chip-bg-hover\)/u);
+    expect(hover?.body).toMatch(/background:\s*var\(--fork-composer-control-hover\)/u);
+    const controlHover = rules.find(
+      (rule) =>
+        rule.selector.endsWith(".dark") && rule.body.includes("--fork-composer-control-hover:"),
+    );
+    expect(controlHover?.body).toContain("--fork-composer-control-hover: rgb(255 255 255 / 4%)");
     // Open triggers hold the fill; disabled ones never take it.
     expect(hover?.selector).toContain("[data-popup-open]");
     expect(hover?.selector).toContain(":not(:disabled)");

@@ -73,13 +73,15 @@ Measured upstream churn over 60 days (see `.fork/README.md` §1):
 Shadow the smallest thing that achieves the change. Before shadowing a large component, check
 whether shadowing its _parent_ and re-arranging the children gets you there instead.
 
-## Known gap: type parity on relative imports
+## Type parity
 
-`tsconfig.json` maps `~/*` override-first, so tilde imports type-check against the override. Plain
-relative imports (`../ui/button`) do not — TypeScript checks them against the upstream module while
-the bundler loads yours. So an override that **changes a module's public API** will type-check
-clean and break at runtime.
+`tsconfig.json` maps `~/*` override-first and lists `rootDirs: ["src/overrides", "src"]`, so both
+tilde and relative imports type-check against the override when one exists and upstream otherwise —
+the same resolution the bundler performs. An override's relative imports (`../ui/button`) therefore
+resolve from the mirrored path, not from the file's physical location; there is no
+`src/overrides/components/ui/button.tsx` to find, and none is needed.
 
-Until that gap is closed by generated contract assertions, keep overrides API-compatible with the
-module they shadow: same exported names, same prop types. Widening a prop type is safe; renaming or
-removing an export is not.
+Consumers type-check against the override too, so an override that **changes a module's public
+API** fails typecheck at every import site rather than at runtime. Keep overrides API-compatible with
+the module they shadow anyway: same exported names, same prop types. Widening a prop type is safe;
+renaming or removing an export is not.

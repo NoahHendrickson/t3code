@@ -46,7 +46,7 @@ function OptionControl({ multiSelect, selected }: { multiSelect: boolean; select
     <span
       aria-hidden="true"
       className={cn(
-        "flex size-4 shrink-0 items-center justify-center border border-input",
+        "flex size-4 shrink-0 items-center justify-center border border-foreground/50",
         multiSelect ? "rounded-[4px]" : "rounded-full",
         selected && "border-transparent bg-primary text-primary-foreground",
       )}

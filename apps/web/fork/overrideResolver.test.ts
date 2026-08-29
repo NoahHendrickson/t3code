@@ -228,6 +228,20 @@ describe("shadow tree integrity", () => {
     });
   }
 
+  it("type-checks relative imports through the same overlay the bundler uses", () => {
+    // An override keeps its copy's relative imports verbatim (README: "do not
+    // rewrite the copy's imports"), and `../ui/tooltip` from inside
+    // `src/overrides/components/chat/` names no physical file. `rootDirs`
+    // is what lets TypeScript resolve it from the mirrored path, override
+    // first — drop it and every copied shadow fails with TS2307.
+    const tsconfig = NodeFS.readFileSync(
+      NodeURL.fileURLToPath(new URL("../tsconfig.json", import.meta.url)),
+      "utf8",
+    );
+    expect(tsconfig).toContain('"rootDirs": ["./src/overrides", "./src"]');
+    expect(tsconfig).toContain('"~/*": ["./src/overrides/*", "./src/*"]');
+  });
+
   it("every override shadows a module that exists upstream", () => {
     const orphans = walk(realOverrides)
       .filter((file) => !/\.test\.(tsx|ts)$/.test(file))
