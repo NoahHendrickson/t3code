@@ -42,6 +42,10 @@ describe("fork guard: fork-workspace-header", () => {
     // mark there leaves it on the raised outline while Open / Commit & push stay pills.
     const scripts = readSibling("../components/ProjectScriptsControl.tsx");
     expect(scripts).toMatch(/aria-label="Add action"[\s\S]{0,80}data-fork-pill/u);
+    // Same story for the not-yet-a-repo "Initialize Git" button in GitActionsControl:
+    // the Group already checked above covers only the isRepo branch.
+    const git = readSibling("../components/GitActionsControl.tsx");
+    expect(git).toMatch(/data-fork-pill[\s\S]{0,1200}"Initialize Git"/u);
   });
 
   it("styles the pills only under the fork marker", () => {
