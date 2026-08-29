@@ -1565,6 +1565,11 @@
     drops the raised treatment that reads as a button floating above a page,
     and opens padding to 10px/7px.
 
+    The not-yet-a-repo "Initialize Git" button (GitActionsControl, !isRepo
+    branch) and the empty-scripts "Add action" button are lone buttons with no
+    Group; each carries its own data-fork-pill so it paints as a single-half
+    pill instead of the raised outline beside the split ones.
+
     The two panel toggles render at 16px, and their glyphs become SquareHalf and
     SquareHalfBottom via the Phosphor shim rather than at the call site — see
     phosphor-duotone-icons. Upstream's framed-panel glyphs were hard to tell

@@ -1673,9 +1673,14 @@ export default function GitActionsControl({
   return (
     <>
       {!isRepo ? (
+        /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+           Lone "Initialize Git" (not a repo yet) sits where the Git pill would, so it
+           takes the same mark; without it this branch keeps the raised outline next to
+           the Add action / Open pills. fork:end fork-workspace-header */
         <Button
           variant="outline"
           size="xs"
+          data-fork-pill
           disabled={initAction.isPending}
           onClick={() => {
             void (async () => {
