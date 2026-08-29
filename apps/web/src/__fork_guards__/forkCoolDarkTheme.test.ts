@@ -202,17 +202,20 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
   });
 
-  it("keeps context chips on an opaque match of the composer fill", () => {
-    // Chips share the composer's RGB but stay opaque: design-mode canvas
-    // transforms <body>, which disables backdrop-filter on descendants.
+  it("keeps Cool Dark chips opaque and default dark chips on the Figma white wash", () => {
+    // Cool Dark chips share the composer's RGB but stay opaque: design-mode
+    // canvas transforms <body>, which disables backdrop-filter on descendants.
+    // Default dark follows Figma 322:6316 — a white 12% wash that lifts off
+    // any dark stage rather than sinking into it as a dark translucent fill did.
     const contextRules = cssRules(theme).filter((rule) =>
       rule.body.includes("--fork-context-chip-bg:"),
     );
     const defaultDark = contextRules.find((rule) => rule.selector === `${MARKER}.dark`);
     const coolDark = contextRules.find((rule) => rule.selector === COOL_STAGE[0]);
-    expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(41 41 41)");
+    expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(255 255 255 / 12%)");
+    expect(defaultDark?.body).toContain("--fork-context-chip-bg-hover: rgb(255 255 255 / 17%)");
     expect(coolDark?.body).toContain("--fork-context-chip-bg: #353a3d");
-    expect(defaultDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
+    expect(coolDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
     // The chips never carry a real filter. Matching the property outright used
     // to say that, until the vibrancy block started declaring `none` on them
     // and tripped its own guard. So match the VALUE: `none` is the point, and

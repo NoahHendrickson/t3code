@@ -1247,7 +1247,9 @@
     inset, the right panel's "Open a surface" tiles most visibly, each reading as
     a rectangle of missing wallpaper. 5% white, matching the changed-files card
     so the two read as one kind of surface, and scoped to the inset because the
-    sidebar block redefines --card to the panel tint.
+    sidebar block redefines --card to the panel tint. The user's sent bubble
+    (`.bg-message`, painted from --card by fork-changed-files-card) takes the
+    same 5% wash under glass, unlayered since it carries no hover/focus fill.
 
     That one rule is deliberately the ONLY glass rule that does not outrank what
     it overrides, and it is the exception that proves why the others can. Every
@@ -1915,10 +1917,11 @@
     The interaction toggles are text-only ghost chips. Mode,
     Build, model, and effort all share 12px medium on a 16px line and 4px
     inline padding (including the runtime-mode chip). They also share one hover
-    channel — the chip lift the branch and workspace chips use, not upstream's
-    ghost `--accent`, which the Cool palettes resolve to the composer's own
-    prompt-surface fill. The runtime-mode chip is the one opt-out; its hover is
-    a per-mode hue. The composer's effort
+    channel — a faint white 4% wash in dark (`--fork-composer-control-hover`),
+    not upstream's ghost `--accent`, which the Cool palettes resolve to the
+    composer's own prompt-surface fill, and not the context chips' raised lift,
+    which read nearly solid on these text-only ghosts. The runtime-mode chip is
+    the one opt-out; its hover is a per-mode hue. The composer's effort
     trigger joins its trait labels with a plain space ("High 1M") while
     Settings keeps upstream's " · " separator. Geometry is CSS-owned:
     theme.custom.css styles every ghost control under the mode and model
@@ -1993,6 +1996,9 @@
     the control row owns those controls — and its inline task/stash badges
     ride the prompt row's action cluster instead. The context-usage meter
     carries upstream's compact action (#8144) in the readout slot.
+    Default-dark context chips are Figma 322:6316's white 12% wash (hover
+    17%), the pair the Cool Darker glass tier already uses; the other
+    palettes keep their own opaque tints.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
@@ -2728,6 +2734,36 @@
     - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
     - apps/web/src/__fork_guards__/forkDesignSentPreviewResolution.test.ts
 
+- id: fork-popup-surface
+  intent: >
+    Popup menus (menu, select, combobox and popover popups — the model
+    picker among them) paint the same material as the Questions card and
+    the prompt surface: the composer fill layered over the vessel floor over
+    the stage, with the composer hairline, instead of upstream's blurred
+    translucent --popover tint under a 10% contrast border. Layering the
+    palette's own tokens keeps the value in step with every palette and
+    opaque (the stage always is), and the backdrop blur goes with nothing
+    left to see through. Under Cool Darker glass (theme.custom.palettes.css)
+    the composer is alphas over a wallpaper-lit stage, so the same two
+    alphas there stand on --fork-popup-glass-floor — the stage as it reads
+    on screen, measured, opaque — instead of the bare --background tint;
+    the menu lands on the Questions card's colour without going
+    translucent, which would show the transcript through it. Dark only;
+    keyed on upstream's popup data-slot names, no upstream fence.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.palettes.css
+  shadows: []
+  watch:
+    # Stamp the popup slots and the dropdown-glass utility the rule targets.
+    - apps/web/src/components/ui/menu.tsx
+    - apps/web/src/components/ui/select.tsx
+    - apps/web/src/components/ui/combobox.tsx
+    - apps/web/src/components/ui/popover.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkPopupSurface.test.ts
+
 - id: fork-right-panel-tabbar-divider
   intent: >
     The right-panel tab strip has a full-width hairline under it so the tabs
@@ -2757,7 +2793,10 @@
     on the left (checkbox for multi-select, radio for single-select), label
     beside it, and description indented under the label. Selection uses a
     theme-adaptive foreground/alpha fill and hairline (readable in Light and
-    Dark) rather than upstream primary tint or white-alpha. Number-key
+    Dark) rather than upstream primary tint or white-alpha. The unselected
+    control ring is foreground/50 (Figma neutral/50), not --input: every fork
+    dark palette's --input sits within a few points of the card fill, so the
+    ring vanished, worst under the hover wash. Number-key
     handlers stay; options announce them via aria-keyshortcuts without kbd
     badges. Behavior stays the same — multi toggles in place, single
     auto-advances — only the chrome changes. Card interaction lives in
@@ -2774,6 +2813,12 @@
     Since upstream #7150 the panel renders in the attached top drawer, which
     upstream already paints transparent, so the fork no longer clears a
     muted strip around it; ChatComposer carries no hunk for this entry.
+    Figma 322:6316 stacks the Questions card onto the prompt row: dark-only
+    rules in theme.custom.css give the drawer the vessel's full width, paint
+    the panel with the composer fill and a top/left/right hairline on 8px
+    top corners (recoloured with the prompt's focus ring so the stack keeps
+    one ring), and square the prompt surface's top corners (dropping
+    upstream's attached-drawer backdrop glass) so the two read as one box.
   tier: 2
   files:
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
@@ -2792,6 +2837,53 @@
   verify:
     - apps/web/src/__fork_guards__/forkPendingUserInput.test.ts
 
+- id: fork-model-picker
+  intent: >
+    The composer model picker follows Figma t3-fork 342:8038: a compact
+    12px-radius card (5px inset) with the provider entries laid out as a
+    horizontal segmented tab strip across the top — favorites (heart) first,
+    then one 32px tab per configured instance, the selected tab lifted on a
+    lighter fill — a search toggle at the strip's right end, and the models
+    beneath as plain 32px rows (name, check on the selected row). Search
+    replaces the tab strip with the input once toggled or typed into, with
+    Escape or its X closing it; the input stays mounted (visually hidden)
+    otherwise so the combobox keeps keyboard navigation and type-to-search.
+    Opening search lists every provider's models before anything is typed
+    (locked provider still respected, ordered by instance), so a query
+    narrows from the whole catalogue rather than the current tab. The
+    input's fill sits on a `flex h-8` wrapper — Input's wrapper span is
+    inline under `unstyled`, which painted the pill as a 17px line box.
+    The popup is content-sized but holds the tallest height it reaches
+    while open as a floor (grows, never shrinks; resets per open).
+    Favorites star and jump-shortcut badge surface on hover / keyboard
+    highlight; favorites and search results carry a leading provider glyph
+    since no provider footer remains. Legacy-models disclosure, locked-
+    provider disabling, instance badges and the "new" sparkle all remain.
+    Selection, ordering, favorites, shortcuts and scroll-lock are
+    upstream's; the render half of ModelPickerContent is the fork's,
+    everything above it a verbatim copy to diff against upstream save the
+    one marked `searchOpen` branch in `filteredModels`.
+    Reaches every entry point through ProviderModelPicker (composer and
+    Settings).
+  tier: 2
+  files:
+    - apps/web/src/overrides/components/chat/ModelPickerContent.tsx
+    - apps/web/src/overrides/components/chat/ModelPickerSidebar.tsx
+    - apps/web/src/overrides/components/chat/ModelListRow.tsx
+    - apps/web/src/theme.custom.css
+  shadows:
+    - apps/web/src/components/chat/ModelPickerContent.tsx
+    - apps/web/src/components/chat/ModelPickerSidebar.tsx
+    - apps/web/src/components/chat/ModelListRow.tsx
+  watch:
+    # Renders the popup shell the corner rule targets, and passes the props
+    # the content shadow must keep accepting.
+    - apps/web/src/components/chat/ProviderModelPicker.tsx
+    # Reads [data-model-picker-content]; the shadow must keep stamping it.
+    - apps/web/src/modelPickerVisibility.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkModelPicker.test.ts
+
 - id: fork-changed-files-card
   intent: >
     The chat-column changed-files card uses the fork dark surface ladder
@@ -2803,7 +2895,15 @@
     labels outside the header lift to --foreground (not the Show/Hide hint).
     Outline actions are header > div button (TooltipTrigger overwrites
     data-slot="button") and share the dark --fork-outline-* recipe with
-    pending Previous. Keys off data-changed-files-state / -header.
+    pending Previous. Every button in the card hovers as the same 4% white
+    lift (--fork-outline-hover-bg) instead of upstream's accent/60 fill,
+    which lands darker than the card. The user's sent chat bubble
+    (bg-message → --message-surface, upstream's --accent) is painted
+    background-color var(--card) on the element under the dark marker so it
+    shares the card's fill — on the element, not via the token, because
+    --color-message is declared on :root and would compute --card there
+    rather than under the v2 shell's rescoped value. Keys off
+    data-changed-files-state / -header and the bg-message class.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
@@ -2813,6 +2913,26 @@
     - apps/web/src/components/chat/ChangedFilesTree.tsx
   verify:
     - apps/web/src/__fork_guards__/forkChangedFilesCard.test.ts
+
+- id: fork-transcript-hover
+  intent: >
+    Transparent transcript rows — collapsed tool-call group toggles, log
+    entry rows, the "+N previous tool calls" line — hover as a 4% white lift
+    (--fork-outline-hover-bg) under the fork dark marker instead of
+    upstream's hover:bg-accent/20 and hover:bg-muted/55 washes, which are
+    cool opaque tokens at low alpha and read as a smudge on the fork stages
+    (worst under glass). Keyed on those two utilities inside the fork's
+    .fork-timeline-cutoff scroller; hover:bg-accent/50 on the filled
+    bg-card/50 tile is deliberately left alone.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Carries the two hover utilities and the fork-stamped scroller class.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkTranscriptHover.test.ts
 
 - id: fork-chat-working-rain
   intent: >

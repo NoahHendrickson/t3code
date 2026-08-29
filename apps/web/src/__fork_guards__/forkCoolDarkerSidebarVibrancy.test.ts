@@ -179,6 +179,20 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       "an opaque or tinted fill here stops the wallpaper at the card's edge",
     ).toMatch(/background-color:\s*rgb\(255 255 255 \/ \d+%\)/u);
 
+    // The user's sent bubble is painted from --card by fork-changed-files-card,
+    // and --card under glass is the 88% slab — so the bubble follows the
+    // changed-files card onto the same 5% wash or it is the one opaque block
+    // left in the column.
+    const changedFiles = glassRules.find(
+      (rule) =>
+        rule.selector.includes("[data-changed-files-state]") && rule.body.includes("background"),
+    );
+    const bubble = glassRules.find((rule) => rule.selector.includes(".bg-message"));
+    expect(changedFiles?.body).toMatch(/background:\s*rgb\(255 255 255 \/ 5%\)/u);
+    expect(bubble?.body, "the bubble must match the changed-files card's wash").toMatch(
+      /background-color:\s*rgb\(255 255 255 \/ 5%\)/u,
+    );
+
     // Scoped to the inset: the sidebar block redefines --card to the panel tint,
     // so a wash there would paint a second layer over surfaced glass.
     expect(

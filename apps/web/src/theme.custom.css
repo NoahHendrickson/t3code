@@ -650,13 +650,25 @@
    wrong channel on this row: on Cool Dark and Cool Darker `--accent` is
    bit-identical to `--fork-composer-bg`, so hovering the model or effort
    trigger lands it on a fill the composer already wears rather than lifting it
-   off the vessel — the same trap the drag-over state hit above. The chip-hover
-   lift is the fork's per-theme "raised control" step and is what the branch and
-   workspace chips one row up use on hover, so the whole composer hovers on one
-   channel instead of two.
+   off the vessel — the same trap the drag-over state hit above.
+
+   These are text-only ghosts sitting directly on the prompt surface, so the
+   fill is a faint white wash (4%) rather than the context chips' raised step:
+   the chips are filled controls whose hover is one step up from a 12% fill,
+   and borrowing that lift here painted the model trigger nearly as solid as
+   the chips themselves. Light mode has no drawn value and falls back to the
+   chip lift.
 
    The mode chip opts out: it is the only filled control here, and its fill and
    hover are per-mode hues owned by `custom/ComposerShell.css`. */
+:root[data-fork="noahhendrickson-t3code"] {
+  --fork-composer-control-hover: var(--fork-context-chip-bg-hover);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-composer-control-hover: rgb(255 255 255 / 4%);
+}
+
 :root[data-fork="noahhendrickson-t3code"]
   :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
   :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]):is(
@@ -664,7 +676,7 @@
     [data-pressed],
     [data-popup-open]
   ):not(:disabled) {
-  background: var(--fork-context-chip-bg-hover);
+  background: var(--fork-composer-control-hover);
 }
 
 /* Send and stop are the one exception to the pill rule: 24px squares at a 4px
@@ -804,13 +816,15 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark {
-  /* Same RGB as --fork-composer-bg, but opaque. The composer's translucent
-     fill works because it sits on the vessel's own opaque floor; chips sit on
-     the stage, and a translucent chip disappears under design-mode canvas
-     (transform on <body> once made Local checkout look unstyled until canvas
-     turned off). Hover stays a step lighter. */
-  --fork-context-chip-bg: rgb(41 41 41);
-  --fork-context-chip-bg-hover: #303030;
+  /* Figma 322:6316 draws the chips as a white 12% wash, hover one step up —
+     the same pair the Cool Darker glass tier already uses. This replaced an
+     opaque rgb(41 41 41): that value was the composer's RGB, not the design's,
+     and sat two levels off the stage. The old opacity worry was about a dark
+     translucent fill sinking into the stage under design-mode canvas; a white
+     wash lifts off any dark stage instead, and it tracks the v1/v2 stage
+     difference that one flattened hex could not. */
+  --fork-context-chip-bg: rgb(255 255 255 / 12%);
+  --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
 }
 
 :root[data-fork="noahhendrickson-t3code"]
@@ -1855,6 +1869,130 @@
   padding-inline: 8px;
 }
 
+/* ── Questions card stacked on the prompt surface ────────────────────────────
+   Figma t3-fork 322:6316. Upstream's top drawer (#7150) is a 1.375rem-inset
+   glass card: 16px corners, its own backdrop-filter, overlapping the surface
+   by 1rem + 1px. The design draws the Questions card and the prompt row as
+   one box instead — the card takes the vessel's full width, the composer's
+   fill and hairline (top / left / right only) on 8px top corners, and the
+   prompt row sits flush beneath with square top corners, its own hairline
+   drawing the divider. Dark-only, same contract as the vessel. Keyed on the
+   Questions panel so approval and plan drawers keep upstream's geometry. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  > .chat-composer-top-drawer:has(> [data-fork-pending-user-input]) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-bottom: 0;
+}
+
+/* The drawer's masked glass pseudo-element is dead weight once the panel
+   paints itself — and a backdrop-filter this palette never asked for. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  > .chat-composer-top-drawer:has(> [data-fork-pending-user-input])::before {
+  display: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  > .chat-composer-top-drawer
+  > [data-fork-pending-user-input] {
+  border: 1px solid var(--fork-composer-border);
+  border-bottom: 0;
+  border-radius: var(--fork-composer-radius) var(--fork-composer-radius) 0 0;
+  background: var(--fork-composer-bg);
+  transition: border-color 200ms;
+}
+
+/* One ring for the whole stack: when the caret lands in the prompt, the
+   surface recolours its hairline to the focus tone, so the card above has to
+   follow or the two halves split into a dim ring over a bright one. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]:has([data-fork-composer-surface]:focus-within)
+  > .chat-composer-top-drawer
+  > [data-fork-pending-user-input] {
+  border-color: var(--fork-composer-border-focus);
+}
+
+/* Square the prompt surface's top corners under the card. The surface
+   inherits the frame's radius, so the frame's longhands do both. Upstream
+   also glasses the frame while any drawer is attached (a backdrop-filter and
+   a ::after outline on top of the fork's inset hairline); drop both so the
+   prompt row keeps its single 1px ring. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]:has(> .chat-composer-top-drawer > [data-fork-pending-user-input])
+  [data-fork-composer-box] {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]:has(> .chat-composer-top-drawer > [data-fork-pending-user-input])
+  [data-fork-composer-box]::after {
+  display: none;
+}
+
+/* ── Popup menus on the composer fill (fork-popup-surface) ───────────────────
+   Menus, selects, comboboxes and popovers (the model picker among them) open
+   on upstream's `dropdown-glass`: a blurred, partly translucent --popover tint
+   under a 10% contrast-foreground border. The Questions card and the prompt
+   surface paint the composer fill over the vessel floor with the 8% composer
+   hairline, so a menu opening beside them in a different grey reads as a
+   third material. Paint them the same way — the three layers the card
+   composites on screen (fill over vessel over stage) — so the value tracks
+   each palette's own tokens and stays opaque, because the stage always is.
+   With nothing to see through, the blur is pure GPU cost and goes too. Dark
+   only, like the vessel: a light build keeps upstream's popover. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="menu-popup"],
+    [data-slot="select-popup"],
+    [data-slot="combobox-popup"],
+    [data-slot="popover-popup"]
+  ):is(.dropdown-glass, :has(> .dropdown-glass)),
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="menu-popup"],
+    [data-slot="select-popup"],
+    [data-slot="combobox-popup"],
+    [data-slot="popover-popup"]
+  )
+  > .dropdown-glass {
+  background:
+    linear-gradient(var(--fork-composer-bg), var(--fork-composer-bg)),
+    linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
+    var(--background);
+  border-color: var(--fork-composer-border);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* ── Model picker popup corners (fork-model-picker) ─────────────────────────
+   Figma t3-fork 342:8038 draws the picker as a 12px-radius card with a 5px
+   inset; the inset is the content's own padding, but the corner belongs to
+   the popup shell ProviderModelPicker renders (rounded-lg = 10px, and it
+   clips its viewport to match). Keyed on the picker so every other popover
+   keeps upstream's radius. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-slot="popover-popup"]:has([data-fork-model-picker]) {
+  border-radius: 12px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-slot="popover-popup"]:has([data-fork-model-picker])::before {
+  border-radius: 11px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-slot="popover-viewport"]:has(> [data-fork-model-picker]) {
+  border-radius: 11px;
+  clip-path: inset(0 round 11px);
+}
+
 /* ── Changed-files card in the chat column ───────────────────────────────────
    Upstream paints `dark:bg-input/32` — a translucent wash of --input. Cool
    Dark's --input is neutral #3f3f3f (border gray), so the card never lands on
@@ -1870,6 +2008,51 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-header] {
   background: var(--card);
+}
+
+/* The user's sent bubble takes the same fill as the card above it. Upstream
+   paints `bg-message` → --message-surface → --accent; on every fork palette
+   that is the secondary/hover step (cool #353a3d, neutral #383838), one rung
+   brighter than the changed-files card, so the two surfaces in the same
+   column disagreed.
+
+   Painted on the element rather than by retargeting the surface token.
+   Tailwind declares --color-message on :root, so a var(--card) inside it
+   computes at the root — but the chat column sits under [data-sidebar-version="v2"],
+   which rescopes --card (above), and the changed-files card reads that
+   scoped value. Only an element-level var(--card) lands on the same rung.
+   Keyed on the utility class: the bubble carries no data attribute, and the
+   guard pins `bg-message` on MessagesTimeline's bubble. bg-message has that
+   one consumer; the send button's message-action tokens are untouched. */
+:root[data-fork="noahhendrickson-t3code"].dark .bg-message {
+  background-color: var(--card);
+}
+
+/* Hover fills inside the card. Upstream's `hover:bg-accent/60` is 60% of an
+   opaque --accent — cool #282d30 on the fork palettes — which lands darker
+   than the card it sits on and reads as a hole punched in it, worst under
+   glass where the card is a 5% white wash. A hover is a lift, not a fill:
+   the same 4% white the outline actions already use. Every button in the
+   card takes it (header toggle, tree rows, file chips, show-more); the
+   outline actions' own rule sets the same value. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] button:hover {
+  background-color: var(--fork-outline-hover-bg);
+}
+
+/* ── Transcript row hovers (fork-transcript-hover) ───────────────────────────
+   The collapsed tool-call toggles, log-entry rows and the "+N previous" line
+   hover with `hover:bg-accent/20` (and one `hover:bg-muted/55`): a 20% wash
+   of an opaque cool --accent over a stage that, on the fork palettes and
+   especially under glass, is already close to it in lightness — so the row
+   turns a cool smudge rather than lifting. Same answer as the changed-files
+   card: a hover is a 4% white lift. Keyed on the two utilities rather than
+   every button, because `hover:bg-accent/50` in the same file sits on a
+   `bg-card/50` tile and a white-only hover there would darken it. Scoped to
+   the fork-stamped transcript scroller, dark only. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  .fork-timeline-cutoff
+  :is(.hover\:bg-accent\/20, .hover\:bg-muted\/55):hover {
+  background-color: var(--fork-outline-hover-bg);
 }
 
 /* File/folder path labels — not the header's deliberately-receded Show/Hide
