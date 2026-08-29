@@ -2,26 +2,32 @@
  * Fork shadow of upstream's ModelPickerSidebar — see
  * `.fork/customizations.yaml#fork-model-picker`.
  *
- * Same export, same props. Upstream renders the provider rail as a vertical
- * 44px column down the picker's left edge; Figma t3-fork 342:8038 lays the
- * same entries out as a horizontal segmented tab strip across the top —
- * favorites first, then one 32px tab per configured instance, with the
- * selected tab lifted on a lighter fill. Everything the rail did (favorites
- * entry, disabled/unavailable tooltips, the "new" sparkle, custom-instance
- * initials) still happens here; only the geometry changed.
+ * Same export, same props, same imports as upstream (relative, so a sync
+ * diffs cleanly — see overrides/README.md). Upstream renders the provider
+ * rail as a vertical 44px column down the picker's left edge; Figma t3-fork
+ * 342:8038 lays the same entries out as a horizontal segmented tab strip
+ * across the top — favorites first, then one 32px tab per configured
+ * instance, with the selected tab lifted on a lighter fill. Everything the
+ * rail did (favorites entry, disabled/unavailable tooltips, the "new"
+ * sparkle, custom-instance initials) still happens here; only the geometry
+ * changed. The strip has far less room than the rail had (about six tabs in
+ * the 256px popup), so it scrolls, keeps the selected tab in view and fades
+ * whichever edge has more. The tabs are plain toggle buttons (aria-pressed),
+ * not ARIA tabs: nothing here is a tabpanel and the combobox below owns the
+ * arrow keys, so the tab pattern would promise a contract it cannot keep.
  */
 import { type ProviderInstanceId } from "@t3tools/contracts";
-import { memo } from "react";
+import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { Heart } from "@phosphor-icons/react";
 import { SparklesIcon } from "lucide-react";
-import { ProviderInstanceIcon } from "~/components/chat/ProviderInstanceIcon";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
+import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import {
   isProviderInstancePickerReady,
   shouldShowInstanceBadge,
   type ProviderInstanceEntry,
-} from "~/providerInstances";
+} from "../../providerInstances";
 
 /**
  * Build the hover tooltip for an instance button. Mirrors the old
@@ -47,6 +53,12 @@ const TAB_CLASS =
 const SELECTED_TAB_CLASS = "border-border/60 bg-foreground/16 hover:bg-foreground/16";
 const NEW_BADGE_CLASS =
   "pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex size-3.5 items-center justify-center rounded-full bg-transparent text-update-foreground shadow-sm";
+/** Edge fades for an overflowing strip; the scrollbar is hidden, so these are the affordance. */
+const STRIP_FADE_START_CLASS = "[mask-image:linear-gradient(to_right,transparent,black_1.25rem)]";
+const STRIP_FADE_END_CLASS =
+  "[mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent)]";
+const STRIP_FADE_BOTH_CLASS =
+  "[mask-image:linear-gradient(to_right,transparent,black_1.25rem,black_calc(100%-1.25rem),transparent)]";
 
 const PICKER_TOOLTIP_SIDE = "bottom" as const;
 const PICKER_TOOLTIP_SIDE_OFFSET = 6;
@@ -78,21 +90,58 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
     props.onSelectInstance(instanceId);
   };
   const showFavorites = props.showFavorites ?? true;
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState({ start: false, end: false });
+  const updateOverflow = useCallback(() => {
+    const strip = stripRef.current;
+    if (!strip) {
+      return;
+    }
+    const maxScrollLeft = Math.max(0, strip.scrollWidth - strip.clientWidth);
+    const start = strip.scrollLeft > 1;
+    const end = maxScrollLeft - strip.scrollLeft > 1;
+    setOverflow((current) =>
+      current.start === start && current.end === end ? current : { start, end },
+    );
+  }, []);
+  useLayoutEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) {
+      return;
+    }
+    const selected = Array.from(
+      strip.querySelectorAll<HTMLElement>("[data-model-picker-provider]"),
+    ).find((tab) => tab.dataset.modelPickerProvider === props.selectedInstanceId);
+    if (selected) {
+      const stripRect = strip.getBoundingClientRect();
+      const tabRect = selected.getBoundingClientRect();
+      if (tabRect.left < stripRect.left) {
+        strip.scrollLeft += tabRect.left - stripRect.left;
+      } else if (tabRect.right > stripRect.right) {
+        strip.scrollLeft += tabRect.right - stripRect.right;
+      }
+    }
+    updateOverflow();
+  }, [props.instanceEntries, props.selectedInstanceId, showFavorites, updateOverflow]);
 
   return (
     <div
-      role="tablist"
-      aria-label="Providers"
+      ref={stripRef}
       data-model-picker-sidebar="true"
-      className="flex min-w-0 shrink items-center overflow-x-auto rounded-lg bg-foreground/8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className={cn(
+        "flex min-w-0 shrink items-center overflow-x-auto overflow-y-hidden rounded-lg bg-foreground/8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        overflow.start && overflow.end && STRIP_FADE_BOTH_CLASS,
+        overflow.start && !overflow.end && STRIP_FADE_START_CLASS,
+        !overflow.start && overflow.end && STRIP_FADE_END_CLASS,
+      )}
+      onScroll={updateOverflow}
     >
       {showFavorites ? (
         <Tooltip>
           <TooltipTrigger
             render={
               <button
-                role="tab"
-                aria-selected={props.selectedInstanceId === "favorites"}
+                aria-pressed={props.selectedInstanceId === "favorites"}
                 data-model-picker-provider="favorites"
                 className={cn(
                   TAB_CLASS,
@@ -135,8 +184,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
 
         const button = (
           <button
-            role="tab"
-            aria-selected={isSelected}
+            aria-pressed={isSelected}
             data-model-picker-provider={entry.instanceId}
             data-provider-accent-color={entry.accentColor}
             className={cn(

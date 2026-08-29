@@ -64,8 +64,32 @@ describe("fork guard: fork-model-picker", () => {
     expect(content).toContain('data-fork-model-picker="true"');
   });
 
+  it("keeps upstream's relative imports so a sync diffs cleanly", () => {
+    // overrides/README.md: a shadow keeps the copy import-identical to
+    // upstream. `./ModelListRow` from inside the shadow tree resolves to the
+    // sibling shadow; everything else falls through to upstream.
+    for (const [name, shadow] of [
+      ["content", content],
+      ["tabs", tabs],
+      ["row", row],
+    ] as const) {
+      expect(shadow, name).not.toMatch(/from "~\/components\//u);
+      expect(shadow, name).not.toMatch(
+        /from "~\/(?:keybindings|providerInstances|modelOrdering)"/u,
+      );
+    }
+    expect(content).toContain('from "./ModelListRow"');
+    expect(content).toContain('from "./ModelPickerSidebar"');
+    expect(content).toContain('from "../ui/combobox"');
+  });
+
   it("lays the providers out as a tab strip, favorites first, 32px tabs", () => {
-    expect(tabs).toContain('role="tablist"');
+    // Toggle buttons, not ARIA tabs: there is no tabpanel and the combobox
+    // owns the arrow keys, so `role="tab"` would promise a pattern the
+    // widget does not implement.
+    expect(tabs).not.toContain('role="tab');
+    expect(tabs).toContain('aria-pressed={props.selectedInstanceId === "favorites"}');
+    expect(tabs).toContain("aria-pressed={isSelected}");
     expect(tabs).toContain('from "@phosphor-icons/react"');
     expect(tabs).toContain('data-model-picker-provider="favorites"');
     expect(tabs.indexOf('data-model-picker-provider="favorites"')).toBeLessThan(
@@ -78,6 +102,19 @@ describe("fork guard: fork-model-picker", () => {
     expect(tabs).toContain("getDisabledInstanceTooltip");
     expect(tabs).toContain("newBadgeInstanceIds");
     expect(tabs).toContain("shouldShowInstanceBadge(entry, props.instanceEntries)");
+  });
+
+  it("keeps the selected tab in view and fades the edge with more tabs", () => {
+    // The strip hides its scrollbar and holds about six tabs, so without
+    // these a seventh instance is selectable but invisible.
+    expect(tabs).toContain(
+      "find((tab) => tab.dataset.modelPickerProvider === props.selectedInstanceId)",
+    );
+    expect(tabs).toContain("strip.scrollLeft += tabRect.left - stripRect.left;");
+    expect(tabs).toContain("strip.scrollLeft += tabRect.right - stripRect.right;");
+    expect(tabs).toContain("onScroll={updateOverflow}");
+    expect(tabs).toMatch(/overflow\.start && overflow\.end && STRIP_FADE_BOTH_CLASS/u);
+    expect(tabs).toMatch(/STRIP_FADE_END_CLASS =\s*"\[mask-image:linear-gradient\(to_right,/u);
   });
 
   it("puts a search toggle beside the tabs and keeps the input mounted", () => {
@@ -99,12 +136,15 @@ describe("fork guard: fork-model-picker", () => {
     );
   });
 
-  it("lists every provider's models as soon as search opens", () => {
+  it("lists every provider's current models as soon as search opens", () => {
     // Search open with nothing typed shows the whole catalogue (locked
-    // provider still respected), ordered by instance, favorites not regrouped.
+    // provider still respected, legacy models held back for a query),
+    // ordered by instance, favorites not regrouped.
     expect(content).toMatch(
-      /if \(searchOpen\) \{\s*if \(props\.lockedProvider !== null\) \{[^}]*matchesLockedProvider[^}]*\}\s*return sortProviderModelItems\(result, \{\s*favoriteModelKeys: favoritesSet,\s*groupFavorites: false,\s*instanceOrder,\s*\}\);/u,
+      /if \(searchOpen\) \{\s*result = result\.filter\(\(m\) => !m\.isLegacy\);\s*if \(props\.lockedProvider !== null\) \{[^}]*matchesLockedProvider[^}]*\}\s*return sortProviderModelItems\(result, \{\s*favoriteModelKeys: favoritesSet,\s*groupFavorites: false,\s*instanceOrder,\s*\}\);/u,
     );
+    // The untyped catalogue must not remap ⌘1–9 onto another provider.
+    expect(content).toMatch(/if \(searchOpen && !isSearching\) \{\s*return mapping;\s*\}/u);
     // Legacy models list inline and rows carry provider glyphs whenever the
     // list mixes providers — keyed on the visible search, not only a query.
     expect(content).toContain('if (searchVisible || selectedInstanceId === "favorites") {');
@@ -112,7 +152,8 @@ describe("fork guard: fork-model-picker", () => {
   });
 
   it("renders models as 32px single-line rows with a check on the selected one", () => {
-    expect(content).toContain("estimatedItemSize={32}");
+    expect(content).toContain("const MODEL_ROW_HEIGHT = 32;");
+    expect(content).toContain("estimatedItemSize={MODEL_ROW_HEIGHT}");
     expect(content).not.toContain("ItemSeparatorComponent");
     expect(row).toMatch(/"group relative h-8 min-h-8 w-full/u);
     expect(row).toContain("props.isSelected ? (");
@@ -120,15 +161,26 @@ describe("fork guard: fork-model-picker", () => {
     // Favoriting stays reachable: the star is revealed, not removed.
     expect(row).toContain("props.onToggleFavorite()");
     expect(row).toContain("group-data-highlighted:opacity-100");
-    // Provider glyph replaces the footer wherever rows mix providers.
+    // Provider glyph plus the instance name replace the footer wherever rows
+    // mix providers — the glyph is per driver, so it cannot tell two Codex
+    // accounts apart on its own.
     expect(row).toContain("props.showProvider && ProviderIcon");
+    expect(row).toMatch(/props\.showProvider \? \(\s*<span[^>]*>\s*\{providerLabel\}/u);
+    // The jump badge's fill is foreground-relative like every other fork
+    // alpha here; a white wash vanishes on a light popup and drops Kbd's own.
+    expect(row).toContain("bg-foreground/4");
+    expect(row).not.toMatch(/bg-white\//u);
   });
 
-  it("lets the popup grow but never shrink while open", () => {
-    // The tallest height the content has reached is held as its min-height.
-    expect(content).toContain("setHeightFloor((previous) => Math.max(previous, height));");
-    expect(content).toContain("style={heightFloor > 0 ? { minHeight: heightFloor } : undefined}");
-    expect(content).toContain("observer.observe(content);");
+  it("gives the virtualized list a definite height", () => {
+    // LegendList windows against its scroll container's height; an
+    // auto-height parent would mount every row. Content-sized up to the cap.
+    expect(content).toContain(
+      "const listHeight = Math.min(filteredItemKeys.length * MODEL_ROW_HEIGHT, MODEL_LIST_MAX_HEIGHT);",
+    );
+    expect(content).toContain("style={{ height: listHeight }}");
+    expect(content).toMatch(/"scrollbar-gutter-stable h-full overflow-x-hidden/u);
+    expect(content).not.toContain("ResizeObserver");
   });
 
   it("keeps the logic half of the content shadow a verbatim copy of upstream", () => {

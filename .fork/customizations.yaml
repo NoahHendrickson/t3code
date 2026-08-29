@@ -2749,7 +2749,10 @@
     on screen, measured, opaque — instead of the bare --background tint;
     the menu lands on the Questions card's colour without going
     translucent, which would show the transcript through it. Dark only;
-    keyed on upstream's popup data-slot names, no upstream fence.
+    keyed on upstream's popup data-slot names, no upstream fence. One
+    selector arm per primitive, because each stamps dropdown-glass on a
+    different node: menu and popover on the popup itself, select on a child
+    of it, combobox on the wrapper span around it.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
@@ -2844,25 +2847,32 @@
     horizontal segmented tab strip across the top — favorites (heart) first,
     then one 32px tab per configured instance, the selected tab lifted on a
     lighter fill — a search toggle at the strip's right end, and the models
-    beneath as plain 32px rows (name, check on the selected row). Search
-    replaces the tab strip with the input once toggled or typed into, with
-    Escape or its X closing it; the input stays mounted (visually hidden)
-    otherwise so the combobox keeps keyboard navigation and type-to-search.
-    Opening search lists every provider's models before anything is typed
-    (locked provider still respected, ordered by instance), so a query
-    narrows from the whole catalogue rather than the current tab. The
-    input's fill sits on a `flex h-8` wrapper — Input's wrapper span is
-    inline under `unstyled`, which painted the pill as a 17px line box.
-    The popup is content-sized but holds the tallest height it reaches
-    while open as a floor (grows, never shrinks; resets per open).
-    Favorites star and jump-shortcut badge surface on hover / keyboard
-    highlight; favorites and search results carry a leading provider glyph
-    since no provider footer remains. Legacy-models disclosure, locked-
-    provider disabling, instance badges and the "new" sparkle all remain.
-    Selection, ordering, favorites, shortcuts and scroll-lock are
-    upstream's; the render half of ModelPickerContent is the fork's,
-    everything above it a verbatim copy to diff against upstream save the
-    one marked `searchOpen` branch in `filteredModels`.
+    beneath as plain 32px rows (name, check on the selected row). The strip
+    scrolls once the instances outgrow the 256px popup (about six tabs),
+    keeps the selected tab in view and fades the edge that has more; its
+    tabs are plain toggle buttons (aria-pressed), not ARIA tabs, since no
+    tabpanel or arrow-key contract backs them. Search replaces the tab
+    strip with the input once toggled or typed into, with Escape or its X
+    closing it; the input stays mounted (visually hidden) otherwise so the
+    combobox keeps keyboard navigation and type-to-search. Opening search
+    lists every provider's current models before anything is typed (locked
+    provider still respected, ordered by instance), so a query narrows from
+    the whole catalogue rather than the current tab; legacy models and the
+    ⌘1–9 jump keys wait for a query, so opening search never remaps the
+    keys onto another provider's models. The input's fill sits on a `flex
+    h-8` wrapper — Input's wrapper span is inline under `unstyled`, which
+    painted the pill as a 17px line box. The list is content-sized from its
+    fixed 32px rows up to a 280px cap, a definite height so the virtualized
+    list windows instead of mounting every row. Favorites star and
+    jump-shortcut badge surface on hover / keyboard highlight; favorites and
+    search results carry a leading provider glyph and the instance name
+    inline, since no provider footer remains and the glyph alone cannot
+    tell two accounts of one driver apart. Legacy-models disclosure,
+    locked-provider disabling, instance badges and the "new" sparkle all
+    remain. Selection, ordering, favorites, shortcuts and scroll-lock are
+    upstream's; the render half of ModelPickerContent is the fork's, the
+    logic above it upstream's with each fork hunk marked, and all three
+    shadows keep upstream's relative imports so a sync diffs cleanly.
     Reaches every entry point through ProviderModelPicker (composer and
     Settings).
   tier: 2
@@ -2911,6 +2921,8 @@
   watch:
     # Owns data-changed-files-state and data-changed-files-header.
     - apps/web/src/components/chat/ChangedFilesTree.tsx
+    # Carries the bg-message bubble the card rule also paints.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
   verify:
     - apps/web/src/__fork_guards__/forkChangedFilesCard.test.ts
 

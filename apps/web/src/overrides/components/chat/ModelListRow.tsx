@@ -2,13 +2,16 @@
  * Fork shadow of upstream's ModelListRow — see
  * `.fork/customizations.yaml#fork-model-picker`.
  *
- * Same export, same props. Figma t3-fork 342:8038 draws each model as one
- * 32px line: the name, and a check on the selected row. Upstream's two-line
- * row (name over a provider footer) plus an always-visible star and jump
- * badge collapses onto that line: the provider footer becomes a leading
- * provider glyph where it still disambiguates (favorites, search), and the
- * star and jump badge surface on hover or keyboard highlight so favoriting
- * and the shortcut hint stay reachable without crowding the resting row.
+ * Same export, same props, same imports as upstream (relative, so a sync
+ * diffs cleanly — see overrides/README.md). Figma t3-fork 342:8038 draws
+ * each model as one 32px line: the name, and a check on the selected row.
+ * Upstream's two-line row (name over a provider footer) plus an always-
+ * visible star and jump badge collapses onto that line: where rows mix
+ * providers (favorites, search) the footer becomes a leading glyph and the
+ * instance name inline after the model — the glyph alone is per driver, so
+ * two Codex accounts would be indistinguishable — and the star and jump
+ * badge surface on hover or keyboard highlight so favoriting and the
+ * shortcut hint stay reachable without crowding the resting row.
  */
 import { type ProviderDriverKind, type ProviderInstanceId } from "@t3tools/contracts";
 import { memo } from "react";
@@ -18,13 +21,13 @@ import {
   getTriggerDisplayModelLabel,
   type ModelEsque,
   PROVIDER_ICON_BY_PROVIDER,
-} from "~/components/chat/providerIconUtils";
-import { ComboboxItem } from "~/components/ui/combobox";
-import { Button } from "~/components/ui/button";
-import { Kbd } from "~/components/ui/kbd";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
+} from "./providerIconUtils";
+import { ComboboxItem } from "../ui/combobox";
+import { Button } from "../ui/button";
+import { Kbd } from "../ui/kbd";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
-import { modelPickerModelKey } from "~/components/chat/modelPickerKeys";
+import { modelPickerModelKey } from "./modelPickerKeys";
 
 /** Hidden at rest, shown while the row is hovered or keyboard-highlighted. */
 const HOVER_REVEAL_CLASS =
@@ -38,9 +41,9 @@ export const ModelListRow = memo(function ModelListRow(props: {
   /** Driver kind of the instance — used for the provider icon glyph. */
   driverKind: ProviderDriverKind;
   /**
-   * Display name for the provider glyph's label. Usually the instance's
-   * configured `displayName` so custom instances like "Codex Personal"
-   * announce their user-authored label.
+   * Display name shown inline after the model on mixed-provider rows.
+   * Usually the instance's configured `displayName` so custom instances
+   * like "Codex Personal" render with their user-authored label.
    */
   providerDisplayName: string;
   providerAccentColor?: string | undefined;
@@ -74,13 +77,14 @@ export const ModelListRow = memo(function ModelListRow(props: {
       )}
     >
       {props.showProvider && ProviderIcon ? (
-        <ProviderIcon
-          className="size-4 shrink-0 text-muted-foreground"
-          role="img"
-          aria-label={providerLabel}
-        />
+        <ProviderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       ) : null}
-      <span className="min-w-0 flex-1 truncate text-left text-xs font-medium leading-none">
+      <span
+        className={cn(
+          "min-w-0 truncate text-left text-xs font-medium leading-none",
+          !props.showProvider && "flex-1",
+        )}
+      >
         {props.useTriggerLabel
           ? getTriggerDisplayModelLabel(props.model)
           : getDisplayModelName(
@@ -88,6 +92,11 @@ export const ModelListRow = memo(function ModelListRow(props: {
               props.preferShortName ? { preferShortName: true } : undefined,
             )}
       </span>
+      {props.showProvider ? (
+        <span className="min-w-0 flex-1 truncate text-left text-xs font-normal leading-none text-muted-foreground/70">
+          {providerLabel}
+        </span>
+      ) : null}
       {props.showNewBadge ? (
         <span
           className="shrink-0 rounded border border-update/35 bg-update/15 px-0.5 py-px text-[10px] font-bold uppercase leading-none tracking-wide text-update-foreground"
@@ -101,7 +110,7 @@ export const ModelListRow = memo(function ModelListRow(props: {
         {props.jumpLabel ? (
           <Kbd
             className={cn(
-              "h-4 min-w-0 rounded-sm bg-white/4 px-1.5 text-[10px]",
+              "h-4 min-w-0 rounded-sm bg-foreground/4 px-1.5 text-[10px]",
               HOVER_REVEAL_CLASS,
             )}
           >

@@ -617,22 +617,13 @@
    text clearly. So the floor stays opaque and changes colour instead —
    `--fork-popup-glass-floor`, the stage as it reads on screen — and the two
    alphas over it resolve to the card's own value. The blur is already
-   cleared by the glass-set rule above. */
+   cleared by the glass-set rule above. Same three arms as the base rule. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
-    [data-slot="menu-popup"],
-    [data-slot="select-popup"],
-    [data-slot="combobox-popup"],
-    [data-slot="popover-popup"]
-  ):is(.dropdown-glass, :has(> .dropdown-glass)),
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  :is(
-    [data-slot="menu-popup"],
-    [data-slot="select-popup"],
-    [data-slot="combobox-popup"],
-    [data-slot="popover-popup"]
-  )
-  > .dropdown-glass {
+    :is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass,
+    [data-slot="select-popup"] > .dropdown-glass,
+    .dropdown-glass:has(> [data-slot="combobox-popup"])
+  ) {
   background:
     linear-gradient(var(--fork-composer-bg), var(--fork-composer-bg)),
     linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),

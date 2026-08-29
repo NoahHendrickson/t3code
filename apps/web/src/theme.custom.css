@@ -1946,22 +1946,18 @@
    composites on screen (fill over vessel over stage) — so the value tracks
    each palette's own tokens and stays opaque, because the stage always is.
    With nothing to see through, the blur is pure GPU cost and goes too. Dark
-   only, like the vessel: a light build keeps upstream's popover. */
+   only, like the vessel: a light build keeps upstream's popover.
+
+   Where the utility sits differs per primitive, so the selector has one arm
+   per shape: menu and popover carry `dropdown-glass` on the popup element
+   itself, select on a child of the popup, and combobox on the wrapper span
+   around the popup (components/ui/combobox.tsx). */
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
-    [data-slot="menu-popup"],
-    [data-slot="select-popup"],
-    [data-slot="combobox-popup"],
-    [data-slot="popover-popup"]
-  ):is(.dropdown-glass, :has(> .dropdown-glass)),
-:root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-slot="menu-popup"],
-    [data-slot="select-popup"],
-    [data-slot="combobox-popup"],
-    [data-slot="popover-popup"]
-  )
-  > .dropdown-glass {
+    :is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass,
+    [data-slot="select-popup"] > .dropdown-glass,
+    .dropdown-glass:has(> [data-slot="combobox-popup"])
+  ) {
   background:
     linear-gradient(var(--fork-composer-bg), var(--fork-composer-bg)),
     linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),

@@ -2,16 +2,17 @@
  * Fork shadow of upstream's ModelPickerContent — see
  * `.fork/customizations.yaml#fork-model-picker`.
  *
- * Same export, same props, same selection/search/keyboard logic as upstream
- * (everything above the render is a verbatim copy — diff against
- * `~upstream/components/chat/ModelPickerContent` when porting — except the
- * one `searchOpen` branch in `filteredModels`, marked "Fork:", which lists
- * every provider's models the moment search opens). Figma t3-fork
- * 342:8038 restacks the picker: the provider rail becomes a tab strip across
- * the top with a search toggle at its right, and the models sit below as
- * plain 32px rows. The search input stays mounted (visually hidden until
- * toggled or typed into) because the combobox routes keyboard navigation and
- * type-to-search through it.
+ * Same export, same props, same imports as upstream (relative, so a diff
+ * against `../../components/chat/ModelPickerContent.tsx` stays a clean
+ * 3-way merge when porting — see overrides/README.md). The logic above the
+ * render is upstream's with every fork hunk marked "Fork:": the `searchOpen`
+ * state, the untyped-catalogue branch in `filteredModels`, the jump-key gate
+ * over that catalogue, and the list's definite height. The render is the
+ * fork's. Figma t3-fork 342:8038 restacks the picker: the provider rail
+ * becomes a tab strip across the top with a search toggle at its right, and
+ * the models sit below as plain 32px rows. The search input stays mounted
+ * (visually hidden until toggled or typed into) because the combobox routes
+ * keyboard navigation and type-to-search through it.
  */
 import {
   type ProviderInstanceId,
@@ -22,43 +23,40 @@ import { resolveSelectableModel } from "@t3tools/shared/model";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ChevronRightIcon, SearchIcon, XIcon } from "lucide-react";
-import { ModelListRow } from "~/components/chat/ModelListRow";
-import { ModelPickerSidebar } from "~/components/chat/ModelPickerSidebar";
+import { ModelListRow } from "./ModelListRow";
+import { ModelPickerSidebar } from "./ModelPickerSidebar";
 import {
   modelPickerLegacySectionKey,
   modelPickerModelKey,
   parseModelPickerLegacySectionKey,
   parseModelPickerModelKey,
-} from "~/components/chat/modelPickerKeys";
-import { isModelPickerNewModel } from "~/components/chat/modelPickerModelHighlights";
-import {
-  buildModelPickerSearchText,
-  scoreModelPickerSearch,
-} from "~/components/chat/modelPickerSearch";
+} from "./modelPickerKeys";
+import { isModelPickerNewModel } from "./modelPickerModelHighlights";
+import { buildModelPickerSearchText, scoreModelPickerSearch } from "./modelPickerSearch";
 import {
   Combobox,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxItem,
   ComboboxListVirtualized,
-} from "~/components/ui/combobox";
-import { ModelEsque } from "~/components/chat/providerIconUtils";
+} from "../ui/combobox";
+import { ModelEsque } from "./providerIconUtils";
 import {
   modelPickerJumpCommandForIndex,
   modelPickerJumpIndexFromCommand,
   resolveShortcutCommand,
   shortcutLabelForCommand,
-} from "~/keybindings";
+} from "../../keybindings";
 import { useClientSettings, useUpdateClientSettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
-import { getVirtualizedScrollFadeClassName } from "~/components/ui/scroll-area";
-import { TooltipProvider } from "~/components/ui/tooltip";
+import { getVirtualizedScrollFadeClassName } from "../ui/scroll-area";
+import { TooltipProvider } from "../ui/tooltip";
 import {
   isProviderInstancePickerReady,
   isProviderInstancePickerVisible,
   type ProviderInstanceEntry,
-} from "~/providerInstances";
-import { providerModelKey, sortProviderModelItems } from "~/modelOrdering";
+} from "../../providerInstances";
+import { providerModelKey, sortProviderModelItems } from "../../modelOrdering";
 
 type ModelPickerItem = {
   slug: string;
@@ -74,6 +72,11 @@ type ModelPickerItem = {
 };
 
 const EMPTY_MODEL_JUMP_LABELS = new Map<string, string>();
+
+// Fork: every list row (model, legacy disclosure) is a fixed 32px, so the
+// list's height is exact from its count, capped like upstream's max-h.
+const MODEL_ROW_HEIGHT = 32;
+const MODEL_LIST_MAX_HEIGHT = 280;
 
 export const ModelPickerContent = memo(function ModelPickerContent(props: {
   /** The instance currently selected in the composer (combobox "value"). */
@@ -115,13 +118,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onInstanceModelChange,
   } = props;
   const [searchQuery, setSearchQuery] = useState("");
+  // Fork: the search toggle; open with nothing typed lists the whole catalogue.
   const [searchOpen, setSearchOpen] = useState(false);
-  // The popup is content-sized, and switching between a tall and a short
-  // provider list would make it pump. Remember the tallest the content has
-  // been this open and hold that as its floor: it can grow, never shrink.
-  // Remounts on every open, so the floor resets with the popup.
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [heightFloor, setHeightFloor] = useState(0);
   const [showTopScrollFade, setShowTopScrollFade] = useState(false);
   const [showBottomScrollFade, setShowBottomScrollFade] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -286,8 +284,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     }
     return [...available, ...disabled];
   }, [instanceEntries, isLocked, matchesLockedProvider]);
-  // The input takes the header row once it is toggled open or holds text;
-  // the tab strip yields to it, as upstream's rail yields while searching.
+  // Fork: the input takes the header row once it is toggled open or holds
+  // text; the tab strip yields to it, as upstream's rail yields while searching.
   const searchVisible = searchOpen || isSearching;
   const showSidebar = !searchVisible && sidebarInstanceEntries.length > 0;
   const instanceOrder = useMemo(
@@ -376,8 +374,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     // Fork: opening search lists the whole catalogue across every provider
     // before anything is typed, so the first keystroke narrows from
     // everything rather than from the current tab. Upstream keeps the rail
-    // selection until a query exists.
+    // selection until a query exists. Legacy models stay behind a query
+    // here, as they stay behind the disclosure on a tab.
     if (searchOpen) {
+      result = result.filter((m) => !m.isLegacy);
       if (props.lockedProvider !== null) {
         result = result.filter((m) => matchesLockedProvider(m));
       }
@@ -500,6 +500,12 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       NonNullable<ReturnType<typeof modelPickerJumpCommandForIndex>>
     >();
     let selectableModelIndex = 0;
+    // Fork: no jump keys over the untyped catalogue. It lists every
+    // provider, so ⌘1 would land on whichever instance sorts first instead
+    // of the tab the user was on; the keys return once a query exists.
+    if (searchOpen && !isSearching) {
+      return mapping;
+    }
     for (const model of visibleModels) {
       if (getModelDisabledReason?.(model.instanceId, model.slug)) {
         continue;
@@ -512,7 +518,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       selectableModelIndex += 1;
     }
     return mapping;
-  }, [getModelDisabledReason, visibleModels]);
+  }, [getModelDisabledReason, isSearching, searchOpen, visibleModels]);
   const modelJumpModelKeys = useMemo(
     () => [...modelJumpCommandByKey.keys()],
     [modelJumpCommandByKey],
@@ -636,18 +642,11 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     };
   }, [filteredItemKeys, updateModelListScrollFades]);
 
-  useLayoutEffect(() => {
-    const content = contentRef.current;
-    if (!content || typeof ResizeObserver === "undefined") {
-      return;
-    }
-    const observer = new ResizeObserver(() => {
-      const height = content.offsetHeight;
-      setHeightFloor((previous) => Math.max(previous, height));
-    });
-    observer.observe(content);
-    return () => observer.disconnect();
-  }, []);
+  // Fork: a definite height for the virtualized list. Upstream fixes the
+  // whole popup at max-h-86.5 and lets the list fill it; here the list is
+  // content-sized up to the cap, and LegendList still gets a real viewport
+  // to window against rather than mounting every row into an auto-height box.
+  const listHeight = Math.min(filteredItemKeys.length * MODEL_ROW_HEIGHT, MODEL_LIST_MAX_HEIGHT);
 
   const closeSearch = () => {
     setSearchQuery("");
@@ -658,9 +657,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   return (
     <TooltipProvider delay={0}>
       <div
-        ref={contentRef}
         className="relative flex w-64 flex-col gap-2.5 overflow-hidden p-[5px]"
-        style={heightFloor > 0 ? { minHeight: heightFloor } : undefined}
         data-model-picker-content="true"
         data-fork-model-picker="true"
       >
@@ -804,7 +801,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           </div>
 
           {/* Model list */}
-          <div className="relative min-h-0 overflow-hidden">
+          <div className="relative overflow-hidden" style={{ height: listHeight }}>
             <ComboboxListVirtualized className="size-full min-w-0 p-0 not-empty:p-0">
               <LegendList<string>
                 ref={modelListRef}
@@ -866,13 +863,13 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
                     />
                   );
                 }}
-                estimatedItemSize={32}
+                estimatedItemSize={MODEL_ROW_HEIGHT}
                 drawDistance={480}
                 recycleItems
                 onLayout={updateModelListScrollFades}
                 onScroll={updateModelListScrollFades}
                 className={cn(
-                  "scrollbar-gutter-stable max-h-70 overflow-x-hidden overscroll-y-contain",
+                  "scrollbar-gutter-stable h-full overflow-x-hidden overscroll-y-contain",
                   getVirtualizedScrollFadeClassName({
                     top: showTopScrollFade,
                     bottom: showBottomScrollFade,

@@ -6,6 +6,9 @@
  * composer hairline, so a menu beside the Questions card is the same material.
  * A sync that renames a popup slot or drops the rule quietly returns the
  * menus to upstream's blurred --popover tint — everything still compiles.
+ * The rule has one arm per primitive because each puts `dropdown-glass` on a
+ * different node relative to its `data-slot`; a sync that moves the class
+ * silently un-matches that primitive, so the guard pins the DOM shape too.
  */
 
 import * as NodeFS from "node:fs";
@@ -19,20 +22,39 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
+/** The JSX opening tag (from its `<`) up to the given attribute. */
+function openingTagBefore(source: string, attribute: string): string {
+  const at = source.indexOf(attribute);
+  expect(at, attribute).toBeGreaterThan(-1);
+  return source.slice(source.lastIndexOf("<", at), at);
+}
+
+const flat = (selector: string) => selector.replace(/\s+/gu, " ");
+
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
 const palettes = readSibling("../theme.custom.palettes.css");
+const menu = readSibling("../components/ui/menu.tsx");
+const select = readSibling("../components/ui/select.tsx");
+const combobox = readSibling("../components/ui/combobox.tsx");
+const popover = readSibling("../components/ui/popover.tsx");
 
-const POPUP_SLOTS = [
-  ["menu-popup", "../components/ui/menu.tsx"],
-  ["select-popup", "../components/ui/select.tsx"],
-  ["combobox-popup", "../components/ui/combobox.tsx"],
-  ["popover-popup", "../components/ui/popover.tsx"],
+/** One arm per primitive, keyed to where it stamps `dropdown-glass`. */
+const SELECTOR_ARMS = [
+  ':is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass',
+  '[data-slot="select-popup"] > .dropdown-glass',
+  '.dropdown-glass:has(> [data-slot="combobox-popup"])',
 ] as const;
 
 describe("fork guard: fork-popup-surface", () => {
   const rule = cssRules(theme).find(
     (candidate) =>
+      candidate.selector.includes(".dropdown-glass") &&
+      candidate.body.includes("--fork-composer-vessel-bg"),
+  );
+  const glass = cssRules(palettes).find(
+    (candidate) =>
+      candidate.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
       candidate.selector.includes(".dropdown-glass") &&
       candidate.body.includes("--fork-composer-vessel-bg"),
   );
@@ -53,22 +75,12 @@ describe("fork guard: fork-popup-surface", () => {
     // several points too dark. The floor swaps for the stage as it reads on
     // screen — and stays opaque, because the menu opens over the transcript
     // and a translucent one shows the text through.
-    const rules = cssRules(palettes);
-    const glass = rules.find(
-      (candidate) =>
-        candidate.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
-        candidate.selector.includes(".dropdown-glass") &&
-        candidate.body.includes("--fork-composer-vessel-bg"),
-    );
     expect(glass?.selector).toContain(MARKER);
     expect(glass?.selector).toContain('[data-fork-theme="cool-darker"]');
-    for (const [slot] of POPUP_SLOTS) {
-      expect(glass?.selector, slot).toContain(`[data-slot="${slot}"]`);
-    }
     expect(glass?.body).toMatch(
       /background:\s*linear-gradient\(var\(--fork-composer-bg\), var\(--fork-composer-bg\)\),\s*linear-gradient\(var\(--fork-composer-vessel-bg\), var\(--fork-composer-vessel-bg\)\),\s*var\(--fork-popup-glass-floor\);/u,
     );
-    const floor = rules.find(
+    const floor = cssRules(palettes).find(
       (candidate) =>
         candidate.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
         candidate.body.includes("--fork-popup-glass-floor:"),
@@ -77,12 +89,34 @@ describe("fork guard: fork-popup-surface", () => {
     expect(floor?.body).toMatch(/--fork-popup-glass-floor:\s*rgb\(\d+ \d+ \d+\);/u);
   });
 
-  it("names every popup slot upstream still stamps", () => {
-    for (const [slot, componentPath] of POPUP_SLOTS) {
-      expect(rule?.selector, slot).toContain(`[data-slot="${slot}"]`);
-      const component = readSibling(componentPath);
-      expect(component, componentPath).toContain(`data-slot="${slot}"`);
-      expect(component, componentPath).toContain("dropdown-glass");
+  it("carries the same arm for each primitive in both sheets", () => {
+    for (const arm of SELECTOR_ARMS) {
+      expect(flat(rule?.selector ?? ""), arm).toContain(arm);
+      expect(flat(glass?.selector ?? ""), arm).toContain(arm);
     }
+  });
+
+  it("targets dropdown-glass on the node each primitive actually puts it on", () => {
+    // Menu and popover: the class sits on the slotted popup element itself.
+    expect(openingTagBefore(menu, 'data-slot="menu-popup"')).toContain("dropdown-glass");
+    expect(openingTagBefore(popover, 'data-slot="popover-popup"')).toContain("dropdown-glass");
+
+    // Select: the popup is bare; the glass is a <div> child inside it.
+    expect(openingTagBefore(select, 'data-slot="select-popup"')).not.toContain("dropdown-glass");
+    const selectPopupStart = select.indexOf('data-slot="select-popup"');
+    const selectPopupEnd = select.indexOf("</SelectPrimitive.Popup>", selectPopupStart);
+    expect(selectPopupEnd).toBeGreaterThan(selectPopupStart);
+    expect(select.slice(selectPopupStart, selectPopupEnd)).toMatch(
+      /<div\s+className=\{cn\(\s*"dropdown-glass/u,
+    );
+
+    // Combobox: the glass is the wrapper <span> whose child is the popup —
+    // the shape the first draft of this rule missed.
+    expect(openingTagBefore(combobox, 'data-slot="combobox-popup"')).not.toContain(
+      "dropdown-glass",
+    );
+    expect(combobox).toMatch(
+      /<span\s+className=\{cn\(\s*"dropdown-glass[\s\S]*?>\s*<ComboboxPrimitive\.Popup\b[\s\S]*?data-slot="combobox-popup"/u,
+    );
   });
 });
