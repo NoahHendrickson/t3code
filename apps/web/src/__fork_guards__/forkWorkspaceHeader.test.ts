@@ -43,9 +43,13 @@ describe("fork guard: fork-workspace-header", () => {
     const scripts = readSibling("../components/ProjectScriptsControl.tsx");
     expect(scripts).toMatch(/aria-label="Add action"[\s\S]{0,80}data-fork-pill/u);
     // Same story for the not-yet-a-repo "Initialize Git" button in GitActionsControl:
-    // the Group already checked above covers only the isRepo branch.
+    // the Group already checked above covers only the isRepo branch. Anchored on the
+    // button's own attributes (initAction is unique to it) so the assertion says the
+    // mark is on this Button, not merely somewhere in the preceding lines.
     const git = readSibling("../components/GitActionsControl.tsx");
-    expect(git).toMatch(/data-fork-pill[\s\S]{0,1200}"Initialize Git"/u);
+    expect(git).toMatch(
+      /<Button\s+variant="outline"\s+size="xs"\s+data-fork-pill\s+disabled=\{initAction\.isPending\}/u,
+    );
   });
 
   it("styles the pills only under the fork marker", () => {
