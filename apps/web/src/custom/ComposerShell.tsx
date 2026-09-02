@@ -19,7 +19,9 @@ export function resolveComposerShellVisibility({
 }: ComposerShellVisibilityInput) {
   return {
     showInlinePrimaryAction: !approvalPending && !mobilePendingActionsVisible,
-    showInteractiveControls: !approvalPending && !collapsedMobile,
+    // Upstream hides its footer on phones while the pending-answer cluster is
+    // up (the editor reserves that band for the absolute prev/advance actions).
+    showInteractiveControls: !approvalPending && !collapsedMobile && !mobilePendingActionsVisible,
   };
 }
 

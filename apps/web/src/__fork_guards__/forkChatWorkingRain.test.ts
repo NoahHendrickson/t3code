@@ -24,6 +24,15 @@ describe("fork guard: fork-chat-working-rain", () => {
     expect(timeline).toContain("<SidebarV2WorkingRain seed={row.id} />");
   });
 
+  it("centres the rain beside the timer with a gap", () => {
+    // Upstream's row is `h-6 items-baseline` with no gap (it has no leading
+    // mark); the SVG's synthesised baseline is its bottom edge, so taking that
+    // container verbatim rides the glyph high and flush against "Working for".
+    expect(timeline).toMatch(
+      /fork:begin fork-chat-working-rain[^]*?className="flex h-6 min-w-0 items-center gap-2 px-1 [^"]*"\s*\/\* fork:end fork-chat-working-rain \*\//u,
+    );
+  });
+
   it("no longer ships upstream's pulsing-dot cluster", () => {
     // The dots were the only animate-status-pulse use in this file; their
     // return is exactly the silent un-port this guard exists to catch.

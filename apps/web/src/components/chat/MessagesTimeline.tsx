@@ -1363,7 +1363,14 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
   const { isPreparingWorktree } = use(TimelineRowActivityCtx);
   return (
     <div className="border-b border-border/60 pb-2 pt-1">
-      <div className="flex h-6 min-w-0 items-baseline px-1 text-sm leading-relaxed text-muted-foreground tabular-nums">
+      <div
+        /* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain
+           Upstream's row has no leading mark and baseline-aligns its text; the
+           rain glyph needs centring and a gap or it sits high, flush against
+           "Working for". */
+        className="flex h-6 min-w-0 items-center gap-2 px-1 text-sm leading-relaxed text-muted-foreground tabular-nums"
+        /* fork:end fork-chat-working-rain */
+      >
         {/* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain */}
         <SidebarV2WorkingRain seed={row.id} />
         {/* fork:end fork-chat-working-rain */}

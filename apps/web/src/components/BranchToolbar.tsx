@@ -12,6 +12,8 @@ import {
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import type { ReactNode } from "react";
+
+import { renderComposerLivenessStripFallback } from "../custom/composerContextStrip";
 /* fork:end fork-composer-shell */
 
 import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
@@ -490,15 +492,8 @@ export const BranchToolbar = memo(function BranchToolbar({
     // Trailing (liveness stop) must still mount while the thread shell is live
     // but useThread has not resolved yet — otherwise the only stop affordance
     // vanishes during detail loading.
-    if (trailing) {
-      return (
-        <ComposerSurface.ContextStrip ref={setStripElement}>
-          {trailing}
-        </ComposerSurface.ContextStrip>
-      );
-    }
+    return renderComposerLivenessStripFallback(trailing);
     /* fork:end fork-composer-shell */
-    return null;
   }
 
   return (

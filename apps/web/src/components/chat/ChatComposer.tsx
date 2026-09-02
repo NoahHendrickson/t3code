@@ -314,7 +314,6 @@ import {
   CircleAlertIcon,
   FileIcon,
   PaperclipIcon,
-  PencilRulerIcon,
   PlayIcon,
   type LucideIcon,
   LockIcon,
@@ -3536,11 +3535,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               {...(selectedProvider === "claudeAgent" ? { onCompact: compactThreadContext } : {})}
             />
           </div>
-        ) : null}
-        {isPreparingWorktree ? (
-          <span className="shrink-0 whitespace-nowrap text-muted-foreground/70 text-xs">
-            Preparing worktree...
-          </span>
         ) : null}
       </>
     ) : null;

@@ -1951,14 +1951,21 @@
     took away the workspace chip — the control a draft uses to point itself
     back out of the dead tree, and its only way out. A started thread's
     workspace is pinned either way, so its strip returns read-only. Runtime,
-    model, and effort controls remain gated during a pending approval and while
-    the mobile composer is collapsed; the read-only context meter may remain.
-    The inline primary-action cluster is suppressed whenever the mobile
-    pending-answer cluster is visible, so only one answer action renders.
+    model, and effort controls remain gated during a pending approval, while
+    the mobile composer is collapsed, and while the mobile pending-answer
+    cluster is visible (upstream hides its footer there too, since the editor
+    reserves that band for the absolute prev/advance actions); the read-only
+    context meter may remain. The inline primary-action cluster is suppressed
+    whenever the mobile pending-answer cluster is visible, so only one answer
+    action renders.
 
     Upstream's stitched glass-shell paint — ComposerSurface's shell, host and
     context-strip pseudo-elements, keyed by data-slot since #8734 — is
-    disabled under the fork marker.
+    disabled under the fork marker, as is the glass upstream puts on the
+    prompt frame whenever any banner is attached above it (backdrop-filter,
+    drop shadow and a ::after outline ring that would double the surface's
+    own hairline): the frame sheds all of it in both schemes, not only under
+    the Questions drawer.
     The docked composer overlay paints an opaque page-colored floor (soft fade
     over its top edge) so timeline rows cannot read through the composer once
     that upstream vessel is gone. The fork vessel paints `--fork-composer-vessel-bg`
@@ -2838,11 +2845,14 @@
     Figma 322:6316 stacks the Questions card onto the prompt row: dark-only
     rules in theme.custom.css give the drawer (the ComposerBanner.Root marked
     data-chat-composer-top-drawer and, since #8734, both attachment wrappers
-    around it) the vessel's full width, paint
+    around it) the vessel's full width with no inset or overlap tuck, paint
     the panel with the composer fill and a top/left/right hairline on 8px
     top corners (recoloured with the prompt's focus ring so the stack keeps
-    one ring), and square the prompt surface's top corners (dropping
-    upstream's attached-drawer backdrop glass) so the two read as one box.
+    one ring), and square the prompt surface's top corners so the two read as
+    one box. Because the card takes the whole dock row, the stash tab cannot
+    sit beside it as it does beside upstream's inset drawer: the dock stacks
+    and the tab rides above the card's right shoulder, its overlap padding
+    tucked under the card.
   tier: 2
   files:
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
@@ -2974,9 +2984,10 @@
     upstream's three staggered pulsing dots — one "agent is working" mark
     across sidebar and chat. The mark is the fork-owned SidebarV2WorkingRain
     (emerald, 14px, keyframes in theme.custom.css via sidebar-v2-card-rows),
-    seeded with the working row's stable id; the timer text and step label
-    beside it are untouched. Reduced motion gets the component's own still
-    frame, same as the sidebar.
+    seeded with the working row's stable id; the timer text beside it is
+    untouched, but the row centres its items with an 8px gap (upstream's
+    baseline-aligned, gapless row has no leading mark to space). Reduced
+    motion gets the component's own still frame, same as the sidebar.
   tier: 4
   files: []
   shadows: []

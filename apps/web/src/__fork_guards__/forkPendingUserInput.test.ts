@@ -96,7 +96,8 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(drawer?.selector).toContain(MARKER);
     expect(drawer?.selector).toContain(".dark");
     expect(drawer?.body).toMatch(/max-width:\s*none/u);
-    expect(drawer?.body).toMatch(/padding-bottom:\s*0/u);
+    // Root carries p-1 on every side plus the overlap tuck below; all of it goes.
+    expect(drawer?.body).toMatch(/padding:\s*0/u);
     const pseudo = rules.find((rule) => flat(rule.selector).endsWith(`${drawerKey}::before`));
     expect(pseudo?.body).toMatch(/display:\s*none/u);
 
@@ -124,8 +125,8 @@ describe("fork guard: fork-pending-user-input", () => {
     );
     expect(focused?.body).toMatch(/border-color:\s*var\(--fork-composer-border-focus\)/u);
 
-    // The prompt surface squares its top corners under the card and sheds
-    // upstream's attached-drawer glass (filter + ::after outline).
+    // The prompt surface squares its top corners under the card (the
+    // attached-banner glass is shed for every banner by fork-composer-shell).
     const frame = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-box]") &&
@@ -135,12 +136,24 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(frame?.selector).toContain(MARKER);
     expect(frame?.body).toMatch(/border-top-left-radius:\s*0/u);
     expect(frame?.body).toMatch(/border-top-right-radius:\s*0/u);
-    expect(frame?.body).toMatch(/backdrop-filter:\s*none/u);
-    const frameOutline = rules.find(
+
+    // The stash tab cannot share a row with a full-width card: the dock stacks
+    // and the tab rides above the card's right shoulder, tucked under it.
+    const dock = rules.find(
       (rule) =>
-        rule.selector.includes("[data-fork-composer-box]::after") &&
+        rule.selector.includes(":has(> [data-composer-shoulder-tab])") &&
         rule.selector.includes("[data-fork-pending-user-input]"),
     );
-    expect(frameOutline?.body).toMatch(/display:\s*none/u);
+    expect(dock?.body).toMatch(/flex-direction:\s*column/u);
+    const tab = rules.find(
+      (rule) =>
+        flat(rule.selector).endsWith("> [data-composer-shoulder-tab]") &&
+        rule.selector.includes("[data-fork-pending-user-input]"),
+    );
+    expect(tab?.body).toMatch(/order:\s*-1/u);
+    expect(tab?.body).toMatch(/align-self:\s*flex-end/u);
+    expect(tab?.body).toMatch(
+      /margin-bottom:\s*calc\(-1 \* var\(--chat-composer-attachment-overlap\)/u,
+    );
   });
 });
