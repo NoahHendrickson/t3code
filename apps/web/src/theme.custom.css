@@ -415,8 +415,14 @@
     var(--app-scrollbar-width) 100%;
 }
 
+/* The name must match the variable upstream's own `topbar-scroll-fade`
+   utility reads (index.css). An unknown name here does not just lose the top
+   fade: it makes the whole mask-size declaration invalid at computed-value
+   time, every layer falls back to `auto`, and the solid third layer then
+   covers the element — the transcript paints straight through the composer.
+   The guard reads the name out of index.css so a rename fails CI instead. */
 :root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff.topbar-scroll-fade {
-  --fork-timeline-top-fade: var(--topbar-scroll-fade-height);
+  --fork-timeline-top-fade: var(--workspace-titlebar-scroll-fade-height);
 }
 
 /* No blur band over the tail, and that is a constraint rather than a
@@ -687,13 +693,26 @@
   background: var(--fork-composer-control-hover);
 }
 
-/* Send and stop are the one exception to the pill rule: 24px squares at a 4px
-   radius, drawn as the only filled controls in the composer. */
+/* Send, stop and attach are the exception to the pill rule: 24px squares at
+   a 4px radius. Send and stop are the only filled controls in the composer;
+   attach is a ghost that shares their box so the items-end prompt row stays
+   44px (upstream mounts it at icon-sm, 28px). Each is stamped by name in
+   ChatComposer / ComposerPrimaryActions — never selected by position, because
+   ComposerPrimaryActions also hoists a labelled Refine submit into the same
+   cluster as a direct child. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {
   width: 24px;
   height: 24px;
   min-height: 24px;
   border-radius: 4px;
+}
+
+/* Attach is the one ghost among the stamped actions. Upstream hovers it with
+   --accent, which on the Cool palettes is the prompt surface it sits on, so it
+   takes the same 4% lift as the ghost controls in the row below. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-action="attach"]:is(:hover, [data-pressed]):not(:disabled) {
+  background: var(--fork-composer-control-hover);
 }
 
 /* Flat send (tone="flat"): in dark mode, a send button without stage-channel
@@ -2005,6 +2024,40 @@
   border-color: var(--fork-composer-border);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* ── Popup row hover (fork-popup-surface) ───────────────────────────────────
+   Upstream highlights a hovered menu, select or combobox row with --accent and
+   marks the selected/checked row with an 8% foreground wash. The fork palettes
+   make --accent an opaque grey: on the Cool palettes it is the composer fill
+   itself, the very colour the popup above paints, so a hovered row vanishes;
+   under Cool Darker glass the popup stands on the wallpaper-tinted floor and
+   the same opaque accent lands as a bluish slab on a warm surface; and in the
+   branch picker the hovered row never matched the "current" row beside it.
+   Hover takes the selected row's own wash — an alpha, so it reads as a lift
+   of whatever the popup paints — and hover on a selected row steps to 12% so
+   the pointer still registers there. Dark only, like the popup fill above. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="menu-item"],
+    [data-slot="menu-checkbox-item"],
+    [data-slot="menu-radio-item"],
+    [data-slot="menu-sub-trigger"],
+    [data-slot="select-item"],
+    [data-slot="combobox-item"]
+  ):is([data-highlighted], [data-popup-open], :hover) {
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+  color: var(--foreground);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="menu-checkbox-item"],
+    [data-slot="menu-radio-item"],
+    [data-slot="select-item"],
+    [data-slot="combobox-item"]
+  ):is([data-selected], [data-checked]):is([data-highlighted], :hover) {
+  background: color-mix(in oklab, var(--foreground) 12%, transparent);
 }
 
 /* ── Model picker popup corners (fork-model-picker) ─────────────────────────

@@ -649,6 +649,36 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     }
   });
 
+  it("lifts hover and selected fills with a wash instead of the opaque accent", () => {
+    // Under glass nothing --accent lands on is #282d30 any more: the stage is
+    // the neutral tint with the wallpaper's cast, the cards are washes, the
+    // popups stand on the warm floor. An opaque cool fill on any of them is a
+    // bluish slab; a white wash lifts whatever is underneath. Stated in the
+    // glass root block (the whole inset), the docked panel block (which
+    // restates the palette's opaque token) and the floating block (opaque
+    // neutral panel, where the cool token would be its one tinted fill).
+    const wash = /^rgb\(255 255 255 \/ \d+%\)$/u;
+    const declared = (body: string | undefined, token: string) =>
+      new RegExp(`${token}:\\s*([^;]+);`, "u").exec(body ?? "")?.[1];
+
+    const root = glassRules.find((rule) => rule.body.includes("--fork-popup-glass-floor:"));
+    expect(root, "the glass root block must be present").toBeDefined();
+    expect(declared(root?.body, "--accent"), "--accent under glass").toMatch(wash);
+    expect(declared(root?.body, "--fork-pill-hover"), "pill hover under glass").toMatch(wash);
+
+    expect(declared(glassPanelRule?.body, "--accent"), "--accent in the docked panel").toMatch(
+      wash,
+    );
+
+    const floating = glassRules.find(
+      (rule) =>
+        rule.selector.includes('[data-sidebar-version="v2"]') &&
+        rule.selector.includes('[data-fork-sidebar-overlay="true"]') &&
+        !rule.selector.includes(":not("),
+    );
+    expect(declared(floating?.body, "--accent"), "--accent in the floating panel").toMatch(wash);
+  });
+
   it("stamps the marker from the resolved answer, not the request", async () => {
     const root = makeRoot();
 

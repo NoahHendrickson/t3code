@@ -555,6 +555,27 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(action?.body).toMatch(/height:\s*24px/u);
     expect(action?.body).toMatch(/border-radius:\s*4px/u);
+    // Upstream's attach-files button (#8236) mounts in the same cluster at
+    // icon-sm (28px); the row is items-end, so a taller neighbour drops the
+    // prompt. It is stamped by name like send and stop and shares their box.
+    // Never by position: ComposerPrimaryActions hoists a labelled Refine
+    // submit into the cluster as a direct child, and a `> button` rule would
+    // squash it and steal its hover.
+    expect(chatComposer).toContain('data-fork-composer-action="attach"');
+    expect(chatComposer).toContain('aria-label="Attach files"');
+    for (const rule of rules) {
+      expect(rule.selector, "actions must be stamped, not selected by position").not.toMatch(
+        /data-chat-composer-actions[^{]*>\s*button/u,
+      );
+    }
+    // Its hover is the ghost lift, not --accent: on the Cool palettes --accent
+    // is the prompt surface the button sits on, so upstream's hover vanished.
+    const attachHover = rules.find((rule) =>
+      rule.selector
+        .replace(/\s+/gu, " ")
+        .includes('[data-fork-composer-action="attach"]:is(:hover, [data-pressed])'),
+    );
+    expect(attachHover?.body).toMatch(/background:\s*var\(--fork-composer-control-hover\)/u);
     for (const rule of rules.filter((candidate) => candidate.body.includes("height: 20px"))) {
       expect(rule.selector).not.toMatch(
         /data-chat-composer-(inline-actions|mobile-pending-actions)/u,
@@ -725,7 +746,20 @@ describe("fork guard: fork-composer-shell", () => {
       withTopFade,
       "the top-fade height must be restored when upstream's class is on",
     ).toBeDefined();
-    expect(withTopFade?.body).toContain("--topbar-scroll-fade-height");
+    // The height comes from the variable upstream's own utility reads, by
+    // name. Pinning a literal here is how the cutoff broke once: upstream
+    // renamed --topbar-scroll-fade-height, the guard kept matching the stale
+    // text, and the unresolved var() invalidated mask-size at computed-value
+    // time — every layer went `auto`, the solid third layer covered the
+    // scroller, and the transcript painted through the composer.
+    const indexCss = readSibling("../index.css");
+    const utility = /@utility topbar-scroll-fade \{([^}]*)\}/u.exec(indexCss)?.[1] ?? "";
+    const upstreamFadeVar = /var\((--[a-z-]*scroll-fade-height)\)/u.exec(utility)?.[1];
+    expect(upstreamFadeVar, "upstream's top fade must read a scroll-fade-height variable").toMatch(
+      /^--/u,
+    );
+    expect(indexCss).toContain(`${upstreamFadeVar}:`);
+    expect(withTopFade?.body).toContain(`--fork-timeline-top-fade: var(${upstreamFadeVar})`);
     expect(cutoff?.body).toContain("--fork-timeline-top-fade: 0px");
   });
 });

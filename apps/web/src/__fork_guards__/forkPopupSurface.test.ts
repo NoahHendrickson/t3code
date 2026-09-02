@@ -89,6 +89,50 @@ describe("fork guard: fork-popup-surface", () => {
     expect(floor?.body).toMatch(/--fork-popup-glass-floor:\s*rgb\(\d+ \d+ \d+\);/u);
   });
 
+  it("hovers popup rows with the selected row's wash, not --accent", () => {
+    // The fork palettes make --accent an opaque grey — the popup's own fill on
+    // the Cool palettes, a bluish slab on the wallpaper-tinted floor under
+    // glass — so upstream's hover either vanishes or reads as a second
+    // material next to the 8% foreground wash on a selected row.
+    const ROW_SLOTS = [
+      "menu-item",
+      "menu-checkbox-item",
+      "menu-radio-item",
+      "menu-sub-trigger",
+      "select-item",
+      "combobox-item",
+    ] as const;
+    for (const slot of ROW_SLOTS) {
+      const source = slot.startsWith("menu") ? menu : slot.startsWith("select") ? select : combobox;
+      expect(source, slot).toContain(`data-slot="${slot}"`);
+    }
+    expect(combobox).toContain("data-selected:bg-foreground/[0.08]");
+    expect(select).toContain("data-selected:bg-foreground/[0.08]");
+    expect(menu).toContain("data-checked:bg-foreground/[0.08]");
+    const hover = cssRules(theme).find(
+      (candidate) =>
+        flat(candidate.selector).includes(":is([data-highlighted], [data-popup-open], :hover)") &&
+        candidate.body.includes("var(--foreground) 8%"),
+    );
+    expect(hover?.selector).toContain(MARKER);
+    expect(hover?.selector).toContain(".dark");
+    for (const slot of ROW_SLOTS) {
+      expect(hover?.selector, slot).toContain(`[data-slot="${slot}"]`);
+    }
+    expect(hover?.body).toMatch(
+      /background:\s*color-mix\(in oklab, var\(--foreground\) 8%, transparent\)/u,
+    );
+    const selectedHover = cssRules(theme).find((candidate) =>
+      flat(candidate.selector).includes(
+        ":is([data-selected], [data-checked]):is([data-highlighted], :hover)",
+      ),
+    );
+    expect(selectedHover?.selector).toContain(MARKER);
+    expect(selectedHover?.body).toMatch(
+      /background:\s*color-mix\(in oklab, var\(--foreground\) 12%, transparent\)/u,
+    );
+  });
+
   it("carries the same arm for each primitive in both sheets", () => {
     for (const arm of SELECTOR_ARMS) {
       expect(flat(rule?.selector ?? ""), arm).toContain(arm);

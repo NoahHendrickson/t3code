@@ -1294,6 +1294,15 @@
     and ::before/::after, not just background-color, or gradient scrims and
     pseudo-elements stay invisible to the search.
 
+    Hover and selected fills under glass are white washes, not the palette's
+    opaque cool --accent: the stage is a neutral tint with the wallpaper's
+    cast, the cards are washes and the popups stand on the warm floor, so an
+    opaque #282d30 on any of them reads as a bluish slab instead of the
+    surface lifting. The glass root block and the docked panel block both
+    restate --accent (and the header pills' --fork-pill-hover) as
+    rgb(255 255 255 / 8%), which lands on the stage where the opaque token
+    used to, so upstream's bg-accent/N variants keep their relative weight.
+
     Must not alter Cool Dark, Neutral Dark, Neutral Darker, or default Dark,
     and must not make the window transparent for any other palette.
   tier: 2
@@ -1978,6 +1987,12 @@
     drop shadow and a ::after outline ring that would double the surface's
     own hairline): the frame sheds all of it in both schemes, not only under
     the Questions drawer.
+    The cutoff's top-fade companion rule reads the height variable upstream's
+    own topbar-scroll-fade utility reads, by its current name
+    (--workspace-titlebar-scroll-fade-height since upstream #8799); an
+    unresolved name there invalidates the whole mask-size declaration and the
+    transcript paints straight through the composer, so the guard derives the
+    name from index.css rather than pinning it.
     The docked composer overlay paints an opaque page-colored floor (soft fade
     over its top edge) so timeline rows cannot read through the composer once
     that upstream vessel is gone. The fork vessel paints `--fork-composer-vessel-bg`
@@ -2028,7 +2043,14 @@
     hangs above the vessel any more (no shoulder clearance). Upstream's
     bottom toolbar is not rendered at all — the control row owns those
     controls — and its attach-files control rides the prompt row's action
-    cluster ahead of send instead. The context-usage meter carries
+    cluster ahead of send instead, stamped data-fork-composer-action="attach"
+    (fenced in ChatComposer) so it shares send/stop's 24px square and the
+    items-end row does not drop the prompt below the send axis, and hovering
+    with the ghost controls' 4% lift rather than --accent, which on the Cool
+    palettes is the prompt surface it sits on. Actions are always stamped by
+    name, never selected by position: ComposerPrimaryActions hoists a
+    labelled Refine submit into the same cluster as a direct child. The
+    context-usage meter carries
     upstream's compact action (#8144) in the readout slot.
     Default-dark context chips are Figma 322:6316's white 12% wash (hover
     17%), the pair the Cool Darker glass tier already uses; the other
@@ -2052,7 +2074,7 @@
     # layer, passes BranchToolbar as contextStrip (with monitoring trailing),
     # and keeps that strip mounted when the thread's worktree directory is missing.
     - apps/web/src/components/ChatView.tsx
-    # data-fork-composer-action on the send and stop buttons; the whole 24px
+    # data-fork-composer-action on the send, stop and attach buttons; the whole 24px
     # square restyle hangs off it. Send also carries
     # data-fork-composer-send-tone ("channel" with stage art, "flat"
     # otherwise) for the dark-mode white/black fill.
@@ -2789,7 +2811,13 @@
     keyed on upstream's popup data-slot names, no upstream fence. One
     selector arm per primitive, because each stamps dropdown-glass on a
     different node: menu and popover on the popup itself, select on a child
-    of it, combobox on the wrapper span around it.
+    of it, combobox on the wrapper span around it. Menu, select and
+    combobox rows hover with the selected row's 8% foreground wash (12% on
+    a selected or checked row) instead of --accent: the fork palettes make
+    --accent an opaque grey that is the popup's own fill on the Cool
+    palettes (hover vanished) and a bluish slab on the wallpaper-tinted
+    floor under Cool Darker glass, and it never matched the branch
+    picker's "current" row. An alpha lifts whatever the popup paints.
   tier: 1
   files:
     - apps/web/src/theme.custom.css

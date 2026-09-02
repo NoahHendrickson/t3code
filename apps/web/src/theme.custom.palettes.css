@@ -433,6 +433,19 @@
      it should resolve to white 12% over this value. This is the one dial if
      the desktop changes and the menus drift from the composer. */
   --fork-popup-glass-floor: rgb(33 28 33);
+  /* Hover and selected fills. The palette's --accent is an opaque cool
+     #282d30, and under glass nothing it lands on is that colour any more: the
+     stage is the 95% neutral tint with the wallpaper's cast, the cards are 5%
+     washes, the popups stand on the warm floor above. An opaque cool fill on
+     any of them reads as a bluish slab dropped onto the surface rather than
+     the surface lifting under the pointer. A white wash lifts whatever is
+     underneath — the same answer the sidebar rows, the composer controls and
+     the design chrome already use. 8% lands on the stage where the opaque
+     token used to (+19 per channel), so the `bg-accent/N` variants upstream
+     scatters through the stage keep their relative weight. The header pills'
+     hover reads the same token in every other palette and follows it here. */
+  --accent: rgb(255 255 255 / 8%);
+  --fork-pill-hover: rgb(255 255 255 / 8%);
 }
 
 /* Design-mode chrome — the second column in the inset to take the glass.
@@ -781,6 +794,9 @@
   --sidebar-row-hover: rgb(255 255 255 / 5%);
   --sidebar-row-active: rgb(255 255 255 / 8%);
   --sidebar-row-selected: rgb(255 255 255 / 6%);
+  /* The panel's own block restates the palette's opaque --accent, which the
+     chrome rows' pressed toggle and hover fills read; same slab, same wash. */
+  --accent: rgb(255 255 255 / 8%);
 }
 
 /* The floating panel stays opaque (see the gate above), but it should not also
@@ -804,6 +820,10 @@
   --card: #1f1f1f;
   --sidebar: #1f1f1f;
   --sidebar-stage-fade: #1f1f1f;
+  /* The palette's cool #282d30 would be the one tinted fill on this neutral
+     panel; the docked block's wash over an opaque #1f1f1f resolves to a
+     neutral #303030 and keeps the hover the same material as the panel. */
+  --accent: rgb(255 255 255 / 8%);
 }
 
 /* The seam itself, softer than the token that draws every other line in the
