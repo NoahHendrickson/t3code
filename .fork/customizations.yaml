@@ -1219,7 +1219,7 @@
     saturate(2.6) and measured as a channel spread of 3 against 25 in the sidebar
     and 14-20 in the stage beside it: a flat grey slab in a translucent window.
     All of them are cleared explicitly — the composer, and upstream's own
-    .dropdown-glass / .dialog-glass / .alert-glass / .chat-composer-glass /
+    .dropdown-glass / .dialog-glass / .alert-glass /
     .dialog-backdrop utilities, which open over the sidebar and the stage and
     flatten whatever patch they cover. Those four are made opaque in the same
     rule (--glass-opacity: 100%): without the blur a translucent menu leaks the
@@ -2792,6 +2792,31 @@
     - apps/web/src/__fork_guards__/forkDesignMode.test.ts
     - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
     - apps/web/src/__fork_guards__/forkDesignSentPreviewResolution.test.ts
+
+- id: fork-upstream-names
+  intent: >
+    Every name a fork stylesheet borrows from upstream — a CSS variable it
+    reads with var(), a data attribute or data-slot value it selects, a
+    class it targets — still exists somewhere in apps/web. None of these is
+    a typed contract, so an upstream rename compiles clean and simply
+    un-matches the fork rule; an unresolved var() is worse, because it
+    invalidates the whole declaration around it at computed-value time
+    (that is how the timeline cutoff vanished when #8799 renamed
+    --topbar-scroll-fade-height). The guard resolves each referenced name
+    against the web source, Tailwind's default theme, and a short allowlist
+    of names libraries stamp at runtime (Base UI positioner variables and
+    tooltip-trigger attribute), so a rename in a sync PR turns CI red
+    instead of shipping a dead rule. It asserts existence only, never
+    meaning: a token whose value changed semantics still needs the guard
+    that owns that customization.
+  tier: 1
+  files:
+    - apps/web/src/__fork_guards__/forkUpstreamNames.test.ts
+  shadows: []
+  watch:
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/forkUpstreamNames.test.ts
 
 - id: fork-popup-surface
   intent: >

@@ -600,10 +600,13 @@
    covers the entire window and flattens everything behind the modal.
 
    .surface-glass and .sidebar-stage-backdrop arrived with upstream's v0.0.33
-   restyle and carry the same filter problem, so they join the clear. */
+   restyle and carry the same filter problem, so they join the clear. The
+   composer itself is not in this list any more: upstream #8734 dropped its
+   .chat-composer-glass class for arbitrary utilities on ComposerSurface, and
+   the composer's own filters are cleared by the [data-fork-composer-box] and
+   composer-shell rules above. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
-    .chat-composer-glass,
     .surface-glass,
     .alert-glass,
     .dialog-glass,
