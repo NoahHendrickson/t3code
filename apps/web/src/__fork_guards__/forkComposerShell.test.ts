@@ -555,23 +555,25 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(action?.body).toMatch(/height:\s*24px/u);
     expect(action?.body).toMatch(/border-radius:\s*4px/u);
-    // Upstream's attach-files button (#8236) sits in the same cluster at
-    // icon-sm; the row is items-end, so a 28px neighbour would drop the prompt.
-    expect(chatComposer).toContain('data-chat-composer-actions="right"');
-    const cluster = rules.find((rule) =>
-      rule.selector.endsWith('[data-chat-composer-actions="right"] > button'),
-    );
-    expect(cluster?.body).toMatch(/width:\s*24px/u);
-    expect(cluster?.body).toMatch(/height:\s*24px/u);
-    expect(cluster?.body).toMatch(/border-radius:\s*4px/u);
+    // Upstream's attach-files button (#8236) mounts in the same cluster at
+    // icon-sm (28px); the row is items-end, so a taller neighbour drops the
+    // prompt. It is stamped by name like send and stop and shares their box.
+    // Never by position: ComposerPrimaryActions hoists a labelled Refine
+    // submit into the cluster as a direct child, and a `> button` rule would
+    // squash it and steal its hover.
+    expect(chatComposer).toContain('data-fork-composer-action="attach"');
+    expect(chatComposer).toContain('aria-label="Attach files"');
+    for (const rule of rules) {
+      expect(rule.selector, "actions must be stamped, not selected by position").not.toMatch(
+        /data-chat-composer-actions[^{]*>\s*button/u,
+      );
+    }
     // Its hover is the ghost lift, not --accent: on the Cool palettes --accent
     // is the prompt surface the button sits on, so upstream's hover vanished.
     const attachHover = rules.find((rule) =>
       rule.selector
         .replace(/\s+/gu, " ")
-        .includes(
-          '[data-chat-composer-actions="right"] > button:not([data-fork-composer-action]):is(:hover, [data-pressed])',
-        ),
+        .includes('[data-fork-composer-action="attach"]:is(:hover, [data-pressed])'),
     );
     expect(attachHover?.body).toMatch(/background:\s*var\(--fork-composer-control-hover\)/u);
     for (const rule of rules.filter((candidate) => candidate.body.includes("height: 20px"))) {

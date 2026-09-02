@@ -2043,10 +2043,13 @@
     hangs above the vessel any more (no shoulder clearance). Upstream's
     bottom toolbar is not rendered at all — the control row owns those
     controls — and its attach-files control rides the prompt row's action
-    cluster ahead of send instead, resized from upstream's 28px icon-sm to the
-    cluster's 24px square so the items-end row does not drop the prompt below
-    the send axis, and hovering with the ghost controls' 4% lift rather than
-    --accent, which on the Cool palettes is the prompt surface it sits on. The
+    cluster ahead of send instead, stamped data-fork-composer-action="attach"
+    (fenced in ChatComposer) so it shares send/stop's 24px square and the
+    items-end row does not drop the prompt below the send axis, and hovering
+    with the ghost controls' 4% lift rather than --accent, which on the Cool
+    palettes is the prompt surface it sits on. Actions are always stamped by
+    name, never selected by position: ComposerPrimaryActions hoists a
+    labelled Refine submit into the same cluster as a direct child. The
     context-usage meter carries
     upstream's compact action (#8144) in the readout slot.
     Default-dark context chips are Figma 322:6316's white 12% wash (hover
@@ -2071,7 +2074,7 @@
     # layer, passes BranchToolbar as contextStrip (with monitoring trailing),
     # and keeps that strip mounted when the thread's worktree directory is missing.
     - apps/web/src/components/ChatView.tsx
-    # data-fork-composer-action on the send and stop buttons; the whole 24px
+    # data-fork-composer-action on the send, stop and attach buttons; the whole 24px
     # square restyle hangs off it. Send also carries
     # data-fork-composer-send-tone ("channel" with stage art, "flat"
     # otherwise) for the dark-mode white/black fill.

@@ -3571,6 +3571,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   onPointerDown={(event) => event.preventDefault()}
                   onClick={() => attachmentInputRef.current?.click()}
                   aria-label="Attach files"
+                  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                  data-fork-composer-action="attach"
+                  /* fork:end fork-composer-shell */
                 />
               }
             >

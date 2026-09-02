@@ -693,18 +693,13 @@
   background: var(--fork-composer-control-hover);
 }
 
-/* The attach-files button is the one ghost in the prompt row's action cluster
-   (send and stop are filled). Upstream hovers it with --accent, which on the
-   Cool palettes is the prompt surface it sits on, so it took the same
-   4% lift as the ghost controls in the row below. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-chat-composer-actions="right"]
-  > button:not([data-fork-composer-action]):is(:hover, [data-pressed]):not(:disabled) {
-  background: var(--fork-composer-control-hover);
-}
-
-/* Send and stop are the one exception to the pill rule: 24px squares at a 4px
-   radius, drawn as the only filled controls in the composer. */
+/* Send, stop and attach are the exception to the pill rule: 24px squares at
+   a 4px radius. Send and stop are the only filled controls in the composer;
+   attach is a ghost that shares their box so the items-end prompt row stays
+   44px (upstream mounts it at icon-sm, 28px). Each is stamped by name in
+   ChatComposer / ComposerPrimaryActions — never selected by position, because
+   ComposerPrimaryActions also hoists a labelled Refine submit into the same
+   cluster as a direct child. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {
   width: 24px;
   height: 24px;
@@ -712,15 +707,12 @@
   border-radius: 4px;
 }
 
-/* Whatever else rides the prompt row's action cluster shares that 24px box.
-   Upstream's attach-files button (#8236) arrives at icon-sm — 28px — and the
-   prompt row is items-end, so a taller cluster drops the one-line prompt 5px
-   below the send button's axis and grows the 44px base row to 48. */
-:root[data-fork="noahhendrickson-t3code"] [data-chat-composer-actions="right"] > button {
-  width: 24px;
-  height: 24px;
-  min-height: 24px;
-  border-radius: 4px;
+/* Attach is the one ghost among the stamped actions. Upstream hovers it with
+   --accent, which on the Cool palettes is the prompt surface it sits on, so it
+   takes the same 4% lift as the ghost controls in the row below. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-action="attach"]:is(:hover, [data-pressed]):not(:disabled) {
+  background: var(--fork-composer-control-hover);
 }
 
 /* Flat send (tone="flat"): in dark mode, a send button without stage-channel
