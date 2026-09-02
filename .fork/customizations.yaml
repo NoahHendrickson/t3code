@@ -1242,6 +1242,11 @@
     bg-background user would then paint its own translucent fill and nested
     ones would multiply. Glass has to be exactly one layer.
 
+    The switch thumb is excluded from that clear. It carries bg-background as
+    its visible foreground fill, not as an edge-to-edge surface; clearing it
+    makes the thumb transparent over the white checked track and reduces the
+    control to a featureless white pill.
+
     `.bg-card` gets the same class treatment but a wash rather than a clear:
     --card is an opaque #1c1f22 and about thirty components paint it inside the
     inset, the right panel's "Open a surface" tiles most visibly, each reading as
@@ -1306,6 +1311,7 @@
     - apps/desktop/src/window/DesktopWindow.ts
     - apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx
     - apps/web/src/custom/designMode/ForkLayersTree.tsx
+    - apps/web/src/components/ui/switch.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerSidebarVibrancy.test.ts
     - apps/web/src/__fork_guards__/forkNeutralDarkerTheme.test.ts

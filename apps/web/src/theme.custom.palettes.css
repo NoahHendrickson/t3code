@@ -683,7 +683,10 @@
 
    `.bg-background` matches full-opacity users only; Tailwind emits alpha
    variants as separate classes (`.bg-background\/70`), so the small translucent
-   chips and inline cards inside the transcript keep their fills.
+   chips and inline cards inside the transcript keep their fills. The switch
+   thumb is also a full-opacity `bg-background` user, but it is a foreground
+   control part rather than a surface painter; keep its fill so it remains
+   visible against the white checked track.
 
    `.surface-subheader` used to be named beside it because that utility
    `@apply`-ed the fill — inlining the declaration INTO its own rule where the
@@ -694,7 +697,7 @@
    index.css for exactly that. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]
-  .bg-background {
+  .bg-background:not([data-slot="switch-thumb"]) {
   background-color: transparent;
 }
 

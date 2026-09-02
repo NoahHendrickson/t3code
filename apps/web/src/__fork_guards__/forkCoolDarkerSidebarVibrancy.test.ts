@@ -130,6 +130,10 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(byClass, "the stage must clear bg-background descendants by class").toBeDefined();
     expect(
       byClass?.selector,
+      "switch thumbs use bg-background for contrast and must not be made transparent",
+    ).toContain(':not([data-slot="switch-thumb"])');
+    expect(
+      byClass?.selector,
       "a child combinator only reaches ChatView's root, not the header below it",
     ).not.toMatch(/sidebar-inset"\]\s*>\s*\.bg-background/u);
 
@@ -138,6 +142,10 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     const chatView = readSibling("../components/ChatView.tsx");
     expect(chatView).toMatch(/data-chat-header[\s\S]{0,200}bg-background/u);
     expect(chatView).toMatch(/className="relative flex min-h-0[^"]*bg-background"/u);
+    const switchComponent = readSibling("../components/ui/switch.tsx");
+    const switchThumb = /<SwitchPrimitive\.Thumb([\s\S]*?)\/>/u.exec(switchComponent)?.[1];
+    expect(switchThumb).toContain("bg-background");
+    expect(switchThumb).toContain('data-slot="switch-thumb"');
 
     // A utility that @applies the fill inlines it into its own rule, so the
     // class match above cannot see it and the surface paints an opaque slab
