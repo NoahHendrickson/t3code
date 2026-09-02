@@ -81,16 +81,17 @@ function stripComments(source: string): string {
 }
 
 /**
- * Everything under apps/web/src plus index.html, concatenated once. Tests
- * (these guards included) are left out and comments are stripped: a name
- * that survives only in a test assertion or a code comment is exactly the
- * stale reference this guard exists to catch, and quoting the old name in a
- * comment must not count as declaring it.
+ * Where stamps live: TypeScript, TSX and index.html under apps/web,
+ * concatenated once. Not CSS — a selector is a reference, never a stamp, and
+ * with the fork sheets in this corpus every `[data-x="y"]` the fork writes
+ * would satisfy its own check. Tests (these guards included) are left out
+ * and comments are stripped: a name that survives only in an assertion or a
+ * comment is exactly the stale reference this guard exists to catch.
  */
 const sourceCorpus = (() => {
   const files = walk(webSrc).filter(
     (file) =>
-      /\.(?:tsx?|css|html)$/u.test(file) &&
+      /\.tsx?$/u.test(file) &&
       !/\.test\.[cm]?tsx?$/u.test(file) &&
       !file.includes(`${NodePath.sep}__fork_guards__${NodePath.sep}`),
   );
