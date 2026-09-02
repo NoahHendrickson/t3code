@@ -94,7 +94,7 @@ function SidebarBrand() {
   return (
     <Link
       aria-label="Go to threads"
-      className="sidebar-brand ml-auto h-6 w-fit min-w-0 shrink-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2"
+      className="sidebar-brand ml-auto flex h-6 w-fit min-w-0 shrink-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2"
       to="/"
     >
       {/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity

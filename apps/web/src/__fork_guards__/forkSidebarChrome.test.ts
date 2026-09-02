@@ -186,6 +186,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
 
   it("puts the exact brand lockup on the header's trailing edge", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
+    expect(chrome).toMatch(/sidebar-brand[^"]*\bflex\b/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
     expect(chrome).toMatch(/sidebar-brand[^"]*text-sidebar-foreground/u);
     expect(chrome).toContain("size-6 shrink-0");

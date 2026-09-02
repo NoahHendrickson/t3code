@@ -1482,10 +1482,12 @@
 
     The brand stays on the trailing edge and ends 16px from it. It is the
     designer-exported 24px pixel mark, a 4px gap, then APP_BASE_NAME at literal
-    0.875rem (14px), Geist Medium, with a 16px line-height. Literal type avoids
-    the sidebar-v2 13px text utility remap. Search, New thread, and Add project
-    remain labeled action rows; Projects remains a static muted label whose
-    trailing ListFilter (FunnelSimple) owns the scope / group-by menu.
+    0.875rem (14px), Geist Medium, with a 16px line-height. The lockup remains
+    a flex row so the block-level mark cannot push the name below the header's
+    clipped 24px height. Literal type avoids the sidebar-v2 13px text utility
+    remap. Search, New thread, and Add project remain labeled action rows;
+    Projects remains a static muted label whose trailing ListFilter
+    (FunnelSimple) owns the scope / group-by menu.
     Foreground, hover, pill, and focus treatments resolve through sidebar
     tokens so the flat header remains legible in Light, Dark, and Cool Dark.
 
