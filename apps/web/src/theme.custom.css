@@ -687,9 +687,30 @@
   background: var(--fork-composer-control-hover);
 }
 
+/* The attach-files button is the one ghost in the prompt row's action cluster
+   (send and stop are filled). Upstream hovers it with --accent, which on the
+   Cool palettes is the prompt surface it sits on, so it took the same
+   4% lift as the ghost controls in the row below. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-actions="right"]
+  > button:not([data-fork-composer-action]):is(:hover, [data-pressed]):not(:disabled) {
+  background: var(--fork-composer-control-hover);
+}
+
 /* Send and stop are the one exception to the pill rule: 24px squares at a 4px
    radius, drawn as the only filled controls in the composer. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  border-radius: 4px;
+}
+
+/* Whatever else rides the prompt row's action cluster shares that 24px box.
+   Upstream's attach-files button (#8236) arrives at icon-sm — 28px — and the
+   prompt row is items-end, so a taller cluster drops the one-line prompt 5px
+   below the send button's axis and grows the 44px base row to 48. */
+:root[data-fork="noahhendrickson-t3code"] [data-chat-composer-actions="right"] > button {
   width: 24px;
   height: 24px;
   min-height: 24px;
@@ -2005,6 +2026,40 @@
   border-color: var(--fork-composer-border);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* ── Popup row hover (fork-popup-surface) ───────────────────────────────────
+   Upstream highlights a hovered menu, select or combobox row with --accent and
+   marks the selected/checked row with an 8% foreground wash. The fork palettes
+   make --accent an opaque grey: on the Cool palettes it is the composer fill
+   itself, the very colour the popup above paints, so a hovered row vanishes;
+   under Cool Darker glass the popup stands on the wallpaper-tinted floor and
+   the same opaque accent lands as a bluish slab on a warm surface; and in the
+   branch picker the hovered row never matched the "current" row beside it.
+   Hover takes the selected row's own wash — an alpha, so it reads as a lift
+   of whatever the popup paints — and hover on a selected row steps to 12% so
+   the pointer still registers there. Dark only, like the popup fill above. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="menu-item"],
+    [data-slot="menu-checkbox-item"],
+    [data-slot="menu-radio-item"],
+    [data-slot="menu-sub-trigger"],
+    [data-slot="select-item"],
+    [data-slot="combobox-item"]
+  ):is([data-highlighted], [data-popup-open], :hover) {
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+  color: var(--foreground);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="menu-checkbox-item"],
+    [data-slot="menu-radio-item"],
+    [data-slot="select-item"],
+    [data-slot="combobox-item"]
+  ):is([data-selected], [data-checked]):is([data-highlighted], :hover) {
+  background: color-mix(in oklab, var(--foreground) 12%, transparent);
 }
 
 /* ── Model picker popup corners (fork-model-picker) ─────────────────────────

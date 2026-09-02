@@ -555,6 +555,25 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(action?.body).toMatch(/height:\s*24px/u);
     expect(action?.body).toMatch(/border-radius:\s*4px/u);
+    // Upstream's attach-files button (#8236) sits in the same cluster at
+    // icon-sm; the row is items-end, so a 28px neighbour would drop the prompt.
+    expect(chatComposer).toContain('data-chat-composer-actions="right"');
+    const cluster = rules.find((rule) =>
+      rule.selector.endsWith('[data-chat-composer-actions="right"] > button'),
+    );
+    expect(cluster?.body).toMatch(/width:\s*24px/u);
+    expect(cluster?.body).toMatch(/height:\s*24px/u);
+    expect(cluster?.body).toMatch(/border-radius:\s*4px/u);
+    // Its hover is the ghost lift, not --accent: on the Cool palettes --accent
+    // is the prompt surface the button sits on, so upstream's hover vanished.
+    const attachHover = rules.find((rule) =>
+      rule.selector
+        .replace(/\s+/gu, " ")
+        .includes(
+          '[data-chat-composer-actions="right"] > button:not([data-fork-composer-action]):is(:hover, [data-pressed])',
+        ),
+    );
+    expect(attachHover?.body).toMatch(/background:\s*var\(--fork-composer-control-hover\)/u);
     for (const rule of rules.filter((candidate) => candidate.body.includes("height: 20px"))) {
       expect(rule.selector).not.toMatch(
         /data-chat-composer-(inline-actions|mobile-pending-actions)/u,

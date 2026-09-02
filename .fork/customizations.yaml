@@ -1294,6 +1294,15 @@
     and ::before/::after, not just background-color, or gradient scrims and
     pseudo-elements stay invisible to the search.
 
+    Hover and selected fills under glass are white washes, not the palette's
+    opaque cool --accent: the stage is a neutral tint with the wallpaper's
+    cast, the cards are washes and the popups stand on the warm floor, so an
+    opaque #282d30 on any of them reads as a bluish slab instead of the
+    surface lifting. The glass root block and the docked panel block both
+    restate --accent (and the header pills' --fork-pill-hover) as
+    rgb(255 255 255 / 8%), which lands on the stage where the opaque token
+    used to, so upstream's bg-accent/N variants keep their relative weight.
+
     Must not alter Cool Dark, Neutral Dark, Neutral Darker, or default Dark,
     and must not make the window transparent for any other palette.
   tier: 2
@@ -2028,7 +2037,11 @@
     hangs above the vessel any more (no shoulder clearance). Upstream's
     bottom toolbar is not rendered at all — the control row owns those
     controls — and its attach-files control rides the prompt row's action
-    cluster ahead of send instead. The context-usage meter carries
+    cluster ahead of send instead, resized from upstream's 28px icon-sm to the
+    cluster's 24px square so the items-end row does not drop the prompt below
+    the send axis, and hovering with the ghost controls' 4% lift rather than
+    --accent, which on the Cool palettes is the prompt surface it sits on. The
+    context-usage meter carries
     upstream's compact action (#8144) in the readout slot.
     Default-dark context chips are Figma 322:6316's white 12% wash (hover
     17%), the pair the Cool Darker glass tier already uses; the other
@@ -2789,7 +2802,13 @@
     keyed on upstream's popup data-slot names, no upstream fence. One
     selector arm per primitive, because each stamps dropdown-glass on a
     different node: menu and popover on the popup itself, select on a child
-    of it, combobox on the wrapper span around it.
+    of it, combobox on the wrapper span around it. Menu, select and
+    combobox rows hover with the selected row's 8% foreground wash (12% on
+    a selected or checked row) instead of --accent: the fork palettes make
+    --accent an opaque grey that is the popup's own fill on the Cool
+    palettes (hover vanished) and a bluish slab on the wallpaper-tinted
+    floor under Cool Darker glass, and it never matched the branch
+    picker's "current" row. An alpha lifts whatever the popup paints.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
