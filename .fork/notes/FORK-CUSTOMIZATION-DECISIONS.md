@@ -301,9 +301,16 @@ Related deep-dives that predate this file and stay where they are:
   opaque window that park is invisible. Under Cool Darker the body is transparent and the stage is
   85–95% alpha, so every agent click, evaluate, or snapshot in a background thread showed that
   thread's page through the chat. The desktop trace had 27 evaluates and 12 snapshots that day.
-- Fix: the fenced call site narrows the in-viewport park to recording and picture-in-picture and
-  sends automation-only guests back offscreen, paintable on every platform (the pre-#9001
-  placement). Chosen over `opacity: 0` on the parked wrapper, which would have to be proven not
-  to stop the guest compositing for capture, and over gating on the glass marker, which would
-  leave two placement policies to keep in sync for one bug. Screenshots of a background guest
-  are unchanged from before #9001, when those guests were already offscreen.
+- First cut (PR #110, reverted before merge) narrowed the in-viewport park to recording and
+  picture-in-picture and sent automation-only guests back offscreen. Review caught that automation
+  snapshots call `capturePage` on every call, so a background snapshot would have hit the very
+  compositing stop upstream documented. Measured on Electron 43 with a throwaway script (red guest
+  page, 50ms counter, two captures 600ms apart): in-viewport at opacity 1 and at opacity 0 both
+  returned fresh full-red frames; parked at -100000 paintable, and under `visibility: hidden`,
+  `capturePage` never resolved (first run surfaced `UnknownVizError` after 40s); brought back on
+  screen it recovered. So the guest's frame production follows viewport intersection, not opacity.
+- Shipped: upstream placement untouched, a fenced `data-fork-preview-parked` marker on the wrapper
+  when rendering-active and not on screen, and one fork-marker-scoped rule giving it `opacity: 0`.
+  The guard pins the marker, the opacity-only body, and the in-viewport park the rule assumes.
+  Not gated on the vibrancy marker: under an opaque palette the parked wrapper is invisible either
+  way, and one rule is fewer states to keep aligned.

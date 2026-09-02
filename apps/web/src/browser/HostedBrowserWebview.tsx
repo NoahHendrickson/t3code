@@ -250,29 +250,17 @@ export function HostedBrowserWebview(props: {
   if (!config) return null;
 
   const renderingActive = active || backgroundActivity || pictureInPicture || recordingActive;
-  /* fork:begin fork-glass-preview-parking — see .fork/customizations.yaml#fork-glass-preview-parking */
-  // Upstream parks every rendering-active guest inside the viewport at z-index
-  // -1 so recordings keep receiving frames. Under Cool Darker the app above it
-  // is translucent, so that park is on screen: an automation call from a
-  // background thread showed that thread's page through the stage for the
-  // length of the call. Only frame consumers earn the in-viewport park.
-  // Automation runs JavaScript and reads the DOM, which the offscreen park
-  // supports, so it goes back there — paintable on every platform, as it was
-  // before upstream #9001. `renderingActive` still feeds the data attribute
-  // automation reads, so a background guest keeps reporting as rendering.
-  const captureActive = pictureInPicture || recordingActive;
   const wrapperStyle = resolveHostedBrowserWebviewWrapperStyle({
     active,
-    renderingActive: active || captureActive,
+    renderingActive,
     // Electron 43 can permanently blank a macOS webview after `visibility: hidden`.
     // Inactive macOS guests intentionally remain paintable offscreen; other platforms still
     // suspend them, and automation continues to see the macOS guests as inactive.
-    keepPaintableWhenInactive: isMacPlatform(navigator.platform) || backgroundActivity,
+    keepPaintableWhenInactive: isMacPlatform(navigator.platform),
     cornerRadius: presentation.cornerRadius,
     rect: lastRect,
     hiddenSize,
   });
-  /* fork:end fork-glass-preview-parking */
 
   return (
     <div
@@ -281,6 +269,17 @@ export function HostedBrowserWebview(props: {
       style={{ ...wrapperStyle, overscrollBehavior: "contain" }}
       onScroll={syncContentPresentation}
       data-preview-rendering={renderingActive ? "active" : "suspended"}
+      /* fork:begin fork-glass-preview-parking — see .fork/customizations.yaml#fork-glass-preview-parking */
+      /* Upstream parks a rendering-active guest that is not on screen inside the
+         viewport at z-index -1 so capture keeps getting frames: a guest parked
+         fully offscreen stops compositing and capturePage hangs (measured on
+         Electron 43, see the manifest entry). Over an opaque window that park is
+         invisible. Under Cool Darker glass the app above it is translucent, so an
+         agent's snapshot in a background thread showed that thread's page through
+         the chat. theme.custom.css hides the parked wrapper with opacity, which
+         keeps the guest composited and capturable; the placement stays upstream's. */
+      data-fork-preview-parked={renderingActive && !active ? "true" : undefined}
+      /* fork:end fork-glass-preview-parking */
       data-preview-viewport={runtimeTabId}
       /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
       data-fork-canvas={canvasOn ? "on" : undefined}
