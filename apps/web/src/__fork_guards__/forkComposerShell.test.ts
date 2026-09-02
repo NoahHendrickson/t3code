@@ -215,7 +215,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(composerOverlayIdx).toBeGreaterThan(-1);
     expect(headlineIdx).toBeLessThan(composerOverlayIdx);
     expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
-    expect(chatView).toContain('"chat-composer-glass-shell relative mx-auto w-full max-w-3xl"');
+    expect(chatView).toContain("<ComposerSurface.Shell");
   });
 
   it("keeps the context strip mounted when the thread's worktree is gone", () => {
@@ -232,8 +232,8 @@ describe("fork guard: fork-composer-shell", () => {
       (rule) =>
         rule.selector.includes("[data-fork-composer") ||
         rule.selector.includes("data-chat-composer-overlay") ||
-        rule.selector.includes("chat-composer-glass") ||
-        rule.selector.includes("chat-composer-context-strip"),
+        rule.selector.includes('[data-slot="composer-') ||
+        rule.selector.includes("composer-context-strip"),
     );
     expect(composerRules.length).toBeGreaterThan(0);
     for (const rule of composerRules) {
@@ -545,9 +545,9 @@ describe("fork guard: fork-composer-shell", () => {
 
   it("switches off the stitched glass shell and flattens the context strip", () => {
     for (const selector of [
-      ".chat-composer-glass-shell::before",
-      ".chat-composer-glass-host::after",
-      ".chat-composer-context-strip::before",
+      '[data-slot="composer-shell"]::before',
+      '[data-slot="composer-host"]::after',
+      '[data-slot="composer-context-strip"]::before',
     ]) {
       const rule = rules.find((candidate) => candidate.selector.includes(selector));
       expect(rule?.body).toMatch(/display:\s*none/u);
@@ -555,7 +555,7 @@ describe("fork guard: fork-composer-shell", () => {
     const strip = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes(".chat-composer-context-strip") &&
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
         !/>\s*(?:\.flex|\*)/u.test(rule.selector),
     );
     // The CSS belt is the single owner of the flattened strip geometry —
@@ -578,7 +578,7 @@ describe("fork guard: fork-composer-shell", () => {
     const nested = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes(".chat-composer-context-strip") &&
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
         (rule.selector.includes(">.flex") || rule.selector.includes("> .flex")),
     );
     expect(nested?.body).toMatch(/gap:\s*8px/u);
@@ -593,7 +593,7 @@ describe("fork guard: fork-composer-shell", () => {
     const everyChild = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes(".chat-composer-context-strip") &&
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
         rule.selector.trim().endsWith("> *"),
     );
     expect(everyChild?.body).toMatch(/flex:\s*0 1 auto/u);
@@ -618,11 +618,13 @@ describe("fork guard: fork-composer-shell", () => {
     expect(pill).toContain("data-fork-monitoring-stop");
     expect(pill).toContain("Stop background work");
     expect(strip).toContain("resolveComposerLivenessPillProps");
-    expect(strip).toContain("COMPOSER_CONTEXT_STRIP_CLASSNAME");
+    expect(strip).toContain("<ComposerSurface.ContextStrip>");
     expect(strip).toContain("renderComposerLivenessStripFallback");
     expect(branchToolbar).toContain("trailing?: ReactNode");
     expect(branchToolbar).toContain("{trailing ?? null}");
-    expect(branchToolbar).toContain("COMPOSER_CONTEXT_STRIP_CLASSNAME");
+    expect(branchToolbar).toMatch(
+      /<ComposerSurface\.ContextStrip ref=\{setStripElement\}>\s*\{trailing\}\s*<\/ComposerSurface\.ContextStrip>/u,
+    );
     expect(chatView).toContain("resolveComposerLivenessPillProps");
     expect(chatView).toContain("renderComposerLivenessPill");
     expect(chatView).toContain("trailing: composerLivenessPill");

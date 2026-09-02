@@ -276,13 +276,13 @@
 
    Everything below is dark-scoped: the designs are dark-only, and an unmarked
    or light build keeps upstream's shell untouched. */
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-shell::before,
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-host::after,
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-context-strip::before {
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-shell"]::before,
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-host"]::after,
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-context-strip"]::before {
   display: none;
 }
 
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-host {
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-host"] {
   box-shadow: none;
 }
 
@@ -757,7 +757,7 @@
    min-width 0 keeps the chips shrinking rather than overflowing it. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  .chat-composer-context-strip {
+  [data-slot="composer-context-strip"] {
   flex: 1 1 auto;
   width: auto;
   min-width: 0;
@@ -781,7 +781,7 @@
    leading cluster; neutralize the grow/end alignment so gap stays 8px. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  .chat-composer-context-strip
+  [data-slot="composer-context-strip"]
   > .flex {
   flex: 0 1 auto;
   justify-content: flex-start;
@@ -802,7 +802,7 @@
    chips' own 6px gap and cap. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  .chat-composer-context-strip
+  [data-slot="composer-context-strip"]
   > * {
   flex: 0 1 auto;
 }
@@ -980,7 +980,7 @@
    Raising the panel, rather than isolating the inset. `isolation: isolate`
    would trap the whole subtree below the panel — including the one chat overlay
    that is not portaled: ExpandedImageDialog renders inline inside the inset at
-   `fixed inset-0 z-50`, so an isolated inset puts the opaque panel over the
+   `fixed inset-0 z-[60]`, so an isolated inset puts the opaque panel over the
    lightbox's backdrop, its previous-image button and its click-to-close target.
    45 clears the minimap and still yields to that lightbox.
 
@@ -1877,10 +1877,26 @@
    fill and hairline (top / left / right only) on 8px top corners, and the
    prompt row sits flush beneath with square top corners, its own hairline
    drawing the divider. Dark-only, same contract as the vessel. Keyed on the
-   Questions panel so approval and plan drawers keep upstream's geometry. */
+   Questions panel so approval and plan drawers keep upstream's geometry.
+
+   Since upstream's banner dock (#8734) the drawer is a ComposerBanner.Root
+   (data-chat-composer-top-drawer) nested in two attachment wrappers — the
+   dock and its own attachment — which carry the inset width and the 1rem
+   overlap tuck. All three go full width with no tuck when the Questions
+   panel is inside. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  > .chat-composer-top-drawer:has(> [data-fork-pending-user-input]) {
+  [data-slot="composer-banner-attachment"]:has(
+    [data-chat-composer-top-drawer] > [data-fork-pending-user-input]
+  ) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input]) {
   width: 100%;
   max-width: none;
   margin: 0;
@@ -1891,13 +1907,13 @@
    paints itself — and a backdrop-filter this palette never asked for. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  > .chat-composer-top-drawer:has(> [data-fork-pending-user-input])::before {
+  [data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input])::before {
   display: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  > .chat-composer-top-drawer
+  [data-chat-composer-top-drawer]
   > [data-fork-pending-user-input] {
   border: 1px solid var(--fork-composer-border);
   border-bottom: 0;
@@ -1911,7 +1927,7 @@
    follow or the two halves split into a dim ring over a bright one. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]:has([data-fork-composer-surface]:focus-within)
-  > .chat-composer-top-drawer
+  [data-chat-composer-top-drawer]
   > [data-fork-pending-user-input] {
   border-color: var(--fork-composer-border-focus);
 }
@@ -1922,7 +1938,7 @@
    a ::after outline on top of the fork's inset hairline); drop both so the
    prompt row keeps its single 1px ring. */
 :root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]:has(> .chat-composer-top-drawer > [data-fork-pending-user-input])
+  [data-fork-composer-vessel]:has([data-chat-composer-top-drawer] > [data-fork-pending-user-input])
   [data-fork-composer-box] {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -1931,7 +1947,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]:has(> .chat-composer-top-drawer > [data-fork-pending-user-input])
+  [data-fork-composer-vessel]:has([data-chat-composer-top-drawer] > [data-fork-pending-user-input])
   [data-fork-composer-box]::after {
   display: none;
 }

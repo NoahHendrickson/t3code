@@ -88,7 +88,7 @@ describe("fork guard: fork-pending-user-input", () => {
   it("stacks the Questions card onto the prompt surface (Figma 322:6316)", () => {
     const rules = cssRules(theme);
     const flat = (selector: string) => selector.replace(/\s+/gu, " ");
-    const drawerKey = "> .chat-composer-top-drawer:has(> [data-fork-pending-user-input])";
+    const drawerKey = "[data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input])";
 
     // Upstream's inset glass drawer geometry is cleared and its masked
     // ::before dropped — the panel paints itself.
@@ -104,7 +104,7 @@ describe("fork guard: fork-pending-user-input", () => {
     const card = rules.find(
       (rule) =>
         flat(rule.selector).endsWith(
-          "> .chat-composer-top-drawer > [data-fork-pending-user-input]",
+          "[data-chat-composer-top-drawer] > [data-fork-pending-user-input]",
         ) && rule.body.includes("border-radius"),
     );
     expect(card?.selector).toContain(".dark");
@@ -119,7 +119,7 @@ describe("fork guard: fork-pending-user-input", () => {
       (rule) =>
         rule.selector.includes(":has([data-fork-composer-surface]:focus-within)") &&
         flat(rule.selector).endsWith(
-          "> .chat-composer-top-drawer > [data-fork-pending-user-input]",
+          "[data-chat-composer-top-drawer] > [data-fork-pending-user-input]",
         ),
     );
     expect(focused?.body).toMatch(/border-color:\s*var\(--fork-composer-border-focus\)/u);

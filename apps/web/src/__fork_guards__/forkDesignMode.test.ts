@@ -382,7 +382,7 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain(
       "forkDesignChanges.takeForSend(forkDesignChangeRef, messageTextForSend)",
     );
-    expect(chatView).toContain("forkDesignSend.text || IMAGE_ONLY_BOOTSTRAP_PROMPT");
+    expect(chatView).toContain("forkDesignSend.text || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT");
     // Cleared by ENTRY, not by id — a re-send during the awaited turn start replaces the pill
     // in place under the same id, so only identity distinguishes it from what was sent.
     expect(chatView).toContain("forkDesignChanges.markSent(");

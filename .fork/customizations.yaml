@@ -54,12 +54,12 @@
     timeout to fail deterministically on the slower hosted runners; those get
     a fenced per-test timeout raise rather than a product change, because the
     underlying cost is upstream's to fix and diverging in hot upstream logic
-    buys a conflict on every sync. Current carriers: imageCompression.test.ts's
+    buys a conflict on every sync. Current carrier: imageCompression.test.ts's
     give-up path (~15 encodes of an 8 MB stub through chunked base64 —
-    deterministic work, not flake) and session-logic.test.ts's 20,000-entry
-    work-log benchmark (100 ms budget, 106 ms on a hosted runner). No guard
-    asserts these hunks; losing one turns CI red by itself, which is the
-    enforcement.
+    deterministic work, not flake). session-logic.test.ts's 20,000-entry
+    work-log benchmark carried one until upstream #8585 dropped its timing
+    assertion. No guard asserts these hunks; losing one turns CI red by
+    itself, which is the enforcement.
   tier: 4
   files: []
   shadows: []
@@ -67,7 +67,6 @@
     - .github/workflows/ci.yml
     - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
-    - apps/web/src/session-logic.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
@@ -1504,7 +1503,11 @@
     upstream's search/scope controls into SidebarContent's fixedHeader slot;
     the fork declines that mechanism — its own rows sit as siblings above the
     self-scrolling list group, which pins them identically — and a sync must
-    not re-adopt fixedHeader here just to shrink a conflict. The header's
+    not re-adopt fixedHeader here just to shrink a conflict. Likewise
+    upstream's searchable project-filter combobox (#5931) is not adopted:
+    the fork's scope row keeps its own menu and drives only upstream's
+    open-state reducer (reduceSidebarProjectScopeMenuState), so
+    handleProjectSettings stays upstream's line for line. The header's
     stage label now comes from upstream's useEnvironmentStageLabel, which
     replaced the fork's local hook when upstream's became an exact equivalent
     (both delegate to resolveServerBackedAppStageLabel with the fork's
@@ -1628,7 +1631,8 @@
     z-index 45, which has to stay a sandwich rather than a number: above the
     timeline minimap (z-40, left-anchored, the only inset descendant that
     overlaps a left-side panel — the titlebar controls are right-anchored and
-    never reach it) and below the expanded-image lightbox (z-50). Isolating the
+    never reach it) and below the expanded-image lightbox (z-60 since upstream
+    #8811). Isolating the
     inset instead is the tempting shortcut and is wrong: ExpandedImageDialog
     renders inline inside the inset rather than through a portal, so an isolated
     inset puts opaque chrome over that lightbox's backdrop, its previous-image
@@ -1866,11 +1870,12 @@
     ChatView always docks it to the bottom instead of centering it as a
     new-chat hero. The empty-draft greeting ("What should we build…") is a
     separate absolute layer centered in the chat column, not stacked above the
-    docked input. BranchToolbar's source className ships untouched; the
-    context-row CSS flatten is the single owner of the strip geometry
-    (width/margin/padding resets, unlayered so they beat the Tailwind
-    utilities) so the chips share the composer's max-w-3xl rail instead of
-    the old under-glass inset. The prompt surface is 44px tall at rest: 10px
+    docked input. BranchToolbar renders upstream's ComposerSurface.ContextStrip
+    untouched (the liveness fallback strip mounts the same component); the
+    context-row CSS flatten, keyed on its data-slot, is the single owner of
+    the strip geometry (width/margin/padding resets, unlayered so they beat
+    the Tailwind utilities) so the chips share the composer's max-w-3xl rail
+    instead of the old under-glass inset. The prompt surface is 44px tall at rest: 10px
     block and 8px inline padding (px-2 py-2.5) around a
     one-line prompt and the 24px send/stop button. The prompt and action remain
     in that same row as text wraps — the action pinned bottom-right so it stays
@@ -1951,7 +1956,9 @@
     The inline primary-action cluster is suppressed whenever the mobile
     pending-answer cluster is visible, so only one answer action renders.
 
-    Upstream's stitched glass-shell paint is disabled under the fork marker.
+    Upstream's stitched glass-shell paint — ComposerSurface's shell, host and
+    context-strip pseudo-elements, keyed by data-slot since #8734 — is
+    disabled under the fork marker.
     The docked composer overlay paints an opaque page-colored floor (soft fade
     over its top edge) so timeline rows cannot read through the composer once
     that upstream vessel is gone. The fork vessel paints `--fork-composer-vessel-bg`
@@ -1994,13 +2001,16 @@
     gated with the mode row (inline when expanded, CompactComposerControlsMenu
     when collapsed) so they are never stranded between the two thresholds.
 
-    Upstream's attached composer drawers (#7150: the approval / questions /
-    plan top drawer, the tasks drawer, and the task/stash shoulder tabs)
-    render inside the vessel above the prompt surface, gated by upstream's
-    own drawer state. Upstream's bottom toolbar is not rendered at all —
-    the control row owns those controls — and its inline task/stash badges
-    ride the prompt row's action cluster instead. The context-usage meter
-    carries upstream's compact action (#8144) in the readout slot.
+    Upstream's banner dock (#8734: the ComposerBannerStack, the sync /
+    activity strip, the approval / questions / plan top drawer, the tasks
+    drawer and tab, and the stash badge) renders inside the vessel above the
+    prompt surface as ComposerBanner.Dock, gated by upstream's own state —
+    so the banner stack lives in ChatComposer, not ChatView, and nothing
+    hangs above the vessel any more (no shoulder clearance). Upstream's
+    bottom toolbar is not rendered at all — the control row owns those
+    controls — and its attach-files control rides the prompt row's action
+    cluster ahead of send instead. The context-usage meter carries
+    upstream's compact action (#8144) in the readout slot.
     Default-dark context chips are Figma 322:6316's white 12% wash (hover
     17%), the pair the Cool Darker glass tier already uses; the other
     palettes keep their own opaque tints.
@@ -2042,11 +2052,14 @@
     - apps/web/src/components/BranchToolbar.tsx
     - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
     - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
-    # The glass-shell pseudo-elements and .chat-composer-context-strip this
-    # customization switches off. An upstream rework of that paint would leave
-    # the fork disabling rules that no longer exist. Also owns the top-fade
-    # mask the cutoff below folds into its own layer stack.
+    # Owns the top-fade mask the cutoff below folds into its own layer stack.
     - apps/web/src/index.css
+    # The data-slots (composer-shell / -host / -context-strip) whose painted
+    # pseudo-elements this customization switches off. An upstream rework of
+    # that paint would leave the fork disabling rules that no longer match.
+    - apps/web/src/components/chat/ComposerSurface.tsx
+    # The dock the drawers, banners and stash badge now ride inside the vessel.
+    - apps/web/src/components/chat/ComposerBanner.tsx
     # Carries .fork-timeline-cutoff on the scroller, unconditionally, so the
     # transcript mask survives the banner states that drop upstream's top fade.
     # Upstream reworking that className is what would silently un-mask it.
@@ -2817,12 +2830,15 @@
     Questions header and no collapse affordance, and its tests assert the
     shared outcome — question and options visible without interaction —
     instead of upstream's toggle markup. Revisit if long prompts start
-    crowding the fork card.
+    crowding the fork card. Upstream's #8734 restyle of that header onto
+    ComposerBanner rows was declined on the same grounds.
     Since upstream #7150 the panel renders in the attached top drawer, which
     upstream already paints transparent, so the fork no longer clears a
     muted strip around it; ChatComposer carries no hunk for this entry.
     Figma 322:6316 stacks the Questions card onto the prompt row: dark-only
-    rules in theme.custom.css give the drawer the vessel's full width, paint
+    rules in theme.custom.css give the drawer (the ComposerBanner.Root marked
+    data-chat-composer-top-drawer and, since #8734, both attachment wrappers
+    around it) the vessel's full width, paint
     the panel with the composer fill and a top/left/right hairline on 8px
     top corners (recoloured with the prompt's focus ring so the stack keeps
     one ring), and square the prompt surface's top corners (dropping

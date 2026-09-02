@@ -12,7 +12,6 @@ import {
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import type { ReactNode } from "react";
-import { COMPOSER_CONTEXT_STRIP_CLASSNAME } from "~/custom/composerContextStrip";
 /* fork:end fork-composer-shell */
 
 import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
@@ -44,6 +43,7 @@ import {
   MenuTrigger,
 } from "./ui/menu";
 import { Separator } from "./ui/separator";
+import { ComposerSurface } from "./chat/ComposerSurface";
 
 interface BranchToolbarProps {
   environmentId: EnvironmentId;
@@ -281,8 +281,10 @@ function useLabelsOverflow(element: HTMLDivElement | null): boolean {
     let needed = 0;
     let groups = 0;
     for (const child of current.children) {
-      if (!(child instanceof HTMLElement) || child.offsetWidth <= 1) continue;
-      needed += contentWidth(child);
+      if (!(child instanceof HTMLElement)) continue;
+      const width = contentWidth(child);
+      if (width <= 1) continue;
+      needed += width;
       groups += 1;
     }
     needed += stripGap * Math.max(0, groups - 1);
@@ -372,7 +374,7 @@ function useLabelsOverflow(element: HTMLDivElement | null): boolean {
   // Label widths can change without the strip box moving (font family or
   // size preferences), so re-measure on every render as well as on resize
   // and font loads.
-  useEffect(() => {
+  useLayoutEffect(() => {
     measure();
   });
 
@@ -490,9 +492,9 @@ export const BranchToolbar = memo(function BranchToolbar({
     // vanishes during detail loading.
     if (trailing) {
       return (
-        <div ref={setStripElement} className={COMPOSER_CONTEXT_STRIP_CLASSNAME}>
+        <ComposerSurface.ContextStrip ref={setStripElement}>
           {trailing}
-        </div>
+        </ComposerSurface.ContextStrip>
       );
     }
     /* fork:end fork-composer-shell */
@@ -500,12 +502,9 @@ export const BranchToolbar = memo(function BranchToolbar({
   }
 
   return (
-    <div
+    <ComposerSurface.ContextStrip
       ref={setStripElement}
       data-compact={labelsOverflow ? "" : undefined}
-      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-      className={COMPOSER_CONTEXT_STRIP_CLASSNAME}
-      /* fork:end fork-composer-shell */
     >
       {isMobile && showGitControls ? (
         <MobileRunContextSelector
@@ -523,7 +522,7 @@ export const BranchToolbar = memo(function BranchToolbar({
           onUsePreviousWorktree={onUsePreviousWorktree}
         />
       ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-1">
+        <div className="flex min-w-10 flex-1 items-center gap-1">
           {showEnvironmentIndicator && availableEnvironments && (
             <>
               <BranchToolbarEnvironmentSelector
@@ -556,7 +555,7 @@ export const BranchToolbar = memo(function BranchToolbar({
 
       {showGitControls ? (
         <BranchToolbarBranchSelector
-          className="min-w-0 flex-1 justify-end md:ml-auto md:flex-none"
+          className="min-w-0 flex-1 justify-end md:ml-auto md:flex-initial"
           environmentId={environmentId}
           threadId={threadId}
           {...(draftId ? { draftId } : {})}
@@ -573,6 +572,6 @@ export const BranchToolbar = memo(function BranchToolbar({
       {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
       {trailing ?? null}
       {/* fork:end fork-composer-shell */}
-    </div>
+    </ComposerSurface.ContextStrip>
   );
 });

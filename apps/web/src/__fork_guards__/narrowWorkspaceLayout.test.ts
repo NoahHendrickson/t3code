@@ -271,7 +271,8 @@ describe("fork guard: narrow-workspace-layout", () => {
     // lightbox by definition, so it is pinned out.
     const zIndexIn = (source: string, anchor: string) => {
       const line = source.split("\n").find((candidate) => candidate.includes(anchor)) ?? "";
-      return Number(/\bz-(\d+)\b/u.exec(line)?.[1]);
+      // Tailwind spells 50 as `z-50` and 60 as `z-[60]`; read both.
+      return Number(/\bz-\[?(\d+)\]?(?![\w-])/u.exec(line)?.[1]);
     };
     const minimap = zIndexIn(
       readSibling("../components/chat/MessagesTimeline.tsx"),
@@ -287,7 +288,7 @@ describe("fork guard: narrow-workspace-layout", () => {
     const panelZIndex = Number(/z-index:\s*(\d+)/u.exec(panel?.body ?? "")?.[1]);
 
     expect(minimap).toBe(40);
-    expect(lightbox).toBe(50);
+    expect(lightbox).toBe(60);
     expect(panelZIndex).toBeGreaterThan(minimap);
     expect(panelZIndex).toBeLessThan(lightbox);
     // Declarations only — the prose above the rule names the shortcut it rules out.
