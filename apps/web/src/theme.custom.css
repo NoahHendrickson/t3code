@@ -1995,6 +1995,32 @@
   border-top-right-radius: 0;
 }
 
+/* ── Composer banners (fork-composer-banner-surface) ────────────────────────
+   Upstream tints every ComposerBanner by severity: an --info / --success /
+   --warning / --error outline at roughly a third plus a 4–8% wash of the same
+   hue over the frosted surface. On the fork's neutral composer stack the
+   settled, snoozed and woke notices (all "info") land as a blue slab clipped
+   to the top of the vessel. Every banner paints the same material as the
+   Questions card instead — the composer fill under the composer hairline —
+   and leaves severity to the icon and copy. The frosted ::before stays: the
+   banner overlaps the transcript, so the blur is doing real work there; only
+   its colour changes. The collapsed stack's peek cap takes the same hairline
+   in place of its severity border. Outline and tint are scheme-agnostic (the
+   hairline token resolves to --border in light); the fill is dark-only, like
+   the vessel, so a light build keeps upstream's card. */
+:root[data-fork="noahhendrickson-t3code"] [data-composer-banner-surface] {
+  --chat-composer-attached-outline: var(--fork-composer-border);
+  --chat-composer-attached-tint: transparent;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark [data-composer-banner-surface] {
+  --chat-composer-attached-surface: var(--fork-composer-bg);
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-banner-peek"] {
+  border-color: var(--fork-composer-border);
+}
+
 /* ── Popup menus on the composer fill (fork-popup-surface) ───────────────────
    Menus, selects, comboboxes and popovers (the model picker among them) open
    on upstream's `dropdown-glass`: a blurred, partly translucent --popover tint
