@@ -186,7 +186,18 @@ describe("fork guard: fork-sidebar-chrome", () => {
 
   it("puts the exact brand lockup on the header's trailing edge", () => {
     expect(chrome).toMatch(/sidebar-brand[^"]*ml-auto/u);
-    expect(chrome).toMatch(/sidebar-brand[^"]*\bflex\b/u);
+    // Upstream 9885a845c deleted the .sidebar-brand stylesheet rule that hid
+    // the lockup below 48rem and showed it as a flex row above. The fork's
+    // divergent link never picked up upstream's inline replacement and fell
+    // back to display:block, which stacked the mark over the name and clipped
+    // the name out of the 24px header. Pin both halves of the inline gate,
+    // whitespace-anchored so flex-none, inline-flex, or flex-row cannot stand
+    // in for the display utility.
+    expect(chrome).toMatch(/sidebar-brand[^"]*\shidden\s/u);
+    expect(chrome).toMatch(/sidebar-brand[^"]*\smd:flex(?=[\s"])/u);
+    // The link must be allowed to shrink so the name's truncate can engage at
+    // the sidebar's 208px minimum; only the mark below keeps shrink-0.
+    expect(chrome).not.toMatch(/sidebar-brand[^"]*\sshrink-0(?=[\s"])/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
     expect(chrome).toMatch(/sidebar-brand[^"]*text-sidebar-foreground/u);
     expect(chrome).toContain("size-6 shrink-0");

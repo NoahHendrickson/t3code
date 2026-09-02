@@ -92,9 +92,14 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
 
 function SidebarBrand() {
   return (
+    /* The link carries its own display gate (hidden below md, flex row above)
+       since upstream 9885a845c deleted the .sidebar-brand stylesheet rule that
+       used to supply it. It is allowed to shrink so the name truncates before
+       the header overflows at the sidebar's 208px minimum; only the mark is
+       shrink-0. */
     <Link
       aria-label="Go to threads"
-      className="sidebar-brand ml-auto flex h-6 w-fit min-w-0 shrink-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2"
+      className="sidebar-brand ml-auto hidden h-6 w-fit min-w-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
       to="/"
     >
       {/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
