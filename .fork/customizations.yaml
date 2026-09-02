@@ -2888,9 +2888,11 @@
     the icon and copy. The frosted backdrop is kept because the banner
     overlaps the transcript; only the outline, tint and fill variables the
     surface already reads are re-pointed at the fork composer tokens, so the
-    value tracks every palette. The collapsed stack's peek cap takes the
-    hairline in place of its severity border. Outline and tint apply in both
-    schemes; the fill is dark-only like the vessel.
+    value tracks every palette. The collapsed stack's peek cap reads the
+    same fill variable without the surface attribute, so the remap lists
+    the peek slot as a second hook and gives it the hairline in place of
+    its severity border utility. Outline and tint apply in both schemes;
+    the fill is dark-only like the vessel.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
