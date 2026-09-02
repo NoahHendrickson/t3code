@@ -286,3 +286,24 @@ Related deep-dives that predate this file and stay where they are:
   placement and test naming — the shipped one is 7eedbbb6; the duplicate was dropped unpushed.
   Recorded because the convergence is itself evidence the no-op-around-bridge-creation shape is
   the minimal fix, not one agent's taste.
+
+## fork-glass-preview-parking
+
+- Reported as "the UI flashes in opacity" while switching threads, first seen the day v0.1.18
+  shipped. Ruled out in order: Settings as an overlay (it is a route), windows behind the app
+  (the glass material samples them, but the user had none), renderer restarts (none in the
+  trace), unpainted tiles through the transparent window (plausible, never confirmed). The
+  user then recognised the ghost as their own app, which T3's preview browser had open.
+- Cause: upstream #9001 (Electron 43 recording fix, absorbed in the 2026-09-01 sync) parks every
+  rendering-active guest at (0,0) z-index -1 "behind the app" so recordings keep getting frames,
+  and keeps inactive macOS guests `visibility: visible`. Rendering-active includes automation
+  activity, which PreviewAutomationHosts holds for the length of each agent preview call. Over an
+  opaque window that park is invisible. Under Cool Darker the body is transparent and the stage is
+  85–95% alpha, so every agent click, evaluate, or snapshot in a background thread showed that
+  thread's page through the chat. The desktop trace had 27 evaluates and 12 snapshots that day.
+- Fix: the fenced call site narrows the in-viewport park to recording and picture-in-picture and
+  sends automation-only guests back offscreen, paintable on every platform (the pre-#9001
+  placement). Chosen over `opacity: 0` on the parked wrapper, which would have to be proven not
+  to stop the guest compositing for capture, and over gating on the glass marker, which would
+  leave two placement policies to keep in sync for one bug. Screenshots of a background guest
+  are unchanged from before #9001, when those guests were already offscreen.

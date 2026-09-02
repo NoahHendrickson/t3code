@@ -3097,3 +3097,34 @@
     - apps/mobile/src/features/threads/projectThreadCreationValidation.ts
   verify:
     - apps/web/src/__fork_guards__/mobileCurrentCheckoutBranch.test.ts
+
+- id: fork-glass-preview-parking
+  intent: >
+    A preview guest that is rendering only for automation (an agent driving
+    the browser in a thread that is not on screen) parks OFFSCREEN, paintable,
+    on every platform. Only frame consumers — recording and picture-in-picture
+    — park inside the viewport behind the app. Upstream #9001 parks every
+    rendering-active guest at (0,0) z-index -1 so recordings keep receiving
+    frames; that is invisible over an opaque window and fully visible under
+    Cool Darker glass, where the stage and sidebar are 85–95% alpha over a
+    transparent body. Each automation call from a background thread showed
+    that thread's page through the chat for the length of the call, read by
+    the user as random opacity flashes while switching threads. Automation
+    runs JavaScript and reads the DOM, which the offscreen park supports.
+    The data-preview-rendering attribute still derives from the full
+    rendering-active set, so automation continues to see a background guest
+    as rendering; only the wrapper placement narrows. Screenshots of a
+    background guest are no worse than before #9001, when the same guests
+    were already offscreen.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    # Fenced: the resolver is handed `active || captureActive` in place of the
+    # full renderingActive, and backgroundActivity joins the paintable gate.
+    - apps/web/src/browser/HostedBrowserWebview.tsx
+    # Unfenced upstream leaf the fence relies on: the in-viewport branch keys
+    # off `renderingActive`, the offscreen branch off `keepPaintableWhenInactive`.
+    - apps/web/src/browser/hostedBrowserWebviewStyle.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkGlassPreviewParking.test.ts
