@@ -744,7 +744,20 @@ describe("fork guard: fork-composer-shell", () => {
       withTopFade,
       "the top-fade height must be restored when upstream's class is on",
     ).toBeDefined();
-    expect(withTopFade?.body).toContain("--topbar-scroll-fade-height");
+    // The height comes from the variable upstream's own utility reads, by
+    // name. Pinning a literal here is how the cutoff broke once: upstream
+    // renamed --topbar-scroll-fade-height, the guard kept matching the stale
+    // text, and the unresolved var() invalidated mask-size at computed-value
+    // time — every layer went `auto`, the solid third layer covered the
+    // scroller, and the transcript painted through the composer.
+    const indexCss = readSibling("../index.css");
+    const utility = /@utility topbar-scroll-fade \{([^}]*)\}/u.exec(indexCss)?.[1] ?? "";
+    const upstreamFadeVar = /var\((--[a-z-]*scroll-fade-height)\)/u.exec(utility)?.[1];
+    expect(upstreamFadeVar, "upstream's top fade must read a scroll-fade-height variable").toMatch(
+      /^--/u,
+    );
+    expect(indexCss).toContain(`${upstreamFadeVar}:`);
+    expect(withTopFade?.body).toContain(`--fork-timeline-top-fade: var(${upstreamFadeVar})`);
     expect(cutoff?.body).toContain("--fork-timeline-top-fade: 0px");
   });
 });

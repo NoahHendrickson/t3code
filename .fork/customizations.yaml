@@ -1987,6 +1987,12 @@
     drop shadow and a ::after outline ring that would double the surface's
     own hairline): the frame sheds all of it in both schemes, not only under
     the Questions drawer.
+    The cutoff's top-fade companion rule reads the height variable upstream's
+    own topbar-scroll-fade utility reads, by its current name
+    (--workspace-titlebar-scroll-fade-height since upstream #8799); an
+    unresolved name there invalidates the whole mask-size declaration and the
+    transcript paints straight through the composer, so the guard derives the
+    name from index.css rather than pinning it.
     The docked composer overlay paints an opaque page-colored floor (soft fade
     over its top edge) so timeline rows cannot read through the composer once
     that upstream vessel is gone. The fork vessel paints `--fork-composer-vessel-bg`

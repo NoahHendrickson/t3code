@@ -415,8 +415,14 @@
     var(--app-scrollbar-width) 100%;
 }
 
+/* The name must match the variable upstream's own `topbar-scroll-fade`
+   utility reads (index.css). An unknown name here does not just lose the top
+   fade: it makes the whole mask-size declaration invalid at computed-value
+   time, every layer falls back to `auto`, and the solid third layer then
+   covers the element — the transcript paints straight through the composer.
+   The guard reads the name out of index.css so a rename fails CI instead. */
 :root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff.topbar-scroll-fade {
-  --fork-timeline-top-fade: var(--topbar-scroll-fade-height);
+  --fork-timeline-top-fade: var(--workspace-titlebar-scroll-fade-height);
 }
 
 /* No blur band over the tail, and that is a constraint rather than a
