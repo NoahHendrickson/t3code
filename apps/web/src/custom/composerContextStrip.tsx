@@ -1,15 +1,11 @@
 import type { ReactNode } from "react";
 
+import { ComposerSurface } from "~/components/chat/ComposerSurface";
+
 import {
   ComposerBackgroundLivenessPill,
   type ComposerBackgroundLivenessPillProps,
 } from "./ComposerMonitoringPill";
-
-/** Upstream BranchToolbar strip className — fork CSS flattens the geometry
- * under `[data-fork-composer-context-row]`, so fallbacks must reuse this string
- * rather than a hand-copied subset. */
-export const COMPOSER_CONTEXT_STRIP_CLASSNAME =
-  "chat-composer-context-strip group/composer-context -mt-4 mx-auto flex w-[calc(100%-2.75rem)] max-w-[calc(48rem-2.75rem)] items-center gap-2 overflow-x-clip overflow-y-visible ps-1 pe-2 pt-5 pb-1";
 
 export type ComposerBackgroundLiveness =
   | { readonly kind: "monitoring" }
@@ -49,10 +45,12 @@ export function renderComposerLivenessPill(
 }
 
 /** When the BranchToolbar is absent (non-repo) but liveness remains, mount the
- * pill in the same strip chrome so stop stays reachable. */
+ * pill in the same strip chrome (upstream's ComposerSurface.ContextStrip, which
+ * fork CSS flattens under `[data-fork-composer-context-row]`) so stop stays
+ * reachable. */
 export function renderComposerLivenessStripFallback(livenessPill: ReactNode): ReactNode {
   if (!livenessPill) {
     return null;
   }
-  return <div className={COMPOSER_CONTEXT_STRIP_CLASSNAME}>{livenessPill}</div>;
+  return <ComposerSurface.ContextStrip>{livenessPill}</ComposerSurface.ContextStrip>;
 }

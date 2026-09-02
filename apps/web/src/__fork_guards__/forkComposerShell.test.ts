@@ -148,6 +148,18 @@ describe("fork guard: fork-composer-shell", () => {
     expect(markup).toContain("data-test-readout");
   });
 
+  it("hides model and mode controls behind the mobile pending-answer cluster", () => {
+    // Upstream's footer goes `hidden sm:flex` here; the editor's bottom band is
+    // reserved for the absolute prev/advance actions.
+    expect(
+      resolveComposerShellVisibility({
+        approvalPending: false,
+        collapsedMobile: false,
+        mobilePendingActionsVisible: true,
+      }),
+    ).toEqual({ showInlinePrimaryAction: false, showInteractiveControls: false });
+  });
+
   it("keeps collapsed-mobile controls on upstream theme-role tokens", () => {
     expect([...chatComposer.matchAll(/text-placeholder/gu)]).toHaveLength(2);
     expect(chatComposer).not.toContain("text-muted-foreground/60");
@@ -215,7 +227,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(composerOverlayIdx).toBeGreaterThan(-1);
     expect(headlineIdx).toBeLessThan(composerOverlayIdx);
     expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
-    expect(chatView).toContain('"chat-composer-glass-shell relative mx-auto w-full max-w-3xl"');
+    expect(chatView).toContain("<ComposerSurface.Shell");
   });
 
   it("keeps the context strip mounted when the thread's worktree is gone", () => {
@@ -232,8 +244,7 @@ describe("fork guard: fork-composer-shell", () => {
       (rule) =>
         rule.selector.includes("[data-fork-composer") ||
         rule.selector.includes("data-chat-composer-overlay") ||
-        rule.selector.includes("chat-composer-glass") ||
-        rule.selector.includes("chat-composer-context-strip"),
+        rule.selector.includes('[data-slot="composer-'),
     );
     expect(composerRules.length).toBeGreaterThan(0);
     for (const rule of composerRules) {
@@ -256,6 +267,25 @@ describe("fork guard: fork-composer-shell", () => {
     const drag = rules.find((rule) => rule.selector.includes("[data-fork-composer-drag-over]"));
     expect(drag?.body).toMatch(/background:/u);
     expect(drag?.body).toMatch(/outline:\s*2px solid/u);
+
+    // Upstream glasses the frame (backdrop-filter, shadow, ::after ring) for
+    // every attached banner, not only the Questions drawer; the surface's own
+    // hairline is the only ring, so the frame sheds all of it unconditionally.
+    const frame = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-box]") &&
+        !rule.selector.includes(":has(") &&
+        rule.body.includes("backdrop-filter"),
+    );
+    expect(frame?.selector).not.toContain(".dark");
+    expect(frame?.body).toMatch(/backdrop-filter:\s*none/u);
+    expect(frame?.body).toMatch(/box-shadow:\s*none/u);
+    const frameOutline = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-box]::after") &&
+        !rule.selector.includes(":has("),
+    );
+    expect(frameOutline?.body).toMatch(/display:\s*none/u);
   });
 
   it("moves the desktop scrollport to the prompt wrapper and clips its placeholder", () => {
@@ -545,9 +575,9 @@ describe("fork guard: fork-composer-shell", () => {
 
   it("switches off the stitched glass shell and flattens the context strip", () => {
     for (const selector of [
-      ".chat-composer-glass-shell::before",
-      ".chat-composer-glass-host::after",
-      ".chat-composer-context-strip::before",
+      '[data-slot="composer-shell"]::before',
+      '[data-slot="composer-host"]::after',
+      '[data-slot="composer-context-strip"]::before',
     ]) {
       const rule = rules.find((candidate) => candidate.selector.includes(selector));
       expect(rule?.body).toMatch(/display:\s*none/u);
@@ -555,7 +585,7 @@ describe("fork guard: fork-composer-shell", () => {
     const strip = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes(".chat-composer-context-strip") &&
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
         !/>\s*(?:\.flex|\*)/u.test(rule.selector),
     );
     // The CSS belt is the single owner of the flattened strip geometry —
@@ -578,7 +608,7 @@ describe("fork guard: fork-composer-shell", () => {
     const nested = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes(".chat-composer-context-strip") &&
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
         (rule.selector.includes(">.flex") || rule.selector.includes("> .flex")),
     );
     expect(nested?.body).toMatch(/gap:\s*8px/u);
@@ -593,7 +623,7 @@ describe("fork guard: fork-composer-shell", () => {
     const everyChild = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes(".chat-composer-context-strip") &&
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
         rule.selector.trim().endsWith("> *"),
     );
     expect(everyChild?.body).toMatch(/flex:\s*0 1 auto/u);
@@ -618,11 +648,14 @@ describe("fork guard: fork-composer-shell", () => {
     expect(pill).toContain("data-fork-monitoring-stop");
     expect(pill).toContain("Stop background work");
     expect(strip).toContain("resolveComposerLivenessPillProps");
-    expect(strip).toContain("COMPOSER_CONTEXT_STRIP_CLASSNAME");
+    expect(strip).toContain("<ComposerSurface.ContextStrip>");
     expect(strip).toContain("renderComposerLivenessStripFallback");
     expect(branchToolbar).toContain("trailing?: ReactNode");
     expect(branchToolbar).toContain("{trailing ?? null}");
-    expect(branchToolbar).toContain("COMPOSER_CONTEXT_STRIP_CLASSNAME");
+    // The bare liveness strip has one owner: the no-thread branch reuses the
+    // fallback instead of re-rendering the strip inline with a dead measure ref.
+    expect(branchToolbar).toContain("return renderComposerLivenessStripFallback(trailing);");
+    expect(branchToolbar).not.toMatch(/<ComposerSurface\.ContextStrip ref=\{setStripElement\}>/u);
     expect(chatView).toContain("resolveComposerLivenessPillProps");
     expect(chatView).toContain("renderComposerLivenessPill");
     expect(chatView).toContain("trailing: composerLivenessPill");

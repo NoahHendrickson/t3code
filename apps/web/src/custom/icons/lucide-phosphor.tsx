@@ -196,6 +196,14 @@ import {
   UploadSimple as PhUploadSimple,
   UserPlus as PhUserPlus,
   Users as PhUsers,
+  Brain as PhBrain,
+  EnvelopeSimple as PhEnvelopeSimple,
+  FileText as PhFileText,
+  FileXls as PhFileXls,
+  Image as PhImage,
+  Presentation as PhPresentation,
+  SortAscending as PhSortAscending,
+  SortDescending as PhSortDescending,
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
@@ -504,3 +512,17 @@ export const UserRoundIcon = icon("user-round", PhUserCircle, "duotone");
 export const Volume2 = icon("volume-2", PhSpeakerHigh, "duotone");
 export const VolumeOff = icon("volume-off", PhSpeakerSlash, "duotone");
 export const Square = icon("square", PhSquare, "duotone");
+
+// Added at the 2026-09-01 sync: GitHub reference links in markdown (#8812) draw
+// document / sheet / slide / mail / image glyphs, the thinking row (#9062/#9098)
+// leads with a brain, and the pull request list sorts (#8809) by date. Phosphor
+// has no calendar-with-arrow; the two date sorts read as sort direction instead,
+// which is what those arrows meant, with the label carrying "newest / oldest".
+export const FileTextIcon = icon("file-text", PhFileText, "duotone");
+export const FileSpreadsheetIcon = icon("file-spreadsheet", PhFileXls, "duotone");
+export const PresentationIcon = icon("presentation", PhPresentation, "duotone");
+export const MailIcon = icon("mail", PhEnvelopeSimple, "duotone");
+export const ImageIcon = icon("image", PhImage, "duotone");
+export const BrainIcon = icon("brain", PhBrain, "duotone");
+export const CalendarArrowDownIcon = icon("calendar-arrow-down", PhSortDescending, "bold");
+export const CalendarArrowUpIcon = icon("calendar-arrow-up", PhSortAscending, "bold");

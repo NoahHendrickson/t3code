@@ -10,7 +10,6 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import type { ChangeRequestSettleSource } from "@t3tools/client-runtime/state/thread-settled";
 import { ChevronDownIcon } from "lucide-react";
 import {
   memo,
@@ -52,8 +51,6 @@ interface ChatHeaderProps {
   activeThreadTitle: string;
   /** Drafts have no server thread yet, so the title carries no action menu. */
   isServerThread: boolean;
-  /** PR feeding the settled classification, resolved by ChatView. */
-  changeRequest: ChangeRequestSettleSource | null;
   activeProjectName: string | undefined;
   activeProjectCwd: string | null;
   openInCwd: string | null;
@@ -121,7 +118,6 @@ export const ChatHeader = memo(function ChatHeader({
   draftId,
   activeThreadTitle,
   isServerThread,
-  changeRequest,
   activeProjectName,
   activeProjectCwd,
   openInCwd,
@@ -198,7 +194,6 @@ export const ChatHeader = memo(function ChatHeader({
   const { openMenu, closeMenu } = useThreadActionMenu({
     threadRef: isServerThread ? activeThreadRef : null,
     projectCwd: activeProjectCwd,
-    changeRequest,
     onStartRename: startRename,
   });
   const titleButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -285,14 +280,17 @@ export const ChatHeader = memo(function ChatHeader({
       className="@container/header-actions flex min-w-0 flex-1 items-center gap-2 sm:gap-3"
       onContextMenu={handleHeaderContextMenu}
     >
-      <WorkspaceBreadcrumb ariaLabel="Thread breadcrumb" className="flex-1">
+      <WorkspaceBreadcrumb
+        ariaLabel="Thread breadcrumb"
+        className="flex-1 overflow-clip [overflow-clip-margin:2px]"
+      >
         {/* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
             Keep upstream's actionable breadcrumb and thread menu behavior, but
             preserve the fork hierarchy: project semibold without a duplicate
             favicon, thread title regular. */}
         {activeProjectName ? (
           <>
-            <WorkspaceBreadcrumbItem>
+            <WorkspaceBreadcrumbItem className="shrink">
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -300,7 +298,7 @@ export const ChatHeader = memo(function ChatHeader({
                       type="button"
                       aria-label={`New thread in ${activeProjectName}`}
                       onClick={onNewThreadInProject}
-                      className="inline-flex min-w-0 cursor-pointer items-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                      className="inline-flex min-w-0 max-w-full cursor-pointer items-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                     />
                   }
                 >
@@ -314,7 +312,7 @@ export const ChatHeader = memo(function ChatHeader({
             <WorkspaceBreadcrumbSeparator />
           </>
         ) : null}
-        <WorkspaceBreadcrumbItem current className="flex-1">
+        <WorkspaceBreadcrumbItem current className="min-w-10 flex-1">
           {renamingTitle !== null ? (
             <input
               autoFocus

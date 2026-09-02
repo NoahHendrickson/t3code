@@ -78,6 +78,8 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
   showFavorites?: boolean;
   /** Instance ids shown in the strip but unavailable for the current picker context. */
   disabledInstanceIds?: ReadonlySet<ProviderInstanceId>;
+  /** Non-ready instances whose selected unavailable model remains reachable. */
+  selectableUnavailableInstanceIds?: ReadonlySet<ProviderInstanceId>;
   getDisabledInstanceTooltip?: (entry: ProviderInstanceEntry) => string;
   /**
    * Instance id values that should render the "new" sparkle badge. Callers
@@ -169,7 +171,9 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
       {props.instanceEntries.map((entry) => {
         const isUnavailable = !isProviderInstancePickerReady(entry);
         const isContextDisabled = props.disabledInstanceIds?.has(entry.instanceId) ?? false;
-        const isDisabled = isUnavailable || isContextDisabled;
+        const unavailableSelectionIsReachable =
+          props.selectableUnavailableInstanceIds?.has(entry.instanceId) ?? false;
+        const isDisabled = (isUnavailable && !unavailableSelectionIsReachable) || isContextDisabled;
         const isSelected = props.selectedInstanceId === entry.instanceId;
         const showNewBadge = props.newBadgeInstanceIds?.has(entry.instanceId) ?? false;
         const showInstanceBadge = shouldShowInstanceBadge(entry, props.instanceEntries);
@@ -196,7 +200,11 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
             disabled={isDisabled}
             type="button"
             aria-label={
-              isDisabled ? tooltip : showNewBadge ? `${entry.displayName}, new` : entry.displayName
+              isUnavailable || isContextDisabled
+                ? tooltip
+                : showNewBadge
+                  ? `${entry.displayName}, new`
+                  : entry.displayName
             }
           >
             <ProviderInstanceIcon

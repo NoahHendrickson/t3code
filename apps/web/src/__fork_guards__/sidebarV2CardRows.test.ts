@@ -42,9 +42,9 @@ const upstreamCss = readSibling("../index.css");
 
 describe("fork guard: sidebar-v2-card-rows", () => {
   it("keeps upstream wake and monitoring semantics in the customized row", () => {
-    expect(sidebarV2).toContain("!changeRequestAutoSettles(pr, {");
-    // An omitted autoSettleOnMerge reads as true, so the setting must be forwarded.
-    expect(sidebarV2).toContain("autoSettleOnMerge: props.autoSettleOnMerge,");
+    // Settlement is server-side since upstream #8600: a settled thread never
+    // reads as woke, and there is no client auto-settle predicate to forward.
+    expect(sidebarV2).toContain('thread.settledOverride !== "settled";');
     expect(sidebarV2).toMatch(
       /status === "ready" \|\| status === "working" \|\| status === "monitoring"/u,
     );

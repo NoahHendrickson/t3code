@@ -19,18 +19,15 @@ export function resolveComposerShellVisibility({
 }: ComposerShellVisibilityInput) {
   return {
     showInlinePrimaryAction: !approvalPending && !mobilePendingActionsVisible,
-    showInteractiveControls: !approvalPending && !collapsedMobile,
+    // Upstream hides its footer on phones while the pending-answer cluster is
+    // up (the editor reserves that band for the absolute prev/advance actions).
+    showInteractiveControls: !approvalPending && !collapsedMobile && !mobilePendingActionsVisible,
   };
 }
 
 type ComposerShellProps = ComposerShellVisibilityInput & {
   children?: ReactNode;
   context?: ReactNode;
-  // Upstream's task/stash shoulder tabs hang 28px above the main surface
-  // (absolute -top-7). Upstream clears them with pt-7 on the form, which sits
-  // above the fork's context row — so the tabs climb into the branch chips.
-  // With a context row the clearance has to sit between it and the vessel.
-  shoulderClearance?: boolean;
   modeControls: ReactNode;
   modelControls: ReactNode;
   readoutControls: ReactNode;
@@ -46,7 +43,6 @@ export const ComposerShell = memo(function ComposerShell({
   modeControls,
   modelControls,
   readoutControls,
-  shoulderClearance = false,
 }: ComposerShellProps) {
   const { showInteractiveControls } = resolveComposerShellVisibility({
     approvalPending,
@@ -69,10 +65,7 @@ export const ComposerShell = memo(function ComposerShell({
   return (
     <>
       {context ? (
-        <div
-          data-fork-composer-context-row="true"
-          className={cn("flex min-w-0 items-center", shoulderClearance ? "pb-9" : "pb-2")}
-        >
+        <div data-fork-composer-context-row="true" className="flex min-w-0 items-center pb-2">
           {context}
         </div>
       ) : null}

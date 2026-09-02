@@ -276,13 +276,14 @@
 
    Everything below is dark-scoped: the designs are dark-only, and an unmarked
    or light build keeps upstream's shell untouched. */
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-shell::before,
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-host::after,
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-context-strip::before {
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-shell"]::before,
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-host"]::after,
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-context-strip"]::before,
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box]::after {
   display: none;
 }
 
-:root[data-fork="noahhendrickson-t3code"] .chat-composer-glass-host {
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-host"] {
   box-shadow: none;
 }
 
@@ -461,11 +462,18 @@
 
 /* The frame div is upstream's 1px gradient-border trick: a p-px shim whose
    child surface paints the fill. The fork wants a plain border, so the shim
-   collapses and the surface takes the border directly. */
+   collapses and the surface takes the border directly. Upstream also glasses
+   this frame whenever any banner is attached above it (backdrop-filter, a drop
+   shadow and the ::after outline ring dropped with the shell paint above); the
+   surface below already owns the fill and the hairline, so none of it is
+   wanted here, in either scheme. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box] {
   padding: 0;
   border-radius: var(--fork-composer-radius);
   background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Mobile's collapsed tap target remains a distinct functional state. */
@@ -757,7 +765,7 @@
    min-width 0 keeps the chips shrinking rather than overflowing it. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  .chat-composer-context-strip {
+  [data-slot="composer-context-strip"] {
   flex: 1 1 auto;
   width: auto;
   min-width: 0;
@@ -781,7 +789,7 @@
    leading cluster; neutralize the grow/end alignment so gap stays 8px. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  .chat-composer-context-strip
+  [data-slot="composer-context-strip"]
   > .flex {
   flex: 0 1 auto;
   justify-content: flex-start;
@@ -802,7 +810,7 @@
    chips' own 6px gap and cap. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  .chat-composer-context-strip
+  [data-slot="composer-context-strip"]
   > * {
   flex: 0 1 auto;
 }
@@ -980,7 +988,7 @@
    Raising the panel, rather than isolating the inset. `isolation: isolate`
    would trap the whole subtree below the panel — including the one chat overlay
    that is not portaled: ExpandedImageDialog renders inline inside the inset at
-   `fixed inset-0 z-50`, so an isolated inset puts the opaque panel over the
+   `fixed inset-0 z-[60]`, so an isolated inset puts the opaque panel over the
    lightbox's backdrop, its previous-image button and its click-to-close target.
    45 clears the minimap and still yields to that lightbox.
 
@@ -1877,27 +1885,68 @@
    fill and hairline (top / left / right only) on 8px top corners, and the
    prompt row sits flush beneath with square top corners, its own hairline
    drawing the divider. Dark-only, same contract as the vessel. Keyed on the
-   Questions panel so approval and plan drawers keep upstream's geometry. */
+   Questions panel so approval and plan drawers keep upstream's geometry.
+
+   Since upstream's banner dock (#8734) the drawer is a ComposerBanner.Root
+   (data-chat-composer-top-drawer) nested in two attachment wrappers — the
+   dock and its own attachment — which carry the inset width and the 1rem
+   overlap tuck; the Root itself adds a 4px inset on every side. All three go
+   full width with no tuck or inset when the Questions panel is inside. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  > .chat-composer-top-drawer:has(> [data-fork-pending-user-input]) {
+  [data-slot="composer-banner-attachment"]:has(
+    [data-chat-composer-top-drawer] > [data-fork-pending-user-input]
+  ) {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding-bottom: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input]) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The stash tab shares the dock row with the drawer column. That works while
+   the drawer is inset — the tab sits in its margin — but a full-width card
+   would be squeezed by the tab's width. Stack the dock instead: the tab rides
+   above the card's right shoulder and its overlap padding tucks under the
+   card, which paints over it in order-modified paint order. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]):has(
+    [data-chat-composer-top-drawer] > [data-fork-pending-user-input]
+  ) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner-attachment"]:has(
+    [data-chat-composer-top-drawer] > [data-fork-pending-user-input]
+  )
+  > [data-composer-shoulder-tab] {
+  order: -1;
+  align-self: flex-end;
+  margin-bottom: calc(-1 * var(--chat-composer-attachment-overlap) - 4px);
 }
 
 /* The drawer's masked glass pseudo-element is dead weight once the panel
    paints itself — and a backdrop-filter this palette never asked for. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  > .chat-composer-top-drawer:has(> [data-fork-pending-user-input])::before {
+  [data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input])::before {
   display: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  > .chat-composer-top-drawer
+  [data-chat-composer-top-drawer]
   > [data-fork-pending-user-input] {
   border: 1px solid var(--fork-composer-border);
   border-bottom: 0;
@@ -1911,29 +1960,20 @@
    follow or the two halves split into a dim ring over a bright one. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]:has([data-fork-composer-surface]:focus-within)
-  > .chat-composer-top-drawer
+  [data-chat-composer-top-drawer]
   > [data-fork-pending-user-input] {
   border-color: var(--fork-composer-border-focus);
 }
 
 /* Square the prompt surface's top corners under the card. The surface
-   inherits the frame's radius, so the frame's longhands do both. Upstream
-   also glasses the frame while any drawer is attached (a backdrop-filter and
-   a ::after outline on top of the fork's inset hairline); drop both so the
-   prompt row keeps its single 1px ring. */
+   inherits the frame's radius, so the frame's longhands do both. (Upstream's
+   attached-banner glass on this frame is already dropped for every
+   attachment by the [data-fork-composer-box] rules in the shell section.) */
 :root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]:has(> .chat-composer-top-drawer > [data-fork-pending-user-input])
+  [data-fork-composer-vessel]:has([data-chat-composer-top-drawer] > [data-fork-pending-user-input])
   [data-fork-composer-box] {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]:has(> .chat-composer-top-drawer > [data-fork-pending-user-input])
-  [data-fork-composer-box]::after {
-  display: none;
 }
 
 /* ── Popup menus on the composer fill (fork-popup-surface) ───────────────────
