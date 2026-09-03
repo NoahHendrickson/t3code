@@ -269,6 +269,17 @@ export function HostedBrowserWebview(props: {
       style={{ ...wrapperStyle, overscrollBehavior: "contain" }}
       onScroll={syncContentPresentation}
       data-preview-rendering={renderingActive ? "active" : "suspended"}
+      /* fork:begin fork-glass-preview-parking — see .fork/customizations.yaml#fork-glass-preview-parking */
+      /* Upstream parks a rendering-active guest that is not on screen inside the
+         viewport at z-index -1 so capture keeps getting frames: a guest parked
+         fully offscreen stops compositing and capturePage hangs (measured on
+         Electron 43, see the manifest entry). Over an opaque window that park is
+         invisible. Under Cool Darker glass the app above it is translucent, so an
+         agent's snapshot in a background thread showed that thread's page through
+         the chat. theme.custom.css hides the parked wrapper with opacity, which
+         keeps the guest composited and capturable; the placement stays upstream's. */
+      data-fork-preview-parked={renderingActive && !active ? "true" : undefined}
+      /* fork:end fork-glass-preview-parking */
       data-preview-viewport={runtimeTabId}
       /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
       data-fork-canvas={canvasOn ? "on" : undefined}

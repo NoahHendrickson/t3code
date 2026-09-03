@@ -1790,6 +1790,25 @@
   background-color: var(--fork-design-canvas);
 }
 
+/* Parked preview guests — see `.fork/customizations.yaml#fork-glass-preview-parking`.
+
+   Upstream parks a rendering-active guest that is not on screen (an agent
+   driving a background thread's browser, a recording, picture-in-picture)
+   inside the viewport at (0,0) z-index -1, because a guest parked fully
+   offscreen stops compositing and capturePage never resolves. Over an opaque
+   window that park is invisible; under Cool Darker glass the app above it is
+   translucent, so the parked page showed through the chat for the length of
+   every automation call.
+
+   Opacity and ONLY opacity. Measured on Electron 43: a guest under opacity 0
+   in the viewport keeps producing fresh frames for capturePage, while
+   visibility: hidden and the offscreen park both make it hang. Anything that
+   removes the wrapper from layout or visibility here breaks background
+   snapshots the same way. The wrapper's own bg-muted/35 goes with it. */
+:root[data-fork="noahhendrickson-t3code"] [data-preview-viewport][data-fork-preview-parked="true"] {
+  opacity: 0;
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark {
   /* Surface and field follow the THEME, not the palette the Figma file happened to be
      drawn in: the panel docks inside the workspace, so a pinned #232527 read as a lighter

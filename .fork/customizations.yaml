@@ -3097,3 +3097,42 @@
     - apps/mobile/src/features/threads/projectThreadCreationValidation.ts
   verify:
     - apps/web/src/__fork_guards__/mobileCurrentCheckoutBranch.test.ts
+
+- id: fork-glass-preview-parking
+  intent: >
+    A preview guest that is rendering but not on screen (an agent driving the
+    browser in a background thread, a recording, picture-in-picture) is parked
+    by upstream INSIDE the viewport at (0,0) z-index -1 so capture keeps
+    receiving frames. That placement is kept exactly; the fork only stops the
+    parked wrapper painting, with `opacity: 0` and nothing else. Measured on
+    Electron 43 with a red guest page and a 50ms counter: under opacity 0 in
+    the viewport, capturePage returned fresh frames 600ms apart; parked at
+    -100000 (paintable) or under visibility hidden, capturePage never
+    resolved. So a placement change would break automation snapshots of
+    background threads, which call capturePage on every snapshot, and a
+    visibility change would break them the same way.
+
+    Why it matters here and not upstream: over an opaque window a z-index -1
+    park is invisible. Under Cool Darker the body is transparent and the
+    stage and sidebar are 85–95% alpha, so each agent click, evaluate or
+    snapshot from a background thread showed that thread's page through the
+    chat for the length of the call, read by the user as random opacity
+    flashes while switching threads. The rule is scoped to the fork marker,
+    not the vibrancy marker: under an opaque palette an invisible parked
+    wrapper is unchanged, and one rule is fewer states to keep in sync.
+
+    The marker is stamped on the wrapper, not the surface slot: the wrapper is
+    the fixed element upstream positions and it carries its own bg-muted/35,
+    which is the other thing that shows through the glass.
+  tier: 4
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Fenced data-fork-preview-parked attribute on the guest wrapper.
+    - apps/web/src/browser/HostedBrowserWebview.tsx
+    # Unfenced upstream leaf the rule relies on: the in-viewport park for
+    # rendering-active guests. The guard pins it.
+    - apps/web/src/browser/hostedBrowserWebviewStyle.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkGlassPreviewParking.test.ts
