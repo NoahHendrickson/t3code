@@ -2877,6 +2877,33 @@
   verify:
     - apps/web/src/__fork_guards__/forkRightPanelTabbarDivider.test.ts
 
+- id: fork-composer-banner-surface
+  intent: >
+    Composer banners (the settled / snoozed / woke notices, resume and
+    provider warnings, the command menu surface) paint the composer fill
+    under the composer hairline — the same material as the Questions card —
+    instead of upstream's severity tint: a --info / --success / --warning /
+    --error outline plus a wash of the same hue over the glass, which lands
+    as a blue slab on the fork's neutral composer stack. Severity stays in
+    the icon and copy. The frosted backdrop is kept because the banner
+    overlaps the transcript; only the outline, tint and fill variables the
+    surface already reads are re-pointed at the fork composer tokens, so the
+    value tracks every palette. The collapsed stack's peek cap reads the
+    same fill variable without the surface attribute, so the remap lists
+    the peek slot as a second hook and gives it the hairline in place of
+    its severity border utility. Outline and tint apply in both schemes;
+    the fill is dark-only like the vessel.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Owns data-composer-banner-surface, data-slot="composer-banner-peek"
+    # and the --chat-composer-attached-* variables the rule re-points.
+    - apps/web/src/components/chat/ComposerBanner.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkComposerBannerSurface.test.ts
+
 - id: fork-pending-user-input
   intent: >
     When an agent asks the user to answer questions, the composer pending
