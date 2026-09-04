@@ -988,7 +988,7 @@
 
    Upstream's desktop panel is already `fixed`; what pushes is the in-flow
    `sidebar-gap` spacer rendered beside it, so zeroing that one width is the
-   whole overlay. The panel keeps its own left-slide transition and the chat
+   whole overlay. The panel keeps its own slide transition and the chat
    column stops moving when the sidebar is toggled.
    ------------------------------------------------------------------------ */
 :root[data-fork="noahhendrickson-t3code"]
@@ -1047,6 +1047,35 @@
   [data-slot="sidebar"][data-state="expanded"]
   [data-slot="sidebar-container"] {
   box-shadow: 0 0 24px rgb(0 0 0 / 0.28);
+}
+
+/* ── Composited sidebar slide (sidebar-offcanvas-compositing) ─────────────────
+   Upstream parks the fixed desktop panel off-canvas by animating `left` /
+   `right` to minus its own width. Those are layout properties: every frame of
+   the 200ms toggle re-lays-out and repaints the panel's whole subtree, and a
+   sidebar carrying a few hundred thread rows visibly stutters. The panel keeps
+   its edge pinned and slides on `translate` instead, which the compositor
+   moves as one layer without touching the rows. Width stays in the transition
+   so icon mode still animates, and the in-flow sidebar-gap spacer is untouched:
+   the workspace expands and contracts on its own width transition, same
+   timing. The stylesheet is unlayered, so these beat the utility classes
+   upstream leaves on the element. */
+:root[data-fork="noahhendrickson-t3code"] [data-slot="sidebar-container"] {
+  transition-property: translate, width;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-slot="sidebar"][data-collapsible="offcanvas"][data-side="left"]
+  [data-slot="sidebar-container"] {
+  left: 0;
+  translate: -100% 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-slot="sidebar"][data-collapsible="offcanvas"][data-side="right"]
+  [data-slot="sidebar-container"] {
+  right: 0;
+  translate: 100% 0;
 }
 
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
