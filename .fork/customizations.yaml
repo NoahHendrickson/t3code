@@ -391,8 +391,11 @@
     instead of silently un-porting the feature from the card variant. The
     project's favicon leads the repo line the same way, as a required
     `projectIconSlot` built on the row's side from upstream's ProjectFavicon
-    (the slim rows and the project menu already draw it), with the design's
-    folder mark as the in-component fallback for a null slot.
+    (the slim rows and the project menu already draw it). The design's folder
+    mark is the meta's own SidebarV2ProjectFolderMark: it draws for a null
+    slot, and the row hands it to ProjectFavicon as the no-asset fallback so a
+    favicon-less project shows the same glyph, aria-hidden like every other
+    mark on the line.
 
     Surface encodes interaction and nothing else. A row is filled on hover and
     when selected or routed to; it is never filled because of its status.

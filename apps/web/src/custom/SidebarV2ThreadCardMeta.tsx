@@ -41,10 +41,13 @@ export interface SidebarV2ThreadCardMetaProps {
       "one row up" and would otherwise hear a card with no project at all. */
   readonly projectTitleHidden?: boolean;
   /** The project's favicon, pre-built by the caller, or null to draw the
-      design's folder mark instead. A slot for the same reason `terminalSlot`
-      is one: the favicon is an asset lookup keyed by environment and cwd,
-      and that state stays on the row's side of this seam. Required so a
-      call site has to say `null` out loud — see `terminalSlot`. */
+      design's folder mark (`SidebarV2ProjectFolderMark`) instead. A slot for
+      the same reason `terminalSlot` is one: the favicon is an asset lookup
+      keyed by environment and cwd, and that state stays on the row's side of
+      this seam. The app always passes ProjectFavicon with that same mark as
+      its no-asset fallback, so null is the test-side default, not the
+      favicon-less path. Required so a call site has to say `null` out loud —
+      see `terminalSlot`. */
   readonly projectIconSlot: ReactNode;
   readonly branch: string | null;
   /** True when the thread runs in a worktree of its own rather than in the
@@ -88,6 +91,15 @@ const MUTED = "text-muted-foreground/70";
     custom/sidebarV2CardAlignment for why this one is not on the 34px edge. */
 const CONTENT_INDENT = SIDEBAR_V2_CARD_ALIGNMENT.repoIndent;
 
+/** The design's folder mark (311:13972) for the repo line, decorative like
+    every other mark on it. The meta draws it for a null `projectIconSlot`;
+    the row hands it to ProjectFavicon as `fallbackIcon` so a favicon-less
+    project draws the same glyph — with the `aria-hidden` ProjectFavicon's own
+    fallback does not set. */
+export function SidebarV2ProjectFolderMark(props: { readonly className?: string | undefined }) {
+  return <FolderIcon aria-hidden className={props.className} />;
+}
+
 export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
   /* Branch / worktree / project marks are 16px (size-4) per the component set,
      and they share the 20px indent's axis with the prompt above. The runtime
@@ -126,14 +138,13 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
           // favicon rides with the name — the same mark the slim rows and the
           // project menu use for it, so a flat list reads the project at a
           // glance the way a grouped one reads its header — and the folder
-          // mark (design 311:13972) stands in when the caller has none, so
-          // the two clusters on this line each lead with a glyph naming what
-          // follows.
+          // mark (design 311:13972) stands in for a null slot, so the two
+          // clusters on this line each lead with a glyph naming what follows.
           props.projectTitleHidden ? (
             <span className="sr-only">{props.projectTitle}</span>
           ) : (
             <span className="flex max-w-[45%] shrink-0 items-center gap-1">
-              {props.projectIconSlot ?? <FolderIcon aria-hidden className="size-4 shrink-0" />}
+              {props.projectIconSlot ?? <SidebarV2ProjectFolderMark className="size-4 shrink-0" />}
               <span className="truncate">{props.projectTitle}</span>
             </span>
           )

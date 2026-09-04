@@ -94,15 +94,18 @@ describe("fork guard: sidebar-v2-card-rows", () => {
   it("leads the flat card's project with its favicon, folder mark as the fallback", () => {
     // Flat mode names the project on every card, and the favicon is what the
     // slim rows and the project menu already use for it. The slot is built on
-    // the row's side (asset lookup, environment + cwd) and handed in the way
-    // the terminal glyph is; `?? <FolderIcon` inside the meta is what keeps a
-    // null slot (no favicon, tests) on the design's folder mark.
-    expect(sidebarV2).toContain("projectIconSlot={");
+    // the row's side (asset lookup, environment + cwd) beside the terminal
+    // glyph and handed in the same way, as one identifier. Its no-asset
+    // fallback is the meta's own folder mark, so a favicon-less project draws
+    // the design's glyph hidden from assistive tech like every other mark on
+    // the line — ProjectFavicon's default fallback is not hidden. The meta
+    // draws that same mark for a null slot.
+    expect(sidebarV2).toContain("projectIconSlot={projectIcon}");
     expect(sidebarV2).toMatch(
-      /projectIconSlot=\{\s*<ProjectFavicon\s+environmentId=\{thread\.environmentId\}\s+cwd=\{props\.projectCwd \?\? ""\}\s+faviconPath=\{props\.projectFaviconPath\}/u,
+      /const projectIcon = \(\s*<ProjectFavicon\s+environmentId=\{thread\.environmentId\}\s+cwd=\{props\.projectCwd \?\? ""\}\s+faviconPath=\{props\.projectFaviconPath\}\s+className="[^"]*"\s+fallbackIcon=\{SidebarV2ProjectFolderMark\}/u,
     );
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).toContain("props.projectIconSlot ??");
+    expect(meta).toContain("props.projectIconSlot ?? <SidebarV2ProjectFolderMark");
   });
 
   it("rides the PR badge on the title line, not on a row of its own", () => {
@@ -165,7 +168,10 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // settle/discard on the trailing axis.
     expect(meta).toContain('<WorktreeIcon aria-hidden className="size-4 shrink-0" />');
     expect(meta).toContain('<GitBranchIcon aria-hidden className="size-4 shrink-0" />');
-    expect(meta).toContain('<FolderIcon aria-hidden className="size-4 shrink-0" />');
+    // The folder mark is the exported SidebarV2ProjectFolderMark (also the
+    // favicon's no-asset fallback); it carries the aria-hidden, the meta the size.
+    expect(meta).toContain("<FolderIcon aria-hidden className={props.className} />");
+    expect(meta).toContain('<SidebarV2ProjectFolderMark className="size-4 shrink-0" />');
     expect(meta).toContain("inline-flex size-6 shrink-0 items-center justify-center");
     expect(meta).toContain('<CloudIcon aria-hidden className="size-3.5" />');
     expect(meta).toContain('<LaptopIcon aria-hidden className="size-3.5" />');

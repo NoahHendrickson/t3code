@@ -38,13 +38,15 @@ describe("SidebarV2ThreadCardMeta", () => {
     expect(countRows(markup)).toBe(1);
   });
 
-  it("leads the project name with the design's folder mark when no favicon is given", () => {
+  it("leads the project name with the design's folder mark for a null slot", () => {
     // Ungrouped cards name their project on this line, and the mark is what
-    // separates that name from the branch beside it at a glance.
+    // separates that name from the branch beside it at a glance. Decorative:
+    // the name beside it is the accessible text, as for every other mark.
     const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} />);
 
     expect(markup).toContain("alpha-service");
-    expect(markup).toContain("lucide-folder");
+    const folder = /<svg[^>]*lucide-folder[^>]*>/u.exec(markup)?.[0];
+    expect(folder).toContain('aria-hidden="true"');
   });
 
   it("leads the project name with its favicon when the caller has one", () => {
