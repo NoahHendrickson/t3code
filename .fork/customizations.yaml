@@ -796,17 +796,24 @@
 - id: sidebar-offcanvas-compositing
   intent: >
     Opening and closing the populated desktop sidebar remains smooth as the
-    rendered thread count grows. The fixed panel slides off-canvas with a
-    transform, which the browser can composite as one layer, rather than by
-    animating left or right and repeatedly repainting its thread subtree. The
-    separate sidebar-gap width transition remains unchanged so the workspace
-    still expands and contracts with the same 200ms timing. Left and right
-    sidebars translate in their respective outward directions, and icon mode
-    retains its existing width-only behavior.
-  tier: 4
-  files: []
+    rendered thread count grows. The fixed panel slides off-canvas on
+    `translate`, which the browser composites as one layer, rather than by
+    animating left or right and re-laying-out its thread subtree every frame.
+    Three unlayered rules in theme.custom.css do it, hung off upstream's
+    data-slot / data-collapsible / data-side hooks in ui/sidebar.tsx, so the
+    primitive itself is untouched: the container's transition-property is
+    translate and width, and the offcanvas state pins the panel's edge and
+    translates it -100% (left) or 100% (right) of its own width. The separate
+    sidebar-gap width transition remains unchanged so the workspace still
+    expands and contracts with the same 200ms timing, and icon mode retains
+    its existing width-only behavior.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
   shadows: []
   watch:
+    # Carries the data-slot, data-collapsible and data-side hooks the rules
+    # select on, and the left/right utilities they override.
     - apps/web/src/components/ui/sidebar.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarOffcanvasCompositing.test.ts
