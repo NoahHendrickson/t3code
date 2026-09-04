@@ -388,7 +388,11 @@
     Upstream's terminal-status glyph (#4712) rides the repo line after the
     branch cluster, handed in pre-built as a required `terminalSlot` — required
     so a sync resolution that drops the call-site line fails the typecheck
-    instead of silently un-porting the feature from the card variant.
+    instead of silently un-porting the feature from the card variant. The
+    project's favicon leads the repo line the same way, as a required
+    `projectIconSlot` built on the row's side from upstream's ProjectFavicon
+    (the slim rows and the project menu already draw it), with the design's
+    folder mark as the in-component fallback for a null slot.
 
     Surface encodes interaction and nothing else. A row is filled on hover and
     when selected or routed to; it is never filled because of its status.

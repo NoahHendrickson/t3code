@@ -69,6 +69,7 @@ function renderMeta(over: {
   return renderToStaticMarkup(
     createElement(SidebarV2ThreadCardMeta, {
       projectTitle: null,
+      projectIconSlot: null,
       branch: over.branch ?? null,
       hasWorktree: over.hasWorktree ?? false,
       devServerPort: over.devServerPort ?? null,

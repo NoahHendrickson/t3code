@@ -91,6 +91,20 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     }
   });
 
+  it("leads the flat card's project with its favicon, folder mark as the fallback", () => {
+    // Flat mode names the project on every card, and the favicon is what the
+    // slim rows and the project menu already use for it. The slot is built on
+    // the row's side (asset lookup, environment + cwd) and handed in the way
+    // the terminal glyph is; `?? <FolderIcon` inside the meta is what keeps a
+    // null slot (no favicon, tests) on the design's folder mark.
+    expect(sidebarV2).toContain("projectIconSlot={");
+    expect(sidebarV2).toMatch(
+      /projectIconSlot=\{\s*<ProjectFavicon\s+environmentId=\{thread\.environmentId\}\s+cwd=\{props\.projectCwd \?\? ""\}\s+faviconPath=\{props\.projectFaviconPath\}/u,
+    );
+    const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
+    expect(meta).toContain("props.projectIconSlot ??");
+  });
+
   it("rides the PR badge on the title line, not on a row of its own", () => {
     // Figma 113:728 moved it into the title row's trailing group, ahead of the
     // elapsed time. That move is what let the card become a fixed 52px: with

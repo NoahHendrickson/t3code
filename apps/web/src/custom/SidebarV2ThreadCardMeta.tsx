@@ -40,6 +40,12 @@ export interface SidebarV2ThreadCardMetaProps {
       card stops drawing it — but keeps it for assistive tech, which has no
       "one row up" and would otherwise hear a card with no project at all. */
   readonly projectTitleHidden?: boolean;
+  /** The project's favicon, pre-built by the caller, or null to draw the
+      design's folder mark instead. A slot for the same reason `terminalSlot`
+      is one: the favicon is an asset lookup keyed by environment and cwd,
+      and that state stays on the row's side of this seam. Required so a
+      call site has to say `null` out loud — see `terminalSlot`. */
+  readonly projectIconSlot: ReactNode;
   readonly branch: string | null;
   /** True when the thread runs in a worktree of its own rather than in the
       project's checkout. Swaps the branch mark for the worktree one — see the
@@ -116,14 +122,18 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
         {props.projectTitle ? (
           // Capped rather than flexible: the branch is the more distinguishing
           // half of this line — two threads on one project differ by branch,
-          // not by project — so the project yields space first. The folder mark
-          // is the design's (311:13972) and rides with the name, so the two
-          // clusters on this line each lead with the glyph naming what follows.
+          // not by project — so the project yields space first. The project's
+          // favicon rides with the name — the same mark the slim rows and the
+          // project menu use for it, so a flat list reads the project at a
+          // glance the way a grouped one reads its header — and the folder
+          // mark (design 311:13972) stands in when the caller has none, so
+          // the two clusters on this line each lead with a glyph naming what
+          // follows.
           props.projectTitleHidden ? (
             <span className="sr-only">{props.projectTitle}</span>
           ) : (
             <span className="flex max-w-[45%] shrink-0 items-center gap-1">
-              <FolderIcon aria-hidden className="size-4 shrink-0" />
+              {props.projectIconSlot ?? <FolderIcon aria-hidden className="size-4 shrink-0" />}
               <span className="truncate">{props.projectTitle}</span>
             </span>
           )

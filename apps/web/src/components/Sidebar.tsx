@@ -1562,6 +1562,20 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
               projectTitleHidden={props.projectTitleHidden === true}
               /* fork:end sidebar-v2-project-grouping */
+              /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                 The same favicon the slim row above and the project menu draw,
+                 at the repo line's 16px mark size. `text-current` so its folder
+                 fallback keeps the line's muted tone instead of ProjectFavicon's
+                 own icon-muted. */
+              projectIconSlot={
+                <ProjectFavicon
+                  environmentId={thread.environmentId}
+                  cwd={props.projectCwd ?? ""}
+                  faviconPath={props.projectFaviconPath}
+                  className="size-4 text-current"
+                />
+              }
+              /* fork:end sidebar-v2-card-rows */
               branch={thread.branch}
               // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
               // The same predicate the row already uses to pick its git cwd and
