@@ -116,8 +116,8 @@ describe("fork guard: fork-pending-user-input", () => {
     );
     expect(card?.body).toMatch(/background:\s*var\(--fork-composer-bg\)/u);
     // The card's ring follows the prompt's focus recolour so the stack keeps
-    // one ring. The shared rule recolours the drawer; this panel's hairline is
-    // one level in, so it needs its own arm.
+    // one ring. The hairline is on the panel, not the drawer, so the recolour
+    // targets the panel directly.
     const focused = rules.find(
       (rule) =>
         rule.selector.includes(":has([data-fork-composer-surface]:focus-within)") &&
@@ -139,15 +139,15 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(frame?.body).toMatch(/border-top-left-radius:\s*0/u);
     expect(frame?.body).toMatch(/border-top-right-radius:\s*0/u);
 
-    // A notice stacking above the card shares its outline rather than letting
-    // the card draw a second top edge.
-    const stacked = rules.find(
+    // A notice or the activity strip above the card is unpainted vessel floor
+    // (forkComposerBannerSurface.test.ts), so there is no outline above for
+    // the card to share: it keeps its own top edge under every banner. A rule
+    // opening the top would leave the fill as a U dumped into the vessel.
+    const topless = rules.filter(
       (rule) =>
-        flat(rule.selector).includes(
-          '[data-slot="composer-banner-attachment"] ~ [data-slot="composer-banner-attachment"]',
-        ) && rule.selector.includes("[data-fork-pending-user-input]"),
+        rule.selector.includes("[data-fork-pending-user-input]") &&
+        /border-top:\s*0/u.test(rule.body),
     );
-    expect(stacked?.body).toMatch(/border-top:\s*0/u);
-    expect(stacked?.body).toMatch(/border-top-left-radius:\s*0/u);
+    expect(topless).toEqual([]);
   });
 });

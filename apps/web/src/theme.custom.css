@@ -1948,8 +1948,9 @@
 /* One ring for the whole stack: when the caret lands in the prompt, the
    surface recolours its hairline to the focus tone, so the card above has to
    follow or the two halves split into a dim ring over a bright one. The
-   generic focus rule in the banner section reaches the drawer, but this
-   panel's hairline is on the panel, one level in. */
+   hairline is on the panel, not on the drawer around it, so the recolour
+   targets the panel directly. A notice above the card is unpainted floor,
+   so the card keeps its own top edge under it. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]:has([data-fork-composer-surface]:focus-within)
   [data-chat-composer-top-drawer]
@@ -1968,19 +1969,6 @@
   border-top-right-radius: 0;
 }
 
-/* When a notice stacks above it, the card below shares the outline of the one
-   above rather than drawing a second top edge. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-slot="composer-banner-attachment"]
-  ~ [data-slot="composer-banner-attachment"]
-  [data-chat-composer-top-drawer]
-  > [data-fork-pending-user-input] {
-  border-top: 0;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
 /* ── Composer banners (fork-composer-banner-surface) ────────────────────────
    Figma t3-fork 360:11682 (resume with less context) and 360:10808 (settled).
    Two separate things were wrong with upstream's banners on this composer.
@@ -1989,10 +1977,14 @@
    --success / --warning / --error outline at roughly a third plus a 4–8% wash
    of the same hue over the frosted surface. On the fork's neutral composer
    stack the settled, snoozed and woke notices (all "info") land as a blue slab
-   clipped to the top of the vessel. Every banner paints the composer fill
-   under the composer hairline instead, and leaves severity to the icon and
-   copy. Re-pointing the --chat-composer-attached-* variables the surface
-   already reads is what does it, so the value tracks every palette.
+   clipped to the top of the vessel. Wherever a banner card is still drawn —
+   the floating notices of the expanded stack, the collapsed stack's peek
+   cap, and light's attached card — it takes the composer hairline over the
+   composer fill instead, and leaves severity to the icon and copy.
+   Re-pointing the --chat-composer-attached-* variables the surface already
+   reads is what does it, so the value tracks every palette. A dark attached
+   banner draws no card at all (geometry, below), so the remap is moot there
+   and the vessel shows through.
 
    Geometry. Upstream draws the banner as a 1.375rem-inset card with 16px
    corners tucked 1rem + 1px under the prompt surface — a narrower slab behind

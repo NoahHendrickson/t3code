@@ -2886,13 +2886,15 @@
     Colour: instead of upstream's severity tint — a --info / --success /
     --warning / --error outline plus a wash of the same hue over the glass,
     which lands as a blue slab on the fork's neutral composer stack — every
-    banner paints the composer fill under the composer hairline. Severity stays
-    in the icon and copy. Only the outline, tint and fill variables the surface
-    already reads are re-pointed at the fork composer tokens, so the value
-    tracks every palette. The collapsed stack's peek cap reads the same fill
-    variable without the surface attribute, so the remap lists the peek slot as
-    a second hook and gives it the hairline in place of its severity border
-    utility.
+    banner card that is still drawn (light's attached card, the expanded
+    stack's floating notices, the collapsed stack's peek cap) takes the
+    composer hairline over the composer fill. Severity stays in the icon and
+    copy. Only the outline, tint and fill variables the surface already reads
+    are re-pointed at the fork composer tokens, so the value tracks every
+    palette; a dark attached banner draws no card (geometry, below), so the
+    remap is moot there. The peek cap reads the same fill variable without the
+    surface attribute, so the remap lists the peek slot as a second hook and
+    gives it the hairline in place of its severity border utility.
 
     Geometry (Figma t3-fork 360:11682, 360:10808): upstream's 1.375rem-inset
     16px-corner card tucked 1rem + 1px under the prompt surface becomes no card
@@ -2904,7 +2906,8 @@
     translucent. The prompt box keeps all four of its corners and stays the
     only drawn edge in the vessel; the Questions card, which fuses with the
     prompt into one bordered box on the composer fill, is the deliberate
-    exception and keeps that construction. Shoulder tabs (stash, tasks) are
+    exception and keeps that construction — including its own top edge under
+    a notice, since the notice above it paints no outline to share. Shoulder tabs (stash, tasks) are
     excluded by name and keep riding the card's shoulder. Notices and the
     activity strip additionally take the design's metrics — 16 / 8 / 16 / 16
     around a 16px icon on a 4px gutter, title and description on 14/16, 8px

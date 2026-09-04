@@ -2,10 +2,12 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-composer-banner-surface`.
  *
- * Composer banners are the top section of the composer card: they paint the
- * composer fill under the composer hairline instead of upstream's severity
- * tint, and they sit at the vessel's full width flush on the prompt surface
- * instead of upstream's inset, tucked, frosted card.
+ * Composer banners are the top section of the composer card. Wherever a card
+ * is still drawn (light, the expanded stack's floating notices, the peek cap)
+ * it takes the composer fill under the composer hairline instead of
+ * upstream's severity tint; a dark attached banner draws no card at all and
+ * sits at the vessel's full width flush on the prompt surface instead of
+ * upstream's inset, tucked, frosted card.
  *
  * The colour half works by re-pointing the `--chat-composer-attached-*`
  * variables ComposerBanner's Surface and Peek both read. The geometry half is
