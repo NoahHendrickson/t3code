@@ -793,6 +793,24 @@
     - apps/web/src/__fork_guards__/sidebarV2ListAnimation.test.ts
     - apps/web/src/custom/sidebarV2ListAnimation.test.ts
 
+- id: sidebar-offcanvas-compositing
+  intent: >
+    Opening and closing the populated desktop sidebar remains smooth as the
+    rendered thread count grows. The fixed panel slides off-canvas with a
+    transform, which the browser can composite as one layer, rather than by
+    animating left or right and repeatedly repainting its thread subtree. The
+    separate sidebar-gap width transition remains unchanged so the workspace
+    still expands and contracts with the same 200ms timing. Left and right
+    sidebars translate in their respective outward directions, and icon mode
+    retains its existing width-only behavior.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/web/src/components/ui/sidebar.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarOffcanvasCompositing.test.ts
+
 - id: sidebar-v2-draft-rows
   intent: >
     New thread (project-header plus, chrome plus, shortcut) creates a

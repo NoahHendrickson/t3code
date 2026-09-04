@@ -988,7 +988,7 @@
 
    Upstream's desktop panel is already `fixed`; what pushes is the in-flow
    `sidebar-gap` spacer rendered beside it, so zeroing that one width is the
-   whole overlay. The panel keeps its own left-slide transition and the chat
+   whole overlay. The panel keeps its own slide transition and the chat
    column stops moving when the sidebar is toggled.
    ------------------------------------------------------------------------ */
 :root[data-fork="noahhendrickson-t3code"]
