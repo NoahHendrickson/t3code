@@ -4997,7 +4997,9 @@ function ChatViewContent(props: ChatViewProps) {
       actions: (
         <Button
           size="xs"
-          variant="outline"
+          /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+          variant="default"
+          /* fork:end fork-composer-banner-surface */
           disabled={isSnoozed ? isUnsnoozing : isUnsettling}
           onClick={() =>
             void (isSnoozed ? handleUnsnoozeActiveThread() : handleUnsettleActiveThread())
@@ -5081,7 +5083,9 @@ function ChatViewContent(props: ChatViewProps) {
     const compactAction = (
       <Button
         size="xs"
-        variant="outline"
+        /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+        variant="default"
+        /* fork:end fork-composer-banner-surface */
         disabled={compactDisabled}
         onClick={() => {
           if (compactDisabled) return;
