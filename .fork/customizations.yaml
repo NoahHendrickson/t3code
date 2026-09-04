@@ -2911,28 +2911,61 @@
 
 - id: fork-composer-banner-surface
   intent: >
-    Composer banners (the settled / snoozed / woke notices, resume and
-    provider warnings, the command menu surface) paint the composer fill
-    under the composer hairline — the same material as the Questions card —
-    instead of upstream's severity tint: a --info / --success / --warning /
-    --error outline plus a wash of the same hue over the glass, which lands
-    as a blue slab on the fork's neutral composer stack. Severity stays in
-    the icon and copy. The frosted backdrop is kept because the banner
-    overlaps the transcript; only the outline, tint and fill variables the
-    surface already reads are re-pointed at the fork composer tokens, so the
-    value tracks every palette. The collapsed stack's peek cap reads the
-    same fill variable without the surface attribute, so the remap lists
-    the peek slot as a second hook and gives it the hairline in place of
-    its severity border utility. Outline and tint apply in both schemes;
-    the fill is dark-only like the vessel.
+    Composer banners (the settled / snoozed / woke notices, resume-with-less-
+    context, provider and environment warnings, the inline activity strip) are
+    the top section of the composer card, not a card floating behind it.
+
+    Colour: instead of upstream's severity tint — a --info / --success /
+    --warning / --error outline plus a wash of the same hue over the glass,
+    which lands as a blue slab on the fork's neutral composer stack — every
+    banner card that is still drawn (light's attached card, the expanded
+    stack's floating notices, the collapsed stack's peek cap) takes the
+    composer hairline over the composer fill. Severity stays in the icon and
+    copy. Only the outline, tint and fill variables the surface already reads
+    are re-pointed at the fork composer tokens, so the value tracks every
+    palette; a dark attached banner draws no card (geometry, below), so the
+    remap is moot there. The peek cap reads the same fill variable without the
+    surface attribute, so the remap lists the peek slot as a second hook and
+    gives it the hairline in place of its severity border utility.
+
+    Geometry (Figma t3-fork 360:11682, 360:10808): upstream's 1.375rem-inset
+    16px-corner card tucked 1rem + 1px under the prompt surface becomes no card
+    at all. A banner is vessel floor above the prompt box, exactly as the
+    control row is vessel floor below it, so the wrappers go to vessel width,
+    the tuck and the frosted backdrop go, and nothing is painted in their
+    place — the vessel shows through, which tracks the same token the control
+    row reads and does not double-composite the palettes whose floor is
+    translucent. The prompt box keeps all four of its corners and stays the
+    only drawn edge in the vessel; the Questions card, which fuses with the
+    prompt into one bordered box on the composer fill, is the deliberate
+    exception and keeps that construction — including its own top edge under
+    a notice, since the notice above it paints no outline to share. Shoulder tabs (stash, tasks) are
+    excluded by name and keep riding the card's shoulder. Notices and the
+    activity strip additionally take the design's metrics — 16 / 8 / 16 / 16
+    around a 16px icon on a 4px gutter, title and description on 14/16, 8px
+    between actions — while the approval, stash and tasks drawers that share
+    the card keep their own density. A notice's primary action is the design's
+    white Primary button, which the fork's --primary already resolves to.
+
+    Outline and tint apply in both schemes; the fill and the geometry are
+    dark-only like the vessel.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
+    - apps/web/src/components/ChatView.tsx
   shadows: []
   watch:
-    # Owns data-composer-banner-surface, data-slot="composer-banner-peek"
-    # and the --chat-composer-attached-* variables the rule re-points.
+    # Owns data-composer-banner-surface, data-slot="composer-banner",
+    # data-slot="composer-banner-peek", the banner row slots and the
+    # --chat-composer-attached-* / --chat-composer-attachment-overlap
+    # variables the rules re-point.
     - apps/web/src/components/chat/ComposerBanner.tsx
+    # Renders the notice stack (data-composer-banner-drawer) and the activity
+    # strip the metrics are keyed on, inside the dock.
+    - apps/web/src/components/chat/ComposerBannerStack.tsx
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Carries the fenced variant="default" on the notice primary actions.
+    - apps/web/src/components/ChatView.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerBannerSurface.test.ts
 

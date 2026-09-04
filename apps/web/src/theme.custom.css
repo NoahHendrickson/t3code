@@ -1951,64 +1951,16 @@
    one box instead — the card takes the vessel's full width, the composer's
    fill and hairline (top / left / right only) on 8px top corners, and the
    prompt row sits flush beneath with square top corners, its own hairline
-   drawing the divider. Dark-only, same contract as the vessel. Keyed on the
-   Questions panel so approval and plan drawers keep upstream's geometry.
+   drawing the divider.
 
-   Since upstream's banner dock (#8734) the drawer is a ComposerBanner.Root
-   (data-chat-composer-top-drawer) nested in two attachment wrappers — the
-   dock and its own attachment — which carry the inset width and the 1rem
-   overlap tuck; the Root itself adds a 4px inset on every side. All three go
-   full width with no tuck or inset when the Questions panel is inside. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-slot="composer-banner-attachment"]:has(
-    [data-chat-composer-top-drawer] > [data-fork-pending-user-input]
-  ) {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
-
+   That geometry is shared with every other banner now and lives in the banner
+   section below. What stays here is only what this panel does differently:
+   the drawer hands its padding to the panel, and the panel paints the card
+   itself, so the collapsible header and the option list can own the inset. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input]) {
-  width: 100%;
-  max-width: none;
-  margin: 0;
   padding: 0;
-}
-
-/* The stash tab shares the dock row with the drawer column. That works while
-   the drawer is inset — the tab sits in its margin — but a full-width card
-   would be squeezed by the tab's width. Stack the dock instead: the tab rides
-   above the card's right shoulder and its overlap padding tucks under the
-   card, which paints over it in order-modified paint order. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]):has(
-    [data-chat-composer-top-drawer] > [data-fork-pending-user-input]
-  ) {
-  flex-direction: column;
-  align-items: stretch;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-slot="composer-banner-attachment"]:has(
-    [data-chat-composer-top-drawer] > [data-fork-pending-user-input]
-  )
-  > [data-composer-shoulder-tab] {
-  order: -1;
-  align-self: flex-end;
-  margin-bottom: calc(-1 * var(--chat-composer-attachment-overlap) - 4px);
-}
-
-/* The drawer's masked glass pseudo-element is dead weight once the panel
-   paints itself — and a backdrop-filter this palette never asked for. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input])::before {
-  display: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
@@ -2024,7 +1976,10 @@
 
 /* One ring for the whole stack: when the caret lands in the prompt, the
    surface recolours its hairline to the focus tone, so the card above has to
-   follow or the two halves split into a dim ring over a bright one. */
+   follow or the two halves split into a dim ring over a bright one. The
+   hairline is on the panel, not on the drawer around it, so the recolour
+   targets the panel directly. A notice above the card is unpainted floor,
+   so the card keeps its own top edge under it. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]:has([data-fork-composer-surface]:focus-within)
   [data-chat-composer-top-drawer]
@@ -2032,10 +1987,10 @@
   border-color: var(--fork-composer-border-focus);
 }
 
-/* Square the prompt surface's top corners under the card. The surface
-   inherits the frame's radius, so the frame's longhands do both. (Upstream's
-   attached-banner glass on this frame is already dropped for every
-   attachment by the [data-fork-composer-box] rules in the shell section.) */
+/* Square the prompt surface's top corners under the card. The surface inherits
+   the frame's radius, so the frame's longhands do both. Only this panel fuses
+   with the prompt that way — a notice is vessel floor above a prompt box that
+   keeps all four of its corners. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]:has([data-chat-composer-top-drawer] > [data-fork-pending-user-input])
   [data-fork-composer-box] {
@@ -2044,23 +1999,50 @@
 }
 
 /* ── Composer banners (fork-composer-banner-surface) ────────────────────────
-   Upstream tints every ComposerBanner by severity: an --info / --success /
-   --warning / --error outline at roughly a third plus a 4–8% wash of the same
-   hue over the frosted surface. On the fork's neutral composer stack the
-   settled, snoozed and woke notices (all "info") land as a blue slab clipped
-   to the top of the vessel. Every banner paints the same material as the
-   Questions card instead — the composer fill under the composer hairline —
-   and leaves severity to the icon and copy. The frosted ::before stays: the
-   banner overlaps the transcript, so the blur is doing real work there; only
-   its colour changes. The collapsed stack's peek cap takes the same hairline
-   in place of its severity border. Both hooks are one remap: the Surface and
-   the Peek read the same fill variable, but only the Surface carries the
-   attribute, so listing the peek slot beside it is what reaches the cap. The
-   cap's severity edge is a border utility rather than the outline variable,
-   so it also takes border-color (a no-op on the border-0 Surface). Outline
-   and tint are scheme-agnostic (the hairline token resolves to --border in
-   light); the fill is dark-only, like the vessel, so a light build keeps
-   upstream's card. */
+   Figma t3-fork 360:11682 (resume with less context) and 360:10808 (settled).
+   Two separate things were wrong with upstream's banners on this composer.
+
+   Colour. Upstream tints every ComposerBanner by severity: an --info /
+   --success / --warning / --error outline at roughly a third plus a 4–8% wash
+   of the same hue over the frosted surface. On the fork's neutral composer
+   stack the settled, snoozed and woke notices (all "info") land as a blue slab
+   clipped to the top of the vessel. Wherever a banner card is still drawn —
+   the floating notices of the expanded stack, the collapsed stack's peek
+   cap, and light's attached card — it takes the composer hairline over the
+   composer fill instead, and leaves severity to the icon and copy.
+   Re-pointing the --chat-composer-attached-* variables the surface already
+   reads is what does it, so the value tracks every palette. A dark attached
+   banner draws no card at all (geometry, below), so the remap is moot there
+   and the vessel shows through.
+
+   Geometry. Upstream draws the banner as a 1.375rem-inset card with 16px
+   corners tucked 1rem + 1px under the prompt surface — a narrower slab behind
+   a wider one, with two hairlines meeting in the tuck. The design draws no
+   card at all: the banner is vessel floor above the prompt box, exactly as the
+   control row is vessel floor below it, on the prompt's own 14/16 type and
+   16px of padding. So the wrappers go to vessel width and lose the tuck, the
+   frosted ::before goes, and nothing is painted in its place — the prompt box
+   keeps all four of its corners and stays the only drawn edge in the vessel.
+
+   That is deliberately *not* the Questions card's construction, which fuses
+   with the prompt into one bordered box on the composer fill. The two share
+   the width and the tuck removal, which live here; the fusing stays with the
+   panel in the section above.
+
+   Letting the vessel show through beats restating its colour: the floor is
+   translucent on some palettes, so a second copy would composite twice, and a
+   literal value would stop tracking the token the control row reads.
+
+   Shoulder tabs (the stash and tasks badges) are ComposerBanner.Roots too and
+   are excluded by name everywhere below: they are tabs on the card's shoulder,
+   not cards. The collapsed stack's peek cap has no surface attribute but reads
+   the same fill variable, so the colour remap lists its slot beside the
+   surface and gives it the hairline in place of its severity border utility;
+   it takes the composer radius so the cap reads as one more card behind.
+
+   Colour is scheme-agnostic — the hairline token resolves to --border in
+   light. The fill and the geometry are dark-only, like the vessel, so a light
+   build keeps upstream's card. */
 :root[data-fork="noahhendrickson-t3code"]
   :is([data-composer-banner-surface], [data-slot="composer-banner-peek"]) {
   --chat-composer-attached-outline: var(--fork-composer-border);
@@ -2071,6 +2053,121 @@
 :root[data-fork="noahhendrickson-t3code"].dark
   :is([data-composer-banner-surface], [data-slot="composer-banner-peek"]) {
   --chat-composer-attached-surface: var(--fork-composer-bg);
+}
+
+/* The attachment wrappers carry the inset width and the tuck, and the dock is
+   one of them, so any wrapper around a card goes full width and flush. The
+   overlap variable is what upstream's tuck is measured in — zeroing it on the
+   card drops the padding the tuck reserved. It is read off the tab's own
+   element below, which keeps its value. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner-attachment"]:has(
+    [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
+      [data-composer-shoulder-tab]
+    )
+  ) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+/* A full-width card would squeeze the stash / tasks tab sharing the dock row.
+   Stack the dock instead: the tab rides above the card's right shoulder and
+   its own overlap padding tucks it under the card, which paints over it in
+   order-modified paint order. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]):has(
+    [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
+      [data-composer-shoulder-tab]
+    )
+  ) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner-attachment"]:has(
+    [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
+      [data-composer-shoulder-tab]
+    )
+  )
+  > [data-composer-shoulder-tab] {
+  order: -1;
+  align-self: flex-end;
+  margin-bottom: calc(-1 * var(--chat-composer-attachment-overlap) - 4px);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
+    [data-composer-shoulder-tab]
+  )::before {
+  display: none;
+}
+
+/* Nothing left to paint. A banner is vessel floor above the prompt, exactly as
+   the control row is vessel floor below it, so it keeps upstream's transparent
+   element and lets the vessel show through rather than restating the vessel's
+   own colour — which would double-composite on the palettes whose floor is
+   translucent, and would stop tracking it the moment one of them changed.
+   Zeroing the overlap is all that is left to do: it is the variable upstream
+   measures its tuck in, and the Root reserves bottom padding for it. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
+    [data-composer-shoulder-tab]
+  ) {
+  --chat-composer-attachment-overlap: 0px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner-peek"] {
+  border-radius: var(--fork-composer-radius) var(--fork-composer-radius) 0 0;
+}
+
+/* Notice metrics, from the two frames: 16 / 8 / 16 / 16 around a 16px icon and
+   a 4px gutter, title and description both on the prompt's 14/16, 8px between
+   the actions. Keyed on the notice stack and the activity strip rather than on
+   every card, because the approval, stash and tasks drawers that share the
+   card are lists and headers with their own density. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner"],
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner"][data-chat-composer-activity-strip="true"] {
+  --composer-banner-icon-column: 16px;
+  padding: 16px 8px 16px 16px;
+  font-size: 14px;
+  line-height: 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  [data-slot="composer-banner-icon"]
+  > svg {
+  width: 16px;
+  height: 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  [data-slot="composer-banner-content"] {
+  gap: 4px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  [data-slot="composer-banner-actions"] {
+  gap: 8px;
 }
 
 /* ── Popup menus on the composer fill (fork-popup-surface) ───────────────────

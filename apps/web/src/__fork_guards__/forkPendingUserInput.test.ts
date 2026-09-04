@@ -90,16 +90,16 @@ describe("fork guard: fork-pending-user-input", () => {
     const flat = (selector: string) => selector.replace(/\s+/gu, " ");
     const drawerKey = "[data-chat-composer-top-drawer]:has(> [data-fork-pending-user-input])";
 
-    // Upstream's inset glass drawer geometry is cleared and its masked
-    // ::before dropped — the panel paints itself.
+    // The full-width, flush, un-frosted geometry this card introduced is
+    // shared with every other banner now and is asserted by
+    // forkComposerBannerSurface.test.ts against the banner hooks. What is
+    // still specific to this panel: the drawer hands its padding to the panel,
+    // which paints the card itself.
     const drawer = rules.find((rule) => flat(rule.selector).endsWith(drawerKey));
     expect(drawer?.selector).toContain(MARKER);
     expect(drawer?.selector).toContain(".dark");
-    expect(drawer?.body).toMatch(/max-width:\s*none/u);
     // Root carries p-1 on every side plus the overlap tuck below; all of it goes.
     expect(drawer?.body).toMatch(/padding:\s*0/u);
-    const pseudo = rules.find((rule) => flat(rule.selector).endsWith(`${drawerKey}::before`));
-    expect(pseudo?.body).toMatch(/display:\s*none/u);
 
     // Composer fill and hairline, open at the bottom, 8px top corners.
     const card = rules.find(
@@ -115,7 +115,9 @@ describe("fork guard: fork-pending-user-input", () => {
       /border-radius:\s*var\(--fork-composer-radius\) var\(--fork-composer-radius\) 0 0/u,
     );
     expect(card?.body).toMatch(/background:\s*var\(--fork-composer-bg\)/u);
-    // The card's ring follows the prompt's focus recolour so the stack keeps one ring.
+    // The card's ring follows the prompt's focus recolour so the stack keeps
+    // one ring. The hairline is on the panel, not the drawer, so the recolour
+    // targets the panel directly.
     const focused = rules.find(
       (rule) =>
         rule.selector.includes(":has([data-fork-composer-surface]:focus-within)") &&
@@ -125,8 +127,8 @@ describe("fork guard: fork-pending-user-input", () => {
     );
     expect(focused?.body).toMatch(/border-color:\s*var\(--fork-composer-border-focus\)/u);
 
-    // The prompt surface squares its top corners under the card (the
-    // attached-banner glass is shed for every banner by fork-composer-shell).
+    // The prompt surface squares its top corners under the card — this panel
+    // is the only banner that fuses with the prompt that way.
     const frame = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-box]") &&
@@ -137,23 +139,15 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(frame?.body).toMatch(/border-top-left-radius:\s*0/u);
     expect(frame?.body).toMatch(/border-top-right-radius:\s*0/u);
 
-    // The stash tab cannot share a row with a full-width card: the dock stacks
-    // and the tab rides above the card's right shoulder, tucked under it.
-    const dock = rules.find(
+    // A notice or the activity strip above the card is unpainted vessel floor
+    // (forkComposerBannerSurface.test.ts), so there is no outline above for
+    // the card to share: it keeps its own top edge under every banner. A rule
+    // opening the top would leave the fill as a U dumped into the vessel.
+    const topless = rules.filter(
       (rule) =>
-        rule.selector.includes(":has(> [data-composer-shoulder-tab])") &&
-        rule.selector.includes("[data-fork-pending-user-input]"),
+        rule.selector.includes("[data-fork-pending-user-input]") &&
+        /border-top:\s*0/u.test(rule.body),
     );
-    expect(dock?.body).toMatch(/flex-direction:\s*column/u);
-    const tab = rules.find(
-      (rule) =>
-        flat(rule.selector).endsWith("> [data-composer-shoulder-tab]") &&
-        rule.selector.includes("[data-fork-pending-user-input]"),
-    );
-    expect(tab?.body).toMatch(/order:\s*-1/u);
-    expect(tab?.body).toMatch(/align-self:\s*flex-end/u);
-    expect(tab?.body).toMatch(
-      /margin-bottom:\s*calc\(-1 \* var\(--chat-composer-attachment-overlap\)/u,
-    );
+    expect(topless).toEqual([]);
   });
 });
