@@ -192,7 +192,10 @@ import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
 import { SidebarV2StatusMark, type SidebarV2DotTone } from "~/custom/SidebarV2StatusIndicator";
-import { SidebarV2ThreadCardMeta } from "~/custom/SidebarV2ThreadCardMeta";
+import {
+  SidebarV2ProjectFolderMark,
+  SidebarV2ThreadCardMeta,
+} from "~/custom/SidebarV2ThreadCardMeta";
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "~/custom/sidebarV2CardAlignment";
 import {
   threadCardTitleClassName,
@@ -1128,6 +1131,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       <TerminalIcon className={cn("size-3.5", terminalStatus.pulse && "animate-status-pulse")} />
     </span>
   ) : null;
+  /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+     The flat card's repo line leads its project name with the same favicon
+     the slim row and the project menu draw, at the line's 16px mark size.
+     Pre-built here beside the terminal glyph and handed to the fork card as a
+     slot for the same reason. `text-current` keeps the no-asset fallback on
+     the line's muted tone rather than ProjectFavicon's icon-muted, and that
+     fallback is the design's folder mark itself, aria-hidden like every other
+     mark on the line. */
+  const projectIcon = (
+    <ProjectFavicon
+      environmentId={thread.environmentId}
+      cwd={props.projectCwd ?? ""}
+      faviconPath={props.projectFaviconPath}
+      className="size-4 text-current"
+      fallbackIcon={SidebarV2ProjectFolderMark}
+    />
+  );
+  /* fork:end sidebar-v2-card-rows */
   /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
      Upstream hoists one pin marker that doubles as an unpin button in every
      row variant. Unpin stays a card hover action (below) and a context-menu
@@ -1562,6 +1583,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
               projectTitleHidden={props.projectTitleHidden === true}
               /* fork:end sidebar-v2-project-grouping */
+              /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                 The project favicon, pre-built above beside the terminal glyph. */
+              projectIconSlot={projectIcon}
+              /* fork:end sidebar-v2-card-rows */
               branch={thread.branch}
               // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
               // The same predicate the row already uses to pick its git cwd and

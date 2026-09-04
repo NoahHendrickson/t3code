@@ -5,6 +5,7 @@ import { SidebarV2ThreadCardMeta } from "./SidebarV2ThreadCardMeta";
 
 const base = {
   projectTitle: "alpha-service",
+  projectIconSlot: null,
   branch: "main",
   terminalSlot: null,
   modelLabel: "gpt-5.4",
@@ -37,23 +38,47 @@ describe("SidebarV2ThreadCardMeta", () => {
     expect(countRows(markup)).toBe(1);
   });
 
-  it("leads the project name with the design's folder mark", () => {
+  it("leads the project name with the design's folder mark for a null slot", () => {
     // Ungrouped cards name their project on this line, and the mark is what
-    // separates that name from the branch beside it at a glance.
+    // separates that name from the branch beside it at a glance. Decorative:
+    // the name beside it is the accessible text, as for every other mark.
     const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} />);
 
     expect(markup).toContain("alpha-service");
-    expect(markup).toContain("lucide-folder");
+    const folder = /<svg[^>]*lucide-folder[^>]*>/u.exec(markup)?.[0];
+    expect(folder).toContain('aria-hidden="true"');
+  });
+
+  it("leads the project name with its favicon when the caller has one", () => {
+    // The favicon replaces the folder mark rather than joining it: one glyph
+    // names the project, and the row's other marks (slim rows, project menu)
+    // already use the favicon for that job.
+    const markup = renderToStaticMarkup(
+      <SidebarV2ThreadCardMeta
+        {...base}
+        projectIconSlot={<img data-testid="favicon" alt="" src="x" />}
+      />,
+    );
+
+    expect(markup).toContain('data-testid="favicon"');
+    expect(markup).not.toContain("lucide-folder");
   });
 
   it("keeps a grouped card's project name for assistive tech only", () => {
     // What a card under a project header passes. The header names the project
     // on screen; a screen reader has no "one row up", so the name stays in the
     // markup, out of the layout — and the folder mark goes with the layout.
-    const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} projectTitleHidden />);
+    const markup = renderToStaticMarkup(
+      <SidebarV2ThreadCardMeta
+        {...base}
+        projectTitleHidden
+        projectIconSlot={<img data-testid="favicon" alt="" src="x" />}
+      />,
+    );
 
     expect(markup).toContain("alpha-service");
     expect(markup).toContain("sr-only");
     expect(markup).not.toContain("lucide-folder");
+    expect(markup).not.toContain('data-testid="favicon"');
   });
 });
