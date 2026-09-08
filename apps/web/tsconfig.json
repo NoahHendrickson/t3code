@@ -43,6 +43,7 @@
   "include": [
     "src",
     "fork",
+    "vite",
     "vite.config.ts",
     "vercel.ts",
     "test",

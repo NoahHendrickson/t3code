@@ -33,7 +33,8 @@ import { newDraftId, newThreadId } from "../lib/utils";
 import type { SidebarProjectGroupMember, SidebarProjectSnapshot } from "../sidebarProjectGrouping";
 import { readThreadShell } from "../state/entities";
 import { usePrimaryEnvironmentId } from "../state/environments";
-import { primaryServerSettingsAtom } from "../state/server";
+import { appAtomRegistry } from "../rpc/atomRegistry";
+import { primaryServerSettingsAtom, serverEnvironment } from "../state/server";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY, newAgentDraftProjectRef } from "./newAgentDraft";
 
@@ -251,11 +252,14 @@ export async function assignDraftProject(
       newWorktreesStartFromOrigin: settings.newWorktreesStartFromOrigin,
     }),
   });
-  if (
-    project.defaultModelSelection &&
-    !hasExplicitComposerModelSelection(getComposerDraft(draftId))
-  ) {
-    setModelSelection(draftId, project.defaultModelSelection, { replaceOptions: true });
+  // Same fallback as upstream's DraftHeroHeadline: a project without its own
+  // default model inherits the default of the environment it lives in.
+  const defaultModelSelection =
+    project.defaultModelSelection ??
+    appAtomRegistry.get(serverEnvironment.configValueAtom(project.environmentId))?.settings
+      .defaultModelSelection;
+  if (defaultModelSelection && !hasExplicitComposerModelSelection(getComposerDraft(draftId))) {
+    setModelSelection(draftId, defaultModelSelection, { replaceOptions: true });
   }
 }
 

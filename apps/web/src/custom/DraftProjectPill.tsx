@@ -156,8 +156,7 @@ export function DraftProjectPill(props: {
       >
         {activeEntry ? (
           <ProjectFavicon
-            environmentId={activeEntry.targetProject.environmentId}
-            cwd={activeEntry.targetProject.workspaceRoot}
+            project={activeEntry.targetProject}
             className="size-4 shrink-0"
             fallbackIcon={FolderIcon}
           />
@@ -193,8 +192,7 @@ export function DraftProjectPill(props: {
               className="[&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
             >
               <ProjectFavicon
-                environmentId={targetProject.environmentId}
-                cwd={targetProject.workspaceRoot}
+                project={targetProject}
                 className="size-4 shrink-0"
                 fallbackIcon={FolderIcon}
               />

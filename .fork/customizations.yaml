@@ -109,7 +109,7 @@
     The Release workflow never runs on this fork. Upstream releases on a
     3-hourly cron and on version tags, publishing the CLI to npm and cutting
     GitHub Releases; neither is this fork's job, and the fork has no npm or
-    release credentials. Both entry-point jobs (check_changes, preflight) are
+    release credentials. Both entry-point jobs (resolve_commit, preflight) are
     gated on the repository being upstream, and every downstream job already
     requires preflight to have succeeded, so the gate cascades to the whole
     workflow. Until this gate existed the runs did not publish only because
@@ -532,6 +532,12 @@
     order. Pin/unpin plumbing (context menu, decider rules, snooze-beats-pin
     classification) is upstream's; the fork re-seats the rendering and adds a
     hover pin action to the card (owned by sidebar-v2-row-action-hit-area).
+    Since the 2026-09-08 sync the favicon slot is built from the project
+    record upstream hands down (ProjectFavicon's `project` prop, #10714), a
+    null project falling through to the meta's folder mark. Upstream's
+    unsent-draft row tint and its "Discard draft" hover action are refused on
+    purpose — the surface encodes interaction and nothing else, and the hover
+    cell is fork-owned — while its pen marker is kept.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
@@ -801,6 +807,10 @@
     lost in a sync; the guard test asserts it emits headers from the same
     sections it renders threads from, because a silent loss leaves a flat
     sidebar over a grouped ordered list.
+    The fork's two DndContexts deliberately do not adopt upstream's single
+    flat sortable list with section-marker drop verbs (#9731, #9750, #10378,
+    #10453, #10464); Sidebar.drag.ts / Sidebar.pointer.ts / Sidebar.motion.ts
+    stay on disk untouched as the landing pad if that is ever ported.
   tier: 4
   files:
     - apps/web/src/custom/sidebarV2ProjectGrouping.ts
@@ -1642,6 +1652,9 @@
     replaced the fork's local hook when upstream's became an exact equivalent
     (both delegate to resolveServerBackedAppStageLabel with the fork's
     APP_STAGE_LABEL fallback).
+    The multi-project scope set is session-scoped on purpose: upstream
+    persists a single scope key (#9416) in the UI state store, and the set
+    needs a store field of its own shape before it can follow.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
@@ -1977,6 +1990,12 @@
     selection by walking the tree independently, not by spot-checks.
     The motivating incident (nine dead imports surviving three PRs in
     Sidebar.tsx) is in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+    One standing exception: the rules upstream's vite-plus 0.3.0 bump turned
+    on (2026-09-08 sync) are listed in lint-owned.mjs as DEFERRED_RULES and
+    reported without failing the gate, because they fired 41 times at once,
+    partly on upstream-authored lines in adopted files, and clearing the rest
+    is behavior work for a follow-up. The list shrinks as each rule reaches
+    zero; nothing else is exempt.
   tier: 1
   files:
     - .fork/lint-owned.mjs
@@ -2170,6 +2189,10 @@
     strip — the wrapper it shares with the branch trigger grows and the chip
     takes the free space as a start margin, so the branch stays packed
     against checkout. The liveness pill, when shown, stays last.
+    Upstream's resting composer layout (#7855) is neutralized in the
+    composerFooterLayout shadow: its helpers are ported so ChatComposer
+    compiles, but shouldUseRestingComposerLayout is fenced to always return
+    false, because the fork keeps one compact layout in every thread state.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
@@ -2228,6 +2251,13 @@
     # re-homes on the prompt wrapper at >=40rem by overriding — the classes
     # themselves stay on the editor here.
     - apps/web/src/components/ComposerPromptEditor.tsx
+    # Upstream's own layout tests resolve through the alias to the shadow, so
+    # the one resting-layout assertion is fenced there to expect the fork's
+    # neutralized answer; every other assertion is upstream's.
+    - apps/web/src/components/composerFooterLayout.test.ts
+    # Its resting-layout assertion reads the scroll-collapse flag instead of
+    # the neutralized predicate.
+    - apps/web/src/components/chat/MessagesTimeline.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
 

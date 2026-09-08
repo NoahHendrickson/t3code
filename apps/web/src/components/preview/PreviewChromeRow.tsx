@@ -1,3 +1,4 @@
+import { RefreshIcon } from "~/components/ui/refresh-icon";
 import {
   ArrowLeft,
   ArrowRight,
@@ -5,7 +6,6 @@ import {
   ExternalLink,
   MousePointerClick,
   PictureInPicture2,
-  RotateCw,
 } from "lucide-react";
 import {
   type FormEvent,
@@ -57,14 +57,11 @@ interface Props {
    * to mount the three-dot menu (hard reload, devtools, zoom, clear data).
    */
   trailingActions?: ReactNode;
-  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
   /**
-   * Leading slot rendered before the navigation group. The fork mounts the
-   * "show layers" button here when the design-mode layers rail is collapsed —
-   * collapsed, the rail renders nothing, so its reopen control lives out here.
+   * Slot between the nav buttons and the URL input. The preview view uses it
+   * to name the tab's browser profile, which is otherwise invisible.
    */
   leadingActions?: ReactNode;
-  /* fork:end fork-design-mode */
 }
 
 const NOOP = () => {};
@@ -93,9 +90,7 @@ export function PreviewChromeRow({
   pickDisabled,
   pickDisabledReason,
   trailingActions,
-  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
   leadingActions,
-  /* fork:end fork-design-mode */
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [draft, setDraft] = useState(url);
@@ -174,11 +169,13 @@ export function PreviewChromeRow({
                 />
               }
             >
-              <RotateCw className={cn(loading && "animate-spin")} />
+              <RefreshIcon refreshing={loading} />
             </TooltipTrigger>
             <TooltipPopup>{loading ? "Loading…" : "Refresh"}</TooltipPopup>
           </Tooltip>
         </div>
+
+        {leadingActions}
 
         <InputGroup variant="ghost" className="group/address h-7 flex-1">
           <Tooltip>

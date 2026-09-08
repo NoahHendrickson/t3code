@@ -9,7 +9,12 @@ import {
   type ThreadEnvMode,
 } from "@t3tools/contracts";
 
-import { DraftId, markPromotedDraftThread, useComposerDraftStore } from "../composerDraftStore";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import {
+  DraftId,
+  markPromotedDraftThreadByRef,
+  useComposerDraftStore,
+} from "../composerDraftStore";
 import { readT3ProjectFileDefaultThreadEnvMode } from "../lib/t3ProjectFileDefaults";
 import { NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY, newAgentDraftProjectRef } from "./newAgentDraft";
 import {
@@ -186,7 +191,7 @@ describe("assignDraftProject", () => {
         }),
     );
     const pick = assignDraftProject(draftId, target("a"), settings);
-    markPromotedDraftThread(ThreadId.make("thread-new-agent"));
+    markPromotedDraftThreadByRef(scopeThreadRef(environmentId, ThreadId.make("thread-new-agent")));
     release(null);
     await pick;
     expect(session()?.logicalProjectKey).toBe(NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY);

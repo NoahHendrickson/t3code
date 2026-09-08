@@ -83,8 +83,8 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(composer).toContain(
       "const promptLockedForProject = projectSelectionRequired && !isUnassignedNewAgentDraft;",
     );
-    expect(composer).toContain(
-      "disabled={isConnecting || isComposerApprovalState || promptLockedForProject}",
+    expect(composer).toMatch(
+      /disabled=\{\s*isConnecting \|\|\s*isComposerApprovalState \|\|[^}]*?promptLockedForProject \|\|/u,
     );
     expect(composer).not.toContain(
       "disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}",

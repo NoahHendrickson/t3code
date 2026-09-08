@@ -83,6 +83,7 @@ describe("fork guard: phosphor-duotone-icons", () => {
     const shim = read(SHIM_PATH);
     const exported = new Set([
       ...[...shim.matchAll(/export const (\w+)/g)].map((m) => m[1]),
+      ...[...shim.matchAll(/export function (\w+)/g)].map((m) => m[1]),
       ...[...shim.matchAll(/export type (\w+)/g)].map((m) => m[1]),
     ]);
     // A missing name means an upstream sync introduced a lucide icon the shim

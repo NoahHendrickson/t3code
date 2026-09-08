@@ -11,10 +11,7 @@ import {
 type FramedViewport = Extract<PreviewViewportSetting, { readonly _tag: "freeform" }>;
 import type { ScopedThreadRef } from "@t3tools/contracts";
 
-import {
-  BrowserViewportCommitTimeoutError,
-  commitBrowserViewportChange,
-} from "~/browser/browserViewportActions";
+import { commitBrowserViewportChange } from "~/browser/browserViewportActions";
 import { resolveBrowserDeviceViewportArea } from "~/browser/browserViewportLayout";
 import { toastManager } from "~/components/ui/toast";
 import { readThreadPreviewState } from "~/previewStateStore";
@@ -134,7 +131,9 @@ export function viewportAtTrueSize(resolution: CanvasResolution): FramedViewport
  * dead button.
  */
 function reportCommitFailure(error: unknown): void {
-  if (!(error instanceof BrowserViewportCommitTimeoutError)) return;
+  // Upstream stopped exporting the error class (#9129); it still stamps its
+  // name, which is the only identity this needs.
+  if (!(error instanceof Error && error.name === "BrowserViewportCommitTimeoutError")) return;
   toastManager.add({
     type: "error",
     title: "Screen size didn't apply",

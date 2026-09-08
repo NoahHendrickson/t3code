@@ -21,7 +21,6 @@
  * upstream state is reached into, so an upstream refactor of how that state
  * is produced cannot break this file.
  */
-import type { EnvironmentId } from "@t3tools/contracts";
 import type { SidebarProjectSortOrder } from "@t3tools/contracts/settings";
 import type { ComponentType, MouseEvent as ReactMouseEvent, ReactNode, SVGProps } from "react";
 
@@ -47,7 +46,7 @@ import {
 } from "~/components/ui/menu";
 import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { ProjectFavicon } from "~/components/ProjectFavicon";
+import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
 import { cn } from "~/lib/utils";
 import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
 
@@ -55,11 +54,9 @@ import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
     generic over anything satisfying it, so the callbacks hand back upstream's
     own richer project object untouched — the seam stays narrow without the fork
     having to restate, or import, a type it does not use. */
-export interface SidebarV2ChromeProjectGroup {
+export interface SidebarV2ChromeProjectGroup extends ProjectFaviconProject {
   readonly projectKey: string;
   readonly displayName: string;
-  readonly environmentId: EnvironmentId;
-  readonly workspaceRoot: string;
 }
 
 /** Every chrome row sits on the list's own 8px inset now (the action block's
@@ -454,11 +451,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                   checked={props.projectScopeKeys.has(project.projectKey)}
                   onCheckedChange={() => toggleProjectScope(project.projectKey)}
                 >
-                  <ProjectFavicon
-                    environmentId={project.environmentId}
-                    cwd={project.workspaceRoot}
-                    className="size-4 shrink-0"
-                  />
+                  <ProjectFavicon project={project} className="size-4 shrink-0" />
                   <span className="min-w-0 truncate text-sm">{project.displayName}</span>
                   <button
                     type="button"

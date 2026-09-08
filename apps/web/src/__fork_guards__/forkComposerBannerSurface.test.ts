@@ -100,10 +100,15 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(surface).toContain("var(--chat-composer-attached-surface)_var(--glass-opacity)");
     // The severity tints the rule overrides are still expressed through the
     // same variables; a sync that paints them another way slips past this rule.
-    for (const variant of ["error", "info", "success", "warning"]) {
+    // Since upstream #10437-era banner work, info and success share the
+    // neutral outline; only error and warning still tint through the variable.
+    for (const variant of ["error", "warning"]) {
       expect(banner, variant).toMatch(
         new RegExp(`${variant}:\\s*"\\[--chat-composer-attached-outline:color-mix\\(`, "u"),
       );
+    }
+    for (const variant of ["info", "success"]) {
+      expect(banner, variant).toMatch(new RegExp(`${variant}:\\s*neutralOutline`, "u"));
     }
   });
 
@@ -117,11 +122,14 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(peek).toContain("peekBorder[variant]");
     for (const [variant, token] of [
       ["error", "destructive"],
-      ["info", "info"],
-      ["success", "success"],
       ["warning", "warning"],
     ] as const) {
       expect(banner, variant).toMatch(new RegExp(`${variant}:\\s*"border-${token}/\\d+"`, "u"));
+    }
+    for (const variant of ["info", "success"]) {
+      expect(banner, variant).toMatch(
+        new RegExp(`${variant}:\\s*"border-\\(--chat-composer-attached-outline\\)"`, "u"),
+      );
     }
   });
   it("leaves the banner unpainted so it reads as vessel floor", () => {
