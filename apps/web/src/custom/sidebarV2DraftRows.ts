@@ -14,6 +14,7 @@ import type { ModelSelection, ScopedThreadRef } from "@t3tools/contracts";
 import { truncate } from "@t3tools/shared/String";
 
 import type { ComposerThreadDraftState, DraftId, DraftSessionState } from "../composerDraftStore";
+import { isUnassignedDraft } from "./newAgentDraft";
 
 export interface SidebarV2DraftRow {
   readonly draftId: DraftId;
@@ -76,7 +77,9 @@ export function buildSidebarDraftShell(input: {
  *
  * A draft whose reserved thread id has entered the shell index is mid-promotion
  * (or leftover); painting both would duplicate the row. Promoted drafts are
- * dropped for the same reason.
+ * dropped for the same reason. A "New agent" draft that has not been given a
+ * project yet is skipped too: a row needs a project section to sit in, and
+ * the user has not chosen one — see custom/newAgentDraft.
  */
 export function listSidebarDraftRows(input: {
   readonly draftsById: Readonly<Record<string, DraftSessionState>>;
@@ -90,6 +93,7 @@ export function listSidebarDraftRows(input: {
   const rows: SidebarV2DraftRow[] = [];
   for (const [draftIdValue, draft] of Object.entries(input.draftsById)) {
     if (draft.promotedTo != null) continue;
+    if (isUnassignedDraft(draft)) continue;
     const threadRef = scopeThreadRef(draft.environmentId, draft.threadId);
     if (input.hasServerShell(threadRef)) continue;
     const draftId = draftIdValue as DraftId;

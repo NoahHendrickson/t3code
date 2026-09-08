@@ -1,12 +1,14 @@
 /**
- * The Sidebar V2 control rows — search, new thread, add project, and the
- * projects filter — see `.fork/customizations.yaml#fork-sidebar-chrome`.
+ * The Sidebar V2 control rows — search, new agent, add project, usage, and
+ * the projects filter — see `.fork/customizations.yaml#fork-sidebar-chrome`.
  *
- * Metrics from Figma t3-fork node 149:6235: action rows use outer `ps-2 pe-3`
- * (8/12); the Projects header uses symmetric `px-3` (no leading icon). Inner
- * controls keep `px-1` + `gap-1`. Controls are 32px tall (h-8); the leading
- * icon still sits at 12px — the same axis as each card's status (list pad 8 +
- * card `px-1`).
+ * Metrics from Figma t3-fork node 364:11246: the four action rows are the
+ * design system's ghost Button (364:10544) stacked 2px apart inside the
+ * panel's 8px inset — 32px tall, 10px corners, 12px inline padding, a 16px
+ * leading icon 6px from a 14px Medium label, everything at the panel's
+ * foreground. The Projects row below (368:21211) is the project headers'
+ * shape on the same inset: a muted Label/12 label, then two 32px icon
+ * buttons — sort and filter — on the list edge.
  *
  * Fork-owned rather than fenced in place: this is pure presentation, and
  * leaving it inline meant `Sidebar.tsx` carried the whole rewrite while the
@@ -14,24 +16,26 @@
  * carries collapses to call sites.
  *
  * The prop surface is wide because these rows are genuinely interactive — a
- * command palette trigger, a radio group, two labeled actions and a
+ * command palette trigger, a radio group, three labeled actions and a
  * per-project overflow action. It is all data and callbacks, though: no
  * upstream state is reached into, so an upstream refactor of how that state
  * is produced cannot break this file.
  */
 import type { EnvironmentId } from "@t3tools/contracts";
+import type { SidebarProjectSortOrder } from "@t3tools/contracts/settings";
 import type { ComponentType, MouseEvent as ReactMouseEvent, ReactNode, SVGProps } from "react";
 
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { CheckIcon, EllipsisIcon, FolderIcon, FolderPlusIcon, SearchIcon } from "lucide-react";
+// Fork-only glyphs (no lucide counterpart) come from the shim's own path: this
+// file is fork-owned, so there is no upstream import site to preserve.
 import {
-  EllipsisIcon,
-  FolderIcon,
-  FolderPlusIcon,
-  ListFilterIcon,
-  PlusCircleIcon,
-  SearchIcon,
-} from "lucide-react";
+  ArrowUpDownIcon,
+  ChartDonutIcon,
+  FadersHorizontalIcon,
+  NavigationArrowIcon,
+} from "./icons/lucide-phosphor";
 import { CommandDialogTrigger } from "~/components/ui/command";
-import { Kbd } from "~/components/ui/kbd";
 import {
   Menu,
   MenuCheckboxItem,
@@ -58,61 +62,59 @@ export interface SidebarV2ChromeProjectGroup {
   readonly workspaceRoot: string;
 }
 
-/** These rows define the trailing column's axis rather than chasing it.
- *
- *  The group's pe-3 ends the row 12px in, and the flush 24px trailing button
- *  centres its glyph 12px further — the 24px axis every trailing mark in the
- *  sidebar measures against. Note the list rows do NOT share this right edge:
- *  they end 8px in, and each control there covers its own 4px however its
- *  geometry dictates (a card's px-1, me-1 on the bare-edge rows) — the
- *  derivations live in custom/sidebarV2TrailingColumn. An earlier revision
- *  here claimed both columns end at the same place; that premise was 4px
- *  wrong and every offset downstream inherited it.
- *
- *  The inset carries no scrollbar term. The list is a scroll container and
- *  once pushed its cards short of these rows by its reserved gutter; the list
- *  now gives that width back out of its own end padding, so a gutter term
- *  reappearing here would double-count it. */
-const CONTROL_ROW = cn("flex h-8 items-center gap-1", SIDEBAR_V2_TRAILING_OFFSET.chromeRow);
+/** Every chrome row sits on the list's own 8px inset now (the action block's
+ *  px-2 and the Projects row's), so its trailing 32px buttons centre on the
+ *  same 24px axis the project headers' do — see
+ *  custom/sidebarV2TrailingColumn, which records the derivation. The inset
+ *  carries no scrollbar term: the list gives its reserved gutter back out of
+ *  its own end padding, so a gutter term here would double-count it. */
+const CHROME_ROW_INSET = SIDEBAR_V2_TRAILING_OFFSET.chromeRow;
 /** Displaces sidebarMenuButtonVariants' base icon pair (muted-foreground at
     opacity-60, upstream v0.0.30): parent-level [&>svg] selectors outweigh the
-    icon's own class, so without this the fork's /80 tint on the glyph is dead
-    and the icon dims to 60% on top of the duotone layer's own alpha. twMerge
+    icon's own class, so without this the fork's tint on the glyph is dead and
+    the icon dims to 60% on top of the duotone layer's own alpha. twMerge
     keeps this later same-slot pair. One spelling, shared by every chrome-row
-    button that renders an icon as a direct child; the guard asserts the merged
-    outcome, so a base-selector change that stops displacing shows up red. */
-export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-muted-foreground/80 [&>svg]:opacity-100";
-/** Shared 14px type for Search / New thread / Add project / Projects — literal
-    so the panel's 13px text-xs remap cannot shrink them. Action controls and
-    the static Projects label both read this; retuning it once keeps them
-    aligned. */
-const CHROME_TYPE = "text-[0.875rem] leading-4 font-normal text-sidebar-muted-foreground";
-/** size-6 per the Figma chrome (24px boxes throughout the card-v2 design).
-    That is the WCAG 2.5.8 floor for a fine pointer on an always-on control —
-    deliberate and design-wide, not this button's private call; see the box
-    note in custom/sidebarV2TrailingColumn, which takes the same stance for
-    the list's controls. Coarse pointers get the 44px TOUCH_TARGET child. */
-const TRAILING_BUTTON = cn(
-  "relative size-6 shrink-0 justify-center rounded-md border-0 bg-transparent p-0 text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+    button that renders an icon as a direct child; the guard asserts the
+    merged outcome, so a base-selector change that stops displacing shows up
+    red. The design (364:11246) tints the icon and the label alike, at the
+    panel's foreground. */
+export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-foreground [&>svg]:opacity-100";
+/** Label/14 Medium for Search / New agent / Add a project / Usage — literal
+    so the panel's 13px text-xs remap cannot shrink them. The Projects label
+    is the headers' Label/12 and spells its own. */
+const CHROME_TYPE = "text-[0.875rem] leading-5 font-medium text-sidebar-foreground";
+/** The Projects row's two icon buttons (Figma 368:21214 / 368:21215): the
+    design system's 32px icon-only ghost button at muted foreground, the same
+    box the project headers' plus and settings buttons draw. Icon tint is
+    overridden to muted here (CHROME_ROW_ICON_TINT lifts it to foreground for
+    the action rows), lifting back to foreground on hover. */
+const PROJECTS_ROW_BUTTON = cn(
+  "relative size-8 shrink-0 justify-center rounded-[10px] border-0 bg-transparent p-0 text-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+  CHROME_ROW_ICON_TINT,
+  "[&>svg]:text-current",
+);
+
+const SORT_ORDER_LABELS: Record<SidebarProjectSortOrder, string> = {
+  updated_at: "Last user message",
+  created_at: "Created at",
+  manual: "Manual",
+};
+const SORT_ORDERS: ReadonlyArray<SidebarProjectSortOrder> = ["updated_at", "created_at", "manual"];
+
+/** The design system's ghost Button at its default size (Figma 364:10544):
+    h-32, 10px corners, px-12, gap-6, hover on the panel's row fill. Spelled on
+    SidebarMenuButton rather than ui/button so the row keeps the sidebar's own
+    hover token and the base-icon displacement above. */
+const CHROME_ACTION = cn(
+  "h-8 w-full gap-1.5 rounded-[10px] border-0 bg-transparent px-3 hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+  CHROME_TYPE,
   CHROME_ROW_ICON_TINT,
 );
-/** Coarse-pointer hit expansion — upstream's trick, kept: the visual button is
-    24px, which is below the 44px touch target, so an invisible child grows the
-    tappable area without moving anything. */
-const TOUCH_TARGET =
-  "pointer-events-none absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden";
-
-const CHROME_CONTROL = cn(
-  "h-8 gap-1 rounded-md border-0 bg-transparent px-1 hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
-  CHROME_TYPE,
-);
-
-const ACTION_GROUP = "ps-2 pe-3";
 
 type ChromeIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
-/** New thread and Add project share one shape; Search keeps its own
-    (CommandDialogTrigger + Kbd). */
+/** New agent, Add a project and Usage share one shape; Search keeps its own
+    (CommandDialogTrigger). */
 function ChromeLabeledAction(props: {
   readonly icon: ChromeIcon;
   readonly label: string;
@@ -120,112 +122,178 @@ function ChromeLabeledAction(props: {
   readonly title?: string | undefined;
   readonly testId: string;
   readonly disabled?: boolean | undefined;
+  /** Holds the row in its hover fill. The New agent row is "active" while the
+      open draft has no project yet — the column it opened is still the
+      row's own until a project is chosen and the draft gets a card. */
+  readonly active?: boolean | undefined;
   readonly onClick: () => void;
   readonly trailing?: ReactNode;
 }) {
   const Icon = props.icon;
   return (
-    <div className={CONTROL_ROW}>
-      <SidebarMenuButton
-        size="sm"
-        type="button"
-        className={cn("min-w-0 flex-1", CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
-        onClick={props.onClick}
-        disabled={props.disabled}
-        aria-label={props.ariaLabel}
-        title={props.title}
-        data-testid={props.testId}
-      >
-        <Icon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-        <span className="min-w-0 flex-1 truncate text-left">{props.label}</span>
-        {props.trailing}
-      </SidebarMenuButton>
-    </div>
+    <SidebarMenuButton
+      size="sm"
+      type="button"
+      className={cn(CHROME_ACTION, props.active && "bg-sidebar-row-hover text-sidebar-foreground")}
+      isActive={props.active === true}
+      onClick={props.onClick}
+      disabled={props.disabled}
+      aria-label={props.ariaLabel}
+      title={props.title}
+      data-testid={props.testId}
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-left">{props.label}</span>
+      {props.trailing}
+    </SidebarMenuButton>
   );
 }
 
 function ChromeSearchRow(props: { readonly commandPaletteShortcutLabel: string | null }) {
   return (
-    <div className={CONTROL_ROW}>
-      <div className="min-w-0 flex-1">
-        <CommandDialogTrigger
-          render={
-            <SidebarMenuButton
-              size="sm"
-              type="button"
-              aria-label="Search threads and commands"
-              className={cn(CHROME_CONTROL, CHROME_ROW_ICON_TINT)}
-              data-testid="command-palette-trigger"
-            />
+    <CommandDialogTrigger
+      render={
+        <SidebarMenuButton
+          size="sm"
+          type="button"
+          aria-label={
+            props.commandPaletteShortcutLabel
+              ? `Search threads and commands (${props.commandPaletteShortcutLabel})`
+              : "Search threads and commands"
           }
-        >
-          <SearchIcon className="size-4 shrink-0 text-sidebar-muted-foreground/80" />
-          <div className="flex-1 truncate text-left">Search</div>
-          {props.commandPaletteShortcutLabel ? (
-            <Kbd className="h-5 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-0">
-              {props.commandPaletteShortcutLabel}
-            </Kbd>
-          ) : null}
-        </CommandDialogTrigger>
-      </div>
-    </div>
+          className={CHROME_ACTION}
+          data-testid="command-palette-trigger"
+        />
+      }
+    >
+      <SearchIcon className="size-4 shrink-0" />
+      <div className="flex-1 truncate text-left">Search</div>
+    </CommandDialogTrigger>
   );
 }
 
-/** Search + New thread + Add project share one group so Figma's stacked
- *  action block (149:6235) does not pick up inter-group padding. */
+/** Search + New agent + Add a project + Usage share one group so Figma's
+ *  stacked action block (364:11246) does not pick up inter-group padding: the
+ *  block starts flush under the header and stacks its rows 2px apart inside
+ *  the panel's 8px inset. */
 export function SidebarV2ChromeActionRows(props: {
   readonly commandPaletteShortcutLabel: string | null;
   readonly newThreadShortcutLabel: string | null;
   readonly newThreadDisabled: boolean;
+  /** True while the open draft is an unassigned "New agent" draft — see
+      custom/newAgentDraft. The row keeps its hover fill until a project is
+      chosen, which is when the draft leaves this row for a card. */
+  readonly newThreadActive: boolean;
   readonly onNewThread: () => void;
   readonly onAddProject: () => void;
+  readonly onUsage: () => void;
 }) {
   const newThreadDisabledReason = props.newThreadDisabled
-    ? "Add a project to start a thread"
+    ? "Add a project to start an agent"
     : undefined;
   return (
-    <SidebarGroup className={cn(ACTION_GROUP, "gap-1 pt-4 pb-0")}>
+    <SidebarGroup className={cn("gap-0.5 px-2 pt-0 pb-0", CHROME_ROW_INSET)}>
       <ChromeSearchRow commandPaletteShortcutLabel={props.commandPaletteShortcutLabel} />
       <ChromeLabeledAction
-        icon={PlusCircleIcon}
-        label="New thread"
+        icon={NavigationArrowIcon}
+        label="New agent"
         ariaLabel={
           props.newThreadDisabled
             ? newThreadDisabledReason!
             : props.newThreadShortcutLabel
-              ? `New thread (${props.newThreadShortcutLabel})`
-              : "New thread"
+              ? `New agent (${props.newThreadShortcutLabel})`
+              : "New agent"
         }
         title={newThreadDisabledReason}
         testId="sidebar-v2-new-thread"
         disabled={props.newThreadDisabled}
+        active={props.newThreadActive}
         onClick={props.onNewThread}
-        trailing={
-          props.newThreadShortcutLabel && !props.newThreadDisabled ? (
-            <Kbd className="h-5 min-w-0 rounded-sm bg-sidebar-control-surface px-1.5 text-[10px] text-sidebar-muted-foreground ring-0">
-              {props.newThreadShortcutLabel}
-            </Kbd>
-          ) : null
-        }
       />
       <ChromeLabeledAction
         icon={FolderPlusIcon}
-        label="Add project"
-        ariaLabel="Add project"
+        label="Add a project"
+        ariaLabel="Add a project"
         testId="sidebar-v2-add-project"
         onClick={props.onAddProject}
+      />
+      <ChromeLabeledAction
+        icon={ChartDonutIcon}
+        label="Usage"
+        ariaLabel="Usage"
+        testId="sidebar-v2-usage"
+        onClick={props.onUsage}
       />
     </SidebarGroup>
   );
 }
 
+/** A scope row: ui/menu's checkbox item shape (32px, rounded-sm, highlight on
+    the accent) as one flex row on the switch row's 8px start inset, so the
+    box, the icons and the labels stack on one edge with "Group by project". */
+const SCOPE_ITEM =
+  "flex h-8 min-h-8 cursor-pointer select-none items-center gap-2 rounded-sm ps-2 pe-1.5 text-sm font-medium text-foreground outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-64";
+/** The design system's checkbox box (ui/checkbox), drawn on the menu item's
+    own indicator: a bordered 16px square that fills with the primary colour
+    when checked. keepMounted holds the empty box on unchecked rows, which is
+    what tells the eye these are several independent toggles rather than one
+    pick. The mark is the design's 3-stroke check at 12px. The two states are
+    chosen off the checked prop rather than data-checked: variants, because
+    the unchecked dark: fill sorts after data-checked: in Tailwind's cascade
+    and was painting over the checked one.
+
+    The unchecked box borders on a foreground alpha in dark, not on --input:
+    the fork palettes make --input an opaque grey that lands on the hovered
+    row's own 8% foreground wash (theme.custom.css), so the box vanished the
+    moment the pointer reached its row. An alpha reads as a lift of whatever
+    the row paints, hovered or not — the same reasoning as the wash itself.
+    Light keeps ui/checkbox's border-input, which clears the zinc hover. */
+const SCOPE_CHECKBOX =
+  "inline-flex size-4 shrink-0 items-center justify-center rounded-[.25rem] border";
+const SCOPE_CHECKBOX_OFF =
+  "border-input bg-background shadow-xs/5 dark:border-foreground/24 dark:bg-transparent";
+const SCOPE_CHECKBOX_ON = "border-primary bg-primary text-primary-foreground";
+
+const EMPTY_PROJECT_SCOPE: ReadonlySet<string> = new Set();
+
+/** One row of the scope list. Built on Base UI's item directly rather than
+    ui/menu's MenuCheckboxItem, whose indicator unmounts when unchecked and
+    draws a bare check glyph — the box has to stay on screen either way. The
+    data-slot keeps the fork's dark-mode hover wash (theme.custom.css) on it. */
+function ScopeCheckboxItem(props: {
+  readonly checked: boolean;
+  readonly onCheckedChange: () => void;
+  readonly testId?: string | undefined;
+  readonly children: ReactNode;
+}) {
+  return (
+    <MenuPrimitive.CheckboxItem
+      closeOnClick={false}
+      checked={props.checked}
+      onCheckedChange={props.onCheckedChange}
+      className={SCOPE_ITEM}
+      data-slot="menu-checkbox-item"
+      data-testid={props.testId}
+    >
+      <MenuPrimitive.CheckboxItemIndicator
+        keepMounted
+        className={cn(SCOPE_CHECKBOX, props.checked ? SCOPE_CHECKBOX_ON : SCOPE_CHECKBOX_OFF)}
+      >
+        {props.checked ? <CheckIcon className="size-3" strokeWidth={3} /> : null}
+      </MenuPrimitive.CheckboxItemIndicator>
+      {props.children}
+    </MenuPrimitive.CheckboxItem>
+  );
+}
+
 export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProjectGroup>(props: {
   readonly projectGroups: ReadonlyArray<TProject>;
-  readonly projectScopeKey: string | null;
-  /** Display name for the active scope — null when showing all projects. */
+  /** Project keys the list is scoped to; empty means every project. */
+  readonly projectScopeKeys: ReadonlySet<string>;
+  /** Names the active scope — one project's name, or a count — null when
+      showing all projects. */
   readonly scopedProjectDisplayName: string | null;
-  readonly onProjectScopeChange: (scopeKey: string | null) => void;
+  readonly onProjectScopeChange: (scopeKeys: ReadonlySet<string>) => void;
   readonly menuOpen: boolean;
   readonly onMenuOpenChange: (open: boolean) => void;
   readonly onProjectActions: (event: ReactMouseEvent<HTMLButtonElement>, project: TProject) => void;
@@ -233,111 +301,158 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   readonly onGroupByProjectChange: (groupByProject: boolean) => void;
   /** Non-null disables the switch and says why — see the call site. */
   readonly groupByProjectUnavailableReason: string | null;
+  /** The client's project sort order — the same setting the legacy sidebar's
+      sort menu and Settings edit, so the surfaces cannot disagree. */
+  readonly projectSortOrder: SidebarProjectSortOrder;
+  readonly onProjectSortOrderChange: (sortOrder: SidebarProjectSortOrder) => void;
 }) {
   if (props.projectGroups.length === 0) return null;
 
-  const isScoped = props.projectScopeKey !== null;
+  const isScoped = props.projectScopeKeys.size > 0;
   const filterAriaLabel = isScoped
-    ? `Filter threads by project — showing ${props.scopedProjectDisplayName ?? "one project"}. Opens project filter and group-by.`
+    ? `Filter threads by project — showing ${props.scopedProjectDisplayName ?? "selected projects"}. Opens project filter and group-by.`
     : "Filter threads by project and group-by";
   const filterTooltip = isScoped
-    ? `Showing ${props.scopedProjectDisplayName ?? "one project"}`
+    ? `Showing ${props.scopedProjectDisplayName ?? "selected projects"}`
     : "Filter projects";
+  const toggleProjectScope = (projectKey: string) => {
+    const next = new Set(props.projectScopeKeys);
+    if (!next.delete(projectKey)) next.add(projectKey);
+    props.onProjectScopeChange(next);
+  };
+  const sortTooltip = `Sort projects — ${SORT_ORDER_LABELS[props.projectSortOrder]}`;
 
   return (
-    // Figma 149:6235 — Projects: static label + filter trigger, px-12 py-8.
-    // pt-2 is the 8px gap between the action block and this header.
-    <SidebarGroup className="px-3 pt-2 pb-2">
-      <div className={CONTROL_ROW}>
+    // Figma 368:21211 — the project headers' row shape: a muted Label/12
+    // label on the same 12px inset as the cards' prompt, then sort and filter
+    // as 32px icon buttons pulled onto the list edge. pt-4 is the gap between
+    // the action block and this row; the design (364:8534) leaves 24px
+    // between the block and the first project group, and this row spends it.
+    <SidebarGroup className={cn("px-2 pt-4 pb-0", CHROME_ROW_INSET)}>
+      <div className="flex h-8 items-center gap-1.5 px-3">
         <span
           role="heading"
           aria-level={2}
-          className={cn("min-w-0 flex-1 truncate text-left", CHROME_TYPE)}
+          className="min-w-0 flex-1 truncate text-left text-[0.75rem] leading-4 font-medium text-muted-foreground"
         >
           Projects
         </span>
-        <Menu open={props.menuOpen} onOpenChange={props.onMenuOpenChange}>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <MenuTrigger
-                  render={
-                    <SidebarMenuButton
-                      size="sm"
-                      type="button"
-                      className={cn(
-                        TRAILING_BUTTON,
-                        // Overrides CHROME_ROW_ICON_TINT's muted colour; opacity
-                        // stays at the shared 100 from that const.
-                        isScoped && "text-sidebar-foreground [&>svg]:text-sidebar-foreground",
-                      )}
-                      aria-label={filterAriaLabel}
-                      data-testid="sidebar-v2-project-filter"
-                      data-active={isScoped ? "true" : undefined}
-                    />
-                  }
-                />
-              }
-            >
-              <ListFilterIcon
-                className={cn(
-                  "size-4 shrink-0",
-                  isScoped ? "text-sidebar-foreground" : "text-sidebar-muted-foreground/80",
-                )}
-              />
-              <span className={TOUCH_TARGET} aria-hidden="true" />
-            </TooltipTrigger>
-            <TooltipPopup side="right">{filterTooltip}</TooltipPopup>
-          </Tooltip>
-          <MenuPopup align="end" className="min-w-56">
-            {/* Above the scope list, not below it: with enough projects the
-                list scrolls, and a preference that decides how the whole
-                sidebar reads should not be the thing you have to scroll to.
+        <div className="-me-3 flex shrink-0 items-center">
+          <Menu>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <MenuTrigger
+                    render={
+                      <SidebarMenuButton
+                        size="sm"
+                        type="button"
+                        className={PROJECTS_ROW_BUTTON}
+                        aria-label={sortTooltip}
+                        data-testid="sidebar-v2-project-sort"
+                      />
+                    }
+                  />
+                }
+              >
+                <ArrowUpDownIcon className="size-4 shrink-0" />
+              </TooltipTrigger>
+              <TooltipPopup side="right">{sortTooltip}</TooltipPopup>
+            </Tooltip>
+            <MenuPopup align="end" className="min-w-48">
+              <MenuRadioGroup
+                value={props.projectSortOrder}
+                onValueChange={(value) =>
+                  props.onProjectSortOrderChange(value as SidebarProjectSortOrder)
+                }
+              >
+                {SORT_ORDERS.map((sortOrder) => (
+                  <MenuRadioItem
+                    key={sortOrder}
+                    value={sortOrder}
+                    closeOnClick
+                    className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
+                  >
+                    {SORT_ORDER_LABELS[sortOrder]}
+                  </MenuRadioItem>
+                ))}
+              </MenuRadioGroup>
+            </MenuPopup>
+          </Menu>
+          <Menu open={props.menuOpen} onOpenChange={props.onMenuOpenChange}>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <MenuTrigger
+                    render={
+                      <SidebarMenuButton
+                        size="sm"
+                        type="button"
+                        className={cn(
+                          PROJECTS_ROW_BUTTON,
+                          // The active scope lifts the glyph to foreground.
+                          isScoped && "text-sidebar-foreground",
+                        )}
+                        aria-label={filterAriaLabel}
+                        data-testid="sidebar-v2-project-filter"
+                        data-active={isScoped ? "true" : undefined}
+                      />
+                    }
+                  />
+                }
+              >
+                <FadersHorizontalIcon className="size-4 shrink-0" />
+              </TooltipTrigger>
+              <TooltipPopup side="right">{filterTooltip}</TooltipPopup>
+            </Tooltip>
+            <MenuPopup align="end" className="min-w-56">
+              {/* Above the scope list, not below it: with enough projects the
+                  list scrolls, and a preference that decides how the whole
+                  sidebar reads should not be the thing you have to scroll to.
 
-                Disabled rather than inert when the sidebar is down to one
-                project — by scope, or by there being only one — because
-                grouping draws no header there. The reason rides on the
-                accessible name and the native tooltip, so it reaches both the
-                pointer and the screen reader rather than leaving either to
-                infer it from a switch that does nothing. */}
-            <MenuCheckboxItem
-              variant="switch"
-              closeOnClick={false}
-              checked={props.groupByProject}
-              onCheckedChange={props.onGroupByProjectChange}
-              disabled={props.groupByProjectUnavailableReason !== null}
-              aria-label={
-                props.groupByProjectUnavailableReason === null
-                  ? undefined
-                  : `Group by project — ${props.groupByProjectUnavailableReason}`
-              }
-              title={props.groupByProjectUnavailableReason ?? undefined}
-              className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
-              data-testid="sidebar-v2-group-by-project-toggle"
-            >
-              Group by project
-            </MenuCheckboxItem>
-            <MenuSeparator />
-            <MenuRadioGroup
-              value={props.projectScopeKey ?? "all"}
-              onValueChange={(value) =>
-                props.onProjectScopeChange(value === "all" ? null : (value as string))
-              }
-            >
-              <MenuRadioItem
-                value="all"
-                closeOnClick
-                className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
+                  Disabled rather than inert when the sidebar is down to one
+                  project — by scope, or by there being only one — because
+                  grouping draws no header there. The reason rides on the
+                  accessible name and the native tooltip, so it reaches both the
+                  pointer and the screen reader rather than leaving either to
+                  infer it from a switch that does nothing. */}
+              <MenuCheckboxItem
+                variant="switch"
+                closeOnClick={false}
+                checked={props.groupByProject}
+                onCheckedChange={props.onGroupByProjectChange}
+                disabled={props.groupByProjectUnavailableReason !== null}
+                aria-label={
+                  props.groupByProjectUnavailableReason === null
+                    ? undefined
+                    : `Group by project — ${props.groupByProjectUnavailableReason}`
+                }
+                title={props.groupByProjectUnavailableReason ?? undefined}
+                className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
+                data-testid="sidebar-v2-group-by-project-toggle"
+              >
+                Group by project
+              </MenuCheckboxItem>
+              <MenuSeparator />
+              {/* Checkboxes, not radios: the scope is a set, so several
+                  projects can be on at once and each toggles independently.
+                  The menu stays open across toggles for the same reason the
+                  switch above keeps it open — picking three projects should
+                  not take three trips. "All projects" is checked while the
+                  set is empty and clears it when chosen. */}
+              <ScopeCheckboxItem
+                checked={!isScoped}
+                onCheckedChange={() => props.onProjectScopeChange(EMPTY_PROJECT_SCOPE)}
+                testId="sidebar-v2-project-scope-all"
               >
                 <FolderIcon className="size-4 shrink-0" />
                 <span className="min-w-0 truncate text-sm">All projects</span>
-              </MenuRadioItem>
+              </ScopeCheckboxItem>
               {props.projectGroups.map((project) => (
-                <MenuRadioItem
+                <ScopeCheckboxItem
                   key={project.projectKey}
-                  value={project.projectKey}
-                  closeOnClick
-                  className="h-8 min-h-8 px-1 py-0 text-sm font-medium [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-center [&>span:last-child]:gap-2"
+                  checked={props.projectScopeKeys.has(project.projectKey)}
+                  onCheckedChange={() => toggleProjectScope(project.projectKey)}
                 >
                   <ProjectFavicon
                     environmentId={project.environmentId}
@@ -349,18 +464,18 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                     type="button"
                     aria-label={`Project actions for ${project.displayName}`}
                     className="ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/55 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                    // Stopping pointerdown keeps the radio item from selecting
+                    // Stopping pointerdown keeps the checkbox item from toggling
                     // the project as a side effect of reaching its overflow.
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => props.onProjectActions(event, project)}
                   >
                     <EllipsisIcon className="size-3.5" />
                   </button>
-                </MenuRadioItem>
+                </ScopeCheckboxItem>
               ))}
-            </MenuRadioGroup>
-          </MenuPopup>
-        </Menu>
+            </MenuPopup>
+          </Menu>
+        </div>
       </div>
     </SidebarGroup>
   );

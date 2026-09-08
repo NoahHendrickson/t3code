@@ -22,6 +22,7 @@ function readSibling(relativePath: string): string {
 
 const layout = readSibling("../components/AppSidebarLayout.tsx");
 const chrome = readSibling("../components/sidebar/SidebarChrome.tsx");
+const legacySidebar = readSibling("../components/LegacySidebar.tsx");
 const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
 
 describe("fork guard: fork-sidebar-chrome", () => {
@@ -141,9 +142,53 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(rows).toContain('data-testid="command-palette-trigger"');
     expect(rows).toContain('testId="sidebar-v2-new-thread"');
     expect(rows).toContain('testId="sidebar-v2-add-project"');
+    expect(rows).toContain('testId="sidebar-v2-usage"');
     expect(rows).toContain('data-testid="sidebar-v2-project-filter"');
-    expect(rows).toContain("New thread");
-    expect(rows).toContain("Add project");
+    // The design's four rows (Figma 364:11246), in its words.
+    expect(rows).toMatch(/>Search</u);
+    expect(rows).toContain('label="New agent"');
+    expect(rows).toContain('label="Add a project"');
+    expect(rows).toContain('label="Usage"');
+    expect(rows).not.toContain("New thread");
+    // The row hands the click up so the sidebar's own navigate (and
+    // mobile-drawer close) runs it.
+    expect(sidebarV2).toContain("onUsage={handleUsageClick}");
+    expect(sidebarV2).toContain('void router.navigate({ to: "/usage" });');
+    // One door, not two: the V2 sidebar's footer hides its Usage icon since
+    // the row above is the same page. The legacy sidebar has no row and keeps
+    // the icon, so the footer takes the flag rather than dropping the item.
+    expect(sidebarV2).toContain("<SidebarChromeFooter hideUsage />");
+    expect(chrome).toMatch(
+      /hideUsage \? null : \(\s*<SidebarUtilityItem\s+icon=\{<ChartNoAxesColumnIcon/u,
+    );
+    expect(chrome).toContain("<SidebarUtilityMenu hideUsage={hideUsage} />");
+    expect(legacySidebar).toContain("<SidebarChromeFooter />");
+  });
+
+  it("draws the action rows as the design system's ghost button", () => {
+    // Figma 364:10544 at its default size: 32px tall, 10px corners, 12px
+    // inline padding, a 16px icon 6px from a 14px Medium label, all at the
+    // panel's foreground, stacked 2px apart inside the 8px inset and flush
+    // under the header.
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    const action = /const CHROME_ACTION = cn\(\s*"([^"]+)"/u.exec(rows)?.[1];
+    expect(action).toBeDefined();
+    for (const cls of [
+      "h-8",
+      "w-full",
+      "gap-1.5",
+      "rounded-[10px]",
+      "px-3",
+      "hover:bg-sidebar-row-hover",
+    ]) {
+      expect(action).toContain(cls);
+    }
+    expect(rows).toContain('cn("gap-0.5 px-2 pt-0 pb-0", CHROME_ROW_INSET)');
+    const labeledIcon = /<Icon className="([^"]*)"/u.exec(rows)?.[1];
+    expect(labeledIcon).toMatch(/\bsize-4\b/u);
+    // No shortcut chips: the design draws none, and the shortcut rides the
+    // accessible name instead.
+    expect(rows).not.toContain("<Kbd");
   });
 
   it("pays for the thread list's scroll gutter out of its own end padding", () => {
@@ -257,7 +302,8 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(base, "sidebarMenuButtonVariants base class not found").toBeTruthy();
     const merged = cn(base, CHROME_ROW_ICON_TINT);
     expect(merged).not.toMatch(/svg\]:opacity-60/u);
-    expect(merged).toMatch(/svg\]:text-sidebar-muted-foreground\/80/u);
+    expect(merged).not.toMatch(/svg\]:text-muted-foreground/u);
+    expect(merged).toMatch(/svg\]:text-sidebar-foreground/u);
     expect(merged).toMatch(/svg\]:opacity-100/u);
     // One spelling: both chrome-row buttons reference the shared const, and
     // the literal exists only in its definition — a second paste is how the
@@ -272,17 +318,38 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const type = /const CHROME_TYPE\s*=\s*"([^"]+)"/u.exec(rows)?.[1];
     expect(type).toBeDefined();
     expect(type).toContain("text-[0.875rem]");
+    // Label/14 Medium (Figma 364:11246) at the panel's foreground.
+    expect(type).toContain("font-medium");
+    expect(type).toContain("text-sidebar-foreground");
     expect(type).not.toMatch(/\btext-xs\b/u);
     expect(type).not.toMatch(/\btext-sm\b/u);
-    // Both the interactive control and the static Projects label read it.
+    // The action rows read it; the Projects label is the headers' Label/12
+    // and spells its own (368:21211).
     expect(rows).toContain("CHROME_TYPE");
-    expect(rows.split("CHROME_TYPE").length - 1).toBeGreaterThanOrEqual(3);
+    expect(rows.split("CHROME_TYPE").length - 1).toBeGreaterThanOrEqual(2);
+    expect(rows).toMatch(
+      /text-\[0\.75rem\] leading-4 font-medium text-muted-foreground"\s*>\s*Projects/u,
+    );
   });
 
-  it("keeps Projects as a static label with an active-aware filter funnel", () => {
+  it("keeps Projects as a static label with sort and an active-aware filter", () => {
+    // Figma 368:21211: the label, then two 32px icon buttons on the list edge
+    // — sort (ArrowsDownUp) over the client's sidebarProjectSortOrder, and the
+    // filter (FadersHorizontal) that owns the scope / group-by menu.
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
     expect(rows).toMatch(/>\s*Projects\s*</u);
-    expect(rows).toContain("ListFilterIcon");
+    expect(rows).toContain("FadersHorizontalIcon");
+    expect(rows).toContain("ArrowUpDownIcon");
+    expect(rows).toContain('data-testid="sidebar-v2-project-sort"');
+    expect(rows).toContain("props.onProjectSortOrderChange(value as SidebarProjectSortOrder)");
+    for (const order of ["updated_at", "created_at", "manual"]) {
+      expect(rows).toContain(`${order}:`);
+    }
+    const button = /const PROJECTS_ROW_BUTTON = cn\(\s*"([^"]+)"/u.exec(rows)?.[1];
+    expect(button).toContain("size-8");
+    expect(button).toContain("rounded-[10px]");
+    const sidebarV2 = readSibling("../components/Sidebar.tsx");
+    expect(sidebarV2).toContain("updateClientSettings({ sidebarProjectSortOrder: sortOrder })");
     expect(rows).toContain("FolderPlusIcon");
     // Scope on-state: glyph lifts and aria/tooltip name the active project.
     expect(rows).toContain("data-active={isScoped");
@@ -292,5 +359,77 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // The label is not a menu trigger — the funnel owns the menu.
     expect(rows).not.toContain("ChevronsUpDownIcon");
     expect(rows).not.toContain("FolderOpenIcon");
+  });
+
+  it("scopes to any number of projects from checkbox items", () => {
+    // The scope is a set: each project is a checkbox that toggles itself and
+    // leaves the others alone, and the menu stays open so choosing three does
+    // not take three trips. "All projects" is the empty set — checked while
+    // nothing is scoped, clearing the set when chosen.
+    const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+    // Everything under the menu's one separator is the scope list.
+    const scopeMenu = rows.slice(rows.indexOf("<MenuSeparator />"));
+    expect(scopeMenu).toContain('testId="sidebar-v2-project-scope-all"');
+    expect(rows).toContain("readonly projectScopeKeys: ReadonlySet<string>;");
+    expect(rows).toContain(
+      "readonly onProjectScopeChange: (scopeKeys: ReadonlySet<string>) => void;",
+    );
+    expect(rows).toContain("checked={!isScoped}");
+    expect(rows).toContain(
+      "onCheckedChange={() => props.onProjectScopeChange(EMPTY_PROJECT_SCOPE)}",
+    );
+    expect(rows).toContain("checked={props.projectScopeKeys.has(project.projectKey)}");
+    expect(rows).toContain("if (!next.delete(projectKey)) next.add(projectKey);");
+    expect(scopeMenu).toContain("<ScopeCheckboxItem");
+    expect(scopeMenu).not.toContain("<MenuRadioItem");
+    expect(scopeMenu).not.toContain("<MenuCheckboxItem");
+    // A real checkbox box, not a bare check glyph: the indicator stays mounted
+    // on unchecked rows as an empty bordered square, and fills with the
+    // primary colour when checked — the design system's own checkbox
+    // treatment (ui/checkbox), so several toggles read as several toggles.
+    const item = rows.slice(
+      rows.indexOf("function ScopeCheckboxItem"),
+      rows.indexOf("export function SidebarV2ProjectScopeRow"),
+    );
+    expect(item).toContain("<MenuPrimitive.CheckboxItem");
+    expect(item).toContain("closeOnClick={false}");
+    expect(item).toMatch(/<MenuPrimitive\.CheckboxItemIndicator\s+keepMounted\b/u);
+    expect(item).toContain('data-slot="menu-checkbox-item"');
+    const box = /const SCOPE_CHECKBOX =\s*"([^"]+)"/u.exec(rows)?.[1];
+    expect(box).toBeDefined();
+    for (const cls of ["size-4", "rounded-[.25rem]", "border"]) {
+      expect(box).toContain(cls);
+    }
+    // The two fills are chosen off the checked prop, not data-checked:
+    // variants — the unchecked dark: fill sorts after those in Tailwind's
+    // cascade and painted over the checked white.
+    expect(rows).toMatch(/const SCOPE_CHECKBOX_ON =\s*"[^"]*\bbg-primary\b/u);
+    expect(rows).toMatch(/const SCOPE_CHECKBOX_OFF =\s*"[^"]*\bborder-input\b/u);
+    // In dark the box borders on a foreground alpha, not --input: the fork
+    // palettes' opaque --input matches the hovered row's 8% foreground wash,
+    // and the unchecked box disappeared under the pointer.
+    expect(rows).toMatch(/const SCOPE_CHECKBOX_OFF =\s*"[^"]*\bdark:border-foreground\/\d+\b/u);
+    expect(rows).not.toMatch(/const SCOPE_CHECKBOX_OFF =\s*"[^"]*\bdark:bg-input\b/u);
+    expect(item).toContain("props.checked ? SCOPE_CHECKBOX_ON : SCOPE_CHECKBOX_OFF");
+    expect(box).not.toContain("data-checked:");
+    // The radio item's [&_svg]:-mx-0.5 pulled Lucide folders (and favicon
+    // fallbacks) 2px off the <img> favicons' column; the scope item carries
+    // no such rule, and every scope item shares the switch row's start inset.
+    const scopeItem = /const SCOPE_ITEM =\s*"([^"]+)"/u.exec(rows)?.[1];
+    expect(scopeItem).toBeDefined();
+    expect(scopeItem).not.toContain("-mx-0.5");
+    expect(scopeItem).not.toMatch(/\bpx-1\b/u);
+    expect(scopeItem).toContain("ps-2");
+    expect(scopeItem).toContain("pe-1.5");
+    // The sidebar filters on the union of every scoped project's member refs,
+    // prunes keys whose project has gone, and names the scope as one project
+    // or a count.
+    const sidebarV2 = readSibling("../components/Sidebar.tsx");
+    expect(sidebarV2).toContain("useState<ReadonlySet<string>>(EMPTY_PROJECT_SCOPE)");
+    expect(sidebarV2).toContain("scopedProjectGroups.flatMap((group) =>");
+    expect(sidebarV2).toContain("if (scopedProjectGroups.length !== projectScopeKeys.size) {");
+    expect(sidebarV2).toContain("`${scopedProjectGroups.length} projects`");
+    expect(sidebarV2).toContain("scopedProjectDisplayName={scopedProjectsLabel}");
+    expect(sidebarV2).toContain("onProjectScopeChange={setProjectScopeKeys}");
   });
 });

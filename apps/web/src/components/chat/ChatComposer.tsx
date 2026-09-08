@@ -133,6 +133,9 @@ import { ComposerPendingElementContexts } from "./ComposerPendingElementContexts
 import { ForkComposerDesignChanges } from "~/custom/designMode/ForkComposerDesignChanges";
 import { useForkPendingDesignChangeCount } from "~/custom/designMode/designChangeDraftStore";
 /* fork:end fork-design-mode */
+/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+import { isUnassignedDraft } from "~/custom/newAgentDraft";
+/* fork:end fork-new-agent-draft */
 import { ComposerPendingReviewComments } from "./ComposerPendingReviewComments";
 import { ComposerPreviewAnnotationCards } from "./ComposerPreviewAnnotationCards";
 import {
@@ -920,6 +923,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     (store) => store.syncPersistedAttachments,
   );
   const getComposerDraft = useComposerDraftStore((store) => store.getComposerDraft);
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+     A "New agent" draft has no project yet by design: the prompt stays open
+     while one is chosen and only Send waits. A draft whose project was
+     deleted keeps upstream's fully inert composer. */
+  const isUnassignedNewAgentDraft = useComposerDraftStore((store) =>
+    draftId ? isUnassignedDraft(store.getDraftSession(draftId)) : false,
+  );
+  const promptLockedForProject = projectSelectionRequired && !isUnassignedNewAgentDraft;
+  /* fork:end fork-new-agent-draft */
 
   useEffect(() => {
     if (!attachmentUploadsCapabilityKnown) {
@@ -3832,7 +3844,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               className={cn(
                 "rounded-[20px] transition-[background-color] duration-200",
                 isDragOverComposer ? "bg-accent/45 ring-1 ring-primary/70" : null,
-                projectSelectionRequired ? "opacity-75" : null,
+                /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                promptLockedForProject ? "opacity-75" : null,
+                /* fork:end fork-new-agent-draft */
                 composerProviderState.composerSurfaceClassName,
               )}
             >
@@ -4318,7 +4332,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                       "Ask anything"
                         /* fork:end fork-composer-shell */
                       }
-                      disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}
+                      /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                      disabled={isConnecting || isComposerApprovalState || promptLockedForProject}
+                      /* fork:end fork-new-agent-draft */
                     />
                     {showMobilePendingAnswerActions ? (
                       <div

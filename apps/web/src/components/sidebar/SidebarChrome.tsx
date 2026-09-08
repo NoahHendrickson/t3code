@@ -144,7 +144,16 @@ function SidebarUtilityItem({
   );
 }
 
-export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
+export const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+     The V2 sidebar carries Usage as a labeled row in its chrome, so its footer
+     drops the icon rather than offering the same door twice. The legacy
+     sidebar has no such row and keeps it. */
+  hideUsage = false,
+}: {
+  hideUsage?: boolean;
+  /* fork:end fork-sidebar-chrome */
+} = {}) {
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -219,11 +228,15 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
               onClick={handlePullRequestsClick}
             />
           ) : null}
-          <SidebarUtilityItem
-            icon={<ChartNoAxesColumnIcon />}
-            label="Usage"
-            onClick={handleUsageClick}
-          />
+          {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */}
+          {hideUsage ? null : (
+            <SidebarUtilityItem
+              icon={<ChartNoAxesColumnIcon />}
+              label="Usage"
+              onClick={handleUsageClick}
+            />
+          )}
+          {/* fork:end fork-sidebar-chrome */}
         </>
       )}
       <SidebarUpdatePill />
@@ -231,12 +244,20 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   );
 });
 
-export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
+export const SidebarChromeFooter = memo(function SidebarChromeFooter({
+  /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+  hideUsage = false,
+}: {
+  hideUsage?: boolean;
+  /* fork:end fork-sidebar-chrome */
+} = {}) {
   return (
     <SidebarFooter className="p-[var(--sidebar-content-inset)]">
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
-      <SidebarUtilityMenu />
+      {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */}
+      <SidebarUtilityMenu hideUsage={hideUsage} />
+      {/* fork:end fork-sidebar-chrome */}
     </SidebarFooter>
   );
 });

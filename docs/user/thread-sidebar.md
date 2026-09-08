@@ -36,6 +36,25 @@ If reordering is unavailable for one environment, update the T3 Code server runn
 environment. Older servers can still pin and unpin threads, but do not understand synced ordering;
 their pinned threads keep the default newest-first order below the ones you have arranged.
 
+<!-- fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft -->
+
+## Starting an agent
+
+**New agent** at the top of the sidebar (`mod+n`) opens an empty chat. Start writing straight
+away; nothing appears in the thread list yet. Choose a project from the pill above the composer
+to send, and the draft takes its place under that project. Change the project from the same pill
+before sending and the draft moves with it. Clicking **New agent** again returns to the draft you
+left open.
+
+The **Projects** row sorts and filters the list: the sort button picks the project order, and
+the filter button turns grouping on and off and checks off which projects the list shows — tick
+as many as you like; **All projects** clears the filter. Choose **Manual**
+with grouping on to arrange projects yourself: drag a project header above or below another. Hover a project's
+section to reveal its header buttons: the three dots open a menu with **Settle all threads** (every
+active thread in that project) and **Settings**, and the plus starts a thread in it directly. **Usage** below **Add a project** opens the usage page.
+
+<!-- fork:end fork-new-agent-draft -->
+
 ## Environment artwork
 
 Dev and Nightly environments can identify themselves with artwork at the top of the sidebar and in

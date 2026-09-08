@@ -377,14 +377,16 @@
 
 - id: sidebar-v2-card-rows
   intent: >
-    Sidebar V2 thread rows are two-line cards at 12px radius, drawn at a fixed
-    52px: a title line (status mark, prompt, then a trailing group carrying the
-    PR number and the elapsed time) and a repo line whose two halves sit in
-    fixed corners — project and branch on the left, model label and runtime
-    glyph on the right. Fixed corners are the point: the two things you compare
-    across rows, which checkout a thread is on and what is running it, are then
-    always at the same x. Slim shelf rows keep the 8px --radius-md they were
-    drawn at; 12px on a 36px row reads as a pill rather than as a card.
+    Sidebar V2 thread rows are two-line cards at 16px radius, drawn at a fixed
+    54px (Figma 364:17299, "thread card v3"): a title line (prompt, then a
+    trailing group carrying the hover actions / elapsed time, the pinned
+    glyph and the status mark) and a repo line reading runtime glyph,
+    hairline, branch, terminal glyph, PR badge on the left and the model
+    label on the right. Fixed corners are the point: the two things you
+    compare across rows, which checkout a thread is on and what is running
+    it, are then always at the same x. Slim shelf rows keep the 8px
+    --radius-md they were drawn at; 16px on a 36px row reads as a pill rather
+    than as a card.
     Upstream's terminal-status glyph (#4712) rides the repo line after the
     branch cluster, handed in pre-built as a required `terminalSlot` — required
     so a sync resolution that drops the call-site line fails the typecheck
@@ -414,61 +416,57 @@
     Done dot.
 
     Status text labels ("Working", "Approval", "Monitoring") are replaced by a
-    single mark in a fixed 16px leading box on the title line, and the box is
-    never empty — idle draws a hollow ring rather than falling back to a
-    variable-width relative-time string, so the title text and the row below
-    share one left edge. The marks inside keep their own sizes and centre in
-    the box (the rain is 14px tall, a status dot 8px), so the box can set the
-    row's left edge without resizing them. The repo line indents 20px so it
-    aligns under the prompt rather than under the mark. The mark's form carries
-    the state — falling pixels while the agent
-    runs, a static dot once it stops, a slow white opacity breath (50% → 20%)
-    while monitoring, a clock for woke, a ring for idle — and the hue only
-    reinforces it. The monitoring breath is duty-cycled and stepped (same
+    single mark in a fixed box on the trailing end of the title line (10px
+    wide by the rain's 14px tall, flush with the card's content edge), and
+    the box is never empty — idle draws the design's muted dot rather than
+    falling back to a variable-width relative-time string. The marks inside
+    keep their own sizes and centre in the box. The mark's form carries the
+    state, per the component set — falling pixels while the agent runs, a
+    10px dot for Done and Idle, Phosphor's half-filled circle for Approval
+    and Input (one amber for both: each means "waiting on you"), the filled
+    warning circle for Failed, a slow white opacity breath (50% → 20%) while
+    monitoring, a clock for woke — and the hue reinforces it: Done is blue,
+    so an unread result reads apart from a live agent. The glyph marks are
+    12px because Phosphor inks its circle on ~81% of the grid, which is the
+    design's 9.75px beside the 10px dot. The monitoring breath is duty-cycled and stepped (same
     compositor contract as upstream ghost-pulse / status-pulse): long holds
     with a short steps(4) ramp, opacity-only, contain:paint, no will-change —
     so it does not repaint every vsync on high-refresh displays. Working is
     emerald, deliberately diverging from the sky the mobile Live Activity
     still uses; mobile has not been migrated.
 
-    The PR badge, the working duration and the hover actions share the title
-    line's trailing group. Status no longer shares that cell, so the
-    opacity-crossfade hit-path bug that used to eat settle clicks cannot
-    return. The badge is not inside the stack that fades the duration out on
-    hover: it is a link to the PR, and a control you can reach only by not
-    pointing at its row is not a control.
+    The working duration and the hover actions share one crossfade cell in the
+    title line's trailing group; the status mark is a cell of its own after
+    them, so the opacity-crossfade hit-path bug that used to eat settle clicks
+    cannot return. The PR badge sits on the repo line (364:14308), glyph then
+    number in its state colour, handed to the meta as a required prSlot: it is
+    a link to the PR, and a control you can reach only by not pointing at its
+    row is not a control, so it must never join the stack that fades the
+    duration out.
 
-    Card metrics from Figma t3-fork nodes 113:725 (the card) and 293:20603
-    (the list): px-4 py-8 (4/8), 2px between the two rows. The title line is
-    18px — the 14px prompt's own line box — and the repo line 16px, so the
-    card draws at 8+18+2+16+8 = 52. The status box is 16px and the gap to the
-    prompt 6px, which puts the prompt 34px in: the same edge as the group
-    header label (24px folder box + its 2px gap). List pad 8 plus the card's
-    px-1 puts that status box 12px in, centring its mark at 20 — the same axis
-    as Search and the group folder icon. The repo line indents 20px.
-    Cards sit 2px apart on the list ul's gap-0.5; the li itself carries no
-    padding, so contain-intrinsic-size is the drawn 52 exactly. Branch,
-    worktree and project marks are 16px; the runtime glyph stays 14px in a 24px
-    box flush with the card edge so it shares the settle/discard centre on the
-    trailing axis (a lone 14px + pr-[3px] was 2px off once actions grew to
-    size-6). The model label is caption 11/15. The PR badge is 12px, literal so
-    the panel's --text-xs remap cannot grow it past the duration beside it, and
-    carries pe-1 for the design's 4px — spent between badge and duration, or to
-    the card's content edge when it is alone. Project and branch read at
-    --muted-foreground with the model cluster a step behind at 70%, so the
-    checkout stays the brighter of the two without matching the prompt.
+    Card metrics from Figma t3-fork nodes 364:17299 (the card) and 364:11496
+    (the list): px-12 py-8, 4px between the two rows. The title line is 18px —
+    the 14px prompt's own line box — and the repo line 16px, so the card draws
+    at 8+18+4+16+8 = 54. List pad 8 plus the card's px-12 puts the prompt
+    20px in: the same edge as the group header's folder mark (list pad 8 +
+    the header's px-12). The repo line carries no indent of its own. Cards
+    sit 2px apart on the list ul's gap-0.5; the li itself carries no padding,
+    so contain-intrinsic-size is the drawn 54 exactly. Every mark on the repo
+    line is 12px, with a 1x8 hairline between the runtime glyph and the
+    branch. The model label is caption 11/15. The PR badge is 12px, literal
+    so the panel's --text-xs remap cannot grow it. Branch and model both read
+    at --muted-foreground; only the PR badge carries a colour.
 
-    The leading column's numbers are derived in custom/sidebarV2CardAlignment,
-    the way the trailing column's already were: the status box, the title gap,
-    the repo indent, the list gap and the project header's box, gap and margins
-    all live there with the arithmetic that ties them together. One invariant
-    justifies the module — a card's prompt and a project header's label start at
-    the same 34px, reached from two different sides (list pad 8 + card px-1 +
-    status box 16 + title gap 6, against list pad 8 + mark box 24 + gap 2) — and
-    the guard asserts that equality rather than the three class strings, so
-    retuning one side without the other fails instead of silently drifting. The
-    repo indent is deliberately 2px left of the prompt, per the design, and is
-    pinned as that difference.
+    The edges and rhythm are derived in custom/sidebarV2CardAlignment, the way
+    the trailing column's already were: the card's padding and row gap, the
+    title gap, the status box, the list gap and the project header's padding,
+    box, gap and margins all live there with the arithmetic that ties them
+    together. One invariant justifies the module — a card's prompt and a
+    project header's folder mark start at the same 20px, reached through two
+    different paddings — and the guard asserts that equality rather than the
+    class strings, so retuning one side without the other fails instead of
+    silently drifting. sidebarV2CardHeight() is the drawn 54, and it is what
+    the row's contain-intrinsic-size hint reads.
 
     Five margins hang off the list gap, not one, and all five are derived in
     that module: the project header's lead and trail, the pinned divider's, and
@@ -694,10 +692,52 @@
     carries it on screen, and the card keeps it for assistive tech, which has no
     "two rows up". Grouped mode must never convey less than flat mode.
 
-    The header carries a trailing plus that starts a thread in that project. The
-    chrome row's "New thread" must ask which project when there are several — it
-    opens the new-thread-in palette — and a grouped header has already answered
-    that question, so its plus skips the picker.
+    The header carries a trailing plus that starts a thread in that project.
+    The chrome row's "New agent" (fork-new-agent-draft) opens a draft with no
+    project and asks afterwards, from the chat view; a grouped header has
+    already answered that question, so its plus creates straight into its
+    project and skips the picker.
+
+    The header is the design's 32px row (Figma 364:11442, 368:21364): a ghost
+    label button — 16px folder mark, Label/12 Medium name at muted foreground,
+    lifting to foreground on hover, 12px inline padding that lands the mark on
+    the cards' 20px prompt edge — then a 32px three-dot that opens the
+    project's menu and a 32px plus, both on the list edge. The menu offers
+    "Settle all threads", which settles every active thread in the section
+    through the multi-select batch path (post-settle navigation skips the
+    batch; drafts, already-settled rows and environments without settlement
+    are left out and the item is disabled at zero), and "Settings", the same
+    project settings page the filter menu's per-project overflow opens. Collapse is still a
+    behind-layer so those keep their own clicks, but the layer now stops one
+    32px column short of the row's end per trailing button so its hover fill
+    is the label button's alone. It sits 24px below the previous group's
+    last card — that gap is the open group's, so after a closed or empty
+    group the next header takes an 8px lead instead — and flush over its
+    own first card, all derived in custom/sidebarV2CardAlignment.
+
+    Under manual project sort (the Projects row's sort menu) the header is
+    its project's drag handle: dnd-kit sortable on the headers alone, with a
+    strategy that displaces nothing — the cards sit between the headers in
+    the same flat list — and a drop that writes the legacy sidebar's own
+    projectOrder through the store's reorderProjects, so both sidebars and
+    the palette agree on the order. The drop target is the section the
+    pointer is in — header plus cards, resolved by the fork's own collision
+    rule — and the drop edge is drawn over the target header when moving
+    up, under the target section's last card when moving down. Only with
+    headers on screen; the unresolved-project bucket has no order key and
+    never drags. The pinned block keeps its own nested DndContext for its
+    cards.
+
+    The two trailing buttons are hidden until the pointer is somewhere in the
+    project's section — the header or any card under it — or focus is inside
+    them; a coarse pointer always sees them. The reveal is a stylesheet rule
+    in theme.custom.css, not React state, so moving the pointer down the list
+    re-renders nothing: the header li carries data-fork-project-section-header,
+    every card li under a header carries data-fork-project-section (present
+    exactly when projectTitleHidden is, since both mean "under a header"), and
+    a :has() sibling selector lights the last header before the hovered card.
+    Cards outside a section (pinned block, shelves) carry no marker and light
+    nothing.
 
     Which environment it lands in is buildSidebarProjectPickerEntries' answer,
     reached by calling it rather than by restating it. A logical project can
@@ -733,7 +773,12 @@
     grouping switch). A collapsed section hides its cards from both paint and
     keyboard order, with the open route thread kept visible — the same
     exception the snoozed shelf makes for a deep-linked row — so collapse
-    cannot bury the thread you are viewing.
+    cannot bury the thread you are viewing. The keep reads a deferred copy of
+    the route key (useDeferredValue), so when you open another thread the
+    kept card leaves in the quiet re-render after the one that mounts the new
+    chat view, and the list animation fades it and reflows the rows below in
+    one clean pass instead of stuttering through the busiest frame; the
+    highlight itself follows the live key.
 
     The header has no own horizontal pad — the list's 8px is the edge. The
     folder sits in a 24px box so its 16px glyph centres on the same 20px axis as
@@ -760,6 +805,7 @@
   files:
     - apps/web/src/custom/sidebarV2ProjectGrouping.ts
     - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+    - apps/web/src/theme.custom.css
     # Shared with fork-sidebar-chrome, which owns the two rows themselves and
     # their metrics; this entry owns only the grouping switch inside the scope
     # row's menu.
@@ -915,23 +961,26 @@
     value that stays a step brighter than the row beneath it in dark and a step
     darker in light.
 
-    The card's trailing cell is h-6 rather than the title line's h-4 —
-    a 24px target cannot fit a 16px cell. It is centred in the 16px line, so it
-    overhangs 4px into the card's py-2 above and its gap-2 below, neither of
-    which carries anything to collide with. Status no longer shares this cell —
-    it leads the title line — so the opacity-crossfade hit-path bug that used to
-    eat settle clicks (an opacity-0 status span stacking above the actions)
-    cannot return; elapsed time is the only decoration that still fades here,
-    and it is pointer-events-none.
+    The card's trailing cell is h-6 rather than the title line's 18px —
+    a 24px target cannot fit an 18px cell. It is centred in the line, so it
+    overhangs 3px into the card's py-2 above and through the 4px row gap
+    below, neither of which carries anything to collide with. Status sits on
+    the trailing end again (Figma 364:17299) but in a cell of its own after
+    the actions, never inside them, so the opacity-crossfade hit-path bug
+    that used to eat settle clicks (an opacity-0 status span stacking above
+    the actions) cannot return; elapsed time is the only decoration that
+    still fades here, and it is pointer-events-none.
 
     Placement: every trailing mark down the sidebar shares one vertical axis,
     24px in from the panel's content edge — the chrome rows' pe-3 plus half
     their 24px button. The rows do not share a right edge: chrome ends 12px
-    in, the list rows 8. A card's own px-1 closes that gap, so its flush 24px
-    action cell and its runtime glyph are on the axis as drawn; the project
-    header and the slim rows' right-0 overlay sit on the bare 8px edge and
-    spend me-1 to get back; the shelf chevrons' px-2.5 centres their 12px
-    glyph on the axis by itself. Boxes give up their edges; glyphs keep the
+    in, the list rows 8. A card's own px-3 puts its status mark flush with its
+    content edge and its action cell to the mark's left, owing nothing; the
+    slim rows' right-0 overlay sits on the bare 8px edge and spends me-1 to
+    get back; the project header's plus is the one 32px control (Figma
+    364:11451) and centres on the axis from that same bare edge by its size
+    alone; the shelf chevrons' px-2.5 centres their 12px glyph on the axis by
+    itself. Boxes give up their edges; glyphs keep the
     axis, which is the thing anyone actually reads. (An earlier derivation
     assumed the list and chrome columns end at the same place — 4px wrong at
     the source, and every offset inherited it.)
@@ -1506,12 +1555,24 @@
     one leaves the other subtracting from a stale number, and the cards drift
     off the chrome icons' axis with nothing failing.
 
-    Action rows (Search, New thread, Add project) use ps-2 pe-3 with an inner
-    px-1 control so their leading icon also sits at 12px — matching card status
-    and the group folder glyph. The Projects header uses symmetric px-3 (no
-    leading icon). Those controls are 32px tall (h-8), not Figma's 24, at
-    0.875rem (14px) type — literal so the panel's 13px text-xs remap cannot
-    shrink them.
+    Action rows (Search, New agent, Add a project, Usage) are the design
+    system's ghost Button at its default size (Figma 364:11246 / 364:10544):
+    32px tall, 10px corners, 12px inline padding, a 16px icon 6px from a
+    Label/14 Medium label, icon and label alike at the panel's foreground,
+    stacked 2px apart inside the panel's 8px inset and flush under the header.
+    No shortcut chips; the shortcut rides the accessible name. Usage opens the
+    /usage route, and the V2 sidebar's footer hides its own Usage icon so the
+    page has one door there; the footer takes a hideUsage flag rather than
+    losing the item, because the legacy sidebar has no Usage row and keeps
+    it. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
+    shrink it.
+
+    The Projects row (368:21211) takes the project headers' shape on the same
+    inset: a static muted Label/12 label, then two 32px icon buttons on the
+    list edge — a sort menu (ArrowsDownUp) over the same
+    sidebarProjectSortOrder client setting the legacy sidebar's sort menu and
+    Settings edit, and the filter (FadersHorizontal) that owns the scope /
+    group-by menu.
 
     These rows' own trailing inset is then 4px, and that 4px belongs to
     sidebar-v2-row-action-hit-area, which owns the trailing glyph column's
@@ -1535,9 +1596,9 @@
     below the header's clipped 24px height. The link may shrink so the name
     truncates before the header overflows at the sidebar's 208px minimum; only
     the mark is shrink-0. Literal type avoids the sidebar-v2 13px text utility
-    remap. Search, New thread, and Add project remain labeled action rows;
-    Projects remains a static muted label whose trailing ListFilter
-    (FunnelSimple) owns the scope / group-by menu.
+    remap. Search, New agent, Add a project and Usage remain labeled action
+    rows; Projects remains a static label whose trailing sort and filter
+    buttons own the sort order and the scope / group-by menu.
     Foreground, hover, pill, and focus treatments resolve through sidebar
     tokens so the flat header remains legible in Light, Dark, and Cool Dark.
 
@@ -1560,7 +1621,23 @@
     upstream's searchable project-filter combobox (#5931) is not adopted:
     the fork's scope row keeps its own menu and drives only upstream's
     open-state reducer (reduceSidebarProjectScopeMenuState), so
-    handleProjectSettings stays upstream's line for line. The header's
+    handleProjectSettings stays upstream's line for line.
+
+    The scope is a set, not one key. Each project in the filter menu is a
+    checkbox item that toggles itself and leaves the others alone; "All
+    projects" is the empty set, checked while nothing is scoped and clearing
+    the set when chosen. The menu stays open across toggles. The rows draw a
+    real checkbox box — ui/checkbox's bordered square, primary-filled when
+    checked — on a keepMounted indicator, built on Base UI's CheckboxItem
+    directly because ui/menu's MenuCheckboxItem unmounts its indicator when
+    unchecked and shows only a check glyph. Sidebar.tsx
+    filters on the union of every scoped project's member refs, prunes a key
+    whose project has gone, names the scope as one project's name or an
+    "N projects" count, and counts grouping's availability on the projects
+    the list can show — so a scope of several projects still groups, while
+    manual drag reorder stays unscoped-only. Scope items carry no radio-item
+    [&_svg]:-mx-0.5, which had pulled Lucide folders 2px off the <img>
+    favicons' column, and share the switch row's start inset. The header's
     stage label now comes from upstream's useEnvironmentStageLabel, which
     replaced the fork's local hook when upstream's became an exact equivalent
     (both delegate to resolveServerBackedAppStageLabel with the fork's
@@ -2086,7 +2163,13 @@
     upstream's compact action (#8144) in the readout slot.
     Default-dark context chips are Figma 322:6316's white 12% wash (hover
     17%), the pair the Cool Darker glass tier already uses; the other
-    palettes keep their own opaque tints.
+    palettes keep their own opaque tints. The PR chip is the exception: it
+    keeps upstream's state ink (emerald open, violet merged, red closed — the
+    sidebar card's PR badge colours) instead of the white chip text, its fill
+    is a 12% / 17% wash of that same ink, and it rides the far end of the
+    strip — the wrapper it shares with the branch trigger grows and the chip
+    takes the free space as a start margin, so the branch stays packed
+    against checkout. The liveness pill, when shown, stays last.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
@@ -2125,6 +2208,9 @@
     - apps/web/src/components/BranchToolbar.tsx
     - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
     - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
+    # Stamps data-fork-pr-chip on the PR pill so it keeps its state colour
+    # and moves to the strip's far end.
+    - apps/web/src/components/BranchToolbarBranchSelector.tsx
     # Owns the top-fade mask the cutoff below folds into its own layer stack.
     - apps/web/src/index.css
     # The data-slots (composer-shell / -host / -context-strip) whose painted
@@ -2875,6 +2961,11 @@
     palettes (hover vanished) and a bluish slab on the wallpaper-tinted
     floor under Cool Darker glass, and it never matched the branch
     picker's "current" row. An alpha lifts whatever the popup paints.
+
+    One carve-out, owned by sidebar-v2-project-grouping: the project
+    header's menu stamps data-fork-glass-menu and keeps a glass surface
+    (70% popover tint, 20px blur) — it opens over the thread list, and the
+    cards behind it are something to see through where the stage is not.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
@@ -3251,3 +3342,74 @@
     - apps/web/src/components/chat/MessagesTimeline.tsx
   verify:
     - apps/web/src/__fork_guards__/forkSubagentSpawnCard.test.ts
+
+- id: fork-new-agent-draft
+  intent: >
+    The sidebar's "New agent" row (it replaces upstream's "New thread")
+    opens a blank chat column with a composer and no project chosen, instead
+    of asking which project first. The draft it opens is unassigned: it lives
+    in upstream's draft store under its own logical project key
+    (fork:new-agent) with a sentinel project id, so the store's one-draft-per-
+    logical-project rule gives it one live instance — a second click returns
+    to the open one, invested or not — and ChatView resolves it to no project,
+    which is the path a deleted project already takes: the composer's
+    projectSelectionRequired gate blocks send until a project is chosen. The
+    prompt itself stays editable on an unassigned draft (a fenced exception
+    in ChatComposer's editor gate), so the user writes while choosing.
+
+    The project is chosen from a pill under the draft hero's headline
+    (custom/DraftProjectPill, via a shadow of upstream's DraftHeroHeadline
+    that keeps its prop surface so ChatView's call site is unfenced). Choosing
+    one remaps the draft in place — same draft id, same reserved thread id,
+    same composer content — onto that project's logical key, seeding the
+    project's own workspace defaults (env mode, start-from-origin) the way
+    upstream's handler seeds a fresh draft. The draft opens with the model
+    the user was looking at, carried the way upstream's handler carries it;
+    assigning a project replaces that only with the project's own default
+    model, and never an explicit pick made in the draft. The sidebar draws
+    no row for an unassigned draft and draws one under the chosen project
+    the moment it is assigned; changing the project from the same pill moves
+    that row, because the store keeps one logical mapping per draft. A
+    promoted or discarded draft is never re-registered by a late assignment,
+    and of two quick picks the later one wins even when the earlier one's
+    t3.json lookup settles last. While a pick's lookup is still resolving
+    the draft points at its previous project, so the pill shows the pick at
+    once and Send holds (a fenced reason in ChatView's send-disabled gate)
+    rather than submitting to the project the user just left.
+
+    While the open draft is still unassigned, the sidebar's New agent row
+    holds its hover fill: the column it opened is the row's own until the
+    pill assigns a project, at which point the draft gets a card and the row
+    lets go.
+
+    Every entry point that means "new thread" on the default sidebar agrees:
+    the chrome row and the chat.new shortcut start the unassigned draft
+    (upstream's palette route for chat.new, and the project-group count that
+    fed it, are deleted from the route rather than left unreachable);
+    chat.newLocal from an unassigned draft has no current project and lands
+    back on it; the legacy sidebar keeps upstream's contextual create. The
+    grouped project header's plus and the palette's "New thread in…" still
+    create straight into a named project — they already know the answer. The
+    index route's landing draft (most recent project) is unchanged.
+  tier: 4
+  files:
+    - apps/web/src/custom/newAgentDraft.ts
+    - apps/web/src/custom/useNewAgentDraft.ts
+    - apps/web/src/custom/DraftProjectPill.tsx
+    - apps/web/src/custom/newAgentDraft.test.ts
+    - apps/web/src/custom/useNewAgentDraft.test.ts
+  shadows:
+    - apps/web/src/components/chat/DraftHeroHeadline.tsx
+  watch:
+    - apps/web/src/components/Sidebar.tsx
+    - apps/web/src/routes/_chat.tsx
+    # Fenced editor gate: an unassigned draft's prompt stays editable.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Fenced send gate: Send holds while a picked project's defaults resolve.
+    - apps/web/src/components/ChatView.tsx
+    # Fenced user-facing note on starting an agent and choosing its project.
+    - docs/user/thread-sidebar.md
+  verify:
+    - apps/web/src/__fork_guards__/forkNewAgentDraft.test.ts
+    - apps/web/src/custom/newAgentDraft.test.ts
+    - apps/web/src/custom/useNewAgentDraft.test.ts

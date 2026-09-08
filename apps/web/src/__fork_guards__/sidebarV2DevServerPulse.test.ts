@@ -74,6 +74,7 @@ function renderMeta(over: {
       hasWorktree: over.hasWorktree ?? false,
       devServerPort: over.devServerPort ?? null,
       terminalSlot: null,
+      prSlot: null,
       modelLabel: null,
       isRemote: false,
     }),

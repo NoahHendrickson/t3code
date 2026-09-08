@@ -12,6 +12,14 @@
  * same scale/opacity endpoints. Remain keeps AutoAnimate's FLIP (including the
  * right/bottom-anchored short-circuit). Plugins do not inherit AutoAnimate's
  * `prefers-reduced-motion` gate, so duration collapses to 0 when that is set.
+ *
+ * Every removal takes the same fade, including the card a collapsed group
+ * keeps for the thread you are on. That one used to leave instantly, because
+ * it left in the frame the route changed and the new chat view mounted — the
+ * busiest frame there is — and a fade started there stuttered while the rows
+ * below slid up unevenly. Sidebar.tsx now reads the keep off a deferred route
+ * key, so the card leaves in the quiet re-render after that frame and the
+ * ordinary fade and FLIP run clean.
  */
 import { getTransitionSizes, type AutoAnimationPlugin } from "@formkit/auto-animate";
 

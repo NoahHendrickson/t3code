@@ -8,6 +8,7 @@ const base = {
   projectIconSlot: null,
   branch: "main",
   terminalSlot: null,
+  prSlot: null,
   modelLabel: "gpt-5.4",
   isRemote: false,
 } as const;
@@ -19,9 +20,9 @@ const countRows = (markup: string) => markup.split('data-testid="sidebar-v2-card
 
 describe("SidebarV2ThreadCardMeta", () => {
   it("draws exactly one row, whatever the card carries", () => {
-    // The component set fixes the card at 52px, so this line never doubles and
-    // the card never reflows as per-row queries land. The PR badge lives on the
-    // title line above; the diff counts left the design with the row that
+    // The component set fixes the card at 54px, so this line never doubles and
+    // the card never reflows as per-row queries land. The PR badge is a slot
+    // on this same line; the diff counts left the design with the row that
     // carried them.
     const markup = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} />);
 

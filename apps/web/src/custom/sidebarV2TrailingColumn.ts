@@ -11,21 +11,21 @@
  * Everything trailing centres 24px in from the panel's content edge, and the
  * chrome rows are what set that number: they end at pe-3 (12px), and a 24px
  * button flush there centres its glyph 12px further — 24. Everything else in
- * the column measures itself against that centre: each card's runtime glyph
- * (card content edge 12px in, 24px box — same as the hover actions — with the
- * 14px mark centred inside), the hover actions on both row variants, the
- * shelf chevrons, and the project header's plus. (The status mark used to
- * sit in this column too; it now leads the title line, and the lower card
- * rows indent under the title text instead.)
+ * the column measures itself against that centre: the hover actions on both
+ * row variants, the shelf chevrons, and the project header's plus. A card's
+ * status mark sits on the same trailing end (Figma 364:17299 draws it after
+ * the title, not before): its 12px box is pulled 2px past the card's content
+ * edge so the mark's centre lands on the axis, and the hover actions stack to
+ * its left.
  *
  * The rows do NOT share a right edge, which is what makes this worth writing
  * down once. The list rows end 8px in where the chrome rows end 12; a card's
- * own px-1 closes that gap, so a 24px box flush with the card's content edge
- * is already on the axis — but a box flush with a row that has no such
- * padding (the header, a slim row's right-0 overlay) sits 4px too far right
- * and spends me-1 to get back. An earlier revision derived these against
- * "both columns end at the same place", which was 4px wrong at the source,
- * and every offset inherited the error — visibly, once the marks stacked.
+ * own px-3 closes that gap and then some, so a 24px box flush with the card's
+ * content edge is already on the axis — but a box flush with a row that has
+ * no such padding (a slim row's right-0 overlay) sits 4px too far right and
+ * spends me-1 to get back. The project header's plus is the one 32px control
+ * in the list: flush with the list's bare 8px edge, it centres 16 further —
+ * 24 — and owes nothing.
  *
  * Each offset below is derived from the inset of the edge its control is
  * flush against. They are not interchangeable and none of them is a taste
@@ -90,17 +90,25 @@ export const SIDEBAR_V2_ICON_BUTTON_CLASS =
  * is the derivation, and a call site with no entry has no derivation.
  */
 export const SIDEBAR_V2_TRAILING_OFFSET = {
-  /** Card hover actions. List pad 8 + card px-1 puts the card's content edge
-   *  12px in — the same inset as the chrome rows' pe-3 — so a flush 24px
-   *  button centres at 24 with nothing to correct. */
+  /** Card hover actions. They sit to the left of the status mark on the
+   *  title line and share its trailing edge, so nothing here — the mark's
+   *  own offset is what puts the group on the axis. */
   cardActions: "",
+  /** The card's status mark. Its 12px box flush with the card's content edge
+   *  (list pad 8 + card px-3 = 20) centres at 26 — 2px left of the axis, and
+   *  visibly so under the chrome rows' plus. -me-0.5 pulls it the 2px back.
+   *  The 10px dot inside then inks 1px past the edge the meta line's text
+   *  ends on, which is the optical correction a round mark wants against a
+   *  flat text edge rather than a compromise. */
+  cardStatus: "-me-0.5",
   /** Slim-row hover actions. The overlay is `absolute right-0`, which lands on
    *  the row's border box — the list's 8px inset, padding notwithstanding — so
    *  a flush 24px button centres at 20. me-1 walks it the 4px back. */
   slimActions: "me-1",
-  /** The project header's plus. The header has no own horizontal pad, so its
-   *  edge is the list's 8px inset: same 4px as the slim overlay. */
-  headerPlus: "me-1",
+  /** The project header's plus. A 32px button (Figma 364:11451) flush with
+   *  the list's bare 8px edge centres 16px further — 24 exactly. Nothing
+   *  owed; the size is what a 24px box spent me-1 to fake. */
+  headerPlus: "",
   /** Shelf header chevrons. px-2.5 on the shelf button makes an 18px inset,
    *  and a flush 12px glyph centres 6px further — 24 exactly. Nothing owed. */
   shelfChevron: "",

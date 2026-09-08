@@ -23,6 +23,7 @@
  * are fork-only affordances and a contracts field would put a fork-shaped key
  * in a schema upstream owns, which every sync would then have to carry.
  */
+import type { CollisionDetection } from "@dnd-kit/core";
 import * as Schema from "effect/Schema";
 import { useCallback, useMemo } from "react";
 
@@ -198,3 +199,49 @@ export function buildActiveThreadSections<
   }
   return sections;
 }
+
+/**
+ * Drop targeting for manual project reorder. The droppables are the section
+ * headers alone, but a section is its header *and* the cards under it, so a
+ * header's target extends down to the next header (or the end of the list):
+ * whichever section the pointer is in is the one the drop lands beside.
+ * Closest-centre would have handed a tall section's lower cards to the next
+ * header, and drawn the drop edge there.
+ *
+ * Pure over the rects dnd-kit measured, so it can be tested with fakes:
+ * `resolveSectionDropTarget` is the rule, the exported `CollisionDetection`
+ * only adapts dnd-kit's argument shape to it.
+ */
+export function resolveSectionDropTarget<TId>(input: {
+  /** Header droppables with their measured top edges, any order. */
+  readonly headers: ReadonlyArray<{ readonly id: TId; readonly top: number }>;
+  /** The pointer's y, or the dragged rect's centre when there is no pointer. */
+  readonly y: number;
+}): TId | null {
+  const ordered = [...input.headers].sort((left, right) => left.top - right.top);
+  const first = ordered[0];
+  if (first === undefined) return null;
+  let target = first;
+  for (const header of ordered) {
+    if (header.top <= input.y) target = header;
+    else break;
+  }
+  return target.id;
+}
+
+export const sidebarV2ProjectSectionCollision: CollisionDetection = ({
+  droppableContainers,
+  droppableRects,
+  pointerCoordinates,
+  collisionRect,
+}) => {
+  const headers = droppableContainers.flatMap((container) => {
+    const rect = droppableRects.get(container.id);
+    return rect ? [{ id: container.id, top: rect.top, container }] : [];
+  });
+  const y = pointerCoordinates?.y ?? collisionRect.top + collisionRect.height / 2;
+  const id = resolveSectionDropTarget({ headers, y });
+  if (id === null) return [];
+  const hit = headers.find((header) => header.id === id);
+  return hit ? [{ id, data: { droppableContainer: hit.container, value: 0 } }] : [];
+};

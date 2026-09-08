@@ -145,23 +145,28 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
   it("nudges both row variants onto the trailing column's axis", () => {
     // Glyph alignment, not box alignment. The axis is 24px in from the panel's
     // content edge — the chrome rows' pe-3 plus half their 24px button. A card
-    // reaches the same inset through list pad 8 + its own px-1, so its flush
-    // controls owe nothing; the header and the slim rows' right-0 overlay sit
-    // on the list's bare 8px edge and spend me-1; the shelf chevron's px-2.5
-    // lands its 12px glyph on the axis by itself. Every offset is derived in
-    // one module, so this asserts the values there and that each row reaches
-    // for the one meant for it. A row reading another row's offset is the
-    // drift this replaced inline strings to stop.
+    // reaches its edge through list pad 8 + its own px-3; a 12px status box
+    // flush there centres at 26, so the mark spends -me-0.5 to land on 24 and
+    // its actions sit left of it, owing nothing of their own; the slim rows'
+    // right-0 overlay sits on the list's bare 8px edge and spends me-1; the
+    // header's plus is the one 32px control and centres on the axis from that
+    // same bare edge by its size alone; the shelf chevron's px-2.5 lands its
+    // 12px glyph on the axis by itself. Every offset is derived in one
+    // module, so this asserts the values there and that each row reaches for
+    // the one meant for it. A row reading another row's offset is the drift
+    // this replaced inline strings to stop.
     const offsets = /SIDEBAR_V2_TRAILING_OFFSET = \{([\s\S]*?)\} as const;/u.exec(
       trailingColumn,
     )?.[1];
     expect(offsets).toBeDefined();
     expect(offsets).toMatch(/cardActions:\s*""/u);
+    expect(offsets).toMatch(/cardStatus:\s*"-me-0\.5"/u);
     expect(offsets).toMatch(/slimActions:\s*"me-1"/u);
-    expect(offsets).toMatch(/headerPlus:\s*"me-1"/u);
+    expect(offsets).toMatch(/headerPlus:\s*""/u);
     expect(offsets).toMatch(/shelfChevron:\s*""/u);
     expect(offsets).toMatch(/chromeRow:\s*""/u);
     expect(sidebarV2).toContain("SIDEBAR_V2_TRAILING_OFFSET.cardActions");
+    expect(sidebarV2).toContain("SIDEBAR_V2_TRAILING_OFFSET.cardStatus");
     expect(trailingColumn).toContain("SIDEBAR_V2_TRAILING_OFFSET.slimActions");
     expect(groupHeader).toContain("SIDEBAR_V2_TRAILING_OFFSET.headerPlus");
     expect(chromeRows).toContain("SIDEBAR_V2_TRAILING_OFFSET.chromeRow");
@@ -189,14 +194,17 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // 16px icons, matching the marks they line up with. Asserted positively:
     // a negative on `size-5` is anchored to class order and walks straight
     // through `className="shrink-0 size-5"`.
-    // New thread / Add project render through ChromeLabeledAction's Icon slot;
-    // the filter still mounts ListFilterIcon directly. Pin size-4 either way.
-    expect(chromeRows).toContain("icon={PlusCircleIcon}");
+    // New agent / Add a project / Usage render through ChromeLabeledAction's
+    // Icon slot; the Projects row mounts its sort and filter glyphs directly.
+    // Pin size-4 either way.
+    expect(chromeRows).toContain("icon={NavigationArrowIcon}");
     expect(chromeRows).toContain("icon={FolderPlusIcon}");
+    expect(chromeRows).toContain("icon={ChartDonutIcon}");
     const labeledIcon = /<Icon className="([^"]*)"/u.exec(chromeRows)?.[1];
     expect(labeledIcon, "ChromeLabeledAction icon class missing").toBeDefined();
     expect(labeledIcon).toMatch(/\bsize-4\b/u);
-    expect(chromeRows).toMatch(/<ListFilterIcon[\s\S]{0,120}?\bsize-4\b/u);
+    expect(chromeRows).toMatch(/<FadersHorizontalIcon[\s\S]{0,120}?\bsize-4\b/u);
+    expect(chromeRows).toMatch(/<ArrowUpDownIcon[\s\S]{0,120}?\bsize-4\b/u);
     // The shelf headers' chevrons, 4px the other way: their row is px-2.5,
     // so a flush 12px glyph centres 6px in where a card's trailing box takes 8.
     const chevrons = [...sidebarV2.matchAll(/"size-3 ([^"]*transition-transform[^"]*)"/gu)];
@@ -206,11 +214,10 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
   it("keeps status out of the trailing actions cell", () => {
     // Status used to share the trailing grid cell with the hover actions; on
     // hover the status span went to opacity-0, became a stacking context, and
-    // hit-tested above settle. Moving the mark to the leading column is the
-    // structural fix — assert it stays there, and that the leading slot itself
-    // is never a target.
-    // Both variants' leading slots, since either regressing puts the mark back
-    // in the trailing cell. The card's box is the design's 16px, sized from the
+    // hit-tested above settle. The mark sits on the trailing end again (Figma
+    // 364:17299) but in a cell of its own, after the actions grid, and that
+    // cell is never a target — assert both. Either variant regressing puts
+    // the mark back in the crossfade cell. The card's box comes from the
     // shared alignment module (custom/sidebarV2CardAlignment); the slim shelf
     // row's stays a literal 14px.
     expect(sidebarV2).toContain(
@@ -221,14 +228,25 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
       "pointer-events-none flex size-[14px] shrink-0 items-center justify-center",
     );
     // Idle and live marks alike render through the shared status-mark switch,
-    // card rows drawing the idle ring and slim rows leaving the slot empty.
+    // card rows drawing the idle dot and slim rows leaving the slot empty.
     const statusMark = (idle: string) =>
       new RegExp(
         `<SidebarV2StatusMark\\b[^>]*status=\\{topStatus\\}[^>]*idle=\\{showDiscardDraft \\? "draft" : "${idle}"\\}[^>]*/>`,
         "u",
       );
-    expect(sidebarV2).toMatch(statusMark("ring"));
+    expect(sidebarV2).toMatch(statusMark("dot"));
     expect(sidebarV2).toMatch(statusMark("empty"));
+    // Order inside the card's trailing group: the actions grid closes before
+    // the status box opens, so the two can never share a stacking context.
+    const actionsGrid = sidebarV2.indexOf(
+      "grid h-6 shrink-0 grid-cols-1 items-center justify-items-end",
+    );
+    const cardStatus = sidebarV2.search(statusMark("dot"));
+    expect(actionsGrid).toBeGreaterThanOrEqual(0);
+    expect(cardStatus).toBeGreaterThan(actionsGrid);
+    expect(sidebarV2.slice(actionsGrid, cardStatus)).toContain(
+      "SIDEBAR_V2_CARD_ALIGNMENT.statusBox",
+    );
     // The trailing cell still fades elapsed on a working row when the hover
     // actions will replace it; that decoration must stay out of the hit path
     // for the same reason status used to. The fade class is gated separately

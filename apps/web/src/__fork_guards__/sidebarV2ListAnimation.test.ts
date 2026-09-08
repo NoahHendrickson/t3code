@@ -38,5 +38,24 @@ describe("fork guard: sidebar-v2-list-animation", () => {
     expect(animation).toContain('transform: "scale(.98)", opacity: 0');
     expect(animation).toContain('transform: "scale(1)", opacity: 1');
     expect(animation).toContain("prefers-reduced-motion: reduce");
+    // No removal is singled out. The card a collapsed group keeps for the
+    // open route used to leave instantly because it left in the navigation
+    // frame; the keep now reads a deferred route key so it leaves a frame
+    // later and takes the same fade as every other row.
+    expect(animation).not.toContain("data-fork-collapsed-keep");
+    expect(animation).not.toMatch(/duration: \w+ \? 0 : duration/u);
+  });
+
+  it("lets a collapsed group's kept card leave after the navigation frame", () => {
+    // Opening another thread is the frame the new chat view mounts. A kept
+    // card removed in that frame fades late and the rows below slide up
+    // unevenly; deferring the key the keep reads moves the removal into the
+    // quiet re-render after it. The highlight stays on the live key.
+    expect(sidebar).toContain("const keptRouteThreadKey = useDeferredValue(routeThreadKey);");
+    const keep = /threadsVisibleInProjectSection\(\{([\s\S]*?)\}\)/u.exec(sidebar)?.[1];
+    expect(keep).toBeDefined();
+    expect(keep).toContain("keptRouteThreadKey");
+    expect(keep).not.toContain("routeThreadKey");
+    expect(sidebar).toContain("isActive={routeThreadKey === threadKey}");
   });
 });
