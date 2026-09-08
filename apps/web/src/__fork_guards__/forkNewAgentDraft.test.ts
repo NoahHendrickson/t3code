@@ -24,6 +24,7 @@ const chatRoute = readSibling("../routes/_chat.tsx");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 const draftRows = readSibling("../custom/sidebarV2DraftRows.ts");
 const hooks = readSibling("../custom/useNewAgentDraft.ts");
+const composer = readSibling("../components/chat/ChatComposer.tsx");
 
 describe("fork guard: fork-new-agent-draft", () => {
   it("starts an unassigned draft from the sidebar's New agent row", () => {
@@ -62,11 +63,41 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(chatRoute).toMatch(
       /if \(command === "chat\.newLocal"\) \{[\s\S]{0,500}?if \(isUnassignedDraft\(activeDraftThread\)\) \{\s*void startNewAgentDraft\(\);\s*return;\s*\}/u,
     );
+    // Upstream's palette route for chat.new is unreachable behind that
+    // early return, so it is deleted rather than left as dead weight — along
+    // with the project-group count that only existed to feed it.
+    expect(chatRoute).not.toContain('open: "new-thread-in"');
+    expect(chatRoute).not.toContain("projectGroupCount");
+    expect(chatRoute).not.toContain("buildSidebarProjectSnapshots(");
+  });
+
+  it("keeps the prompt editable while the draft has no project", () => {
+    // ChatView flags an unassigned draft as projectSelectionRequired, the
+    // same path a deleted project takes. Send stays blocked either way; the
+    // editor's own gate exempts the unassigned draft so the user can write
+    // while choosing.
+    expect(composer).toContain(
+      "draftId ? isUnassignedDraft(store.getDraftSession(draftId)) : false",
+    );
+    expect(composer).toContain(
+      "const promptLockedForProject = projectSelectionRequired && !isUnassignedNewAgentDraft;",
+    );
+    expect(composer).toContain(
+      "disabled={isConnecting || isComposerApprovalState || promptLockedForProject}",
+    );
+    expect(composer).not.toContain(
+      "disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}",
+    );
   });
 
   it("reuses the live unassigned draft rather than minting a second one", () => {
     expect(hooks).toContain(
       "getDraftSessionByLogicalProjectKey(NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY)",
+    );
+    // The model's predicate has one signal: the key the store maps by.
+    const model = readSibling("../custom/newAgentDraft.ts");
+    expect(model).toContain(
+      "return session?.logicalProjectKey === NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY;",
     );
     expect(hooks).toMatch(/existing\.promotedTo == null &&[\s\S]{0,200}?===\s*null/u);
     expect(hooks).toContain('to: "/draft/$draftId"');
@@ -89,6 +120,10 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(hooks).toContain("resolveNewDraftStartFromOrigin({");
     expect(hooks).toContain("if (!session || session.promotedTo != null) return;");
     expect(hooks).toContain("hasExplicitComposerModelSelection(getComposerDraft(draftId))");
+    // Two quick picks settle out of order; the later pick must win. The
+    // behaviour is tested in custom/useNewAgentDraft.test.ts; this pins the
+    // seam.
+    expect(hooks).toContain("if (latestAssignmentByDraftId.get(draftId) !== request) return;");
   });
 
   it("replaces the draft hero's inline chooser with the project pill", () => {

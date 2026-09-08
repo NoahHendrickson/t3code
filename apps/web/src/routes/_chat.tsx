@@ -1,17 +1,17 @@
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { useAtomValue } from "@effect/atom-react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { isCommandPaletteOpen } from "../commandPaletteBus";
-import { useClientSettings, useLegacySidebarEnabled } from "../hooks/useSettings";
-import { openCommandPalette } from "../commandPaletteBus";
-import { useProjects } from "../state/entities";
-import { usePrimaryEnvironmentId } from "../state/environments";
-import { selectProjectGroupingSettings } from "../logicalProject";
-import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
+import { useLegacySidebarEnabled } from "../hooks/useSettings";
 import { dispatchPreviewAction } from "../components/preview/previewActionBus";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
-/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+   Upstream's chat.new also imported the project-grouping snapshot to count
+   groups and route the palette; the default sidebar no longer asks, so
+   those imports (useMemo, useClientSettings, openCommandPalette,
+   useProjects, usePrimaryEnvironmentId, selectProjectGroupingSettings,
+   buildSidebarProjectSnapshots) are gone with the branch. */
 import { isUnassignedDraft } from "~/custom/newAgentDraft";
 import { useStartNewAgentDraft } from "~/custom/useNewAgentDraft";
 /* fork:end fork-new-agent-draft */
@@ -33,22 +33,12 @@ function ChatRouteGlobalShortcuts() {
     useHandleNewThread();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const legacySidebarEnabled = useLegacySidebarEnabled();
-  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+     Upstream counted project groups here (a useMemo over
+     buildSidebarProjectSnapshots) to decide whether chat.new opened the
+     palette. Nothing reads that count now. */
   const startNewAgentDraft = useStartNewAgentDraft();
   /* fork:end fork-new-agent-draft */
-  const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
-  const projects = useProjects();
-  const primaryEnvironmentId = usePrimaryEnvironmentId();
-  const projectGroupCount = useMemo(
-    () =>
-      buildSidebarProjectSnapshots({
-        projects,
-        settings: projectGroupingSettings,
-        primaryEnvironmentId,
-        resolveEnvironmentLabel: () => null,
-      }).length,
-    [primaryEnvironmentId, projectGroupingSettings, projects],
-  );
   const terminalOpen = useTerminalUiStateStore((state) =>
     routeThreadRef
       ? selectThreadTerminalUiState(state.terminalUiStateByThreadKey, routeThreadRef).terminalOpen
@@ -110,19 +100,15 @@ function ChatRouteGlobalShortcuts() {
         /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
            The default sidebar's "New agent" button starts an unassigned draft
            and its shortcut does the same; the legacy sidebar keeps upstream's
-           contextual create below. */
+           contextual create below. Upstream's middle branch — the default
+           sidebar opening the palette's "New thread in…" when there was more
+           than one project group — is gone: the draft asks for the project
+           itself. */
         if (!legacySidebarEnabled) {
           void startNewAgentDraft();
           return;
         }
         /* fork:end fork-new-agent-draft */
-        // The default sidebar routes creation through the command palette
-        // whenever there is a real choice to make; the legacy sidebar (and
-        // single-project setups) keep the immediate contextual create.
-        if (!legacySidebarEnabled && projectGroupCount > 1) {
-          openCommandPalette({ open: "new-thread-in" });
-          return;
-        }
         void startNewThreadFromContext({
           activeDraftThread,
           activeThread: activeThread ?? undefined,
@@ -188,7 +174,6 @@ function ChatRouteGlobalShortcuts() {
     keybindings,
     defaultProjectRef,
     previewOpen,
-    projectGroupCount,
     routeThreadRef,
     selectedThreadKeysSize,
     legacySidebarEnabled,

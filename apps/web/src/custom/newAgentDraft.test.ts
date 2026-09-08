@@ -32,7 +32,7 @@ const draft = (over: Partial<DraftSessionState> = {}): DraftSessionState => ({
 });
 
 describe("isUnassignedDraft", () => {
-  it("recognises a New agent draft by either of its two signals", () => {
+  it("recognises a New agent draft by its logical key", () => {
     const environmentId = EnvironmentId.make("env-local");
     const ref = newAgentDraftProjectRef(environmentId);
     expect(ref.environmentId).toBe(environmentId);
@@ -45,12 +45,10 @@ describe("isUnassignedDraft", () => {
         }),
       ),
     ).toBe(true);
-    // A remap through the store's own project-change path rewrites the key
-    // but could leave the sentinel id behind; either alone is enough.
-    expect(isUnassignedDraft(draft({ projectId: NEW_AGENT_DRAFT_PROJECT_ID }))).toBe(true);
-    expect(
-      isUnassignedDraft(draft({ logicalProjectKey: NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY })),
-    ).toBe(true);
+    // The key is the store's mapping and the only signal. A draft remapped
+    // onto a project's key is assigned even if its ref still named the
+    // sentinel, which the store's remap never leaves behind anyway.
+    expect(isUnassignedDraft(draft({ projectId: NEW_AGENT_DRAFT_PROJECT_ID }))).toBe(false);
   });
 
   it("treats an ordinary project draft, and no draft, as assigned", () => {

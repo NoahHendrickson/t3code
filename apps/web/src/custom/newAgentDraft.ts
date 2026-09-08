@@ -18,7 +18,10 @@
  *   "Unknown project" would be a lie — the user has not chosen one yet.
  * - ChatView resolves the sentinel to no project, which is the same path a
  *   deleted project already takes: the composer's `projectSelectionRequired`
- *   gate blocks send and the draft hero offers the project chooser.
+ *   gate blocks send and the draft hero offers the project chooser. Unlike a
+ *   deleted project, the prompt itself stays editable (a fenced exception in
+ *   ChatComposer keyed on `isUnassignedDraft`): the user writes while they
+ *   choose, and only Send waits.
  *
  * Choosing a project remaps the draft onto that project's own logical key
  * (custom/useNewAgentDraft), at which point it is an ordinary draft — the
@@ -43,16 +46,13 @@ export function newAgentDraftProjectRef(environmentId: EnvironmentId): ScopedPro
   return scopeProjectRef(environmentId, NEW_AGENT_DRAFT_PROJECT_ID);
 }
 
-/** True for a draft that has not been given a project yet. Either signal is
-    enough: the logical key is what the store maps it by, the sentinel id is
-    what a remap through the store's own project-change path would leave
-    behind if the key were ever reassigned without a project. */
+/** True for a draft that has not been given a project yet. The logical key
+    is the one signal: it is what the store maps the draft by, and every
+    store path that rewrites it (`setLogicalProjectDraftThreadId`) sets the
+    project ref in the same write, so the sentinel id never outlives the key
+    and does not need checking on its own. */
 export function isUnassignedDraft(
-  session: Pick<DraftSessionState, "logicalProjectKey" | "projectId"> | null | undefined,
+  session: Pick<DraftSessionState, "logicalProjectKey"> | null | undefined,
 ): boolean {
-  if (!session) return false;
-  return (
-    session.logicalProjectKey === NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY ||
-    session.projectId === NEW_AGENT_DRAFT_PROJECT_ID
-  );
+  return session?.logicalProjectKey === NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY;
 }

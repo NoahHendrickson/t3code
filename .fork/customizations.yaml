@@ -3330,7 +3330,9 @@
     logical-project rule gives it one live instance — a second click returns
     to the open one, invested or not — and ChatView resolves it to no project,
     which is the path a deleted project already takes: the composer's
-    projectSelectionRequired gate blocks send until a project is chosen.
+    projectSelectionRequired gate blocks send until a project is chosen. The
+    prompt itself stays editable on an unassigned draft (a fenced exception
+    in ChatComposer's editor gate), so the user writes while choosing.
 
     The project is chosen from a pill under the draft hero's headline
     (custom/DraftProjectPill, via a shadow of upstream's DraftHeroHeadline
@@ -3342,7 +3344,9 @@
     an unassigned draft and draws one under the chosen project the moment it
     is assigned; changing the project from the same pill moves that row,
     because the store keeps one logical mapping per draft. A promoted or
-    discarded draft is never re-registered by a late assignment.
+    discarded draft is never re-registered by a late assignment, and of two
+    quick picks the later one wins even when the earlier one's t3.json
+    lookup settles last.
 
     While the open draft is still unassigned, the sidebar's New agent row
     holds its hover fill: the column it opened is the row's own until the
@@ -3350,7 +3354,9 @@
     lets go.
 
     Every entry point that means "new thread" on the default sidebar agrees:
-    the chrome row and the chat.new shortcut start the unassigned draft;
+    the chrome row and the chat.new shortcut start the unassigned draft
+    (upstream's palette route for chat.new, and the project-group count that
+    fed it, are deleted from the route rather than left unreachable);
     chat.newLocal from an unassigned draft has no current project and lands
     back on it; the legacy sidebar keeps upstream's contextual create. The
     grouped project header's plus and the palette's "New thread in…" still
@@ -3362,13 +3368,17 @@
     - apps/web/src/custom/useNewAgentDraft.ts
     - apps/web/src/custom/DraftProjectPill.tsx
     - apps/web/src/custom/newAgentDraft.test.ts
+    - apps/web/src/custom/useNewAgentDraft.test.ts
   shadows:
     - apps/web/src/components/chat/DraftHeroHeadline.tsx
   watch:
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/routes/_chat.tsx
+    # Fenced editor gate: an unassigned draft's prompt stays editable.
+    - apps/web/src/components/chat/ChatComposer.tsx
     # Fenced user-facing note on starting an agent and choosing its project.
     - docs/user/thread-sidebar.md
   verify:
     - apps/web/src/__fork_guards__/forkNewAgentDraft.test.ts
     - apps/web/src/custom/newAgentDraft.test.ts
+    - apps/web/src/custom/useNewAgentDraft.test.ts

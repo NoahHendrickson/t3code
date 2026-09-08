@@ -40,11 +40,11 @@ their pinned threads keep the default newest-first order below the ones you have
 
 ## Starting an agent
 
-**New agent** at the top of the sidebar (`mod+n`) opens an empty chat with the composer ready.
-Nothing appears in the thread list yet: choose a project from the pill above the composer, and
-the draft takes its place under that project. Change the project from the same pill before
-sending and the draft moves with it. Clicking **New agent** again returns to the draft you left
-open.
+**New agent** at the top of the sidebar (`mod+n`) opens an empty chat. Start writing straight
+away; nothing appears in the thread list yet. Choose a project from the pill above the composer
+to send, and the draft takes its place under that project. Change the project from the same pill
+before sending and the draft moves with it. Clicking **New agent** again returns to the draft you
+left open.
 
 The **Projects** row sorts and filters the list: the sort button picks the project order, and
 the filter button turns grouping on and off and checks off which projects the list shows — tick
