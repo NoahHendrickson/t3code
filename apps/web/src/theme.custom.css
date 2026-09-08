@@ -1126,12 +1126,21 @@
 
    A header's settings and plus buttons (Figma 368:21364) show only while the
    pointer is somewhere in that project's section: the header itself, or any
-   card under it. The header and its cards are siblings in one flat list, so
-   "under it" is "a card after this header with no later header in between",
-   which the second selector spells with :has(): a hovered section card after
-   this header, and not a hovered section card after a *later* header. Cards
-   outside a section (pinned block, shelves) carry no section marker and so
-   never light a header. Keyboard focus inside the group shows it too — but
+   card under it. The header and its cards are siblings in one flat list —
+   one <ul> so AutoAnimate's FLIP and the flat keyboard order keep working —
+   so the section is not a DOM node. The invariant every selector here and
+   in the drop-edge rule below relies on: **a section card belongs to the
+   nearest preceding header**. custom/sidebarV2ProjectGrouping builds the
+   list in that order; the stylesheet only reads it. Any list item placed
+   between a header and its cards must carry data-fork-project-section (it
+   is one of the cards) or be a header (it starts the next section) —
+   nothing else may sit there, or these walks attach to the wrong header.
+
+   "Under it" is therefore "a card after this header with no later header in
+   between", which the second selector spells with :has(): a hovered section
+   card after this header, and not a hovered section card after a *later*
+   header. Cards outside a section (pinned block, shelves) carry no section
+   marker and so never light a header. Keyboard focus inside the group shows it too — but
    only :focus-visible, not :focus-within: a click on the collapse layer
    leaves that button focused, and plain focus would pin the buttons on
    after the pointer had left. An open project menu pins it (the pointer is
@@ -2298,9 +2307,10 @@
    that header. "below" means below that whole section — under its last card,
    or under the header itself when the group is closed or empty — and the
    header cannot reach its last card, so the stylesheet finds it: the last
-   section card after the stamped header with no later header in between
-   (the same sibling walk the hover reveal uses). A straight 2px line, its
-   own pseudo-element, so no rounded control lends it corners. */
+   section card after the stamped header with no later header in between —
+   the same sibling walk, and the same "nearest preceding header" invariant,
+   as the hover reveal above. A straight 2px line, its own pseudo-element,
+   so no rounded control lends it corners. */
 :root[data-fork="noahhendrickson-t3code"] li[data-fork-project-section-header] {
   position: relative;
 }
