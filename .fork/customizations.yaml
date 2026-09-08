@@ -2280,6 +2280,7 @@
     # Its resting-layout assertion reads the scroll-collapse flag instead of
     # the neutralized predicate.
     - apps/web/src/components/chat/MessagesTimeline.test.tsx
+    - apps/web/src/components/chat/useComposerFocusState.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
 

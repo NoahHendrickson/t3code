@@ -3998,7 +3998,11 @@ export default function Sidebar() {
                           onSnooze={attemptSnooze}
                           onUnsnooze={attemptUnsnooze}
                           onAcknowledgeWoke={acknowledgeWoke}
-                          onFileDropThreads={handleThreadFileDrop}
+                          /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+                          onFileDropThreads={
+                            draftCaps.canReceiveFileDrop ? handleThreadFileDrop : undefined
+                          }
+                          /* fork:end sidebar-v2-draft-rows */
                         />
                       );
                     };

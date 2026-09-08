@@ -2,7 +2,6 @@ import { act, useLayoutEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { shouldUseRestingComposerLayout } from "../composerFooterLayout";
 import { useComposerFocusState } from "./useComposerFocusState";
 
 let root: Root;
@@ -13,14 +12,12 @@ function ComposerProbe() {
   const state = useComposerFocusState();
   useLayoutEffect(() => {
     composer = state;
-    isResting = shouldUseRestingComposerLayout({
-      isExistingThread: true,
-      isMobileViewport: false,
-      isScrollCollapsed: state.isComposerScrollCollapsed,
-      hasExpandedChrome: false,
-      hasMultilinePrompt: false,
-      timelineOverflows: true,
-    });
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+       The composerFooterLayout shadow neutralizes the resting layout, so
+       upstream's predicate is always false here. These cases exercise the
+       hook's scroll-collapse restore, so read that flag instead. */
+    isResting = state.isComposerScrollCollapsed;
+    /* fork:end fork-composer-shell */
   });
   return null;
 }

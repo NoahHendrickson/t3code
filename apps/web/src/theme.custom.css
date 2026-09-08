@@ -2164,8 +2164,8 @@
   [data-fork-composer-vessel]
   [data-slot="composer-banner-attachment"]:has(
     [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-      [data-composer-shoulder-tab]
-    )
+        [data-composer-shoulder-tab]
+      )
   ) {
   width: 100%;
   max-width: none;
@@ -2180,8 +2180,8 @@
   [data-fork-composer-vessel]
   [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]):has(
     [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-      [data-composer-shoulder-tab]
-    )
+        [data-composer-shoulder-tab]
+      )
   ) {
   flex-direction: column;
   align-items: stretch;
@@ -2191,8 +2191,8 @@
   [data-fork-composer-vessel]
   [data-slot="composer-banner-attachment"]:has(
     [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-      [data-composer-shoulder-tab]
-    )
+        [data-composer-shoulder-tab]
+      )
   )
   > [data-composer-shoulder-tab] {
   order: -1;
