@@ -1561,8 +1561,11 @@
     Label/14 Medium label, icon and label alike at the panel's foreground,
     stacked 2px apart inside the panel's 8px inset and flush under the header.
     No shortcut chips; the shortcut rides the accessible name. Usage opens the
-    same /usage route as the footer menu's item. Type is literal 0.875rem so
-    the panel's 13px text-xs remap cannot shrink it.
+    /usage route, and the V2 sidebar's footer hides its own Usage icon so the
+    page has one door there; the footer takes a hideUsage flag rather than
+    losing the item, because the legacy sidebar has no Usage row and keeps
+    it. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
+    shrink it.
 
     The Projects row (368:21211) takes the project headers' shape on the same
     inset: a static muted Label/12 label, then two 32px icon buttons on the

@@ -22,6 +22,7 @@ function readSibling(relativePath: string): string {
 
 const layout = readSibling("../components/AppSidebarLayout.tsx");
 const chrome = readSibling("../components/sidebar/SidebarChrome.tsx");
+const legacySidebar = readSibling("../components/LegacySidebar.tsx");
 const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
 
 describe("fork guard: fork-sidebar-chrome", () => {
@@ -149,10 +150,19 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(rows).toContain('label="Add a project"');
     expect(rows).toContain('label="Usage"');
     expect(rows).not.toContain("New thread");
-    // Usage is the same door the footer menu opens; the row hands the click
-    // up so the sidebar's own navigate (and mobile-drawer close) runs it.
+    // The row hands the click up so the sidebar's own navigate (and
+    // mobile-drawer close) runs it.
     expect(sidebarV2).toContain("onUsage={handleUsageClick}");
     expect(sidebarV2).toContain('void router.navigate({ to: "/usage" });');
+    // One door, not two: the V2 sidebar's footer hides its Usage icon since
+    // the row above is the same page. The legacy sidebar has no row and keeps
+    // the icon, so the footer takes the flag rather than dropping the item.
+    expect(sidebarV2).toContain("<SidebarChromeFooter hideUsage />");
+    expect(chrome).toMatch(
+      /hideUsage \? null : \(\s*<SidebarUtilityItem\s+icon=\{<ChartNoAxesColumnIcon/u,
+    );
+    expect(chrome).toContain("<SidebarUtilityMenu hideUsage={hideUsage} />");
+    expect(legacySidebar).toContain("<SidebarChromeFooter />");
   });
 
   it("draws the action rows as the design system's ghost button", () => {

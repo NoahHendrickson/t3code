@@ -3461,8 +3461,8 @@ export default function Sidebar() {
     if (isMobile) setOpenMobile(false);
     void startNewAgentDraft();
   }, [isMobile, setOpenMobile, startNewAgentDraft]);
-  // The chrome's Usage row (Figma 364:19891) is the same door the footer
-  // menu's Usage item opens.
+  // The chrome's Usage row (Figma 364:19891) opens the usage page; it replaces
+  // the footer's Usage icon here, which this sidebar's footer hides.
   const handleUsageClick = useCallback(() => {
     if (isMobile) setOpenMobile(false);
     void router.navigate({ to: "/usage" });
@@ -4151,7 +4151,11 @@ export default function Sidebar() {
           ) : null}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarChromeFooter />
+      {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+          Usage is a labeled row in the chrome above, so the footer does not
+          repeat it as an icon. */}
+      <SidebarChromeFooter hideUsage />
+      {/* fork:end fork-sidebar-chrome */}
     </>
   );
 }
