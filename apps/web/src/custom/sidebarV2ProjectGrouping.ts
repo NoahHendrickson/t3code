@@ -29,9 +29,8 @@ import { useCallback, useMemo } from "react";
 
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 
-export const SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-project:v1";
-export const SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY =
-  "t3code:fork:sidebar-v2-collapsed-projects:v1";
+const SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-project:v1";
+const SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY = "t3code:fork:sidebar-v2-collapsed-projects:v1";
 
 /** Threads whose project no longer resolves to a group — a just-deleted
  *  project, or an environment whose projects have not loaded yet. They keep a

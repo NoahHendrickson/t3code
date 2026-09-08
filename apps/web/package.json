@@ -70,7 +70,6 @@
     "babel-plugin-react-compiler": "1.0.0",
     "compression": "^1.8.1",
     "esbuild": "^0.28.1",
-    "msw": "2.12.11",
     "react-test-renderer": "19.2.6",
     "tailwindcss": "^4.0.0",
     "vite": "catalog:",

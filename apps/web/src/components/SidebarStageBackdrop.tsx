@@ -26,14 +26,6 @@ export function resolveSidebarStageBackdropVariant(
   return null;
 }
 
-export function resolveSidebarStageFocusRingOffsetClass(
-  variant: SidebarStageBackdropVariant,
-): string {
-  return variant === "nightly"
-    ? "focus-visible:ring-offset-(--stage-night-bottom)"
-    : "focus-visible:ring-offset-(--stage-art-bottom)";
-}
-
 export function resolveEnvironmentIdentificationPillLabel(
   stageLabel: string,
 ): EnvironmentIdentificationPillLabel | null {
@@ -57,23 +49,13 @@ export function useSidebarStageBackdropVariant(enabled = true): SidebarStageBack
   return resolveSidebarStageBackdropVariant(useEnvironmentStageLabel(), enabled);
 }
 
-/** Stage-channel header art; palettes mirror the per-channel app icons in `assets/`.
- *
- * fork: no production call site — the sidebar header intentionally stays flat
- * and transparent to match its design. Kept because it is upstream's export and
- * its test still covers it; do not "clean this up" during a sync. See
- * .fork/customizations.yaml#fork-sidebar-chrome. */
-export function SidebarStageBackdrop({ variant }: { variant: SidebarStageBackdropVariant }) {
-  return (
-    <div
-      aria-hidden
-      className="sidebar-stage-backdrop pointer-events-none absolute inset-x-0 top-0 z-0 h-20 select-none overflow-hidden"
-    >
-      <StageBackdropArt variant={variant} />
-    </div>
-  );
-}
-
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+   Upstream's SidebarStageBackdrop header art and its focus-ring offset helper
+   have no call site here: the sidebar header stays flat and transparent per
+   the design, and the fork chrome owns its own focus rings. They were kept as
+   dead exports until upstream's knip gate (#9962) started refusing those;
+   StageBackdropArt below is what the auth surface and settings still render. */
+/* fork:end fork-sidebar-chrome */
 export function StageBackdropArt({ variant }: { variant: SidebarStageBackdropVariant }) {
   return variant === "nightly" ? <NightlySkyArt /> : <DevBlueprintArt />;
 }

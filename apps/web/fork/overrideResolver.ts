@@ -35,7 +35,7 @@ export interface OverrideResolverOptions {
 const RESOLVABLE_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js", ".mjs", ".css"];
 
 /** Always resolves to the upstream module, so an override can wrap what it shadows. */
-export const UPSTREAM_PREFIX = "~upstream/";
+const UPSTREAM_PREFIX = "~upstream/";
 const ALIAS_PREFIX = "~/";
 
 /** Name of the shadow tree directory, relative to `src`. */

@@ -89,7 +89,9 @@ describe("DesktopPreReadyPlatform", () => {
           desktopName = name;
         });
         writeFileSyncMock.mockImplementation((path: string, contents: string) => {
-          if (path === "/xdg/applications/com.t3tools.T3Code.desktop") desktopEntry = contents;
+          // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+          if (path === "/xdg/applications/com.t3tools.T3Code.Fork.desktop") desktopEntry = contents;
+          // fork:end fork-app-identity
         });
 
         return Effect.scoped(
@@ -101,9 +103,13 @@ describe("DesktopPreReadyPlatform", () => {
               ),
             );
             const identity = yield* Effect.promise(() => portalIdentity);
-            assert.equal(identity.desktopName, "com.t3tools.T3Code.desktop");
+            // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+            assert.equal(identity.desktopName, "com.t3tools.T3Code.Fork.desktop");
+            // fork:end fork-app-identity
             assert.include(identity.desktopEntry ?? "", 'Exec="/Applications/current.AppImage" %U');
-            assert.include(identity.desktopEntry ?? "", "Name=T3 Code (Alpha)");
+            // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+            assert.include(identity.desktopEntry ?? "", "Name=no3y Code (Alpha)");
+            // fork:end fork-app-identity
             assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/t3code;");
           }),
         ).pipe(Effect.ensuring(Effect.sync(() => vi.unstubAllEnvs())));

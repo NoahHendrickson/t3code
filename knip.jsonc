@@ -47,11 +47,23 @@
     },
     "apps/web": {
       // Worktree setup invokes this directly from t3.json.
-      "entry": ["scripts/warm-dep-cache.ts"],
+      // fork:begin fork-overrides — see .fork/customizations.yaml#fork-overrides
+      // Shadow modules are reached through the fork's Vite/tsconfig alias
+      // (apps/web/fork/vitePluginForkOverrides), which knip cannot follow, so
+      // they are entries; the custom/ files they import follow from there.
+      "entry": ["scripts/warm-dep-cache.ts", "src/overrides/**/*.{ts,tsx}"],
+      // fork:end fork-overrides
       // UI component modules are copied and adapted as cohesive sets. Keep their
       // named subcomponents even before they have callers; the file audit still
       // reports an entire component module when nothing imports it.
-      "ignoreIssues": { "src/components/ui/*.tsx": ["exports", "nsExports", "duplicates"] },
+      "ignoreIssues": {
+        "src/components/ui/*.tsx": ["exports", "nsExports", "duplicates"],
+        // fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+        // Vendored verbatim from NoahHendrickson/the-forge and kept whole so
+        // re-syncs diff cleanly, the same standing upstream gives _generated/.
+        "src/custom/designMode/engine/vendor/**": ["exports", "types", "duplicates"],
+        // fork:end fork-design-mode
+      },
     },
     "apps/mobile": {
       // Expo loads local config plugins by string; Metro handles platform variants.

@@ -288,6 +288,8 @@
     - apps/desktop/src/app/DesktopEarlyElectronStartup.ts
     - apps/desktop/src/app/DesktopEarlyElectronStartup.test.ts
     - apps/desktop/src/app/DesktopPreReadyPlatform.ts
+    # Upstream (#8103) asserts its own desktop entry name; fenced to the fork's.
+    - apps/desktop/src/app/DesktopPreReadyPlatform.test.ts
     # Unfenced known carve-out: on packaged Linux this registers upstream's
     # t3code-url-handler.desktop in ~/.local/share/applications and claims
     # x-scheme-handler/t3code via xdg-mime. The scheme itself is deliberately
@@ -350,6 +352,26 @@
     - apps/web/src/main.tsx
   verify:
     - apps/web/src/__fork_guards__/forkMarker.test.ts
+
+- id: fork-overrides
+  intent: >
+    Tier 2 shadowing: a copy of an upstream module under apps/web/src/overrides
+    resolves ahead of the upstream file for every import site, via the fork's
+    Vite plugin and tsconfig path map (.fork/README.md §3). Tooling that walks
+    imports on its own cannot follow that alias, so the shadow tree is declared
+    as knip entries and the custom/ modules only a shadow imports follow from
+    there; without that upstream's unused-file gate (#9962) reports every
+    override as dead.
+  tier: 1
+  files:
+    - apps/web/fork/overrideResolver.ts
+    - apps/web/fork/vitePluginForkOverrides.ts
+    - apps/web/src/overrides/README.md
+  shadows: []
+  watch:
+    - knip.jsonc
+  verify:
+    - apps/web/fork/overrideResolver.test.ts
 
 - id: phosphor-duotone-icons
   intent: >
@@ -2869,6 +2891,8 @@
     # custom/ directory walk already lints it, and its own tsconfig checks it).
     - apps/web/src/custom/designMode/engine/vendor
     - apps/web/fork/vitePluginForkDesignMode.ts
+    # The vendored engine is exempt from knip's unused-export audit.
+    - knip.jsonc
     - apps/web/src/overrides/components/preview/PreviewPanel.tsx
   shadows:
     - apps/web/src/components/preview/PreviewPanel.tsx

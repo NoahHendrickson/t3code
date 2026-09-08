@@ -161,7 +161,12 @@ import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useNowMinute } from "../hooks/useNowMinute";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
-import { readThreadShell, useProjects, useThreadShells } from "../state/entities";
+import {
+  readThreadShell,
+  useAllEnvironmentProjectSnapshotsReady,
+  useProjects,
+  useThreadShells,
+} from "../state/entities";
 import { environmentServerConfigsAtom, primaryServerKeybindingsAtom } from "../state/server";
 import { vcsEnvironment } from "../state/vcs";
 import { threadEnvironment } from "../state/threads";
@@ -2025,16 +2030,19 @@ export default function Sidebar() {
       ? `${scopedProjectGroups.length} projects`
       : (scopedProjectGroups[0]?.displayName ?? null);
   // A scoped project that goes away (deleted, environment gone) leaves the
-  // scope, so a stale key cannot keep the filter lit over nothing.
+  // scope, so a stale key cannot keep the filter lit over nothing — but only
+  // once every catalog environment has a live project snapshot (upstream
+  // #9416): a cached or disconnected environment cannot prove a project gone.
+  const allProjectSnapshotsReady = useAllEnvironmentProjectSnapshotsReady();
   useEffect(() => {
-    if (scopedProjectGroups.length !== projectScopeKeys.size) {
+    if (allProjectSnapshotsReady && scopedProjectGroups.length !== projectScopeKeys.size) {
       setProjectScopeKeys(
         scopedProjectGroups.length === 0
           ? EMPTY_PROJECT_SCOPE
           : new Set(scopedProjectGroups.map((group) => group.projectKey)),
       );
     }
-  }, [projectScopeKeys, scopedProjectGroups]);
+  }, [allProjectSnapshotsReady, projectScopeKeys, scopedProjectGroups]);
   // Scope flips drop the selection: rows selected under the old scope may be
   // hidden now, and bulk actions must never count or touch invisible rows.
   useEffect(() => {

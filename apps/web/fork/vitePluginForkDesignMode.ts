@@ -12,7 +12,7 @@ import { build } from "esbuild";
 import * as NodePath from "node:path";
 import type { Plugin } from "vite";
 
-export const FORK_DESIGN_MODE_VIRTUAL_ID = "virtual:fork-design-mode-engine";
+const FORK_DESIGN_MODE_VIRTUAL_ID = "virtual:fork-design-mode-engine";
 const RESOLVED_ID = `\0${FORK_DESIGN_MODE_VIRTUAL_ID}`;
 
 export interface ForkDesignModeOptions {
