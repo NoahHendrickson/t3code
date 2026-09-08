@@ -497,6 +497,56 @@ describe("fork guard: fork-composer-shell", () => {
     expect(meter?.body).toMatch(/height:\s*24px/u);
   });
 
+  it("lets the PR chip keep its state colour and ride the strip's far end", () => {
+    // Upstream inks the pill emerald / violet / red by PR state; the fork's
+    // white chip ink and neutral hover fill would have flattened it. Both
+    // rules exempt the stamped chip, and the chip's fill is a wash of its own
+    // ink instead.
+    const branchSelector = readSibling("../components/BranchToolbarBranchSelector.tsx");
+    expect(branchSelector).toContain("data-fork-pr-chip");
+    expect(branchSelector).toContain("branchPrStatus.colorClass");
+    const chipInk = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes("[data-fork-context-chip]") &&
+        rule.body.includes("color:"),
+    );
+    expect(chipInk?.selector).toContain(":not([data-fork-pr-chip])");
+    const chipHover = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.body.includes("var(--fork-context-chip-bg-hover)"),
+    );
+    expect(chipHover?.selector).toContain(":not([data-fork-pr-chip])");
+    const prFill = rules.filter(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes("[data-fork-pr-chip]") &&
+        rule.body.includes("color-mix(in oklab, currentColor"),
+    );
+    expect(prFill.map((rule) => rule.body)).toEqual([
+      expect.stringMatching(/currentColor 12%/u),
+      expect.stringMatching(/currentColor 17%/u),
+    ]);
+    expect(prFill[1]?.selector).toContain(":hover");
+    // Far end: the wrapper holding the chip may grow again (the packing rule
+    // pins every other strip child shrink-only) and the chip takes the free
+    // space as a start margin, so the branch stays packed against checkout.
+    const grow = rules.find(
+      (rule) =>
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
+        rule.selector.includes(":has(> [data-fork-pr-chip])"),
+    );
+    expect(grow?.body).toMatch(/flex:\s*1 1 auto/u);
+    const place = rules.find(
+      (rule) =>
+        rule.selector.includes('[data-slot="composer-context-strip"]') &&
+        rule.selector.trim().endsWith("[data-fork-pr-chip]"),
+    );
+    expect(place?.body).toMatch(/margin-inline-start:\s*auto/u);
+    expect(place?.body).toMatch(/order:\s*1/u);
+  });
+
   it("hides only separators in the left mode slot", () => {
     const separatorRules = rules.filter(
       (rule) =>

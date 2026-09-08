@@ -737,6 +737,12 @@ export function BranchToolbarBranchSelector({
                   type="button"
                   aria-label={branchPrTooltip}
                   onClick={(event) => openPrLink(event, branchPrStatus.url)}
+                  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+                     The chip keeps its PR-state ink (theme.custom.css exempts
+                     it from the white chip text and washes it in that colour)
+                     and rides the far end of the strip. */
+                  data-fork-pr-chip
+                  /* fork:end fork-composer-shell */
                   className={cn(
                     "inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-medium tabular-nums transition-colors hover:bg-muted/60",
                     branchPrStatus.colorClass,
