@@ -32,6 +32,7 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from "~/components/ui/menu";
+import { toastManager } from "~/components/ui/toast";
 import type { DraftId } from "~/composerDraftStore";
 import { useClientSettings } from "~/hooks/useSettings";
 import { selectProjectGroupingSettings } from "~/logicalProject";
@@ -172,7 +173,16 @@ export function DraftProjectPill(props: {
           onValueChange={(value) => {
             const entry = projectEntryByKey.get(value as string);
             if (!entry || value === activeProjectKey || !props.draftId) return;
-            void assignDraftProject(props.draftId, entry);
+            // The pick already cleared its Send hold on the way out; the
+            // draft is simply still on its previous project, so say so.
+            void assignDraftProject(props.draftId, entry).catch((error: unknown) => {
+              console.error(error);
+              toastManager.add({
+                type: "error",
+                title: `Couldn't switch to ${entry.group.displayName}`,
+                description: error instanceof Error ? error.message : "An error occurred.",
+              });
+            });
           }}
         >
           {projectPickerEntries.map(({ group, targetProject }) => (

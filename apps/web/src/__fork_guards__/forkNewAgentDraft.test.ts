@@ -162,7 +162,10 @@ describe("fork guard: fork-new-agent-draft", () => {
     }
     const pill = readSibling("../custom/DraftProjectPill.tsx");
     expect(pill).toContain('data-testid="draft-project-pill"');
-    expect(pill).toContain("void assignDraftProject(props.draftId, entry);");
+    // A pick that fails to resolve tells the user, rather than surfacing as
+    // an unhandled rejection with the draft silently left where it was.
+    expect(pill).toMatch(/void assignDraftProject\(props\.draftId, entry\)\.catch\(/u);
+    expect(pill).toContain("toastManager.add({");
     // Same project list and member rule as the palette and the grouped header.
     expect(pill).toContain("buildSidebarProjectPickerEntries({");
   });
