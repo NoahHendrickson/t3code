@@ -24,7 +24,8 @@
       // Fork-only: mirrors the `lucide-react` alias in `vite.config.ts` so
       // TypeScript sees the same Phosphor duotone shim the bundler loads.
       // See `.fork/customizations.yaml#phosphor-duotone-icons`.
-      "lucide-react": ["./src/custom/icons/lucide-phosphor.tsx"]
+      "lucide-react": ["./src/custom/icons/lucide-phosphor.tsx"],
+      "lucide-react/dynamic": ["./src/custom/icons/lucide-phosphor-dynamic.tsx"]
     },
     "plugins": [
       {

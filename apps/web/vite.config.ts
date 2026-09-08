@@ -235,6 +235,11 @@ export default defineConfig(() => {
         // Anchoring the swap here keeps all ~89 upstream import sites
         // untouched. See `.fork/README.md` §3 and
         // `.fork/customizations.yaml#phosphor-duotone-icons`.
+        // Listed first: the bare `lucide-react` entry below also matches this
+        // subpath and would otherwise rewrite it to `<shim>.tsx/dynamic`.
+        "lucide-react/dynamic": NodeURL.fileURLToPath(
+          new URL("./src/custom/icons/lucide-phosphor-dynamic.tsx", import.meta.url),
+        ),
         "lucide-react": NodeURL.fileURLToPath(
           new URL("./src/custom/icons/lucide-phosphor.tsx", import.meta.url),
         ),

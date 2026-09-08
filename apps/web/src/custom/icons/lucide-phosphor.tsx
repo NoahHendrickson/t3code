@@ -212,6 +212,8 @@ import {
   type IconProps,
   type IconWeight,
   Circuitry as PhCircuitry,
+  FlowArrow as PhFlowArrow,
+  Rocket as PhRocket,
   CodeSimple as PhCodeSimple,
   FolderSimple as PhFolderSimple,
   GameController as PhGameController,
@@ -580,6 +582,8 @@ export const TrendingDownIcon = icon("trending-down", PhTrendDown, "bold");
 export const TrendingUpIcon = icon("trending-up", PhTrendUp, "bold");
 export const TicketIcon = icon("ticket", PhTicket, "duotone");
 export const SlidersHorizontalIcon = icon("sliders-horizontal", PhSlidersHorizontal, "duotone");
+export const RocketIcon = icon("rocket", PhRocket, "duotone");
+export const WorkflowIcon = icon("workflow", PhFlowArrow, "duotone");
 
 /**
  * lucide's escape hatch for one-off glyphs drawn from path data (upstream's

@@ -390,6 +390,9 @@
   tier: 1
   files:
     - apps/web/src/custom/icons/lucide-phosphor.tsx
+    # `lucide-react/dynamic` (project icons by name, upstream #9137) answered
+    # from the same table, so the picker only offers names that render.
+    - apps/web/src/custom/icons/lucide-phosphor-dynamic.tsx
   shadows: []
   watch:
     - apps/web/vite.config.ts
