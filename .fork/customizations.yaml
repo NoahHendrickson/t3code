@@ -1199,10 +1199,10 @@
     to the palette's #181b1e. Opaque is the point of the gate; the cool cast is
     not, and against neighbouring surfaces that are all neutral rgb(22 22 22) it
     read as a different material instead of the same panel with its glass
-    suspended. #1f1f1f is the docked panel's own resolved value (88% of the
-    neutral tint over the material's ~99 sample), so only transparency changes
-    when it lifts off the column. The seam colour is deliberately NOT gated on
-    overlay: the tint asks what is behind the panel, which overlay changes, while
+    suspended. #1f1f1f preserves the earlier opaque fallback (88% of the
+    neutral tint over the material's ~99 sample). The docked panel now lets
+    slightly more wallpaper through while the floating panel stays opaque.
+    The seam colour is deliberately NOT gated on overlay: the tint asks what is behind the panel, which overlay changes, while
     the seam asks how loud its edge is, which it does not.
 
     Two glass rules now target the v2 panel, so the guard picks the tinted one by
@@ -1238,13 +1238,13 @@
 
     Glass is the one place the fork's flatten-alpha doctrine is suspended: an
     opaque row fill over a translucent panel renders as a rectangle of missing
-    wallpaper. The sidebar panel is a single rgb(22 22 22 / 88%) tint and rows
+    wallpaper. The sidebar panel is a single rgb(22 22 22 / 85%) tint and rows
     lift with white washes (5% hover, 8% active/selected) so the glass survives
-    selection. The chat stage is a vertical gradient, rgb(22 22 22 / 95%) for its
-    top 70% easing to 85% across the bottom third where the cutoff mask has already
+    selection. The chat stage is a vertical gradient, rgb(22 22 22 / 92%) for its
+    top 70% easing to 82% across the bottom third where the cutoff mask has already
     ended the transcript. That ramp is scoped to insets that carry the mask
     (:has(.fork-timeline-cutoff)); Settings, Usage and the empty state are the
-    same element with no transcript to end, so they keep a flat 95%. SidebarInset
+    same element with no transcript to end, so they keep a flat 92%. SidebarInset
     carries bg-background, so the rule clears background-color explicitly — a
     background-image alone composites over that opaque fill and the glass does
     nothing. Panel and stage share one triple, so both surfaces carry a single
@@ -1259,8 +1259,8 @@
     to take the glass, and it paints NOTHING rather than taking a tint. The panel
     is an ordinary child of the inset, so anything it paints composites ON the
     stage and can only move it toward opaque — a wash there would make it less
-    glassy than the column it docks into, and the sidebar reaches 88% against a
-    95% stage only by being a paint layer outside the inset entirely. So
+    glassy than the column it docks into, and the sidebar reaches 85% against a
+    92% stage only by being a paint layer outside the inset entirely. So
     --fork-design-surface is transparent, and its fields take the context chips'
     12% for the chips' own reason: with the surface painting nothing they sit on
     the bare stage, one layer lower than a composer ring. --muted matches the
@@ -1280,7 +1280,7 @@
     constant. On "under-window" (a flat ~49 grey) the usable range was roughly
     60-90%: 91%, 97% and 98% all rendered as no glass at all rather than as
     subtle glass. "fullscreen-ui" returns ~99 and carries colour, so the same
-    contribution needs a much higher alpha — the stage tops out at 95% and still
+    contribution needs a much higher alpha — the stage tops out at 92% and still
     reads as glass. Changing FORK_VIBRANCY_MATERIAL invalidates every number
     here; hold the desktop's contribution constant and redo the arithmetic.
 
@@ -3319,6 +3319,29 @@
     - apps/web/src/browser/hostedBrowserWebviewStyle.ts
   verify:
     - apps/web/src/__fork_guards__/forkGlassPreviewParking.test.ts
+
+- id: fork-subagent-spawn-card
+  intent: >
+    The in-chat subagent spawn CTA is the Figma tree (t3-fork file, node
+    376:21366), not upstream's bordered one-line bar. A Phosphor TreeView
+    (regular) leads "Kicked off N subagents" / "Ran N subagents", with the
+    working/failed/completed count and an underlined View agents action on
+    the line below. Clicking the block still opens the Agents panel. When
+    members are known they render indented underneath: working rain or a
+    settled status dot, title, live activity or terminal detail, then model,
+    effort, and token count. Workflow name and mid-phase titles stay when
+    the panel model has them. A sync that restores the bordered bar, drops
+    the member list, or unhooks onOpenAgents is a silent visual and
+    functional regression.
+  tier: 1
+  files:
+    - apps/web/src/custom/AgentSpawnCtaRow.tsx
+  shadows: []
+  watch:
+    # Fenced import plus the thin AgentSpawnCtaRow wrapper.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkSubagentSpawnCard.test.ts
 
 - id: fork-new-agent-draft
   intent: >
