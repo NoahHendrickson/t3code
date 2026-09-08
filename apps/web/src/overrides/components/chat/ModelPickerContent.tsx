@@ -560,7 +560,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   const selectedEntry =
     selectedInstanceId === "favorites" ? undefined : entryByInstanceId.get(selectedInstanceId);
   const providerSetupEntries =
-    !isSearching && props.onOpenProviderSetup
+    // Fork: `searchVisible`, not upstream's `isSearching` — an open search box
+    // with no query already swaps the list to the whole catalogue (see
+    // `searchOpen` above), and the tab's setup CTA must not sit under it.
+    !searchVisible && props.onOpenProviderSetup
       ? instanceEntries.filter(
           (entry) =>
             matchesLockedProvider(entry) &&

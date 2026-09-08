@@ -70,7 +70,7 @@ export const ComposerShell = memo(function ComposerShell({
         // ComposerSurface.Shell's data-with-context is the visibility signal.
         <div
           data-fork-composer-context-row="true"
-          className="flex min-w-0 items-center [[data-with-context]_&]:pb-2"
+          className="flex min-w-0 items-center group-data-with-context/composer-surface:pb-2"
         >
           {context}
         </div>

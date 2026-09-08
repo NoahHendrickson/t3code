@@ -42,6 +42,10 @@ export function shouldUseCompactComposerPrimaryActions(
    the helpers around it stay upstream's through the re-export above; only the
    verdict is owned here. Same signature, so ChatComposer's call site is
    untouched. */
+/** The one switch for upstream's resting composer. ChatComposer and ChatView
+ *  read it to skip the measurement pipeline that only feeds the predicate. */
+export const FORK_ADOPTS_RESTING_COMPOSER_LAYOUT: boolean = false;
+
 export function shouldUseRestingComposerLayout(_input: {
   isExistingThread: boolean;
   isMobileViewport: boolean;
@@ -50,6 +54,6 @@ export function shouldUseRestingComposerLayout(_input: {
   hasMultilinePrompt: boolean;
   timelineOverflows: boolean;
 }): boolean {
-  return false;
+  return FORK_ADOPTS_RESTING_COMPOSER_LAYOUT;
 }
 /* fork:end fork-composer-shell */

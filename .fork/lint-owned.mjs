@@ -80,15 +80,17 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
  * memo dependency lists) in fork-authored components. Fixing the latter is
  * behavior work, not lint hygiene, and does not belong in a sync. Until the
  * follow-up burns them down, these rules are reported but do not fail the
- * gate; every other rule still does. Remove entries as they reach zero.
+ * gate; every other rule still does. Each entry carries the count measured at
+ * deferral, and the gate fails on growth and nags when it can shrink, so the
+ * baseline only ever ratchets down. Remove entries as they reach zero.
  */
-export const DEFERRED_RULES = new Set([
-  "react(exhaustive-effect-dependencies)",
-  "react(memo-dependencies)",
-  "react(purity)",
-  "react(refs)",
-  "react(set-state-in-effect)",
-  "react(static-components)",
+export const DEFERRED_RULES = new Map([
+  ["react(exhaustive-effect-dependencies)", 4],
+  ["react(memo-dependencies)", 13],
+  ["react(purity)", 1],
+  ["react(refs)", 18],
+  ["react(set-state-in-effect)", 24],
+  ["react(static-components)", 2],
 ]);
 
 const isLintable = (path) => LINTABLE.has(NodePath.extname(path));
@@ -255,6 +257,19 @@ function main() {
       console.error(describe(diagnostic));
     }
     console.error("");
+  }
+  // The deferral is a baseline, not an exemption: growth under a deferred
+  // rule is a new warning in fork-owned code and fails like any other.
+  for (const [rule, baseline] of DEFERRED_RULES) {
+    const count = deferred.filter((diagnostic) => diagnostic.code === rule).length;
+    if (count > baseline) {
+      blocking.push(...deferred.filter((diagnostic) => diagnostic.code === rule).slice(baseline));
+      console.error(`fork-lint: ${rule} grew from ${baseline} to ${count}; new ones are blocking.`);
+    } else if (count < baseline) {
+      console.error(
+        `fork-lint: ${rule} is down to ${count}; lower its DEFERRED_RULES baseline from ${baseline}.`,
+      );
+    }
   }
 
   if (blocking.length > 0) {

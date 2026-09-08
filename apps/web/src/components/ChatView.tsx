@@ -358,6 +358,10 @@ import {
   shouldShowComposerContextStrip,
   shouldShowEnvironmentIndicator,
 } from "./BranchToolbar.logic";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+// Through the alias: a relative import resolves to upstream's module for tsc.
+import { FORK_ADOPTS_RESTING_COMPOSER_LAYOUT } from "~/components/composerFooterLayout";
+/* fork:end fork-composer-shell */
 import {
   getProviderStatusBannerKey,
   ProviderStatusBanner,
@@ -3372,7 +3376,10 @@ export default function ChatView(props: ChatViewProps) {
     hasActiveProject: activeProject !== null,
     isGitRepo: isGitRepo || activeThreadWorktreePath !== null,
     showEnvironmentIndicator: showComposerEnvironmentIndicator,
-    hostsRestingComposerControls: routeKind === "server",
+    // Desktop never relocates controls, so the invisible measuring strip is
+    // only worth mounting where the collapsed phone composer will use it.
+    hostsRestingComposerControls:
+      routeKind === "server" && (FORK_ADOPTS_RESTING_COMPOSER_LAYOUT || isMobileViewport),
   });
   const showComposerContextStrip = shouldShowComposerContextStrip({
     hasActiveProject: activeProject !== null,
@@ -8434,7 +8441,13 @@ export default function ChatView(props: ChatViewProps) {
                 contentInsetEndAdjustment={composerTimelineInset}
                 liveFollowEnabled={timelineLiveFollowEnabled}
                 onIsAtEndChange={onIsAtEndChange}
-                onContentOverflowChange={setTimelineOverflows}
+                /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                // Overflow measurement (layout effect + ResizeObserver rAF) only
+                // feeds the resting predicate the shadow refuses.
+                {...(FORK_ADOPTS_RESTING_COMPOSER_LAYOUT
+                  ? { onContentOverflowChange: setTimelineOverflows }
+                  : {})}
+                /* fork:end fork-composer-shell */
                 onToolOutputCollapsedAtEnd={onToolOutputCollapsedAtEnd}
                 onManualNavigation={cancelTimelineLiveFollowForUserNavigation}
                 hideEmptyPlaceholder={isDraftHeroState || threadDetailLoading}

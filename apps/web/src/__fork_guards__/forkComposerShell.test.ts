@@ -90,6 +90,23 @@ function balancedDivClose(markup: string, openIndex: number): number {
 }
 
 describe("fork guard: fork-composer-shell", () => {
+  it("refuses upstream's resting composer layout through the shadow", async () => {
+    // The composerFooterLayout shadow re-exports upstream and owns only this
+    // verdict; a sync that lets the predicate through brings the desktop
+    // collapse-at-rest layout back.
+    const shadow = await import("../overrides/components/composerFooterLayout");
+    expect(shadow.FORK_ADOPTS_RESTING_COMPOSER_LAYOUT).toBe(false);
+    expect(
+      shadow.shouldUseRestingComposerLayout({
+        isExistingThread: true,
+        isMobileViewport: false,
+        isScrollCollapsed: true,
+        hasExpandedChrome: false,
+        hasMultilinePrompt: false,
+        timelineOverflows: true,
+      }),
+    ).toBe(false);
+  });
   it("orders context, then a vessel wrapping surface and controls", () => {
     const markup = shellMarkup();
     const context = markup.indexOf("data-test-context");

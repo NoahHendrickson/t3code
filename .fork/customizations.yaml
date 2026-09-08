@@ -847,6 +847,9 @@
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
   shadows: []
   watch:
+    # The user docs describe upstream's single-list drag verbs; fenced to the
+    # fork's pinned-card and project-header drags.
+    - docs/user/thread-sidebar.md
     - apps/web/src/components/Sidebar.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
@@ -2019,8 +2022,10 @@
     on (2026-09-08 sync) are listed in lint-owned.mjs as DEFERRED_RULES and
     reported without failing the gate, because they fired 41 times at once,
     partly on upstream-authored lines in adopted files, and clearing the rest
-    is behavior work for a follow-up. The list shrinks as each rule reaches
-    zero; nothing else is exempt.
+    is behavior work for a follow-up. Each entry carries the count measured
+    at deferral: growth fails the gate, shrinkage nags to lower the baseline,
+    and an entry leaves the list when it reaches zero. Nothing else is
+    exempt.
   tier: 1
   files:
     - .fork/lint-owned.mjs

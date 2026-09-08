@@ -35,6 +35,9 @@ describe("fork guard: fork-subagent-spawn-card", () => {
     // 2026-09-08 sync; the card only strips its check glyph.
     expect(card).toContain("deriveAgentSpawnSummary({");
     expect(card).toContain('summary.status.replace(/^✓ /u, "")');
+    // The coordinator's own status keeps a workflow live between dynamic
+    // member launches; without it `live` falls back to member counts.
+    expect(card).toContain("coordinatorStatus: workflowGroup?.workflow.status,");
     expect(card).toContain("View agents");
     expect(card).toContain("onClick={props.onOpenAgents}");
     expect(card).toContain("SidebarV2WorkingRain");

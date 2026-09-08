@@ -71,7 +71,6 @@ import {
 import {
   composerFloatingLayerProps,
   isInsideCollapsedComposerControls,
-  isInsideComposerFloatingLayer,
   isInsideRestingComposerControlScope,
 } from "./composerEventScope";
 import {
@@ -177,6 +176,10 @@ import {
   shouldUseCompactComposerFooter,
   shouldUseRestingComposerLayout,
 } from "../composerFooterLayout";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+// Through the alias: a relative import resolves to upstream's module for tsc.
+import { FORK_ADOPTS_RESTING_COMPOSER_LAYOUT } from "~/components/composerFooterLayout";
+/* fork:end fork-composer-shell */
 import { measureRestingComposerControls } from "./restingComposerControlsMeasurement";
 import { observeResponsiveBreakpointFade, usePanelAnimationSettings } from "../../panelAnimations";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
@@ -3993,7 +3996,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onComposerOverlayHeightChange,
   );
   const canTrackComposerScrollGesture =
-    routeKind === "server" && activeThreadId !== null && !isMobileViewport;
+    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+    // The document-level wheel listener only feeds the resting collapse the
+    // composerFooterLayout shadow refuses; never attach it.
+    FORK_ADOPTS_RESTING_COMPOSER_LAYOUT &&
+    /* fork:end fork-composer-shell */
+    routeKind === "server" &&
+    activeThreadId !== null &&
+    !isMobileViewport;
   const canScrollCollapseComposer =
     canTrackComposerScrollGesture &&
     settings.composerCollapseOnScroll &&

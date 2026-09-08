@@ -1,6 +1,11 @@
 import { useAtomValue } from "@effect/atom-react";
 import * as Schema from "effect/Schema";
+/* fork:begin sidebar-v2-list-animation — see .fork/customizations.yaml#sidebar-v2-list-animation */
 import { autoAnimate } from "@formkit/auto-animate";
+/* fork:end sidebar-v2-list-animation */
+/* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping
+   Upstream moved its sensors, collision and sorting into Sidebar.pointer; the
+   fork's two DndContexts still import them here. */
 import {
   DndContext,
   PointerSensor,
@@ -15,6 +20,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+/* fork:end sidebar-v2-project-grouping */
 /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
 import { SIDEBAR_V2_PROJECT_HEADER_SORTING_STRATEGY } from "~/custom/SidebarV2ProjectGroupHeader";
 import { sidebarV2ProjectSectionCollision } from "~/custom/sidebarV2ProjectGrouping";
@@ -598,18 +604,21 @@ function SortableThreadRow(props: {
   return props.children(bag);
 }
 
+/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
 // Upstream also tints the whole row for an unsent draft. The fork's row
-// surface encodes interaction and nothing else (see
-// .fork/customizations.yaml#sidebar-v2-card-rows), so only the pen is kept.
+// surface encodes interaction and nothing else, so only the pen is kept.
 const draftPenClassName = "size-3 shrink-0 text-amber-600 dark:text-amber-300/80";
+/* fork:end sidebar-v2-card-rows */
 
-// Upstream's sortable section markers, empty-section placeholders, drag
-// boundary labels and shelf-section header live between here and
-// SidebarThreadRow upstream. They are the scaffolding of the one-list drag
-// (a thread dragged onto a marker pins/settles/wakes it), which this fork
-// does not render: its list is project-grouped and drags project headers
-// and pinned cards in two contexts of its own. Nothing references them, so
-// they are not carried; the drag they belong to is the thing to port.
+/* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping
+   Upstream's sortable section markers, empty-section placeholders, drag
+   boundary labels and shelf-section header live between here and
+   SidebarThreadRow upstream. They are the scaffolding of the one-list drag
+   (a thread dragged onto a marker pins/settles/wakes it), which this fork
+   does not render: its list is project-grouped and drags project headers
+   and pinned cards in two contexts of its own. Nothing references them, so
+   they are not carried; the drag they belong to is the thing to port. */
+/* fork:end sidebar-v2-project-grouping */
 
 const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   thread: SidebarThreadSummary;
@@ -725,11 +734,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // Unsent composer text on this thread. The open thread shows its own
   // composer, so the marker only decorates rows you have navigated away from.
   const hasUnsentDraft = useThreadHasUnsentDraft(threadRef) && !props.isActive;
-  // Upstream pairs the marker with a "Discard draft" hover action in the row's
-  // trailing cell. That cell is fork-owned on both variants (it already holds
-  // pin / snooze / settle, and on a fork draft row the X that discards the
-  // whole draft thread), so the action is not carried here — the draft's own
-  // composer is where an existing thread's unsent text gets cleared.
+  /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows
+     Upstream pairs the marker with a "Discard draft" hover action in the row's
+     trailing cell. That cell is fork-owned on both variants (it already holds
+     pin / snooze / settle, and on a fork draft row the X that discards the
+     whole draft thread), so the action is not carried here — the draft's own
+     composer is where an existing thread's unsent text gets cleared. */
+  /* fork:end sidebar-v2-draft-rows */
 
   const gitCwd = thread.worktreePath ?? props.project?.workspaceRoot ?? null;
   const linkedPullRequestStatus = useLinkedThreadPullRequest(
@@ -775,13 +786,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // predicate survives for the snoozed/settled slim rows, whose brightness
   // still encodes unread-ness (the card delegates that to the status dot).
   // See the "two recede rules" note in custom/sidebarV2RowPolicy.ts.
-  // Upstream extracted this to Sidebar.logic's shouldRecedeSidebarThread and
-  // changed it (#9759): background work recedes whether or not it is unread,
-  // and read approval/input rows recede too. Neither half is adopted. The
-  // second is the opposite of this rule's point — on these shelves an approval
-  // or input row is exactly the one that still wants you — and the first only
-  // ever applies to a working row on a snoozed/settled shelf, which the
-  // fork's card path (cardRecedes) owns everywhere it actually occurs.
+  /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+     Upstream extracted this to Sidebar.logic's shouldRecedeSidebarThread and
+     changed it (#9759): background work recedes whether or not it is unread,
+     and read approval/input rows recede too. Neither half is adopted. The
+     second is the opposite of this rule's point — on these shelves an approval
+     or input row is exactly the one that still wants you — and the first only
+     ever applies to a working row on a snoozed/settled shelf, which the
+     fork's card path (cardRecedes) owns everywhere it actually occurs. */
+  /* fork:end sidebar-v2-card-rows */
   const shouldRecede =
     (status === "ready" || status === "working" || status === "monitoring") &&
     !isUnread &&

@@ -991,7 +991,10 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
           branch: resolveProjectThreadCreationBranch({
             workspaceMode: mode,
             selectedBranch: workspaceSelection?.branch ?? null,
-            currentCheckoutBranch: currentCheckoutBranchName,
+            // The live status stream first; upstream's send-time argument is
+            // the same value when present, and a queued task has none.
+            currentCheckoutBranch:
+              currentCheckoutBranchName ?? options?.currentCheckoutBranch ?? null,
           }),
           /* fork:end mobile-current-checkout-branch */
           worktreePath: mode === "worktree" ? null : (workspaceSelection?.worktreePath ?? null),
