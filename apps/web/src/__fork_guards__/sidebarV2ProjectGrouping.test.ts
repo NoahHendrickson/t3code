@@ -83,9 +83,7 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // header is drawn from it and the cards' under-a-header flag is read off
     // the same value, so they cannot come to disagree.
     expect(render).toContain("const header = section.header;");
-    expect(render).toMatch(
-      /renderThreadRow\(\s*thread,\s*"active",\s*header !== null,\s*undefined,\s*section\.collapsed,\s*\)/u,
-    );
+    expect(render).toMatch(/renderThreadRow\(\s*thread,\s*"active",\s*header !== null\s*\)/u);
     // collapsed is decided once in visibleActiveSections and carried on the
     // section — recomputing membership here would drift from the filter.
     expect(render).toContain("collapsed={section.collapsed}");

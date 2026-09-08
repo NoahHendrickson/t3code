@@ -773,7 +773,12 @@
     grouping switch). A collapsed section hides its cards from both paint and
     keyboard order, with the open route thread kept visible — the same
     exception the snoozed shelf makes for a deep-linked row — so collapse
-    cannot bury the thread you are viewing.
+    cannot bury the thread you are viewing. The keep reads a deferred copy of
+    the route key (useDeferredValue), so when you open another thread the
+    kept card leaves in the quiet re-render after the one that mounts the new
+    chat view, and the list animation fades it and reflows the rows below in
+    one clean pass instead of stuttering through the busiest frame; the
+    highlight itself follows the live key.
 
     The header has no own horizontal pad — the list's 8px is the edge. The
     folder sits in a 24px box so its 16px glyph centres on the same 20px axis as

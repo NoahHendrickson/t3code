@@ -73,6 +73,7 @@ import { GitPullRequestIcon } from "lucide-react";
 import {
   memo,
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useReducer,
@@ -610,10 +611,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   projectTitle: string | null;
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   projectTitleHidden?: boolean;
-  // True for the one card a collapsed group keeps because it is the open
-  // route. Stamped on the li so the list animation (custom/sidebarV2List
-  // Animation) can drop it instantly when you move on — see there for why.
-  keptInCollapsedGroup?: boolean;
   /* fork:end sidebar-v2-project-grouping */
   providerEntryByInstanceId: ReadonlyMap<string, ProviderInstanceEntry>;
   timestampFormat: TimestampFormat;
@@ -1361,7 +1358,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
          (theme.custom.css): present exactly when the card sits under a
          project header, which is what projectTitleHidden already says. */
       data-fork-project-section={props.projectTitleHidden === true ? "" : undefined}
-      data-fork-collapsed-keep={props.keptInCollapsedGroup === true ? "" : undefined}
       /* fork:end sidebar-v2-project-grouping */
       ref={sortable?.setNodeRef}
       style={
@@ -2255,6 +2251,16 @@ export default function Sidebar() {
   // the open route thread kept visible so a deep link (or a collapse while
   // viewing) cannot bury the row you are on — same exception the snoozed shelf
   // makes. Paint and keyboard order both read this, so they cannot disagree.
+  //
+  // The keep reads a deferred copy of the route key. Opening another thread
+  // is the busiest frame the app has — the route changes and the new chat
+  // view mounts — and a kept card that leaves in that same frame takes the
+  // list animation with it: its fade starts late, and the rows below slide up
+  // unevenly behind it. Deferring the key lets the urgent render highlight the
+  // new row and mount the view; the kept card then leaves in the quiet
+  // re-render that follows, where AutoAnimate can fade it and reflow the rows
+  // below in one clean pass. The highlight itself stays on the live key.
+  const keptRouteThreadKey = useDeferredValue(routeThreadKey);
   const visibleActiveSections = useMemo(
     () =>
       activeSections.map((section) => {
@@ -2267,12 +2273,13 @@ export default function Sidebar() {
             threads: section.threads,
             collapsed,
             keepThread: (thread) =>
-              routeThreadKey !== null &&
-              scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)) === routeThreadKey,
+              keptRouteThreadKey !== null &&
+              scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)) ===
+                keptRouteThreadKey,
           }),
         };
       }),
-    [activeSections, collapsedProjectKeys, routeThreadKey],
+    [activeSections, collapsedProjectKeys, keptRouteThreadKey],
   );
   // Positional consumers read this: resolveAdjacentThreadId (arrow nav),
   // rangeSelectTo (shift-select) and planForwardNavigation (where you land
@@ -3705,11 +3712,6 @@ export default function Sidebar() {
                       underProjectHeader = false,
                       /* fork:end sidebar-v2-project-grouping */
                       sortable?: SortablePinnedRowBag,
-                      /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
-                      // Set by the grouped caller for a card its collapsed
-                      // section painted anyway: the open route thread.
-                      keptInCollapsedGroup = false,
-                      /* fork:end sidebar-v2-project-grouping */
                     ) => {
                       const threadKey = scopedThreadKey(
                         scopeThreadRef(thread.environmentId, thread.id),
@@ -3813,7 +3815,6 @@ export default function Sidebar() {
                           // apart — takes the whole line. Hidden rather than
                           // dropped: assistive tech has no "two rows up".
                           projectTitleHidden={underProjectHeader}
-                          keptInCollapsedGroup={keptInCollapsedGroup}
                           /* fork:end sidebar-v2-project-grouping */
                           providerEntryByInstanceId={
                             providerEntriesByEnvironment.get(thread.environmentId) ??
@@ -3992,15 +3993,7 @@ export default function Sidebar() {
                               ]
                             : []),
                           ...section.threads.map((thread) =>
-                            // A collapsed section paints only what it keeps —
-                            // the route thread — so every card here is kept.
-                            renderThreadRow(
-                              thread,
-                              "active",
-                              header !== null,
-                              undefined,
-                              section.collapsed,
-                            ),
+                            renderThreadRow(thread, "active", header !== null),
                           ),
                         ];
                       }),
