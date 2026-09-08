@@ -33,10 +33,16 @@ describe("fork guard: fork-subagent-spawn-card", () => {
     expect(card).toContain('weight="regular"');
     expect(card).toContain("Kicked off");
     expect(card).toContain("View agents");
-    expect(card).toContain("onClick={onOpenAgents}");
+    expect(card).toContain("onClick={props.onOpenAgents}");
     expect(card).toContain("SidebarV2WorkingRain");
+    expect(card).toContain("SidebarV2IdleMark");
     expect(card).toContain("formatSubagentTokenCount");
+    expect(card).toContain("formatSubagentModelLabel");
+    expect(card).toContain("isTerminalSubagentStatus");
+    expect(card).toContain("resolveSpawnCta");
+    expect(card).toContain("SPAWN_MEMBER_VISUAL");
     expect(card).toContain("data-fork-subagent-spawn-card");
+    expect(card).not.toContain('tone="input"');
     expect(card).not.toContain("border-border/60");
     expect(card).not.toContain("bg-card/50");
   });
