@@ -136,6 +136,9 @@ import { useForkPendingDesignChangeCount } from "~/custom/designMode/designChang
 /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
 import { isUnassignedDraft } from "~/custom/newAgentDraft";
 /* fork:end fork-new-agent-draft */
+/* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+import { visibleComposerBannerItems } from "~/custom/composerBannerVisibility";
+/* fork:end fork-composer-banner-surface */
 import { ComposerPendingReviewComments } from "./ComposerPendingReviewComments";
 import { ComposerPreviewAnnotationCards } from "./ComposerPreviewAnnotationCards";
 import {
@@ -3666,7 +3669,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             <ComposerBannerStack
               key={activeThreadId}
               className="relative z-0"
-              items={bannerStackItems}
+              /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+              items={visibleComposerBannerItems(bannerStackItems)}
+              /* fork:end fork-composer-banner-surface */
             />
             {!activityStackItem && (props.threadSyncPhase || inlineTasksBadge) ? (
               <ComposerBanner.Attachment>

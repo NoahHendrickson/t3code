@@ -24,6 +24,14 @@ longer control this behavior.
 When you un-settle a thread, it returns to the top of the active list so you can find it right
 away. Its timestamps do not change. Other threads keep their positions.
 
+<!-- fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface -->
+
+On web and desktop, a settled thread shows only the **Un-settle** notice above the composer.
+Other notices, including **Resume with less context**, appear after you un-settle the thread
+if they still apply.
+
+<!-- fork:end fork-composer-banner-surface -->
+
 Right-click a pull request link in a thread and choose **Link to thread** to show that pull request
 in the sidebar. The thread settles when the linked pull request merges if **Auto-settle merged
 threads** is enabled. Right-click the same link and choose **Unlink from thread** to remove it.

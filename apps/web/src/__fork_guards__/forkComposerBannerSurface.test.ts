@@ -22,6 +22,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
+import { visibleComposerBannerItems } from "../custom/composerBannerVisibility";
 import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
@@ -66,6 +67,28 @@ function componentSource(name: string): string {
 }
 
 describe("fork guard: fork-composer-banner-surface", () => {
+  it("shows only Un-settle while settled, without leaving another notice behind it", () => {
+    const compact = { id: "resume-compaction:thread:snapshot" };
+    const settled = { id: "thread-settled:thread" };
+    const activity = { id: "composer-activity" };
+    expect(visibleComposerBannerItems([activity, compact, settled])).toEqual([settled]);
+    expect(visibleComposerBannerItems([settled, compact])).toEqual([settled]);
+    expect(chatComposer).toContain("items={visibleComposerBannerItems(bannerStackItems)}");
+  });
+
+  it("restores compaction after un-settling and preserves ordinary notice order", () => {
+    const compact = { id: "resume-compaction:thread:snapshot" };
+    const settled = { id: "thread-settled:thread" };
+    const notices = [compact, settled];
+    visibleComposerBannerItems(notices);
+    expect(notices).toEqual([compact, settled]);
+    const activeNotices = notices.filter((notice) => notice !== settled);
+    expect(visibleComposerBannerItems(activeNotices)).toBe(activeNotices);
+    const snoozedNotices = [compact, { id: "thread-snoozed:thread" }];
+    expect(visibleComposerBannerItems(snoozedNotices)).toBe(snoozedNotices);
+    expect(visibleComposerBannerItems([])).toEqual([]);
+  });
+
   it("re-points every banner's outline, tint and edge at the composer hairline", () => {
     const rule = rules.find(
       (candidate) =>
