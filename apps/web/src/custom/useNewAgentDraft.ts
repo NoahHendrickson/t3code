@@ -21,7 +21,7 @@ import {
 } from "@t3tools/contracts";
 import { resolveDefaultThreadEnvMode } from "@t3tools/shared/threadEnvMode";
 import { useRouter } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { type DraftId, useComposerDraftStore } from "../composerDraftStore";
 import {
@@ -56,6 +56,7 @@ export function useStartNewAgentDraft(): (options?: {
         getDraftSession,
         getDraftSessionByLogicalProjectKey,
         setLogicalProjectDraftThreadId,
+        setModelSelection,
       } = useComposerDraftStore.getState();
       const projectRef = newAgentDraftProjectRef(primaryEnvironmentId);
       const navigateTo = (draftId: DraftId) =>
@@ -76,9 +77,11 @@ export function useStartNewAgentDraft(): (options?: {
         return existing.draftId;
       }
 
-      // A new draft carries the user's working mode from the thread being
-      // viewed, like upstream's handler does; the project's configured model
-      // is applied when a project is chosen.
+      // A new draft carries the user's working mode and model from the thread
+      // being viewed, like upstream's handler does. Composer overrides win
+      // over persisted thread state — they are what the user currently sees.
+      // The project's configured model, when it has one, is applied over the
+      // carried model when a project is chosen.
       const currentRouteParams =
         router.state.matches[router.state.matches.length - 1]?.params ?? {};
       const currentRouteTarget = resolveThreadRouteTarget(currentRouteParams);
@@ -105,6 +108,13 @@ export function useStartNewAgentDraft(): (options?: {
         carrySourceShell?.interactionMode ??
         carrySourceDraft?.interactionMode ??
         null;
+      const composerActiveProvider = carrySourceComposer?.activeProvider ?? null;
+      const carryModelSelection =
+        (composerActiveProvider
+          ? carrySourceComposer?.modelSelectionByProvider[composerActiveProvider]
+          : null) ??
+        carrySourceShell?.modelSelection ??
+        null;
 
       const draftId = newDraftId();
       setLogicalProjectDraftThreadId(NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY, projectRef, draftId, {
@@ -118,6 +128,10 @@ export function useStartNewAgentDraft(): (options?: {
         ...(interactionMode ? { interactionMode } : {}),
       });
       applyStickyState(draftId);
+      if (carryModelSelection) {
+        // Seeded, not explicit: a project default may still replace it.
+        setModelSelection(draftId, carryModelSelection, { replaceOptions: true });
+      }
       await navigateTo(draftId);
       return draftId;
     },
@@ -139,8 +153,41 @@ export interface DraftProjectTarget {
 /** The pick in flight per draft. Resolving a project's defaults yields to a
     t3.json lookup, so two quick picks can settle out of order; only the
     latest may write, or a slower earlier pick would overwrite a faster later
-    one's project, workspace defaults and model. */
-const latestAssignmentByDraftId = new Map<DraftId, symbol>();
+    one's project, workspace defaults and model. The entry is the request
+    token (one per call, so re-picking the same project is still a new
+    request) and carries the target so the pill can show it and the composer
+    can hold Send while the draft still points at the previous project. */
+const latestAssignmentByDraftId = new Map<DraftId, { readonly entry: DraftProjectTarget }>();
+const pendingAssignmentListeners = new Set<() => void>();
+
+function notifyPendingAssignmentChange(): void {
+  for (const listener of pendingAssignmentListeners) listener();
+}
+
+function subscribePendingAssignment(listener: () => void): () => void {
+  pendingAssignmentListeners.add(listener);
+  return () => {
+    pendingAssignmentListeners.delete(listener);
+  };
+}
+
+/** The logical project key of the pick still resolving for a draft, or null
+    when nothing is in flight. */
+export function readPendingDraftProjectKey(draftId: DraftId | null): string | null {
+  return draftId === null
+    ? null
+    : (latestAssignmentByDraftId.get(draftId)?.entry.group.projectKey ?? null);
+}
+
+/** `readPendingDraftProjectKey` as a subscription, for the pill's label and
+    the composer's send gate. */
+export function useDraftProjectAssignmentPending(draftId: DraftId | null): string | null {
+  return useSyncExternalStore(
+    subscribePendingAssignment,
+    () => readPendingDraftProjectKey(draftId),
+    () => null,
+  );
+}
 
 /** Points an open draft at a project. The draft keeps its identity — prompt,
     attachments, route — and only its target moves: the store drops the old
@@ -149,41 +196,50 @@ const latestAssignmentByDraftId = new Map<DraftId, symbol>();
     resolved the way upstream's handler resolves them for a fresh draft, so
     an unassigned draft lands in the same env mode a "New thread in X" would
     have; branch and worktree reset for the same reason (they named the old
-    project's checkout). Model selection follows the draft hero's rule: an
-    explicit pick stands, a seeded one re-seeds from sticky state and the
-    project default. */
+    project's checkout). Model selection: an explicit pick stands, and a
+    seeded one — the model carried from the thread the draft was started
+    from — is replaced only by the project's own default, when it has one. */
 export async function assignDraftProject(
   draftId: DraftId,
   entry: DraftProjectTarget,
   settings: Pick<ServerSettings, "defaultThreadEnvMode" | "newWorktreesStartFromOrigin">,
 ): Promise<void> {
-  const request = Symbol("assign-draft-project");
+  const request = { entry };
   latestAssignmentByDraftId.set(draftId, request);
+  notifyPendingAssignmentChange();
   const project = entry.targetProject;
   const projectRef: ScopedProjectRef = {
     environmentId: project.environmentId,
     projectId: project.id,
   };
-  const envMode = await resolveDefaultThreadEnvMode({
-    projectSetting: project.defaultThreadEnvMode,
-    projectFile:
-      project.defaultThreadEnvMode == null
-        ? await readT3ProjectFileDefaultThreadEnvMode(project.environmentId, project.workspaceRoot)
-        : null,
-    globalDefault: settings.defaultThreadEnvMode,
-  });
-  // The await above yielded: a later pick may have superseded this one, and
-  // the draft may have been promoted or discarded meanwhile — re-registering
+  let envMode;
+  let superseded = false;
+  try {
+    envMode = await resolveDefaultThreadEnvMode({
+      projectSetting: project.defaultThreadEnvMode,
+      projectFile:
+        project.defaultThreadEnvMode == null
+          ? await readT3ProjectFileDefaultThreadEnvMode(
+              project.environmentId,
+              project.workspaceRoot,
+            )
+          : null,
+      globalDefault: settings.defaultThreadEnvMode,
+    });
+  } finally {
+    // The await yielded: a later pick may have superseded this one, in which
+    // case the in-flight entry is that pick's and stays until it settles.
+    superseded = latestAssignmentByDraftId.get(draftId) !== request;
+    if (!superseded) {
+      latestAssignmentByDraftId.delete(draftId);
+      notifyPendingAssignmentChange();
+    }
+  }
+  if (superseded) return;
+  const { getComposerDraft, getDraftSession, setLogicalProjectDraftThreadId, setModelSelection } =
+    useComposerDraftStore.getState();
+  // The draft may have been promoted or discarded meanwhile — re-registering
   // it would resurrect it.
-  if (latestAssignmentByDraftId.get(draftId) !== request) return;
-  latestAssignmentByDraftId.delete(draftId);
-  const {
-    applyStickyState,
-    getComposerDraft,
-    getDraftSession,
-    setLogicalProjectDraftThreadId,
-    setModelSelection,
-  } = useComposerDraftStore.getState();
   const session = getDraftSession(draftId);
   if (!session || session.promotedTo != null) return;
   setLogicalProjectDraftThreadId(entry.group.projectKey, projectRef, draftId, {
@@ -195,11 +251,11 @@ export async function assignDraftProject(
       newWorktreesStartFromOrigin: settings.newWorktreesStartFromOrigin,
     }),
   });
-  if (!hasExplicitComposerModelSelection(getComposerDraft(draftId))) {
-    applyStickyState(draftId);
-    if (project.defaultModelSelection) {
-      setModelSelection(draftId, project.defaultModelSelection, { replaceOptions: true });
-    }
+  if (
+    project.defaultModelSelection &&
+    !hasExplicitComposerModelSelection(getComposerDraft(draftId))
+  ) {
+    setModelSelection(draftId, project.defaultModelSelection, { replaceOptions: true });
   }
 }
 

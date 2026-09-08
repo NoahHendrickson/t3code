@@ -3339,14 +3339,20 @@
     that keeps its prop surface so ChatView's call site is unfenced). Choosing
     one remaps the draft in place — same draft id, same reserved thread id,
     same composer content — onto that project's logical key, seeding the
-    project's own workspace defaults (env mode, start-from-origin, model) the
-    way upstream's handler seeds a fresh draft. The sidebar draws no row for
-    an unassigned draft and draws one under the chosen project the moment it
-    is assigned; changing the project from the same pill moves that row,
-    because the store keeps one logical mapping per draft. A promoted or
-    discarded draft is never re-registered by a late assignment, and of two
-    quick picks the later one wins even when the earlier one's t3.json
-    lookup settles last.
+    project's own workspace defaults (env mode, start-from-origin) the way
+    upstream's handler seeds a fresh draft. The draft opens with the model
+    the user was looking at, carried the way upstream's handler carries it;
+    assigning a project replaces that only with the project's own default
+    model, and never an explicit pick made in the draft. The sidebar draws
+    no row for an unassigned draft and draws one under the chosen project
+    the moment it is assigned; changing the project from the same pill moves
+    that row, because the store keeps one logical mapping per draft. A
+    promoted or discarded draft is never re-registered by a late assignment,
+    and of two quick picks the later one wins even when the earlier one's
+    t3.json lookup settles last. While a pick's lookup is still resolving
+    the draft points at its previous project, so the pill shows the pick at
+    once and Send holds (a fenced reason in ChatView's send-disabled gate)
+    rather than submitting to the project the user just left.
 
     While the open draft is still unassigned, the sidebar's New agent row
     holds its hover fill: the column it opened is the row's own until the
@@ -3376,6 +3382,8 @@
     - apps/web/src/routes/_chat.tsx
     # Fenced editor gate: an unassigned draft's prompt stays editable.
     - apps/web/src/components/chat/ChatComposer.tsx
+    # Fenced send gate: Send holds while a picked project's defaults resolve.
+    - apps/web/src/components/ChatView.tsx
     # Fenced user-facing note on starting an agent and choosing its project.
     - docs/user/thread-sidebar.md
   verify:

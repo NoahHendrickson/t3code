@@ -42,7 +42,7 @@ import {
 import { useProjects, useThreadShells } from "~/state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
 import { ChevronDownIcon, FolderIcon, FolderPlusIcon } from "./icons/lucide-phosphor";
-import { useAssignDraftProject } from "./useNewAgentDraft";
+import { useAssignDraftProject, useDraftProjectAssignmentPending } from "./useNewAgentDraft";
 
 export function DraftProjectPill(props: {
   readonly draftId: DraftId | null;
@@ -58,6 +58,7 @@ export function DraftProjectPill(props: {
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
   const projectSortOrder = useClientSettings((settings) => settings.sidebarProjectSortOrder);
   const assignDraftProject = useAssignDraftProject();
+  const pendingProjectKey = useDraftProjectAssignmentPending(props.draftId);
   const openAddProject = useCallback(() => openCommandPalette({ open: "add-project" }), []);
 
   const environmentLabelById = useMemo(
@@ -101,18 +102,24 @@ export function DraftProjectPill(props: {
     () => new Map(projectPickerEntries.map((entry) => [entry.group.projectKey, entry] as const)),
     [projectPickerEntries],
   );
+  // A pick shows on the pill the moment it is made; the draft itself moves
+  // once the project's defaults resolve, and Send waits for that (the
+  // composer reads the same pending state).
+  const pendingEntry =
+    pendingProjectKey === null ? null : (projectEntryByKey.get(pendingProjectKey) ?? null);
   const activeEntry =
-    props.activeProjectRef === null
+    pendingEntry ??
+    (props.activeProjectRef === null
       ? null
       : (projectPickerEntries.find((entry) =>
           entry.group.memberProjectRefs.some(
             (projectRef) =>
               scopedProjectKey(projectRef) === scopedProjectKey(props.activeProjectRef!),
           ),
-        ) ?? null);
+        ) ?? null));
   const activeProjectKey = activeEntry?.group.projectKey ?? "";
   const label = activeEntry?.group.displayName ?? props.activeProjectTitle ?? "Choose a project";
-  const hasResolvedProject = props.activeProjectTitle !== null;
+  const hasResolvedProject = pendingEntry !== null || props.activeProjectTitle !== null;
 
   if (projectPickerEntries.length === 0) {
     return (
@@ -142,6 +149,7 @@ export function DraftProjectPill(props: {
             className="pointer-events-auto max-w-72 rounded-full"
             data-testid="draft-project-pill"
             data-project-assigned={hasResolvedProject ? "true" : "false"}
+            aria-busy={pendingEntry !== null || undefined}
           />
         }
       >

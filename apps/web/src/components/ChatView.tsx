@@ -218,6 +218,9 @@ import {
   resolveComposerLivenessPillProps,
 } from "~/custom/composerContextStrip";
 /* fork:end fork-composer-shell */
+/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+import { useDraftProjectAssignmentPending } from "~/custom/useNewAgentDraft";
+/* fork:end fork-new-agent-draft */
 import { useBrowserHistoryStore } from "~/browserHistoryStore";
 import { registerFaviconProjectForThread } from "~/browserFaviconStore";
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
@@ -1318,6 +1321,12 @@ function ChatViewContent(props: ChatViewProps) {
   const draftId = routeKind === "draft" ? props.draftId : null;
   const threadSyncPhase = routeKind === "server" ? (props.threadSyncPhase ?? null) : null;
   const threadDetailLoading = threadSyncPhase === "loading";
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+     A project picked from the draft's pill takes effect once its defaults
+     resolve; until then the draft still points at the previous project, so
+     Send holds rather than submitting there. */
+  const draftProjectAssignmentPending = useDraftProjectAssignmentPending(draftId) !== null;
+  /* fork:end fork-new-agent-draft */
   const handleNewThread = useNewThreadHandler();
   const { settleThread, pinThread, confirmAndUnpinThread } = useThreadActions();
   const routeThreadRef = useMemo(
@@ -7525,7 +7534,11 @@ function ChatViewContent(props: ChatViewProps) {
                                 ? "Sending feedback"
                                 : threadDetailLoading
                                   ? "Messages loading"
-                                  : null
+                                  : /* fork:begin fork-new-agent-draft */
+                                    draftProjectAssignmentPending
+                                    ? "Preparing project"
+                                    : /* fork:end fork-new-agent-draft */
+                                      null
                             }
                             isPreparingWorktree={isPreparingWorktree}
                             bannerItems={composerBannerItems}

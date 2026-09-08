@@ -25,6 +25,7 @@ const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 const draftRows = readSibling("../custom/sidebarV2DraftRows.ts");
 const hooks = readSibling("../custom/useNewAgentDraft.ts");
 const composer = readSibling("../components/chat/ChatComposer.tsx");
+const chatView = readSibling("../components/ChatView.tsx");
 
 describe("fork guard: fork-new-agent-draft", () => {
   it("starts an unassigned draft from the sidebar's New agent row", () => {
@@ -101,6 +102,12 @@ describe("fork guard: fork-new-agent-draft", () => {
     );
     expect(hooks).toMatch(/existing\.promotedTo == null &&[\s\S]{0,200}?===\s*null/u);
     expect(hooks).toContain('to: "/draft/$draftId"');
+    // The fresh draft carries the model the user was looking at, the way
+    // upstream's handler carries it — seeded, so a project default can still
+    // replace it.
+    expect(hooks).toContain(
+      "setModelSelection(draftId, carryModelSelection, { replaceOptions: true });",
+    );
   });
 
   it("keeps the unassigned draft out of the sidebar", () => {
@@ -123,7 +130,26 @@ describe("fork guard: fork-new-agent-draft", () => {
     // Two quick picks settle out of order; the later pick must win. The
     // behaviour is tested in custom/useNewAgentDraft.test.ts; this pins the
     // seam.
-    expect(hooks).toContain("if (latestAssignmentByDraftId.get(draftId) !== request) return;");
+    expect(hooks).toContain("superseded = latestAssignmentByDraftId.get(draftId) !== request;");
+    expect(hooks).toContain("if (superseded) return;");
+  });
+
+  it("holds Send while a picked project's defaults resolve", () => {
+    // Until the lookup settles the draft still points at its previous
+    // project; a send in that window would go there. ChatView feeds the
+    // pending pick into the composer's existing send-disabled reason, and
+    // the pill shows the pick straight away so the wait reads as progress.
+    expect(chatView).toContain(
+      "const draftProjectAssignmentPending = useDraftProjectAssignmentPending(draftId) !== null;",
+    );
+    expect(chatView).toMatch(
+      /sendDisabledReason=\{[\s\S]{0,400}?draftProjectAssignmentPending\s*\?\s*"Preparing project"/u,
+    );
+    const pill = readSibling("../custom/DraftProjectPill.tsx");
+    expect(pill).toContain(
+      "const pendingProjectKey = useDraftProjectAssignmentPending(props.draftId);",
+    );
+    expect(pill).toMatch(/const activeEntry =\s*pendingEntry \?\?/u);
   });
 
   it("replaces the draft hero's inline chooser with the project pill", () => {
