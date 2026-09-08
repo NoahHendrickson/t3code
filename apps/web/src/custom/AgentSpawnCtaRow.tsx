@@ -38,6 +38,8 @@ type SpawnCtaView = {
   readonly lead: string;
   readonly status: string;
   readonly workflowName: string | null;
+  /** Coordinator aggregate, only when the workflow has no member rows. */
+  readonly coordinatorTokens: number;
 };
 
 type SpawnMemberMark = "rain" | "idle" | "done" | "failed" | "stopped";
@@ -96,7 +98,11 @@ export function resolveSpawnCta(spawn: AgentSpawnCtaSpawn, model: AgentPanelMode
     : failed > 0
       ? `${failed} failed`
       : "completed";
-  return { agents, live, lead, status, workflowName };
+  // Same panel-footer rule: providers may roll member usage into the
+  // coordinator, so surface it only when there are no member rows to paint.
+  const coordinatorTokens =
+    spawn.workflowId && agents.length === 0 ? (workflowGroup?.workflow.usage?.totalTokens ?? 0) : 0;
+  return { agents, live, lead, status, workflowName, coordinatorTokens };
 }
 
 export function AgentSpawnCtaRow(props: {
@@ -104,7 +110,7 @@ export function AgentSpawnCtaRow(props: {
   readonly agentPanelModel: AgentPanelModel;
   readonly onOpenAgents: () => void;
 }) {
-  const { agents, lead, status, workflowName } = resolveSpawnCta(
+  const { agents, lead, status, workflowName, coordinatorTokens } = resolveSpawnCta(
     props.spawn,
     props.agentPanelModel,
   );
@@ -114,25 +120,30 @@ export function AgentSpawnCtaRow(props: {
       type="button"
       data-fork-subagent-spawn-card=""
       onClick={props.onOpenAgents}
-      className="flex w-full flex-col items-start gap-3.5 text-left text-sm leading-5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
+      className="flex w-full min-w-0 flex-col items-start gap-3.5 text-left text-sm leading-5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
     >
-      <span className="flex w-full items-start gap-2">
+      <span className="flex w-full min-w-0 items-start gap-2">
         <span aria-hidden className="flex size-4 shrink-0 items-center py-px">
           <TreeView weight="regular" className="size-4 text-foreground" />
         </span>
-        <span className="flex min-w-0 flex-col items-start">
-          <span className="min-w-0 text-foreground">
+        <span className="flex min-w-0 flex-1 flex-col items-start">
+          <span className="w-full min-w-0 truncate text-foreground">
             <span>{lead}</span>
             {workflowName ? <span className="text-muted-foreground"> · {workflowName}</span> : null}
           </span>
-          <span className="flex items-start gap-3 whitespace-nowrap text-muted-foreground">
+          <span className="flex min-w-0 items-start gap-3 whitespace-nowrap text-muted-foreground">
             <span>{status}</span>
+            {coordinatorTokens > 0 ? (
+              <span className="tabular-nums">
+                {formatSubagentTokenCount(coordinatorTokens)} tokens
+              </span>
+            ) : null}
             <span className="underline decoration-solid">View agents</span>
           </span>
         </span>
       </span>
       {agents.length > 0 ? (
-        <span className="flex flex-col items-start gap-3.5 pl-6">
+        <span className="flex w-full min-w-0 flex-col items-start gap-3.5 pl-6">
           {agents.map((agent) => (
             <SpawnAgentRow key={agent.id} agent={agent} />
           ))}
@@ -153,13 +164,13 @@ function SpawnAgentRow({ agent }: { readonly agent: RuntimeSubagent }) {
   ].filter((value): value is string => value !== null);
 
   return (
-    <span className="flex items-start gap-2">
-      <span aria-hidden className="flex items-center py-1">
+    <span className="flex w-full min-w-0 items-start gap-2">
+      <span aria-hidden className="flex shrink-0 items-center py-1">
         {spawnMemberMark(visual.mark, agent.id)}
       </span>
-      <span className="flex min-w-0 flex-col items-start">
-        <span className="min-w-0 truncate text-foreground">{agent.title}</span>
-        <span className="min-w-0 truncate text-muted-foreground">
+      <span className="flex min-w-0 flex-1 flex-col items-start">
+        <span className="w-full min-w-0 truncate text-foreground">{agent.title}</span>
+        <span className="w-full min-w-0 truncate text-muted-foreground">
           {spawnMemberDetail(agent, visual.fallback)}
         </span>
         {metadata.length > 0 ? (

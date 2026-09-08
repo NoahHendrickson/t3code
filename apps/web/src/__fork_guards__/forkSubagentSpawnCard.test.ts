@@ -40,6 +40,8 @@ describe("fork guard: fork-subagent-spawn-card", () => {
     expect(card).toContain("formatSubagentModelLabel");
     expect(card).toContain("isTerminalSubagentStatus");
     expect(card).toContain("resolveSpawnCta");
+    expect(card).toContain("coordinatorTokens");
+    expect(card).toContain("w-full min-w-0");
     expect(card).toContain("SPAWN_MEMBER_VISUAL");
     expect(card).toContain("data-fork-subagent-spawn-card");
     expect(card).not.toContain('tone="input"');
