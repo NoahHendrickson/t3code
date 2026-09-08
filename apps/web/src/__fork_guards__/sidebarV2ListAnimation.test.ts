@@ -38,5 +38,17 @@ describe("fork guard: sidebar-v2-list-animation", () => {
     expect(animation).toContain('transform: "scale(.98)", opacity: 0');
     expect(animation).toContain('transform: "scale(1)", opacity: 1');
     expect(animation).toContain("prefers-reduced-motion: reduce");
+    // The card a collapsed group keeps for the open route leaves the frame
+    // the route changes — the busiest frame there is — so its removal is
+    // instant rather than a fade that starts late and stutters. The row
+    // stamps the mark; the plugin reads it off the element.
+    expect(animation).toContain('SIDEBAR_V2_COLLAPSED_KEEP_ATTRIBUTE = "data-fork-collapsed-keep"');
+    expect(animation).toMatch(/duration: instant \? 0 : duration/u);
+    expect(sidebar).toContain(
+      'data-fork-collapsed-keep={props.keptInCollapsedGroup === true ? "" : undefined}',
+    );
+    expect(sidebar).toMatch(
+      /renderThreadRow\(\s*thread,\s*"active",\s*header !== null,\s*undefined,\s*section\.collapsed,\s*\)/u,
+    );
   });
 });

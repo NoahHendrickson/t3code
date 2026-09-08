@@ -1,30 +1,38 @@
 // Imported through the shim's own path rather than the `lucide-react` alias.
 // This file is fork-owned, so there is no upstream import site to preserve —
 // the alias exists to keep *upstream's* imports untouched, not this one.
-import { AlarmClockIcon, PenLineIcon } from "./icons/lucide-phosphor";
+// CircleAlert is Phosphor's WarningCircle under its lucide name; the half
+// circle is fork-only. Both are the component set's own status marks (Figma
+// 364:17299 exports them at 9.75px), drawn at the fill weight.
+import {
+  AlarmClockIcon,
+  CircleAlertIcon,
+  CircleHalfIcon,
+  PenLineIcon,
+} from "./icons/lucide-phosphor";
 import type { CSSProperties } from "react";
 import { cn } from "~/lib/utils";
 
-/** The right-hand slot of a Sidebar V2 card row's title line used to hold
-    status; the mark now leads that line and this module still owns every
-    status form. Every status resolves to one mark so the leading column stays
-    optically aligned no matter which state a row is in — the *form* carries
-    the meaning (falling pixels mean the agent is running; a static dot means
-    it stopped and wants something), and the hue only reinforces it. This is
-    the same vocabulary the phanttom Ghostty fork uses in its sidebar: rain
-    while working, 8px dots otherwise. Text labels ("Working", "Approval") are
-    gone — at 282px wide the label crowded out the branch name, and the row
-    already says what it is through color plus the duration readout.
+/** The trailing slot of a Sidebar V2 card row's title line, and this module
+    owns every status form that can land in it. Every status resolves to one
+    mark so the trailing column stays optically aligned no matter which state
+    a row is in — the *form* carries the meaning (falling pixels mean the
+    agent is running; a static mark means it stopped), and the hue reinforces
+    it. Rain while working is the phanttom Ghostty vocabulary this started
+    from; the settled marks follow the component set (Figma 364:17299,
+    "thread card v3"): a 10px dot for Done (blue — a finished turn you have
+    not read) and Idle (muted), one amber half-filled circle for both
+    blocked-on-you states, and a filled warning circle for Failed.
+    Text labels ("Working", "Approval") are gone — at 282px wide the label
+    crowded out the branch name, and the row already says what it is through
+    the mark plus the duration readout.
 
-    Known limit, accepted (WCAG 1.4.1): form only separates rain / dot / clock,
-    so the four settled states — done, approval, input, failed — are one 8px dot
-    apart and differ by hue alone. Screen readers get the `role="status"` label
-    SidebarV2 renders alongside the mark; sighted users with a color vision
-    deficiency do not, and done/failed is the pair that collapses first. If that
-    ever needs fixing, vary the dot's fill rather than its shape (ring for
-    approval, hollow for input) — it keeps the all-circles vocabulary this is
-    ported from, and `SidebarV2WokeMark` below is precedent for breaking dot
-    uniformity when a state genuinely needs it. */
+    Form now separates more than rain / dot / clock: Approval and Input are
+    one mark — both mean "waiting on you", and the tooltip says which — while
+    Done and Idle share the dot and differ by hue (blue vs muted). Screen
+    readers get the `role="status"` label SidebarV2 renders alongside the
+    mark. */
+
 export type SidebarV2StatusTone = "working" | "done" | "approval" | "input" | "failed";
 
 /** The tones a *dot* can carry. `working` is excluded by construction: a working
@@ -32,12 +40,19 @@ export type SidebarV2StatusTone = "working" | "done" | "approval" | "input" | "f
     keeps that true as `topStatus` in SidebarV2 grows new branches. */
 export type SidebarV2DotTone = Exclude<SidebarV2StatusTone, "working">;
 
-const TONE_COLOR_CLASS: Record<SidebarV2DotTone, string> = {
-  done: "bg-sidebar-v2-status-done",
-  approval: "bg-sidebar-v2-status-approval",
-  input: "bg-sidebar-v2-status-input",
-  failed: "bg-sidebar-v2-status-failed",
+const TONE_TEXT_CLASS: Record<SidebarV2DotTone, string> = {
+  done: "text-sidebar-v2-status-done",
+  approval: "text-sidebar-v2-status-approval",
+  input: "text-sidebar-v2-status-input",
+  failed: "text-sidebar-v2-status-failed",
 };
+
+/** Every settled mark draws in the same box: the rain's 14px on the tall
+    axis, 12px on the wide one — the Phosphor glyphs pad their 256 grid, so a
+    12px icon draws the design's 9.75px circle, and the 10px dots centre in
+    the same width — so a card's mark sits on its content edge and a slim
+    row's 14px slot centres it. */
+const MARK_SLOT_CLASS = "flex h-[14px] w-[12px] shrink-0 items-center justify-center";
 
 // Geometry from PixelSparkleView: a 3x5 grid on a 3.8px pitch with 2.85px cells
 // rounded at 28% of their size. Native units land at 10.45×18.05; the SVG
@@ -50,7 +65,7 @@ const TONE_COLOR_CLASS: Record<SidebarV2DotTone, string> = {
 const ROWS = 5;
 const PITCH = 3.8;
 const CELL = 2.85;
-/** Leading status slot — same 14px box the dots, idle ring, and woke mark use. */
+/** The status slot's tall axis — the box every settled mark shares. */
 const SLOT = 14;
 
 /** Per-column clock, straight off the Swift constants: `speed` and `phase` come
@@ -209,28 +224,35 @@ export function SidebarV2WorkingRain({ seed }: { seed: string }) {
   );
 }
 
-/** The blocked/settled counterpart to the rain: one 8px dot centered in the
-    same 14px box, so the trailing edge of every row lines up whether the mark
-    is a dot, a clock, or the grid. */
+/** The settled counterpart to the rain. Done is the design's 10px dot; the
+    two blocked-on-you states draw Phosphor's half-filled circle — the
+    component set's own glyph, the left half hollow — and Failed the filled
+    warning circle, so a colour-blind reader still tells "waiting on you"
+    from "finished" and "broke" by form. The glyphs are 12px because Phosphor
+    inks a circle on ~81% of its grid: that is the design's 9.75px, and the
+    same visual weight as the 10px dot beside it. */
 export function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
   return (
-    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
-      <span className={cn("size-2 rounded-full", TONE_COLOR_CLASS[tone])} />
+    <span aria-hidden className={cn(MARK_SLOT_CLASS, TONE_TEXT_CLASS[tone])}>
+      {tone === "approval" || tone === "input" ? (
+        <CircleHalfIcon className="size-3" />
+      ) : tone === "failed" ? (
+        <CircleAlertIcon weight="fill" className="size-3" />
+      ) : (
+        <span className="size-2.5 rounded-full bg-current" />
+      )}
     </span>
   );
 }
 
-/** Idle — a thread with nothing pending. Drawn as a hollow ring rather than a
-    filled dot, which is the one shape variation the note at the top of this file
-    reserves for exactly this case: it keeps the all-circles vocabulary while
-    reading as "nothing here" without needing a hue at all. The card used to fall
-    back to a relative-time label in this slot; the design replaced it so the
-    trailing column holds a mark in every state instead of switching between a
-    mark and a string. */
+/** Idle — a thread with nothing pending. The component set draws it as the
+    same 10px dot as Done, on the muted channel: "nothing here" reads from the
+    hue, and the slot still holds a mark in every state instead of switching
+    between a mark and a string. */
 export function SidebarV2IdleMark() {
   return (
-    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
-      <span className="size-2 rounded-full border border-muted-foreground/70" />
+    <span aria-hidden className={MARK_SLOT_CLASS}>
+      <span className="size-2.5 rounded-full bg-muted-foreground" />
     </span>
   );
 }
@@ -241,33 +263,33 @@ export function SidebarV2IdleMark() {
     with, since Approval is blocking and Woke is not. */
 export function SidebarV2WokeMark() {
   return (
-    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
-      <AlarmClockIcon className="size-3 text-sidebar-v2-status-approval" />
+    <span aria-hidden className={MARK_SLOT_CLASS}>
+      <AlarmClockIcon className="size-2.5 text-sidebar-v2-status-approval" />
     </span>
   );
 }
 
 /** Draft — a thread that exists only client-side until its first send. A pencil
     says "unsent, still being written", which no hue in the settled palette can.
-    Muted like the idle ring, since a draft is waiting on the user and not on
+    Muted like the idle dot, since a draft is waiting on the user and not on
     the agent. */
 export function SidebarV2DraftMark() {
   return (
-    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
-      <PenLineIcon className="size-3 text-muted-foreground/70" />
+    <span aria-hidden className={MARK_SLOT_CLASS}>
+      <PenLineIcon className="size-2.5 text-muted-foreground/70" />
     </span>
   );
 }
 
 /** Monitoring — background watch work that is still alive but not actively
-    turning. Same 8px / 14px geometry as the other dots so the title column
-    stays aligned; the slow white opacity breath (50% → 20%) is the signal,
-    not a hue or a text label. Keyframes in `theme.custom.css` are duty-cycled
-    and stepped so the compositor is not woken every vsync. */
+    turning. Same 10px dot in the same box as the other marks so the trailing
+    column stays aligned; the slow white opacity breath (50% → 20%) is the
+    signal, not a hue or a text label. Keyframes in `theme.custom.css` are
+    duty-cycled and stepped so the compositor is not woken every vsync. */
 export function SidebarV2MonitoringMark() {
   return (
-    <span aria-hidden className="flex size-[14px] shrink-0 items-center justify-center">
-      <span data-fork-monitoring-pulse className="size-2 rounded-full" />
+    <span aria-hidden className={MARK_SLOT_CLASS}>
+      <span data-fork-monitoring-pulse className="size-2.5 rounded-full" />
     </span>
   );
 }
@@ -282,9 +304,9 @@ export type SidebarV2TopStatusMark =
 export function SidebarV2StatusMark(props: {
   readonly status: SidebarV2TopStatusMark | null;
   readonly rainSeed: string;
-  /** Card rows draw the idle ring; slim leaves the slot empty. Unpromoted
+  /** Card rows draw the idle dot; slim leaves the slot empty. Unpromoted
       drafts use the pencil as their idle glyph. */
-  readonly idle?: "ring" | "empty" | "draft";
+  readonly idle?: "dot" | "empty" | "draft";
 }) {
   const status = props.status;
   if (status === null) {
@@ -296,7 +318,7 @@ export function SidebarV2StatusMark(props: {
         </>
       );
     }
-    if (props.idle === "ring") {
+    if (props.idle === "dot") {
       return (
         <>
           <span className="sr-only">Idle</span>

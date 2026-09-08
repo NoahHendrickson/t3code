@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  resolveSectionDropTarget,
   UNGROUPED_PROJECT_KEY,
   buildActiveThreadSections,
   createProjectRefIndex,
@@ -175,5 +176,29 @@ describe("threadsVisibleInProjectSection", () => {
         keepThread: (entry) => entry.id === "b",
       }).map((entry) => entry.id),
     ).toEqual(["b"]);
+  });
+});
+
+describe("resolveSectionDropTarget", () => {
+  const headers = [
+    { id: "b", top: 300 },
+    { id: "a", top: 100 },
+    { id: "c", top: 500 },
+  ];
+
+  it("targets the section whose extent contains the pointer, not the nearest header", () => {
+    // Deep in section a's cards, closer to b's header than to a's: still a.
+    expect(resolveSectionDropTarget({ headers, y: 280 })).toBe("a");
+    expect(resolveSectionDropTarget({ headers, y: 300 })).toBe("b");
+    expect(resolveSectionDropTarget({ headers, y: 499 })).toBe("b");
+  });
+
+  it("extends the last section to the end of the list and the first up to its header", () => {
+    expect(resolveSectionDropTarget({ headers, y: 2000 })).toBe("c");
+    expect(resolveSectionDropTarget({ headers, y: 10 })).toBe("a");
+  });
+
+  it("has no target without headers", () => {
+    expect(resolveSectionDropTarget({ headers: [], y: 100 })).toBeNull();
   });
 });

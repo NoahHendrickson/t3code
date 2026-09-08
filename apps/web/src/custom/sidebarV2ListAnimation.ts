@@ -12,6 +12,15 @@
  * same scale/opacity endpoints. Remain keeps AutoAnimate's FLIP (including the
  * right/bottom-anchored short-circuit). Plugins do not inherit AutoAnimate's
  * `prefers-reduced-motion` gate, so duration collapses to 0 when that is set.
+ *
+ * One removal is instant on purpose: the card a collapsed group keeps
+ * because it is the thread you are on. It leaves the moment you open another
+ * thread — the same frame the route changes and the new chat view mounts,
+ * which is the busiest frame the app has. A fade scheduled into that frame
+ * starts late and stutters, and it was never a fade the eye needed: the
+ * group is already closed, the card is folding into it. The row marks
+ * itself with `data-fork-collapsed-keep` (Sidebar.tsx) and the plugin reads
+ * the mark off the element AutoAnimate hands it.
  */
 import { getTransitionSizes, type AutoAnimationPlugin } from "@formkit/auto-animate";
 
@@ -32,6 +41,9 @@ export const SIDEBAR_V2_LIST_ADD_KEYFRAMES = [
 
 type MatchMedia = (query: string) => { readonly matches: boolean };
 
+/** The row a collapsed group keeps for the open route — see the file note. */
+export const SIDEBAR_V2_COLLAPSED_KEEP_ATTRIBUTE = "data-fork-collapsed-keep";
+
 /** Exported for tests — plugins skip AutoAnimate's own reduced-motion gate. */
 export function sidebarV2ListAnimationDurationMs(
   matchMedia: MatchMedia | undefined = globalThis.matchMedia,
@@ -51,7 +63,11 @@ export const sidebarV2ListAnimation: AutoAnimationPlugin = (el, action, first, s
   }
 
   if (action === "remove") {
-    return new KeyframeEffect(el, [...SIDEBAR_V2_LIST_REMOVE_KEYFRAMES], { duration, easing });
+    const instant = el instanceof Element && el.hasAttribute(SIDEBAR_V2_COLLAPSED_KEEP_ATTRIBUTE);
+    return new KeyframeEffect(el, [...SIDEBAR_V2_LIST_REMOVE_KEYFRAMES], {
+      duration: instant ? 0 : duration,
+      easing,
+    });
   }
 
   // Runtime passes (oldCoords, newCoords) for remain — see AutoAnimate's

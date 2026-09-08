@@ -68,10 +68,12 @@ import {
   ChatCircle as PhChatCircle,
   ChatCircleDots as PhChatCircleDots,
   ChatCircleSlash as PhChatCircleSlash,
+  ChartDonut as PhChartDonut,
   ChatText as PhChatText,
   Check as PhCheck,
   CheckCircle as PhCheckCircle,
   Circle as PhCircle,
+  CircleHalf as PhCircleHalf,
   CircleDashed as PhCircleDashed,
   CircleNotch as PhCircleNotch,
   ClipboardText as PhClipboardText,
@@ -91,6 +93,7 @@ import {
   DeviceMobile as PhDeviceMobile,
   DotsThree as PhDotsThree,
   DotsThreeVertical as PhDotsThreeVertical,
+  FadersHorizontal as PhFadersHorizontal,
   DownloadSimple as PhDownloadSimple,
   Eye as PhEye,
   EyeSlash as PhEyeSlash,
@@ -133,6 +136,7 @@ import {
   Lock as PhLock,
   LockOpen as PhLockOpen,
   MagnifyingGlass as PhMagnifyingGlass,
+  NavigationArrow as PhNavigationArrow,
   Memory as PhMemory,
   Minus as PhMinus,
   Monitor as PhMonitor,
@@ -526,3 +530,13 @@ export const ImageIcon = icon("image", PhImage, "duotone");
 export const BrainIcon = icon("brain", PhBrain, "duotone");
 export const CalendarArrowDownIcon = icon("calendar-arrow-down", PhSortDescending, "bold");
 export const CalendarArrowUpIcon = icon("calendar-arrow-up", PhSortAscending, "bold");
+
+// Fork-only glyphs with no lucide counterpart: the sidebar chrome's New agent
+// and Usage rows (Figma 364:11246) and the thread card's blocked-on-you
+// status mark (364:17299). Exported through the shim so every fork icon
+// shares one weight policy and one `lucide` class prefix.
+export const NavigationArrowIcon = icon("navigation-arrow", PhNavigationArrow, "duotone");
+export const ChartDonutIcon = icon("chart-donut", PhChartDonut, "duotone");
+export const CircleHalfIcon = icon("circle-half", PhCircleHalf, "fill");
+export const FadersHorizontalIcon = icon("faders-horizontal", PhFadersHorizontal, "duotone");
+export const EllipsisVerticalIcon = icon("ellipsis-vertical", PhDotsThreeVertical, "bold");

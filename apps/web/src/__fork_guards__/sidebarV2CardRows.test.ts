@@ -5,7 +5,7 @@
  *
  * `sidebarV2Rain.test.ts` guards the working mark's motion. This file guards
  * the row it sits in: two lines at a fixed height, no status-driven surface,
- * and a leading status slot that is never empty.
+ * and a trailing status slot that is never empty.
  *
  * Assertions are outcome-shaped where they can be. The fork-owned meta
  * component is exercised as a module, and only its call site inside upstream's
@@ -22,7 +22,8 @@ import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
 import {
   SIDEBAR_V2_CARD_ALIGNMENT,
   SIDEBAR_V2_CARD_ALIGNMENT_PX,
-  sidebarV2HeaderLabelEdge,
+  sidebarV2CardHeight,
+  sidebarV2HeaderMarkEdge,
   sidebarV2PromptEdge,
 } from "../custom/sidebarV2CardAlignment";
 import {
@@ -49,8 +50,8 @@ describe("fork guard: sidebar-v2-card-rows", () => {
       /status === "ready" \|\| status === "working" \|\| status === "monitoring"/u,
     );
     expect(sidebarV2).toContain('? { label: "Monitoring", mark: "monitoring" }');
-    // Monitoring is a leading pulsing dot via the shared mark renderer, not a
-    // sky text label — and both card and slim use the same fixed 14px slot.
+    // Monitoring is a pulsing dot via the shared mark renderer, not a sky
+    // text label — and both card and slim draw it in the same 14px-tall slot.
     expect(sidebarV2).toContain("<SidebarV2StatusMark");
     expect(sidebarV2).not.toContain("text-sky-600 dark:text-sky-400");
     expect(sidebarV2).not.toContain("group-hover/sidebar-row:");
@@ -92,6 +93,7 @@ describe("fork guard: sidebar-v2-card-rows", () => {
   });
 
   it("leads the flat card's project with its favicon, folder mark as the fallback", () => {
+    // 12px, like every other mark on the repo line (Figma 364:17299).
     // Flat mode names the project on every card, and the favicon is what the
     // slim rows and the project menu already use for it. The slot is built on
     // the row's side (asset lookup, environment + cwd) beside the terminal
@@ -108,20 +110,26 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(meta).toContain("props.projectIconSlot ?? <SidebarV2ProjectFolderMark");
   });
 
-  it("rides the PR badge on the title line, not on a row of its own", () => {
-    // Figma 113:728 moved it into the title row's trailing group, ahead of the
-    // elapsed time. That move is what let the card become a fixed 52px: with
-    // the diff counts gone from the design, the third row had nothing left to
-    // carry. The badge is a link to the PR, so it must NOT sit inside the
-    // hover-actions stack that fades the elapsed time out — a control you can
-    // reach only by not pointing at its row is not a control.
-    expect(sidebarV2).toContain('{prBadge || hasHoverActions || status === "working" ? (');
+  it("rides the PR badge on the repo line, after the checkout cluster", () => {
+    // Figma 364:14308 puts it on the repo line — glyph, then the number, in
+    // the PR's state colour — and the card stays a fixed 54px because it is
+    // one of the line's fixed-height members. The badge is a link to the PR,
+    // so it must NOT sit inside the title line's hover-actions stack that
+    // fades the elapsed time out — a control you can reach only by not
+    // pointing at its row is not a control. Handed in as a required slot for
+    // the same reason as the terminal glyph: a dropped call-site line fails
+    // the typecheck instead of silently un-porting the badge.
+    expect(sidebarV2).toContain("prSlot={prBadge}");
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).not.toContain("prSlot");
-    // pe-1 is the design's 4px, spent both between the badge and the elapsed
-    // time and, when it is alone, to the card's content edge. Explicit 12px so
-    // the panel's --text-xs → 13px remap cannot grow it past that time.
-    expect(sidebarV2).toContain('variant === "card" ? "pe-1 text-[0.75rem] leading-4" : "text-xs"');
+    expect(meta).toContain("readonly prSlot: ReactNode;");
+    expect(meta).toContain("{props.prSlot ?? null}");
+    // Glyph first, no hash, on the card only; the slim shelves keep upstream's
+    // #N. Explicit 12px so the panel's --text-xs → 13px remap cannot grow it.
+    expect(sidebarV2).toContain('<GitPullRequestIcon aria-hidden className="size-3 shrink-0" />');
+    expect(sidebarV2).toContain(
+      'variant === "card" ? "flex items-center gap-1 text-[0.75rem] leading-4" : "text-xs"',
+    );
+    expect(sidebarV2).not.toContain("{prBadge || hasHoverActions");
   });
 
   it("keeps upstream's terminal-status glyph on the card's repo line", () => {
@@ -162,20 +170,19 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(meta).toContain("props.hasWorktree || props.branch ?");
     expect(meta).toContain("props.hasWorktree ?");
     expect(meta).toContain("<WorktreeIcon");
-    // Branch, worktree, and project marks are 16px per the component set — they
-    // name the two clusters on this line and share the prompt's axis above.
-    // The runtime glyph stays 14px in a 24px box so its centre matches
-    // settle/discard on the trailing axis.
-    expect(meta).toContain('<WorktreeIcon aria-hidden className="size-4 shrink-0" />');
-    expect(meta).toContain('<GitBranchIcon aria-hidden className="size-4 shrink-0" />');
+    // Every mark on the line is the component set's 12px (364:17299) — the
+    // runtime glyph leads, then a hairline, then the checkout cluster.
+    expect(meta).toContain('const MARK = "size-3 shrink-0"');
+    expect(meta).toContain("<WorktreeIcon aria-hidden className={MARK} />");
+    expect(meta).toContain("<GitBranchIcon aria-hidden className={MARK} />");
     // The folder mark is the exported SidebarV2ProjectFolderMark (also the
     // favicon's no-asset fallback); it carries the aria-hidden, the meta the size.
     expect(meta).toContain("<FolderIcon aria-hidden className={props.className} />");
-    expect(meta).toContain('<SidebarV2ProjectFolderMark className="size-4 shrink-0" />');
-    expect(meta).toContain("inline-flex size-6 shrink-0 items-center justify-center");
-    expect(meta).toContain('<CloudIcon aria-hidden className="size-3.5" />');
-    expect(meta).toContain('<LaptopIcon aria-hidden className="size-3.5" />');
-    expect(meta).not.toContain("pr-[3px]");
+    expect(meta).toContain("<SidebarV2ProjectFolderMark className={MARK} />");
+    expect(meta).toContain("<CloudIcon aria-hidden className={MARK} />");
+    expect(meta).toContain("<LaptopIcon aria-hidden className={MARK} />");
+    expect(meta).toContain('className="h-2 w-px shrink-0 rounded-full bg-foreground/12"');
+    expect(meta).not.toContain("size-6");
     // Decorative marks carry nothing to a screen reader, so the distinction
     // rides on text; a `sr-only` here is the whole of it.
     expect(meta).toMatch(/sr-only">Worktree</u);
@@ -230,24 +237,26 @@ describe("fork guard: sidebar-v2-card-rows", () => {
   it("sizes the card title at 0.875rem / 18px line and the repo line at 0.75rem", () => {
     // Explicit rem so the panel's --text-xs/--text-sm → 13px remap cannot
     // flatten title and branch to the chrome body size. 18px is the title
-    // line's drawn box (Figma 113:726) and one of the four terms in the card's
-    // 52 — retune it without the container and the intrinsic-size hint lies.
+    // line's drawn box and one of the terms in the card's 54 — retune it
+    // without the alignment module and the intrinsic-size hint lies.
     expect(threadCardTitleClassName({ recedes: false })).toContain("text-[0.875rem]");
     expect(threadCardTitleClassName({ recedes: false })).toContain("leading-[18px]");
+    expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.titleLine).toBe(18);
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
     expect(meta).toContain(
-      'REPO_ROW =\n  "flex h-4 min-w-0 items-center gap-4 text-[0.75rem] leading-4 text-muted-foreground"',
+      'REPO_ROW =\n  "flex h-4 min-w-0 items-center justify-between gap-3 text-[0.75rem] leading-4 text-muted-foreground"',
     );
+    expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.metaLine).toBe(16);
   });
 
-  it("gives a card 12px corners and a slim shelf row 8px", () => {
+  it("gives a card 16px corners and a slim shelf row 8px", () => {
     // --radius is 10px, so neither is a rounded-* token: the card's is the
-    // component set's literal (113:725) and the slim rows keep --radius-md.
+    // component set's literal (364:17299) and the slim rows keep --radius-md.
     const at = (variant: "card" | "slim") =>
       threadRowSurfaceClassName({ isActive: false, isSelected: false, recedes: false, variant });
-    expect(at("card")).toContain("rounded-[12px]");
+    expect(at("card")).toContain("rounded-[16px]");
     expect(at("slim")).toContain("rounded-md");
-    expect(at("slim")).not.toContain("rounded-[12px]");
+    expect(at("slim")).not.toContain("rounded-[16px]");
   });
 
   it("lifts receded titles via a dedicated token, not the shared muted channel", () => {
@@ -279,36 +288,61 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(upstreamCss).not.toContain("--color-sidebar-row-working");
   });
 
-  it("keeps a mark in the leading status slot for every status, idle included", () => {
+  it("keeps a mark in the trailing status slot for every status, idle included", () => {
     // Idle used to fall back to a relative-time string on the trailing edge,
     // so the column alternated between a mark and a variable-width label.
-    // The mark now leads the title line and is never empty — the hollow ring
-    // holds the left column so the title text and the indented rows below
-    // share one edge. 14px slot: at 16px the rain read as hanging below the
-    // title. overflow-hidden is load-bearing — the native grid is taller.
+    // The mark is never empty — the component set (364:17299) draws Idle as
+    // the same 10px dot as Done on the muted channel, so the trailing column
+    // holds a mark in every state. overflow-hidden is load-bearing — the
+    // native rain grid is taller than the slot.
     expect(typeof SidebarV2IdleMark).toBe("function");
     // Card and slim both go through SidebarV2StatusMark; a regular idle card
-    // takes the hollow-ring path so the leading column is never empty.
-    expect(sidebarV2).toContain('idle={showDiscardDraft ? "draft" : "ring"}');
+    // takes the dot path so the trailing column is never empty.
+    expect(sidebarV2).toContain('idle={showDiscardDraft ? "draft" : "dot"}');
     expect(sidebarV2).toContain("<SidebarV2StatusMark");
-    // The box is the design's 16px (113:725 `indicator`), taken from the shared
-    // alignment module; the marks inside keep their own sizes and centre in it
-    // — the rain is 14px tall, a dot is 8px.
+    // The box is the design's 10px dot wide by the rain's 14px tall, taken
+    // from the shared alignment module; the marks inside keep their own sizes
+    // and centre in it.
     expect(sidebarV2).toContain(
       "pointer-events-none flex shrink-0 items-center justify-center overflow-hidden",
     );
     expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.statusBox");
-    expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.statusBox).toBe(16);
-    const rain = readSibling("../custom/SidebarV2StatusIndicator.tsx");
-    expect(rain).toContain('className="block h-[14px] w-auto shrink-0 overflow-hidden"');
-    expect(rain).toContain("const SLOT = 14");
-    expect(rain).not.toContain("overflow-visible");
+    expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.statusBoxWidth).toBe(12);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.statusBoxHeight).toBe(14);
+    const marks = readSibling("../custom/SidebarV2StatusIndicator.tsx");
+    expect(marks).toContain('className="block h-[14px] w-auto shrink-0 overflow-hidden"');
+    expect(marks).toContain("const SLOT = 14");
+    expect(marks).not.toContain("overflow-visible");
+    // The settled forms, per the component set: dot for Done and Idle, the
+    // half-filled circle for the two blocked-on-you states, the filled warning
+    // circle for Failed — so form, not hue alone, separates waiting from done.
+    expect(marks).toContain(
+      'const MARK_SLOT_CLASS = "flex h-[14px] w-[12px] shrink-0 items-center justify-center"',
+    );
+    expect(marks).toMatch(
+      /tone === "approval" \|\| tone === "input" \? \(\s*<CircleHalfIcon className="size-3" \/>/u,
+    );
+    expect(marks).toMatch(
+      /tone === "failed" \? \(\s*<CircleAlertIcon weight="fill" className="size-3" \/>/u,
+    );
+    expect(marks).toContain('<span className="size-2.5 rounded-full bg-current" />');
+    expect(marks).toContain('<span className="size-2.5 rounded-full bg-muted-foreground" />');
+    expect(marks).not.toContain("size-2 rounded-full");
+    // Hues, per Noey (2026-09-07): an unread finished turn is blue, and the
+    // two waiting-on-you states share one amber — the half-circle already
+    // says "waiting", and the tooltip says on what.
+    expect(theme).toMatch(/--sidebar-v2-status-done:\s*#8b9cff;/u);
+    expect(theme).toMatch(/--sidebar-v2-status-approval:\s*#ffcd59;/u);
+    expect(theme).toMatch(/--sidebar-v2-status-input:\s*#ffcd59;/u);
+    expect(theme).toMatch(/--sidebar-v2-status-working:\s*#24fe8a;/u);
   });
 
-  it("indents the card's repo line under the title text", () => {
+  it("starts the repo line on the prompt's edge, with no indent of its own", () => {
+    // Nothing leads the prompt any more — the status mark trails — so both
+    // rows share the card's padding and the meta carries no pl-* at all.
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    expect(meta).toContain("CONTENT_INDENT = SIDEBAR_V2_CARD_ALIGNMENT.repoIndent");
-    expect(meta).toContain("${CONTENT_INDENT}");
+    expect(meta).not.toMatch(/\bpl-/u);
+    expect(meta).not.toContain("repoIndent");
     // No overflow-hidden: the trailing h-6 settle/X cell overhangs this line
     // on purpose; clipping it was what squashed the hover fill into a bar.
     expect(sidebarV2).toContain("flex h-[18px] min-h-[18px] min-w-0 items-center");
@@ -317,31 +351,39 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     );
   });
 
-  it("keeps the prompt and the group header label on one edge", () => {
+  it("keeps the prompt and the group header's folder mark on one edge", () => {
     // The invariant the leading column exists for: a card's prompt and a
-    // project header's label start at the same x, reached from two different
-    // sides. Asserted as arithmetic rather than as three class strings, because
-    // the failure this catches is retuning one side and not the other — which
-    // every substring assertion in this file would sail straight past.
-    expect(sidebarV2HeaderLabelEdge()).toBe(sidebarV2PromptEdge());
-    expect(sidebarV2PromptEdge()).toBe(34);
+    // project header's folder mark start at the same x, reached through two
+    // different paddings. Asserted as arithmetic rather than as class strings,
+    // because the failure this catches is retuning one side and not the other
+    // — which every substring assertion in this file would sail straight past.
+    expect(sidebarV2HeaderMarkEdge()).toBe(sidebarV2PromptEdge());
+    expect(sidebarV2PromptEdge()).toBe(20);
 
     // And the classes still spell the px they claim to. A constant that drifts
     // from its own derivation is the one way a named value is worse than a
     // literal at the call site.
     const px = SIDEBAR_V2_CARD_ALIGNMENT_PX;
-    expect(SIDEBAR_V2_CARD_ALIGNMENT.statusBox).toBe(`size-${px.statusBox / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.cardPad).toBe(`px-${px.cardPad / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.cardPadY).toBe(`py-${px.cardPadY / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.rowGap).toBe(`gap-${px.rowGap / 4}`);
     expect(SIDEBAR_V2_CARD_ALIGNMENT.titleGap).toBe(`gap-${px.titleGap / 4}`);
-    expect(SIDEBAR_V2_CARD_ALIGNMENT.repoIndent).toBe(`pl-${px.repoIndent / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.trailingGap).toBe(`gap-${px.trailingGap / 4}`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.statusBox).toBe(
+      `h-[${px.statusBoxHeight}px] w-[${px.statusBoxWidth}px]`,
+    );
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.headerPad).toBe(`px-${px.headerPad / 4}`);
     expect(SIDEBAR_V2_CARD_ALIGNMENT.headerMarkBox).toBe(`size-${px.headerMarkBox / 4}`);
     expect(SIDEBAR_V2_CARD_ALIGNMENT.headerGap).toBe(`gap-${px.headerGap / 4}`);
     expect(SIDEBAR_V2_CARD_ALIGNMENT.listGap).toBe(`gap-${px.listGap / 4}`);
     expect(SIDEBAR_V2_CARD_ALIGNMENT.headerLead).toBe(`mt-[${px.headerLead}px]`);
+    expect(SIDEBAR_V2_CARD_ALIGNMENT.headerLeadCollapsed).toBe(`mt-${px.headerLeadCollapsed / 4}`);
     expect(SIDEBAR_V2_CARD_ALIGNMENT.headerTrail).toBe(`mb-${px.headerTrail / 4}`);
-
-    // The repo line is deliberately 2px left of the prompt — the design's
-    // number, not a rounding slip, so it is pinned as a difference.
-    expect(px.cardPad + px.repoIndent).toBe(px.cardPad + px.statusBox + px.titleGap - 2);
+    // The header row reads the same module, so the two sides cannot be
+    // retuned apart without one of these going red.
+    const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
+    expect(header).toContain("SIDEBAR_V2_CARD_ALIGNMENT.headerPad");
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.cardPad");
   });
 
   it("does not layer text-xs onto card titles (that forced a 16px line box)", () => {
@@ -358,17 +400,15 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(titleClass).toContain('"text-sm"');
   });
 
-  it("tones the repo line off the muted channel, branch a step above the model", () => {
-    // The component set paints project and branch at --muted-foreground and the
-    // model/runtime cluster at 70% of it. The branch stays the brighter of the
-    // two — checkout identity is what tells two threads on one project apart —
-    // but it carries that on the muted channel rather than on foreground/70,
-    // which drifted a step brighter than the design as the panel was retuned.
+  it("tones the whole repo line off the muted channel", () => {
+    // The component set (364:17299) paints branch and model alike at
+    // --muted-foreground; only the PR badge carries a colour of its own. The
+    // line's tone rides REPO_ROW, pinned whole above, and nothing on it steps
+    // up to foreground or down to a tinted muted.
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
-    // The line's base tone rides REPO_ROW, pinned whole above; the model
-    // cluster is the only thing that steps behind it.
-    expect(meta).toContain('MUTED = "text-muted-foreground/70"');
+    expect(meta).not.toContain("text-muted-foreground/70");
     expect(meta).not.toContain("text-foreground/70");
+    expect(meta).toContain("text-[11px] leading-[15px]");
   });
 
   it("draws every card at one height, whatever it carries", () => {
@@ -389,30 +429,44 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // content-visibility skips offscreen rows; the intrinsic size is what keeps
     // the scrollbar honest while they are skipped. A stale value here makes the
     // list jump as you scroll. It measures the li, which carries no padding of
-    // its own and so equals the drawn card: py-2 8 + title 18 + gap 2 + repo 16
-    // + 8 = 52. Change the card's padding, gap, or either row's height and this
-    // moves with them, or the scrollbar lies by the difference on every row it
-    // skips.
-    expect(sidebarV2).toContain("gap-0.5 px-1 py-2");
-    expect(sidebarV2).toContain("[contain-intrinsic-size:auto_52px]");
-    expect(sidebarV2).not.toMatch(/contain-intrinsic-size:auto_(?:54|77)px/u);
+    // its own and so equals the drawn card: py-2 8 + title 18 + gap 4 + repo 16
+    // + 8 = 54. The card reads its padding and gap from the alignment module,
+    // whose sidebarV2CardHeight() is that sum, so a retune of any term moves
+    // the hint with it — or the scrollbar lies by the difference on every row
+    // it skips.
+    expect(sidebarV2CardHeight()).toBe(54);
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.rowGap");
+    expect(sidebarV2).toContain("SIDEBAR_V2_CARD_ALIGNMENT.cardPadY");
+    expect(sidebarV2).toContain(`[contain-intrinsic-size:auto_${sidebarV2CardHeight()}px]`);
+    expect(sidebarV2).not.toMatch(/contain-intrinsic-size:auto_(?:52|77)px/u);
   });
 
   it("spaces cards 2px apart on the list, per the design", () => {
     // The ul's gap is the only vertical space between cards; the design stacks
-    // 52px cards on a 54px pitch (293:20603). A project header buys the rest of
-    // its own spacing — 4px to its first card, 20px above itself — out of its
-    // margins, so it does not depend on this gap staying wrong for it.
+    // 54px cards on a 56px pitch (364:11496). A project header buys the rest of
+    // its own spacing — 24px above itself, nothing below — out of its margins,
+    // so it does not depend on this gap staying wrong for it.
     expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.listGap).toBe(2);
     expect(sidebarV2).toContain('cn("flex flex-col", SIDEBAR_V2_CARD_ALIGNMENT.listGap)');
     const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
     expect(header).toContain("SIDEBAR_V2_CARD_ALIGNMENT.headerTrail");
-    expect(header).toContain('props.isFirst ? "mt-0" : SIDEBAR_V2_CARD_ALIGNMENT.headerLead');
+    // The 24 is the open section's, spent under its last card; a header after
+    // a closed or empty section takes the compact lead. The render decides
+    // from the painted list, so a collapsed group still showing the route
+    // thread counts as open.
+    expect(header).toMatch(
+      /props\.isFirst\s*\?\s*"mt-0"\s*:\s*props\.afterOpenSection\s*\?\s*SIDEBAR_V2_CARD_ALIGNMENT\.headerLead\s*:\s*SIDEBAR_V2_CARD_ALIGNMENT\.headerLeadCollapsed/u,
+    );
+    expect(sidebarV2).toContain(
+      "previousSection !== undefined && previousSection.threads.length > 0;",
+    );
+    expect(sidebarV2).toContain("afterOpenSection={afterOpenSection}");
     // Every margin here is only correct relative to the list gap it sits on,
     // so all five are pinned as totals rather than as their own values.
     const px = SIDEBAR_V2_CARD_ALIGNMENT_PX;
-    expect(px.listGap + px.headerTrail).toBe(4);
-    expect(px.listGap + px.headerLead).toBe(20);
+    expect(px.listGap + px.headerTrail).toBe(2);
+    expect(px.listGap + px.headerLead).toBe(24);
+    expect(px.listGap + px.headerLeadCollapsed).toBe(8);
     // The shelves and the pinned divider are NOT part of the card retune — the
     // design draws neither. Their totals are what they were before the gap
     // halved, and that is the point: a design change to the cards must not

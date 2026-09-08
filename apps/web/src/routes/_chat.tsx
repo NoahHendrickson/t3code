@@ -11,6 +11,10 @@ import { selectProjectGroupingSettings } from "../logicalProject";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
 import { dispatchPreviewAction } from "../components/preview/previewActionBus";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+import { isUnassignedDraft } from "~/custom/newAgentDraft";
+import { useStartNewAgentDraft } from "~/custom/useNewAgentDraft";
+/* fork:end fork-new-agent-draft */
 import { startNewThreadFromContext } from "../lib/chatThreadActions";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
@@ -29,6 +33,9 @@ function ChatRouteGlobalShortcuts() {
     useHandleNewThread();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const legacySidebarEnabled = useLegacySidebarEnabled();
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+  const startNewAgentDraft = useStartNewAgentDraft();
+  /* fork:end fork-new-agent-draft */
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
   const projects = useProjects();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -80,6 +87,14 @@ function ChatRouteGlobalShortcuts() {
       if (command === "chat.newLocal") {
         event.preventDefault();
         event.stopPropagation();
+        /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+           From an unassigned draft there is no current project to create in;
+           the shortcut lands back on the draft that still needs one. */
+        if (isUnassignedDraft(activeDraftThread)) {
+          void startNewAgentDraft();
+          return;
+        }
+        /* fork:end fork-new-agent-draft */
         void startNewThreadFromContext({
           activeDraftThread,
           activeThread: activeThread ?? undefined,
@@ -92,6 +107,15 @@ function ChatRouteGlobalShortcuts() {
       if (command === "chat.new") {
         event.preventDefault();
         event.stopPropagation();
+        /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+           The default sidebar's "New agent" button starts an unassigned draft
+           and its shortcut does the same; the legacy sidebar keeps upstream's
+           contextual create below. */
+        if (!legacySidebarEnabled) {
+          void startNewAgentDraft();
+          return;
+        }
+        /* fork:end fork-new-agent-draft */
         // The default sidebar routes creation through the command palette
         // whenever there is a real choice to make; the legacy sidebar (and
         // single-project setups) keep the immediate contextual create.
@@ -169,6 +193,9 @@ function ChatRouteGlobalShortcuts() {
     selectedThreadKeysSize,
     legacySidebarEnabled,
     terminalOpen,
+    /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+    startNewAgentDraft,
+    /* fork:end fork-new-agent-draft */
   ]);
 
   return null;

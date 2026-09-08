@@ -1078,14 +1078,63 @@
   translate: 100% 0;
 }
 
+/* ---------------------------------------------------------------------------
+   Project header actions reveal — see
+   `.fork/customizations.yaml#sidebar-v2-project-grouping`.
+
+   A header's settings and plus buttons (Figma 368:21364) show only while the
+   pointer is somewhere in that project's section: the header itself, or any
+   card under it. The header and its cards are siblings in one flat list, so
+   "under it" is "a card after this header with no later header in between",
+   which the second selector spells with :has(): a hovered section card after
+   this header, and not a hovered section card after a *later* header. Cards
+   outside a section (pinned block, shelves) carry no section marker and so
+   never light a header. Keyboard focus inside the group shows it too — but
+   only :focus-visible, not :focus-within: a click on the collapse layer
+   leaves that button focused, and plain focus would pin the buttons on
+   after the pointer had left. An open project menu pins it (the pointer is
+   on the popup then, not the row), and a coarse pointer, which cannot
+   hover, always sees it. Opacity only — the buttons keep their box, so the
+   label never reflows. */
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header]
+  [data-fork-section-actions] {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header]:is(:hover, :has(:focus-visible))
+  [data-fork-section-actions],
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header]
+  [data-fork-section-actions][data-fork-menu-open],
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header]:has(~ li[data-fork-project-section]:hover):not(
+    :has(~ li[data-fork-project-section-header] ~ li[data-fork-project-section]:hover)
+  )
+  [data-fork-section-actions] {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  :root[data-fork="noahhendrickson-t3code"]
+    li[data-fork-project-section-header]
+    [data-fork-section-actions] {
+    opacity: 1;
+  }
+}
+
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
    falls back to upstream's variables. The design's hues are tuned for a black
    panel; on the light panel the same values are near-invisible at 8px, so each
    one drops to the darkest shade that still reads as the same color family.
 
-   `working` and `done` deliberately share a hue: the mark's *form* is what
-   separates them (falling pixels vs a static dot), matching the phanttom
-   Ghostty sidebar this is ported from. See `custom/SidebarV2StatusIndicator`.
+   `working` keeps the phanttom Ghostty green (falling pixels); `done` — a
+   finished turn you have not read yet — is blue, so an unread result reads
+   apart from a live agent at a glance. `approval` and `input` share one
+   amber: both mean "waiting on you", and the half-circle form is the same
+   for both. See `custom/SidebarV2StatusIndicator`.
 
    Note this diverges from the mobile app, which still uses sky for working
    (`apps/mobile/src/features/threads/thread-list-v2-items.tsx`,
@@ -1100,9 +1149,9 @@
 :root[data-fork="noahhendrickson-t3code"],
 :root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
   --sidebar-v2-status-working: var(--color-emerald-600);
-  --sidebar-v2-status-done: var(--color-emerald-600);
+  --sidebar-v2-status-done: var(--color-indigo-600);
   --sidebar-v2-status-approval: var(--color-amber-500);
-  --sidebar-v2-status-input: var(--color-indigo-600);
+  --sidebar-v2-status-input: var(--color-amber-500);
   --sidebar-v2-status-failed: var(--color-red-600);
 }
 
@@ -1112,9 +1161,9 @@
 :root[data-fork="noahhendrickson-t3code"].dark,
 :root[data-fork="noahhendrickson-t3code"].dark [data-sidebar-version="v2"] {
   --sidebar-v2-status-working: #24fe8a;
-  --sidebar-v2-status-done: #24fe8a;
+  --sidebar-v2-status-done: #8b9cff;
   --sidebar-v2-status-approval: #ffcd59;
-  --sidebar-v2-status-input: #8b9cff;
+  --sidebar-v2-status-input: #ffcd59;
   --sidebar-v2-status-failed: #ff6b60;
 }
 
@@ -2199,6 +2248,96 @@
   border-color: var(--fork-composer-border);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* ── Project drop edge (sidebar-v2-project-grouping) ────────────────────────
+   Under manual sort the header the pointer is over stamps data-fork-drop-edge
+   with the side the dragged project will land. "above" is a hairline over
+   that header. "below" means below that whole section — under its last card,
+   or under the header itself when the group is closed or empty — and the
+   header cannot reach its last card, so the stylesheet finds it: the last
+   section card after the stamped header with no later header in between
+   (the same sibling walk the hover reveal uses). A straight 2px line, its
+   own pseudo-element, so no rounded control lends it corners. */
+:root[data-fork="noahhendrickson-t3code"] li[data-fork-project-section-header] {
+  position: relative;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header][data-fork-drop-edge="above"]::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: -2px;
+  height: 2px;
+  background: var(--ring);
+  pointer-events: none;
+  z-index: 2;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header][data-fork-drop-edge="below"]:not(
+    :has(+ li[data-fork-project-section])
+  )::after,
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header][data-fork-drop-edge="below"]
+  ~ li[data-fork-project-section]:not(:has(+ li[data-fork-project-section])):not(
+    li[data-fork-project-section-header][data-fork-drop-edge="below"]
+      ~ li[data-fork-project-section-header]
+      ~ li
+  )::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -2px;
+  height: 2px;
+  background: var(--ring);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* The card rows skip offscreen work with content-visibility:auto, and the
+   paint containment that comes with it clips a line hanging 2px below the
+   row. The one card drawing the edge gives that up for as long as it is —
+   it is on screen under the pointer anyway, so nothing is lost. */
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-project-section-header][data-fork-drop-edge="below"]
+  ~ li[data-fork-project-section]:not(:has(+ li[data-fork-project-section])):not(
+    li[data-fork-project-section-header][data-fork-drop-edge="below"]
+      ~ li[data-fork-project-section-header]
+      ~ li
+  ) {
+  content-visibility: visible;
+}
+
+:root[data-fork="noahhendrickson-t3code"] li[data-fork-project-section] {
+  position: relative;
+}
+
+/* ── Glass popup (sidebar-v2-project-grouping) ──────────────────────────────
+   The project header's menu opens over the thread list, not the stage: the
+   cards behind it are exactly what a blur has to work with, so this one
+   popup keeps a glass surface where the rule above makes every other menu
+   opaque. Heavier than upstream's dropdown-glass (20px, not 12) so the
+   rows behind read as texture, not as text, and a 70% popover tint so the
+   items stay legible over a card title. Dark only, like the opaque rule it
+   carves out of; light keeps upstream's glass. The extra attribute gives it
+   the specificity to win without !important, and the backdrop-filter is on
+   the popup itself — no mask, no pseudo-element — so it composites like
+   upstream's own. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-slot="menu-popup"].dropdown-glass[data-fork-glass-menu] {
+  background: color-mix(in srgb, var(--popover) 70%, transparent);
+  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root[data-fork="noahhendrickson-t3code"].dark
+    [data-slot="menu-popup"].dropdown-glass[data-fork-glass-menu] {
+    background: var(--popover);
+  }
 }
 
 /* ── Popup row hover (fork-popup-surface) ───────────────────────────────────
