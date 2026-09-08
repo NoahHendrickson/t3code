@@ -395,6 +395,11 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // cascade and painted over the checked white.
     expect(rows).toMatch(/const SCOPE_CHECKBOX_ON =\s*"[^"]*\bbg-primary\b/u);
     expect(rows).toMatch(/const SCOPE_CHECKBOX_OFF =\s*"[^"]*\bborder-input\b/u);
+    // In dark the box borders on a foreground alpha, not --input: the fork
+    // palettes' opaque --input matches the hovered row's 8% foreground wash,
+    // and the unchecked box disappeared under the pointer.
+    expect(rows).toMatch(/const SCOPE_CHECKBOX_OFF =\s*"[^"]*\bdark:border-foreground\/\d+\b/u);
+    expect(rows).not.toMatch(/const SCOPE_CHECKBOX_OFF =\s*"[^"]*\bdark:bg-input\b/u);
     expect(item).toContain("props.checked ? SCOPE_CHECKBOX_ON : SCOPE_CHECKBOX_OFF");
     expect(box).not.toContain("data-checked:");
     // The radio item's [&_svg]:-mx-0.5 pulled Lucide folders (and favicon

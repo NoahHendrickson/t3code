@@ -240,10 +240,18 @@ const SCOPE_ITEM =
     pick. The mark is the design's 3-stroke check at 12px. The two states are
     chosen off the checked prop rather than data-checked: variants, because
     the unchecked dark: fill sorts after data-checked: in Tailwind's cascade
-    and was painting over the checked one. */
+    and was painting over the checked one.
+
+    The unchecked box borders on a foreground alpha in dark, not on --input:
+    the fork palettes make --input an opaque grey that lands on the hovered
+    row's own 8% foreground wash (theme.custom.css), so the box vanished the
+    moment the pointer reached its row. An alpha reads as a lift of whatever
+    the row paints, hovered or not — the same reasoning as the wash itself.
+    Light keeps ui/checkbox's border-input, which clears the zinc hover. */
 const SCOPE_CHECKBOX =
   "inline-flex size-4 shrink-0 items-center justify-center rounded-[.25rem] border";
-const SCOPE_CHECKBOX_OFF = "border-input bg-background shadow-xs/5 dark:bg-input/32";
+const SCOPE_CHECKBOX_OFF =
+  "border-input bg-background shadow-xs/5 dark:border-foreground/24 dark:bg-transparent";
 const SCOPE_CHECKBOX_ON = "border-primary bg-primary text-primary-foreground";
 
 const EMPTY_PROJECT_SCOPE: ReadonlySet<string> = new Set();
