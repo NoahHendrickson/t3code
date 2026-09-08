@@ -3228,3 +3228,26 @@
     - apps/web/src/browser/hostedBrowserWebviewStyle.ts
   verify:
     - apps/web/src/__fork_guards__/forkGlassPreviewParking.test.ts
+
+- id: fork-subagent-spawn-card
+  intent: >
+    The in-chat subagent spawn CTA is the Figma tree (t3-fork file, node
+    376:21366), not upstream's bordered one-line bar. A Phosphor TreeView
+    (regular) leads "Kicked off N subagents" / "Ran N subagents", with the
+    working/failed/completed count and an underlined View agents action on
+    the line below. Clicking the block still opens the Agents panel. When
+    members are known they render indented underneath: working rain or a
+    settled status dot, title, live activity or terminal detail, then model,
+    effort, and token count. Workflow name and mid-phase titles stay when
+    the panel model has them. A sync that restores the bordered bar, drops
+    the member list, or unhooks onOpenAgents is a silent visual and
+    functional regression.
+  tier: 1
+  files:
+    - apps/web/src/custom/AgentSpawnCtaRow.tsx
+  shadows: []
+  watch:
+    # Fenced import plus the thin AgentSpawnCtaRow wrapper.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkSubagentSpawnCard.test.ts
