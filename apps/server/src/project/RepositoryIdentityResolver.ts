@@ -61,18 +61,39 @@ function parseBaseRemoteName(stdout: string): string | null {
   }
   return null;
 }
+
+// Only a checkout with several remotes has a choice to make, so a single
+// remote never pays for the extra git call. A marker naming a remote that no
+// longer exists resolves to nothing, and the caller falls back to upstream's
+// preference order.
+const pickBaseRemote = Effect.fn("pickBaseRemote")(function* (
+  cacheKey: string,
+  remotes: ReadonlyMap<string, string>,
+): Effect.fn.Return<
+  { readonly remoteName: string; readonly remoteUrl: string } | null,
+  never,
+  ProcessRunner.ProcessRunner
+> {
+  if (remotes.size <= 1) return null;
+  const processRunner = yield* ProcessRunner.ProcessRunner;
+  const configResult = yield* processRunner
+    .run({
+      command: "git",
+      args: ["-C", cacheKey, "config", "--get-regexp", String.raw`^remote\..*\.gh-resolved$`],
+      timeoutBehavior: "timedOutResult",
+    })
+    .pipe(Effect.option);
+  // `git config` exits 1 when nothing matches; that is simply "no base set".
+  if (configResult._tag === "None" || configResult.value.code !== 0) return null;
+  const remoteName = parseBaseRemoteName(configResult.value.stdout);
+  const remoteUrl = remoteName === null ? undefined : remotes.get(remoteName);
+  return remoteName !== null && remoteUrl ? { remoteName, remoteUrl } : null;
+});
 /* fork:end server-repository-identity-base-remote */
 
 function pickPrimaryRemote(
   remotes: ReadonlyMap<string, string>,
-  baseRemoteName: string | null = null,
 ): { readonly remoteName: string; readonly remoteUrl: string } | null {
-  /* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote */
-  if (baseRemoteName !== null) {
-    const baseRemoteUrl = remotes.get(baseRemoteName);
-    if (baseRemoteUrl) return { remoteName: baseRemoteName, remoteUrl: baseRemoteUrl };
-  }
-  /* fork:end server-repository-identity-base-remote */
   for (const preferredRemoteName of ["upstream", "origin"] as const) {
     const remoteUrl = remotes.get(preferredRemoteName);
     if (remoteUrl) {
@@ -151,25 +172,9 @@ const resolveRepositoryIdentityFromCacheKey = Effect.fn(
     return null;
   }
 
+  /* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote */
   const remotes = parseRemoteFetchUrls(remoteResult.value.stdout);
-  /* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote
-     Only a checkout with several remotes has a choice to make, so a single
-     remote never pays for the extra git call. */
-  let baseRemoteName: string | null = null;
-  if (remotes.size > 1) {
-    const configResult = yield* processRunner
-      .run({
-        command: "git",
-        args: ["-C", cacheKey, "config", "--get-regexp", String.raw`^remote\..*\.gh-resolved$`],
-        timeoutBehavior: "timedOutResult",
-      })
-      .pipe(Effect.option);
-    // `git config` exits 1 when nothing matches; that is simply "no base set".
-    if (configResult._tag === "Some" && configResult.value.code === 0) {
-      baseRemoteName = parseBaseRemoteName(configResult.value.stdout);
-    }
-  }
-  const remote = pickPrimaryRemote(remotes, baseRemoteName);
+  const remote = (yield* pickBaseRemote(cacheKey, remotes)) ?? pickPrimaryRemote(remotes);
   /* fork:end server-repository-identity-base-remote */
   return remote ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey }) : null;
 });

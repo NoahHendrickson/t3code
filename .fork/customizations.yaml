@@ -3593,8 +3593,12 @@
     of them carries the base marker, that remote is the identity. A
     checkout with a single remote, no marker, or a marker naming a remote
     that no longer exists keeps upstream's upstream-then-origin order, so
-    every other project resolves exactly as before. One extra `git config`
-    call, paid only by multi-remote checkouts and cached with the identity.
+    every other project resolves exactly as before. Only the literal `base`
+    form is honoured: when the chosen default repository is not one of the
+    checkout's remotes, gh writes `owner/repo` instead, and with no remote
+    naming that repository there is nothing to build a locator from, so that
+    checkout also keeps upstream's order. One extra `git config` call, paid
+    only by multi-remote checkouts and cached with the identity.
   tier: 4
   files: []
   shadows: []

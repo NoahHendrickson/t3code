@@ -33,13 +33,13 @@ describe("fork guard: server-repository-identity-base-remote", () => {
     const hunks = readCustomizationHunks(resolver);
     // The marker is read from git config and only for multi-remote checkouts.
     expect(hunks).toContain("gh-resolved");
-    expect(hunks).toContain("remotes.size > 1");
-    // The marked remote wins before upstream's preference order runs.
-    expect(hunks).toContain("remotes.get(baseRemoteName)");
-    expect(resolver.indexOf("remotes.get(baseRemoteName)")).toBeLessThan(
-      resolver.indexOf('["upstream", "origin"] as const'),
+    expect(hunks).toContain("if (remotes.size <= 1) return null;");
+    // The marked remote wins; upstream's picker is only the fallback and is
+    // left byte-identical, so a sync never conflicts on its signature.
+    expect(hunks).toContain("?? pickPrimaryRemote(remotes)");
+    expect(resolver).toContain(
+      "function pickPrimaryRemote(\n  remotes: ReadonlyMap<string, string>,\n): {",
     );
-    // Upstream's order stays as the fallback for everyone else.
     expect(resolver).toContain('["upstream", "origin"] as const');
   });
 
