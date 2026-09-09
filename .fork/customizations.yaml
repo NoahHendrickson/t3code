@@ -2229,9 +2229,12 @@
     keeps upstream's state ink (emerald open, violet merged, red closed — the
     sidebar card's PR badge colours) instead of the white chip text, its fill
     is a 12% / 17% wash of that same ink, and it rides the far end of the
-    strip — the wrapper it shares with the branch trigger grows and the chip
-    takes the free space as a start margin, so the branch stays packed
-    against checkout. The liveness pill, when shown, stays last.
+    strip — the wrapper it shares with the branch trigger grows and spreads
+    the two apart with justify-content, so the branch stays packed against
+    checkout. Never an auto margin on the chip: useLabelsOverflow counts a
+    chip's margins as needed width, and a used auto margin is the strip's
+    whole slack, which latched the labels compact whenever a PR was linked.
+    The liveness pill, when shown, stays last.
     Upstream's resting composer layout (#7855) is neutralized in the
     composerFooterLayout shadow: its helpers are ported so ChatComposer
     compiles, but shouldUseRestingComposerLayout is fenced to always return

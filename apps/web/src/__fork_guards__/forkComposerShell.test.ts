@@ -547,21 +547,25 @@ describe("fork guard: fork-composer-shell", () => {
     ]);
     expect(prFill[1]?.selector).toContain(":hover");
     // Far end: the wrapper holding the chip may grow again (the packing rule
-    // pins every other strip child shrink-only) and the chip takes the free
-    // space as a start margin, so the branch stays packed against checkout.
+    // pins every other strip child shrink-only) and spreads its children
+    // apart, so the branch stays packed against checkout. The spread has to
+    // be justify-content: an auto margin on the chip is counted by
+    // useLabelsOverflow as needed width, which latched the strip compact
+    // (icon-only labels) whenever a PR was linked.
     const grow = rules.find(
       (rule) =>
         rule.selector.includes('[data-slot="composer-context-strip"]') &&
         rule.selector.includes(":has(> [data-fork-pr-chip])"),
     );
     expect(grow?.body).toMatch(/flex:\s*1 1 auto/u);
+    expect(grow?.body).toMatch(/justify-content:\s*space-between/u);
     const place = rules.find(
       (rule) =>
         rule.selector.includes('[data-slot="composer-context-strip"]') &&
         rule.selector.trim().endsWith("[data-fork-pr-chip]"),
     );
-    expect(place?.body).toMatch(/margin-inline-start:\s*auto/u);
     expect(place?.body).toMatch(/order:\s*1/u);
+    expect(place?.body).not.toMatch(/margin-inline-start:\s*auto/u);
   });
 
   it("hides only separators in the left mode slot", () => {
