@@ -3502,3 +3502,15 @@
     - apps/web/src/__fork_guards__/forkNewAgentDraft.test.ts
     - apps/web/src/custom/newAgentDraft.test.ts
     - apps/web/src/custom/useNewAgentDraft.test.ts
+
+- id: fork-scroll-to-end-glass
+  intent: >
+    The scroll-to-end pill uses the warm glass popup floor with a light neutral
+    wash and hover state while native Cool Darker glass is active. Its fill
+    stays opaque over transcript text and other themes keep their existing style.
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch: []
+  verify:
+    - apps/web/src/__fork_guards__/forkCoolDarkerSidebarVibrancy.test.ts
