@@ -3081,6 +3081,13 @@
     context, provider and environment warnings, the inline activity strip) are
     the top section of the composer card, not a card floating behind it.
 
+    A settled thread shows only its Un-settle notice, with no stacked notice
+    peeking behind it. Other notices, including resume compaction, are hidden
+    without being dismissed and become available once the thread is unsettled.
+    The final stack selection includes activity notices so they cannot push
+    Un-settle behind another card. Snoozed and active threads keep their normal
+    notice ordering.
+
     Colour: instead of upstream's severity tint — a --info / --success /
     --warning / --error outline plus a wash of the same hue over the glass,
     which lands as a blue slab on the fork's neutral composer stack — every
@@ -3123,6 +3130,7 @@
   files:
     - apps/web/src/theme.custom.css
     - apps/web/src/components/ChatView.tsx
+    - apps/web/src/custom/composerBannerVisibility.ts
   shadows: []
   watch:
     # Owns data-composer-banner-surface, data-slot="composer-banner",
@@ -3136,6 +3144,7 @@
     - apps/web/src/components/chat/ChatComposer.tsx
     # Carries the fenced variant="default" on the notice primary actions.
     - apps/web/src/components/ChatView.tsx
+    - docs/user/thread-sidebar.md
   verify:
     - apps/web/src/__fork_guards__/forkComposerBannerSurface.test.ts
 

@@ -77,6 +77,14 @@ and prevents automatic settlement until new activity resumes the usual rules.
 Manually settling an idle thread dismisses unanswered async questions without
 sending an answer or restarting the agent.
 
+<!-- fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface -->
+
+On web and desktop, a settled thread shows only the **Un-settle** notice above the composer.
+Other notices, including **Resume with less context**, appear after you un-settle the thread
+if they still apply.
+
+<!-- fork:end fork-composer-banner-surface -->
+
 By default, environments settle inactive threads after three days and settle
 threads whose pull request merged. A closed pull request can also settle an idle
 thread. Work in progress, pending questions or approvals, and live background work
