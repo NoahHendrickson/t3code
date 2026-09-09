@@ -646,6 +646,23 @@
     var(--fork-popup-glass-floor);
 }
 
+/* Keep floating glass surfaces opaque over transcript text, using the glass menu floor. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  .surface-glass {
+  background:
+    linear-gradient(var(--fork-context-chip-bg), var(--fork-context-chip-bg)),
+    var(--fork-popup-glass-floor);
+  border-color: rgb(255 255 255 / 8%);
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  button.surface-glass:is(:hover, [data-pressed]) {
+  background:
+    linear-gradient(var(--fork-context-chip-bg-hover), var(--fork-context-chip-bg-hover)),
+    var(--fork-popup-glass-floor);
+  border-color: rgb(255 255 255 / 12%);
+}
+
 /* NO backdrop-filter anywhere in the composer, and this is the one rule in the
    glass set that exists to say so.
 
