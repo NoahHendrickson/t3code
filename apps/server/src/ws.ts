@@ -124,6 +124,9 @@ import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
+/* fork:begin server-local-thread-branch */
+import { resolveBootstrapThreadBranch } from "./git/resolveBootstrapThreadBranch.ts";
+/* fork:end server-local-thread-branch */
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ProjectSetupScriptRunner from "./project/ProjectSetupScriptRunner.ts";
 import * as AgentSessionScanner from "./project/AgentSessionScanner.ts";
@@ -1095,6 +1098,23 @@ const makeWsRpcLayer = (
 
           const bootstrapProgram = Effect.gen(function* () {
             if (bootstrap?.createThread) {
+              /* fork:begin server-local-thread-branch — see .fork/customizations.yaml#server-local-thread-branch
+                 A client that names no branch (upstream mobile's untouched
+                 "Current checkout") gets the checkout's live branch. */
+              const branch = yield* resolveBootstrapThreadBranch(
+                {
+                  threadId: command.threadId,
+                  projectId: bootstrap.createThread.projectId,
+                  branch: bootstrap.createThread.branch,
+                  worktreePath: bootstrap.createThread.worktreePath,
+                  preparingWorktree: bootstrap.prepareWorktree !== undefined,
+                },
+                {
+                  getProjectShellById: projectionSnapshotQuery.getProjectShellById,
+                  localStatus: gitWorkflow.localStatus,
+                },
+              );
+              /* fork:end server-local-thread-branch */
               const created = yield* dispatchFromClient({
                 type: "thread.create",
                 commandId: yield* serverCommandId("bootstrap-thread-create"),
@@ -1104,7 +1124,7 @@ const makeWsRpcLayer = (
                 modelSelection: bootstrap.createThread.modelSelection,
                 runtimeMode: bootstrap.createThread.runtimeMode,
                 interactionMode: bootstrap.createThread.interactionMode,
-                branch: bootstrap.createThread.branch,
+                branch,
                 worktreePath: bootstrap.createThread.worktreePath,
                 createdAt: bootstrap.createThread.createdAt,
               });
