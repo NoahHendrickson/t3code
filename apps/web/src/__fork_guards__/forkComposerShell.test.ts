@@ -39,6 +39,7 @@ const shellCss = readSibling("../custom/ComposerShell.css");
 const palettes = readSibling("../theme.custom.palettes.css");
 const styles = `${theme}\n${shellCss}`;
 const rules = cssRules(styles);
+const paletteRules = cssRules(palettes);
 const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
@@ -412,7 +413,6 @@ describe("fork guard: fork-composer-shell", () => {
     expect(hover?.selector).toContain(":not([data-fork-composer-mode-chip])");
     // The rule reads a per-palette token, so every palette has to declare one
     // on its stage block or that theme falls back to the default dark lift.
-    const paletteRules = cssRules(palettes);
     for (const palette of ["cool-dark", "cool-darker", "neutral-dark", "neutral-darker"]) {
       const stage = paletteRules.find(
         (rule) =>
@@ -528,26 +528,22 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("color:"),
     );
     expect(chipInk?.selector).toContain(":not([data-fork-pr-chip])");
-    // Palette overlays restate white chip ink at higher specificity than the
-    // default-dark rule. Each must keep the same exemption or they flatten
-    // the PR chip after the rule above spared it.
-    const paletteChipInk = cssRules(palettes).filter(
+    // That rule is the only chip ink. Palette overlays swap fill tokens; a
+    // palette restatement of the white ink carries [data-fork-theme] weight,
+    // outranks the exemption above, and flattens the PR chip.
+    const paletteChipInk = paletteRules.filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
-        rule.selector.includes("[data-fork-context-chip]") &&
-        rule.body.includes("color:"),
+        /(^|[^-])color:/u.test(rule.body),
     );
-    expect(paletteChipInk.length).toBe(4);
-    for (const rule of paletteChipInk) {
-      expect(rule.selector).toContain(":not([data-fork-pr-chip])");
-    }
+    expect(paletteChipInk).toEqual([]);
     const chipHover = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.body.includes("var(--fork-context-chip-bg-hover)"),
     );
     expect(chipHover?.selector).not.toContain("[data-fork-pr-chip]");
-    const prFill = rules.filter(
+    const prFill = [...rules, ...paletteRules].filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.selector.includes("[data-fork-pr-chip]") &&

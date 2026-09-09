@@ -70,12 +70,6 @@
   --sidebar-row-selected: #3c4143;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-  [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
-  color: #ffffff;
-}
-
 /* ---------------------------------------------------------------------------
    Cool Darker — see `.fork/customizations.yaml#fork-cool-darker-theme`.
 
@@ -144,12 +138,6 @@
   --sidebar-row-selected: #2c3134;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
-  color: #ffffff;
-}
-
 /* ---------------------------------------------------------------------------
    Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
 
@@ -215,12 +203,6 @@
   --sidebar-row-selected: #3a3a3a;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
-  [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
-  color: #ffffff;
-}
-
 /* ---------------------------------------------------------------------------
    Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
 
@@ -284,12 +266,6 @@
   --sidebar-row-hover: #2b2b2b;
   --sidebar-row-active: #2e2e2e;
   --sidebar-row-selected: #2e2e2e;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
-  [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
-  color: #ffffff;
 }
 
 /* ---------------------------------------------------------------------------

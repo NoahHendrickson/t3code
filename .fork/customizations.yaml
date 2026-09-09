@@ -2234,9 +2234,10 @@
     branch stays packed against checkout. Never an auto margin on the chip:
     useLabelsOverflow counts a chip's margins as needed width, and a used
     auto margin is the strip's whole slack, which latched the labels compact
-    whenever a PR was linked. Palette overlays that restyle chip ink white
-    (theme.custom.palettes.css) must keep the same :not([data-fork-pr-chip])
-    exemption, or they flatten the state colour after the default-dark rule.
+    whenever a PR was linked. Chip ink is owned by the one default-dark rule
+    in theme.custom.css; palette overlays only swap the fill tokens and never
+    restate chip colour, since a palette copy of the white ink outranks the
+    exemption and flattens the state colour.
     The liveness pill, when shown, stays last.
     Upstream's resting composer layout (#7855) is neutralized in the
     composerFooterLayout shadow: its helpers are ported so ChatComposer
@@ -2251,7 +2252,6 @@
     - apps/web/src/custom/StopSquareIcon.tsx
     - apps/web/src/custom/composerModelSlotCompact.ts
     - apps/web/src/theme.custom.css
-    - apps/web/src/theme.custom.palettes.css
     - apps/web/src/overrides/components/composerFooterLayout.ts
   shadows:
     - apps/web/src/components/composerFooterLayout.ts
