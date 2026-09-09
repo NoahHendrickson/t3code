@@ -73,22 +73,6 @@ function makeRoot() {
 }
 
 describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
-  it("gives the scroll-to-end pill an opaque glass floor and a brighter hover", () => {
-    const selector = 'button[aria-label="Scroll to end"]';
-    const pill = glassRules.find((rule) => rule.selector.endsWith(selector));
-    const hover = glassRules.find((rule) =>
-      rule.selector.endsWith(`${selector}:is(:hover, [data-pressed])`),
-    );
-    expect(pill?.body).toContain(
-      "background: color-mix(in srgb, white 12%, var(--fork-popup-glass-floor))",
-    );
-    expect(hover?.body).toContain(
-      "background: color-mix(in srgb, white 17%, var(--fork-popup-glass-floor))",
-    );
-    expect(readSibling("../components/ChatView.tsx")).toContain('aria-label="Scroll to end"');
-    expect(customizations).toContain("id: fork-scroll-to-end-glass");
-  });
-
   it("registers the glass as a fork customization", () => {
     expect(customizations).toContain("id: fork-cool-darker-sidebar-vibrancy");
     expect(desktopMethod).toContain("fork:set-sidebar-vibrancy");

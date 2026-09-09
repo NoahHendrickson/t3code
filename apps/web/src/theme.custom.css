@@ -2570,15 +2570,19 @@
   color: var(--foreground);
 }
 
-/* Keep the floating pill opaque over transcript text, using the glass menu floor. */
+/* Keep glass buttons opaque over transcript text, using the glass menu floor. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  button[aria-label="Scroll to end"] {
-  background: color-mix(in srgb, white 12%, var(--fork-popup-glass-floor));
+  button.surface-glass {
+  background:
+    linear-gradient(var(--fork-context-chip-bg), var(--fork-context-chip-bg)),
+    var(--fork-popup-glass-floor);
   border-color: rgb(255 255 255 / 8%);
 }
 
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  button[aria-label="Scroll to end"]:is(:hover, [data-pressed]) {
-  background: color-mix(in srgb, white 17%, var(--fork-popup-glass-floor));
+  button.surface-glass:is(:hover, [data-pressed]) {
+  background:
+    linear-gradient(var(--fork-context-chip-bg-hover), var(--fork-context-chip-bg-hover)),
+    var(--fork-popup-glass-floor);
   border-color: rgb(255 255 255 / 12%);
 }
