@@ -2225,15 +2225,19 @@
     upstream's compact action (#8144) in the readout slot.
     Default-dark context chips are Figma 322:6316's white 12% wash (hover
     17%), the pair the Cool Darker glass tier already uses; the other
-    palettes keep their own opaque tints. The PR chip is the exception: it
-    keeps upstream's state ink (emerald open, violet merged, red closed — the
-    sidebar card's PR badge colours) instead of the white chip text, its fill
-    is a 12% / 17% wash of that same ink, and it rides the far end of the
-    strip — the wrapper it shares with the branch trigger grows and spreads
-    the two apart with justify-content, so the branch stays packed against
-    checkout. Never an auto margin on the chip: useLabelsOverflow counts a
-    chip's margins as needed width, and a used auto margin is the strip's
-    whole slack, which latched the labels compact whenever a PR was linked.
+    palettes keep their own opaque tints. The PR chip is the exception: its
+    glyph and number keep upstream's state ink (emerald open, violet merged,
+    red closed — the sidebar card's PR badge colours) instead of the white
+    chip text. The fill stays the sibling chips' glass / raised step. It
+    rides the far end of the strip — the wrapper it shares with the branch
+    trigger grows and spreads the two apart with justify-content, so the
+    branch stays packed against checkout. Never an auto margin on the chip:
+    useLabelsOverflow counts a chip's margins as needed width, and a used
+    auto margin is the strip's whole slack, which latched the labels compact
+    whenever a PR was linked. Chip ink is owned by the one default-dark rule
+    in theme.custom.css; palette overlays only swap the fill tokens and never
+    restate chip colour, since a palette copy of the white ink outranks the
+    exemption and flattens the state colour.
     The liveness pill, when shown, stays last.
     Upstream's resting composer layout (#7855) is neutralized in the
     composerFooterLayout shadow: its helpers are ported so ChatComposer

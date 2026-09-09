@@ -739,9 +739,9 @@ export function BranchToolbarBranchSelector({
                   aria-label={branchPrTooltip}
                   onClick={(event) => openPrLink(event, branchPrStatus.url)}
                   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
-                     The chip keeps its PR-state ink (theme.custom.css exempts
-                     it from the white chip text and washes it in that colour)
-                     and rides the far end of the strip. */
+                     The glyph and number keep PR-state ink (theme.custom.css
+                     exempts them from the white chip text). The fill stays
+                     the sibling chips' glass. Rides the far end of the strip. */
                   data-fork-pr-chip
                   /* fork:end fork-composer-shell */
                   className={cn(

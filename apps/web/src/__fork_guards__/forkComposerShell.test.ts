@@ -39,6 +39,7 @@ const shellCss = readSibling("../custom/ComposerShell.css");
 const palettes = readSibling("../theme.custom.palettes.css");
 const styles = `${theme}\n${shellCss}`;
 const rules = cssRules(styles);
+const paletteRules = cssRules(palettes);
 const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
@@ -412,7 +413,6 @@ describe("fork guard: fork-composer-shell", () => {
     expect(hover?.selector).toContain(":not([data-fork-composer-mode-chip])");
     // The rule reads a per-palette token, so every palette has to declare one
     // on its stage block or that theme falls back to the default dark lift.
-    const paletteRules = cssRules(palettes);
     for (const palette of ["cool-dark", "cool-darker", "neutral-dark", "neutral-darker"]) {
       const stage = paletteRules.find(
         (rule) =>
@@ -515,10 +515,9 @@ describe("fork guard: fork-composer-shell", () => {
   });
 
   it("lets the PR chip keep its state colour and ride the strip's far end", () => {
-    // Upstream inks the pill emerald / violet / red by PR state; the fork's
-    // white chip ink and neutral hover fill would have flattened it. Both
-    // rules exempt the stamped chip, and the chip's fill is a wash of its own
-    // ink instead.
+    // Upstream inks the glyph and number emerald / violet / red by PR state;
+    // the fork's white chip ink would flatten that. The fill stays the sibling
+    // chips' glass — only the mark and #N carry the state.
     const branchSelector = readSibling("../components/BranchToolbarBranchSelector.tsx");
     expect(branchSelector).toContain("data-fork-pr-chip");
     expect(branchSelector).toContain("branchPrStatus.colorClass");
@@ -529,23 +528,28 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("color:"),
     );
     expect(chipInk?.selector).toContain(":not([data-fork-pr-chip])");
+    // That rule is the only chip ink. Palette overlays swap fill tokens; a
+    // palette restatement of the white ink carries [data-fork-theme] weight,
+    // outranks the exemption above, and flattens the PR chip.
+    const paletteChipInk = paletteRules.filter(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        /(^|[^-])color:/u.test(rule.body),
+    );
+    expect(paletteChipInk).toEqual([]);
     const chipHover = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.body.includes("var(--fork-context-chip-bg-hover)"),
     );
-    expect(chipHover?.selector).toContain(":not([data-fork-pr-chip])");
-    const prFill = rules.filter(
+    expect(chipHover?.selector).not.toContain("[data-fork-pr-chip]");
+    const prFill = [...rules, ...paletteRules].filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.selector.includes("[data-fork-pr-chip]") &&
         rule.body.includes("color-mix(in oklab, currentColor"),
     );
-    expect(prFill.map((rule) => rule.body)).toEqual([
-      expect.stringMatching(/currentColor 12%/u),
-      expect.stringMatching(/currentColor 17%/u),
-    ]);
-    expect(prFill[1]?.selector).toContain(":hover");
+    expect(prFill).toEqual([]);
     // Far end: the wrapper holding the chip may grow again (the packing rule
     // pins every other strip child shrink-only) and spreads its children
     // apart, so the branch stays packed against checkout. The spread has to

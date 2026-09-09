@@ -892,9 +892,7 @@
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"]):is(:hover, [data-pressed], [data-popup-open]):not(
-    :disabled
-  ):not([data-fork-pr-chip]) {
+  :is(button, [data-slot="button"]):is(:hover, [data-pressed], [data-popup-open]):not(:disabled) {
   background: var(--fork-context-chip-bg-hover);
 }
 
@@ -904,12 +902,12 @@
   color: #ffffff;
 }
 
-/* The PR chip is the one context chip that carries a state: upstream inks it
-   emerald / violet / red for open / merged / closed (prStatusIndicator), the
-   same colours the sidebar card's PR badge reads in. The white chip ink above
-   exempts it so that colour survives, and its fill is a wash of that same
-   colour at the neutral chips' 12% / 17% — the chip takes on the state
-   rather than sitting grey beside a coloured number.
+/* The PR chip is the one context chip that carries a state: upstream inks
+   the glyph and number emerald / violet / red for open / merged / closed
+   (prStatusIndicator), the same colours the sidebar card's PR badge reads
+   in. The white chip ink above exempts it so that colour survives. The fill
+   stays the sibling chips' glass / raised step — only the mark and #N
+   carry the state.
 
    It also rides the far end of the strip. Upstream nests it ahead of the
    branch trigger in one wrapper, and the packing rules above pin every strip
@@ -926,16 +924,6 @@
    resolves to its used width — the strip's whole slack. Counted, the strip
    always measured itself as overflowing, collapsed both labels to their
    glyphs the moment a PR was linked, and never expanded again. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-context-row] [data-fork-pr-chip] {
-  background: color-mix(in oklab, currentColor 12%, transparent);
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-context-row]
-  [data-fork-pr-chip]:hover:not(:disabled) {
-  background: color-mix(in oklab, currentColor 17%, transparent);
-}
-
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
   [data-slot="composer-context-strip"]
