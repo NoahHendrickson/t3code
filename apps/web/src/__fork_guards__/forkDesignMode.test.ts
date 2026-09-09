@@ -224,10 +224,14 @@ describe("fork guard: design mode", () => {
     // ...and the slot it mounts into exists on the chrome row and is actually passed.
     const chromeRow = read("src/components/preview/PreviewChromeRow.tsx");
     expect(chromeRow).toContain("leadingActions?: ReactNode;");
-    expect(chromeRow).toContain("{leadingActions}");
-    expect(read("src/components/preview/PreviewView.tsx")).toContain(
-      "leadingActions={<ForkPreviewLayersToggle runtimeTabId={runtimeTabId} />}",
-    );
+    // Rendered exactly once: upstream owns the slot since #10501-era chrome
+    // work, and a surviving fork render would draw the toggle twice.
+    expect(chromeRow.split("{leadingActions}")).toHaveLength(2);
+    // Upstream now owns the slot (it names the tab's browser profile there), so
+    // the toggle shares it rather than being the whole value.
+    const previewView = read("src/components/preview/PreviewView.tsx");
+    expect(previewView).toContain("leadingActions={");
+    expect(previewView).toContain("<ForkPreviewLayersToggle runtimeTabId={runtimeTabId} />");
   });
 
   it("continues the guest's canvas across the host letterbox in the same color", () => {

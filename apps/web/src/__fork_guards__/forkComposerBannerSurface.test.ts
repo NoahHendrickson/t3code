@@ -123,10 +123,15 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(surface).toContain("var(--chat-composer-attached-surface)_var(--glass-opacity)");
     // The severity tints the rule overrides are still expressed through the
     // same variables; a sync that paints them another way slips past this rule.
-    for (const variant of ["error", "info", "success", "warning"]) {
+    // Since upstream #10437-era banner work, info and success share the
+    // neutral outline; only error and warning still tint through the variable.
+    for (const variant of ["error", "warning"]) {
       expect(banner, variant).toMatch(
         new RegExp(`${variant}:\\s*"\\[--chat-composer-attached-outline:color-mix\\(`, "u"),
       );
+    }
+    for (const variant of ["info", "success"]) {
+      expect(banner, variant).toMatch(new RegExp(`${variant}:\\s*neutralOutline`, "u"));
     }
   });
 
@@ -140,11 +145,14 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(peek).toContain("peekBorder[variant]");
     for (const [variant, token] of [
       ["error", "destructive"],
-      ["info", "info"],
-      ["success", "success"],
       ["warning", "warning"],
     ] as const) {
       expect(banner, variant).toMatch(new RegExp(`${variant}:\\s*"border-${token}/\\d+"`, "u"));
+    }
+    for (const variant of ["info", "success"]) {
+      expect(banner, variant).toMatch(
+        new RegExp(`${variant}:\\s*"border-\\(--chat-composer-attached-outline\\)"`, "u"),
+      );
     }
   });
   it("leaves the banner unpainted so it reads as vessel floor", () => {
@@ -203,6 +211,27 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(rule?.body).toMatch(/--composer-banner-icon-column:\s*16px/u);
     expect(rule?.body).toMatch(/padding:\s*16px 8px 16px 16px/u);
     expect(rule?.body).toMatch(/font-size:\s*14px/u);
+    // Title carries leading-7 / sm:leading-6; without a child-level 16px
+    // line-height the 16px self-start icon sits high of the copy.
+    const content = rules.find(
+      (candidate) =>
+        flat(candidate.selector).includes('[data-slot="composer-banner-content"]') &&
+        candidate.body.includes("gap: 4px"),
+    );
+    expect(content?.body).toMatch(/line-height:\s*16px/u);
+    const contentChildren = rules.find((candidate) =>
+      /composer-banner-content"\]\s*>\s*\*/u.test(flat(candidate.selector)),
+    );
+    expect(contentChildren?.body).toMatch(/line-height:\s*16px/u);
+    // Notices stack title over description. The activity strip stays a row.
+    const noticeStack = rules.find(
+      (candidate) =>
+        flat(candidate.selector).includes('[data-composer-banner-drawer="true"]') &&
+        flat(candidate.selector).includes('[data-slot="composer-banner-content"]') &&
+        candidate.body.includes("flex-direction: column"),
+    );
+    expect(noticeStack?.selector).not.toContain('[data-chat-composer-activity-strip="true"]');
+    expect(noticeStack?.body).toMatch(/align-items:\s*flex-start/u);
   });
 
   it("targets the slots and attributes the geometry is keyed on", () => {

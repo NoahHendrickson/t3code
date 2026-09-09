@@ -94,7 +94,7 @@ export type DesignModeStyleKey = (typeof DESIGN_MODE_STYLE_KEYS)[number];
 
 /** WRITE-only shorthands: the panel reads longhands (border-top-width, row-gap) for
  * display but writes the shorthand so the change-request builder collapses cleanly. */
-export const DESIGN_MODE_WRITE_ONLY_KEYS = [
+const DESIGN_MODE_WRITE_ONLY_KEYS = [
   "gap",
   "border-width",
   "border-style",
@@ -145,7 +145,7 @@ export interface DesignModeAlignCaps {
   readonly vertical: boolean;
 }
 
-export const DESIGN_MODE_SOURCE_STATES = ["resolved", "pending", "anonymous"] as const;
+const DESIGN_MODE_SOURCE_STATES = ["resolved", "pending", "anonymous"] as const;
 export type DesignModeSourceState = (typeof DESIGN_MODE_SOURCE_STATES)[number];
 
 /** One selected element as the native panel sees it. `id` is minted by the guest engine

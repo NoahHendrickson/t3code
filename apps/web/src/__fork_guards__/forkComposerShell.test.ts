@@ -90,6 +90,23 @@ function balancedDivClose(markup: string, openIndex: number): number {
 }
 
 describe("fork guard: fork-composer-shell", () => {
+  it("refuses upstream's resting composer layout through the shadow", async () => {
+    // The composerFooterLayout shadow re-exports upstream and owns only this
+    // verdict; a sync that lets the predicate through brings the desktop
+    // collapse-at-rest layout back.
+    const shadow = await import("../overrides/components/composerFooterLayout");
+    expect(shadow.FORK_ADOPTS_RESTING_COMPOSER_LAYOUT).toBe(false);
+    expect(
+      shadow.shouldUseRestingComposerLayout({
+        isExistingThread: true,
+        isMobileViewport: false,
+        isScrollCollapsed: true,
+        hasExpandedChrome: false,
+        hasMultilinePrompt: false,
+        timelineOverflows: true,
+      }),
+    ).toBe(false);
+  });
   it("orders context, then a vessel wrapping surface and controls", () => {
     const markup = shellMarkup();
     const context = markup.indexOf("data-test-context");
@@ -701,6 +718,19 @@ describe("fork guard: fork-composer-shell", () => {
     // Flex only — the wrapper rule's gap and max-width would fight the chips'
     // own 6px gap and the mobile slot's 48% cap.
     expect(everyChild?.body).not.toMatch(/gap:|max-width:/u);
+    // Empty resting host must not occupy a flex slot between checkout and
+    // branch (that doubles the 8px gap to 16px). Desktop never passes the
+    // host ref; the CSS belt hides a leftover empty node.
+    expect(chatView).not.toMatch(/composerControlsHostRef=\{setRestingComposerControlsHost\}/u);
+    expect(chatView).toMatch(
+      /hostsRestingComposerControls[\s\S]{0,160}composerControlsHostRef:\s*setRestingComposerControlsHost/u,
+    );
+    const emptyHost = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-chat-resting-composer-controls-host") &&
+        rule.selector.includes(":empty"),
+    );
+    expect(emptyHost?.body).toMatch(/display:\s*none/u);
   });
 
   it("moves background liveness off the banner stack onto a context-strip pill with stop", () => {

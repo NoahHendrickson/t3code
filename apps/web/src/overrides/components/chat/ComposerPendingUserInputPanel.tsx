@@ -3,6 +3,7 @@ import { memo } from "react";
 import { CheckIcon } from "lucide-react";
 
 import { useComposerPendingUserInputCard } from "~/custom/useComposerPendingUserInputCard";
+import { ComposerBanner } from "./ComposerBanner";
 import { cn } from "~/lib/utils";
 import { type PendingUserInputDraftAnswer } from "~/pendingUserInput";
 import { type PendingUserInput } from "~/session-logic";
@@ -12,8 +13,9 @@ interface PendingUserInputPanelProps {
   respondingRequestIds: ApprovalRequestId[];
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
-  onToggleOption: (questionId: string, optionLabel: string) => void;
+  onToggleOption: (questionId: string, optionValue: string) => void;
   onAdvance: () => void;
+  onDismiss: (requestId: ApprovalRequestId) => void;
 }
 
 export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserInputPanel({
@@ -23,6 +25,7 @@ export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserIn
   questionIndex,
   onToggleOption,
   onAdvance,
+  onDismiss,
 }: PendingUserInputPanelProps) {
   if (pendingUserInputs.length === 0) return null;
   const activePrompt = pendingUserInputs[0];
@@ -37,6 +40,7 @@ export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserIn
       questionIndex={questionIndex}
       onToggleOption={onToggleOption}
       onAdvance={onAdvance}
+      onDismiss={onDismiss}
     />
   );
 });
@@ -69,13 +73,15 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   questionIndex,
   onToggleOption,
   onAdvance,
+  onDismiss,
 }: {
   prompt: PendingUserInput;
   isResponding: boolean;
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
-  onToggleOption: (questionId: string, optionLabel: string) => void;
+  onToggleOption: (questionId: string, optionValue: string) => void;
   onAdvance: () => void;
+  onDismiss: (requestId: ApprovalRequestId) => void;
 }) {
   const { progress, activeQuestion, optimisticSingleSelect, handleOptionSelection } =
     useComposerPendingUserInputCard({
@@ -103,6 +109,21 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
             {questionIndex + 1}/{prompt.questions.length}
           </span>
         ) : null}
+        {prompt.dismissible ? (
+          // Async questions may be closed without a reply. The fork header is a
+          // plain row rather than upstream's disclosure trigger, so this is a
+          // real button and needs none of upstream's click/keydown containment.
+          <ComposerBanner.Dismiss
+            className="ms-auto"
+            aria-label="Dismiss question without answering"
+            title="Dismiss question without answering"
+            disabled={isResponding}
+            data-pending-user-input-dismiss
+            onClick={() => {
+              onDismiss(prompt.requestId);
+            }}
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-col text-sm">
@@ -114,24 +135,25 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
 
       <div className="flex flex-col gap-4" role={multiSelect ? "group" : "radiogroup"}>
         {activeQuestion.options.map((option, index) => {
+          const optionValue = option.value ?? option.label;
           const isOptimisticallySelected =
             optimisticSingleSelect?.questionId === activeQuestion.id &&
-            optimisticSingleSelect.optionLabel === option.label;
+            optimisticSingleSelect.optionValue === optionValue;
           const isSelected =
             isOptimisticallySelected ||
-            (!customAnswerActive && progress.selectedOptionLabels.includes(option.label));
+            (!customAnswerActive && progress.selectedOptionValues.includes(optionValue));
           const digitShortcut = index < 9 ? String(index + 1) : undefined;
 
           return (
             <button
-              key={`${activeQuestion.id}:${option.label}`}
+              key={`${activeQuestion.id}:${optionValue}`}
               type="button"
               role={multiSelect ? "checkbox" : "radio"}
               aria-checked={isSelected}
               aria-keyshortcuts={digitShortcut}
               disabled={isResponding}
               onClick={() => {
-                handleOptionSelection(activeQuestion.id, option.label);
+                handleOptionSelection(activeQuestion.id, optionValue);
               }}
               className={cn(
                 "group flex w-full flex-col gap-1 rounded-lg border p-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-ring/40",

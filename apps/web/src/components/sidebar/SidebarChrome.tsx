@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useCanGoBack, useLocation, useNavigate } from "@tanstack/react-router";
 
-import { APP_BASE_NAME } from "../../branding";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { useEnvironments } from "../../state/environments";
@@ -18,6 +17,7 @@ import {
 } from "../SidebarStageBackdrop";
 import { Badge } from "../ui/badge";
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+import { SidebarBrandWordmark } from "~/custom/SidebarBrandWordmark";
 import sidebarBrandMarkUrl from "~/custom/assets/sidebar-brand-mark.svg";
 /* fork:end fork-sidebar-chrome */
 import {
@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 
@@ -76,7 +77,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           default header: only the explicit pill mode adds this badge. */}
       {pillLabel ? (
         <Badge
-          className="ml-1 rounded-full border-0 bg-sidebar-control-surface px-1.5 text-sidebar-foreground"
+          className="ml-1 hidden rounded-full border-0 bg-sidebar-control-surface px-1.5 text-sidebar-foreground @[15rem]/sidebar-header:inline-flex"
           data-environment-identification="pill"
           size="sm"
           variant="secondary"
@@ -94,26 +95,22 @@ function SidebarBrand() {
   return (
     /* The link carries its own display gate (hidden below md, flex row above)
        since upstream 9885a845c deleted the .sidebar-brand stylesheet rule that
-       used to supply it. It is allowed to shrink so the name truncates before
-       the header overflows at the sidebar's 208px minimum; only the mark is
-       shrink-0. */
+       used to supply it. The lockup is a fixed 16px mark + 4px + 8px wordmark,
+       both shrink-0; the link may still shrink so a 208px sidebar cannot
+       overflow the header. */
     <Link
       aria-label="Go to threads"
-      className="sidebar-brand ml-auto hidden h-6 w-fit min-w-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
+      className="sidebar-brand ml-auto hidden h-4 w-fit min-w-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
       to="/"
     >
       {/* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-          The borrowed T3 wordmark stays gone. The fork's own exported mark and
-          APP_BASE_NAME form the exact 24px / 4px / 14px lockup from the design,
-          while the injected desktop name and bridge-less fallback still agree.
-          The mark is vector: its art is a 23x23 pixel grid, which no bitmap can
-          resample into a 24px box without smearing every cell. crispEdges lives
-          in the asset, so cells stay hard-edged at every DPR. The 23-into-24 fit
-          still renders the center row and column of cells 2px at DPR 1 — one
-          heavy line, accepted over either blurring all of them or drawing the
-          art at 23px, which centers on a half-pixel. */}
-      <img alt="" className="size-6 shrink-0" src={sidebarBrandMarkUrl} />
-      <span className="truncate text-[0.875rem] leading-4 font-medium">{APP_BASE_NAME}</span>
+          The borrowed T3 wordmark stays gone. Figma t3-fork 364:11245 is a 16px
+          pixel mark, a 4px gap, then the 13×3 "no3y" wordmark at 8px / 40%
+          foreground — not live APP_BASE_NAME type. The mark stays the 23-cell
+          vector: a bitmap cannot resample that grid into 16px without smearing
+          every cell. crispEdges lives in the asset so cells stay hard-edged. */}
+      <img alt="" className="size-4 shrink-0" src={sidebarBrandMarkUrl} />
+      <SidebarBrandWordmark />
       {/* fork:end fork-app-identity */}
     </Link>
   );
@@ -182,7 +179,10 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
   }, [isMobile, setOpenMobile]);
   const handlePullRequestsClick = useCallback(() => {
     closeMobileSidebar();
-    void navigate({ to: "/pull-requests", search: { involvement: "all", state: "open" } });
+    void navigate({
+      to: "/pull-requests",
+      search: readPullRequestListPreferences(),
+    });
   }, [closeMobileSidebar, navigate]);
   const handleSettingsClick = useCallback(() => {
     closeMobileSidebar();

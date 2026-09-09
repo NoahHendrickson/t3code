@@ -83,8 +83,8 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(composer).toContain(
       "const promptLockedForProject = projectSelectionRequired && !isUnassignedNewAgentDraft;",
     );
-    expect(composer).toContain(
-      "disabled={isConnecting || isComposerApprovalState || promptLockedForProject}",
+    expect(composer).toMatch(
+      /disabled=\{\s*isConnecting \|\|\s*isComposerApprovalState \|\|[^}]*?promptLockedForProject \|\|/u,
     );
     expect(composer).not.toContain(
       "disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}",
@@ -123,6 +123,7 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(hooks).toContain(
       "setLogicalProjectDraftThreadId(entry.group.projectKey, projectRef, draftId, {",
     );
+    expect(hooks).toContain("createdAt: new Date().toISOString()");
     expect(hooks).toContain("resolveDefaultThreadEnvMode({");
     expect(hooks).toContain("resolveNewDraftStartFromOrigin({");
     expect(hooks).toContain("if (!session || session.promotedTo != null) return;");

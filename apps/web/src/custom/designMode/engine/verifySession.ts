@@ -47,6 +47,7 @@ const VERIFY_INTENT_KEYWORDS = new Set([
  * as — through the SAME table the builder collapsed with, so the two directions cannot
  * drift — intersected with what the seed actually sent. Exported pure: commitVerified's
  * credit/prune both hang off this mapping. */
+/** @public — the design-mode guard reaches this through a dynamic import knip cannot follow. */
 export function expandCollapsedProperty(property: string, draftProps: readonly string[]): string[] {
   const entry = COLLAPSE.find((candidate) => candidate.into === property);
   const candidates = entry ? [property, ...entry.parts] : [property];

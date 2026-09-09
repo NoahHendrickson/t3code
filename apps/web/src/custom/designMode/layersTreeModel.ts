@@ -10,7 +10,7 @@ import type { DesignModeLayerNode } from "./protocol";
 
 /** Depth below which nodes start expanded — the top two levels give the page's structure
  * without a wall of rows on first open. */
-export const DEFAULT_EXPAND_DEPTH = 2;
+const DEFAULT_EXPAND_DEPTH = 2;
 
 export interface LayerRow {
   readonly node: DesignModeLayerNode;

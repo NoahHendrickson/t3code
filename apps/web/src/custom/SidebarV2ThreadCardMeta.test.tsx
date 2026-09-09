@@ -65,6 +65,17 @@ describe("SidebarV2ThreadCardMeta", () => {
     expect(markup).not.toContain("lucide-folder");
   });
 
+  it("caps the project name only when a branch shares the line", () => {
+    // The 40% cap exists so the branch — the more distinguishing half — keeps
+    // the rest of the line. A card with no branch has nothing to yield to.
+    const withBranch = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} />);
+    expect(withBranch).toContain("max-w-[40%]");
+
+    const withoutBranch = renderToStaticMarkup(<SidebarV2ThreadCardMeta {...base} branch={null} />);
+    expect(withoutBranch).not.toContain("max-w-[40%]");
+    expect(withoutBranch).toContain("alpha-service");
+  });
+
   it("keeps a grouped card's project name for assistive tech only", () => {
     // What a card under a project header passes. The header names the project
     // on screen; a screen reader has no "one row up", so the name stays in the

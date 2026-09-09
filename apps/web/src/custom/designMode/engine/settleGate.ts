@@ -9,7 +9,7 @@
 
 /** Quiet-window for settle-driven work — HMR re-renders land as bursts (the Forge's own
  * LayersTree REFRESH_DEBOUNCE_MS rationale). One constant, two consumers, no re-typing. */
-export const SETTLE_DEBOUNCE_MS = 250;
+const SETTLE_DEBOUNCE_MS = 250;
 
 interface SettleObserverOpts {
   readonly target: () => Node;

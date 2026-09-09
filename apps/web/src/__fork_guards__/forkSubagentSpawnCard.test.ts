@@ -31,14 +31,19 @@ describe("fork guard: fork-subagent-spawn-card", () => {
     expect(card).toContain('from "@phosphor-icons/react"');
     expect(card).toContain("TreeView");
     expect(card).toContain('weight="regular"');
-    expect(card).toContain("Kicked off");
+    // Lead/status wording comes from upstream's summary helper since the
+    // 2026-09-08 sync; the card only strips its check glyph.
+    expect(card).toContain("deriveAgentSpawnSummary({");
+    expect(card).toContain('summary.status.replace(/^✓ /u, "")');
+    // The coordinator's own status keeps a workflow live between dynamic
+    // member launches; without it `live` falls back to member counts.
+    expect(card).toContain("coordinatorStatus: workflowGroup?.workflow.status,");
     expect(card).toContain("View agents");
     expect(card).toContain("onClick={props.onOpenAgents}");
     expect(card).toContain("SidebarV2WorkingRain");
     expect(card).toContain("SidebarV2IdleMark");
     expect(card).toContain("formatSubagentTokenCount");
     expect(card).toContain("formatSubagentModelLabel");
-    expect(card).toContain("isTerminalSubagentStatus");
     expect(card).toContain("resolveSpawnCta");
     expect(card).toContain("coordinatorTokens");
     expect(card).toContain("w-full min-w-0");

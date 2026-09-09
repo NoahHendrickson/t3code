@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
-import { useThreadSession } from "~/state/entities";
 import { environmentThreadDetails } from "~/state/threads";
 
 import { designModeBridge } from "../designModeBridge";
@@ -107,7 +106,8 @@ export function SentPreviewResolution({
   onDiscard: () => void;
 }) {
   const record = useDesignSentPreviews((state) => selectSentPreview(state.byTabId, runtimeTabId));
-  const session = useThreadSession(threadRef);
+  // Upstream dropped the useThreadSession wrapper (#9129); read the atom it wrapped.
+  const session = useAtomValue(environmentThreadDetails.sessionAtom(threadRef));
   const latestTurn = useAtomValue(environmentThreadDetails.latestTurnAtom(threadRef));
   const threadKey = scopedThreadKey(threadRef);
 

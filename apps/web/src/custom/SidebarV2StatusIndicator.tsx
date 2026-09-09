@@ -261,7 +261,7 @@ export function SidebarV2IdleMark() {
     settled row, not one of the five statuses, and an amber dot would be
     indistinguishable from Approval — the one state it must never be confused
     with, since Approval is blocking and Woke is not. */
-export function SidebarV2WokeMark() {
+function SidebarV2WokeMark() {
   return (
     <span aria-hidden className={MARK_SLOT_CLASS}>
       <AlarmClockIcon className="size-2.5 text-sidebar-v2-status-approval" />
@@ -273,6 +273,7 @@ export function SidebarV2WokeMark() {
     says "unsent, still being written", which no hue in the settled palette can.
     Muted like the idle dot, since a draft is waiting on the user and not on
     the agent. */
+/** @public — part of the status-mark set the draft-rows guard asserts on. */
 export function SidebarV2DraftMark() {
   return (
     <span aria-hidden className={MARK_SLOT_CLASS}>

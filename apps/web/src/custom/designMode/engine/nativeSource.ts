@@ -22,12 +22,12 @@
 import { type DesignProps, PROPS_ATTR, readDesignProps } from "../designProps";
 import type { TaggedElement } from "./vendor/source";
 
-export const NATIVE_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
+const NATIVE_SOURCE_RESOLVER_GLOBAL = "__T3_DESIGN_SOURCE_RESOLVER_V1__";
 
 /** Marker attribute for T3-synthesized `data-dc-source` tags. Attribute (not WeakSet) on
  * purpose: forge-vs-native detection must survive destroy/re-inject cycles that reset
  * module state while the page DOM (and its synthesized tags) lives on. */
-export const NATIVE_SOURCE_MARKER_ATTR = "data-t3-native-source";
+const NATIVE_SOURCE_MARKER_ATTR = "data-t3-native-source";
 
 /** The React component that rendered the element, when the host could name one. Written
  * INDEPENDENTLY of `data-dc-source`: the host rejects a location it could not symbolicate, and
@@ -103,7 +103,7 @@ export function isSynthesizedSource(el: Element): boolean {
 
 /** Validates one resolver result into a canonical `file:line:col` string, or null.
  * Mirrors the preload's own validation — belt and braces across a page-shared global. */
-export function normalizeNativeSource(value: unknown): string | null {
+function normalizeNativeSource(value: unknown): string | null {
   if (typeof value !== "object" || value === null) return null;
   const v = value as { file?: unknown; line?: unknown; column?: unknown };
   if (typeof v.file !== "string" || v.file.length === 0 || v.file.length > MAX_FILE_LENGTH) {

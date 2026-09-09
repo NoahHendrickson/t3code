@@ -99,11 +99,12 @@ checkout of this same repo — the way `.repos` already was. Keep those fences i
 
 ## Auditing fences with grep
 
-`apps/web/src/components/chat/ChatComposer.tsx` — the fork's densest fenced file — contains raw
-NUL bytes (upstream's stash snapshot keys use `\0` delimiters inside template literals), so plain
-`grep` classifies it as binary and reports **zero matches with exit 0**. Every ad-hoc fence audit
-must use `grep -a` (or `rg`, or read the file) or it will silently skip the file that matters
-most. The automated checks (`detect-drift.mjs`, `lint-owned.mjs`, the guards) read files directly
+`apps/web/src/components/chat/ChatComposer.tsx` — the fork's densest fenced file — carried raw
+NUL bytes until the 2026-09-08 sync (upstream's stash snapshot keys used `\0` delimiters inside
+template literals), so plain `grep` classified it as binary and reported **zero matches with
+exit 0**. Upstream has since rewritten those keys, but the trap can return with any vendored
+string: every ad-hoc fence audit should still use `grep -a` (or `rg`, or read the file) so it
+never silently skips the file that matters most. The automated checks (`detect-drift.mjs`, `lint-owned.mjs`, the guards) read files directly
 and are unaffected.
 
 ## Verify before pushing

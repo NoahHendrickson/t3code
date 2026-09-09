@@ -22,7 +22,7 @@ import type { ThemePreference } from "../themePalette";
 
 export const FORK_THEME_ATTRIBUTE = "data-fork-theme";
 export const FORK_PALETTE_STORAGE_KEY = "t3code:fork-theme";
-export const UPSTREAM_THEME_STORAGE_KEY = "t3code:theme";
+const UPSTREAM_THEME_STORAGE_KEY = "t3code:theme";
 
 export const COOL_DARK_THEME = "cool-dark" as const;
 export const COOL_DARK_LABEL = "Cool Dark";

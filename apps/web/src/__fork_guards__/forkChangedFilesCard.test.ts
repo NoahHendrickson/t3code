@@ -27,7 +27,7 @@ describe("fork guard: fork-changed-files-card", () => {
     expect(changedFiles).toContain("data-changed-files-state=");
     expect(changedFiles).toContain('data-changed-files-header=""');
     // Upstream still ships the translucent wash the fork overrides.
-    expect(changedFiles).toContain("dark:bg-input/32");
+    expect(changedFiles).toMatch(/dark:bg-input\/\d+/u);
     // Outline actions are Tooltip triggers — CSS must select `button`, not
     // data-slot="button" (TooltipTrigger wins the slot).
     expect(changedFiles).toContain("TooltipTrigger");

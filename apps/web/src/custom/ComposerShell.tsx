@@ -65,7 +65,13 @@ export const ComposerShell = memo(function ComposerShell({
   return (
     <>
       {context ? (
-        <div data-fork-composer-context-row="true" className="flex min-w-0 items-center pb-2">
+        // The 8px gap under the chips only when the strip is actually showing:
+        // ChatView also mounts upstream's hidden, off-flow measuring strip, and
+        // ComposerSurface.Shell's data-with-context is the visibility signal.
+        <div
+          data-fork-composer-context-row="true"
+          className="flex min-w-0 items-center group-data-with-context/composer-surface:pb-2"
+        >
           {context}
         </div>
       ) : null}

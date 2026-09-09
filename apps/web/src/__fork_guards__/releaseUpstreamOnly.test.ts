@@ -4,7 +4,7 @@
  *
  * The Release workflow publishes the CLI to npm and cuts GitHub Releases on a
  * 3-hourly cron. It must never fire on this fork. Today it is gated at both
- * entry points (`check_changes`, `preflight`), and every other job inherits the
+ * entry points (`resolve_commit`, `preflight`), and every other job inherits the
  * gate by requiring preflight to have succeeded.
  *
  * That inheritance is the fragile part: an upstream sync that adds a job which
@@ -57,7 +57,7 @@ describe("fork guard: release-upstream-only", () => {
     // relay_public_config and build_wsl_node_pty run alongside preflight since
     // upstream #7975, so they carry the gate themselves instead of inheriting it.
     expect(gated).toEqual([
-      "check_changes",
+      "resolve_commit",
       "preflight",
       "relay_public_config",
       "build_wsl_node_pty",

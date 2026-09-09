@@ -126,6 +126,10 @@ export function sidebarDraftRowCapabilities(isDraft: boolean): {
   readonly canSnooze: boolean;
   readonly canPin: boolean;
   readonly canRename: boolean;
+  /** Upstream's row file drop navigates to the server thread route and
+   *  clears the queued files when it does not land there; a draft lives at
+   *  /draft/$draftId, so the drop would open the draft and deliver nothing. */
+  readonly canReceiveFileDrop: boolean;
   readonly showDiscard: boolean;
 } {
   return {
@@ -133,6 +137,7 @@ export function sidebarDraftRowCapabilities(isDraft: boolean): {
     canSnooze: !isDraft,
     canPin: !isDraft,
     canRename: !isDraft,
+    canReceiveFileDrop: !isDraft,
     showDiscard: isDraft,
   };
 }

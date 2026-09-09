@@ -211,8 +211,26 @@ import {
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
+  Circuitry as PhCircuitry,
+  FlowArrow as PhFlowArrow,
+  Rocket as PhRocket,
+  CodeSimple as PhCodeSimple,
+  FolderSimple as PhFolderSimple,
+  GameController as PhGameController,
+  Layout as PhLayout,
+  MusicNotes as PhMusicNotes,
+  Quotes as PhQuotes,
+  Scales as PhScales,
+  ShoppingBag as PhShoppingBag,
+  SlidersHorizontal as PhSlidersHorizontal,
+  TextT as PhTextT,
+  Ticket as PhTicket,
+  TrendDown as PhTrendDown,
+  TrendUp as PhTrendUp,
+  VideoCamera as PhVideoCamera,
 } from "@phosphor-icons/react";
-import type { FC, SVGProps } from "react";
+import type { FC, ReactElement, SVGProps } from "react";
+import { createElement } from "react";
 
 /**
  * Phosphor's own `IconProps` declares its optionals without `| undefined`,
@@ -540,3 +558,67 @@ export const ChartDonutIcon = icon("chart-donut", PhChartDonut, "duotone");
 export const CircleHalfIcon = icon("circle-half", PhCircleHalf, "fill");
 export const FadersHorizontalIcon = icon("faders-horizontal", PhFadersHorizontal, "duotone");
 export const EllipsisVerticalIcon = icon("ellipsis-vertical", PhDotsThreeVertical, "bold");
+
+// Upstream sync 2026-09-08: project icon picker (#9137), the settings snap-shot
+// entry, /usage-limits and the load-balancing environment picker (#9875,
+// #9299, #7855) started importing these lucide names.
+export const ScaleIcon = icon("scale", PhScales, "duotone");
+export const FolderTreeIcon = icon("folder-tree", PhTreeStructure, "duotone");
+export const BracesIcon = Braces;
+export const CircuitBoardIcon = icon("circuit-board", PhCircuitry, "duotone");
+export const CloudCogIcon = icon("cloud-cog", PhCloud, "duotone");
+export const Code2Icon = icon("code-2", PhCodeSimple, "duotone");
+export const FolderCodeIcon = icon("folder-code", PhFolderSimple, "duotone");
+export const Gamepad2Icon = icon("gamepad-2", PhGameController, "duotone");
+export const Layers3Icon = icon("layers-3", PhStack, "duotone");
+export const MusicIcon = icon("music", PhMusicNotes, "duotone");
+export const ShoppingBagIcon = icon("shopping-bag", PhShoppingBag, "duotone");
+export const VideoIcon = icon("video", PhVideoCamera, "duotone");
+export const ChevronLeft = ChevronLeftIcon;
+export const QuoteIcon = icon("quote", PhQuotes, "duotone");
+export const TextIcon = icon("text", PhTextT, "duotone");
+export const PanelsTopLeftIcon = icon("panels-top-left", PhLayout, "duotone");
+export const TrendingDownIcon = icon("trending-down", PhTrendDown, "bold");
+export const TrendingUpIcon = icon("trending-up", PhTrendUp, "bold");
+export const TicketIcon = icon("ticket", PhTicket, "duotone");
+export const SlidersHorizontalIcon = icon("sliders-horizontal", PhSlidersHorizontal, "duotone");
+export const RocketIcon = icon("rocket", PhRocket, "duotone");
+export const WorkflowIcon = icon("workflow", PhFlowArrow, "duotone");
+
+/**
+ * lucide's escape hatch for one-off glyphs drawn from path data (upstream's
+ * settings snap-shot entry uses it). There is no Phosphor counterpart to swap
+ * in, so this renders the lucide node list verbatim with lucide's default
+ * stroke attributes, under the same class contract as the table above.
+ */
+type LucideIconNode = ReadonlyArray<readonly [string, Record<string, string | number>]>;
+export function createLucideIcon(lucideName: string, iconNode: LucideIconNode): LucideIcon {
+  const lucideClasses = `lucide lucide-${lucideName}`;
+  const Drawn: LucideIcon = ({
+    className,
+    size,
+    weight: _weight,
+    mirrored: _mirrored,
+    alt,
+    ...props
+  }) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size ?? 24}
+      height={size ?? 24}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-label={alt}
+      {...props}
+      className={className ? `${lucideClasses} ${className}` : lucideClasses}
+    >
+      {iconNode.map(([tag, attrs]): ReactElement => createElement(tag, attrs))}
+    </svg>
+  );
+  Drawn.displayName = `Lucide(${lucideName})`;
+  return Drawn;
+}

@@ -109,7 +109,7 @@
     The Release workflow never runs on this fork. Upstream releases on a
     3-hourly cron and on version tags, publishing the CLI to npm and cutting
     GitHub Releases; neither is this fork's job, and the fork has no npm or
-    release credentials. Both entry-point jobs (check_changes, preflight) are
+    release credentials. Both entry-point jobs (resolve_commit, preflight) are
     gated on the repository being upstream, and every downstream job already
     requires preflight to have succeeded, so the gate cascades to the whole
     workflow. Until this gate existed the runs did not publish only because
@@ -212,11 +212,11 @@
     is excluded from the test, fmt and lint discovery lists in vite.config.ts
     and from the four .repos exclusions in .vscode/settings.json, the way
     .repos already was.
-    The rendered app carries the name too: the sidebar brand reads
-    APP_BASE_NAME, drops the T3 wordmark, and pairs the name with the
-    designer-exported 24px pixel mark owned by fork-sidebar-chrome.
-    branding.ts's bridge-less fallback points at the fork's own constant
-    instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
+    The rendered app carries the name too: the sidebar brand drops the T3
+    wordmark and draws Figma t3-fork 364:11245 — the 16px pixel mark and the
+    13x3 "no3y" wordmark owned by fork-sidebar-chrome. APP_BASE_NAME still
+    names the packaged app and branding.ts's bridge-less fallback, which
+    points at the fork's own constant instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
     apps/web/public for local/dev and into the packaged desktop client at
     build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
     path). The layered Icon Composer projects in assets/fork/app-icon.icon and
@@ -288,6 +288,8 @@
     - apps/desktop/src/app/DesktopEarlyElectronStartup.ts
     - apps/desktop/src/app/DesktopEarlyElectronStartup.test.ts
     - apps/desktop/src/app/DesktopPreReadyPlatform.ts
+    # Upstream (#8103) asserts its own desktop entry name; fenced to the fork's.
+    - apps/desktop/src/app/DesktopPreReadyPlatform.test.ts
     # Unfenced known carve-out: on packaged Linux this registers upstream's
     # t3code-url-handler.desktop in ~/.local/share/applications and claims
     # x-scheme-handler/t3code via xdg-mime. The scheme itself is deliberately
@@ -351,6 +353,26 @@
   verify:
     - apps/web/src/__fork_guards__/forkMarker.test.ts
 
+- id: fork-overrides
+  intent: >
+    Tier 2 shadowing: a copy of an upstream module under apps/web/src/overrides
+    resolves ahead of the upstream file for every import site, via the fork's
+    Vite plugin and tsconfig path map (.fork/README.md §3). Tooling that walks
+    imports on its own cannot follow that alias, so the shadow tree is declared
+    as knip entries and the custom/ modules only a shadow imports follow from
+    there; without that upstream's unused-file gate (#9962) reports every
+    override as dead.
+  tier: 1
+  files:
+    - apps/web/fork/overrideResolver.ts
+    - apps/web/fork/vitePluginForkOverrides.ts
+    - apps/web/src/overrides/README.md
+  shadows: []
+  watch:
+    - knip.jsonc
+  verify:
+    - apps/web/fork/overrideResolver.test.ts
+
 - id: phosphor-duotone-icons
   intent: >
     The app's iconography is Phosphor at the duotone weight, not lucide.
@@ -368,6 +390,9 @@
   tier: 1
   files:
     - apps/web/src/custom/icons/lucide-phosphor.tsx
+    # `lucide-react/dynamic` (project icons by name, upstream #9137) answered
+    # from the same table, so the picker only offers names that render.
+    - apps/web/src/custom/icons/lucide-phosphor-dynamic.tsx
   shadows: []
   watch:
     - apps/web/vite.config.ts
@@ -454,7 +479,9 @@
     so contain-intrinsic-size is the drawn 54 exactly. Every mark on the repo
     line is 12px, with a 1x8 hairline between the runtime glyph and the
     branch. The model label is caption 11/15. The PR badge is 12px, literal
-    so the panel's --text-xs remap cannot grow it. Branch and model both read
+    so the panel's --text-xs remap cannot grow it. The project name is
+    capped at 40% only when a branch shares the line, so a card with no
+    branch (nothing to yield to) can show the full name. Branch and model both read
     at --muted-foreground; only the PR badge carries a colour.
 
     The edges and rhythm are derived in custom/sidebarV2CardAlignment, the way
@@ -532,6 +559,12 @@
     order. Pin/unpin plumbing (context menu, decider rules, snooze-beats-pin
     classification) is upstream's; the fork re-seats the rendering and adds a
     hover pin action to the card (owned by sidebar-v2-row-action-hit-area).
+    Since the 2026-09-08 sync the favicon slot is built from the project
+    record upstream hands down (ProjectFavicon's `project` prop, #10714), a
+    null project falling through to the meta's folder mark. Upstream's
+    unsent-draft row tint and its "Discard draft" hover action are refused on
+    purpose — the surface encodes interaction and nothing else, and the hover
+    cell is fork-owned — while its pen marker is kept.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
@@ -801,6 +834,10 @@
     lost in a sync; the guard test asserts it emits headers from the same
     sections it renders threads from, because a silent loss leaves a flat
     sidebar over a grouped ordered list.
+    The fork's two DndContexts deliberately do not adopt upstream's single
+    flat sortable list with section-marker drop verbs (#9731, #9750, #10378,
+    #10453, #10464); Sidebar.drag.ts / Sidebar.pointer.ts / Sidebar.motion.ts
+    stay on disk untouched as the landing pad if that is ever ported.
   tier: 4
   files:
     - apps/web/src/custom/sidebarV2ProjectGrouping.ts
@@ -812,6 +849,9 @@
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
   shadows: []
   watch:
+    # The user docs describe upstream's single-list drag verbs; fenced to the
+    # fork's pinned-card and project-header drags.
+    - docs/user/thread-sidebar.md
     - apps/web/src/components/Sidebar.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
@@ -1238,13 +1278,13 @@
 
     Glass is the one place the fork's flatten-alpha doctrine is suspended: an
     opaque row fill over a translucent panel renders as a rectangle of missing
-    wallpaper. The sidebar panel is a single rgb(22 22 22 / 85%) tint and rows
+    wallpaper. The sidebar panel is a single rgb(22 22 22 / 82%) tint and rows
     lift with white washes (5% hover, 8% active/selected) so the glass survives
-    selection. The chat stage is a vertical gradient, rgb(22 22 22 / 92%) for its
+    selection. The chat stage is a vertical gradient, rgb(22 22 22 / 90%) for its
     top 70% easing to 82% across the bottom third where the cutoff mask has already
     ended the transcript. That ramp is scoped to insets that carry the mask
     (:has(.fork-timeline-cutoff)); Settings, Usage and the empty state are the
-    same element with no transcript to end, so they keep a flat 92%. SidebarInset
+    same element with no transcript to end, so they keep a flat 90%. SidebarInset
     carries bg-background, so the rule clears background-color explicitly — a
     background-image alone composites over that opaque fill and the glass does
     nothing. Panel and stage share one triple, so both surfaces carry a single
@@ -1259,8 +1299,8 @@
     to take the glass, and it paints NOTHING rather than taking a tint. The panel
     is an ordinary child of the inset, so anything it paints composites ON the
     stage and can only move it toward opaque — a wash there would make it less
-    glassy than the column it docks into, and the sidebar reaches 85% against a
-    92% stage only by being a paint layer outside the inset entirely. So
+    glassy than the column it docks into, and the sidebar reaches 82% against a
+    90% stage only by being a paint layer outside the inset entirely. So
     --fork-design-surface is transparent, and its fields take the context chips'
     12% for the chips' own reason: with the surface painting nothing they sit on
     the bare stage, one layer lower than a composer ring. --muted matches the
@@ -1280,7 +1320,7 @@
     constant. On "under-window" (a flat ~49 grey) the usable range was roughly
     60-90%: 91%, 97% and 98% all rendered as no glass at all rather than as
     subtle glass. "fullscreen-ui" returns ~99 and carries colour, so the same
-    contribution needs a much higher alpha — the stage tops out at 92% and still
+    contribution needs a much higher alpha — the stage tops out at 90% and still
     reads as glass. Changing FORK_VIBRANCY_MATERIAL invalidates every number
     here; hold the desktop's contribution constant and redo the arithmetic.
 
@@ -1572,7 +1612,10 @@
     list edge — a sort menu (ArrowsDownUp) over the same
     sidebarProjectSortOrder client setting the legacy sidebar's sort menu and
     Settings edit, and the filter (FadersHorizontal) that owns the scope /
-    group-by menu.
+    group-by menu. Switching that menu to Manual writes the on-screen
+    project order into projectOrder first, so the headers stay put and
+    drag starts from the list the user was looking at rather than a
+    leftover or empty stored order.
 
     These rows' own trailing inset is then 4px, and that 4px belongs to
     sidebar-v2-row-action-hit-area, which owns the trailing glyph column's
@@ -1587,16 +1630,15 @@
     keep the same safe-area variable and place the glyph at the ordinary 16px
     edge inset.
 
-    The brand stays on the trailing edge and ends 16px from it. It is the
-    designer-exported 24px pixel mark, a 4px gap, then APP_BASE_NAME at literal
-    0.875rem (14px), Geist Medium, with a 16px line-height. The link carries
-    its own display gate, hidden below 48rem and a flex row above, because
-    upstream 9885a845c deleted the .sidebar-brand stylesheet rule that used to
-    supply it; without the inline flex the block-level mark pushed the name
-    below the header's clipped 24px height. The link may shrink so the name
-    truncates before the header overflows at the sidebar's 208px minimum; only
-    the mark is shrink-0. Literal type avoids the sidebar-v2 13px text utility
-    remap. Search, New agent, Add a project and Usage remain labeled action
+    The brand stays on the trailing edge and ends 16px from it. It is Figma
+    t3-fork 364:11245: the designer-exported 16px pixel mark, a 4px gap, then
+    the 13x3 "no3y" wordmark at 8px and 40% sidebar-foreground. The link
+    carries its own display gate, hidden below 48rem and a flex row above,
+    because upstream 9885a845c deleted the .sidebar-brand stylesheet rule that
+    used to supply it; without the inline flex the block-level mark pushed the
+    name below the header. The lockup is a fixed 55px and both halves are
+    shrink-0; the link may still shrink so a 208px sidebar cannot overflow the
+    header. Search, New agent, Add a project and Usage remain labeled action
     rows; Projects remains a static label whose trailing sort and filter
     buttons own the sort order and the scope / group-by menu.
     Foreground, hover, pill, and focus treatments resolve through sidebar
@@ -1642,12 +1684,17 @@
     replaced the fork's local hook when upstream's became an exact equivalent
     (both delegate to resolveServerBackedAppStageLabel with the fork's
     APP_STAGE_LABEL fallback).
+    The multi-project scope set is session-scoped on purpose: upstream
+    persists a single scope key (#9416) in the UI state store, and the set
+    needs a store field of its own shape before it can follow.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/custom/sidebarV2ProjectSort.ts
     - apps/web/src/custom/useScrollGutterWidth.ts
     - apps/web/src/custom/SidebarStageDitherArt.tsx
     - apps/web/src/custom/assets/sidebar-brand-mark.svg
+    - apps/web/src/custom/SidebarBrandWordmark.tsx
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
   shadows: []
   watch:
@@ -1666,6 +1713,7 @@
     - apps/web/src/index.css
   verify:
     - apps/web/src/__fork_guards__/forkSidebarChrome.test.ts
+    - apps/web/src/custom/sidebarV2ProjectSort.test.ts
 
 - id: fork-workspace-header
   intent: >
@@ -1977,6 +2025,14 @@
     selection by walking the tree independently, not by spot-checks.
     The motivating incident (nine dead imports surviving three PRs in
     Sidebar.tsx) is in .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
+    One standing exception: the rules upstream's vite-plus 0.3.0 bump turned
+    on (2026-09-08 sync) are listed in lint-owned.mjs as DEFERRED_RULES and
+    reported without failing the gate, because they fired 41 times at once,
+    partly on upstream-authored lines in adopted files, and clearing the rest
+    is behavior work for a follow-up. Each entry carries the count measured
+    at deferral: growth fails the gate, shrinkage nags to lower the baseline,
+    and an entry leaves the list when it reaches zero. Nothing else is
+    exempt.
   tier: 1
   files:
     - .fork/lint-owned.mjs
@@ -2038,6 +2094,11 @@
     covers every direct child rather than only the ones carrying `.flex` —
     below `md` the workspace slot is an inline-flex Button or span, and left to
     upstream's flex-1 it would claim that space and gap the cluster open.
+    The resting-controls host is not a desktop strip child: an empty host is
+    still a flex item, so the 8px gap would apply twice (checkout→host and
+    host→branch) and the pills would sit 16px apart. ChatView only passes the
+    host ref where relocated controls actually mount, and an empty host is
+    `display: none` so a leftover node cannot open that second gap.
     Chips use 8px inline padding (24px tall, 6px radius) at 12px type matching
     the mode row's Auto/Build pills, and the workspace chip's trigger caret is
     dropped. The folder glyph sits flush in its 12px frame, so that start
@@ -2170,6 +2231,10 @@
     strip — the wrapper it shares with the branch trigger grows and the chip
     takes the free space as a start margin, so the branch stays packed
     against checkout. The liveness pill, when shown, stays last.
+    Upstream's resting composer layout (#7855) is neutralized in the
+    composerFooterLayout shadow: its helpers are ported so ChatComposer
+    compiles, but shouldUseRestingComposerLayout is fenced to always return
+    false, because the fork keeps one compact layout in every thread state.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
@@ -2228,6 +2293,14 @@
     # re-homes on the prompt wrapper at >=40rem by overriding — the classes
     # themselves stay on the editor here.
     - apps/web/src/components/ComposerPromptEditor.tsx
+    # Upstream's own layout tests resolve through the alias to the shadow, so
+    # the one resting-layout assertion is fenced there to expect the fork's
+    # neutralized answer; every other assertion is upstream's.
+    - apps/web/src/components/composerFooterLayout.test.ts
+    # Its resting-layout assertion reads the scroll-collapse flag instead of
+    # the neutralized predicate.
+    - apps/web/src/components/chat/MessagesTimeline.test.tsx
+    - apps/web/src/components/chat/useComposerFocusState.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
 
@@ -2839,6 +2912,8 @@
     # custom/ directory walk already lints it, and its own tsconfig checks it).
     - apps/web/src/custom/designMode/engine/vendor
     - apps/web/fork/vitePluginForkDesignMode.ts
+    # The vendored engine is exempt from knip's unused-export audit.
+    - knip.jsonc
     - apps/web/src/overrides/components/preview/PreviewPanel.tsx
   shadows:
     - apps/web/src/components/preview/PreviewPanel.tsx
@@ -3040,10 +3115,14 @@
     a notice, since the notice above it paints no outline to share. Shoulder tabs (stash, tasks) are
     excluded by name and keep riding the card's shoulder. Notices and the
     activity strip additionally take the design's metrics — 16 / 8 / 16 / 16
-    around a 16px icon on a 4px gutter, title and description on 14/16, 8px
-    between actions — while the approval, stash and tasks drawers that share
-    the card keep their own density. A notice's primary action is the design's
-    white Primary button, which the fork's --primary already resolves to.
+    around a 16px icon on a 4px gutter, title stacked over description on
+    14/16 with a 4px gutter (Figma 364:19233; the title's leading-7 /
+    sm:leading-6 is neutralized so the 16px icon lines up with the first
+    line), 8px between actions pinned to that first line — while the
+    approval, stash and tasks drawers that share the card keep their own
+    density. The activity strip stays a single row. A notice's primary
+    action is the design's white Primary button, which the fork's
+    --primary already resolves to.
 
     Outline and tint apply in both schemes; the fill and the geometry are
     dark-only like the vessel.
@@ -3376,9 +3455,10 @@
     the user was looking at, carried the way upstream's handler carries it;
     assigning a project replaces that only with the project's own default
     model, and never an explicit pick made in the draft. The sidebar draws
-    no row for an unassigned draft and draws one under the chosen project
-    the moment it is assigned; changing the project from the same pill moves
-    that row, because the store keeps one logical mapping per draft. A
+    no row for an unassigned draft and draws one at the top of the chosen
+    project's active list the moment it is assigned (createdAt restamped to
+    now, matching a project-header plus); changing the project from the same
+    pill moves that row, because the store keeps one logical mapping per draft. A
     promoted or discarded draft is never re-registered by a late assignment,
     and of two quick picks the later one wins even when the earlier one's
     t3.json lookup settles last. While a pick's lookup is still resolving

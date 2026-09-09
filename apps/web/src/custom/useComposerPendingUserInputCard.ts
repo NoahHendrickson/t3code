@@ -26,7 +26,7 @@ export function useComposerPendingUserInputCard({
   isResponding: boolean;
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
-  onToggleOption: (questionId: string, optionLabel: string) => void;
+  onToggleOption: (questionId: string, optionValue: string) => void;
   onAdvance: () => void;
 }) {
   const progress = derivePendingUserInputProgress(prompt.questions, answers, questionIndex);
@@ -35,7 +35,7 @@ export function useComposerPendingUserInputCard({
   const onAdvanceRef = useRef(onAdvance);
   const [optimisticSingleSelect, setOptimisticSingleSelect] = useState<{
     questionId: string;
-    optionLabel: string;
+    optionValue: string;
   } | null>(null);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export function useComposerPendingUserInputCard({
     }
     if (
       progress.customAnswer.trim().length === 0 &&
-      progress.selectedOptionLabels.includes(optimisticSingleSelect.optionLabel)
+      progress.selectedOptionValues.includes(optimisticSingleSelect.optionValue)
     ) {
       setOptimisticSingleSelect(null);
     }
@@ -60,7 +60,7 @@ export function useComposerPendingUserInputCard({
     activeQuestion,
     optimisticSingleSelect,
     progress.customAnswer,
-    progress.selectedOptionLabels,
+    progress.selectedOptionValues,
   ]);
 
   // Clear auto-advance timer on unmount
@@ -72,13 +72,13 @@ export function useComposerPendingUserInputCard({
     };
   }, []);
 
-  const handleOptionSelection = useEffectEvent((questionId: string, optionLabel: string) => {
+  const handleOptionSelection = useEffectEvent((questionId: string, optionValue: string) => {
     if (activeQuestion?.multiSelect) {
-      onToggleOption(questionId, optionLabel);
+      onToggleOption(questionId, optionValue);
       return;
     }
-    setOptimisticSingleSelect({ questionId, optionLabel });
-    onToggleOption(questionId, optionLabel);
+    setOptimisticSingleSelect({ questionId, optionValue });
+    onToggleOption(questionId, optionValue);
     if (autoAdvanceTimerRef.current !== null) {
       window.clearTimeout(autoAdvanceTimerRef.current);
     }
@@ -112,7 +112,7 @@ export function useComposerPendingUserInputCard({
       const option = activeQuestion.options[optionIndex];
       if (!option) return;
       event.preventDefault();
-      handleOptionSelection(activeQuestion.id, option.label);
+      handleOptionSelection(activeQuestion.id, option.value ?? option.label);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);

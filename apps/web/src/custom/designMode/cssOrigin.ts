@@ -86,7 +86,7 @@ const SHORTHANDS: Record<string, readonly string[]> = {
   "border-bottom-right-radius": ["border-radius"],
 };
 
-export function declaresProperty(style: CSSStyleDeclaration, property: string): boolean {
+function declaresProperty(style: CSSStyleDeclaration, property: string): boolean {
   if (style.getPropertyValue(property) !== "") return true;
   for (const shorthand of SHORTHANDS[property] ?? []) {
     if (style.getPropertyValue(shorthand) !== "") return true;

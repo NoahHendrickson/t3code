@@ -33,7 +33,8 @@ import { newDraftId, newThreadId } from "../lib/utils";
 import type { SidebarProjectGroupMember, SidebarProjectSnapshot } from "../sidebarProjectGrouping";
 import { readThreadShell } from "../state/entities";
 import { usePrimaryEnvironmentId } from "../state/environments";
-import { primaryServerSettingsAtom } from "../state/server";
+import { appAtomRegistry } from "../rpc/atomRegistry";
+import { primaryServerSettingsAtom, serverEnvironment } from "../state/server";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY, newAgentDraftProjectRef } from "./newAgentDraft";
 
@@ -196,9 +197,12 @@ export function useDraftProjectAssignmentPending(draftId: DraftId | null): strin
     resolved the way upstream's handler resolves them for a fresh draft, so
     an unassigned draft lands in the same env mode a "New thread in X" would
     have; branch and worktree reset for the same reason (they named the old
-    project's checkout). Model selection: an explicit pick stands, and a
-    seeded one — the model carried from the thread the draft was started
-    from — is replaced only by the project's own default, when it has one. */
+    project's checkout). createdAt is restamped to now so the sidebar card
+    leads that project's active list the way a plus-icon draft does, instead
+    of keeping the unassigned draft's older stamp and sinking under newer
+    threads. Model selection: an explicit pick stands, and a seeded one —
+    the model carried from the thread the draft was started from — is
+    replaced only by the project's own default, when it has one. */
 export async function assignDraftProject(
   draftId: DraftId,
   entry: DraftProjectTarget,
@@ -246,16 +250,25 @@ export async function assignDraftProject(
     branch: null,
     worktreePath: null,
     envMode,
+    // The unassigned draft may have been opened earlier (or reused by a
+    // later New agent click). Active rows sort by createdAt, newest first,
+    // so keeping that stamp parks the card under every newer thread in the
+    // project. A project-header plus mints createdAt as now; joining a
+    // project is the same moment for this draft.
+    createdAt: new Date().toISOString(),
     startFromOrigin: resolveNewDraftStartFromOrigin({
       envMode,
       newWorktreesStartFromOrigin: settings.newWorktreesStartFromOrigin,
     }),
   });
-  if (
-    project.defaultModelSelection &&
-    !hasExplicitComposerModelSelection(getComposerDraft(draftId))
-  ) {
-    setModelSelection(draftId, project.defaultModelSelection, { replaceOptions: true });
+  // Same fallback as upstream's DraftHeroHeadline: a project without its own
+  // default model inherits the default of the environment it lives in.
+  const defaultModelSelection =
+    project.defaultModelSelection ??
+    appAtomRegistry.get(serverEnvironment.configValueAtom(project.environmentId))?.settings
+      .defaultModelSelection;
+  if (defaultModelSelection && !hasExplicitComposerModelSelection(getComposerDraft(draftId))) {
+    setModelSelection(draftId, defaultModelSelection, { replaceOptions: true });
   }
 }
 
