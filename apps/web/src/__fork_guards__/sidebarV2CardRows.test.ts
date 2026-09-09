@@ -330,7 +330,7 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(marks).toContain(
       '<span className="size-2.5 rounded-full border border-muted-foreground" />',
     );
-    expect(marks).not.toContain("bg-muted-foreground\"");
+    expect(marks).not.toContain('bg-muted-foreground"');
     expect(marks).not.toContain("size-2 rounded-full");
     // Hues, per Noey (2026-09-07): an unread finished turn is blue, and the
     // two waiting-on-you states share one amber — the half-circle already
