@@ -407,6 +407,11 @@ describe("CheckpointReactor", () => {
     const drain = () => Effect.runPromise(reactor.drain);
 
     const createdAt = "2026-01-01T00:00:00.000Z";
+    /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow */
+    // `null` means a local-checkout thread; only an omitted option defaults to a worktree.
+    const threadWorktreePath =
+      options?.threadWorktreePath === undefined ? cwd : options.threadWorktreePath;
+    /* fork:end server-local-checkout-branch-follow */
     await Effect.runPromise(
       engine.dispatch({
         type: "project.create",
@@ -436,7 +441,7 @@ describe("CheckpointReactor", () => {
           interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
           runtimeMode: "approval-required",
           branch: options?.threadBranch ?? null,
-          worktreePath: options?.threadWorktreePath ?? cwd,
+          worktreePath: threadWorktreePath,
           createdAt,
         })
         .pipe(
@@ -455,7 +460,7 @@ describe("CheckpointReactor", () => {
                   interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
                   runtimeMode: "approval-required",
                   branch: null,
-                  worktreePath: options?.threadWorktreePath ?? cwd,
+                  worktreePath: threadWorktreePath,
                   createdAt,
                 }),
               )
@@ -1060,6 +1065,48 @@ describe("CheckpointReactor", () => {
       expect(pullRequestRefreshCalls).toEqual([]);
     },
   );
+
+  /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow */
+  it("adopts a drifted checkout for a local thread even though other local threads share it", async () => {
+    const pullRequestRefreshCalls: string[] = [];
+    const harness = await createHarness({
+      seedFilesystemCheckpoints: false,
+      threadWorktreePath: null,
+      threadBranch: "custom",
+      localStatusRefName: "fix/renamed-by-agent",
+      secondThreadSharingWorktree: true,
+      pullRequestRefreshCalls,
+    });
+
+    harness.provider.emit({
+      type: "turn.completed",
+      eventId: EventId.make("evt-turn-completed-local-drift"),
+      provider: ProviderDriverKind.make("codex"),
+      createdAt: "2026-01-01T00:00:00.000Z",
+      threadId: ThreadId.make("thread-1"),
+      turnId: asTurnId("turn-local-drift"),
+      payload: { state: "completed" },
+    });
+
+    await harness.drain();
+    await waitForEvent(
+      harness.engine,
+      (event) =>
+        event.type === "thread.meta-updated" &&
+        (event as unknown as { payload: { branch?: string } }).payload.branch ===
+          "fix/renamed-by-agent",
+    );
+
+    const snapshot = await harness.readModel();
+    const thread = snapshot.threads.find((entry) => entry.id === ThreadId.make("thread-1"));
+    const other = snapshot.threads.find((entry) => entry.id === ThreadId.make("thread-2"));
+    // Only the thread whose turn ran on the checkout follows it.
+    expect(thread?.branch).toBe("fix/renamed-by-agent");
+    expect(thread?.worktreePath).toBeNull();
+    expect(other?.branch).toBeNull();
+    expect(pullRequestRefreshCalls).toEqual([harness.cwd]);
+  });
+  /* fork:end server-local-checkout-branch-follow */
 
   it("does not adopt a temporary placeholder checkout as the thread branch", async () => {
     const harness = await createHarness({

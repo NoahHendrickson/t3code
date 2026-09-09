@@ -542,6 +542,10 @@ const make = Effect.gen(function* () {
   // orphans the thread's PR. Follow the drift here: adopt the checked-out
   // branch as the thread's branch, but only when the worktree belongs to
   // exactly this thread — for shared cwds the strict matching is the point.
+  /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow */
+  // The fork extends this to local-checkout threads: the thread whose turn
+  // just ran on the shared checkout adopts its branch, the rest do not.
+  /* fork:end server-local-checkout-branch-follow */
   const followWorktreeBranchDrift = Effect.fn("followWorktreeBranchDrift")(function* (input: {
     readonly threadId: ThreadId;
     readonly cwd: string;
@@ -558,23 +562,30 @@ const make = Effect.gen(function* () {
       const thread = yield* projectionSnapshotQuery
         .getThreadShellById(input.threadId)
         .pipe(Effect.map(Option.getOrUndefined));
-      if (
-        !thread ||
-        thread.branch === null ||
-        thread.branch === checkedOutBranch ||
-        thread.worktreePath === null ||
-        thread.worktreePath !== input.cwd
-      ) {
+      if (!thread || thread.branch === null || thread.branch === checkedOutBranch) {
         return;
       }
 
-      const shell = yield* projectionSnapshotQuery.getShellSnapshot();
-      const worktreeIsShared = shell.threads.some(
-        (other) => other.id !== thread.id && other.worktreePath === thread.worktreePath,
-      );
-      if (worktreeIsShared) {
-        return;
+      /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow
+         A local-checkout thread (no worktree of its own) adopts the branch its
+         turn just ran on. The checkout is shared by every local thread of the
+         project, but only the thread whose agent ran there follows it; the
+         others keep their record and the composer's mismatch banner. The
+         shared-cwd refusal below stays for worktree threads, where a second
+         thread on the same worktree means the checkout is nobody's to claim. */
+      if (thread.worktreePath !== null) {
+        if (thread.worktreePath !== input.cwd) {
+          return;
+        }
+        const shell = yield* projectionSnapshotQuery.getShellSnapshot();
+        const worktreeIsShared = shell.threads.some(
+          (other) => other.id !== thread.id && other.worktreePath === thread.worktreePath,
+        );
+        if (worktreeIsShared) {
+          return;
+        }
       }
+      /* fork:end server-local-checkout-branch-follow */
 
       // expectedBranch makes this a compare-and-swap in the decider: if the
       // recorded branch moved between our read and the dispatch (rename,

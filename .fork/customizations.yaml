@@ -3575,3 +3575,41 @@
     - apps/web/src/__fork_guards__/serverLocalThreadBranch.test.ts
     - apps/server/src/git/resolveBootstrapThreadBranch.test.ts
     - apps/server/src/server.test.ts
+
+- id: server-local-checkout-branch-follow
+  intent: >
+    A local-checkout thread follows the branch its turn just ran on. When an
+    agent (or the user) runs `git checkout` in the project's shared checkout
+    and the turn completes, the thread that ran adopts the checked-out branch
+    as its recorded branch, so the sidebar card, the PR badge and the
+    composer chip all agree for the thread whose agent did the work.
+
+    Upstream (#5159) follows this drift only inside a worktree owned by
+    exactly one thread and refuses every shared cwd, because a shared
+    checkout belongs to many threads and following it for all of them would
+    hand one PR to every card in the project. The fork keeps that refusal
+    for worktree threads and lifts it for local threads, but only ever for
+    the thread whose turn completed: the other local threads keep their
+    record and the composer's "Branch changed" banner, since nothing they
+    did moved the checkout.
+
+    Accepted consequence: a thread that runs a casual turn on a branch some
+    other thread's agent left checked out adopts that branch and its PR,
+    and with auto-settle-on-merge that thread settles when the PR merges.
+    That is factual (its turn ran there) and reversible (a message
+    unsettles it), and was chosen over a first-claim ownership rule, which
+    would leave the second thread in exactly the stale state this exists to
+    fix. Detached HEAD, temporary placeholder checkouts, threads with no
+    recorded branch, and the decider's expectedBranch compare-and-swap are
+    all upstream's guards and stay as they are. The record still updates
+    only at turn completion; a checkout switched without a turn shows on
+    the composer's live chip until the next turn, as before.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/server/src/orchestration/Layers/CheckpointReactor.ts
+    - apps/server/src/orchestration/Layers/CheckpointReactor.test.ts
+  verify:
+    - apps/web/src/__fork_guards__/serverLocalCheckoutBranchFollow.test.ts
+    - apps/server/src/orchestration/Layers/CheckpointReactor.test.ts
