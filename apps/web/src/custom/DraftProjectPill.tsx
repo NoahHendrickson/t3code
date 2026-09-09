@@ -128,7 +128,7 @@ export function DraftProjectPill(props: {
         type="button"
         size="sm"
         variant="outline"
-        className="pointer-events-auto rounded-full"
+        className="pointer-events-auto rounded-full before:rounded-full"
         onClick={openAddProject}
         data-testid="draft-project-pill"
       >
@@ -147,7 +147,7 @@ export function DraftProjectPill(props: {
             size="sm"
             variant="outline"
             aria-label={hasResolvedProject ? `Change project — ${label}` : "Choose a project"}
-            className="pointer-events-auto max-w-72 rounded-full"
+            className="pointer-events-auto max-w-72 rounded-full before:rounded-full"
             data-testid="draft-project-pill"
             data-project-assigned={hasResolvedProject ? "true" : "false"}
             aria-busy={pendingEntry !== null || undefined}
