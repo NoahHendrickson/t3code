@@ -571,8 +571,15 @@ const make = Effect.gen(function* () {
          turn just ran on. The checkout is shared by every local thread of the
          project, but only the thread whose agent ran there follows it; the
          others keep their record and the composer's mismatch banner. The
-         shared-cwd refusal below stays for worktree threads, where a second
-         thread on the same worktree means the checkout is nobody's to claim. */
+         default branch is that checkout's resting state after a merge, not
+         this thread's work, so a follow-up turn there keeps the recorded
+         branch (and its PR) rather than trading it for the default — the
+         same line refreshPullRequestAfterTurn draws. The shared-cwd refusal
+         below stays for worktree threads, where a second thread on the same
+         worktree means the checkout is nobody's to claim. */
+      if (thread.worktreePath === null && input.local.isDefaultRef) {
+        return;
+      }
       if (thread.worktreePath !== null) {
         if (thread.worktreePath !== input.cwd) {
           return;

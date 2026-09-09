@@ -34,7 +34,9 @@ describe("fork guard: server-local-checkout-branch-follow", () => {
   it("lets a local-checkout thread follow the branch its turn ran on", () => {
     const hunks = readCustomizationHunks(reactor);
     // The shared-cwd refusal is scoped to worktree threads. A local thread
-    // (worktreePath null) reaches the adoption dispatch below the fence.
+    // (worktreePath null) reaches the adoption dispatch below the fence,
+    // except when the checkout rests on the default branch.
+    expect(hunks).toContain("if (thread.worktreePath === null && input.local.isDefaultRef) {");
     expect(hunks).toContain("if (thread.worktreePath !== null) {");
     expect(hunks).toContain("worktreeIsShared");
     // Upstream's original early return, which refused every local thread,
@@ -52,7 +54,13 @@ describe("fork guard: server-local-checkout-branch-follow", () => {
     expect(hunks).toContain(
       "adopts a drifted checkout for a local thread even though other local threads share it",
     );
+    expect(hunks).toContain(
+      "keeps a local thread's branch when the checkout rests on the default branch",
+    );
     expect(hunks).toContain("threadWorktreePath: null");
+    // The isolation half is only proven if the other local thread has a
+    // branch it could have lost.
     expect(hunks).toContain("secondThreadSharingWorktree: true");
+    expect(hunks).toContain("secondThreadBranch: ");
   });
 });

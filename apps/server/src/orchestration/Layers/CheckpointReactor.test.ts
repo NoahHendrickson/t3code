@@ -297,6 +297,9 @@ describe("CheckpointReactor", () => {
     readonly threadWorktreePath?: string | null;
     readonly threadBranch?: string | null;
     readonly secondThreadSharingWorktree?: boolean;
+    /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow */
+    readonly secondThreadBranch?: string;
+    /* fork:end server-local-checkout-branch-follow */
     readonly localStatusRefName?: string | null;
     readonly providerSessionCwd?: string;
     readonly providerName?: ProviderDriverKind;
@@ -459,7 +462,9 @@ describe("CheckpointReactor", () => {
                   },
                   interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
                   runtimeMode: "approval-required",
-                  branch: null,
+                  /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow */
+                  branch: options?.secondThreadBranch ?? null,
+                  /* fork:end server-local-checkout-branch-follow */
                   worktreePath: threadWorktreePath,
                   createdAt,
                 }),
@@ -1075,6 +1080,7 @@ describe("CheckpointReactor", () => {
       threadBranch: "custom",
       localStatusRefName: "fix/renamed-by-agent",
       secondThreadSharingWorktree: true,
+      secondThreadBranch: "fix/other-thread",
       pullRequestRefreshCalls,
     });
 
@@ -1100,11 +1106,42 @@ describe("CheckpointReactor", () => {
     const snapshot = await harness.readModel();
     const thread = snapshot.threads.find((entry) => entry.id === ThreadId.make("thread-1"));
     const other = snapshot.threads.find((entry) => entry.id === ThreadId.make("thread-2"));
-    // Only the thread whose turn ran on the checkout follows it.
+    // Only the thread whose turn ran on the checkout follows it; the other
+    // local thread keeps the branch it recorded.
     expect(thread?.branch).toBe("fix/renamed-by-agent");
     expect(thread?.worktreePath).toBeNull();
-    expect(other?.branch).toBeNull();
+    expect(other?.branch).toBe("fix/other-thread");
     expect(pullRequestRefreshCalls).toEqual([harness.cwd]);
+  });
+
+  it("keeps a local thread's branch when the checkout rests on the default branch", async () => {
+    const pullRequestRefreshCalls: string[] = [];
+    const harness = await createHarness({
+      seedFilesystemCheckpoints: false,
+      threadWorktreePath: null,
+      threadBranch: "fix/merged-elsewhere",
+      localStatusRefName: "main",
+      pullRequestRefreshCalls,
+    });
+
+    harness.provider.emit({
+      type: "turn.completed",
+      eventId: EventId.make("evt-turn-completed-local-default-ref"),
+      provider: ProviderDriverKind.make("codex"),
+      createdAt: "2026-01-01T00:00:00.000Z",
+      threadId: ThreadId.make("thread-1"),
+      turnId: asTurnId("turn-local-default-ref"),
+      payload: { state: "completed" },
+    });
+
+    await harness.drain();
+
+    const snapshot = await harness.readModel();
+    const thread = snapshot.threads.find((entry) => entry.id === ThreadId.make("thread-1"));
+    // The default branch is the shared checkout's resting state after a
+    // merge, not this thread's work: the record (and its PR) stays.
+    expect(thread?.branch).toBe("fix/merged-elsewhere");
+    expect(pullRequestRefreshCalls).toEqual([]);
   });
   /* fork:end server-local-checkout-branch-follow */
 

@@ -3599,11 +3599,15 @@
     That is factual (its turn ran there) and reversible (a message
     unsettles it), and was chosen over a first-claim ownership rule, which
     would leave the second thread in exactly the stale state this exists to
-    fix. Detached HEAD, temporary placeholder checkouts, threads with no
-    recorded branch, and the decider's expectedBranch compare-and-swap are
-    all upstream's guards and stay as they are. The record still updates
-    only at turn completion; a checkout switched without a turn shows on
-    the composer's live chip until the next turn, as before.
+    fix. The default branch is excluded: it is the shared checkout's resting
+    state after a merge, not the thread's work, so a follow-up turn there
+    keeps the recorded branch and its PR instead of adopting `main` (the
+    line refreshPullRequestAfterTurn already draws). Detached HEAD,
+    temporary placeholder checkouts, threads with no recorded branch, and
+    the decider's expectedBranch compare-and-swap are all upstream's guards
+    and stay as they are. The record still updates only at turn completion;
+    a checkout switched without a turn shows on the composer's live chip
+    until the next turn, as before.
   tier: 4
   files: []
   shadows: []
