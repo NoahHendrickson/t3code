@@ -3522,9 +3522,30 @@
     existing worktree path is the checkout to read, the project root is the
     fallback. Source is GitWorkflowService.localStatus (the same live value
     the sidebar and PR badge compare against), never listRefs' cache-served
-    current flag. A detached HEAD, a non-repository project, or a status
-    failure yields null with a warning rather than fabricating a branch or
-    failing the turn start.
+    current flag. A detached HEAD, a non-repository project, a temporary
+    worktree placeholder (t3/…, which the checkpoint and provider reactors
+    also refuse to adopt), or a status failure yields null with a warning
+    rather than fabricating a branch or failing the turn start.
+
+    This is a real branch record, not a display label: a filled thread
+    crosses every gate upstream keys on thread.branch. The composer shows
+    the "Branch changed" banner with its Restore button when the shared
+    checkout moves on; the sidebar row leases a live git status; the PR
+    reactor resolves a pull request for the branch and the badge attributes
+    it. All of that is upstream's own semantics for a branch-recorded local
+    thread and is the point — a phone thread should behave like the same
+    thread started on the desktop.
+
+    Two accepted trade-offs. The status read sits on the turn-start path
+    before thread.create dispatches; it is the same cache-served status the
+    open desktop already polls for every labelled row on that checkout, so
+    it is warm in practice, and a cold read on a large dirty repo is the
+    cost of the label being present from the first event rather than
+    arriving in a second one. And the fill-in is one-shot: a create that
+    lands while another git operation holds the index stays null (web
+    self-heals on its next send through the mismatch path, mobile does
+    not), because a repeatable backfill would be a second mechanism for a
+    race that is rare in practice.
 
     The policy lives in its own server file (resolveBootstrapThreadBranch),
     unit-tested next to it; ws.ts carries only the import and the call at the

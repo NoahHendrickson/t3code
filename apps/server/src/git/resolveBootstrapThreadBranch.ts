@@ -15,11 +15,16 @@
  * against — never listRefs' cache-served flag. A detached HEAD, a
  * non-repository project, a missing project, or a status failure yields null
  * with a warning rather than fabricating a branch or failing the create.
+ *
+ * A temporary worktree placeholder (`t3/…`) is never adopted, matching the
+ * checkpoint and provider reactors: recording it would make this thread's
+ * first turn rename a worktree it does not own.
  */
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import type { ProjectId, ThreadId } from "@t3tools/contracts";
+import { isTemporaryWorktreeBranch } from "@t3tools/shared/git";
 
 export interface BootstrapThreadBranchInput {
   readonly threadId: ThreadId;
@@ -53,7 +58,8 @@ export const resolveBootstrapThreadBranch = <ProjectError, StatusError>(
         Option.map(yield* deps.getProjectShellById(input.projectId), (p) => p.workspaceRoot),
       );
     if (cwd === null) return null;
-    return (yield* deps.localStatus({ cwd })).refName;
+    const refName = (yield* deps.localStatus({ cwd })).refName;
+    return refName === null || isTemporaryWorktreeBranch(refName) ? null : refName;
   }).pipe(
     Effect.catchCause((cause) =>
       Cause.hasInterruptsOnly(cause)

@@ -3,6 +3,7 @@ import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { ProjectId, ThreadId } from "@t3tools/contracts";
+import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
 import { vi } from "vite-plus/test";
 
 import {
@@ -112,6 +113,16 @@ describe("resolveBootstrapThreadBranch", () => {
     Effect.gen(function* () {
       const { deps } = makeDeps({ localStatus: () => Effect.succeed({ refName: null }) });
       assert.isNull(yield* resolveBootstrapThreadBranch(makeInput(), deps));
+    }),
+  );
+
+  it.effect("never adopts a temporary worktree placeholder branch", () =>
+    Effect.gen(function* () {
+      const { deps } = makeDeps({
+        localStatus: () =>
+          Effect.succeed({ refName: buildTemporaryWorktreeBranchName(() => "0123abcd") }),
+      });
+      assert.isNull(yield* resolveBootstrapThreadBranch(makeInput({ worktreePath: "/wt" }), deps));
     }),
   );
 
