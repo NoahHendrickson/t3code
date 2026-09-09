@@ -245,14 +245,14 @@ export function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
   );
 }
 
-/** Idle — a thread with nothing pending. The component set draws it as the
-    same 10px dot as Done, on the muted channel: "nothing here" reads from the
-    hue, and the slot still holds a mark in every state instead of switching
-    between a mark and a string. */
+/** Idle — a thread with nothing pending. The same 10px circle as Done, but
+    hollow and on the muted channel, per Noey (2026-09-09): "nothing here"
+    reads from both the empty form and the hue, and the slot still holds a
+    mark in every state instead of switching between a mark and a string. */
 export function SidebarV2IdleMark() {
   return (
     <span aria-hidden className={MARK_SLOT_CLASS}>
-      <span className="size-2.5 rounded-full bg-muted-foreground" />
+      <span className="size-2.5 rounded-full border border-muted-foreground" />
     </span>
   );
 }

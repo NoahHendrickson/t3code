@@ -1189,7 +1189,8 @@
 /* Sidebar V2 status palette, keyed to the fork marker so an unmarked build
    falls back to upstream's variables. The design's hues are tuned for a black
    panel; on the light panel the same values are near-invisible at 8px, so each
-   one drops to the darkest shade that still reads as the same color family.
+   one drops to the darkest shade that still reads as the same color family —
+   except `done`, which is one fixed blue on both panels per Noey (2026-09-09).
 
    `working` keeps the phanttom Ghostty green (falling pixels); `done` — a
    finished turn you have not read yet — is blue, so an unread result reads
@@ -1210,7 +1211,7 @@
 :root[data-fork="noahhendrickson-t3code"],
 :root[data-fork="noahhendrickson-t3code"] [data-sidebar-version="v2"] {
   --sidebar-v2-status-working: var(--color-emerald-600);
-  --sidebar-v2-status-done: var(--color-indigo-600);
+  --sidebar-v2-status-done: #2498fe;
   --sidebar-v2-status-approval: var(--color-amber-500);
   --sidebar-v2-status-input: var(--color-amber-500);
   --sidebar-v2-status-failed: var(--color-red-600);
@@ -1222,7 +1223,7 @@
 :root[data-fork="noahhendrickson-t3code"].dark,
 :root[data-fork="noahhendrickson-t3code"].dark [data-sidebar-version="v2"] {
   --sidebar-v2-status-working: #24fe8a;
-  --sidebar-v2-status-done: #8b9cff;
+  --sidebar-v2-status-done: #2498fe;
   --sidebar-v2-status-approval: #ffcd59;
   --sidebar-v2-status-input: #ffcd59;
   --sidebar-v2-status-failed: #ff6b60;
