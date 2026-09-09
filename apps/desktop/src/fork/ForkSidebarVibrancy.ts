@@ -24,7 +24,7 @@ import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
 import { FORK_VIBRANCY_MATERIAL, setForkGlassActive } from "./ForkGlassState.ts";
 
-export const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
+const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
 
 /**
  * The window is created with an opaque `backgroundColor`. Vibrancy only reaches

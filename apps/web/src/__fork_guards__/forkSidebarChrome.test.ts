@@ -349,6 +349,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(button).toContain("size-8");
     expect(button).toContain("rounded-[10px]");
     const sidebarV2 = readSibling("../components/Sidebar.tsx");
+    expect(sidebarV2).toContain("snapshotVisibleProjectOrderAsManual(projectGroups)");
     expect(sidebarV2).toContain("updateClientSettings({ sidebarProjectSortOrder: sortOrder })");
     expect(rows).toContain("FolderPlusIcon");
     // Scope on-state: glyph lifts and aria/tooltip name the active project.
@@ -427,7 +428,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const sidebarV2 = readSibling("../components/Sidebar.tsx");
     expect(sidebarV2).toContain("useState<ReadonlySet<string>>(EMPTY_PROJECT_SCOPE)");
     expect(sidebarV2).toContain("scopedProjectGroups.flatMap((group) =>");
-    expect(sidebarV2).toContain("if (scopedProjectGroups.length !== projectScopeKeys.size) {");
+    expect(sidebarV2).toContain(
+      "if (allProjectSnapshotsReady && scopedProjectGroups.length !== projectScopeKeys.size) {",
+    );
     expect(sidebarV2).toContain("`${scopedProjectGroups.length} projects`");
     expect(sidebarV2).toContain("scopedProjectDisplayName={scopedProjectsLabel}");
     expect(sidebarV2).toContain("onProjectScopeChange={setProjectScopeKeys}");

@@ -146,6 +146,7 @@ describe("sidebarDraftRowCapabilities", () => {
       canSnooze: false,
       canPin: false,
       canRename: false,
+      canReceiveFileDrop: false,
       showDiscard: true,
     });
     expect(sidebarDraftRowCapabilities(false)).toEqual({
@@ -153,6 +154,7 @@ describe("sidebarDraftRowCapabilities", () => {
       canSnooze: true,
       canPin: true,
       canRename: true,
+      canReceiveFileDrop: true,
       showDiscard: false,
     });
   });

@@ -9,7 +9,12 @@ import {
   type ThreadEnvMode,
 } from "@t3tools/contracts";
 
-import { DraftId, markPromotedDraftThread, useComposerDraftStore } from "../composerDraftStore";
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import {
+  DraftId,
+  markPromotedDraftThreadByRef,
+  useComposerDraftStore,
+} from "../composerDraftStore";
 import { readT3ProjectFileDefaultThreadEnvMode } from "../lib/t3ProjectFileDefaults";
 import { NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY, newAgentDraftProjectRef } from "./newAgentDraft";
 import {
@@ -96,6 +101,13 @@ describe("assignDraftProject", () => {
       projectId: "proj-a",
       envMode: "worktree",
     });
+    // Joining the project is the create moment the sidebar sorts on. The
+    // unassigned stamp ("2026-09-08T09:00:00.000Z" in beforeEach) would
+    // park the card under every newer thread in the project.
+    expect(session()?.createdAt).not.toBe("2026-09-08T09:00:00.000Z");
+    expect(Date.parse(session()?.createdAt ?? "")).toBeGreaterThan(
+      Date.parse("2026-09-08T09:00:00.000Z"),
+    );
   });
 
   it("lets the latest pick win when an earlier pick's lookup settles later", async () => {
@@ -186,7 +198,7 @@ describe("assignDraftProject", () => {
         }),
     );
     const pick = assignDraftProject(draftId, target("a"), settings);
-    markPromotedDraftThread(ThreadId.make("thread-new-agent"));
+    markPromotedDraftThreadByRef(scopeThreadRef(environmentId, ThreadId.make("thread-new-agent")));
     release(null);
     await pick;
     expect(session()?.logicalProjectKey).toBe(NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY);

@@ -13,7 +13,6 @@ import {
   formatSubagentModelLabel,
   formatSubagentTokenCount,
   isActiveSubagentStatus,
-  isTerminalSubagentStatus,
   type AgentPanelModel,
   type AgentPanelWorkflowGroup,
   type RuntimeSubagent,
@@ -21,6 +20,7 @@ import {
 } from "@t3tools/client-runtime/state/subagentRuntime";
 import type { ReactNode } from "react";
 
+import { deriveAgentSpawnSummary } from "../components/chat/agentSpawnSummary";
 import {
   SidebarV2IdleMark,
   SidebarV2StatusDot,
@@ -75,29 +75,22 @@ export function resolveSpawnCta(spawn: AgentSpawnCtaSpawn, model: AgentPanelMode
     agents.length,
     Math.max(memberIds.size - (spawn.workflowId ? 1 : 0), 0),
   );
-  const working = agents.filter((agent) => isActiveSubagentStatus(agent.status)).length;
-  const failed = agents.filter((agent) => agent.status === "failed").length;
-  // Coordinator status is authoritative for workflows: members can look
-  // settled while the run is still mid-flight.
-  const live =
-    workflowGroup !== undefined
-      ? !isTerminalSubagentStatus(workflowGroup.workflow.status)
-      : working > 0;
+  // Upstream's summary owns lead/status wording (batches, stopped, idle,
+  // "Status unavailable"); the fork only drops its check glyph, since the
+  // design's status line is plain text.
+  const summary = deriveAgentSpawnSummary({
+    agents,
+    agentCount,
+    coordinatorStatus: workflowGroup?.workflow.status,
+  });
+  const { live, lead } = summary;
   const livePhase = workflowGroup?.phases.find((phase) => phase.state === "running");
   const workflowName =
     workflowGroup?.workflow.workflowName ?? workflowGroup?.workflow.title ?? null;
-  const lead = live
-    ? `Kicked off ${agentCount} subagent${agentCount === 1 ? "" : "s"}`
-    : `Ran ${agentCount} subagent${agentCount === 1 ? "" : "s"}`;
-  const status = live
-    ? livePhase
+  const status =
+    live && livePhase
       ? `${livePhase.title} · ${livePhase.activeCount} working`
-      : working > 0
-        ? `${working} working`
-        : "working"
-    : failed > 0
-      ? `${failed} failed`
-      : "completed";
+      : summary.status.replace(/^✓ /u, "");
   // Same panel-footer rule: providers may roll member usage into the
   // coordinator, so surface it only when there are no member rows to paint.
   const coordinatorTokens =

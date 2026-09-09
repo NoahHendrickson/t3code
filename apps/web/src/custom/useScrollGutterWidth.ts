@@ -26,7 +26,7 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 
-export const SCROLL_GUTTER_VARIABLE = "--sidebar-list-gutter";
+const SCROLL_GUTTER_VARIABLE = "--sidebar-list-gutter";
 
 /**
  * Returns a callback ref. Attach it to the scroll container whose gutter the

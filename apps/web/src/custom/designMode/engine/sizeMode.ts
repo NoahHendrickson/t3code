@@ -68,11 +68,7 @@ export function measuredSize(el: TaggedElement, axis: SizeAxis, drafts: DraftSto
   return seedFrom(drafts.current(el, axis), getComputedStyle(el).getPropertyValue(axis));
 }
 
-export function readSizeMode(
-  el: TaggedElement,
-  axis: SizeAxis,
-  drafts: DraftStore,
-): DesignModeSizeMode {
+function readSizeMode(el: TaggedElement, axis: SizeAxis, drafts: DraftStore): DesignModeSizeMode {
   const draft = drafts.current(el, axis);
   if (draft === "100%") return "fill";
   // An explicit px draft is Fixed intent outright: it is the one value that can be neither

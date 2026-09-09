@@ -86,7 +86,7 @@ export function normalizeResolvedSource(
  * of the page-shared global — keep the two in step. Page-controlled: length-capped, and rejected
  * outright when it carries control characters (a newline-bearing "path" could otherwise inject
  * instruction lines into the agent's request). */
-export function normalizeFilePath(value: unknown): string | null {
+function normalizeFilePath(value: unknown): string | null {
   if (typeof value !== "string" || value.length === 0 || value.length > MAX_FILE_LENGTH) {
     return null;
   }
@@ -99,7 +99,7 @@ export function normalizeFilePath(value: unknown): string | null {
  * identical. */
 const COMPONENT_NAME_PATTERN = /^[A-Za-z_$][\w$.]{0,63}$/;
 
-export function normalizeComponentName(value: unknown): string | null {
+function normalizeComponentName(value: unknown): string | null {
   return typeof value === "string" && COMPONENT_NAME_PATTERN.test(value) ? value : null;
 }
 
@@ -176,7 +176,7 @@ function findReportingFrame(
  * one, and a wrong line costs more than a missing one. An absent stack is still trusted, which
  * is the pre-existing contract for hosts that hand back a bare location with no stack at all.
  */
-export function isSymbolicated(
+function isSymbolicated(
   stack: unknown,
   value: { filePath?: unknown; lineNumber?: unknown; columnNumber?: unknown },
 ): boolean {

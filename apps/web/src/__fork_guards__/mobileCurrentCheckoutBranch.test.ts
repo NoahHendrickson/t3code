@@ -38,7 +38,7 @@ describe("fork guard: mobile-current-checkout-branch", () => {
     // cache-served `current` flag, which the retired fork resolver read.
     const hunks = readCustomizationHunks(flowProvider);
     expect(hunks).toContain("branch: resolveProjectThreadCreationBranch({");
-    expect(hunks).toContain("currentCheckoutBranch: currentCheckoutBranchName");
+    expect(hunks).toMatch(/currentCheckoutBranch:\s*currentCheckoutBranchName/u);
     expect(hunks).not.toContain("availableBranches");
     // The draft screen carries no fork hunks anymore; a reappearing one means
     // a sync resurrected the retired resolver.

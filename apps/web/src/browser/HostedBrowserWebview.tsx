@@ -9,6 +9,7 @@ import { previewBridge } from "~/components/preview/previewBridge";
 import { selectDesignModeTab, useDesignModeStore } from "~/custom/designMode/designModeStore";
 /* fork:end fork-design-mode */
 import { usePreviewBridge } from "~/components/preview/usePreviewBridge";
+import { useClientSettingsHydrated } from "~/hooks/useSettings";
 import { cn, isMacPlatform } from "~/lib/utils";
 
 import { resolveBrowserSurfacePanelRect, useBrowserSurfaceStore } from "./browserSurfaceStore";
@@ -52,11 +53,25 @@ export function HostedBrowserWebview(props: {
   readonly initialUrl: string | null;
   readonly viewport: PreviewViewportSetting;
   readonly pictureInPicture: boolean;
+  /**
+   * Fixed for the tab's lifetime: Electron only honours `partition` before the
+   * guest attaches, so a live change here would not move the tab anyway.
+   */
+  readonly profileId: string | undefined;
   readonly zoomFactor: number;
 }) {
-  const { threadRef, tabId, runtimeTabId, initialUrl, viewport, pictureInPicture, zoomFactor } =
-    props;
-  const config = usePreviewWebviewConfig(threadRef.environmentId);
+  const {
+    threadRef,
+    tabId,
+    runtimeTabId,
+    initialUrl,
+    viewport,
+    pictureInPicture,
+    zoomFactor,
+    profileId,
+  } = props;
+  const clientSettingsHydrated = useClientSettingsHydrated();
+  const config = usePreviewWebviewConfig(threadRef.environmentId, profileId);
   /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
      This wrapper IS the letterbox around a fixed-size viewport, and its own
      `bg-muted/35` is what paints it. Canvas mode's gray stops at the webview's edge,
@@ -82,6 +97,7 @@ export function HostedBrowserWebview(props: {
         fittedSourceContent: current?.fittedSourceContent ?? null,
         rect: resolveBrowserSurfacePanelRect(state.byTabId, runtimeTabId),
         visible: current?.visible ?? false,
+        zIndex: current?.zIndex ?? 30,
       };
     }),
   );
@@ -92,6 +108,7 @@ export function HostedBrowserWebview(props: {
   usePreviewBridge({ threadRef, tabId, runtimeTabId });
 
   useEffect(() => {
+    if (!clientSettingsHydrated) return;
     crashRecoveryRef.current = INITIAL_WEBVIEW_CRASH_RECOVERY_STATE;
     const lease = acquireDesktopTab(runtimeTabId);
     tabLeaseRef.current = lease;
@@ -99,7 +116,7 @@ export function HostedBrowserWebview(props: {
       if (tabLeaseRef.current === lease) tabLeaseRef.current = null;
       lease.release();
     };
-  }, [runtimeTabId]);
+  }, [clientSettingsHydrated, runtimeTabId]);
 
   const [webviewGeneration, setWebviewGeneration] = useState(0);
   const [recoverySrc, setRecoverySrc] = useState(initialSrc);
@@ -116,7 +133,7 @@ export function HostedBrowserWebview(props: {
   useEffect(() => {
     const webview = webviewRef.current;
     const bridge = previewBridge;
-    if (!webview || !config || !bridge) return;
+    if (!clientSettingsHydrated || !webview || !config || !bridge) return;
     let disposed = false;
     let recoveryTimeout: ReturnType<typeof setTimeout> | null = null;
     const register = () => {
@@ -162,7 +179,7 @@ export function HostedBrowserWebview(props: {
       webview.removeEventListener("dom-ready", register);
       webview.removeEventListener("render-process-gone", recoverGuest);
     };
-  }, [config, initialSrc, runtimeTabId, webviewGeneration]);
+  }, [clientSettingsHydrated, config, initialSrc, runtimeTabId, webviewGeneration]);
 
   const active = presentation.visible && presentation.rect !== null;
   const lastRect = presentation.rect;
@@ -247,7 +264,7 @@ export function HostedBrowserWebview(props: {
     wrapper.scrollTo({ left: 0, top: 0 });
   }, [runtimeTabId, viewport._tag, viewportHeight, viewportWidth]);
 
-  if (!config) return null;
+  if (!clientSettingsHydrated || !config) return null;
 
   const renderingActive = active || backgroundActivity || pictureInPicture || recordingActive;
   const wrapperStyle = resolveHostedBrowserWebviewWrapperStyle({
@@ -258,6 +275,7 @@ export function HostedBrowserWebview(props: {
     // suspend them, and automation continues to see the macOS guests as inactive.
     keepPaintableWhenInactive: isMacPlatform(navigator.platform),
     cornerRadius: presentation.cornerRadius,
+    zIndex: presentation.zIndex,
     rect: lastRect,
     hiddenSize,
   });
@@ -328,7 +346,7 @@ export function HostedBrowserWebview(props: {
           }
           aria-hidden={active ? undefined : true}
           className={cn(
-            "absolute flex overflow-hidden bg-background",
+            "absolute flex overflow-hidden bg-white",
             active && !layout.fillsPanel && "ring-1 ring-border/70 shadow-sm",
           )}
           style={{

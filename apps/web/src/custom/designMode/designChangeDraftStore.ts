@@ -133,7 +133,7 @@ export const useDesignChangeDraftStore = create<DesignChangeDraftStoreState>()((
 
 const EMPTY_PENDING: readonly PendingDesignChange[] = [];
 
-export function selectPendingDesignChanges(
+function selectPendingDesignChanges(
   byThreadKey: Record<string, readonly PendingDesignChange[]>,
   threadRef: ScopedThreadRef | null,
 ): readonly PendingDesignChange[] {

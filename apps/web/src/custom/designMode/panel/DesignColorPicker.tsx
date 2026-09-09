@@ -20,7 +20,7 @@ export function rgbToHex(value: string): string | null {
 /** Resolves ANY css color (oklch included — Tailwind v4's common emit) to "#rrggbb"
  * via canvas fillStyle serialization, which normalizes into the canvas's sRGB space.
  * Returns null for invalid colors and non-opaque results it can't reduce to hex. */
-export function cssColorToHex(value: string): string | null {
+function cssColorToHex(value: string): string | null {
   const direct = rgbToHex(value);
   if (direct) return direct;
   const ctx = document.createElement("canvas").getContext("2d");

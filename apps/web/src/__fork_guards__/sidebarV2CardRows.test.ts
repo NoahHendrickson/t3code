@@ -96,15 +96,15 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // 12px, like every other mark on the repo line (Figma 364:17299).
     // Flat mode names the project on every card, and the favicon is what the
     // slim rows and the project menu already use for it. The slot is built on
-    // the row's side (asset lookup, environment + cwd) beside the terminal
-    // glyph and handed in the same way, as one identifier. Its no-asset
+    // the row's side from the project record upstream hands down (#10714)
+    // beside the terminal glyph and handed in the same way, as one identifier. Its no-asset
     // fallback is the meta's own folder mark, so a favicon-less project draws
     // the design's glyph hidden from assistive tech like every other mark on
     // the line — ProjectFavicon's default fallback is not hidden. The meta
     // draws that same mark for a null slot.
     expect(sidebarV2).toContain("projectIconSlot={projectIcon}");
     expect(sidebarV2).toMatch(
-      /const projectIcon = \(\s*<ProjectFavicon\s+environmentId=\{thread\.environmentId\}\s+cwd=\{props\.projectCwd \?\? ""\}\s+faviconPath=\{props\.projectFaviconPath\}\s+className="[^"]*"\s+fallbackIcon=\{SidebarV2ProjectFolderMark\}/u,
+      /const projectIcon =[^;]*?<ProjectFavicon\s+project=\{props\.project\}\s+className="[^"]*"\s+fallbackIcon=\{SidebarV2ProjectFolderMark\}/u,
     );
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
     expect(meta).toContain("props.projectIconSlot ?? <SidebarV2ProjectFolderMark");
