@@ -48,6 +48,49 @@ function parseRemoteFetchUrls(stdout: string): Map<string, string> {
   return remotes;
 }
 
+/* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote
+   `gh repo set-default` records the chosen base repository as
+   `remote.<name>.gh-resolved = base`. A fork that opens its PRs against its
+   own remote marks that remote, and `gh pr list` already answers from it, so
+   the project identity must name the same repository or the PR reactor
+   discards every PR it finds as belonging to a foreign repository. */
+function parseBaseRemoteName(stdout: string): string | null {
+  for (const line of stdout.split("\n")) {
+    const match = /^remote\.(.+)\.gh-resolved\s+base$/u.exec(line.trim());
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
+// Only a checkout with several remotes has a choice to make, so a single
+// remote never pays for the extra git call. A marker naming a remote that no
+// longer exists resolves to nothing, and the caller falls back to upstream's
+// preference order.
+const pickBaseRemote = Effect.fn("pickBaseRemote")(function* (
+  cacheKey: string,
+  remotes: ReadonlyMap<string, string>,
+): Effect.fn.Return<
+  { readonly remoteName: string; readonly remoteUrl: string } | null,
+  never,
+  ProcessRunner.ProcessRunner
+> {
+  if (remotes.size <= 1) return null;
+  const processRunner = yield* ProcessRunner.ProcessRunner;
+  const configResult = yield* processRunner
+    .run({
+      command: "git",
+      args: ["-C", cacheKey, "config", "--get-regexp", String.raw`^remote\..*\.gh-resolved$`],
+      timeoutBehavior: "timedOutResult",
+    })
+    .pipe(Effect.option);
+  // `git config` exits 1 when nothing matches; that is simply "no base set".
+  if (configResult._tag === "None" || configResult.value.code !== 0) return null;
+  const remoteName = parseBaseRemoteName(configResult.value.stdout);
+  const remoteUrl = remoteName === null ? undefined : remotes.get(remoteName);
+  return remoteName !== null && remoteUrl ? { remoteName, remoteUrl } : null;
+});
+/* fork:end server-repository-identity-base-remote */
+
 function pickPrimaryRemote(
   remotes: ReadonlyMap<string, string>,
 ): { readonly remoteName: string; readonly remoteUrl: string } | null {
@@ -129,7 +172,10 @@ const resolveRepositoryIdentityFromCacheKey = Effect.fn(
     return null;
   }
 
-  const remote = pickPrimaryRemote(parseRemoteFetchUrls(remoteResult.value.stdout));
+  /* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote */
+  const remotes = parseRemoteFetchUrls(remoteResult.value.stdout);
+  const remote = (yield* pickBaseRemote(cacheKey, remotes)) ?? pickPrimaryRemote(remotes);
+  /* fork:end server-repository-identity-base-remote */
   return remote ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey }) : null;
 });
 
