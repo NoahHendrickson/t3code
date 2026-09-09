@@ -3502,3 +3502,36 @@
     - apps/web/src/__fork_guards__/forkNewAgentDraft.test.ts
     - apps/web/src/custom/newAgentDraft.test.ts
     - apps/web/src/custom/useNewAgentDraft.test.ts
+
+- id: server-local-thread-branch
+  intent: >
+    A thread bootstrapped onto an existing checkout with no branch named by
+    the client records the branch that checkout is actually on, so web and
+    desktop rows show branch identity for phone-created threads.
+
+    Upstream mobile records a branch only when the picker is tapped; its
+    untouched "Current checkout" default displays the current branch but
+    sends null, and the App Store build is what the phone runs — the fork's
+    own mobile fence (mobile-current-checkout-branch) never reaches it because
+    the fork ships no mobile builds. The server has the checkout and the
+    status service, so it fills the label in at bootstrap time instead of
+    waiting on a client release; this covers every client, old or new.
+
+    Precedence: an explicit client branch always wins; a worktree being
+    prepared names its own branch through that flow and is left alone; an
+    existing worktree path is the checkout to read, the project root is the
+    fallback. Source is GitWorkflowService.localStatus (the same live value
+    the sidebar and PR badge compare against), never listRefs' cache-served
+    current flag. A detached HEAD, a non-repository project, or a status
+    failure yields null with a warning rather than fabricating a branch or
+    failing the turn start. Only the bootstrap path is covered: a bare
+    thread.create carries no cwd context and stays as the client sent it.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/server/src/ws.ts
+    - apps/server/src/server.test.ts
+  verify:
+    - apps/web/src/__fork_guards__/serverLocalThreadBranch.test.ts
+    - apps/server/src/server.test.ts
