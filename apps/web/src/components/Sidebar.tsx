@@ -139,6 +139,7 @@ import {
 import { useThreadActions } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+import { snapshotVisibleProjectOrderAsManual } from "~/custom/sidebarV2ProjectSort";
 import { useScrollGutterWidth } from "~/custom/useScrollGutterWidth";
 /* fork:end fork-sidebar-chrome */
 /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
@@ -3810,9 +3811,12 @@ export default function Sidebar() {
           onGroupByProjectChange={setGroupByProject}
           // The same client setting the legacy sidebar's sort menu edits.
           projectSortOrder={sidebarProjectSortOrder}
-          onProjectSortOrderChange={(sortOrder) =>
-            updateClientSettings({ sidebarProjectSortOrder: sortOrder })
-          }
+          onProjectSortOrderChange={(sortOrder) => {
+            if (sortOrder === "manual" && sidebarProjectSortOrder !== "manual") {
+              snapshotVisibleProjectOrderAsManual(projectGroups);
+            }
+            updateClientSettings({ sidebarProjectSortOrder: sortOrder });
+          }}
           // A switch that visibly does nothing teaches nothing. Where headers
           // are suppressed — one project on screen, by scope or by having only
           // one — it says so instead of quietly ignoring the click.

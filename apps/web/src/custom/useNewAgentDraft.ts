@@ -197,9 +197,12 @@ export function useDraftProjectAssignmentPending(draftId: DraftId | null): strin
     resolved the way upstream's handler resolves them for a fresh draft, so
     an unassigned draft lands in the same env mode a "New thread in X" would
     have; branch and worktree reset for the same reason (they named the old
-    project's checkout). Model selection: an explicit pick stands, and a
-    seeded one — the model carried from the thread the draft was started
-    from — is replaced only by the project's own default, when it has one. */
+    project's checkout). createdAt is restamped to now so the sidebar card
+    leads that project's active list the way a plus-icon draft does, instead
+    of keeping the unassigned draft's older stamp and sinking under newer
+    threads. Model selection: an explicit pick stands, and a seeded one —
+    the model carried from the thread the draft was started from — is
+    replaced only by the project's own default, when it has one. */
 export async function assignDraftProject(
   draftId: DraftId,
   entry: DraftProjectTarget,
@@ -247,6 +250,12 @@ export async function assignDraftProject(
     branch: null,
     worktreePath: null,
     envMode,
+    // The unassigned draft may have been opened earlier (or reused by a
+    // later New agent click). Active rows sort by createdAt, newest first,
+    // so keeping that stamp parks the card under every newer thread in the
+    // project. A project-header plus mints createdAt as now; joining a
+    // project is the same moment for this draft.
+    createdAt: new Date().toISOString(),
     startFromOrigin: resolveNewDraftStartFromOrigin({
       envMode,
       newWorktreesStartFromOrigin: settings.newWorktreesStartFromOrigin,

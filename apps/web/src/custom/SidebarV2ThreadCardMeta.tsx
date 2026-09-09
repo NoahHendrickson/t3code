@@ -116,18 +116,23 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
           )}
           <span aria-hidden className="h-2 w-px shrink-0 rounded-full bg-foreground/12" />
           {props.projectTitle ? (
-            // Capped rather than flexible: the branch is the more distinguishing
-            // half of this line — two threads on one project differ by branch,
-            // not by project — so the project yields space first. The project's
-            // favicon rides with the name — the same mark the slim rows and the
-            // project menu use for it, so a flat list reads the project at a
-            // glance the way a grouped one reads its header — and the folder
-            // mark stands in for a null slot, so the two clusters on this line
-            // each lead with a glyph naming what follows.
+            // The 40% cap is only for when a branch shares this line: two
+            // threads on one project differ by branch, so the project yields
+            // first. A card with no branch has nothing to yield to — capping
+            // it still clips a short name for empty space. Then min-w-0 is
+            // enough: the name can still truncate against the model if it is
+            // actually too long. The favicon rides with the name; the folder
+            // mark stands in for a null slot.
             props.projectTitleHidden ? (
               <span className="sr-only">{props.projectTitle}</span>
             ) : (
-              <span className="flex max-w-[40%] shrink-0 items-center gap-1">
+              <span
+                className={
+                  props.branch
+                    ? "flex max-w-[40%] shrink-0 items-center gap-1"
+                    : "flex min-w-0 items-center gap-1"
+                }
+              >
                 {props.projectIconSlot ?? <SidebarV2ProjectFolderMark className={MARK} />}
                 <span className="truncate">{props.projectTitle}</span>
               </span>

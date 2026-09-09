@@ -349,6 +349,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(button).toContain("size-8");
     expect(button).toContain("rounded-[10px]");
     const sidebarV2 = readSibling("../components/Sidebar.tsx");
+    expect(sidebarV2).toContain("snapshotVisibleProjectOrderAsManual(projectGroups)");
     expect(sidebarV2).toContain("updateClientSettings({ sidebarProjectSortOrder: sortOrder })");
     expect(rows).toContain("FolderPlusIcon");
     // Scope on-state: glyph lifts and aria/tooltip name the active project.

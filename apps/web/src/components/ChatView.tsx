@@ -3372,14 +3372,15 @@ export default function ChatView(props: ChatViewProps) {
   // Keep a hidden, off-flow strip mounted for existing threads so the composer
   // can measure whether its relocated controls fit. The visible chrome remains
   // content-driven: Git/environment context or controls that actually fit.
+  // Desktop never relocates controls — an empty host between checkout and
+  // branch is still a flex item, so the strip gap would apply twice.
+  const hostsRestingComposerControls =
+    routeKind === "server" && (FORK_ADOPTS_RESTING_COMPOSER_LAYOUT || isMobileViewport);
   const mountComposerContextStrip = shouldShowComposerContextStrip({
     hasActiveProject: activeProject !== null,
     isGitRepo: isGitRepo || activeThreadWorktreePath !== null,
     showEnvironmentIndicator: showComposerEnvironmentIndicator,
-    // Desktop never relocates controls, so the invisible measuring strip is
-    // only worth mounting where the collapsed phone composer will use it.
-    hostsRestingComposerControls:
-      routeKind === "server" && (FORK_ADOPTS_RESTING_COMPOSER_LAYOUT || isMobileViewport),
+    hostsRestingComposerControls,
   });
   const showComposerContextStrip = shouldShowComposerContextStrip({
     hasActiveProject: activeProject !== null,
@@ -8237,7 +8238,9 @@ export default function ChatView(props: ChatViewProps) {
               : undefined
           }
           availableEnvironments={logicalProjectEnvironments}
-          composerControlsHostRef={setRestingComposerControlsHost}
+          {...(hostsRestingComposerControls
+            ? { composerControlsHostRef: setRestingComposerControlsHost }
+            : {})}
           contextStripVisible={showComposerContextStrip}
           {...(composerLivenessPill ? { trailing: composerLivenessPill } : {})}
         />
@@ -8279,6 +8282,7 @@ export default function ChatView(props: ChatViewProps) {
     loadBalancingSettings.loadBalancingEnabled,
     onAutoEnvironment,
     logicalProjectEnvironments,
+    hostsRestingComposerControls,
     setRestingComposerControlsHost,
     composerLivenessPill,
   ]);

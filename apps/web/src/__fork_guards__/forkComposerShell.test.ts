@@ -718,6 +718,19 @@ describe("fork guard: fork-composer-shell", () => {
     // Flex only — the wrapper rule's gap and max-width would fight the chips'
     // own 6px gap and the mobile slot's 48% cap.
     expect(everyChild?.body).not.toMatch(/gap:|max-width:/u);
+    // Empty resting host must not occupy a flex slot between checkout and
+    // branch (that doubles the 8px gap to 16px). Desktop never passes the
+    // host ref; the CSS belt hides a leftover empty node.
+    expect(chatView).not.toMatch(/composerControlsHostRef=\{setRestingComposerControlsHost\}/u);
+    expect(chatView).toMatch(
+      /hostsRestingComposerControls[\s\S]{0,160}composerControlsHostRef:\s*setRestingComposerControlsHost/u,
+    );
+    const emptyHost = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-chat-resting-composer-controls-host") &&
+        rule.selector.includes(":empty"),
+    );
+    expect(emptyHost?.body).toMatch(/display:\s*none/u);
   });
 
   it("moves background liveness off the banner stack onto a context-strip pill with stop", () => {

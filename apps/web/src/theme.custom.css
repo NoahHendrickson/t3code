@@ -834,6 +834,16 @@
   flex: 0 1 auto;
 }
 
+/* An empty resting-controls host is still a flex item. The strip's 8px gap
+   then applies twice — checkout→host and host→branch — so the pills sit
+   16px apart while the row's pb-2 under them is 8px. Hide it until it
+   actually hosts relocated controls. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-chat-resting-composer-controls-host="true"]:empty {
+  display: none;
+}
+
 /* The context chips are the filled controls above the surface (checkout /
    worktree mode and branch). Same selected-surface fill, no hairline. Light
    mode falls back to upstream's accent; the drawn values are dark-only. */
@@ -2261,6 +2271,40 @@
   :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
   [data-slot="composer-banner-content"] {
   gap: 4px;
+  /* The title span carries Tailwind leading-7 / sm:leading-6 (28/24). The
+     16px icon is self-start, so it pins to the top of that line box while
+     the 14px glyphs sit in the middle — the check floats high of the copy.
+     Children must take 16px too: an inherited value loses to the utility. */
+  line-height: 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  [data-slot="composer-banner-content"]
+  > * {
+  line-height: 16px;
+}
+
+/* Notices stack title over description (Figma 364:19233). The activity strip
+   stays a single row — it is a status line, not a two-line caption. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-content"] {
+  flex-direction: column;
+  align-items: flex-start;
+  white-space: normal;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-content"]
+  > * {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
@@ -2268,6 +2312,13 @@
   :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
   [data-slot="composer-banner-actions"] {
   gap: 8px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-actions"] {
+  align-self: start;
 }
 
 /* ── Popup menus on the composer fill (fork-popup-surface) ───────────────────

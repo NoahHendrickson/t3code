@@ -101,6 +101,13 @@ describe("assignDraftProject", () => {
       projectId: "proj-a",
       envMode: "worktree",
     });
+    // Joining the project is the create moment the sidebar sorts on. The
+    // unassigned stamp ("2026-09-08T09:00:00.000Z" in beforeEach) would
+    // park the card under every newer thread in the project.
+    expect(session()?.createdAt).not.toBe("2026-09-08T09:00:00.000Z");
+    expect(Date.parse(session()?.createdAt ?? "")).toBeGreaterThan(
+      Date.parse("2026-09-08T09:00:00.000Z"),
+    );
   });
 
   it("lets the latest pick win when an earlier pick's lookup settles later", async () => {
