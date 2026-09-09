@@ -5947,7 +5947,14 @@ export default function ChatView(props: ChatViewProps) {
         variant: "info",
         icon: <GitBranchIcon />,
         title: (
-          <span className="flex min-w-0 items-baseline gap-1.5">
+          <span
+            /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface
+               items-center, not items-baseline: the notice icon is a 16px
+               self-start sibling, and mixed sans/mono baselines on this title
+               stretched the line so the branch glyph sat high of the copy. */
+            className="flex min-w-0 items-center gap-1.5"
+            /* fork:end fork-composer-banner-surface */
+          >
             <span className="shrink-0 font-normal text-muted-foreground">Branch changed — was</span>
             <Tooltip>
               <TooltipTrigger

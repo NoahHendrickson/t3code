@@ -3120,8 +3120,11 @@
     activity strip additionally take the design's metrics — 16 / 8 / 16 / 16
     around a 16px icon on a 4px gutter, title stacked over description on
     14/16 with a 4px gutter (Figma 364:19233; the title's leading-7 /
-    sm:leading-6 is neutralized so the 16px icon lines up with the first
-    line), 8px between actions pinned to that first line — while the
+    sm:leading-6 is neutralized on every descendant so the 16px icon lines
+    up with the first line, including nested titles like the branch-change
+    card; the copy pins to the same start edge as the icon so Restore /
+    Dismiss cannot drop it), 8px between actions pinned to that first
+    line — while the
     approval, stash and tasks drawers that share the card keep their own
     density. The activity strip stays a single row. A notice's primary
     action is the design's white Primary button, which the fork's

@@ -2263,6 +2263,7 @@
   :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
   [data-slot="composer-banner-icon"]
   > svg {
+  display: block;
   width: 16px;
   height: 16px;
 }
@@ -2275,7 +2276,9 @@
   /* The title span carries Tailwind leading-7 / sm:leading-6 (28/24). The
      16px icon is self-start, so it pins to the top of that line box while
      the 14px glyphs sit in the middle — the check floats high of the copy.
-     Children must take 16px too: an inherited value loses to the utility. */
+     Nested titles (the branch-change card's inner flex + <code>) keep that
+     28px box unless every descendant is pinned too: an inherited value
+     loses to the utility, and `> *` never reaches the inner spans. */
   line-height: 16px;
 }
 
@@ -2283,7 +2286,7 @@
   [data-fork-composer-vessel]
   :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
   [data-slot="composer-banner-content"]
-  > * {
+  * {
   line-height: 16px;
 }
 
@@ -2295,6 +2298,10 @@
   [data-slot="composer-banner-content"] {
   flex-direction: column;
   align-items: flex-start;
+  /* Same edge as the self-start icon. Without this, the row's items-center
+     drops the copy to the middle of the taller Restore/Dismiss buttons and
+     the 16px icon sits high of the first line. */
+  align-self: start;
   white-space: normal;
 }
 

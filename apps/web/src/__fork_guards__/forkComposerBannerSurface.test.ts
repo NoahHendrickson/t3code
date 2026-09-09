@@ -219,10 +219,19 @@ describe("fork guard: fork-composer-banner-surface", () => {
         candidate.body.includes("gap: 4px"),
     );
     expect(content?.body).toMatch(/line-height:\s*16px/u);
-    const contentChildren = rules.find((candidate) =>
-      /composer-banner-content"\]\s*>\s*\*/u.test(flat(candidate.selector)),
+    // Nested titles (branch-change inner flex + <code>) keep leading-7 unless
+    // every descendant is pinned; `> *` never reaches those inner spans.
+    const contentDescendants = rules.find(
+      (candidate) =>
+        /composer-banner-content"\]\s+\*/u.test(flat(candidate.selector)) &&
+        candidate.body.includes("line-height"),
     );
-    expect(contentChildren?.body).toMatch(/line-height:\s*16px/u);
+    expect(contentDescendants?.body).toMatch(/line-height:\s*16px/u);
+    const iconSvg = rules.find((candidate) =>
+      /composer-banner-icon"\]\s*>\s*svg/u.test(flat(candidate.selector)),
+    );
+    expect(iconSvg?.body).toMatch(/display:\s*block/u);
+    expect(iconSvg?.body).toMatch(/width:\s*16px/u);
     // Notices stack title over description. The activity strip stays a row.
     const noticeStack = rules.find(
       (candidate) =>
@@ -232,6 +241,9 @@ describe("fork guard: fork-composer-banner-surface", () => {
     );
     expect(noticeStack?.selector).not.toContain('[data-chat-composer-activity-strip="true"]');
     expect(noticeStack?.body).toMatch(/align-items:\s*flex-start/u);
+    // Same start edge as the self-start icon, so Restore/Dismiss cannot drop
+    // the copy to the middle of the row.
+    expect(noticeStack?.body).toMatch(/align-self:\s*start/u);
   });
 
   it("targets the slots and attributes the geometry is keyed on", () => {
@@ -256,13 +268,13 @@ describe("fork guard: fork-composer-banner-surface", () => {
   it("keeps the notice primary action on the fork's white Primary", () => {
     // --primary is #ffffff on every fork palette, so the design's white
     // Primary button is variant="default" rather than upstream's outline.
-    const fenced = chatView.matchAll(
-      /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
-    );
-    const bodies = [...fenced];
-    expect(bodies).toHaveLength(2);
-    for (const [body] of bodies) {
-      expect(body).toContain('variant="default"');
-    }
+    const fenced = [
+      ...chatView.matchAll(
+        /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
+      ),
+    ].map(([body]) => body);
+    const primaryActions = fenced.filter((body) => body.includes('variant="default"'));
+    expect(primaryActions).toHaveLength(2);
+    expect(fenced.some((body) => body.includes("items-center"))).toBe(true);
   });
 });
