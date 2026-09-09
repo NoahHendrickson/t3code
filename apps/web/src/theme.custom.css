@@ -2288,6 +2288,11 @@
   [data-slot="composer-banner-content"]
   * {
   line-height: 16px;
+  /* No-op on non-flex descendants. The branch-change title is an inner
+     flex with items-baseline; mixed sans/mono baselines stretch that
+     line so the 16px icon sits high. Center here absorbs the stretch
+     without a ChatView fence. */
+  align-items: center;
 }
 
 /* Notices stack title over description (Figma 364:19233). The activity strip

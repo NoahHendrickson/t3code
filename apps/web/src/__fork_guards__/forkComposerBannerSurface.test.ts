@@ -227,6 +227,7 @@ describe("fork guard: fork-composer-banner-surface", () => {
         candidate.body.includes("line-height"),
     );
     expect(contentDescendants?.body).toMatch(/line-height:\s*16px/u);
+    expect(contentDescendants?.body).toMatch(/align-items:\s*center/u);
     const iconSvg = rules.find((candidate) =>
       /composer-banner-icon"\]\s*>\s*svg/u.test(flat(candidate.selector)),
     );
@@ -268,13 +269,13 @@ describe("fork guard: fork-composer-banner-surface", () => {
   it("keeps the notice primary action on the fork's white Primary", () => {
     // --primary is #ffffff on every fork palette, so the design's white
     // Primary button is variant="default" rather than upstream's outline.
-    const fenced = [
-      ...chatView.matchAll(
-        /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
-      ),
-    ].map(([body]) => body);
-    const primaryActions = fenced.filter((body) => body.includes('variant="default"'));
-    expect(primaryActions).toHaveLength(2);
-    expect(fenced.some((body) => body.includes("items-center"))).toBe(true);
+    const fenced = chatView.matchAll(
+      /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
+    );
+    const bodies = [...fenced];
+    expect(bodies).toHaveLength(2);
+    for (const [body] of bodies) {
+      expect(body).toContain('variant="default"');
+    }
   });
 });
