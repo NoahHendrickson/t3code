@@ -46,7 +46,22 @@ const SELECTOR_ARMS = [
   '.dropdown-glass:has(> [data-slot="combobox-popup"])',
 ] as const;
 
+const GLASS_GATE =
+  ':root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]';
+
 describe("fork guard: fork-popup-surface", () => {
+  it.each([
+    [".surface-glass", "--fork-context-chip-bg"],
+    ["button.surface-glass:is(:hover, [data-pressed])", "--fork-context-chip-bg-hover"],
+  ])("paints %s with the shared chip fill over an opaque glass floor", (selector, token) => {
+    const rule = cssRules(palettes).find(
+      (candidate) => candidate.selector.replace(/\s+/gu, " ") === `${GLASS_GATE} ${selector}`,
+    );
+    expect(rule?.body.replace(/\s+/gu, " ")).toContain(
+      `background: linear-gradient(var(${token}), var(${token})), var(--fork-popup-glass-floor);`,
+    );
+  });
+
   const rule = cssRules(theme).find(
     (candidate) =>
       candidate.selector.includes(".dropdown-glass") &&

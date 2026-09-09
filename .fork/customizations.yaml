@@ -3024,7 +3024,9 @@
     the composer is alphas over a wallpaper-lit stage, so the same two
     alphas there stand on --fork-popup-glass-floor — the stage as it reads
     on screen, measured, opaque — instead of the bare --background tint;
-    the menu lands on the Questions card's colour without going
+    generic surface-glass overlays use the context-chip fill over that same
+    opaque floor, with the context-chip hover fill on glass buttons.
+    The menu lands on the Questions card's colour without going
     translucent, which would show the transcript through it. Dark only;
     keyed on upstream's popup data-slot names, no upstream fence. One
     selector arm per primitive, because each stamps dropdown-glass on a
@@ -3502,16 +3504,3 @@
     - apps/web/src/__fork_guards__/forkNewAgentDraft.test.ts
     - apps/web/src/custom/newAgentDraft.test.ts
     - apps/web/src/custom/useNewAgentDraft.test.ts
-
-- id: fork-glass-buttons
-  intent: >
-    Glass buttons, including scroll-to-end, use the warm popup floor beneath
-    the existing context-chip fills while native Cool Darker glass is active.
-    Their fill stays opaque over transcript text, with a brighter hover state;
-    other themes retain their existing style.
-  files:
-    - apps/web/src/theme.custom.css
-  shadows: []
-  watch: []
-  verify:
-    - apps/web/src/__fork_guards__/forkGlassButtons.test.ts
