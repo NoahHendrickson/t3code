@@ -326,12 +326,19 @@ describe("fork guard: sidebar-v2-card-rows", () => {
       /tone === "failed" \? \(\s*<CircleAlertIcon weight="fill" className="size-3" \/>/u,
     );
     expect(marks).toContain('<span className="size-2.5 rounded-full bg-current" />');
-    expect(marks).toContain('<span className="size-2.5 rounded-full bg-muted-foreground" />');
+    // Idle is the hollow twin of the Done dot, per Noey (2026-09-09).
+    expect(marks).toContain(
+      '<span className="size-2.5 rounded-full border border-muted-foreground" />',
+    );
+    expect(marks).not.toContain("bg-muted-foreground\"");
     expect(marks).not.toContain("size-2 rounded-full");
     // Hues, per Noey (2026-09-07): an unread finished turn is blue, and the
     // two waiting-on-you states share one amber — the half-circle already
-    // says "waiting", and the tooltip says on what.
-    expect(theme).toMatch(/--sidebar-v2-status-done:\s*#8b9cff;/u);
+    // says "waiting", and the tooltip says on what. The blue is one fixed
+    // value on both panels (2026-09-09), so it must appear in the root block
+    // and the `.dark` block alike.
+    expect(theme.match(/--sidebar-v2-status-done:\s*#2498fe;/gu)).toHaveLength(2);
+    expect(theme.match(/--sidebar-v2-status-done:/gu)).toHaveLength(2);
     expect(theme).toMatch(/--sidebar-v2-status-approval:\s*#ffcd59;/u);
     expect(theme).toMatch(/--sidebar-v2-status-input:\s*#ffcd59;/u);
     expect(theme).toMatch(/--sidebar-v2-status-working:\s*#24fe8a;/u);
