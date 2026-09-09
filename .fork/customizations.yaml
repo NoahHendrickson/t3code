@@ -1599,7 +1599,7 @@
     Action rows (Search, New agent, Add a project, Usage) are the design
     system's ghost Button at its default size (Figma 364:11246 / 364:10544):
     32px tall, 10px corners, 12px inline padding, a 16px icon 6px from a
-    Label/14 Medium label, icon and label alike at the panel's foreground,
+    Label/14 Regular label, icon and label alike at the panel's foreground,
     stacked 2px apart inside the panel's 8px inset and flush under the header.
     No shortcut chips; the shortcut rides the accessible name. Usage opens the
     /usage route, and the V2 sidebar's footer hides its own Usage icon so the

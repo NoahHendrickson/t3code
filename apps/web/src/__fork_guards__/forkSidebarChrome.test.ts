@@ -167,7 +167,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
 
   it("draws the action rows as the design system's ghost button", () => {
     // Figma 364:10544 at its default size: 32px tall, 10px corners, 12px
-    // inline padding, a 16px icon 6px from a 14px Medium label, all at the
+    // inline padding, a 16px icon 6px from a 14px Regular label, all at the
     // panel's foreground, stacked 2px apart inside the 8px inset and flush
     // under the header.
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
@@ -335,11 +335,28 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const type = /const CHROME_TYPE\s*=\s*"([^"]+)"/u.exec(rows)?.[1];
     expect(type).toBeDefined();
     expect(type).toContain("text-[0.875rem]");
-    // Label/14 Medium (Figma 364:11246) at the panel's foreground.
-    expect(type).toContain("font-medium");
+    // Label/14 Regular at the panel's foreground. The active twin displaces
+    // sidebarMenuButtonVariants' data-[active=true]:font-medium so a held
+    // New agent draft does not jump back to Medium.
+    expect(type).toContain("font-normal");
+    expect(type).toContain("data-[active=true]:font-normal");
+    expect(type).not.toContain("font-medium");
     expect(type).toContain("text-sidebar-foreground");
     expect(type).not.toMatch(/\btext-xs\b/u);
     expect(type).not.toMatch(/\btext-sm\b/u);
+    // Merged outcome, same reason as CHROME_ROW_ICON_TINT: the button's
+    // default variant and active state both spell font-medium, and a
+    // source-string check on CHROME_TYPE alone stays green if twMerge
+    // stops treating those as the same slot.
+    const sidebar = readSibling("../components/ui/sidebar.tsx");
+    const base = /const sidebarMenuButtonVariants = cva\(\s*"([^"]+)"/u.exec(sidebar)?.[1];
+    expect(base, "sidebarMenuButtonVariants base class not found").toBeTruthy();
+    const variant = /variant:\s*\{\s*default:\s*"([^"]+)"/u.exec(sidebar)?.[1];
+    expect(variant).toContain("font-medium");
+    const merged = cn(base, variant, type);
+    expect(merged).toContain("font-normal");
+    expect(merged).toContain("data-[active=true]:font-normal");
+    expect(merged).not.toContain("font-medium");
     // The action rows read it; the Projects label is the headers' Label/12
     // and spells its own (368:21211).
     expect(rows).toContain("CHROME_TYPE");
