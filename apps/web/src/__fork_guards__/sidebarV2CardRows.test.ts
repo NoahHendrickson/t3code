@@ -313,9 +313,10 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(marks).toContain('className="block h-[14px] w-auto shrink-0 overflow-hidden"');
     expect(marks).toContain("const SLOT = 14");
     expect(marks).not.toContain("overflow-visible");
-    // The settled forms, per the component set: dot for Done and Idle, the
-    // half-filled circle for the two blocked-on-you states, the filled warning
-    // circle for Failed — so form, not hue alone, separates waiting from done.
+    // The settled forms: a filled dot for Done, the same circle hollow for
+    // Idle, the half-filled circle for the two blocked-on-you states, the
+    // filled warning circle for Failed — so form, not hue alone, separates
+    // waiting from done from nothing.
     expect(marks).toContain(
       'const MARK_SLOT_CLASS = "flex h-[14px] w-[12px] shrink-0 items-center justify-center"',
     );

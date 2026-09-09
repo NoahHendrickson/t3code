@@ -443,14 +443,15 @@
     Status text labels ("Working", "Approval", "Monitoring") are replaced by a
     single mark in a fixed box on the trailing end of the title line (10px
     wide by the rain's 14px tall, flush with the card's content edge), and
-    the box is never empty — idle draws the design's muted dot rather than
+    the box is never empty — idle draws a hollow muted ring rather than
     falling back to a variable-width relative-time string. The marks inside
     keep their own sizes and centre in the box. The mark's form carries the
     state, per the component set — falling pixels while the agent runs, a
-    10px dot for Done and Idle, Phosphor's half-filled circle for Approval
-    and Input (one amber for both: each means "waiting on you"), the filled
-    warning circle for Failed, a slow white opacity breath (50% → 20%) while
-    monitoring, a clock for woke — and the hue reinforces it: Done is blue,
+    10px filled dot for Done and the same circle hollow for Idle, Phosphor's
+    half-filled circle for Approval and Input (one amber for both: each means
+    "waiting on you"), the filled warning circle for Failed, a slow white
+    opacity breath (50% → 20%) while monitoring, a clock for woke — and the
+    hue reinforces it: Done is blue,
     so an unread result reads apart from a live agent. The glyph marks are
     12px because Phosphor inks its circle on ~81% of the grid, which is the
     design's 9.75px beside the 10px dot. The monitoring breath is duty-cycled and stepped (same
