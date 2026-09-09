@@ -3524,14 +3524,24 @@
     the sidebar and PR badge compare against), never listRefs' cache-served
     current flag. A detached HEAD, a non-repository project, or a status
     failure yields null with a warning rather than fabricating a branch or
-    failing the turn start. Only the bootstrap path is covered: a bare
-    thread.create carries no cwd context and stays as the client sent it.
+    failing the turn start.
+
+    The policy lives in its own server file (resolveBootstrapThreadBranch),
+    unit-tested next to it; ws.ts carries only the import and the call at the
+    bootstrap create. Only that call site is wired: a bare thread.create
+    (web's own new-thread path, which already names its branch) stays as the
+    client sent it by product choice, not because the resolver could not run
+    there — the command carries projectId and worktreePath, so wiring it is
+    one more call if a future client needs it.
   tier: 4
-  files: []
+  files:
+    - apps/server/src/git/resolveBootstrapThreadBranch.ts
+    - apps/server/src/git/resolveBootstrapThreadBranch.test.ts
   shadows: []
   watch:
     - apps/server/src/ws.ts
     - apps/server/src/server.test.ts
   verify:
     - apps/web/src/__fork_guards__/serverLocalThreadBranch.test.ts
+    - apps/server/src/git/resolveBootstrapThreadBranch.test.ts
     - apps/server/src/server.test.ts

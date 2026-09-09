@@ -10751,43 +10751,41 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
-  /* fork:begin server-local-thread-branch — see .fork/customizations.yaml#server-local-thread-branch */
+  /* fork:begin server-local-thread-branch — see .fork/customizations.yaml#server-local-thread-branch
+     The policy is unit-tested next to resolveBootstrapThreadBranch; this
+     pins only the seam: a bootstrap create with no branch reaches the engine
+     with the live checkout's branch. */
   it.effect("fills in the checked-out branch when a bootstrap thread names none", () =>
     Effect.gen(function* () {
       const dispatchedCommands: Array<OrchestrationCommand> = [];
-      const localStatus = vi.fn(
-        (_: Parameters<GitManager.GitManager["Service"]["localStatus"]>[0]) =>
-          Effect.succeed({
-            isRepo: true,
-            hasPrimaryRemote: true,
-            isDefaultRef: false,
-            refName: "feature/from-phone",
-            hasWorkingTreeChanges: false,
-            workingTree: { files: [], insertions: 0, deletions: 0 },
-          }),
-      );
-      const project = {
-        id: defaultProjectId,
-        title: "Project",
-        workspaceRoot: "/tmp/project",
-        defaultModelSelection: null,
-        scripts: [],
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      } as const;
-
       yield* buildAppUnderTest({
         layers: {
           vcsDriver: {
             isInsideWorkTree: () => Effect.succeed(true),
           },
           gitManager: {
-            localStatus,
+            localStatus: () =>
+              Effect.succeed({
+                isRepo: true,
+                hasPrimaryRemote: true,
+                isDefaultRef: false,
+                refName: "feature/from-phone",
+                hasWorkingTreeChanges: false,
+                workingTree: { files: [], insertions: 0, deletions: 0 },
+              }),
           },
           projectionSnapshotQuery: {
-            getProjectShellById: (requestedProjectId) =>
+            getProjectShellById: () =>
               Effect.succeed(
-                requestedProjectId === defaultProjectId ? Option.some(project) : Option.none(),
+                Option.some({
+                  id: defaultProjectId,
+                  title: "Project",
+                  workspaceRoot: "/tmp/project",
+                  defaultModelSelection: null,
+                  scripts: [],
+                  createdAt: "2026-01-01T00:00:00.000Z",
+                  updatedAt: "2026-01-01T00:00:00.000Z",
+                }),
               ),
           },
           orchestrationEngine: {
@@ -10802,74 +10800,41 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       });
 
       const createdAt = "2026-01-01T00:00:00.000Z";
-      const bootstrapCreate = (input: {
-        readonly suffix: string;
-        readonly branch: string | null;
-        readonly worktreePath: string | null;
-      }) => ({
-        type: "thread.turn.start" as const,
-        commandId: CommandId.make(`cmd-bootstrap-${input.suffix}`),
-        threadId: ThreadId.make(`thread-bootstrap-${input.suffix}`),
-        message: {
-          messageId: MessageId.make(`msg-bootstrap-${input.suffix}`),
-          role: "user" as const,
-          text: "hello",
-          attachments: [],
-        },
-        modelSelection: defaultModelSelection,
-        runtimeMode: "full-access" as const,
-        interactionMode: "default" as const,
-        bootstrap: {
-          createThread: {
-            projectId: defaultProjectId,
-            title: "Bootstrap Thread",
-            modelSelection: defaultModelSelection,
-            runtimeMode: "full-access" as const,
-            interactionMode: "default" as const,
-            branch: input.branch,
-            worktreePath: input.worktreePath,
-            createdAt,
-          },
-        },
-        createdAt,
-      });
       const wsUrl = yield* getWsServerUrl("/ws");
       yield* Effect.scoped(
         withWsRpcClient(wsUrl, (client) =>
-          Effect.gen(function* () {
-            // The untouched mobile default: current checkout, no branch named.
-            yield* client[ORCHESTRATION_WS_METHODS.dispatchCommand](
-              bootstrapCreate({ suffix: "checkout", branch: null, worktreePath: null }),
-            );
-            // An existing worktree is the checkout to read, not the project root.
-            yield* client[ORCHESTRATION_WS_METHODS.dispatchCommand](
-              bootstrapCreate({
-                suffix: "worktree",
+          client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
+            type: "thread.turn.start",
+            commandId: CommandId.make("cmd-bootstrap-checkout-branch"),
+            threadId: ThreadId.make("thread-bootstrap-checkout-branch"),
+            message: {
+              messageId: MessageId.make("msg-bootstrap-checkout-branch"),
+              role: "user",
+              text: "hello",
+              attachments: [],
+            },
+            modelSelection: defaultModelSelection,
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            bootstrap: {
+              createThread: {
+                projectId: defaultProjectId,
+                title: "Bootstrap Thread",
+                modelSelection: defaultModelSelection,
+                runtimeMode: "full-access",
+                interactionMode: "default",
                 branch: null,
-                worktreePath: "/tmp/project-worktree",
-              }),
-            );
-            // An explicit client choice is never second-guessed.
-            yield* client[ORCHESTRATION_WS_METHODS.dispatchCommand](
-              bootstrapCreate({ suffix: "explicit", branch: "picked", worktreePath: null }),
-            );
+                worktreePath: null,
+                createdAt,
+              },
+            },
+            createdAt,
           }),
         ),
       );
 
-      const created = dispatchedCommands.filter((command) => command.type === "thread.create");
-      assert.deepEqual(
-        created.map((command) => [command.threadId, command.branch]),
-        [
-          ["thread-bootstrap-checkout", "feature/from-phone"],
-          ["thread-bootstrap-worktree", "feature/from-phone"],
-          ["thread-bootstrap-explicit", "picked"],
-        ],
-      );
-      assert.deepEqual(
-        localStatus.mock.calls.map((call) => call[0]),
-        [{ cwd: "/tmp/project" }, { cwd: "/tmp/project-worktree" }],
-      );
+      const created = dispatchedCommands.find((command) => command.type === "thread.create");
+      assert.equal(created?.branch, "feature/from-phone");
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
   /* fork:end server-local-thread-branch */

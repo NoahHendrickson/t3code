@@ -124,6 +124,9 @@ import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
+/* fork:begin server-local-thread-branch */
+import { resolveBootstrapThreadBranch } from "./git/resolveBootstrapThreadBranch.ts";
+/* fork:end server-local-thread-branch */
 import * as ReviewService from "./review/ReviewService.ts";
 import * as ProjectSetupScriptRunner from "./project/ProjectSetupScriptRunner.ts";
 import * as AgentSessionScanner from "./project/AgentSessionScanner.ts";
@@ -1093,51 +1096,24 @@ const makeWsRpcLayer = (
                 );
             });
 
-          /* fork:begin server-local-thread-branch — see .fork/customizations.yaml#server-local-thread-branch
-             A thread created on an existing checkout with no branch named by
-             the client gets the branch that checkout is actually on. Upstream
-             mobile records a branch only when the picker is tapped, so its
-             untouched "Current checkout" default arrives as null and the
-             thread never shows a branch on any other surface. The server has
-             the checkout and the status service, so it fills the label in
-             here rather than waiting on a client release. An explicit client
-             branch always wins; a worktree being prepared names its own
-             branch; a detached HEAD, a non-repository project, or a status
-             failure stays null instead of fabricating one. */
-          const resolveCheckedOutBranch = (createThread: {
-            readonly projectId: ProjectId;
-            readonly worktreePath: string | null;
-          }) =>
-            Effect.gen(function* () {
-              const project = yield* projectionSnapshotQuery.getProjectShellById(
-                createThread.projectId,
-              );
-              const cwd =
-                createThread.worktreePath ??
-                (Option.isSome(project) ? project.value.workspaceRoot : null);
-              if (cwd === null) return null;
-              const local = yield* gitWorkflow.localStatus({ cwd });
-              return local.refName;
-            }).pipe(
-              Effect.catchCause((cause) =>
-                Cause.hasInterruptsOnly(cause)
-                  ? Effect.failCause(cause)
-                  : Effect.logWarning("bootstrap turn start could not resolve checkout branch", {
-                      threadId: command.threadId,
-                      cause: Cause.pretty(cause),
-                    }).pipe(Effect.as(null)),
-              ),
-            );
-          /* fork:end server-local-thread-branch */
-
           const bootstrapProgram = Effect.gen(function* () {
             if (bootstrap?.createThread) {
-              /* fork:begin server-local-thread-branch */
-              const branch =
-                bootstrap.createThread.branch ??
-                (bootstrap.prepareWorktree
-                  ? null
-                  : yield* resolveCheckedOutBranch(bootstrap.createThread));
+              /* fork:begin server-local-thread-branch — see .fork/customizations.yaml#server-local-thread-branch
+                 A client that names no branch (upstream mobile's untouched
+                 "Current checkout") gets the checkout's live branch. */
+              const branch = yield* resolveBootstrapThreadBranch(
+                {
+                  threadId: command.threadId,
+                  projectId: bootstrap.createThread.projectId,
+                  branch: bootstrap.createThread.branch,
+                  worktreePath: bootstrap.createThread.worktreePath,
+                  preparingWorktree: bootstrap.prepareWorktree !== undefined,
+                },
+                {
+                  getProjectShellById: projectionSnapshotQuery.getProjectShellById,
+                  localStatus: gitWorkflow.localStatus,
+                },
+              );
               /* fork:end server-local-thread-branch */
               const created = yield* dispatchFromClient({
                 type: "thread.create",

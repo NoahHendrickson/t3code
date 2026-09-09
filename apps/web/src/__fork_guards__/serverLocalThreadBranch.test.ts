@@ -10,7 +10,7 @@ function readSibling(relativePath: string): string {
 }
 
 const ws = readSibling("../../../server/src/ws.ts");
-const serverTest = readSibling("../../../server/src/server.test.ts");
+const resolver = readSibling("../../../server/src/git/resolveBootstrapThreadBranch.ts");
 
 function readCustomizationHunks(source: string): string {
   const begin = "fork:begin server-local-thread-branch";
@@ -29,28 +29,27 @@ function readCustomizationHunks(source: string): string {
 }
 
 describe("fork guard: server-local-thread-branch", () => {
-  it("fills a bootstrap thread's missing branch from the live checkout", () => {
+  it("wires the resolver into the bootstrap create with the live status source", () => {
     const hunks = readCustomizationHunks(ws);
-    // The label comes from the status service, the same source the sidebar
-    // and PR badge compare against — never from listRefs' cache-served flag.
-    expect(hunks).toContain("gitWorkflow.localStatus({ cwd })");
-    expect(hunks).toContain("return local.refName");
-    // An existing worktree is the checkout to read; the project root is the
-    // fallback, not the other way round.
-    expect(hunks).toMatch(/createThread\.worktreePath \?\?\s*\(Option\.isSome\(project\)/u);
-    // The client's own choice always wins, and a worktree being prepared
-    // names its branch through that flow instead.
-    expect(hunks).toMatch(
-      /bootstrap\.createThread\.branch \?\?\s*\(bootstrap\.prepareWorktree\s*\? null\s*: yield\* resolveCheckedOutBranch\(bootstrap\.createThread\)\)/u,
-    );
-    // The fallback must never fail the turn start: a status error logs and
-    // yields null rather than surfacing to the client.
-    expect(hunks).toContain("Effect.as(null)");
+    // The call site: the bootstrap create's branch comes from the resolver,
+    // fed by the status service — the same live value the sidebar and PR
+    // badge compare against — never listRefs' cache-served flag.
+    expect(hunks).toContain("yield* resolveBootstrapThreadBranch(");
+    expect(hunks).toContain("localStatus: gitWorkflow.localStatus");
+    expect(hunks).toContain("getProjectShellById: projectionSnapshotQuery.getProjectShellById");
+    expect(hunks).toContain("preparingWorktree: bootstrap.prepareWorktree !== undefined");
+    expect(hunks).not.toContain("listRefs(");
+    // The policy stays out of ws.ts: the fence carries the import and the
+    // call, not a resolver of its own.
+    expect(hunks).not.toContain("Effect.gen");
   });
 
-  it("keeps the focused server test that pins the behavior", () => {
-    expect(readCustomizationHunks(serverTest)).toContain(
-      "fills in the checked-out branch when a bootstrap thread names none",
-    );
+  it("keeps the policy's outcomes in the resolver", () => {
+    // Explicit branch wins and a worktree being prepared is skipped before
+    // any lookup; a failure of any kind becomes null rather than an error.
+    expect(resolver).toMatch(/if \(input\.branch !== null \|\| input\.preparingWorktree\)/u);
+    expect(resolver).toContain("Effect.as(null)");
+    expect(resolver).toContain("Cause.hasInterruptsOnly(cause)");
+    expect(resolver).not.toContain("listRefs(");
   });
 });
