@@ -914,11 +914,18 @@
    It also rides the far end of the strip. Upstream nests it ahead of the
    branch trigger in one wrapper, and the packing rules above pin every strip
    child to shrink-only, which left it stranded between checkout and branch.
-   The wrapper that holds it is allowed to grow again, and the chip takes the
-   free space as a start margin — so the branch stays packed against checkout
-   while the PR sits on the row's end. The liveness pill (trailing) is a
-   later sibling of that wrapper and keeps the very last slot while it shows;
-   stop is the control that has to stay where the hand knows it. */
+   The wrapper that holds it is allowed to grow again and spreads its two
+   children apart — so the branch stays packed against checkout while the PR
+   sits on the row's end. The liveness pill (trailing) is a later sibling of
+   that wrapper and keeps the very last slot while it shows; stop is the
+   control that has to stay where the hand knows it.
+
+   The spread must come from justify-content, never from an auto margin on
+   the chip. useLabelsOverflow sums every chip's width plus its inline
+   margins to decide whether the labels fit, and a rendered auto margin
+   resolves to its used width — the strip's whole slack. Counted, the strip
+   always measured itself as overflowing, collapsed both labels to their
+   glyphs the moment a PR was linked, and never expanded again. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-context-row] [data-fork-pr-chip] {
   background: color-mix(in oklab, currentColor 12%, transparent);
 }
@@ -934,6 +941,7 @@
   [data-slot="composer-context-strip"]
   > .flex:has(> [data-fork-pr-chip]) {
   flex: 1 1 auto;
+  justify-content: space-between;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
@@ -941,7 +949,6 @@
   [data-slot="composer-context-strip"]
   [data-fork-pr-chip] {
   order: 1;
-  margin-inline-start: auto;
 }
 
 /* Lucide glyphs on these triggers ship with opacity-70 / opacity-50; force
