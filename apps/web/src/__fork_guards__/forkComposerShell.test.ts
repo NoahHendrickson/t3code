@@ -515,10 +515,9 @@ describe("fork guard: fork-composer-shell", () => {
   });
 
   it("lets the PR chip keep its state colour and ride the strip's far end", () => {
-    // Upstream inks the pill emerald / violet / red by PR state; the fork's
-    // white chip ink and neutral hover fill would have flattened it. Both
-    // rules exempt the stamped chip, and the chip's fill is a wash of its own
-    // ink instead.
+    // Upstream inks the glyph and number emerald / violet / red by PR state;
+    // the fork's white chip ink would flatten that. The fill stays the sibling
+    // chips' glass — only the mark and #N carry the state.
     const branchSelector = readSibling("../components/BranchToolbarBranchSelector.tsx");
     expect(branchSelector).toContain("data-fork-pr-chip");
     expect(branchSelector).toContain("branchPrStatus.colorClass");
@@ -529,23 +528,32 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("color:"),
     );
     expect(chipInk?.selector).toContain(":not([data-fork-pr-chip])");
+    // Palette overlays restate white chip ink at higher specificity than the
+    // default-dark rule. Each must keep the same exemption or they flatten
+    // the PR chip after the rule above spared it.
+    const paletteChipInk = cssRules(palettes).filter(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.selector.includes("[data-fork-context-chip]") &&
+        rule.body.includes("color:"),
+    );
+    expect(paletteChipInk.length).toBe(4);
+    for (const rule of paletteChipInk) {
+      expect(rule.selector).toContain(":not([data-fork-pr-chip])");
+    }
     const chipHover = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.body.includes("var(--fork-context-chip-bg-hover)"),
     );
-    expect(chipHover?.selector).toContain(":not([data-fork-pr-chip])");
+    expect(chipHover?.selector).not.toContain("[data-fork-pr-chip]");
     const prFill = rules.filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.selector.includes("[data-fork-pr-chip]") &&
         rule.body.includes("color-mix(in oklab, currentColor"),
     );
-    expect(prFill.map((rule) => rule.body)).toEqual([
-      expect.stringMatching(/currentColor 12%/u),
-      expect.stringMatching(/currentColor 17%/u),
-    ]);
-    expect(prFill[1]?.selector).toContain(":hover");
+    expect(prFill).toEqual([]);
     // Far end: the wrapper holding the chip may grow again (the packing rule
     // pins every other strip child shrink-only) and spreads its children
     // apart, so the branch stays packed against checkout. The spread has to

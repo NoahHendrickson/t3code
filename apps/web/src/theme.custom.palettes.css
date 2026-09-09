@@ -72,7 +72,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
   color: #ffffff;
 }
 
@@ -146,7 +146,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
   color: #ffffff;
 }
 
@@ -217,7 +217,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
   color: #ffffff;
 }
 
@@ -288,7 +288,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-darker"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  :is(button, [data-slot="button"], [data-fork-context-chip]):not([data-fork-pr-chip]) {
   color: #ffffff;
 }
 
