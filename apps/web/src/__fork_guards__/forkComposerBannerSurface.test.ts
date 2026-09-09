@@ -219,10 +219,20 @@ describe("fork guard: fork-composer-banner-surface", () => {
         candidate.body.includes("gap: 4px"),
     );
     expect(content?.body).toMatch(/line-height:\s*16px/u);
-    const contentChildren = rules.find((candidate) =>
-      /composer-banner-content"\]\s*>\s*\*/u.test(flat(candidate.selector)),
+    // Nested titles (branch-change inner flex + <code>) keep leading-7 unless
+    // every descendant is pinned; `> *` never reaches those inner spans.
+    const contentDescendants = rules.find(
+      (candidate) =>
+        /composer-banner-content"\]\s+\*/u.test(flat(candidate.selector)) &&
+        candidate.body.includes("line-height"),
     );
-    expect(contentChildren?.body).toMatch(/line-height:\s*16px/u);
+    expect(contentDescendants?.body).toMatch(/line-height:\s*16px/u);
+    expect(contentDescendants?.body).toMatch(/align-items:\s*center/u);
+    const iconSvg = rules.find((candidate) =>
+      /composer-banner-icon"\]\s*>\s*svg/u.test(flat(candidate.selector)),
+    );
+    expect(iconSvg?.body).toMatch(/display:\s*block/u);
+    expect(iconSvg?.body).toMatch(/width:\s*16px/u);
     // Notices stack title over description. The activity strip stays a row.
     const noticeStack = rules.find(
       (candidate) =>
@@ -232,6 +242,9 @@ describe("fork guard: fork-composer-banner-surface", () => {
     );
     expect(noticeStack?.selector).not.toContain('[data-chat-composer-activity-strip="true"]');
     expect(noticeStack?.body).toMatch(/align-items:\s*flex-start/u);
+    // Same start edge as the self-start icon, so Restore/Dismiss cannot drop
+    // the copy to the middle of the row.
+    expect(noticeStack?.body).toMatch(/align-self:\s*start/u);
   });
 
   it("targets the slots and attributes the geometry is keyed on", () => {
