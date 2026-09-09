@@ -80,15 +80,15 @@ describe("fork guard: fork-app-identity", () => {
 
   it("shows that name in the sidebar rather than upstream's wordmark", () => {
     const chrome = read("apps/web/src/components/sidebar/SidebarChrome.tsx");
-    expect(chrome).toContain("{APP_BASE_NAME}");
+    // Figma 364:11245 draws the name as the pixel wordmark, not live type —
+    // APP_BASE_NAME still names the packaged app and the bridge-less fallback.
+    expect(chrome).toContain("SidebarBrandWordmark");
+    expect(chrome).not.toContain("{APP_BASE_NAME}");
     // The borrowed T3 glyph, which read as a mismatch beside a different name.
     expect(chrome).not.toContain("T3Wordmark");
-    // The brand survives the sidebar's minimum width by truncating (min-w-0 +
-    // truncate) rather than hiding the way upstream's wordmark link did. This
-    // used to ride a fenced hunk in upstream's threadSidebarWidth.test.ts,
-    // which upstream pruned in #8400.
+    // The brand survives the sidebar's minimum width by shrinking the link
+    // (min-w-0) rather than hiding the way upstream's wordmark link did.
     expect(chrome).toMatch(/className="[^"]*\bsidebar-brand\b[^"]*\bmin-w-0\b/u);
-    expect(chrome).toContain('className="truncate');
   });
 
   it("keeps the release workflow on the fork's install name", () => {

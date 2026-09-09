@@ -240,18 +240,20 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // in for the display utility.
     expect(chrome).toMatch(/sidebar-brand[^"]*\shidden\s/u);
     expect(chrome).toMatch(/sidebar-brand[^"]*\smd:flex(?=[\s"])/u);
-    // The link must be allowed to shrink so the name's truncate can engage at
-    // the sidebar's 208px minimum; only the mark below keeps shrink-0.
+    // The link must be allowed to shrink at the sidebar's 208px minimum; the
+    // mark and wordmark below keep shrink-0.
     expect(chrome).not.toMatch(/sidebar-brand[^"]*\sshrink-0(?=[\s"])/u);
     expect(chrome).not.toContain("ml-[var(--workspace-titlebar-content-left)]");
     expect(chrome).toMatch(/sidebar-brand[^"]*text-sidebar-foreground/u);
-    expect(chrome).toContain("size-6 shrink-0");
-    expect(chrome).toContain("text-[0.875rem] leading-4 font-medium");
+    expect(chrome).toContain("size-4 shrink-0");
+    expect(chrome).toContain("<SidebarBrandWordmark");
+    expect(chrome).not.toContain("text-[0.875rem] leading-4 font-medium");
+    expect(chrome).not.toContain("{APP_BASE_NAME}");
     // The pixelated hack lived on the component, not the asset — a substring
     // check on the class list would not notice it coming back beside it.
     expect(chrome).not.toContain("image-rendering");
-    // The mark's art is a 23x23 pixel grid drawn at a 24px slot. A bitmap can
-    // only get there by resampling 23 cells onto 24 pixels, which blends every
+    // The mark's art is a 23x23 pixel grid drawn at a 16px slot. A bitmap can
+    // only get there by resampling 23 cells onto 16 pixels, which blends every
     // cell into its neighbours — the blur the vector mark replaced. Keep it
     // vector, keep the viewBox on the 23-unit grid, and keep crispEdges so the
     // cells stay hard-edged at every DPR instead of antialiasing back to mush.
@@ -274,6 +276,21 @@ describe("fork guard: fork-sidebar-chrome", () => {
       expect(coord[1]).toMatch(/^\d+$/u);
     }
     expect(mark).not.toMatch(/transform=|<path\b/u);
+
+    // The name is the 13×3 pixel wordmark (Figma Union 387:21624), not Geist
+    // type, and currentColor at 40% so it tracks Light / Dark instead of the
+    // design file's baked white.
+    const wordmark = readSibling("../custom/SidebarBrandWordmark.tsx");
+    expect(wordmark).toContain('viewBox="0 0 13 3"');
+    expect(wordmark).toContain('shapeRendering="crispEdges"');
+    expect(wordmark).toContain("text-sidebar-foreground/40");
+    expect(wordmark).toContain('fill="currentColor"');
+    expect(wordmark).not.toMatch(/transform=|<path\b/u);
+    const wordmarkCoords = [...wordmark.matchAll(/\s(?:x|y|width|height)="([^"]+)"/gu)];
+    expect(wordmarkCoords.length).toBe(68);
+    for (const coord of wordmarkCoords) {
+      expect(coord[1]).toMatch(/^\d+$/u);
+    }
   });
 
   it("keeps the flat header independent of identification mode and honors the pill", () => {

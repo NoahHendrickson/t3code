@@ -212,11 +212,11 @@
     is excluded from the test, fmt and lint discovery lists in vite.config.ts
     and from the four .repos exclusions in .vscode/settings.json, the way
     .repos already was.
-    The rendered app carries the name too: the sidebar brand reads
-    APP_BASE_NAME, drops the T3 wordmark, and pairs the name with the
-    designer-exported 24px pixel mark owned by fork-sidebar-chrome.
-    branding.ts's bridge-less fallback points at the fork's own constant
-    instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
+    The rendered app carries the name too: the sidebar brand drops the T3
+    wordmark and draws Figma t3-fork 364:11245 — the 16px pixel mark and the
+    13x3 "no3y" wordmark owned by fork-sidebar-chrome. APP_BASE_NAME still
+    names the packaged app and branding.ts's bridge-less fallback, which
+    points at the fork's own constant instead of upstream's "T3 Code". Splash and favicon also ship from assets/fork (copied into
     apps/web/public for local/dev and into the packaged desktop client at
     build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
     path). The layered Icon Composer projects in assets/fork/app-icon.icon and
@@ -1587,16 +1587,15 @@
     keep the same safe-area variable and place the glyph at the ordinary 16px
     edge inset.
 
-    The brand stays on the trailing edge and ends 16px from it. It is the
-    designer-exported 24px pixel mark, a 4px gap, then APP_BASE_NAME at literal
-    0.875rem (14px), Geist Medium, with a 16px line-height. The link carries
-    its own display gate, hidden below 48rem and a flex row above, because
-    upstream 9885a845c deleted the .sidebar-brand stylesheet rule that used to
-    supply it; without the inline flex the block-level mark pushed the name
-    below the header's clipped 24px height. The link may shrink so the name
-    truncates before the header overflows at the sidebar's 208px minimum; only
-    the mark is shrink-0. Literal type avoids the sidebar-v2 13px text utility
-    remap. Search, New agent, Add a project and Usage remain labeled action
+    The brand stays on the trailing edge and ends 16px from it. It is Figma
+    t3-fork 364:11245: the designer-exported 16px pixel mark, a 4px gap, then
+    the 13x3 "no3y" wordmark at 8px and 40% sidebar-foreground. The link
+    carries its own display gate, hidden below 48rem and a flex row above,
+    because upstream 9885a845c deleted the .sidebar-brand stylesheet rule that
+    used to supply it; without the inline flex the block-level mark pushed the
+    name below the header. The lockup is a fixed 55px and both halves are
+    shrink-0; the link may still shrink so a 208px sidebar cannot overflow the
+    header. Search, New agent, Add a project and Usage remain labeled action
     rows; Projects remains a static label whose trailing sort and filter
     buttons own the sort order and the scope / group-by menu.
     Foreground, hover, pill, and focus treatments resolve through sidebar
@@ -1648,6 +1647,7 @@
     - apps/web/src/custom/useScrollGutterWidth.ts
     - apps/web/src/custom/SidebarStageDitherArt.tsx
     - apps/web/src/custom/assets/sidebar-brand-mark.svg
+    - apps/web/src/custom/SidebarBrandWordmark.tsx
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
   shadows: []
   watch:
