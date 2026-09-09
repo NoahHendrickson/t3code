@@ -5,7 +5,7 @@
  * Metrics from Figma t3-fork node 364:11246: the four action rows are the
  * design system's ghost Button (364:10544) stacked 2px apart inside the
  * panel's 8px inset — 32px tall, 10px corners, 12px inline padding, a 16px
- * leading icon 6px from a 14px Medium label, everything at the panel's
+ * leading icon 6px from a 14px Regular label, everything at the panel's
  * foreground. The Projects row below (368:21211) is the project headers'
  * shape on the same inset: a muted Label/12 label, then two 32px icon
  * buttons — sort and filter — on the list edge.
@@ -76,10 +76,14 @@ const CHROME_ROW_INSET = SIDEBAR_V2_TRAILING_OFFSET.chromeRow;
     red. The design (364:11246) tints the icon and the label alike, at the
     panel's foreground. */
 export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-foreground [&>svg]:opacity-100";
-/** Label/14 Medium for Search / New agent / Add a project / Usage — literal
-    so the panel's 13px text-xs remap cannot shrink them. The Projects label
-    is the headers' Label/12 and spells its own. */
-const CHROME_TYPE = "text-[0.875rem] leading-5 font-medium text-sidebar-foreground";
+/** Label/14 Regular for Search / New agent / Add a project / Usage — literal
+    so the panel's 13px text-xs remap cannot shrink them. font-normal and the
+    active twin displace sidebarMenuButtonVariants' font-medium (default
+    variant and data-[active=true]), so the New agent row stays Regular while
+    a draft is held. The Projects label is the headers' Label/12 and spells
+    its own. */
+const CHROME_TYPE =
+  "text-[0.875rem] leading-5 font-normal text-sidebar-foreground data-[active=true]:font-normal";
 /** The Projects row's two icon buttons (Figma 368:21214 / 368:21215): the
     design system's 32px icon-only ghost button at muted foreground, the same
     box the project headers' plus and settings buttons draw. Icon tint is
