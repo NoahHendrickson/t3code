@@ -3575,3 +3575,32 @@
     - apps/web/src/__fork_guards__/serverLocalThreadBranch.test.ts
     - apps/server/src/git/resolveBootstrapThreadBranch.test.ts
     - apps/server/src/server.test.ts
+
+- id: server-repository-identity-base-remote
+  intent: >
+    A project's repository identity names the repository its pull requests
+    live in. Upstream's resolver always prefers a remote called `upstream`
+    over `origin`, which is right for a contributor checkout whose PRs go to
+    upstream, and wrong for this fork: PRs go to `origin`, and since
+    upstream #10101 the thread PR reactor refuses any PR whose repository
+    differs from the project identity, so no thread card in the fork's own
+    checkout ever got a PR link while the composer chip (live git status,
+    no identity check) kept showing it.
+
+    `gh repo set-default` records the answer as `remote.<name>.gh-resolved =
+    base`, and `gh pr list` already resolves from that remote. The fork
+    reads the same marker: when a checkout has more than one remote and one
+    of them carries the base marker, that remote is the identity. A
+    checkout with a single remote, no marker, or a marker naming a remote
+    that no longer exists keeps upstream's upstream-then-origin order, so
+    every other project resolves exactly as before. One extra `git config`
+    call, paid only by multi-remote checkouts and cached with the identity.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/server/src/project/RepositoryIdentityResolver.ts
+    - apps/server/src/project/RepositoryIdentityResolver.test.ts
+  verify:
+    - apps/web/src/__fork_guards__/serverRepositoryIdentityBaseRemote.test.ts
+    - apps/server/src/project/RepositoryIdentityResolver.test.ts

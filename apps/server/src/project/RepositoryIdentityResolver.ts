@@ -48,9 +48,31 @@ function parseRemoteFetchUrls(stdout: string): Map<string, string> {
   return remotes;
 }
 
+/* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote
+   `gh repo set-default` records the chosen base repository as
+   `remote.<name>.gh-resolved = base`. A fork that opens its PRs against its
+   own remote marks that remote, and `gh pr list` already answers from it, so
+   the project identity must name the same repository or the PR reactor
+   discards every PR it finds as belonging to a foreign repository. */
+function parseBaseRemoteName(stdout: string): string | null {
+  for (const line of stdout.split("\n")) {
+    const match = /^remote\.(.+)\.gh-resolved\s+base$/u.exec(line.trim());
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+/* fork:end server-repository-identity-base-remote */
+
 function pickPrimaryRemote(
   remotes: ReadonlyMap<string, string>,
+  baseRemoteName: string | null = null,
 ): { readonly remoteName: string; readonly remoteUrl: string } | null {
+  /* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote */
+  if (baseRemoteName !== null) {
+    const baseRemoteUrl = remotes.get(baseRemoteName);
+    if (baseRemoteUrl) return { remoteName: baseRemoteName, remoteUrl: baseRemoteUrl };
+  }
+  /* fork:end server-repository-identity-base-remote */
   for (const preferredRemoteName of ["upstream", "origin"] as const) {
     const remoteUrl = remotes.get(preferredRemoteName);
     if (remoteUrl) {
@@ -129,7 +151,26 @@ const resolveRepositoryIdentityFromCacheKey = Effect.fn(
     return null;
   }
 
-  const remote = pickPrimaryRemote(parseRemoteFetchUrls(remoteResult.value.stdout));
+  const remotes = parseRemoteFetchUrls(remoteResult.value.stdout);
+  /* fork:begin server-repository-identity-base-remote — see .fork/customizations.yaml#server-repository-identity-base-remote
+     Only a checkout with several remotes has a choice to make, so a single
+     remote never pays for the extra git call. */
+  let baseRemoteName: string | null = null;
+  if (remotes.size > 1) {
+    const configResult = yield* processRunner
+      .run({
+        command: "git",
+        args: ["-C", cacheKey, "config", "--get-regexp", String.raw`^remote\..*\.gh-resolved$`],
+        timeoutBehavior: "timedOutResult",
+      })
+      .pipe(Effect.option);
+    // `git config` exits 1 when nothing matches; that is simply "no base set".
+    if (configResult._tag === "Some" && configResult.value.code === 0) {
+      baseRemoteName = parseBaseRemoteName(configResult.value.stdout);
+    }
+  }
+  const remote = pickPrimaryRemote(remotes, baseRemoteName);
+  /* fork:end server-repository-identity-base-remote */
   return remote ? buildRepositoryIdentity({ ...remote, rootPath: cacheKey }) : null;
 });
 
