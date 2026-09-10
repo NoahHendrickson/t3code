@@ -1182,7 +1182,11 @@
     wash and a #28497b radial halo behind the composer for legibility (a
     ::after, both at z-index -1). Once the thread has started the same image
     drops to 10% with no wash, so the transcript reads over a faint trace of
-    the art rather than a second picture. The composer backing gradient
+    the art rather than a second picture. Both changes ease over 400ms on the
+    first send — the wash is always painted and only its opacity moves — on
+    the same clock and curve as the composer's slide and fold
+    (fork-new-agent-draft's draftHeroTransition shadow), so the art dims while
+    the composer travels instead of cutting under it. The composer backing gradient
     paints nothing under Westworld so the art runs on behind the vessel as
     drawn; the cutoff mask already ends the transcript above it. Asset at
     custom/assets/westworld-hero.png, the Figma export quantized to 256
@@ -3546,7 +3550,17 @@
     80px prompt surface with 8px padding, the prompt line on top and the
     attach / send actions on their own row beneath — attach leading, send
     trailing — which folds back to the compact base row the moment the
-    thread starts. Choosing a project remaps the draft in place — same draft id, same reserved thread id,
+    thread starts.
+
+    The first send is one motion, not a snap: upstream's slide from the hero
+    position to the dock (draftHeroTransition, its 180ms tuned for a composer
+    that only travelled) is shadowed to 400ms on the fork's chip-label curve,
+    and the draft box's fold (padding and reserved prompt height, in
+    theme.custom.css) and Westworld's art fade (fork-cool-dark-theme) run on
+    that same clock and curve. The action row's flex-direction cannot
+    animate and flips at the start. Reduced motion drops the fold on the
+    same query upstream skips the slide on. Choosing a project remaps the
+    draft in place — same draft id, same reserved thread id,
     same composer content — onto that project's logical key, seeding the
     project's own workspace defaults (env mode, start-from-origin) the way
     upstream's handler seeds a fresh draft. The draft opens with the model
@@ -3587,8 +3601,11 @@
     - apps/web/src/custom/useNewAgentDraft.test.ts
     # Draft-only prompt geometry and the docked-only floor, keyed on data-draft-hero.
     - apps/web/src/theme.custom.css
+    # Slide timing: 400ms on the fork curve, shared with the fold and the art fade.
+    - apps/web/src/overrides/components/chat/draftHeroTransition.ts
   shadows:
     - apps/web/src/components/chat/DraftHeroHeadline.tsx
+    - apps/web/src/components/chat/draftHeroTransition.ts
   watch:
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/routes/_chat.tsx

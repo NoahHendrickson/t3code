@@ -225,15 +225,27 @@ describe("fork guard: fork-cool-dark-theme", () => {
       ),
     );
     expect(art?.body).toMatch(/opacity:\s*0\.3/u);
+    // The wash is always painted at opacity 0 and lifted by the stamp, so it
+    // can fade on the same 400ms clock as the composer's slide and fold.
     const wash = rules.find((rule) =>
-      rule.selector.endsWith(
-        '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::after',
-      ),
+      rule.selector.endsWith('[data-chat-workspace-drop-target="true"]::after'),
     );
     expect(wash?.body).toContain("rgb(24 119 242 / 40%)");
     expect(wash?.body).toContain("rgb(24 119 242 / 10%)");
     expect(wash?.body).toContain("rgb(40 73 123)");
     expect(wash?.body).toContain("z-index: -1");
+    expect(wash?.body).toMatch(/opacity:\s*0;/u);
+    expect(wash?.body).toMatch(/transition:\s*opacity 400ms/u);
+    const washLift = rules.find((rule) =>
+      rule.selector.endsWith(
+        '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::after',
+      ),
+    );
+    expect(washLift?.body).toMatch(/opacity:\s*1/u);
+    const base = rules.find((rule) =>
+      rule.selector.endsWith('[data-chat-workspace-drop-target="true"]::before'),
+    );
+    expect(base?.body).toMatch(/transition:\s*opacity 400ms/u);
   });
 
   it("paints the send button Figma blue and rounds the header pills to 8px", () => {

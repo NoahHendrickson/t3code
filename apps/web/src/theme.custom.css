@@ -373,6 +373,30 @@
   margin-inline-end: auto;
 }
 
+/* The fold from the drawn draft box to the compact row runs on the same
+   400ms clock and curve as upstream's slide to the dock (draftHeroTransition,
+   shadowed in overrides/components/chat), so the composer travels and shrinks
+   as one motion instead of snapping to the compact row and then sliding. The
+   action row's flex-direction cannot animate and flips at the start; the
+   padding and the prompt's reserved height carry the visible change. Declared
+   on the base elements, not under data-draft-hero, so both directions ease.
+   Reduced motion drops it, the same query upstream skips its slide on. */
+:root[data-fork="noahhendrickson-t3code"] [data-chat-composer-body="true"] {
+  transition: padding-block 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+  min-height: 0;
+  transition: min-height 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"] [data-chat-composer-body="true"],
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+    transition: none;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Timeline cutoff — see `.fork/customizations.yaml#fork-composer-shell`.
 

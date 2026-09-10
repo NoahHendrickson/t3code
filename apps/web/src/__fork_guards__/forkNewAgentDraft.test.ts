@@ -223,6 +223,33 @@ describe("fork guard: fork-new-agent-draft", () => {
     );
   });
 
+  it("moves the composer to the dock as one 400ms motion", () => {
+    // Upstream's 180ms slide read as a snap once the fork's draft box also
+    // folds on the first send. The shadow lengthens the slide, and the fold
+    // (and Westworld's art fade) run on the same clock and curve — the three
+    // are pinned together here because they only look right in agreement.
+    const shadow = readSibling("../overrides/components/chat/draftHeroTransition.ts");
+    const css = readSibling("../theme.custom.css");
+    expect(shadow).toContain('export * from "~upstream/components/chat/draftHeroTransition";');
+    expect(shadow).toContain("export const DRAFT_HERO_TRANSITION_DURATION_MS = 400;");
+    expect(shadow).toContain(
+      'export const DRAFT_HERO_TRANSITION_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";',
+    );
+    expect(css).toMatch(
+      /\[data-chat-composer-body="true"\]\s*\{\s*transition:\s*padding-block 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u,
+    );
+    expect(css).toMatch(
+      /\[data-fork-composer-prompt\]\s*\{\s*min-height:\s*0;\s*transition:\s*min-height 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u,
+    );
+    // ChatView still drives the slide from the shadowed constants.
+    expect(chatView).toContain("DRAFT_HERO_TRANSITION_DURATION_MS");
+    expect(chatView).toContain("DRAFT_HERO_TRANSITION_EASING");
+    // Reduced motion drops the fold the way upstream drops the slide.
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\[data-chat-composer-body="true"\],[^}]*\[data-fork-composer-prompt\]\s*\{\s*transition:\s*none/u,
+    );
+  });
+
   it("opens Usage from the chrome's fourth row", () => {
     expect(chromeRows).toContain('label="Usage"');
     expect(sidebar).toContain('void router.navigate({ to: "/usage" });');

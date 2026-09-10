@@ -150,9 +150,14 @@
    `cover` at "10% 100%" lands the figure on the card's right third at the
    drawn frame's proportions and keeps it bottom-anchored as the column
    resizes; the card's overflow clip trims the rest. Static image, static
-   opacity: nothing here repaints on its own. The ellipse is a radial
-   gradient rather than a blurred element: a filter would composite a layer
-   on every resize, and the gradient falls off the same way at rest.
+   opacity at rest: the only motion is a one-shot 400ms opacity ease on the
+   first send, the same clock as the composer's slide and fold
+   (draftHeroTransition shadow, theme.custom.css), so the art dims and the
+   wash lifts while the composer travels rather than cutting under it. The
+   wash is always painted and only its opacity moves, since a pseudo-element
+   that appears cannot fade. The ellipse is a radial gradient rather than a
+   blurred element: a filter would composite a layer on every resize, and
+   the gradient falls off the same way at rest.
 
    The asset is the Figma export quantized to 256 colours (a dither has ~1.7k
    distinct colours, all anti-aliasing) — 192 KB against 684 KB, with no
@@ -169,6 +174,26 @@
   background-repeat: no-repeat;
   opacity: 0.1;
   pointer-events: none;
+  transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(
+      ellipse 52% 24% at 48.5% 51%,
+      rgb(40 73 123) 0%,
+      rgb(40 73 123 / 70%) 55%,
+      transparent 100%
+    ),
+    linear-gradient(to right, rgb(24 119 242 / 40%), rgb(24 119 242 / 10%));
+  transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
@@ -178,19 +203,16 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"][data-fork-stage-hero]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 52% 24% at 48.5% 51%,
-      rgb(40 73 123) 0%,
-      rgb(40 73 123 / 70%) 55%,
-      transparent 100%
-    ),
-    linear-gradient(to right, rgb(24 119 242 / 40%), rgb(24 119 242 / 10%));
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+    [data-chat-workspace-drop-target="true"]::before,
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+    [data-chat-workspace-drop-target="true"]::after {
+    transition: none;
+  }
 }
 
 /* The composer's backing gradient (theme.custom.css,
