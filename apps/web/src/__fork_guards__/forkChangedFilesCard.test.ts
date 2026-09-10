@@ -3,7 +3,7 @@
  * Fork guard — see `.fork/customizations.yaml#fork-changed-files-card`.
  *
  * The restyle is CSS-only against upstream data attributes. Drop either the
- * attribute or the fork-scoped --card rule and Cool Dark silently falls back
+ * attribute or the fork-scoped --card rule and Westworld silently falls back
  * to translucent bg-input/32 — the card compiles, ships, and looks wrong.
  */
 

@@ -3,7 +3,7 @@
  * Fork guard — see `.fork/README.md` §4b and
  * `.fork/customizations.yaml#fork-cool-darker-theme`.
  *
- * Cool Darker is a deeper sibling of Cool Dark. Losing the preference wiring
+ * Glass is a deeper sibling of Westworld. Losing the preference wiring
  * leaves the Appearance option as a dead label; losing the CSS attribute
  * selectors silently paints it with default Dark fills.
  */
@@ -64,7 +64,7 @@ const COOL_PANEL = [
 ];
 
 describe("fork guard: fork-cool-darker-theme", () => {
-  it("registers Cool Darker on the shared fork palette key", () => {
+  it("registers Glass on the shared fork palette key", () => {
     expect(customizations).toContain("id: fork-cool-darker-theme");
     expect(customizations).toContain("t3code:fork-theme");
     expect(forkTheme).toContain(`export const COOL_DARKER_THEME = "${COOL_DARKER_THEME}"`);
@@ -81,7 +81,7 @@ describe("fork guard: fork-cool-darker-theme", () => {
     expect(resolveActiveForkPalette("system", "cool-darker")).toBeNull();
   });
 
-  it("offers Cool Darker in Appearance via the fork palette adapter", () => {
+  it("offers Glass in Appearance via the fork palette adapter", () => {
     expect(FORK_PALETTES).toContain(COOL_DARKER_THEME);
     expect(FORK_PALETTE_LABELS[COOL_DARKER_THEME]).toBe(COOL_DARKER_LABEL);
     expect(settingsPanels).toContain("FORK_PALETTES.map");
@@ -127,7 +127,7 @@ describe("fork guard: fork-cool-darker-theme", () => {
     expect(stage).toContain("--fork-composer-bg: #282d30");
   });
 
-  it("keeps Cool Darker barely cool without going blue-slate", () => {
+  it("keeps Glass barely cool without going blue-slate", () => {
     const [r, , b] = parseHex(
       declarationHex(ruleBodyFor(themeRules, DARKER_STAGE), "--background"),
     );
@@ -135,7 +135,7 @@ describe("fork guard: fork-cool-darker-theme", () => {
     expect(b - r).toBeLessThan(8);
   });
 
-  it("states Cool Darker row fills as opaque values", () => {
+  it("states Glass row fills as opaque values", () => {
     const panel = ruleBodyFor(themeRules, DARKER_PANEL);
     expect(panel).toContain("--sidebar-row-hover: #282d30");
     expect(panel).toContain("--sidebar-row-active: #2c3134");
@@ -145,7 +145,7 @@ describe("fork guard: fork-cool-darker-theme", () => {
     );
   });
 
-  it("pre-paints Cool Darker from the palette key so the load flash matches the stage", () => {
+  it("pre-paints Glass from the palette key so the load flash matches the stage", () => {
     expect(indexHtml).toContain(COOL_DARKER_BACKGROUND);
     expect(indexHtml).toContain(
       `forkPaletteBackgrounds["cool-darker"] = "${COOL_DARKER_BACKGROUND}"`,
@@ -160,7 +160,7 @@ describe("fork guard: fork-cool-darker-theme", () => {
     expect(indexHtml).toContain("fork:begin fork-cool-darker-theme");
   });
 
-  it("does not leak Cool Darker fills into light mode", () => {
+  it("does not leak Glass fills into light mode", () => {
     // Every opaque fill the palette declares, stage block and v2 panel both.
     // #1c1f22 used to cover the sidebar too — it was --card and --sidebar at
     // once — so when they split, the sidebar fill and the row fills silently

@@ -84,7 +84,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       expect(rule.selector, `glass rule must also pin the fork marker: ${rule.selector}`).toContain(
         MARKER,
       );
-      expect(rule.selector, `glass rule must be scoped to Cool Darker: ${rule.selector}`).toContain(
+      expect(rule.selector, `glass rule must be scoped to Glass: ${rule.selector}`).toContain(
         `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`,
       );
     }
@@ -95,7 +95,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       if (rule.selector.includes(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE)) continue;
       expect(
         rule.body,
-        `Cool Darker must stay opaque without the glass marker: ${rule.selector}`,
+        `Glass must stay opaque without the glass marker: ${rule.selector}`,
       ).not.toContain("transparent");
     }
   });
@@ -728,8 +728,8 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
   });
 
   it("ignores a superseded sync so palette flips cannot stamp out of order", async () => {
-    // The caller fires this without awaiting, so Cool Darker -> Dark -> Cool
-    // Darker can resolve in any order. Only the newest request may write the
+    // The caller fires this without awaiting, so Glass -> Dark -> Glass
+    // can resolve in any order. Only the newest request may write the
     // marker, or a stale answer re-enables glass the user has already left.
     const root = makeRoot();
     let releaseFirst: ((value: boolean) => void) | undefined;
@@ -757,8 +757,8 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
   });
 
   it("never lets the renderer choose the window's opaque restore colour", () => {
-    // An earlier cut shipped Cool Darker's stage colour as the restore fill on
-    // every call, so switching to Light, Dark, Cool Dark or either Neutral
+    // An earlier cut shipped Glass's stage colour as the restore fill on
+    // every call, so switching to Light, Dark, Westworld or either Neutral
     // palette repainted the window with #141618. The renderer only knows the
     // palette it is moving to; the main process resolves the colour from
     // nativeTheme instead.

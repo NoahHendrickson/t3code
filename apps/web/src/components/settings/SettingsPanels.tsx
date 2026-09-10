@@ -170,8 +170,8 @@ import { searchableSetting } from "./settingsSearch";
 import { ProjectFavicon } from "../ProjectFavicon";
 import { PanelAnimationsPreview } from "./PanelAnimationsPreview";
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme
-   One derived option per fork palette (Cool Dark, Neutral Dark, Neutral
-   Darker, …) — the palette list and its labels live in custom/forkTheme.ts,
+   One derived option per fork palette (Westworld, Glass, Neutral Dark,
+   Neutral Darker, …) — the palette list and its labels live in custom/forkTheme.ts,
    so adding a palette never edits this file. */
 const FORK_PALETTE_OPTIONS = [
   { value: "dark", label: "Default Dark" },

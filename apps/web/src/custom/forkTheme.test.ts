@@ -170,7 +170,7 @@ describe("fork theme synchronization", () => {
     expect(classes.has("no-transitions")).toBe(false);
   });
 
-  it("stamps Cool Darker on the shared palette key", async () => {
+  it("stamps Glass on the shared palette key", async () => {
     const { storage, values } = createStorage({ "t3code:theme": "system" });
     const { attributes, classes, root } = createDocumentRoot();
     vi.stubGlobal("window", {

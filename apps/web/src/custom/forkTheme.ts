@@ -2,12 +2,17 @@
  * Fork dark-palette preferences — see `.fork/customizations.yaml#fork-cool-dark-theme`,
  * `#fork-cool-darker-theme`, `#fork-neutral-dark-theme`, and `#fork-neutral-darker-theme`.
  *
- * Cool Dark / Cool Darker / Neutral Dark / Neutral Darker are CSS palette overlays
+ * Westworld / Glass / Neutral Dark / Neutral Darker are CSS palette overlays
  * (`data-fork-theme` + `.dark`), not upstream theme definitions. Upstream
  * `t3code:theme` may contain a standard, built-in, or imported theme id; this
  * module owns `t3code:fork-theme`
  * (`cool-dark` | `cool-darker` | `neutral-dark` | `neutral-darker` | absent)
  * and the DOM attribute.
+ *
+ * The storage ids predate the labels: Westworld is persisted as `cool-dark`
+ * and Glass as `cool-darker`. They are user preferences already on disk and
+ * the fence ids across index.html / SettingsPanels are named after them, so
+ * renaming the label never renames the key.
  */
 
 import { useCallback, useSyncExternalStore } from "react";
@@ -25,13 +30,13 @@ export const FORK_PALETTE_STORAGE_KEY = "t3code:fork-theme";
 const UPSTREAM_THEME_STORAGE_KEY = "t3code:theme";
 
 export const COOL_DARK_THEME = "cool-dark" as const;
-export const COOL_DARK_LABEL = "Cool Dark";
-/** Pre-paint / overscroll colour for Cool Dark — matches stage `--background`. */
-export const COOL_DARK_BACKGROUND = "#202326";
+export const COOL_DARK_LABEL = "Westworld";
+/** Pre-paint / overscroll colour for Westworld — matches stage `--background`. */
+export const COOL_DARK_BACKGROUND = "#1d2124";
 
 export const COOL_DARKER_THEME = "cool-darker" as const;
-export const COOL_DARKER_LABEL = "Cool Darker";
-/** Pre-paint / overscroll colour for Cool Darker — matches stage `--background`. */
+export const COOL_DARKER_LABEL = "Glass";
+/** Pre-paint / overscroll colour for Glass — matches stage `--background`. */
 export const COOL_DARKER_BACKGROUND = "#141618";
 
 export const NEUTRAL_DARK_THEME = "neutral-dark" as const;
@@ -89,7 +94,7 @@ function readUpstreamTheme(): ThemePreference {
   }
 }
 
-/** One-time bridge for builds that stored Cool Dark in `t3code:theme`. */
+/** One-time bridge for builds that stored Westworld (then Cool Dark) in `t3code:theme`. */
 export function migrateLegacyCoolDarkTheme(): void {
   if (typeof window === "undefined") return;
   try {

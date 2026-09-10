@@ -103,7 +103,7 @@ describe("fork guard: fork-neutral-dark-theme", () => {
     expect(stage).toContain("--fork-context-chip-bg: rgb(65 65 65)");
   });
 
-  it("keeps Neutral Dark lighter than the default Dark stage and distinct from Cool Dark", () => {
+  it("keeps Neutral Dark lighter than the default Dark stage and distinct from Westworld", () => {
     const defaultStage = declarationHex(ruleBodyFor(themeRules, DEFAULT_STAGE), "--background");
     const coolStage = declarationHex(ruleBodyFor(themeRules, COOL_STAGE), "--background");
     const neutralStage = declarationHex(ruleBodyFor(themeRules, NEUTRAL_STAGE), "--background");

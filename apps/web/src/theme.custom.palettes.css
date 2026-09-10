@@ -4,77 +4,170 @@
    theme.custom.css from main.tsx so these win on source order. */
 
 /* ---------------------------------------------------------------------------
-   Cool Dark — see `.fork/customizations.yaml#fork-cool-dark-theme`.
+   Westworld — see `.fork/customizations.yaml#fork-cool-dark-theme`.
 
-   Figma t3-fork node 291:18763. Cool-gray stage #202326, sidebar/vessel
-   #2b3033, prompt surface + context chips #353a3d. Barely cool (B−R ≤ 6),
-   not blue-slate. Placed after the default dark surface / pill / composer /
-   context-chip tokens so Cool Dark wins on both specificity and source order.
-   Same two-block pattern (stage + v2 panel) for the upstream re-declaration
-   reason. Keyed on data-fork-theme so Dark and Cool Dark can coexist; both
-   still carry `.dark` for Tailwind. */
+   Figma t3-fork node 406:26539. Blue-black stage #1d2124 under a lifted
+   #2b2f33 sidebar; rows and chips lift with white 6% flattened to #373b3f.
+   The composer inverts the ladder: the vessel is the sidebar's #2b2f33 and
+   the prompt surface sinks BELOW the stage to #161a1d, so the typing area
+   reads as a well cut into the vessel rather than a card floating on it.
+   Send is the one saturated control, Figma's #179ddb. Barely cool (B−R ≤ 7),
+   not blue-slate. Storage id stays "cool-dark": the key is a persisted
+   preference and the fences that carry it are named after it, so the label
+   changed and the id did not. Placed after the default dark surface / pill /
+   composer / context-chip tokens so Westworld wins on both specificity and
+   source order. Same two-block pattern (stage + v2 panel) for the upstream
+   re-declaration reason. Keyed on data-fork-theme so Dark and Westworld can
+   coexist; both still carry `.dark` for Tailwind. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] {
-  --background: #202326;
-  --app-chrome-background: #202326;
+  --background: #1d2124;
+  --app-chrome-background: #1d2124;
   --foreground: #e8e8e8;
-  --card: #2b3033;
+  --card: #2b2f33;
   --card-foreground: #e8e8e8;
-  --popover: #2b3033;
+  --popover: #2b2f33;
   --popover-foreground: #e8e8e8;
-  --primary: #ffffff;
-  --primary-foreground: #202326;
-  --ring: #ffffff;
-  --secondary: #353a3d;
+  /* Figma's primary is a warm off-white, not pure white. */
+  --primary: #fcfcf5;
+  --primary-foreground: #1d2124;
+  --ring: #fcfcf5;
+  --secondary: #373b3f;
   --secondary-foreground: #e8e8e8;
-  --muted: #353a3d;
-  --muted-foreground: #9a9a9a;
-  --accent: #353a3d;
+  --muted: #373b3f;
+  --muted-foreground: #8a8a8a;
+  --accent: #373b3f;
   --accent-foreground: #e8e8e8;
-  --border: #3f3f3f;
-  --input: #3f3f3f;
+  --border: #272b2e;
+  --input: #272b2e;
   --surface-grain: none;
-  --fork-pill-border: #3f3f3f;
+  /* Header split pills: 8px corners and the drawn #333333 outline. */
+  --fork-pill-radius: 8px;
+  --fork-pill-border: #333333;
   --fork-pill-fg: #e8e8e8;
-  --fork-pill-hover: #353a3d;
-  /* Vessel matches the sidebar; prompt surface is the drawn #353a3d lift. */
-  --fork-composer-vessel-bg: #2b3033;
-  --fork-composer-bg: #353a3d;
-  --fork-composer-border: rgb(255 255 255 / 12%);
-  --fork-composer-border-focus: #5c6368;
-  /* Opaque match of the prompt surface — see default-dark note. */
-  --fork-context-chip-bg: #353a3d;
-  --fork-context-chip-bg-hover: #3c4143;
+  --fork-pill-hover: #373b3f;
+  /* Vessel matches the sidebar; the prompt surface sinks below the stage. The
+     drawn hairline is the vessel colour, so it only trims the well's edge. */
+  --fork-composer-vessel-bg: #2b2f33;
+  --fork-composer-bg: #161a1d;
+  --fork-composer-border: #2b2f33;
+  --fork-composer-border-focus: #4a4f54;
+  /* Opaque match of the vessel — see default-dark note. Hover is the same
+     white 6% lift the sidebar rows take. */
+  --fork-context-chip-bg: #2b2f33;
+  --fork-context-chip-bg-hover: #373b3f;
+  /* Working is Figma's #1877f2 here, not the green every other dark palette
+     uses: the status dot, the pixel rain (sidebar cards, the composer
+     monitoring pill, the spawn row, the transcript) and the dev-server pulse
+     all read this one token. Restated on the v2 panel below because the
+     default block declares it there too. */
+  --sidebar-v2-status-working: #1877f2;
+  /* The sidebar mark's eight colour runs, Figma 412:31179 — cell for cell
+     the same grid as the default mark, with each arm's green/orange pair
+     swapped for a blue pair. custom/SidebarBrandMark.tsx reads these. */
+  --fork-brand-mark-top: #00bfff;
+  --fork-brand-mark-top-light: #5ee7ff;
+  --fork-brand-mark-left: #2a72e6;
+  --fork-brand-mark-left-light: #4c90ff;
+  --fork-brand-mark-right: #6c6ee0;
+  --fork-brand-mark-right-light: #a089ff;
+  --fork-brand-mark-bottom: #1aadfc;
+  --fork-brand-mark-bottom-light: #72c4ff;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-sidebar-version="v2"] {
-  --background: #2b3033;
+  --background: #2b2f33;
   --foreground: #e8e8e8;
-  --card: #2b3033;
+  --card: #2b2f33;
   --card-foreground: #e8e8e8;
-  --sidebar: #2b3033;
+  --sidebar: #2b2f33;
   --sidebar-foreground: #e8e8e8;
-  --border: #3f3f3f;
-  --sidebar-border: #3f3f3f;
-  --sidebar-stage-fade: #2b3033;
-  --muted: #353a3d;
-  --accent: #353a3d;
+  /* The one drawn seam: a 1px #3c3f43 line between panel and stage. */
+  --border: #3c3f43;
+  --sidebar-border: #3c3f43;
+  --sidebar-stage-fade: #2b2f33;
+  --muted: #373b3f;
+  --accent: #373b3f;
   --accent-foreground: #e8e8e8;
-  --muted-foreground: #9a9a9a;
+  --muted-foreground: #8a8a8a;
   --sidebar-muted-foreground: #d5d7da;
   --fork-sidebar-card-title-receded: #b2b5ba;
-  /* white @ 8% over sidebar #2b3033 — matches Figma thread-card / ⌘K lift. */
-  --sidebar-control-surface: #3c4143;
-  --sidebar-row-hover: #353a3d;
-  --sidebar-row-active: #3c4143;
-  --sidebar-row-selected: #3c4143;
+  /* white @ 6% over sidebar #2b2f33 — the Figma selected-card lift. Hover is
+     one step softer (white @ 4%) so selection still reads over a hovered row. */
+  --sidebar-control-surface: #373b3f;
+  --sidebar-row-hover: #33373a;
+  --sidebar-row-active: #373b3f;
+  --sidebar-row-selected: #373b3f;
+  --sidebar-v2-status-working: #1877f2;
+}
+
+/* Send is Figma's blue, the only saturated control in the theme. Every other
+   palette keeps the flat white send from theme.custom.css; this outranks it on
+   the palette attribute alone. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
+  background: #179ddb;
+  color: #ffffff;
+}
+
+/* Stage artwork — Figma 406:26539 paints a dithered portrait (layer
+   412:31131, 40% opacity) into the chat column, anchored to its right edge
+   with 42% of the image running past it and its height filling the column.
+   The pseudo-element reproduces that geometry from the column's own height:
+   `aspect-ratio` gives it the image's width and the translate hangs the same
+   fraction off the right edge at every window size, while the column's
+   overflow-x clip removes the rest.
+
+   Painted on the drop-target wrapper rather than the inset: ChatView's root
+   fills the inset with an opaque bg-background, and this wrapper is the
+   nearest element that is already position:relative and holds exactly the
+   transcript and the composer (Figma's "Frame 56", under the header). It
+   gets an isolated stacking context so a z-index of -1 lands above the
+   root's fill and below every in-flow child — the transcript, the banners,
+   the composer — with nothing else re-ordered. Static image, static
+   opacity: nothing here repaints on its own.
+
+   The asset is the Figma export quantized to 256 colours (a dither has ~3k
+   distinct colours, all anti-aliasing) — 87 KB against 1.3 MB, with no pixel
+   more than 12 levels off. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"] {
+  isolation: isolate;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: -1;
+  height: 100%;
+  aspect-ratio: 2404 / 2006;
+  background-image: url("./custom/assets/westworld-stage.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  opacity: 0.4;
+  transform: translateX(42%);
+  pointer-events: none;
+}
+
+/* The composer's backing gradient (theme.custom.css,
+   [data-chat-composer-overlay]) would end the artwork in a slab of stage
+   colour above the pills. The cutoff mask already stops the transcript before
+   it reaches the composer, so the backing paints nothing here and the portrait
+   runs on behind the vessel as drawn. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-composer-overlay="true"] {
+  background: none;
 }
 
 /* ---------------------------------------------------------------------------
-   Cool Darker — see `.fork/customizations.yaml#fork-cool-darker-theme`.
+   Glass — see `.fork/customizations.yaml#fork-cool-darker-theme`.
 
-   Deeper sibling of Cool Dark: same cool-gray family (B ≥ R, low chroma),
-   pushed down. Stage #141618 (well below Cool Dark's #202326); sidebar #181b1e;
+   Deeper sibling of Westworld: same cool-gray family (B ≥ R, low chroma),
+   pushed down. Storage id stays "cool-darker" for the same reason Westworld
+   keeps "cool-dark". Stage #141618 (well below Westworld's #1d2124); sidebar #181b1e;
    composer vessel #222629 (a step above the sidebar so the control row
    contrasts); prompt/chips #282d30. Stage --card/--popover stay at #1c1f22, one
    step above the sidebar, so menus and popovers read as floating over the panel
@@ -82,7 +175,7 @@
    shifts by the same per-channel amount — so the steps between surfaces are
    fixed and the floor is the only thing that travels. It sits 6 below its
    first cut, having gone 14 down and then 8 back up once the glass sidebar
-   made the stage read as a hole beside it. Must not alter Cool Dark, Neutral
+   made the stage read as a hole beside it. Must not alter Westworld, Neutral
    Dark, Neutral Darker, or default Dark fills. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
   --background: #141618;
@@ -144,7 +237,7 @@
    Figma t3-fork node 264:11816: true-neutral grays (no cool undertone). Stage
    #1f1f1f, sidebar #2a2a2a (slightly darker than the drawn #2e2e2e), composer
    vessel #323232, prompt surface #3d3d3d, context chips #414141. Same two-block
-   pattern and data-fork-theme keying as Cool Dark so Dark / Cool Dark /
+   pattern and data-fork-theme keying as Westworld so Dark / Westworld /
    Neutral Dark can coexist. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
   --background: #1f1f1f;
@@ -269,13 +362,13 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Cool Darker sidebar glass — see
+   Glass sidebar vibrancy — see
    `.fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy`.
 
    Gated on the marker `custom/forkSidebarVibrancy.ts` stamps from what the main
    process actually applied, never on the palette alone: only a macOS desktop
    window that really took the vibrancy material may go transparent. A web or
-   Linux client on Cool Darker never matches these rules and keeps the solid
+   Linux client on Glass never matches these rules and keeps the solid
    panel above.
 
    This is the one place the fork's flatten-alpha doctrine does not apply.
@@ -346,7 +439,7 @@
      background-size of 128px. Overriding only the image leaves the other two
      pointing at this gradient, which then tiles every 128px down the column —
      it presents as the stage "repeating weirdly", not as a background-size bug.
-     Both have to be restated here. Nothing is lost by doing so: Cool Darker sets
+     Both have to be restated here. Nothing is lost by doing so: Glass sets
      --surface-grain to none, so this element had no texture to keep. */
   background-repeat: no-repeat;
   background-size: 100% 100%;
@@ -797,7 +890,7 @@
 
 /* The floating panel stays opaque (see the gate above), but it should not also
    be the only cool-tinted surface on screen. Under glass everything around it
-   is neutral rgb(22 22 22); the palette's #181b1e carries Cool Darker's blue
+   is neutral rgb(22 22 22); the palette's #181b1e carries Glass's blue
    cast, so while floating the panel reads as a different material rather than
    as the same panel with its glass suspended.
 

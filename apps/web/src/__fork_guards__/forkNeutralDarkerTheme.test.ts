@@ -129,7 +129,7 @@ describe("fork guard: fork-neutral-darker-theme", () => {
     );
   });
 
-  it("keeps Neutral Darker sidebar solid (wallpaper glass belongs to Cool Darker)", () => {
+  it("keeps Neutral Darker sidebar solid (wallpaper glass belongs to Glass)", () => {
     const gap = cssRules(theme).find(
       (rule) =>
         rule.selector.includes(`[${FORK_THEME_ATTRIBUTE}="neutral-darker"]`) &&
@@ -143,7 +143,7 @@ describe("fork guard: fork-neutral-darker-theme", () => {
     expect(panel).toContain("--sidebar: #212121");
     expect(panel).toContain("--sidebar-row-selected: #2e2e2e");
 
-    // Vibrancy now exists for Cool Darker (see fork-cool-darker-sidebar-vibrancy),
+    // Vibrancy now exists for Glass (see fork-cool-darker-sidebar-vibrancy),
     // so these assertions are scoped rather than global: no rule may put the
     // glass marker and the neutral-darker palette in the same selector, and the
     // Neutral Darker panel fills stay opaque hexes.

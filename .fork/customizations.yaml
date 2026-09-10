@@ -1093,7 +1093,7 @@
     Dark --primary and --ring are white (#ffffff), not upstream's blue oklch —
     focus underlines (border-ring), switches, and primary fills stay
     monochrome. --primary-foreground is the stage (#191919) so white primary
-    buttons keep contrast. Cool Dark inherits these unless it overrides them.
+    buttons keep contrast. Westworld inherits these unless it overrides them.
 
     Two blocks are required and the second is not redundant: upstream
     re-declares --background, --card, --border and the whole --sidebar-* family
@@ -1116,18 +1116,25 @@
 
 - id: fork-cool-dark-theme
   intent: >
-    Appearance offers Cool Dark as an optional palette alongside upstream's
-    modular theme library. Cool Dark is a lighter, cool-gray dark palette
-    (barely cool, not blue-slate) that coexists with the default fork Dark —
-    selecting it must not replace or alter Dark's #191919 / #1e1e1e fills.
+    Appearance offers Westworld as an optional palette alongside upstream's
+    modular theme library. Westworld is a blue-black dark palette (barely
+    cool, not blue-slate) drawn in Figma t3-fork node 406:26539 that coexists
+    with the default fork Dark — selecting it must not replace or alter Dark's
+    #191919 / #1e1e1e fills.
 
-    Cool Dark is a fork palette overlay, not an upstream theme definition.
+    The label is Westworld; the storage id and every fence id stay
+    "cool-dark". The id is a persisted user preference (t3code:fork-theme) and
+    the legacy t3code:theme migration reads it, so the rename touched the
+    label and the tokens, never the key. Glass (fork-cool-darker-theme) keeps
+    "cool-darker" for the same reason.
+
+    Westworld is a fork palette overlay, not an upstream theme definition.
     Upstream t3code:theme may hold a standard, built-in, or imported theme id.
     The palette is persisted separately in t3code:fork-theme
     (cool-dark | cool-darker | neutral-dark | neutral-darker | absent) by
-    custom/forkTheme.ts — Cool Darker / Neutral Dark / Neutral Darker share
+    custom/forkTheme.ts — Glass / Neutral Dark / Neutral Darker share
     that key (see fork-cool-darker-theme, fork-neutral-dark-theme,
-    fork-neutral-darker-theme). Selecting Cool Dark sets upstream theme to dark
+    fork-neutral-darker-theme). Selecting Westworld sets upstream theme to dark
     and stamps data-fork-theme="cool-dark" on :root; selecting another built-in
     or imported theme clears that attribute.
     A legacy t3code:theme=cool-dark value migrates to theme=dark plus the
@@ -1141,19 +1148,49 @@
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
     selector plus [data-sidebar-version="v2"] (panel) — the doubled selector is
     required for the same upstream re-declaration reason as fork-surface-palette.
-    Figma t3-fork node 291:18763. Stage is #202326, panel/sidebar #2b3033
-    (panel above stage), prompt surface + context chips #353a3d, border
-    #3f3f3f, with matching cool-gray row fills, composer vessel, and pills.
-    index.html pre-paints Cool Dark so the load flash matches the stage.
+    Stage #1d2124, sidebar panel #2b2f33 (panel above stage) with a 1px
+    #3c3f43 seam, selected rows / control surface / chip hover at #373b3f
+    (white 6% flattened), row hover #33373a, stage border #272b2e, muted text
+    #8a8a8a, primary #fcfcf5. The composer inverts the ladder: vessel #2b2f33
+    (the sidebar fill), prompt surface #161a1d sunk below the stage with a
+    #2b2f33 hairline, context chips #2b2f33. Send is the one saturated
+    control (#179ddb, white glyph), declared as a palette-scoped rule over the
+    flat white send in theme.custom.css. Header split pills round to 8px with
+    the drawn #333333 outline. index.html pre-paints #1d2124 so the load
+    flash matches the stage.
+
+    The chat column carries the Figma stage artwork (layer 412:31131, a
+    dithered portrait at 40% opacity) hung off its right edge with 42% of the
+    image past the edge and the height fitted to the column — the same
+    geometry at every window size. It is a ::before on ChatView's
+    [data-chat-workspace-drop-target] wrapper, the nearest element that is
+    already position:relative and holds exactly the transcript and composer,
+    isolated so z-index -1 sits above the root's opaque fill and below every
+    child. The composer backing gradient paints nothing under Westworld so
+    the portrait runs on behind the vessel as drawn; the cutoff mask already
+    ends the transcript above it. Asset at custom/assets/westworld-stage.png,
+    the Figma export quantized to 256 colours (87 KB). Westworld only —
+    no other palette paints artwork.
+
+    Working status is Figma's #1877f2 rather than the shared green: the
+    stage and v2 panel blocks restate --sidebar-v2-status-working, which is
+    the one token the status dot, the pixel rain everywhere it appears and
+    the dev-server pulse read. The sidebar mark's eight arm colours come from
+    Figma 412:31179 through the --fork-brand-mark-* variables that
+    custom/SidebarBrandMark.tsx (fork-sidebar-chrome) fills from; the mark
+    became an inline SVG for exactly this, since an <img> cannot be
+    recoloured. Its outline stays black.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/custom/assets/westworld-stage.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
   watch:
     - apps/web/src/main.tsx
     - apps/web/src/hooks/useTheme.ts
     - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/src/components/ChatView.tsx
     - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
   verify:
@@ -1162,9 +1199,12 @@
 
 - id: fork-cool-darker-theme
   intent: >
-    Appearance offers Cool Darker as a deeper sibling of Cool Dark. Same
-    cool-gray family (barely cool, not blue-slate). Chat stage #141618
-    (well below Cool Dark's #202326); sidebar #181b1e; composer vessel
+    Appearance offers Glass as a deeper sibling of Westworld, and it is the
+    palette that carries the wallpaper vibrancy
+    (fork-cool-darker-sidebar-vibrancy) — hence the name. The label is Glass;
+    the storage id and fence ids stay "cool-darker", a persisted preference.
+    Same cool-gray family (barely cool, not blue-slate). Chat stage #141618
+    (well below Westworld's #1d2124); sidebar #181b1e; composer vessel
     #222629 (a step above the sidebar so the control row contrasts); prompt
     surface + context chips #282d30. Stage --card/--popover stay at #1c1f22, one
     step above the sidebar, so menus and popovers float over the panel rather
@@ -1172,10 +1212,10 @@
     shifts by the same per-channel amount — so the steps between surfaces are
     fixed and the floor is the only thing that travels. It sits 6 below its
     first cut, having gone 14 down and then 8 back up once the glass sidebar
-    made the stage read as a hole beside it. Must not alter Cool Dark, Neutral
+    made the stage read as a hole beside it. Must not alter Westworld, Neutral
     Dark, Neutral Darker, or default Dark fills.
 
-    Same fork palette overlay as Cool Dark (t3code:fork-theme = cool-darker,
+    Same fork palette overlay as Westworld (t3code:fork-theme = cool-darker,
     upstream theme = dark, data-fork-theme="cool-darker"). Palette tokens
     live in theme.custom.palettes.css (two-block stage + v2 panel). index.html
     pre-paints #141618.
@@ -1193,7 +1233,7 @@
 
 - id: fork-cool-darker-sidebar-vibrancy
   intent: >
-    Cool Darker — and only Cool Darker — shows the macOS desktop wallpaper
+    Glass (storage id cool-darker) — and only Glass — shows the macOS desktop wallpaper
     through its sidebar, the way Cursor does. Native NSVisualEffectView
     vibrancy ("fullscreen-ui", named once in fork/ForkGlassState.ts because the
     window's construction options and the runtime call must agree), not CSS:
@@ -1218,8 +1258,8 @@
     The payload carries only `enabled`. The restore colour is resolved in the
     main process from nativeTheme, never sent by the renderer: the renderer
     knows the palette it is switching to, not the window fill that belongs to
-    it, and an earlier cut shipped Cool Darker's stage colour on every call,
-    repainting the window for Light, default Dark, Cool Dark and both Neutral
+    it, and an earlier cut shipped Glass's stage colour on every call,
+    repainting the window for Light, default Dark, Westworld and both Neutral
     palettes.
 
     The material goes on the main window alone, not every BrowserWindow: the
@@ -1425,7 +1465,7 @@
     rgb(255 255 255 / 8%), which lands on the stage where the opaque token
     used to, so upstream's bg-accent/N variants keep their relative weight.
 
-    Must not alter Cool Dark, Neutral Dark, Neutral Darker, or default Dark,
+    Must not alter Westworld, Neutral Dark, Neutral Darker, or default Dark,
     and must not make the window transparent for any other palette.
   tier: 2
   files:
@@ -1448,10 +1488,10 @@
 
 - id: fork-neutral-dark-theme
   intent: >
-    Appearance offers Neutral Dark alongside System, Light, Dark, and Cool Dark.
+    Appearance offers Neutral Dark alongside System, Light, Dark, and Westworld.
     Neutral Dark is a true-neutral gray palette from Figma t3-fork node
     264:11816 — no cool undertone. Selecting it must not replace or alter
-    default Dark (#191919 / #1e1e1e) or Cool Dark (#202326 / #2b3033).
+    default Dark (#191919 / #1e1e1e) or Westworld (#1d2124 / #2b2f33).
 
     Neutral Dark reuses the fork palette overlay in custom/forkTheme.ts
     (t3code:fork-theme = neutral-dark, upstream theme = dark,
@@ -1461,7 +1501,7 @@
     row hover/selected as opaque white-8% lifts (#383838 / #3a3a3a), borders
     #3f3f3f. Accents stay monochrome (white primary/ring) with neutral muted
     text. theme.custom.palettes.css uses the same two-block stage + v2 panel
-    pattern as Cool Dark. index.html pre-paints #1f1f1f so the load flash matches.
+    pattern as Westworld. index.html pre-paints #1f1f1f so the load flash matches.
     The sidebar stays opaque solid — wallpaper glass belongs to Neutral Darker.
   tier: 2
   files:
@@ -1484,9 +1524,9 @@
     sidebar (#212121) so menus open at the same lift. Composer vessel sits a
     step above the sidebar at #252525 so the control row contrasts against the
     stage; prompt/chips lift from that vessel. Must not alter Neutral Dark,
-    Cool Dark, or default Dark fills.
+    Westworld, or default Dark fills.
 
-    Same fork palette overlay as Cool Dark / Neutral Dark
+    Same fork palette overlay as Westworld / Neutral Dark
     (t3code:fork-theme = neutral-darker, upstream theme = dark,
     data-fork-theme="neutral-darker"). theme.custom.palettes.css uses the
     two-block stage + v2 panel pattern. index.html pre-paints #1a1a1a.
@@ -1632,7 +1672,9 @@
     edge inset.
 
     The brand stays on the trailing edge and ends 16px from it. It is Figma
-    t3-fork 364:11245: the designer-exported 16px pixel mark, a 4px gap, then
+    t3-fork 364:11245: the 16px pixel mark (custom/SidebarBrandMark.tsx, an
+    inline SVG whose arm colours are --fork-brand-mark-* variables with the
+    design's colours as fallbacks, so a palette can recolour it), a 4px gap, then
     the 13x3 "no3y" wordmark at 8px and 40% sidebar-foreground. The link
     carries its own display gate, hidden below 48rem and a flex row above,
     because upstream 9885a845c deleted the .sidebar-brand stylesheet rule that
@@ -1643,7 +1685,7 @@
     rows; Projects remains a static label whose trailing sort and filter
     buttons own the sort order and the scope / group-by menu.
     Foreground, hover, pill, and focus treatments resolve through sidebar
-    tokens so the flat header remains legible in Light, Dark, and Cool Dark.
+    tokens so the flat header remains legible in Light, Dark, and Westworld.
 
     The sidebar no longer carries a channel cue. The composer send button and
     standalone auth screen retain the fork's designer-supplied Dev dither in
@@ -1694,7 +1736,7 @@
     - apps/web/src/custom/sidebarV2ProjectSort.ts
     - apps/web/src/custom/useScrollGutterWidth.ts
     - apps/web/src/custom/SidebarStageDitherArt.tsx
-    - apps/web/src/custom/assets/sidebar-brand-mark.svg
+    - apps/web/src/custom/SidebarBrandMark.tsx
     - apps/web/src/custom/SidebarBrandWordmark.tsx
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
   shadows: []
@@ -2225,7 +2267,7 @@
     context-usage meter carries
     upstream's compact action (#8144) in the readout slot.
     Default-dark context chips are Figma 322:6316's white 12% wash (hover
-    17%), the pair the Cool Darker glass tier already uses; the other
+    17%), the pair the Glass glass tier already uses; the other
     palettes keep their own opaque tints. The PR chip is the exception: its
     glyph and number keep upstream's state ink (emerald open, violet merged,
     red closed — the sidebar card's PR badge colours) instead of the white
@@ -2832,7 +2874,7 @@
     tokens over hard-coded values, and states which scope it chose. The same
     guard test pins that wording too.
 
-    Under Cool Darker's wallpaper glass the panel and the layers rail paint
+    Under Glass's wallpaper glass the panel and the layers rail paint
     nothing and their fields become white washes — see
     fork-cool-darker-sidebar-vibrancy, which owns those overrides in
     theme.custom.palettes.css. Only --fork-design-canvas stays opaque there: it
@@ -3031,7 +3073,7 @@
     translucent --popover tint under a 10% contrast border. Layering the
     palette's own tokens keeps the value in step with every palette and
     opaque (the stage always is), and the backdrop blur goes with nothing
-    left to see through. Under Cool Darker glass (theme.custom.palettes.css)
+    left to see through. Under Glass glass (theme.custom.palettes.css)
     the composer is alphas over a wallpaper-lit stage, so the same two
     alphas there stand on --fork-popup-glass-floor — the stage as it reads
     on screen, measured, opaque — instead of the bare --background tint;
@@ -3047,7 +3089,7 @@
     a selected or checked row) instead of --accent: the fork palettes make
     --accent an opaque grey that is the popup's own fill on the Cool
     palettes (hover vanished) and a bluish slab on the wallpaper-tinted
-    floor under Cool Darker glass, and it never matched the branch
+    floor under Glass glass, and it never matched the branch
     picker's "current" row. An alpha lifts whatever the popup paints.
 
     One carve-out, owned by sidebar-v2-project-grouping: the project
@@ -3280,7 +3322,7 @@
 - id: fork-changed-files-card
   intent: >
     The chat-column changed-files card uses the fork dark surface ladder
-    instead of upstream's translucent dark:bg-input/32 wash. Cool Dark's
+    instead of upstream's translucent dark:bg-input/32 wash. Westworld's
     --input is neutral #3f3f3f, so that wash never lands on the cool opaque
     card/secondary fills; under the fork marker the card and sticky header
     paint var(--card), an 8px radius, and border-color var(--fork-composer-
@@ -3400,7 +3442,7 @@
     visibility change would break them the same way.
 
     Why it matters here and not upstream: over an opaque window a z-index -1
-    park is invisible. Under Cool Darker the body is transparent and the
+    park is invisible. Under Glass the body is transparent and the
     stage and sidebar are 85–95% alpha, so each agent click, evaluate or
     snapshot from a background thread showed that thread's page through the
     chat for the length of the call, read by the user as random opacity
