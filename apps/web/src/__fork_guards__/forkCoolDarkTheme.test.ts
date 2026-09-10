@@ -208,9 +208,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(card?.body).toMatch(/overflow:\s*clip/u);
   });
 
-  it("paints the new-agent art across the card while the draft is empty", () => {
-    // Figma 416:7811 at 30% under the blue wash and the #28497b halo, keyed on
-    // the stamp ChatView sets for exactly the draft-hero state.
+  it("lifts the art to 30% under the wash and halo while the draft is empty", () => {
+    // Same image, keyed on the stamp ChatView sets for exactly the draft-hero
+    // state: 30% under the blue wash and the #28497b halo behind the composer.
     const chatView = readSibling("../components/ChatView.tsx");
     expect(chatView).toContain("data-fork-stage-hero={isDraftHeroState || undefined}");
     expect(
@@ -224,10 +224,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
         '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before',
       ),
     );
-    expect(art?.body).toContain('url("./custom/assets/westworld-hero.png")');
-    expect(art?.body).toMatch(/background-size:\s*cover/u);
     expect(art?.body).toMatch(/opacity:\s*0\.3/u);
-    expect(art?.body).toMatch(/transform:\s*none/u);
     const wash = rules.find((rule) =>
       rule.selector.endsWith(
         '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::after',
@@ -237,9 +234,6 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(wash?.body).toContain("rgb(24 119 242 / 10%)");
     expect(wash?.body).toContain("rgb(40 73 123)");
     expect(wash?.body).toContain("z-index: -1");
-    // No other palette takes the artwork.
-    const heroRules = cssRules(theme).filter((rule) => rule.body.includes("westworld-hero.png"));
-    expect(heroRules.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR))).toBe(true);
   });
 
   it("paints the send button Figma blue and rounds the header pills to 8px", () => {
@@ -255,10 +249,11 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(blockFor(theme, COOL_STAGE)).toContain("--fork-pill-border: #333333");
   });
 
-  it("hangs the Figma portrait off the chat column's right edge, behind the composer", () => {
-    // Figma 412:31131: 40% opacity, height-fitted, 42% of its width past the
-    // right edge. The wrapper it paints on must already be positioned in
-    // ChatView, and must be isolated so z-index -1 stays above the root fill.
+  it("paints the stage art faintly behind started threads", () => {
+    // Figma 416:7811 covers the card in every thread state; a started thread
+    // gets it at 10% with no wash so the transcript reads over a trace of it.
+    // The wrapper it paints on must already be positioned in ChatView, and
+    // must be isolated so z-index -1 stays above the root fill.
     const chatView = readSibling("../components/ChatView.tsx");
     expect(chatView).toMatch(
       /className="relative flex min-h-0 min-w-0 flex-1 flex-col"[\s\S]{0,900}data-chat-workspace-drop-target="true"/u,
@@ -267,7 +262,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-stage.png", import.meta.url)),
       ),
-    ).toBe(true);
+    ).toBe(false);
     const rules = cssRules(theme).filter((rule) => rule.selector.includes(COOL_STAGE_SELECTOR));
     const isolate = rules.find(
       (rule) =>
@@ -278,19 +273,19 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const art = rules.find((rule) =>
       rule.selector.endsWith('[data-chat-workspace-drop-target="true"]::before'),
     );
-    expect(art?.body).toContain('url("./custom/assets/westworld-stage.png")');
+    expect(art?.body).toContain('url("./custom/assets/westworld-hero.png")');
     expect(art?.body).toContain("z-index: -1");
-    expect(art?.body).toContain("opacity: 0.4");
-    expect(art?.body).toContain("transform: translateX(42%)");
-    expect(art?.body).toContain("aspect-ratio: 2404 / 2006");
-    // The composer backing must not slab over the portrait.
+    expect(art?.body).toMatch(/background-size:\s*cover/u);
+    expect(art?.body).toMatch(/opacity:\s*0\.1;/u);
+    // The composer backing must not slab over the art.
     const backing = rules.find((rule) =>
       rule.selector.endsWith('[data-chat-composer-overlay="true"]'),
     );
     expect(backing?.body).toMatch(/background:\s*none/u);
-    // No other palette takes the artwork.
-    const artRules = cssRules(theme).filter((rule) => rule.body.includes("westworld-stage.png"));
+    // No other palette takes the artwork, and the old right-hung portrait is gone.
+    const artRules = cssRules(theme).filter((rule) => rule.body.includes("westworld-hero.png"));
     expect(artRules.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR))).toBe(true);
+    expect(theme).not.toContain("westworld-stage.png");
   });
 
   it("turns working blue and recolours the brand mark's arms", () => {

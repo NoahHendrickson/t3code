@@ -1173,21 +1173,20 @@
     portaled, so the clip trims only the art and the docked composer's
     corners.
 
-    Two artworks, both Westworld-only. On a thread the card carries the Figma
-    406:26539 portrait (layer 412:31131, 40% opacity) hung off its right edge
-    with 42% of the image past the edge and the height fitted to the column,
-    as a ::before on the wrapper. While a draft has no messages ChatView
-    stamps data-fork-stage-hero on the wrapper (the same isDraftHeroState that
-    centres the composer, see fork-new-agent-draft) and the card instead
-    shows Figma 416:7408's new-agent art: layer 416:7811 at 30% covering the
-    card (cover, bottom-anchored, the figure on the right third), under a
-    left-to-right rgb(24 119 242) 40% → 10% wash and a #28497b radial halo
-    behind the composer for legibility — the ::before re-targeted plus a
-    ::after, both at z-index -1. The composer backing gradient paints nothing
-    under Westworld so the art runs on behind the vessel as drawn; the cutoff
-    mask already ends the transcript above it. Assets at
-    custom/assets/westworld-stage.png (87 KB) and westworld-hero.png (192 KB),
-    both the Figma exports quantized to 256 colours.
+    One artwork, Westworld-only, at two strengths. Figma 416:7408's dither
+    portrait (layer 416:7811) covers the card as a ::before on the wrapper
+    (cover, bottom-anchored, the figure on the right third). While a draft
+    has no messages ChatView stamps data-fork-stage-hero on the wrapper (the
+    same isDraftHeroState that centres the composer, see fork-new-agent-draft)
+    and the art shows at 30% under a left-to-right rgb(24 119 242) 40% → 10%
+    wash and a #28497b radial halo behind the composer for legibility (a
+    ::after, both at z-index -1). Once the thread has started the same image
+    drops to 10% with no wash, so the transcript reads over a faint trace of
+    the art rather than a second picture. The composer backing gradient
+    paints nothing under Westworld so the art runs on behind the vessel as
+    drawn; the cutoff mask already ends the transcript above it. Asset at
+    custom/assets/westworld-hero.png, the Figma export quantized to 256
+    colours (192 KB).
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
@@ -1200,7 +1199,6 @@
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
-    - apps/web/src/custom/assets/westworld-stage.png
     - apps/web/src/custom/assets/westworld-hero.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css

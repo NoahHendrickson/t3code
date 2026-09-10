@@ -136,60 +136,44 @@
   overflow: clip;
 }
 
-/* Thread artwork — Figma 406:26539 paints a dithered portrait (layer
-   412:31131, 40% opacity) into the chat column, anchored to its right edge
-   with 42% of the image running past it and its height filling the column.
-   The pseudo-element reproduces that geometry from the column's own height:
-   `aspect-ratio` gives it the image's width and the translate hangs the same
-   fraction off the right edge at every window size, while the card's
-   overflow clip removes the rest. Static image, static opacity: nothing here
-   repaints on its own.
+/* Stage artwork — Figma 416:7408 paints a dithered portrait (layer 416:7811,
+   "doloresbluepurpdither") across the whole card. One image, two strengths:
+   30% while a draft has no messages, under a left-to-right blue wash
+   (rgb(24 119 242), 40% → 10%) and a blurred #28497b ellipse behind the
+   centred composer so the prompt stays legible over the dither; 10% and no
+   wash once the thread has started, so the transcript reads over a faint
+   trace of the same art rather than a second picture. ChatView stamps
+   data-fork-stage-hero on the column for exactly the draft-hero state (the
+   same isDraftHeroState that centres the composer), which is what flips the
+   strength and adds the wash.
 
-   The asset is the Figma export quantized to 256 colours (a dither has ~3k
-   distinct colours, all anti-aliasing) — 87 KB against 1.3 MB, with no pixel
-   more than 12 levels off. */
+   `cover` at "10% 100%" lands the figure on the card's right third at the
+   drawn frame's proportions and keeps it bottom-anchored as the column
+   resizes; the card's overflow clip trims the rest. Static image, static
+   opacity: nothing here repaints on its own. The ellipse is a radial
+   gradient rather than a blurred element: a filter would composite a layer
+   on every resize, and the gradient falls off the same way at rest.
+
+   The asset is the Figma export quantized to 256 colours (a dither has ~1.7k
+   distinct colours, all anti-aliasing) — 192 KB against 684 KB, with no
+   channel more than 2 levels off. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
   position: absolute;
-  top: 0;
-  right: 0;
-  z-index: -1;
-  height: 100%;
-  aspect-ratio: 2404 / 2006;
-  background-image: url("./custom/assets/westworld-stage.png");
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  opacity: 0.4;
-  transform: translateX(42%);
-  pointer-events: none;
-}
-
-/* New-agent artwork — Figma 416:7408 paints a second portrait (layer
-   416:7811, 30% opacity) across the whole card while the draft has no
-   messages, under a left-to-right blue wash (rgb(24 119 242), 40% → 10%) and
-   a blurred #28497b ellipse behind the composer so the prompt stays legible
-   over the dither. ChatView stamps data-fork-stage-hero on the column for
-   exactly the draft-hero state, so the thread portrait above yields to this
-   one and comes back on the first send. `cover` at "10% 100%" lands the
-   figure on the card's right third at the drawn frame's proportions and
-   keeps it bottom-anchored as the column resizes. The ellipse is a radial
-   gradient rather than a blurred element: a filter would composite a layer
-   on every resize, and the gradient falls off the same way at rest.
-
-   Same quantization as the thread portrait: 256 colours, 192 KB against
-   684 KB, no channel more than 2 levels off. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-  [data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before {
   inset: 0;
-  width: 100%;
-  height: 100%;
-  aspect-ratio: auto;
+  z-index: -1;
   background-image: url("./custom/assets/westworld-hero.png");
   background-size: cover;
   background-position: 10% 100%;
+  background-repeat: no-repeat;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before {
   opacity: 0.3;
-  transform: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
