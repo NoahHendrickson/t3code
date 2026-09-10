@@ -48,15 +48,17 @@
   --fork-pill-border: #333333;
   --fork-pill-fg: #e8e8e8;
   --fork-pill-hover: #333438;
-  /* Vessel and chips share the drawn #393f44; the prompt surface sits just
-     under the stage behind the drawn white 24% hairline. */
-  --fork-composer-vessel-bg: #393f44;
-  --fork-composer-bg: #24282b;
-  --fork-composer-border: rgb(255 255 255 / 24%);
+  /* The composer is glass over the stage art (Figma 416:8420): vessel and
+     chips are the drawn rgb(47 47 47) at 50% and the prompt surface
+     rgb(36 40 43) at 80% behind a white 16% hairline, with the blur declared
+     below. Translucent on purpose — the one palette where the fork's
+     opaque-composer rule yields, because here the backdrop is the picture. */
+  --fork-composer-vessel-bg: rgb(47 47 47 / 50%);
+  --fork-composer-bg: rgb(36 40 43 / 80%);
+  --fork-composer-border: rgb(255 255 255 / 16%);
   --fork-composer-border-focus: #7d848b;
-  /* Opaque match of the vessel — see default-dark note. */
-  --fork-context-chip-bg: #393f44;
-  --fork-context-chip-bg-hover: #434a50;
+  --fork-context-chip-bg: rgb(47 47 47 / 50%);
+  --fork-context-chip-bg-hover: rgb(47 47 47 / 68%);
   /* Working is Figma's #1877f2 here, not the green every other dark palette
      uses: the status dot, the pixel rain (sidebar cards, the composer
      monitoring pill, the spawn row, the transcript) and the dev-server pulse
@@ -155,32 +157,28 @@
   overflow: clip;
 }
 
-/* Stage artwork — Figma 416:7408 paints a dithered portrait (layer 416:7811,
-   "doloresbluepurpdither") across the whole card. One image, two strengths:
-   30% while a draft has no messages, under a left-to-right blue wash
-   (rgb(24 119 242), 40% → 10%) and a blurred #28497b ellipse behind the
-   centred composer so the prompt stays legible over the dither; 10% and no
-   wash once the thread has started, so the transcript reads over a faint
-   trace of the same art rather than a second picture. ChatView stamps
-   data-fork-stage-hero on the column for exactly the draft-hero state (the
-   same isDraftHeroState that centres the composer), which is what flips the
-   strength and adds the wash.
+/* Stage artwork — Figma 416:8420 paints a blue dithered portrait (layer
+   421:12528, "doloresbluedither4") across the whole card at full strength
+   under a left-to-right blue wash (rgb(24 119 242), 40% → 10%); the glass
+   composer below carries its own legibility, so there is no halo. One image,
+   two strengths: 100% while a draft has no messages, 10% and no wash once
+   the thread has started, so the transcript reads over a faint trace of the
+   same art rather than a second picture. ChatView stamps data-fork-stage-hero
+   on the column for exactly the draft-hero state (the same isDraftHeroState
+   that centres the composer), which is what flips the strength and the wash.
 
-   `cover` at "10% 100%" lands the figure on the card's right third at the
-   drawn frame's proportions and keeps it bottom-anchored as the column
-   resizes; the card's overflow clip trims the rest. Static image, static
-   opacity at rest: the only motion is a one-shot 400ms opacity ease on the
-   first send, the same clock as the composer's slide and fold
-   (draftHeroTransition shadow, theme.custom.css), so the art dims and the
-   wash lifts while the composer travels rather than cutting under it. The
-   wash is always painted and only its opacity moves, since a pseudo-element
-   that appears cannot fade. The ellipse is a radial gradient rather than a
-   blurred element: a filter would composite a layer on every resize, and
-   the gradient falls off the same way at rest.
+   `cover` at "66% 50%" reproduces the drawn crop: the frame places the
+   16:9 image 621px left of a 945px card, so the visible window is centred
+   on 58% of the image and the figure lands on the card's right third; the
+   card's overflow clip trims the rest. Static image, static opacity at rest:
+   the only motion is a one-shot 400ms opacity ease on the first send, the
+   same clock as the composer's slide and fold (draftHeroTransition shadow,
+   theme.custom.css), so the art dims and the wash lifts while the composer
+   travels rather than cutting under it. The wash is always painted and only
+   its opacity moves, since a pseudo-element that appears cannot fade.
 
-   The asset is the Figma export quantized to 256 colours (a dither has ~1.7k
-   distinct colours, all anti-aliasing) — 192 KB against 684 KB, with no
-   channel more than 2 levels off. */
+   The asset is the Figma export quantized to 256 colours (octree) — 171 KB
+   against 1.3 MB, with no channel more than 14 levels off. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
@@ -189,7 +187,7 @@
   z-index: -1;
   background-image: url("./custom/assets/westworld-hero.png");
   background-size: cover;
-  background-position: 10% 100%;
+  background-position: 66% 50%;
   background-repeat: no-repeat;
   opacity: 0.1;
   pointer-events: none;
@@ -204,20 +202,13 @@
   z-index: -1;
   pointer-events: none;
   opacity: 0;
-  background:
-    radial-gradient(
-      ellipse 52% 24% at 48.5% 51%,
-      rgb(40 73 123) 0%,
-      rgb(40 73 123 / 70%) 55%,
-      transparent 100%
-    ),
-    linear-gradient(to right, rgb(24 119 242 / 40%), rgb(24 119 242 / 10%));
+  background: linear-gradient(to right, rgb(24 119 242 / 40%), rgb(24 119 242 / 10%));
   transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before {
-  opacity: 0.3;
+  opacity: 1;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
@@ -232,6 +223,29 @@
     [data-chat-workspace-drop-target="true"]::after {
     transition: none;
   }
+}
+
+/* Glass composer — Figma 416:8420 draws the vessel and the context chips as
+   rgb(47 47 47) at 50% with a backdrop blur (16px on the vessel, 4px on the
+   chips) over the stage art. This is the fork's one deliberate exception to
+   its no-backdrop-blur composer: everywhere else the composer's backdrop is
+   its own opaque vessel and blurring a uniform solid is pure GPU cost, but
+   here the backdrop is the picture and the blur is what keeps the prompt
+   readable over a dither. The layer is static at rest and only re-blurs
+   while the composer slides on the first send. Palette-scoped, so Glass's
+   own vibrancy rules (which must keep filters out of the composer) never see
+   it. Under design-mode canvas the blur is inert and the 50% fill carries. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-vessel] {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 /* The composer's backing gradient (theme.custom.css,

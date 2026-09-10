@@ -1156,9 +1156,15 @@
     Active / selected rows and the control surface are #333438 (the drawn
     active row), row hover #2e2f34, menus and popovers #303137 (one step
     above the surface), borders #33343a, muted text #8a8a8a, primary
-    #fcfcf5. Composer vessel and context chips are the drawn #393f44; the
-    prompt surface sits just under the stage at #24282b behind a white 24%
-    hairline so the typing area reads as a well cut into the vessel. Send is
+    #fcfcf5. The composer is glass over the art (Figma 416:8420): vessel and
+    context chips are rgb(47 47 47) at 50% with a backdrop blur (16px vessel,
+    4px chips), the prompt surface rgb(36 40 43) at 80% behind a white 16%
+    hairline. This is the fork's one deliberate exception to its
+    no-backdrop-blur composer — everywhere else the backdrop is the vessel's
+    own opaque fill and a blur is pure GPU cost; here the backdrop is the
+    picture and the blur is what keeps the prompt readable over a dither. The
+    rules are palette-scoped so Glass's vibrancy guard, which must keep
+    filters out of the composer, never sees them. Send is
     the one saturated control (#1877f2, white glyph — the same blue as the
     working token), declared as a palette-scoped rule over the flat white
     send in theme.custom.css. Header split pills round to 8px with the drawn
@@ -1179,16 +1185,17 @@
     portaled, so the clip trims only the art and the docked composer's
     corners.
 
-    One artwork, Westworld-only, at two strengths. Figma 416:7408's dither
-    portrait (layer 416:7811) covers the card as a ::before on the wrapper
-    (cover, bottom-anchored, the figure on the right third). While a draft
-    has no messages ChatView stamps data-fork-stage-hero on the wrapper (the
-    same isDraftHeroState that centres the composer, see fork-new-agent-draft)
-    and the art shows at 30% under a left-to-right rgb(24 119 242) 40% → 10%
-    wash and a #28497b radial halo behind the composer for legibility (a
-    ::after, both at z-index -1). Once the thread has started the same image
-    drops to 10% with no wash, so the transcript reads over a faint trace of
-    the art rather than a second picture. Both changes ease over 400ms on the
+    One artwork, Westworld-only, at two strengths. Figma 416:8420's blue
+    dither portrait (layer 421:12528) covers the card as a ::before on the
+    wrapper (cover at 66% 50%, the drawn crop: the figure on the card's right
+    third). While a draft has no messages ChatView stamps data-fork-stage-hero
+    on the wrapper (the same isDraftHeroState that centres the composer, see
+    fork-new-agent-draft) and the art shows at full strength under a
+    left-to-right rgb(24 119 242) 40% → 10% wash (a ::after, both at z-index
+    -1); the glass composer carries its own legibility, so there is no halo.
+    Once the thread has started the same image drops to 10% with no wash, so
+    the transcript reads over a faint trace of the art rather than a second
+    picture. Both changes ease over 400ms on the
     first send — the wash is always painted and only its opacity moves — on
     the same clock and curve as the composer's slide and fold
     (fork-new-agent-draft's draftHeroTransition shadow), so the art dims while
@@ -1196,7 +1203,7 @@
     paints nothing under Westworld so the art runs on behind the vessel as
     drawn; the cutoff mask already ends the transcript above it. Asset at
     custom/assets/westworld-hero.png, the Figma export quantized to 256
-    colours (192 KB).
+    colours (171 KB).
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is

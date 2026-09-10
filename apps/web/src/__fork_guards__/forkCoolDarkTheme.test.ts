@@ -177,17 +177,38 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(panel).toContain("--sidebar: #26272c");
     expect(panel).toContain("--sidebar-stage-fade: #26272c");
     expect(panel).toContain("--sidebar-border: #33343a");
-    // The vessel and chips lift to the drawn #393f44; the prompt surface sits
-    // just under the stage behind a white 24% hairline.
-    expect(stage).toContain("--fork-composer-vessel-bg: #393f44");
-    expect(stage).toContain("--fork-composer-bg: #24282b");
-    expect(stage).toContain("--fork-composer-border: rgb(255 255 255 / 24%)");
-    expect(relativeLuminance(declarationHex(stage, "--fork-composer-vessel-bg"))).toBeGreaterThan(
-      relativeLuminance(declarationHex(stage, "--background")),
+    // Figma 416:8420: the composer is glass over the art — vessel and chips
+    // rgb(47 47 47) at 50%, prompt surface rgb(36 40 43) at 80% behind a
+    // white 16% hairline.
+    expect(stage).toContain("--fork-composer-vessel-bg: rgb(47 47 47 / 50%)");
+    expect(stage).toContain("--fork-composer-bg: rgb(36 40 43 / 80%)");
+    expect(stage).toContain("--fork-composer-border: rgb(255 255 255 / 16%)");
+  });
+
+  it("blurs the glass composer over the art, and only there", () => {
+    // The fork's one deliberate backdrop-blur exception: 16px on the vessel,
+    // 4px on the context chips, both scoped to the palette so Glass's
+    // no-filter rules never see them.
+    const rules = cssRules(theme).filter((rule) => rule.selector.includes(COOL_STAGE_SELECTOR));
+    const vessel = rules.find((rule) => rule.selector.endsWith("[data-fork-composer-vessel]"));
+    expect(vessel?.body).toMatch(/backdrop-filter:\s*blur\(16px\)/u);
+    expect(vessel?.body).toContain("-webkit-backdrop-filter: blur(16px)");
+    const chips = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.body.includes("backdrop-filter"),
     );
-    expect(relativeLuminance(declarationHex(stage, "--fork-composer-bg"))).toBeLessThan(
-      relativeLuminance(declarationHex(stage, "--fork-composer-vessel-bg")),
+    expect(chips?.body).toMatch(/backdrop-filter:\s*blur\(4px\)/u);
+    const blurred = cssRules(theme).filter(
+      (rule) =>
+        /backdrop-filter:\s*blur\(/u.test(rule.body) &&
+        (rule.selector.includes("[data-fork-composer-vessel]") ||
+          rule.selector.includes("[data-fork-composer-context-row]")),
     );
+    expect(
+      blurred.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR)),
+      "no other fork palette blurs the composer",
+    ).toBe(true);
   });
 
   it("draws no seam between the panel and the stage", () => {
@@ -224,9 +245,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(card?.body).toMatch(/overflow:\s*clip/u);
   });
 
-  it("lifts the art to 30% under the wash and halo while the draft is empty", () => {
+  it("shows the art at full strength under the wash while the draft is empty", () => {
     // Same image, keyed on the stamp ChatView sets for exactly the draft-hero
-    // state: 30% under the blue wash and the #28497b halo behind the composer.
+    // state: 100% under the blue wash; the glass composer carries legibility.
     const chatView = readSibling("../components/ChatView.tsx");
     expect(chatView).toContain("data-fork-stage-hero={isDraftHeroState || undefined}");
     expect(
@@ -240,7 +261,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
         '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before',
       ),
     );
-    expect(art?.body).toMatch(/opacity:\s*0\.3/u);
+    expect(art?.body).toMatch(/opacity:\s*1;/u);
     // The wash is always painted at opacity 0 and lifted by the stamp, so it
     // can fade on the same 400ms clock as the composer's slide and fold.
     const wash = rules.find((rule) =>
@@ -248,7 +269,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
     expect(wash?.body).toContain("rgb(24 119 242 / 40%)");
     expect(wash?.body).toContain("rgb(24 119 242 / 10%)");
-    expect(wash?.body).toContain("rgb(40 73 123)");
+    expect(wash?.body).not.toContain("radial-gradient");
     expect(wash?.body).toContain("z-index: -1");
     expect(wash?.body).toMatch(/opacity:\s*0;/u);
     expect(wash?.body).toMatch(/transition:\s*opacity 400ms/u);
@@ -304,6 +325,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(art?.body).toContain('url("./custom/assets/westworld-hero.png")');
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/background-size:\s*cover/u);
+    expect(art?.body).toMatch(/background-position:\s*66% 50%/u);
     expect(art?.body).toMatch(/opacity:\s*0\.1;/u);
     // The composer backing must not slab over the art.
     const backing = rules.find((rule) =>
@@ -365,11 +387,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
   });
 
-  it("keeps Westworld chips opaque and default dark chips on the Figma white wash", () => {
-    // Westworld chips share the vessel's RGB but stay opaque: design-mode
-    // canvas transforms <body>, which disables backdrop-filter on descendants.
-    // Default dark follows Figma 322:6316 — a white 12% wash that lifts off
-    // any dark stage rather than sinking into it as a dark translucent fill did.
+  it("makes Westworld chips glass and keeps default dark chips on the Figma white wash", () => {
+    // Westworld chips are the drawn rgb(47 47 47) at 50% over the art (the
+    // blur is pinned above). Default dark follows Figma 322:6316 — a white
+    // 12% wash that lifts off any dark stage rather than sinking into it.
     const contextRules = cssRules(theme).filter((rule) =>
       rule.body.includes("--fork-context-chip-bg:"),
     );
@@ -377,15 +398,17 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const coolDark = contextRules.find((rule) => rule.selector === COOL_STAGE_SELECTOR);
     expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(255 255 255 / 12%)");
     expect(defaultDark?.body).toContain("--fork-context-chip-bg-hover: rgb(255 255 255 / 17%)");
-    expect(coolDark?.body).toContain("--fork-context-chip-bg: #393f44");
-    expect(coolDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
-    // The chips never carry a real filter. Matching the property outright used
-    // to say that, until the vibrancy block started declaring `none` on them
-    // and tripped its own guard. So match the VALUE: `none` is the point, and
-    // anything else is the regression — dead weight under design-mode canvas,
-    // and under native vibrancy a filter flattens the wallpaper it sits on.
+    expect(coolDark?.body).toContain("--fork-context-chip-bg: rgb(47 47 47 / 50%)");
+    // Outside Westworld the chips never carry a real filter: under native
+    // vibrancy a filter flattens the wallpaper it sits on, and under
+    // design-mode canvas it is dead weight. Match the VALUE, since the
+    // vibrancy block declares `none` on them deliberately.
     const chipFilters = cssRules(theme)
-      .filter((rule) => rule.selector.includes("[data-fork-composer-context-row]"))
+      .filter(
+        (rule) =>
+          rule.selector.includes("[data-fork-composer-context-row]") &&
+          !rule.selector.includes(COOL_STAGE_SELECTOR),
+      )
       .flatMap((rule) =>
         [...rule.body.matchAll(/(?:-webkit-)?backdrop-filter:\s*([^;]+);/gu)].map((match) => ({
           selector: rule.selector,
