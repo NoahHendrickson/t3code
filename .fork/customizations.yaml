@@ -1156,20 +1156,24 @@
     Active / selected rows and the control surface are #333438 (the drawn
     active row), row hover #2e2f34, menus and popovers #303137 (one step
     above the surface), borders #33343a, muted text #8a8a8a, primary
-    #fcfcf5. The composer is glass over the art (Figma 416:8420): vessel and
-    context chips are rgb(47 47 47) at 50% with a backdrop blur (16px vessel,
-    4px chips), the prompt surface rgb(36 40 43) at 80% behind a white 16%
-    hairline. This is the fork's one deliberate exception to its
-    no-backdrop-blur composer — everywhere else the backdrop is the vessel's
-    own opaque fill and a blur is pure GPU cost; here the backdrop is the
-    picture and the blur is what keeps the prompt readable over a dither. The
-    rules are palette-scoped so Glass's vibrancy guard, which must keep
-    filters out of the composer, never sees them. Send is
-    the one saturated control (#1877f2, white glyph — the same blue as the
-    working token), declared as a palette-scoped rule over the flat white
-    send in theme.custom.css. Header split pills round to 8px with the drawn
-    #333333 outline. index.html pre-paints #26272c so the load flash matches
-    the stage.
+    #fcfcf5. The composer is glass over the art, in two frames. A started
+    thread (Figma 423:13864) is white glass: vessel white 8% with a 20px
+    backdrop blur, context chips white 12% at 18px, an opaque #1f1f1f prompt
+    surface behind a white 12% hairline, and the flat white send. The
+    new-agent draft (Figma 416:8420) is dark glass: vessel and chips
+    rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind a white
+    16% hairline, and a #1877f2 send (the working token's blue). The thread
+    values live on the palette root; the draft restates the same tokens —
+    fills plus the two blur-radius tokens — on the draft-hero overlay, which
+    every composer element descends from, so one set of rules resolves either
+    frame and the send rule is scoped to that overlay. The blur is the fork's
+    one deliberate exception to its no-backdrop-blur composer — everywhere
+    else the backdrop is the vessel's own opaque fill and a blur is pure GPU
+    cost; here the backdrop is the picture and the blur is what keeps the
+    prompt readable over a dither. Palette-scoped, so Glass's vibrancy guard,
+    which must keep filters out of the composer, never sees them. Header
+    split pills round to 8px with the drawn #333333 outline. index.html
+    pre-paints #26272c so the load flash matches the stage.
 
     The chat column is the stage card (Figma "Frame 56"): 8px in from the
     header and the edges, 8px radius, a 1px white 12% hairline and a
@@ -1185,25 +1189,28 @@
     portaled, so the clip trims only the art and the docked composer's
     corners.
 
-    One artwork, Westworld-only, at two strengths. Figma 416:8420's blue
-    dither portrait (layer 421:12528) covers the card as a ::before on the
-    wrapper (cover at 66% 50%, the drawn crop: the figure on the card's right
-    third). While a draft has no messages ChatView stamps data-fork-stage-hero
-    on the wrapper (the same isDraftHeroState that centres the composer, see
-    fork-new-agent-draft) and the art shows at full strength under a
-    left-to-right rgb(24 119 242) 40% → 10% wash (a ::after, both at z-index
-    -1); the glass composer carries its own legibility, so there is no halo.
-    Once the thread has started the same image drops to 10% with no wash, so
-    the transcript reads over a faint trace of the art rather than a second
-    picture. Both changes ease over 400ms on the
-    first send — the wash is always painted and only its opacity moves — on
+    Two artworks, Westworld-only, one per state, on the wrapper's two
+    pseudo-elements at z-index -1. The ::before is the started thread (Figma
+    423:13864, layer 424:14398): a dither texture with a blue-violet glow in
+    the lower right, anchored to the card's right edge and covered by height,
+    under a top-down fade from the surface colour (#26272c opaque at the top,
+    50% at 81%, clear at the bottom) so the transcript reads over plain stage
+    and the glow only rises behind the docked composer. The ::after is the
+    new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
+    full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover
+    at 66% 50% (the drawn crop, the figure on the card's right third); the
+    glass composer carries its own legibility, so there is no halo. ChatView
+    stamps data-fork-stage-hero on the wrapper for exactly the draft-hero
+    state (the same isDraftHeroState that centres the composer, see
+    fork-new-agent-draft), which swaps which pseudo-element is at opacity 1.
+    Both are always painted and only their opacity moves — a pseudo-element
+    that appears cannot fade — so the first send crossfades them over 400ms on
     the same clock and curve as the composer's slide and fold
-    (fork-new-agent-draft's draftHeroTransition shadow), so the art dims while
-    the composer travels instead of cutting under it. The composer backing gradient
-    paints nothing under Westworld so the art runs on behind the vessel as
-    drawn; the cutoff mask already ends the transcript above it. Asset at
-    custom/assets/westworld-hero.png, the Figma export quantized to 256
-    colours (171 KB).
+    (fork-new-agent-draft's draftHeroTransition shadow). The composer backing
+    gradient paints nothing under Westworld so the art runs on behind the
+    vessel as drawn; the cutoff mask already ends the transcript above it.
+    Assets at custom/assets/westworld-thread.png (169 KB) and
+    westworld-hero.png (171 KB), the Figma exports quantized to 256 colours.
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
@@ -1217,6 +1224,7 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/custom/assets/westworld-hero.png
+    - apps/web/src/custom/assets/westworld-thread.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
   watch:
