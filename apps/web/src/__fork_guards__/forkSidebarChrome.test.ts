@@ -291,6 +291,20 @@ describe("fork guard: fork-sidebar-chrome", () => {
     for (const coord of wordmarkCoords) {
       expect(coord[1]).toMatch(/^\d+$/u);
     }
+    // The cells themselves, row by row, as the designer's Union export draws
+    // them. A count of coordinates stayed green while the "3" glyph's middle
+    // cell sat one column right and the name read "no7y"; the grid is the
+    // artwork, so the guard has to spell it.
+    const cells = new Set(
+      [...wordmark.matchAll(/<rect height="1" width="1" x="(\d+)" y="(\d+)" \/>/gu)].map(
+        (m) => `${m[1]},${m[2]}`,
+      ),
+    );
+    const rows = ["##..#..##.#.#", "#.#..#.#...#.", "#.#.#...#.#.."];
+    const expected = new Set(
+      rows.flatMap((row, y) => [...row].flatMap((cell, x) => (cell === "#" ? [`${x},${y}`] : []))),
+    );
+    expect(cells).toEqual(expected);
   });
 
   it("keeps the flat header independent of identification mode and honors the pill", () => {
