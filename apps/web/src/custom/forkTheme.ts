@@ -32,7 +32,7 @@ const UPSTREAM_THEME_STORAGE_KEY = "t3code:theme";
 export const COOL_DARK_THEME = "cool-dark" as const;
 export const COOL_DARK_LABEL = "Westworld";
 /** Pre-paint / overscroll colour for Westworld — matches stage `--background`. */
-export const COOL_DARK_BACKGROUND = "#1d2124";
+export const COOL_DARK_BACKGROUND = "#26272c";
 
 export const COOL_DARKER_THEME = "cool-darker" as const;
 export const COOL_DARKER_LABEL = "Glass";

@@ -1118,7 +1118,7 @@
   intent: >
     Appearance offers Westworld as an optional palette alongside upstream's
     modular theme library. Westworld is a blue-black dark palette (barely
-    cool, not blue-slate) drawn in Figma t3-fork node 406:26539 that coexists
+    cool, not blue-slate) drawn in Figma t3-fork node 416:7408 that coexists
     with the default fork Dark — selecting it must not replace or alter Dark's
     #191919 / #1e1e1e fills.
 
@@ -1148,29 +1148,46 @@
     :root[data-fork].dark[data-fork-theme="cool-dark"] (stage) and the same
     selector plus [data-sidebar-version="v2"] (panel) — the doubled selector is
     required for the same upstream re-declaration reason as fork-surface-palette.
-    Stage #1d2124, sidebar panel #2b2f33 (panel above stage) with a 1px
-    #3c3f43 seam, selected rows / control surface / chip hover at #373b3f
-    (white 6% flattened), row hover #33373a, stage border #272b2e, muted text
-    #8a8a8a, primary #fcfcf5. The composer inverts the ladder: vessel #2b2f33
-    (the sidebar fill), prompt surface #161a1d sunk below the stage with a
-    #2b2f33 hairline, context chips #2b2f33. Send is the one saturated
-    control (#179ddb, white glyph), declared as a palette-scoped rule over the
-    flat white send in theme.custom.css. Header split pills round to 8px with
-    the drawn #333333 outline. index.html pre-paints #1d2124 so the load
-    flash matches the stage.
+    Stage, header and sidebar panel are one #26272c surface: the stage card
+    below, not a darker panel, is what separates the work from the chrome.
+    Active / selected rows and the control surface are #333438 (the drawn
+    active row), row hover #2e2f34, menus and popovers #303137 (one step
+    above the surface), borders #33343a, muted text #8a8a8a, primary
+    #fcfcf5. Composer vessel and context chips are the drawn #393f44; the
+    prompt surface sits just under the stage at #24282b behind a white 24%
+    hairline so the typing area reads as a well cut into the vessel. Send is
+    the one saturated control (#1877f2, white glyph — the same blue as the
+    working token), declared as a palette-scoped rule over the flat white
+    send in theme.custom.css. Header split pills round to 8px with the drawn
+    #333333 outline. index.html pre-paints #26272c so the load flash matches
+    the stage.
 
-    The chat column carries the Figma stage artwork (layer 412:31131, a
-    dithered portrait at 40% opacity) hung off its right edge with 42% of the
-    image past the edge and the height fitted to the column — the same
-    geometry at every window size. It is a ::before on ChatView's
-    [data-chat-workspace-drop-target] wrapper, the nearest element that is
-    already position:relative and holds exactly the transcript and composer,
-    isolated so z-index -1 sits above the root's opaque fill and below every
-    child. The composer backing gradient paints nothing under Westworld so
-    the portrait runs on behind the vessel as drawn; the cutoff mask already
-    ends the transcript above it. Asset at custom/assets/westworld-stage.png,
-    the Figma export quantized to 256 colours (87 KB). Westworld only —
-    no other palette paints artwork.
+    The chat column is the stage card (Figma "Frame 56"): 8px in from the
+    header and the edges, 8px radius, a 1px white 12% hairline and the drawn
+    stage drop shadow (1px 1px 8px black 40% plus 0 0 24px #141416 30%),
+    clipped to its corners. It is ChatView's [data-chat-workspace-drop-target]
+    wrapper — the nearest element that is already position:relative and
+    holds exactly the transcript and composer — isolated so the artwork's
+    z-index -1 sits above the root's opaque fill and below every child. The
+    right panel, when open, sits beside the card; menus and popovers are
+    portaled, so the clip trims only the art and the docked composer's
+    corners.
+
+    Two artworks, both Westworld-only. On a thread the card carries the Figma
+    406:26539 portrait (layer 412:31131, 40% opacity) hung off its right edge
+    with 42% of the image past the edge and the height fitted to the column,
+    as a ::before on the wrapper. While a draft has no messages ChatView
+    stamps data-fork-stage-hero on the wrapper (the same isDraftHeroState that
+    centres the composer, see fork-new-agent-draft) and the card instead
+    shows Figma 416:7408's new-agent art: layer 416:7811 at 30% covering the
+    card (cover, bottom-anchored, the figure on the right third), under a
+    left-to-right rgb(24 119 242) 40% → 10% wash and a #28497b radial halo
+    behind the composer for legibility — the ::before re-targeted plus a
+    ::after, both at z-index -1. The composer backing gradient paints nothing
+    under Westworld so the art runs on behind the vessel as drawn; the cutoff
+    mask already ends the transcript above it. Assets at
+    custom/assets/westworld-stage.png (87 KB) and westworld-hero.png (192 KB),
+    both the Figma exports quantized to 256 colours.
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
@@ -1184,6 +1201,7 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/custom/assets/westworld-stage.png
+    - apps/web/src/custom/assets/westworld-hero.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
   watch:
@@ -1204,7 +1222,7 @@
     (fork-cool-darker-sidebar-vibrancy) — hence the name. The label is Glass;
     the storage id and fence ids stay "cool-darker", a persisted preference.
     Same cool-gray family (barely cool, not blue-slate). Chat stage #141618
-    (well below Westworld's #1d2124); sidebar #181b1e; composer vessel
+    (well below Westworld's #26272c); sidebar #181b1e; composer vessel
     #222629 (a step above the sidebar so the control row contrasts); prompt
     surface + context chips #282d30. Stage --card/--popover stay at #1c1f22, one
     step above the sidebar, so menus and popovers float over the panel rather
@@ -1491,7 +1509,7 @@
     Appearance offers Neutral Dark alongside System, Light, Dark, and Westworld.
     Neutral Dark is a true-neutral gray palette from Figma t3-fork node
     264:11816 — no cool undertone. Selecting it must not replace or alter
-    default Dark (#191919 / #1e1e1e) or Westworld (#1d2124 / #2b2f33).
+    default Dark (#191919 / #1e1e1e) or Westworld (#26272c).
 
     Neutral Dark reuses the fork palette overlay in custom/forkTheme.ts
     (t3code:fork-theme = neutral-dark, upstream theme = dark,

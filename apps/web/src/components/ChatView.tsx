@@ -8397,6 +8397,11 @@ export default function ChatView(props: ChatViewProps) {
             style={{ "--fork-composer-inset": `${composerOverlayHeight}px` } as CSSProperties}
             /* fork:end fork-composer-shell */
             data-chat-workspace-drop-target="true"
+            /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+            // Westworld swaps the column's thread portrait for the new-agent
+            // art while the draft has no messages; its CSS keys on this stamp.
+            data-fork-stage-hero={isDraftHeroState || undefined}
+            /* fork:end fork-cool-dark-theme */
             onDragEnter={workspaceFileDropHandlers.onDragEnter}
             onDragOver={workspaceFileDropHandlers.onDragOver}
             onDragLeave={workspaceFileDropHandlers.onDragLeave}

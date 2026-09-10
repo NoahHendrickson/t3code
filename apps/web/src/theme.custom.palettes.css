@@ -6,55 +6,57 @@
 /* ---------------------------------------------------------------------------
    Westworld — see `.fork/customizations.yaml#fork-cool-dark-theme`.
 
-   Figma t3-fork node 406:26539. Blue-black stage #1d2124 under a lifted
-   #2b2f33 sidebar; rows and chips lift with white 6% flattened to #373b3f.
-   The composer inverts the ladder: the vessel is the sidebar's #2b2f33 and
-   the prompt surface sinks BELOW the stage to #161a1d, so the typing area
-   reads as a well cut into the vessel rather than a card floating on it.
-   Send is the one saturated control, Figma's #179ddb. Barely cool (B−R ≤ 7),
-   not blue-slate. Storage id stays "cool-dark": the key is a persisted
-   preference and the fences that carry it are named after it, so the label
-   changed and the id did not. Placed after the default dark surface / pill /
-   composer / context-chip tokens so Westworld wins on both specificity and
-   source order. Same two-block pattern (stage + v2 panel) for the upstream
-   re-declaration reason. Keyed on data-fork-theme so Dark and Westworld can
-   coexist; both still carry `.dark` for Tailwind. */
+   Figma t3-fork node 416:7408. One #26272c surface for the stage, the header
+   and the sidebar: what separates the work from the chrome is no longer a
+   darker panel but the stage card below — the chat column sits 8px inside
+   the surface behind a white 12% hairline and a soft shadow. Rows lift to
+   #333438; chips and the composer vessel sit at #393f44, with the prompt
+   surface just under the stage at #24282b behind a white 24% hairline so the
+   typing area reads as a well cut into the vessel. Send is the one saturated
+   control, Figma's #1877f2 — the same blue the working status token takes.
+   Barely cool (B−R ≤ 7), not blue-slate. Storage id stays "cool-dark": the
+   key is a persisted preference and the fences that carry it are named after
+   it, so the label changed and the id did not. Placed after the default dark
+   surface / pill / composer / context-chip tokens so Westworld wins on both
+   specificity and source order. Same two-block pattern (stage + v2 panel)
+   for the upstream re-declaration reason. Keyed on data-fork-theme so Dark
+   and Westworld can coexist; both still carry `.dark` for Tailwind. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] {
-  --background: #1d2124;
-  --app-chrome-background: #1d2124;
+  --background: #26272c;
+  --app-chrome-background: #26272c;
   --foreground: #e8e8e8;
-  --card: #2b2f33;
+  /* Menus and popovers float one step above the shared surface. */
+  --card: #303137;
   --card-foreground: #e8e8e8;
-  --popover: #2b2f33;
+  --popover: #303137;
   --popover-foreground: #e8e8e8;
   /* Figma's primary is a warm off-white, not pure white. */
   --primary: #fcfcf5;
-  --primary-foreground: #1d2124;
+  --primary-foreground: #26272c;
   --ring: #fcfcf5;
-  --secondary: #373b3f;
+  --secondary: #393f44;
   --secondary-foreground: #e8e8e8;
-  --muted: #373b3f;
+  --muted: #393f44;
   --muted-foreground: #8a8a8a;
-  --accent: #373b3f;
+  --accent: #393f44;
   --accent-foreground: #e8e8e8;
-  --border: #272b2e;
-  --input: #272b2e;
+  --border: #33343a;
+  --input: #33343a;
   --surface-grain: none;
   /* Header split pills: 8px corners and the drawn #333333 outline. */
   --fork-pill-radius: 8px;
   --fork-pill-border: #333333;
   --fork-pill-fg: #e8e8e8;
-  --fork-pill-hover: #373b3f;
-  /* Vessel matches the sidebar; the prompt surface sinks below the stage. The
-     drawn hairline is the vessel colour, so it only trims the well's edge. */
-  --fork-composer-vessel-bg: #2b2f33;
-  --fork-composer-bg: #161a1d;
-  --fork-composer-border: #2b2f33;
-  --fork-composer-border-focus: #4a4f54;
-  /* Opaque match of the vessel — see default-dark note. Hover is the same
-     white 6% lift the sidebar rows take. */
-  --fork-context-chip-bg: #2b2f33;
-  --fork-context-chip-bg-hover: #373b3f;
+  --fork-pill-hover: #333438;
+  /* Vessel and chips share the drawn #393f44; the prompt surface sits just
+     under the stage behind the drawn white 24% hairline. */
+  --fork-composer-vessel-bg: #393f44;
+  --fork-composer-bg: #24282b;
+  --fork-composer-border: rgb(255 255 255 / 24%);
+  --fork-composer-border-focus: #7d848b;
+  /* Opaque match of the vessel — see default-dark note. */
+  --fork-context-chip-bg: #393f44;
+  --fork-context-chip-bg-hover: #434a50;
   /* Working is Figma's #1877f2 here, not the green every other dark palette
      uses: the status dot, the pixel rain (sidebar cards, the composer
      monitoring pill, the spawn row, the transcript) and the dev-server pulse
@@ -76,28 +78,29 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-sidebar-version="v2"] {
-  --background: #2b2f33;
+  /* The panel is the stage's own surface: the card, not a darker panel,
+     separates the work from the chrome. */
+  --background: #26272c;
   --foreground: #e8e8e8;
-  --card: #2b2f33;
+  --card: #26272c;
   --card-foreground: #e8e8e8;
-  --sidebar: #2b2f33;
+  --sidebar: #26272c;
   --sidebar-foreground: #e8e8e8;
-  /* The one drawn seam: a 1px #3c3f43 line between panel and stage. */
-  --border: #3c3f43;
-  --sidebar-border: #3c3f43;
-  --sidebar-stage-fade: #2b2f33;
-  --muted: #373b3f;
-  --accent: #373b3f;
+  --border: #33343a;
+  --sidebar-border: #33343a;
+  --sidebar-stage-fade: #26272c;
+  --muted: #393f44;
+  --accent: #393f44;
   --accent-foreground: #e8e8e8;
   --muted-foreground: #8a8a8a;
   --sidebar-muted-foreground: #d5d7da;
   --fork-sidebar-card-title-receded: #b2b5ba;
-  /* white @ 6% over sidebar #2b2f33 — the Figma selected-card lift. Hover is
-     one step softer (white @ 4%) so selection still reads over a hovered row. */
-  --sidebar-control-surface: #373b3f;
-  --sidebar-row-hover: #33373a;
-  --sidebar-row-active: #373b3f;
-  --sidebar-row-selected: #373b3f;
+  /* Figma's active row is #333438 (white 6% over the surface, flattened);
+     hover is one step softer so selection still reads over a hovered row. */
+  --sidebar-control-surface: #333438;
+  --sidebar-row-hover: #2e2f34;
+  --sidebar-row-active: #333438;
+  --sidebar-row-selected: #333438;
   --sidebar-v2-status-working: #1877f2;
 }
 
@@ -106,35 +109,45 @@
    the palette attribute alone. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
-  background: #179ddb;
+  background: #1877f2;
   color: #ffffff;
 }
 
-/* Stage artwork — Figma 406:26539 paints a dithered portrait (layer
+/* Stage card — Figma 416:7408 "Frame 56": the chat column sits inside the
+   surface as a card, 8px in from the header and the edges, 8px radius, a
+   white 12% hairline and the drawn "stage drop shadow". It is the same
+   drop-target wrapper the artwork paints on: ChatView's root fills the inset
+   with an opaque bg-background, and this wrapper is the nearest element that
+   is already position:relative and holds exactly the transcript and the
+   composer (Figma's "Frame 56", under the header). The isolated stacking
+   context keeps the art's z-index -1 above the root's fill and below every
+   in-flow child; overflow clip trims the art and the docked composer to the
+   rounded corners (menus and popovers are portaled, so nothing interactive
+   is clipped). The right panel, when open, sits beside the card. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"] {
+  isolation: isolate;
+  margin: 8px;
+  border-radius: 8px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  box-shadow:
+    1px 1px 8px rgb(0 0 0 / 40%),
+    0 0 24px rgb(20 20 22 / 30%);
+  overflow: clip;
+}
+
+/* Thread artwork — Figma 406:26539 paints a dithered portrait (layer
    412:31131, 40% opacity) into the chat column, anchored to its right edge
    with 42% of the image running past it and its height filling the column.
    The pseudo-element reproduces that geometry from the column's own height:
    `aspect-ratio` gives it the image's width and the translate hangs the same
-   fraction off the right edge at every window size, while the column's
-   overflow-x clip removes the rest.
-
-   Painted on the drop-target wrapper rather than the inset: ChatView's root
-   fills the inset with an opaque bg-background, and this wrapper is the
-   nearest element that is already position:relative and holds exactly the
-   transcript and the composer (Figma's "Frame 56", under the header). It
-   gets an isolated stacking context so a z-index of -1 lands above the
-   root's fill and below every in-flow child — the transcript, the banners,
-   the composer — with nothing else re-ordered. Static image, static
-   opacity: nothing here repaints on its own.
+   fraction off the right edge at every window size, while the card's
+   overflow clip removes the rest. Static image, static opacity: nothing here
+   repaints on its own.
 
    The asset is the Figma export quantized to 256 colours (a dither has ~3k
    distinct colours, all anti-aliasing) — 87 KB against 1.3 MB, with no pixel
    more than 12 levels off. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-  [data-chat-workspace-drop-target="true"] {
-  isolation: isolate;
-}
-
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
@@ -152,6 +165,50 @@
   pointer-events: none;
 }
 
+/* New-agent artwork — Figma 416:7408 paints a second portrait (layer
+   416:7811, 30% opacity) across the whole card while the draft has no
+   messages, under a left-to-right blue wash (rgb(24 119 242), 40% → 10%) and
+   a blurred #28497b ellipse behind the composer so the prompt stays legible
+   over the dither. ChatView stamps data-fork-stage-hero on the column for
+   exactly the draft-hero state, so the thread portrait above yields to this
+   one and comes back on the first send. `cover` at "10% 100%" lands the
+   figure on the card's right third at the drawn frame's proportions and
+   keeps it bottom-anchored as the column resizes. The ellipse is a radial
+   gradient rather than a blurred element: a filter would composite a layer
+   on every resize, and the gradient falls off the same way at rest.
+
+   Same quantization as the thread portrait: 256 colours, 192 KB against
+   684 KB, no channel more than 2 levels off. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  background-image: url("./custom/assets/westworld-hero.png");
+  background-size: cover;
+  background-position: 10% 100%;
+  opacity: 0.3;
+  transform: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"][data-fork-stage-hero]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 52% 24% at 48.5% 51%,
+      rgb(40 73 123) 0%,
+      rgb(40 73 123 / 70%) 55%,
+      transparent 100%
+    ),
+    linear-gradient(to right, rgb(24 119 242 / 40%), rgb(24 119 242 / 10%));
+}
+
 /* The composer's backing gradient (theme.custom.css,
    [data-chat-composer-overlay]) would end the artwork in a slab of stage
    colour above the pills. The cutoff mask already stops the transcript before
@@ -167,7 +224,7 @@
 
    Deeper sibling of Westworld: same cool-gray family (B ≥ R, low chroma),
    pushed down. Storage id stays "cool-darker" for the same reason Westworld
-   keeps "cool-dark". Stage #141618 (well below Westworld's #1d2124); sidebar #181b1e;
+   keeps "cool-dark". Stage #141618 (well below Westworld's #26272c); sidebar #181b1e;
    composer vessel #222629 (a step above the sidebar so the control row
    contrasts); prompt/chips #282d30. Stage --card/--popover stay at #1c1f22, one
    step above the sidebar, so menus and popovers read as floating over the panel

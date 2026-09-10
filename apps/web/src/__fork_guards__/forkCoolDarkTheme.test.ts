@@ -5,7 +5,9 @@
  *
  * Westworld (storage id "cool-dark") is a selectable alternate dark palette.
  * Losing the preference wiring leaves the Appearance option as a dead label;
- * losing the CSS attribute selectors silently paints it with default Dark fills.
+ * losing the CSS attribute selectors silently paints it with default Dark
+ * fills, and losing the stage-card or hero-art rules quietly flattens the
+ * Figma 416:7408 layout back to a plain column.
  */
 
 import * as NodeFS from "node:fs";
@@ -169,20 +171,75 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const stage = blockFor(theme, COOL_STAGE);
     const panel = blockFor(theme, COOL_PANEL);
     expect(declarationHex(stage, "--background")).toBe(COOL_DARK_BACKGROUND);
-    expect(declarationHex(panel, "--background")).toBe("#2b2f33");
-    expect(panel).toContain("--sidebar: #2b2f33");
-    expect(panel).toContain("--sidebar-stage-fade: #2b2f33");
-    expect(panel).toContain("--sidebar-border: #3c3f43");
-    expect(relativeLuminance(declarationHex(panel, "--background"))).toBeGreaterThan(
+    // Figma 416:7408: the sidebar, header and stage are one #26272c surface;
+    // the stage card below, not a darker panel, separates work from chrome.
+    expect(declarationHex(panel, "--background")).toBe(COOL_DARK_BACKGROUND);
+    expect(panel).toContain("--sidebar: #26272c");
+    expect(panel).toContain("--sidebar-stage-fade: #26272c");
+    expect(panel).toContain("--sidebar-border: #33343a");
+    // The vessel and chips lift to the drawn #393f44; the prompt surface sits
+    // just under the stage behind a white 24% hairline.
+    expect(stage).toContain("--fork-composer-vessel-bg: #393f44");
+    expect(stage).toContain("--fork-composer-bg: #24282b");
+    expect(stage).toContain("--fork-composer-border: rgb(255 255 255 / 24%)");
+    expect(relativeLuminance(declarationHex(stage, "--fork-composer-vessel-bg"))).toBeGreaterThan(
       relativeLuminance(declarationHex(stage, "--background")),
     );
-    // Figma 406:26993: the vessel is the sidebar fill and the prompt surface
-    // sinks below the stage, a well cut into the vessel rather than a lift.
-    expect(stage).toContain("--fork-composer-vessel-bg: #2b2f33");
-    expect(stage).toContain("--fork-composer-bg: #161a1d");
     expect(relativeLuminance(declarationHex(stage, "--fork-composer-bg"))).toBeLessThan(
-      relativeLuminance(declarationHex(stage, "--background")),
+      relativeLuminance(declarationHex(stage, "--fork-composer-vessel-bg")),
     );
+  });
+
+  it("frames the chat column as the stage card", () => {
+    // Figma 416:7408 "Frame 56": 8px inset, 8px radius, white 12% hairline and
+    // the drawn stage drop shadow, on the same wrapper the artwork paints on.
+    const card = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes(COOL_STAGE_SELECTOR) &&
+        rule.selector.endsWith('[data-chat-workspace-drop-target="true"]') &&
+        rule.body.includes("isolation: isolate"),
+    );
+    expect(card?.body).toMatch(/margin:\s*8px/u);
+    expect(card?.body).toMatch(/border-radius:\s*8px/u);
+    expect(card?.body).toMatch(/border:\s*1px solid rgb\(255 255 255 \/ 12%\)/u);
+    expect(card?.body).toMatch(
+      /box-shadow:\s*1px 1px 8px rgb\(0 0 0 \/ 40%\),\s*0 0 24px rgb\(20 20 22 \/ 30%\)/u,
+    );
+    expect(card?.body).toMatch(/overflow:\s*clip/u);
+  });
+
+  it("paints the new-agent art across the card while the draft is empty", () => {
+    // Figma 416:7811 at 30% under the blue wash and the #28497b halo, keyed on
+    // the stamp ChatView sets for exactly the draft-hero state.
+    const chatView = readSibling("../components/ChatView.tsx");
+    expect(chatView).toContain("data-fork-stage-hero={isDraftHeroState || undefined}");
+    expect(
+      NodeFS.existsSync(
+        NodeURL.fileURLToPath(new URL("../custom/assets/westworld-hero.png", import.meta.url)),
+      ),
+    ).toBe(true);
+    const rules = cssRules(theme).filter((rule) => rule.selector.includes(COOL_STAGE_SELECTOR));
+    const art = rules.find((rule) =>
+      rule.selector.endsWith(
+        '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before',
+      ),
+    );
+    expect(art?.body).toContain('url("./custom/assets/westworld-hero.png")');
+    expect(art?.body).toMatch(/background-size:\s*cover/u);
+    expect(art?.body).toMatch(/opacity:\s*0\.3/u);
+    expect(art?.body).toMatch(/transform:\s*none/u);
+    const wash = rules.find((rule) =>
+      rule.selector.endsWith(
+        '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::after',
+      ),
+    );
+    expect(wash?.body).toContain("rgb(24 119 242 / 40%)");
+    expect(wash?.body).toContain("rgb(24 119 242 / 10%)");
+    expect(wash?.body).toContain("rgb(40 73 123)");
+    expect(wash?.body).toContain("z-index: -1");
+    // No other palette takes the artwork.
+    const heroRules = cssRules(theme).filter((rule) => rule.body.includes("westworld-hero.png"));
+    expect(heroRules.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR))).toBe(true);
   });
 
   it("paints the send button Figma blue and rounds the header pills to 8px", () => {
@@ -192,7 +249,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
         rule.selector.includes('[data-fork-composer-action="send"]') &&
         rule.selector.includes('[data-fork-composer-send-tone="flat"]'),
     );
-    expect(send?.body).toContain("background: #179ddb");
+    expect(send?.body).toContain("background: #1877f2");
     expect(send?.body).toContain("color: #ffffff");
     expect(blockFor(theme, COOL_STAGE)).toContain("--fork-pill-radius: 8px");
     expect(blockFor(theme, COOL_STAGE)).toContain("--fork-pill-border: #333333");
@@ -277,9 +334,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
 
   it("states Westworld row fills as opaque values", () => {
     const panel = blockFor(theme, COOL_PANEL);
-    expect(panel).toContain("--sidebar-row-hover: #33373a");
-    expect(panel).toContain("--sidebar-row-active: #373b3f");
-    expect(panel).toContain("--sidebar-row-selected: #373b3f");
+    expect(panel).toContain("--sidebar-row-hover: #2e2f34");
+    expect(panel).toContain("--sidebar-row-active: #333438");
+    expect(panel).toContain("--sidebar-row-selected: #333438");
     expect(panel).not.toMatch(
       /--sidebar-row-(?:hover|active|selected):[^;]*(?:color-mix|--alpha)/u,
     );
@@ -297,7 +354,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const coolDark = contextRules.find((rule) => rule.selector === COOL_STAGE_SELECTOR);
     expect(defaultDark?.body).toContain("--fork-context-chip-bg: rgb(255 255 255 / 12%)");
     expect(defaultDark?.body).toContain("--fork-context-chip-bg-hover: rgb(255 255 255 / 17%)");
-    expect(coolDark?.body).toContain("--fork-context-chip-bg: #2b2f33");
+    expect(coolDark?.body).toContain("--fork-context-chip-bg: #393f44");
     expect(coolDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
     // The chips never carry a real filter. Matching the property outright used
     // to say that, until the vibrancy block started declaring `none` on them
@@ -325,7 +382,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(indexHtml).toContain('setAttribute("data-fork-theme", activeForkPalette)');
     expect(indexHtml).toContain(`html.dark[${FORK_THEME_ATTRIBUTE}="cool-dark"] body`);
     expect(indexHtml).toMatch(
-      /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*background:\s*#1d2124/u,
+      /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*background:\s*#26272c/u,
     );
     expect(indexHtml).toMatch(
       /html\.dark\[data-fork-theme="cool-dark"\] body\s*\{[^}]*color:\s*#e8e8e8/u,
@@ -341,15 +398,16 @@ describe("fork guard: fork-cool-dark-theme", () => {
 
   it("does not leak Westworld fills into light mode", () => {
     const coolHexes = [
-      "#1d2124",
-      "#2b2f33",
-      "#33373a",
-      "#373b3f",
-      "#3c3f43",
-      "#272b2e",
-      "#161a1d",
-      "#4a4f54",
-      "#179ddb",
+      "#26272c",
+      "#303137",
+      "#2e2f34",
+      "#333438",
+      "#393f44",
+      "#434a50",
+      "#33343a",
+      "#24282b",
+      "#7d848b",
+      "#1877f2",
     ];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),
