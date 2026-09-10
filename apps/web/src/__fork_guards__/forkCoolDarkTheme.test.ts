@@ -215,8 +215,11 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(card?.body).toMatch(/margin:\s*8px/u);
     expect(card?.body).toMatch(/border-radius:\s*8px/u);
     expect(card?.body).toMatch(/border:\s*1px solid rgb\(255 255 255 \/ 12%\)/u);
+    // Two-tone edge plus a shadow that falls under the card, not the drawn
+    // offset blur: a dark keyline outside the hairline, a contact shadow, and
+    // a downward blur with negative spread so it never widens past the edges.
     expect(card?.body).toMatch(
-      /box-shadow:\s*1px 1px 8px rgb\(0 0 0 \/ 40%\),\s*0 0 24px rgb\(20 20 22 \/ 30%\)/u,
+      /box-shadow:\s*0 0 0 1px rgb\(0 0 0 \/ 35%\),\s*0 2px 6px rgb\(0 0 0 \/ 25%\),\s*0 12px 32px -12px rgb\(0 0 0 \/ 55%\)/u,
     );
     expect(card?.body).toMatch(/overflow:\s*clip/u);
   });

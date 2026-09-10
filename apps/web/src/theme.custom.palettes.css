@@ -126,7 +126,14 @@
 
 /* Stage card — Figma 416:7408 "Frame 56": the chat column sits inside the
    surface as a card, 8px in from the header and the edges, 8px radius, a
-   white 12% hairline and the drawn "stage drop shadow". It is the same
+   white 12% hairline and a shadow. The shadow is not the drawn one (1px 1px
+   8px black 40% plus a 24px bloom): on a card the same colour as its
+   surface, the offset blur read as a smudge along one side and the bloom
+   muddied the 8px gap. A card on a same-colour dark surface sits on a
+   two-tone edge — the light hairline inside, a 1px dark keyline just outside
+   it — and a shadow that falls under the card (offset down, negative spread
+   so it never widens past the edges) with a tight contact shadow for the
+   base. It is the same
    drop-target wrapper the artwork paints on: ChatView's root fills the inset
    with an opaque bg-background, and this wrapper is the nearest element that
    is already position:relative and holds exactly the transcript and the
@@ -142,8 +149,9 @@
   border-radius: 8px;
   border: 1px solid rgb(255 255 255 / 12%);
   box-shadow:
-    1px 1px 8px rgb(0 0 0 / 40%),
-    0 0 24px rgb(20 20 22 / 30%);
+    0 0 0 1px rgb(0 0 0 / 35%),
+    0 2px 6px rgb(0 0 0 / 25%),
+    0 12px 32px -12px rgb(0 0 0 / 55%);
   overflow: clip;
 }
 

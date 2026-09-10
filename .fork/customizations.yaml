@@ -1166,9 +1166,12 @@
     the stage.
 
     The chat column is the stage card (Figma "Frame 56"): 8px in from the
-    header and the edges, 8px radius, a 1px white 12% hairline and the drawn
-    stage drop shadow (1px 1px 8px black 40% plus 0 0 24px #141416 30%),
-    clipped to its corners. It is ChatView's [data-chat-workspace-drop-target]
+    header and the edges, 8px radius, a 1px white 12% hairline and a
+    two-tone-edge shadow rather than the drawn one — a 1px black 35% keyline
+    outside the hairline, a 0 2px 6px contact shadow, and a 0 12px 32px -12px
+    downward blur, because the drawn 1px-offset blur and 24px bloom read as a
+    smudge on a card the same colour as its surface — clipped to its
+    corners. It is ChatView's [data-chat-workspace-drop-target]
     wrapper — the nearest element that is already position:relative and
     holds exactly the transcript and composer — isolated so the artwork's
     z-index -1 sits above the root's opaque fill and below every child. The
