@@ -247,6 +247,7 @@ import {
 } from "~/custom/composerContextStrip";
 /* fork:end fork-composer-shell */
 /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+import { DraftProjectPill } from "~/custom/DraftProjectPill";
 import { useDraftProjectAssignmentPending } from "~/custom/useNewAgentDraft";
 /* fork:end fork-new-agent-draft */
 import { useBrowserHistoryStore } from "~/browserHistoryStore";
@@ -8192,6 +8193,23 @@ export default function ChatView(props: ChatViewProps) {
   ) : null;
 
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+  // A draft chooses (or changes) its project from the first chip in the
+  // composer's context row. Memoised for the same reason as the strip below:
+  // it is handed to BranchToolbar as a prop and to ChatComposer inside the
+  // memoised strip. A started thread's project is pinned, so it renders none.
+  const draftProjectPill = useMemo(
+    () =>
+      isLocalDraftThread ? (
+        <DraftProjectPill
+          draftId={draftId}
+          activeProjectRef={activeProjectRef}
+          activeProjectTitle={activeProject?.title ?? null}
+        />
+      ) : null,
+    [activeProject?.title, activeProjectRef, draftId, isLocalDraftThread],
+  );
+  /* fork:end fork-new-agent-draft */
   /**
    * The worktree/branch strip, as an element rather than a render site.
    *
@@ -8243,22 +8261,28 @@ export default function ChatView(props: ChatViewProps) {
             : {})}
           contextStripVisible={showComposerContextStrip}
           {...(composerLivenessPill ? { trailing: composerLivenessPill } : {})}
+          /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+          // Only into a visible strip: the hidden measuring strip below hands
+          // the chip to the fallback instead, so it never renders twice.
+          {...(draftProjectPill && showComposerContextStrip ? { leading: draftProjectPill } : {})}
+          /* fork:end fork-new-agent-draft */
         />
       );
       if (showComposerContextStrip) {
         return toolbar;
       }
       // Mounted but hidden (upstream's off-flow measuring strip): it takes no
-      // space, so the liveness fallback still carries the pill on its own.
+      // space, so the fallback strip still carries the chips on its own.
       return (
         <>
           {toolbar}
-          {renderComposerLivenessStripFallback(composerLivenessPill)}
+          {renderComposerLivenessStripFallback(composerLivenessPill, draftProjectPill)}
         </>
       );
     }
-    return renderComposerLivenessStripFallback(composerLivenessPill);
+    return renderComposerLivenessStripFallback(composerLivenessPill, draftProjectPill);
   }, [
+    draftProjectPill,
     mountComposerContextStrip,
     showComposerContextStrip,
     activeThread,
@@ -8483,33 +8507,21 @@ export default function ChatView(props: ChatViewProps) {
               )}
             </div>
 
-            {/* Draft greeting — centered in the chat column; composer stays docked below. */}
-            {isDraftHeroState ? (
-              <div className="pointer-events-none absolute inset-0 z-10 flex items-center">
-                <div
-                  className="chat-composer-horizontal-inset pointer-events-auto w-full"
-                  style={
-                    forceExpandedMobileComposer
-                      ? {
-                          viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME,
-                        }
-                      : undefined
-                  }
-                >
-                  <DraftHeroHeadline
-                    draftId={draftId}
-                    activeProjectRef={activeProjectRef}
-                    activeProjectTitle={activeProject?.title ?? null}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {/* Input bar — always docked at the bottom, including an empty draft. */}
+            {/* Input bar — centered while a draft has no messages, docked at the bottom otherwise. */}
             <div
               ref={setComposerOverlayElement}
               data-chat-composer-overlay="true"
-              className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
+              /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+              // Centered by offsetting the overlay itself rather than stretching
+              // it over the column: its measured height stays the composer's,
+              // which the timeline cutoff and the mini player insets read.
+              data-draft-hero={isDraftHeroState || undefined}
+              className={
+                isDraftHeroState
+                  ? "pointer-events-none absolute inset-x-0 top-1/2 z-20 -translate-y-1/2"
+                  : "pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
+              }
+              /* fork:end fork-new-agent-draft */
             >
               <div
                 ref={attachDraftHeroTransitionGroupRef}
@@ -8517,10 +8529,28 @@ export default function ChatView(props: ChatViewProps) {
               >
                 <div className="group/composer-stack pointer-events-auto relative z-10 mx-auto w-full max-w-3xl">
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-                  {/* Upstream parks the draft greeting here (bottom-full above the
-                      stack); the fork centers it on its own layer above, and the
-                      banner stack and sync status now render inside ChatComposer's
-                      dock, so nothing rides above the composer here. */}
+                  {/* The banner stack and sync status render inside ChatComposer's
+                      dock, so only the draft greeting rides above the composer
+                      here — parked bottom-full the way upstream does, so the
+                      composer itself sits on the column's centre line. */}
+                  {isDraftHeroState ? (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-full z-0">
+                      <div
+                        className="pb-8"
+                        style={
+                          forceExpandedMobileComposer
+                            ? { viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME }
+                            : undefined
+                        }
+                      >
+                        <DraftHeroHeadline
+                          draftId={draftId}
+                          activeProjectRef={activeProjectRef}
+                          activeProjectTitle={activeProject?.title ?? null}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                   {/* fork:end fork-composer-shell */}
                   <div
                     className="relative"
@@ -8532,7 +8562,11 @@ export default function ChatView(props: ChatViewProps) {
                   >
                     <ComposerSurface.Shell
                       /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                      contextStrip={showComposerContextStrip || composerLivenessPill != null}
+                      contextStrip={
+                        showComposerContextStrip ||
+                        composerLivenessPill != null ||
+                        draftProjectPill != null
+                      }
                       /* fork:end fork-composer-shell */
                     >
                       <ComposerSurface.Host>

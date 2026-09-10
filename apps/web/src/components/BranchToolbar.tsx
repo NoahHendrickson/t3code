@@ -73,6 +73,10 @@ interface BranchToolbarProps {
   /** Optional chip after the branch pill (e.g. monitoring stop). */
   trailing?: ReactNode;
   /* fork:end fork-composer-shell */
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+  /** Optional chip ahead of the workspace pill (a draft's project chooser). */
+  leading?: ReactNode;
+  /* fork:end fork-new-agent-draft */
   composerControlsHostRef?: (element: HTMLDivElement | null) => void;
   contextStripVisible?: boolean;
 }
@@ -474,6 +478,9 @@ export const BranchToolbar = memo(function BranchToolbar({
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
   trailing,
   /* fork:end fork-composer-shell */
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+  leading,
+  /* fork:end fork-new-agent-draft */
   composerControlsHostRef,
   contextStripVisible = true,
 }: BranchToolbarProps) {
@@ -554,7 +561,7 @@ export const BranchToolbar = memo(function BranchToolbar({
     // Trailing (liveness stop) must still mount while the thread shell is live
     // but useThread has not resolved yet — otherwise the only stop affordance
     // vanishes during detail loading.
-    return renderComposerLivenessStripFallback(trailing);
+    return renderComposerLivenessStripFallback(trailing, leading);
     /* fork:end fork-composer-shell */
   }
 
@@ -570,6 +577,9 @@ export const BranchToolbar = memo(function BranchToolbar({
         !contextStripVisible && "pointer-events-none invisible absolute inset-x-0 top-full",
       )}
     >
+      {/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */}
+      {leading ?? null}
+      {/* fork:end fork-new-agent-draft */}
       {showGitControls ? (
         <div className="contents @3xl/composer-surface:hidden">
           <MobileRunContextSelector

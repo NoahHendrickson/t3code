@@ -55,9 +55,9 @@ default order until the server is updated.
 ## Starting an agent
 
 **New agent** at the top of the sidebar (`mod+n`) opens an empty chat. Start writing straight
-away; nothing appears in the thread list yet. Choose a project from the pill above the composer
-to send, and the draft takes its place under that project. Change the project from the same pill
-before sending and the draft moves with it. Clicking **New agent** again returns to the draft you
+away; nothing appears in the thread list yet. Choose a project from the first pill above the
+composer, ahead of the workspace and branch pills, to send, and the draft takes its place under
+that project. Change the project from the same pill before sending and the draft moves with it. Clicking **New agent** again returns to the draft you
 left open.
 
 The **Projects** row sorts and filters the list: the sort button picks the project order, and

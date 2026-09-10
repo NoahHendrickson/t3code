@@ -153,22 +153,69 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(pill).toMatch(/const activeEntry =\s*pendingEntry \?\?/u);
   });
 
-  it("replaces the draft hero's inline chooser with the project pill", () => {
+  it("puts the project chooser first in the composer's context row", () => {
     const override = readSibling("../overrides/components/chat/DraftHeroHeadline.tsx");
     expect(override).toContain("export function DraftHeroHeadline(");
-    expect(override).toContain("<DraftProjectPill");
+    // The headline is just the sentence: no chooser woven in, no pill under it.
+    expect(override).not.toContain("<DraftProjectPill");
+    expect(override).not.toContain("<Menu");
     // The props are upstream's, so ChatView's call site needs no fence.
     for (const prop of ["draftId", "activeProjectRef", "activeProjectTitle"]) {
       expect(override).toContain(`readonly ${prop}:`);
     }
+    // ChatView mounts the chip for a local draft and hands it to BranchToolbar
+    // as the strip's leading chip — or to the fallback strip while the draft
+    // has no project, and so no toolbar, yet. A started thread gets none.
+    expect(chatView).toMatch(/isLocalDraftThread \? \(\s*<DraftProjectPill/u);
+    expect(chatView).toMatch(
+      /\{\.\.\.\(draftProjectPill && showComposerContextStrip\s*\?\s*\{ leading: draftProjectPill \}\s*:\s*\{\}\)\}/u,
+    );
+    expect(chatView).toContain(
+      "renderComposerLivenessStripFallback(composerLivenessPill, draftProjectPill)",
+    );
+    expect(chatView).toContain("draftProjectPill != null");
+    const branchToolbar = readSibling("../components/BranchToolbar.tsx");
+    expect(branchToolbar).toContain("leading?: ReactNode");
+    expect(branchToolbar).toMatch(
+      /<ComposerSurface\.ContextStrip[\s\S]{0,700}?\{leading \?\? null\}[\s\S]*?showGitControls/u,
+    );
+    const strip = readSibling("../custom/composerContextStrip.tsx");
+    expect(strip).toMatch(/\{leading \?\? null\}\s*\{livenessPill\}/u);
+    // Dressed like its neighbours: the row's CSS paints ghost buttons as chips,
+    // and the label pair collapses with the workspace and branch labels.
     const pill = readSibling("../custom/DraftProjectPill.tsx");
     expect(pill).toContain('data-testid="draft-project-pill"');
+    expect(pill).toContain("data-composer-context-control");
+    expect(pill).toContain("data-composer-label");
+    expect(pill).toContain('variant="ghost"');
+    expect(pill).not.toContain("rounded-full");
     // A pick that fails to resolve tells the user, rather than surfacing as
     // an unhandled rejection with the draft silently left where it was.
     expect(pill).toMatch(/void assignDraftProject\(props\.draftId, entry\)\.catch\(/u);
     expect(pill).toContain("toastManager.add({");
     // Same project list and member rule as the palette and the grouped header.
     expect(pill).toContain("buildSidebarProjectPickerEntries({");
+  });
+
+  it("centers the draft composer and grows its prompt until the thread starts", () => {
+    const css = readSibling("../theme.custom.css");
+    const shell = readSibling("../custom/ComposerShell.tsx");
+    expect(chatView).toContain("data-draft-hero={isDraftHeroState || undefined}");
+    expect(chatView).toContain(
+      '"pointer-events-none absolute inset-x-0 top-1/2 z-20 -translate-y-1/2"',
+    );
+    // The taller drawn box: prompt on top, attach leading and send trailing
+    // on their own row — keyed off the overlay so it folds back on send.
+    expect(shell).toContain('data-fork-composer-prompt-row="true"');
+    expect(css).toMatch(
+      /\[data-draft-hero\]\s*\[data-fork-composer-prompt-row\]\s*\{[^}]*flex-direction:\s*column/u,
+    );
+    expect(css).toMatch(
+      /\[data-draft-hero\]\s*\[data-fork-composer-action="attach"\]\s*\{[^}]*margin-inline-end:\s*auto/u,
+    );
+    expect(css).toMatch(
+      /\[data-draft-hero\]\s*\[data-chat-composer-body="true"\]\s*\{[^}]*padding-block:\s*8px/u,
+    );
   });
 
   it("opens Usage from the chrome's fourth row", () => {

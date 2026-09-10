@@ -131,7 +131,9 @@ export const ComposerPromptRow = memo(function ComposerPromptRow({
   });
 
   return (
-    <div className="flex min-w-0 items-end gap-6">
+    // Stamped so the draft-only geometry (theme.custom.css, keyed on the
+    // overlay's data-draft-hero) can stack the action row under the prompt.
+    <div data-fork-composer-prompt-row="true" className="flex min-w-0 items-end gap-6">
       <div data-fork-composer-prompt="true" className="relative min-w-0 flex-1">
         {children}
       </div>

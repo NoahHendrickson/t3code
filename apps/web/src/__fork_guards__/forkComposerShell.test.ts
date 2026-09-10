@@ -229,22 +229,20 @@ describe("fork guard: fork-composer-shell", () => {
     expect(collapsed?.body).toMatch(/border-radius:\s*12px/u);
   });
 
-  it("docks the composer at the bottom and centers the draft greeting independently", () => {
-    expect(chatView).toContain(
-      'className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"',
+  it("centers the draft composer and docks it once the thread starts", () => {
+    // The overlay is offset, never stretched over the column, so its measured
+    // height stays the composer's for the cutoff mask and mini-player insets.
+    expect(chatView).toMatch(
+      /isDraftHeroState\s*\?\s*"pointer-events-none absolute inset-x-0 top-1\/2 z-20 -translate-y-1\/2"\s*:\s*"pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1\.5 sm:pt-2"/u,
     );
     expect(chatView).not.toMatch(/isDraftHeroState\s*\?\s*"pointer-events-none absolute inset-0/u);
     expect(chatView).not.toContain("isDraftHero={isDraftHeroState}");
-    // Greeting is its own centered layer; it must not ride bottom-full above the input.
-    expect(chatView).toContain(
+    // The greeting rides bottom-full above the composer inside the stack, so
+    // the composer itself sits on the centre line; no separate greeting layer.
+    expect(chatView).toMatch(/bottom-full[\s\S]{0,600}<DraftHeroHeadline/u);
+    expect(chatView).not.toContain(
       'className="pointer-events-none absolute inset-0 z-10 flex items-center"',
     );
-    const headlineIdx = chatView.indexOf("<DraftHeroHeadline");
-    const composerOverlayIdx = chatView.indexOf('data-chat-composer-overlay="true"');
-    expect(headlineIdx).toBeGreaterThan(-1);
-    expect(composerOverlayIdx).toBeGreaterThan(-1);
-    expect(headlineIdx).toBeLessThan(composerOverlayIdx);
-    expect(chatView).not.toMatch(/bottom-full[\s\S]{0,400}<DraftHeroHeadline/u);
     expect(chatView).toContain("<ComposerSurface.Shell");
   });
 
@@ -667,6 +665,8 @@ describe("fork guard: fork-composer-shell", () => {
     expect(floor?.body).toMatch(
       /background:\s*linear-gradient\(to bottom,\s*transparent,\s*var\(--background\)\s*1\.25rem\)/u,
     );
+    // Docked only: a centered draft composer has no transcript to floor.
+    expect(floor?.selector).toContain(":not([data-draft-hero])");
   });
 
   it("switches off the stitched glass shell and flattens the context strip", () => {
@@ -763,7 +763,9 @@ describe("fork guard: fork-composer-shell", () => {
     expect(branchToolbar).toContain("{trailing ?? null}");
     // The bare liveness strip has one owner: the no-thread branch reuses the
     // fallback instead of re-rendering the strip inline with a dead measure ref.
-    expect(branchToolbar).toContain("return renderComposerLivenessStripFallback(trailing);");
+    expect(branchToolbar).toContain(
+      "return renderComposerLivenessStripFallback(trailing, leading);",
+    );
     expect(branchToolbar).not.toMatch(/<ComposerSurface\.ContextStrip ref=\{setStripElement\}>/u);
     expect(chatView).toContain("resolveComposerLivenessPillProps");
     expect(chatView).toContain("renderComposerLivenessPill");
