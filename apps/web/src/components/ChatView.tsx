@@ -8534,7 +8534,15 @@ export default function ChatView(props: ChatViewProps) {
                 ref={attachDraftHeroTransitionGroupRef}
                 className="w-full ps-[calc(env(safe-area-inset-left)+0.75rem)] pe-[calc(env(safe-area-inset-right)+0.75rem)] sm:ps-[calc(env(safe-area-inset-left)+1.25rem)] sm:pe-[calc(env(safe-area-inset-right)+1.25rem)]"
               >
-                <div className="group/composer-stack pointer-events-auto relative z-10 mx-auto w-full max-w-3xl">
+                <div
+                  className="group/composer-stack pointer-events-auto relative z-10 mx-auto w-full max-w-3xl"
+                  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                  // The draft composer is capped narrower than the docked one
+                  // (theme.custom.css keys on this stamp plus the overlay's
+                  // data-draft-hero) and eases back out on the first send.
+                  data-fork-composer-stack="true"
+                  /* fork:end fork-new-agent-draft */
+                >
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
                   {/* The banner stack and sync status render inside ChatComposer's
                       dock, so only the draft greeting rides above the composer

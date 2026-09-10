@@ -241,12 +241,20 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(css).toMatch(
       /\[data-fork-composer-prompt\]\s*\{\s*min-height:\s*0;\s*transition:\s*min-height 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u,
     );
+    // The draft composer is capped at the drawn 42rem and eases back out.
+    expect(chatView).toContain('data-fork-composer-stack="true"');
+    expect(css).toMatch(
+      /\[data-draft-hero\]\s*\[data-fork-composer-stack="true"\]\s*\{\s*max-width:\s*42rem/u,
+    );
+    expect(css).toMatch(
+      /\[data-fork-composer-stack="true"\]\s*\{\s*transition:\s*max-width 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u,
+    );
     // ChatView still drives the slide from the shadowed constants.
     expect(chatView).toContain("DRAFT_HERO_TRANSITION_DURATION_MS");
     expect(chatView).toContain("DRAFT_HERO_TRANSITION_EASING");
     // Reduced motion drops the fold the way upstream drops the slide.
     expect(css).toMatch(
-      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\[data-chat-composer-body="true"\],[^}]*\[data-fork-composer-prompt\]\s*\{\s*transition:\s*none/u,
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\[data-chat-composer-body="true"\],[^}]*\[data-fork-composer-prompt\],[^}]*\[data-fork-composer-stack="true"\]\s*\{\s*transition:\s*none/u,
     );
   });
 

@@ -3556,14 +3556,16 @@
     80px prompt surface with 8px padding, the prompt line on top and the
     attach / send actions on their own row beneath — attach leading, send
     trailing — which folds back to the compact base row the moment the
-    thread starts.
+    thread starts. The draft composer is also capped at 42rem (the drawn
+    663px) instead of upstream's 48rem, keyed on a data-fork-composer-stack
+    stamp on ChatView's composer stack plus the overlay's data-draft-hero.
 
     The first send is one motion, not a snap: upstream's slide from the hero
     position to the dock (draftHeroTransition, its 180ms tuned for a composer
     that only travelled) is shadowed to 400ms on the fork's chip-label curve,
     and the draft box's fold (padding and reserved prompt height, in
-    theme.custom.css) and Westworld's art fade (fork-cool-dark-theme) run on
-    that same clock and curve. The action row's flex-direction cannot
+    theme.custom.css), its widening back to 48rem, and Westworld's art fade
+    (fork-cool-dark-theme) run on that same clock and curve. The action row's flex-direction cannot
     animate and flips at the start. Reduced motion drops the fold on the
     same query upstream skips the slide on. Choosing a project remaps the
     draft in place — same draft id, same reserved thread id,

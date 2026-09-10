@@ -390,9 +390,27 @@
   transition: min-height 400ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* The draft composer is narrower than the docked one: Figma 418:11501 draws
+   it at 663px, upstream's max-w-3xl is 768px, and at 768 the empty column
+   reads as a bar rather than a prompt. 42rem is the drawn width on the rem
+   grid. It eases back to the docked width on the same 400ms clock as the
+   slide and fold — max-width tweens between two lengths, and because the
+   slide measures the composer at the flip, before this tween has moved, the
+   slide stays vertical and the widening rides alongside it. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-stack="true"] {
+  transition: max-width 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"][data-draft-hero]
+  [data-fork-composer-stack="true"] {
+  max-width: 42rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root[data-fork="noahhendrickson-t3code"] [data-chat-composer-body="true"],
-  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt],
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-stack="true"] {
     transition: none;
   }
 }
