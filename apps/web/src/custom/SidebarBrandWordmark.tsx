@@ -1,5 +1,6 @@
 /**
- * Pixel "no3y" wordmark from Figma t3-fork node 364:11245 (Union 387:21624).
+ * Pixel "no3y" wordmark from Figma t3-fork node 364:11245 (Union 387:21624),
+ * transcribed cell for cell from the designer's Union.svg export.
  * A 13×3 cell grid drawn at 8px tall, currentColor at 40% so Light and Dark
  * both keep the lockup's muted name without a baked-in white.
  */
@@ -22,7 +23,7 @@ export function SidebarBrandWordmark() {
       <rect height="1" width="1" x="0" y="1" />
       <rect height="1" width="1" x="2" y="1" />
       <rect height="1" width="1" x="5" y="1" />
-      <rect height="1" width="1" x="8" y="1" />
+      <rect height="1" width="1" x="7" y="1" />
       <rect height="1" width="1" x="11" y="1" />
       <rect height="1" width="1" x="0" y="2" />
       <rect height="1" width="1" x="2" y="2" />
