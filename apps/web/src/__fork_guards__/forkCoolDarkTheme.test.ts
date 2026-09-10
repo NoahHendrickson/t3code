@@ -190,6 +190,19 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
   });
 
+  it("draws no seam between the panel and the stage", () => {
+    // One surface: the card's hairline separates work from chrome, so the
+    // container's full-height border-r goes transparent. Rings inside the
+    // panel still read --sidebar-border, so the token itself stays opaque.
+    const seam = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes(COOL_STAGE_SELECTOR) &&
+        rule.selector.endsWith('[data-slot="sidebar-container"][data-sidebar-version="v2"]'),
+    );
+    expect(seam?.body).toMatch(/border-color:\s*transparent/u);
+    expect(blockFor(theme, COOL_PANEL)).toContain("--sidebar-border: #33343a");
+  });
+
   it("frames the chat column as the stage card", () => {
     // Figma 416:7408 "Frame 56": 8px inset, 8px radius, white 12% hairline and
     // the drawn stage drop shadow, on the same wrapper the artwork paints on.

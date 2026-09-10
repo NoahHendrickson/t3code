@@ -1149,7 +1149,10 @@
     selector plus [data-sidebar-version="v2"] (panel) — the doubled selector is
     required for the same upstream re-declaration reason as fork-surface-palette.
     Stage, header and sidebar panel are one #26272c surface: the stage card
-    below, not a darker panel, is what separates the work from the chrome.
+    below, not a darker panel, is what separates the work from the chrome,
+    so the panel container's full-height border-r is transparent (the same
+    container rule Glass uses to soften its seam; the pill rings inside the
+    panel keep --sidebar-border).
     Active / selected rows and the control surface are #333438 (the drawn
     active row), row hover #2e2f34, menus and popovers #303137 (one step
     above the surface), borders #33343a, muted text #8a8a8a, primary

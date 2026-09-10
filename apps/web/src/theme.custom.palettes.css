@@ -113,6 +113,17 @@
   color: #ffffff;
 }
 
+/* No seam between the panel and the stage: they are one surface, and the
+   stage card's own hairline is what separates the work from the chrome (Figma
+   416:7408 draws no line there). Only the container's full-height `border-r`
+   goes — it is the one --sidebar-border reader that runs against the stage;
+   the ⌘K / ⇧⌘O pill rings inside the panel keep the token. Same target Glass
+   uses to soften its seam, so the two palettes disagree only on the value. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-slot="sidebar-container"][data-sidebar-version="v2"] {
+  border-color: transparent;
+}
+
 /* Stage card — Figma 416:7408 "Frame 56": the chat column sits inside the
    surface as a card, 8px in from the header and the edges, 8px radius, a
    white 12% hairline and the drawn "stage drop shadow". It is the same
