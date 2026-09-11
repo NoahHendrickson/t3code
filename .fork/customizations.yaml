@@ -1180,7 +1180,8 @@
     index.html pre-paints #26272c so the load flash matches the stage.
 
     The chat column is the stage card (Figma "Frame 56"): 8px in from the
-    header and the edges, 8px radius, a 1px white 12% hairline and a
+    header and the edges, 10px radius (drawn at 8; 10 sits concentric with
+    the window corner 8px further out), a 1px white 12% hairline and a
     two-tone-edge shadow rather than the drawn one — a 1px black 35% keyline
     outside the hairline, a 0 2px 6px contact shadow, and a 0 12px 32px -12px
     downward blur, because the drawn 1px-offset blur and 24px bloom read as a

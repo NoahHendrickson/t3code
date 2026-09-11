@@ -264,7 +264,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
         rule.body.includes("isolation: isolate"),
     );
     expect(card?.body).toMatch(/margin:\s*8px/u);
-    expect(card?.body).toMatch(/border-radius:\s*8px/u);
+    expect(card?.body).toMatch(/border-radius:\s*10px/u);
     expect(card?.body).toMatch(/border:\s*1px solid rgb\(255 255 255 \/ 12%\)/u);
     // Two-tone edge plus a shadow that falls under the card, not the drawn
     // offset blur: a dark keyline outside the hairline, a contact shadow, and

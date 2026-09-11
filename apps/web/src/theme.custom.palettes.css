@@ -154,7 +154,9 @@
   [data-chat-workspace-drop-target="true"] {
   isolation: isolate;
   margin: 8px;
-  border-radius: 8px;
+  /* Drawn at 8px; 10px sits concentric with the window's own corner 8px
+     further out, so the two arcs read as one curve at the bottom edge. */
+  border-radius: 10px;
   border: 1px solid rgb(255 255 255 / 12%);
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 35%),
