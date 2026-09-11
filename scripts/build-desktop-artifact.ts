@@ -980,6 +980,12 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/resources/browser-secret/**/*",
   "!apps/desktop/prod-resources/browser-secret",
   "!apps/desktop/prod-resources/browser-secret/**/*",
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  "!apps/desktop/resources/voice-input",
+  "!apps/desktop/resources/voice-input/**/*",
+  "!apps/desktop/prod-resources/voice-input",
+  "!apps/desktop/prod-resources/voice-input/**/*",
+  // fork:end fork-local-dictation
   // Windows stages the server sidecar below prod-resources so electron-builder
   // can copy it using project-relative extraResources matchers. Keep those
   // staging inputs out of app.asar; they are emitted once at resources/.
@@ -1112,6 +1118,11 @@ export const DESKTOP_EXTRA_RESOURCES = [
     to: "resource-monitor",
   },
 ] as const;
+// fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+export const MAC_VOICE_INPUT_EXTRA_RESOURCES = [
+  { from: "apps/desktop/prod-resources/voice-input", to: "voice-input" },
+] as const;
+// fork:end fork-local-dictation
 export const LINUX_CAPTURE_EXTRA_RESOURCES = [
   {
     from: "apps/desktop/prod-resources/hyprland-capture",
@@ -1337,16 +1348,42 @@ export function renderMacPasskeyEntitlements(
     <array>
 ${associatedDomains}
     </array>
-    <key>com.apple.security.cs.allow-jit</key>
+    <!-- fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation -->
+${MAC_SIGNED_ENTITLEMENT_KEYS}
+    <!-- fork:end fork-local-dictation -->
+  </dict>
+</plist>
+`;
+}
+
+// fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+/**
+ * Keys every signed macOS build carries: electron-builder's hardened-runtime
+ * defaults plus the microphone, which `NSMicrophoneUsageDescription` promises
+ * and which the hardened runtime otherwise denies to getUserMedia. Shared by
+ * both plist renderers so the passkey variant cannot drop it by accident.
+ */
+const MAC_SIGNED_ENTITLEMENT_KEYS = `    <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
     <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>`;
+
+/** Entitlements for a signed macOS build without passkey signing. */
+export function renderMacEntitlements(): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+${MAC_SIGNED_ENTITLEMENT_KEYS}
   </dict>
 </plist>
 `;
 }
+// fork:end fork-local-dictation
 
 export function resolveFffNativeDependencies(
   platform: typeof BuildPlatform.Type,
@@ -2676,6 +2713,10 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   // whose source file was never written fails the electron-builder step.
   wslRuntimeBundled = false,
   arch?: typeof BuildArch.Type,
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  // Signed mac builds without passkey signing still need the microphone entitlement.
+  macEntitlementsPath?: string,
+  // fork:end fork-local-dictation
 ) {
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
@@ -2701,6 +2742,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       : {}),
     extraResources: [
       ...DESKTOP_EXTRA_RESOURCES,
+      // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+      ...(platform === "mac" ? MAC_VOICE_INPUT_EXTRA_RESOURCES : []),
+      // fork:end fork-local-dictation
       ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(platform === "win" ? WINDOWS_SERVER_EXTRA_RESOURCES : []),
@@ -2730,6 +2774,10 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       icon: "icon.icns",
       category: "public.app-category.developer-tools",
       extendInfo: {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+        NSMicrophoneUsageDescription:
+          "no3y Code uses your microphone to transcribe prompts on your device.",
+        // fork:end fork-local-dictation
         NSScreenCaptureUsageDescription:
           "T3 Code captures the active window when you use the window capture shortcut.",
       },
@@ -2751,7 +2799,11 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
             entitlements: macPasskeySigning.entitlementsPath,
             provisioningProfile: macPasskeySigning.provisioningProfilePath,
           }
-        : {}),
+        : // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+          signed && macEntitlementsPath
+          ? { entitlements: macEntitlementsPath }
+          : // fork:end fork-local-dictation
+            {}),
     };
   }
 
@@ -3723,6 +3775,26 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         verbose: options.verbose,
       });
   }
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  if (options.platform === "mac") {
+    yield* runCommand(
+      ChildProcess.make(
+        "node",
+        [
+          path.join(repoRoot, "apps/desktop/scripts/build-voice-input.mjs"),
+          "--platform",
+          options.platform,
+          "--arch",
+          options.arch,
+          "--output",
+          path.join(stageResourcesDir, "voice-input"),
+        ],
+        { cwd: repoRoot },
+      ),
+      { label: "build local speech helper", verbose: options.verbose },
+    );
+  }
+  // fork:end fork-local-dictation
   yield* stageBrowserSecret({
     repoRoot,
     stageResourcesDir,
@@ -3762,9 +3834,13 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         ),
       }
     : undefined;
-  const macEntitlementsPath = macPasskeySigning
-    ? path.join(stageAppDir, "entitlements.mac.plist")
-    : undefined;
+  const macEntitlementsPath =
+    macPasskeySigning ||
+    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+    (options.platform === "mac" && options.signed)
+      ? /* fork:end fork-local-dictation */
+        path.join(stageAppDir, "entitlements.mac.plist")
+      : undefined;
   if (macPasskeySigning && macEntitlementsPath) {
     if (!(yield* fs.exists(macPasskeySigning.provisioningProfilePath))) {
       return yield* new MacProvisioningProfileNotFoundError({
@@ -3773,6 +3849,11 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     }
     yield* fs.writeFileString(macEntitlementsPath, renderMacPasskeyEntitlements(macPasskeySigning));
   }
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  if (!macPasskeySigning && macEntitlementsPath) {
+    yield* fs.writeFileString(macEntitlementsPath, renderMacEntitlements());
+  }
+  /* fork:end fork-local-dictation */
 
   // Windows splits dependencies per process: app.asar carries only the
   // desktop main-process runtime deps, while the server bundle's deps live in
@@ -3838,6 +3919,9 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         : undefined,
       bundlesWslRuntime({ arch: options.arch, prebuildPath: options.wslPrebuild }),
       options.arch,
+      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+      macEntitlementsPath,
+      /* fork:end fork-local-dictation */
     ),
     dependencies: stageDependencies,
     devDependencies: {

@@ -832,6 +832,30 @@
   background: var(--fork-composer-control-hover);
 }
 
+/* The ghost actions (attach, dictate, dictate-cancel) read as pure white in
+   dark mode. Upstream's ghost variant routes icons through
+   --control-icon-color at the contrast-muted tone, which on the prompt surface
+   is too faint next to the filled send. Disabled keeps upstream's opacity. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-fork-composer-action="attach"],
+    [data-fork-composer-action="dictate"],
+    [data-fork-composer-action="dictate-cancel"]
+  ) {
+  --control-icon-color: #ffffff;
+  color: #ffffff;
+}
+
+/* Dictate and its cancel (fork-local-dictation) are ghosts too and share
+   attach's box and hover so the mic does not re-grow the prompt row. */
+:root[data-fork="noahhendrickson-t3code"]
+  :is([data-fork-composer-action="dictate"], [data-fork-composer-action="dictate-cancel"]):is(
+    :hover,
+    [data-pressed]
+  ):not(:disabled) {
+  background: var(--fork-composer-control-hover);
+}
+
 /* Flat send (tone="flat"): in dark mode, a send button without stage-channel
    art — any stage label that is not Dev/Nightly — is flat pure white with a
    black icon. Dev/Nightly keep the stage-channel fill (tone="channel").

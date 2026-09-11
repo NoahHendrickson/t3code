@@ -29,6 +29,10 @@ import {
   LINUX_CAPTURE_EXTRA_RESOURCES,
   LINUX_BROWSER_SECRET_EXTRA_RESOURCES,
   MAC_FILE_EXCLUSIONS,
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  MAC_VOICE_INPUT_EXTRA_RESOURCES,
+  renderMacEntitlements,
+  // fork:end fork-local-dictation
   InvalidMacPasskeyRpDomainError,
   InvalidMacPasskeyPublishableKeyError,
   InvalidMockUpdateServerPortError,
@@ -581,6 +585,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     for (const resource of [
       ...WSL_RUNTIME_EXTRA_RESOURCES,
       ...LINUX_BROWSER_SECRET_EXTRA_RESOURCES,
+      // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+      ...MAC_VOICE_INPUT_EXTRA_RESOURCES,
+      // fork:end fork-local-dictation
     ]) {
       assert.include(
         DESKTOP_FILE_EXCLUSIONS,
@@ -595,6 +602,12 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "!apps/desktop/resources/browser-secret/**/*",
       "!apps/desktop/prod-resources/browser-secret",
       "!apps/desktop/prod-resources/browser-secret/**/*",
+      // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+      "!apps/desktop/resources/voice-input",
+      "!apps/desktop/resources/voice-input/**/*",
+      "!apps/desktop/prod-resources/voice-input",
+      "!apps/desktop/prod-resources/voice-input/**/*",
+      // fork:end fork-local-dictation
       "!apps/desktop/prod-resources/windows-server",
       "!apps/desktop/prod-resources/windows-server/**/*",
       "!apps/desktop/prod-resources/wsl-runtime.tar.gz",
@@ -663,7 +676,12 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(win.asarUnpack, [WINDOWS_NATIVE_ASAR_UNPACK_GLOB]);
       assert.deepStrictEqual(winWithoutWslPrebuild.asar, win.asar);
       assert.deepStrictEqual(winWithoutWslPrebuild.asarUnpack, win.asarUnpack);
-      assert.deepStrictEqual(mac.extraResources, DESKTOP_EXTRA_RESOURCES);
+      assert.deepStrictEqual(mac.extraResources, [
+        ...DESKTOP_EXTRA_RESOURCES,
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+        ...MAC_VOICE_INPUT_EXTRA_RESOURCES,
+        // fork:end fork-local-dictation
+      ]);
       assert.deepStrictEqual(linux.extraResources, [
         ...DESKTOP_EXTRA_RESOURCES,
         ...LINUX_CAPTURE_EXTRA_RESOURCES,
@@ -1860,6 +1878,56 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // fork:end fork-app-identity
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
+
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  it.effect(
+    "signed macOS builds without passkey signing still carry the microphone entitlement",
+    () =>
+      Effect.gen(function* () {
+        const signed = yield* createBuildConfig(
+          "mac",
+          "dmg",
+          "1.2.3",
+          true,
+          false,
+          undefined,
+          undefined,
+          false,
+          "arm64",
+          "/tmp/entitlements.mac.plist",
+        );
+        const unsigned = yield* createBuildConfig(
+          "mac",
+          "dmg",
+          "1.2.3",
+          false,
+          false,
+          undefined,
+          undefined,
+          false,
+          "arm64",
+          undefined,
+        );
+
+        assert.equal(
+          (signed.mac as Record<string, unknown>).entitlements,
+          "/tmp/entitlements.mac.plist",
+        );
+        assert.notProperty(signed.mac as Record<string, unknown>, "provisioningProfile");
+        assert.notProperty(unsigned.mac as Record<string, unknown>, "entitlements");
+        assert.include(renderMacEntitlements(), "com.apple.security.device.audio-input");
+        assert.include(
+          renderMacPasskeyEntitlements({
+            teamId: "TEAM",
+            appId: "com.example.app",
+            rpDomains: ["example.com"],
+            provisioningProfilePath: "/tmp/p.provisionprofile",
+          }),
+          "com.apple.security.device.audio-input",
+        );
+      }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+  );
+  // fork:end fork-local-dictation
 
   it.effect("uses the nightly DMG background for nightly macOS builds", () =>
     Effect.gen(function* () {

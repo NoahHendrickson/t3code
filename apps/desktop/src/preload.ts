@@ -9,6 +9,18 @@ import { exposeClerkBridge } from "@clerk/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
 
 import * as IpcChannels from "./ipc/channels.ts";
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+import type { VoiceInputIpcResult } from "./fork/voice/VoiceInputIpc.ts";
+
+async function invokeVoiceInput<T>(
+  channel: string,
+  request: { requestId?: string; wav?: Uint8Array },
+): Promise<T> {
+  const result: VoiceInputIpcResult<T> = await ipcRenderer.invoke(channel, request);
+  if (!result.ok) throw new Error(result.error);
+  return result.value;
+}
+/* fork:end fork-local-dictation */
 
 const SNAP_SHOT_EVENT_TYPES = new Set([
   "requested",
@@ -370,6 +382,34 @@ contextBridge.exposeInMainWorld("desktopBridge", {
  * addition does not need a preload `alwaysBundle` entry.
  */
 contextBridge.exposeInMainWorld("forkDesktopBridge", {
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  // Mirrored by `ForkVoiceInputBridge` in apps/web/src/custom/voice/forkVoiceInputBridge.ts.
+  // Absent off macOS: the whisper helper only builds and ships there, and the
+  // renderer treats a missing bridge as "no dictation" rather than a failure.
+  voiceInput:
+    clientPlatform !== "darwin"
+      ? undefined
+      : {
+          prepare: (requestId: string): Promise<void> =>
+            invokeVoiceInput<void>("fork:voice-prepare", { requestId }),
+          transcribe: (requestId: string, wav: Uint8Array): Promise<string> =>
+            invokeVoiceInput<string>("fork:voice-transcribe", { requestId, wav }),
+          cancel: (requestId: string): Promise<void> =>
+            invokeVoiceInput<void>("fork:voice-cancel", { requestId }),
+          openMicrophoneSettings: (): Promise<void> =>
+            invokeVoiceInput<void>("fork:voice-open-microphone-settings", {}),
+          onDownloadProgress: (
+            listener: (event: { requestId: string; percent: number }) => void,
+          ): (() => void) => {
+            const receive = (
+              _event: Electron.IpcRendererEvent,
+              data: { requestId: string; percent: number },
+            ) => listener(data);
+            ipcRenderer.on("fork:voice-download", receive);
+            return () => ipcRenderer.removeListener("fork:voice-download", receive);
+          },
+        },
+  /* fork:end fork-local-dictation */
   setSidebarVibrancy: (enabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled }),
 });

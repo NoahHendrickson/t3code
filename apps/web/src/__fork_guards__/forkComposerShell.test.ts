@@ -638,6 +638,17 @@ describe("fork guard: fork-composer-shell", () => {
     // squash it and steal its hover.
     expect(chatComposer).toContain('data-fork-composer-action="attach"');
     expect(chatComposer).toContain('aria-label="Attach files"');
+    // The glyph is a plus; upstream's paperclip must not come back on a sync.
+    expect(chatComposer).toMatch(/data-fork-composer-action="attach"[\s\S]{0,400}?<PlusIcon \/>/u);
+    expect(chatComposer).not.toContain("<PaperclipIcon />");
+    // Dark mode paints the row's ghost actions pure white, not the muted foreground.
+    const whiteGhosts = rules.find(
+      (rule) =>
+        rule.selector.includes(".dark") &&
+        rule.selector.includes('[data-fork-composer-action="attach"]') &&
+        rule.body.includes("--control-icon-color: #ffffff"),
+    );
+    expect(whiteGhosts, "attach and dictation ghosts are pure white in dark mode").toBeDefined();
     for (const rule of rules) {
       expect(rule.selector, "actions must be stamped, not selected by position").not.toMatch(
         /data-chat-composer-actions[^{]*>\s*button/u,

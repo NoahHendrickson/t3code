@@ -24,6 +24,53 @@
 # rejected alternatives, and incident write-ups live in
 # .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md — narrative there, contract here.
 
+- id: fork-local-dictation
+  intent: >
+    macOS desktop users can dictate prompts locally for free through a composer
+    microphone and Ctrl+Shift+Space. An English Whisper Small model (181 MiB)
+    downloads once with integrity verification; whisper.cpp runs with Metal.
+    Audio stays on the client device even for remote environments. The composer
+    owns the dictation session through a hook that mirrors mobile's
+    useVoiceInputController and reads its send/editor gates directly; the mic
+    button only renders state. Cancellation stops owned work, stale drafts never
+    receive transcripts, and a recording in flight survives the composer becoming
+    disabled: a pending approval or question routes the transcript into the
+    prompt draft itself, and when the action cluster unmounts the recording is
+    transcribed on the spot rather than left running with no control to end it.
+    While dictating, the attach button steps aside and the mic, cancel X and
+    check share the attach/send 24px box and pure-white ghost colour from
+    theme.custom.css. The packaged helper exits after inference, freeing model
+    memory; the model cache lives under the desktop state dir so --home-dir runs
+    stay isolated.
+    Fork IPC types live in the desktop fork and web custom folders, never in
+    packages/contracts or client-runtime. Browser-only and mobile clients retain
+    their existing behavior.
+  files:
+    - apps/desktop/src/fork/voice/LocalSpeechEngine.ts
+    - apps/desktop/src/fork/voice/VoiceInputIpc.ts
+    - apps/desktop/scripts/build-voice-input.mjs
+    - native/voice-input/LICENSE-Whisper.txt
+    - apps/web/src/custom/voice/BrowserVoiceRecorder.ts
+    - apps/web/src/custom/voice/ForkDictationControl.tsx
+    - apps/web/src/custom/voice/forkVoiceInputBridge.ts
+    - apps/web/src/custom/voice/useForkDictationController.ts
+    - apps/web/src/theme.custom.css
+    - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
+  shadows: []
+  watch:
+    - apps/desktop/src/ipc/DesktopIpcHandlers.ts
+    - apps/desktop/src/preload.ts
+    - apps/desktop/vite.config.ts
+    - apps/web/src/components/chat/ChatComposer.tsx
+    - scripts/build-desktop-artifact.ts
+    - scripts/build-desktop-artifact.test.ts
+    - docs/user/composer.md
+    - docs/operations/release.md
+  verify:
+    - apps/web/src/__fork_guards__/forkLocalDictation.test.ts
+    - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
+    - apps/web/src/custom/voice/BrowserVoiceRecorder.test.ts
+
 - id: ci-on-custom
   intent: >
     CI runs on pushes to custom and does not run on pushes to main. Custom is
@@ -2323,7 +2370,9 @@
     (fenced in ChatComposer) so it shares send/stop's 24px square and the
     items-end row does not drop the prompt below the send axis, and hovering
     with the ghost controls' 4% lift rather than --accent, which on the Cool
-    palettes is the prompt surface it sits on. Actions are always stamped by
+    palettes is the prompt surface it sits on. Its glyph is a plus, not
+    upstream's paperclip, and in dark mode the row's ghost actions (attach and
+    the dictation controls) paint pure white instead of the muted foreground. Actions are always stamped by
     name, never selected by position: ComposerPrimaryActions hoists a
     labelled Refine submit into the same cluster as a direct child. The
     context-usage meter carries

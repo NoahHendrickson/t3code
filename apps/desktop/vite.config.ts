@@ -15,20 +15,29 @@ export default defineConfig({
   run: {
     tasks: {
       build: {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+        // Literal strings on purpose: knip reads these to find script entries.
+        // `--optional` skips the whisper.cpp helper when CMake is missing; only
+        // the packaged artifact (scripts/build-desktop-artifact.ts) requires it.
         command:
-          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
+          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
+        // fork:end fork-local-dictation
         dependsOn: ["t3#build"],
         cache: false,
       },
       dev: {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         command:
-          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
+          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
+        // fork:end fork-local-dictation
         dependsOn: ["t3#build"],
         cache: false,
       },
       "dev:bundle": {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         command:
-          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack --watch",
+          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack --watch",
+        // fork:end fork-local-dictation
         cache: false,
       },
       "dev:electron": {

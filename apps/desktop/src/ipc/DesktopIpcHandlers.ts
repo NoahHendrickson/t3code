@@ -66,9 +66,15 @@ import { getWslState, setWslBackendEnabled, setWslDistro, setWslOnly } from "./m
 /* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
 import { setForkSidebarVibrancy } from "../fork/ForkSidebarVibrancy.ts";
 /* fork:end fork-cool-darker-sidebar-vibrancy */
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+import { installVoiceInputIpc } from "../fork/voice/VoiceInputIpc.ts";
+/* fork:end fork-local-dictation */
 
 export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers")(function* () {
   const ipc = yield* DesktopIpc.DesktopIpc;
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  yield* installVoiceInputIpc();
+  /* fork:end fork-local-dictation */
   yield* PreviewIpc.installPreviewEventForwarding();
 
   yield* ipc.handle(AppActivationIpc.setReady);
