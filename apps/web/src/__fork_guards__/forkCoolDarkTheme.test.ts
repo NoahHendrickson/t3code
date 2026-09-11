@@ -336,10 +336,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(blockFor(theme, COOL_STAGE)).toContain("--fork-pill-border: #333333");
   });
 
-  it("paints the dark card with the violet edge glow behind started threads", () => {
-    // The ::before is the started-thread fill (Figma 434:14898): the #24252a
-    // card with the scrimmed dither strip (layers 434:14900 + 435:15426)
-    // anchored to its left edge. The wrapper it paints on must already be
+  it("paints the dark card with the blob dither on both edges behind started threads", () => {
+    // The ::before is the started-thread fill: the #24252a card with the two
+    // blob-dither strips (Shaders design 4737833, as drawn and mirrored)
+    // anchored to its left and right edges. The wrapper it paints on must already be
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
     const chatView = readSibling("../components/ChatView.tsx");
