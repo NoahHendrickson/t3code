@@ -241,8 +241,8 @@ import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
 /* fork:end fork-design-mode */
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import {
+  renderComposerContextStripFallback,
   renderComposerLivenessPill,
-  renderComposerLivenessStripFallback,
   resolveComposerLivenessPillProps,
 } from "~/custom/composerContextStrip";
 /* fork:end fork-composer-shell */
@@ -8276,11 +8276,17 @@ export default function ChatView(props: ChatViewProps) {
       return (
         <>
           {toolbar}
-          {renderComposerLivenessStripFallback(composerLivenessPill, draftProjectPill)}
+          {renderComposerContextStripFallback({
+            leading: draftProjectPill,
+            trailing: composerLivenessPill,
+          })}
         </>
       );
     }
-    return renderComposerLivenessStripFallback(composerLivenessPill, draftProjectPill);
+    return renderComposerContextStripFallback({
+      leading: draftProjectPill,
+      trailing: composerLivenessPill,
+    });
   }, [
     draftProjectPill,
     mountComposerContextStrip,
@@ -8512,16 +8518,12 @@ export default function ChatView(props: ChatViewProps) {
               ref={setComposerOverlayElement}
               data-chat-composer-overlay="true"
               /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
-              // Centered by offsetting the overlay itself rather than stretching
-              // it over the column: its measured height stays the composer's,
-              // which the timeline cutoff and the mini player insets read.
+              // The stamp is the layout mode: theme.custom.css centres the
+              // overlay, folds the prompt and lifts the floor off it, so this
+              // file keeps upstream's one docked className.
               data-draft-hero={isDraftHeroState || undefined}
-              className={
-                isDraftHeroState
-                  ? "pointer-events-none absolute inset-x-0 top-1/2 z-20 -translate-y-1/2"
-                  : "pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
-              }
               /* fork:end fork-new-agent-draft */
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"
             >
               <div
                 ref={attachDraftHeroTransitionGroupRef}

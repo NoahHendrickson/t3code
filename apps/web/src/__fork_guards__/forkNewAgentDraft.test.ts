@@ -170,8 +170,8 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(chatView).toMatch(
       /\{\.\.\.\(draftProjectPill && showComposerContextStrip\s*\?\s*\{ leading: draftProjectPill \}\s*:\s*\{\}\)\}/u,
     );
-    expect(chatView).toContain(
-      "renderComposerLivenessStripFallback(composerLivenessPill, draftProjectPill)",
+    expect(chatView).toMatch(
+      /renderComposerContextStripFallback\(\{\s*leading: draftProjectPill,\s*trailing: composerLivenessPill,\s*\}\)/u,
     );
     expect(chatView).toContain("draftProjectPill != null");
     const branchToolbar = readSibling("../components/BranchToolbar.tsx");
@@ -180,7 +180,7 @@ describe("fork guard: fork-new-agent-draft", () => {
       /<ComposerSurface\.ContextStrip[\s\S]{0,700}?\{leading \?\? null\}[\s\S]*?showGitControls/u,
     );
     const strip = readSibling("../custom/composerContextStrip.tsx");
-    expect(strip).toMatch(/\{leading \?\? null\}\s*\{livenessPill\}/u);
+    expect(strip).toMatch(/\{leading \?\? null\}\s*\{trailing \?\? null\}/u);
     // Dressed like its neighbours: the row's CSS paints ghost buttons as chips,
     // and the label pair collapses with the workspace and branch labels.
     const pill = readSibling("../custom/DraftProjectPill.tsx");
@@ -201,9 +201,12 @@ describe("fork guard: fork-new-agent-draft", () => {
     const css = readSibling("../theme.custom.css");
     const shell = readSibling("../custom/ComposerShell.tsx");
     expect(chatView).toContain("data-draft-hero={isDraftHeroState || undefined}");
-    expect(chatView).toContain(
-      '"pointer-events-none absolute inset-x-0 top-1/2 z-20 -translate-y-1/2"',
+    // The overlay's centre-line position is CSS on the stamp, not a second
+    // className in ChatView; flex, never a transform.
+    expect(css).toMatch(
+      /\[data-chat-composer-overlay="true"\]\[data-draft-hero\]\s*\{\s*top:\s*0;\s*bottom:\s*0;\s*display:\s*flex;\s*align-items:\s*center;\s*padding-top:\s*0;/u,
     );
+    expect(css).not.toMatch(/\[data-draft-hero\]\s*\{[^}]*transform/u);
     // The taller drawn box: prompt on top, attach leading and send trailing
     // on their own row — keyed off the overlay so it folds back on send.
     expect(shell).toContain('data-fork-composer-prompt-row="true"');

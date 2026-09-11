@@ -44,22 +44,27 @@ export function renderComposerLivenessPill(
   return props ? <ComposerBackgroundLivenessPill {...props} /> : null;
 }
 
-/** When the BranchToolbar is absent (non-repo, or a draft with no project yet)
- * but a chip remains — the liveness stop, or a draft's project chip passed as
- * `leading` — mount it in the same strip chrome (upstream's
+/** The chips that must still show when BranchToolbar is not painting a visible
+ * strip (non-repo, a draft with no project yet, or a thread whose shell has
+ * not resolved): `leading` is a draft's project chip, `trailing` the liveness
+ * stop pill. They mount in the same strip chrome (upstream's
  * ComposerSurface.ContextStrip, which fork CSS flattens under
- * `[data-fork-composer-context-row]`) so it sits where the chips would. */
-export function renderComposerLivenessStripFallback(
-  livenessPill: ReactNode,
-  leading?: ReactNode,
-): ReactNode {
-  if (!livenessPill && !leading) {
+ * `[data-fork-composer-context-row]`) so they sit where the toolbar's chips
+ * would. Nothing to show renders nothing. */
+export function renderComposerContextStripFallback({
+  leading,
+  trailing,
+}: {
+  readonly leading?: ReactNode;
+  readonly trailing?: ReactNode;
+}): ReactNode {
+  if (!leading && !trailing) {
     return null;
   }
   return (
     <ComposerSurface.ContextStrip>
       {leading ?? null}
-      {livenessPill}
+      {trailing ?? null}
     </ComposerSurface.ContextStrip>
   );
 }

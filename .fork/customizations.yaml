@@ -3474,11 +3474,16 @@
     While the draft has no messages the composer sits on the chat column's
     centre line with the headline parked above it, upstream's own hero
     arrangement, and drops to the docked position on the first send through
-    upstream's layout transition. The overlay is offset (top-1/2, translate),
-    never stretched over the column, so its measured height stays the
-    composer's for the timeline cutoff and mini-player insets; it carries
-    data-draft-hero so the docked floor gradient and the draft-only prompt
-    geometry key off it. That geometry is the drawn box (Figma 418:11501): an
+    upstream's layout transition. ChatView keeps upstream's one docked
+    className and only stamps data-draft-hero; that stamp is the layout
+    mode, and theme.custom.css owns everything keyed on it — the overlay's
+    move to the centre line (stretched top-to-bottom, centred with flex,
+    never a transform: a transformed ancestor puts the glass composer on its
+    own compositing surface), the docked-only floor gradient and the
+    draft-only prompt geometry. Its measured height is the column's while
+    the draft is empty; the transcript is empty then, so the cutoff and
+    mini-player insets that read it have nothing to place, and the
+    ResizeObserver republishes on the first send. That geometry is the drawn box (Figma 418:11501): an
     80px prompt surface with 8px padding, the prompt line on top and the
     attach / send actions on their own row beneath — attach leading, send
     trailing — which folds back to the compact base row the moment the

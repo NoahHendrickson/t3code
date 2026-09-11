@@ -230,12 +230,14 @@ describe("fork guard: fork-composer-shell", () => {
   });
 
   it("centers the draft composer and docks it once the thread starts", () => {
-    // The overlay is offset, never stretched over the column, so its measured
-    // height stays the composer's for the cutoff mask and mini-player insets.
-    expect(chatView).toMatch(
-      /isDraftHeroState\s*\?\s*"pointer-events-none absolute inset-x-0 top-1\/2 z-20 -translate-y-1\/2"\s*:\s*"pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1\.5 sm:pt-2"/u,
+    // One docked className in ChatView; the draft state is the data-draft-hero
+    // stamp, and theme.custom.css moves the overlay to the centre line off it
+    // (fork-new-agent-draft), so the layout mode has a single owner.
+    expect(chatView).toContain(
+      'className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-1.5 sm:pt-2"',
     );
-    expect(chatView).not.toMatch(/isDraftHeroState\s*\?\s*"pointer-events-none absolute inset-0/u);
+    expect(chatView).toContain("data-draft-hero={isDraftHeroState || undefined}");
+    expect(chatView).not.toMatch(/isDraftHeroState\s*\?\s*"pointer-events-none absolute/u);
     expect(chatView).not.toContain("isDraftHero={isDraftHeroState}");
     // The greeting rides bottom-full above the composer inside the stack, so
     // the composer itself sits on the centre line; no separate greeting layer.
@@ -758,13 +760,13 @@ describe("fork guard: fork-composer-shell", () => {
     expect(pill).toContain("Stop background work");
     expect(strip).toContain("resolveComposerLivenessPillProps");
     expect(strip).toContain("<ComposerSurface.ContextStrip>");
-    expect(strip).toContain("renderComposerLivenessStripFallback");
+    expect(strip).toContain("export function renderComposerContextStripFallback({");
     expect(branchToolbar).toContain("trailing?: ReactNode");
     expect(branchToolbar).toContain("{trailing ?? null}");
-    // The bare liveness strip has one owner: the no-thread branch reuses the
-    // fallback instead of re-rendering the strip inline with a dead measure ref.
+    // The bare fallback strip has one owner: the no-thread branch reuses it
+    // instead of re-rendering the strip inline with a dead measure ref.
     expect(branchToolbar).toContain(
-      "return renderComposerLivenessStripFallback(trailing, leading);",
+      "return renderComposerContextStripFallback({ leading, trailing });",
     );
     expect(branchToolbar).not.toMatch(/<ComposerSurface\.ContextStrip ref=\{setStripElement\}>/u);
     expect(chatView).toContain("resolveComposerLivenessPillProps");
