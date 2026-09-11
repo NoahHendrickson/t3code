@@ -75,15 +75,17 @@
    The frame places Noey's "blobditherbluepurp" export (layer 447:15859,
    758×1011 at -357,-15 on a 971×1008 card, blend mode lighten) so only its
    right 53% shows; the asset here is that window, flattened over black,
-   flipped vertically and tapered (0.7× wide at the top, 1.2× at the bottom)
-   because Noey wanted it thin at the top and thick at the bottom, then
+   flipped vertically, tapered (0.7× wide at the top, 1.2× at the bottom)
+   because Noey wanted it thin at the top and thick at the bottom, and
+   warped row by row with smooth low-frequency noise (width ±45%, rows
+   pulled up to 12% into the edge, never off it) so the silhouette
+   undulates instead of reading as one smooth column, then
    lightened onto the card colour — lighten is what the frame does, and it
    is what lets the black between the dots vanish into the card — and
-   cropped to the 296px it reaches (about 30% of the frame's card). It
+   cropped to the 360px it reaches (about 37% of the frame's card). It
    paints as a `left top / auto 100%` layer, so it scales with the card
    height and the rest of the card stays the flat colour. Quantized to 256 colours with median cut (octree steps the glow's
-   falloff into a visible staircase; median cut does not): 212 KB against
-   573 KB truecolour, no channel more than 25 levels off.
+   falloff into a visible staircase; median cut does not): 169 KB against truecolour, no channel more than 25 levels off.
 
    ::after is the new-agent draft (Figma 416:8420, layer 421:12528,
    "doloresbluedither4"): the blue portrait at full strength under a
@@ -105,7 +107,7 @@
 
    westworld-hero.png is the Figma export quantized to 256 colours (octree),
    171 KB against 1.3 MB (no channel more than 14 levels off);
-   westworld-thread.png is the 592×1972 left blob strip, 256 colours (median cut), 212 KB. */
+   westworld-thread.png is the 720×1972 left blob strip, 256 colours (median cut), 169 KB. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
