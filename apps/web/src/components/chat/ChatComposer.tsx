@@ -1777,7 +1777,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     projectSelectionRequired;
   const dictation = useForkDictationController({
     ownerKey: composerTargetKey(composerDraftTarget),
-    prompt,
     disabled: dictationDisabled,
     // Invoked on start/stop, after the refs and callbacks declared below exist.
     getComposerElement: () => composerFormRef.current,
@@ -6010,11 +6009,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                         /* fork:end fork-composer-shell */
                       }
                       disabled={
+                        isConnecting ||
+                        isComposerApprovalState ||
                         /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
                         dictation.freezesEditor ||
                         /* fork:end fork-local-dictation */
-                        isConnecting ||
-                        isComposerApprovalState ||
                         /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
                         promptLockedForProject ||
                         /* fork:end fork-new-agent-draft */

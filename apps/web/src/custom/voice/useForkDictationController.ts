@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   VoiceInputController,
   voiceInputBlocksSubmission,
@@ -96,67 +96,79 @@ function isDictationChord(event: KeyboardEvent): boolean {
  * composer becoming disabled (an approval or question arriving mid-sentence)
  * and is settled by the user, not silently dropped.
  */
-export function useForkDictationController(input: {
+type DictationInput = {
   readonly ownerKey: string;
-  readonly prompt: string;
   readonly disabled: boolean;
   readonly getComposerElement: () => HTMLElement | null;
   readonly readDraft: () => { value: string; expandedCursor: number };
   readonly commitDraft: (text: string, cursor: number) => void;
-}) {
-  const [bridge] = useState(readForkVoiceInputBridge);
+};
+
+/**
+ * The controller's stale-draft check already compares owner and text, which is
+ * what a switched thread or an edited prompt changes; the revision stays fixed.
+ */
+function createController(
+  bridge: ForkVoiceInputBridge,
+  latest: () => DictationInput,
+  set: {
+    state: (next: VoiceInputState) => void;
+    detail: (message: string | null) => void;
+    download: (percent: number | null) => void;
+  },
+): VoiceInputController {
+  const recorder = new BrowserVoiceRecorder();
+  recorder.onError = set.detail;
+  const controller = new VoiceInputController({
+    recorder,
+    requestPermission: queryMicrophonePermission,
+    configureRecording: async () => {},
+    releaseRecording: async () => recorder.release(),
+    deleteRecording: (uri) => URL.revokeObjectURL(uri),
+    getTranscriber: () =>
+      createBridgeTranscriber(bridge, { onDownload: set.download, onDetail: set.detail }),
+    readDraft: () => {
+      const current = latest();
+      const snapshot = current.readDraft();
+      return {
+        ownerKey: current.ownerKey,
+        text: snapshot.value,
+        selection: { start: snapshot.expandedCursor, end: snapshot.expandedCursor },
+        revision: 0,
+      };
+    },
+    commitDraft: (text, selection) => latest().commitDraft(text, selection.start),
+    onStateChange: (next) => {
+      if (next.phase === "preparing") {
+        set.detail(null);
+        set.download(null);
+      }
+      set.state(next);
+    },
+  });
+  recorder.onLimit = () => void controller.stop();
+  recorder.onInterrupted = () =>
+    void controller.interruptRecording("Microphone disconnected. Please record again.");
+  return controller;
+}
+
+export function useForkDictationController(input: DictationInput) {
   const [state, setState] = useState(INITIAL_STATE);
   const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
-  const latestInputRef = useRef(input);
-  latestInputRef.current = input;
-  const previousDraftRef = useRef({ ownerKey: input.ownerKey, text: input.prompt });
-  const revisionRef = useRef(0);
-  if (
-    previousDraftRef.current.ownerKey !== input.ownerKey ||
-    previousDraftRef.current.text !== input.prompt
-  ) {
-    previousDraftRef.current = { ownerKey: input.ownerKey, text: input.prompt };
-    revisionRef.current += 1;
-  }
-
-  const controllerRef = useRef<VoiceInputController | null>(null);
-  if (bridge && !controllerRef.current) {
-    const recorder = new BrowserVoiceRecorder();
-    recorder.onError = setDetail;
-    const controller = new VoiceInputController({
-      recorder,
-      requestPermission: queryMicrophonePermission,
-      configureRecording: async () => {},
-      releaseRecording: async () => recorder.release(),
-      deleteRecording: (uri) => URL.revokeObjectURL(uri),
-      getTranscriber: () =>
-        createBridgeTranscriber(bridge, { onDownload: setDownloadPercent, onDetail: setDetail }),
-      readDraft: () => {
-        const current = latestInputRef.current;
-        const snapshot = current.readDraft();
-        return {
-          ownerKey: current.ownerKey,
-          text: snapshot.value,
-          selection: { start: snapshot.expandedCursor, end: snapshot.expandedCursor },
-          revision: revisionRef.current,
-        };
-      },
-      commitDraft: (text, selection) => latestInputRef.current.commitDraft(text, selection.start),
-      onStateChange: (next) => {
-        if (next.phase === "preparing") {
-          setDetail(null);
-          setDownloadPercent(null);
-        }
-        setState(next);
-      },
-    });
-    recorder.onLimit = () => void controller.stop();
-    recorder.onInterrupted = () =>
-      void controller.interruptRecording("Microphone disconnected. Please record again.");
-    controllerRef.current = controller;
-  }
-  const controller = controllerRef.current;
+  // Called only from controller callbacks and key handlers, which run on user
+  // events after commit and need the latest closures, not the mount-time ones.
+  const readInput = useEffectEvent(() => input);
+  const [controller] = useState(() => {
+    const bridge = readForkVoiceInputBridge();
+    return bridge
+      ? createController(bridge, readInput, {
+          state: setState,
+          detail: setDetail,
+          download: setDownloadPercent,
+        })
+      : null;
+  });
 
   const previousOwnerRef = useRef(input.ownerKey);
   useEffect(() => {
@@ -176,7 +188,7 @@ export function useForkDictationController(input: {
       if (event.repeat || event.defaultPrevented) return;
       const { phase } = controller.currentState;
       const target = event.target;
-      const composer = latestInputRef.current.getComposerElement();
+      const composer = readInput().getComposerElement();
       const inComposer = target instanceof Node && composer?.contains(target) === true;
       const unfocused = target === document.body || target === document;
       if (event.key === "Escape") {
@@ -187,7 +199,7 @@ export function useForkDictationController(input: {
           if (!(inComposer || unfocused)) return;
           void controller.stop();
         } else if (phase === "idle" || phase === "error") {
-          if (!inComposer || latestInputRef.current.disabled) return;
+          if (!inComposer || readInput().disabled) return;
           void controller.start();
         } else return;
       } else return;
@@ -198,11 +210,11 @@ export function useForkDictationController(input: {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [controller]);
 
-  const start = useCallback(() => {
-    if (!latestInputRef.current.disabled) void controller?.start();
-  }, [controller]);
-  const stop = useCallback(() => void controller?.stop(), [controller]);
-  const cancel = useCallback(() => controller?.cancel(), [controller]);
+  const start = () => {
+    if (!input.disabled) void controller?.start();
+  };
+  const stop = () => void controller?.stop();
+  const cancel = () => controller?.cancel();
 
   return {
     isAvailable: controller !== null,
