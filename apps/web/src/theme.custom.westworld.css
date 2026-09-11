@@ -107,8 +107,13 @@
    theme.custom.css). Static images, static opacity at rest.
 
    westworld-hero.png is the Figma export quantized to 256 colours (octree),
-   171 KB against 1.3 MB (no channel more than 14 levels off);
-   westworld-thread.png is the 448×986 frosted glow strip, truecolour, 68 KB. */
+   with the export's feathered cutout hardened: the figure sat on a soft drop
+   shadow and an anti-aliased rim, which read as a blurred smear along the
+   silhouette over the flat blue. Every pixel in that band now snaps to the
+   figure's light or the stage blue, and where the band crossed the dot field
+   the dots are copied back in from one lattice period (38px) further out.
+   123 KB against 1.3 MB; westworld-thread.png is the 448×986 frosted glow
+   strip, truecolour, 68 KB. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
