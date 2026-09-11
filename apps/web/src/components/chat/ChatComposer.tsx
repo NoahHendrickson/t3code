@@ -867,7 +867,7 @@ import { toastManager } from "../ui/toast";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import {
   CircleAlertIcon,
-  PaperclipIcon,
+  PlusIcon,
   PlayIcon,
   type LucideIcon,
   LockIcon,
@@ -5112,7 +5112,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 />
               }
             >
-              <PaperclipIcon />
+              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+              <PlusIcon />
+              {/* fork:end fork-composer-shell */}
             </TooltipTrigger>
             <TooltipPopup>Attach files</TooltipPopup>
           </Tooltip>
