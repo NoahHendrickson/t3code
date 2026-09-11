@@ -34,7 +34,14 @@
     useVoiceInputController and reads its send/editor gates directly; the mic
     button only renders state. Cancellation stops owned work, stale drafts never
     receive transcripts, and a recording in flight survives the composer becoming
-    disabled. The packaged helper exits after inference, freeing model memory.
+    disabled: a pending approval or question routes the transcript into the
+    prompt draft itself, and when the action cluster unmounts the recording is
+    transcribed on the spot rather than left running with no control to end it.
+    While dictating, the attach button steps aside and the mic, cancel X and
+    check share the attach/send 24px box and pure-white ghost colour from
+    theme.custom.css. The packaged helper exits after inference, freeing model
+    memory; the model cache lives under the desktop state dir so --home-dir runs
+    stay isolated.
     Fork IPC types live in the desktop fork and web custom folders, never in
     packages/contracts or client-runtime. Browser-only and mobile clients retain
     their existing behavior.
@@ -47,6 +54,8 @@
     - apps/web/src/custom/voice/ForkDictationControl.tsx
     - apps/web/src/custom/voice/forkVoiceInputBridge.ts
     - apps/web/src/custom/voice/useForkDictationController.ts
+    - apps/web/src/theme.custom.css
+    - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
   shadows: []
   watch:
     - apps/desktop/src/ipc/DesktopIpcHandlers.ts
@@ -2256,7 +2265,9 @@
     (fenced in ChatComposer) so it shares send/stop's 24px square and the
     items-end row does not drop the prompt below the send axis, and hovering
     with the ghost controls' 4% lift rather than --accent, which on the Cool
-    palettes is the prompt surface it sits on. Actions are always stamped by
+    palettes is the prompt surface it sits on. Its glyph is a plus, not
+    upstream's paperclip, and in dark mode the row's ghost actions (attach and
+    the dictation controls) paint pure white instead of the muted foreground. Actions are always stamped by
     name, never selected by position: ComposerPrimaryActions hoists a
     labelled Refine submit into the same cluster as a direct child. The
     context-usage meter carries

@@ -4,6 +4,7 @@ import { MicrophoneIcon } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
+import { readForkVoiceInputBridge } from "./forkVoiceInputBridge";
 import type { ForkDictation } from "./useForkDictationController";
 
 const BAR_COUNT = 10;
@@ -24,7 +25,9 @@ function levelToScale(rms: number): number {
 /**
  * Rolling input-level bars: each sample shifts in from the right, so the meter
  * moves only while something is being heard. Writes transforms straight to the
- * DOM because samples arrive at 20 Hz and nothing else needs them.
+ * DOM because samples arrive at 20 Hz and nothing else needs them. No CSS
+ * transition: with a new value every 50 ms one would never settle, and a
+ * transition that is always in flight is a continuously repainting animation.
  */
 function VoiceLevelBars(props: { subscribe: ForkDictation["subscribeLevel"] }) {
   const { subscribe } = props;
@@ -45,7 +48,7 @@ function VoiceLevelBars(props: { subscribe: ForkDictation["subscribeLevel"] }) {
       {Array.from({ length: BAR_COUNT }, (_, index) => (
         <span
           key={index}
-          className="h-full w-px rounded-full bg-foreground transition-transform duration-75 ease-out"
+          className="h-full w-px rounded-full bg-foreground"
           style={{ transform: `scaleY(${MIN_SCALE})` }}
         />
       ))}
@@ -62,7 +65,7 @@ export function ForkDictationControl(props: { dictation: ForkDictation; disabled
   const transcribing = phase === "transcribing";
   const busy = dictation.blocksSubmission;
   const label = transcribing
-    ? "Transcribing"
+    ? "Transcribing (Escape to cancel)"
     : recording
       ? "Done, transcribe (Ctrl+Shift+Space)"
       : "Dictate (Ctrl+Shift+Space)";
@@ -101,9 +104,21 @@ export function ForkDictationControl(props: { dictation: ForkDictation; disabled
           className="absolute bottom-full right-0 z-20 mb-2 w-64 rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-md"
         >
           {dictation.error}
-          <Button type="button" variant="ghost" size="sm" onClick={dictation.cancel}>
-            Dismiss
-          </Button>
+          <div className="mt-2 flex justify-end gap-1">
+            {dictation.errorAction === "settings" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void readForkVoiceInputBridge()?.openMicrophoneSettings()}
+              >
+                Open microphone settings
+              </Button>
+            ) : null}
+            <Button type="button" variant="ghost" size="sm" onClick={dictation.cancel}>
+              Dismiss
+            </Button>
+          </div>
         </div>
       ) : null}
       <Tooltip>

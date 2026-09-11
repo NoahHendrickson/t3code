@@ -14,7 +14,7 @@ import type { VoiceInputIpcResult } from "./fork/voice/VoiceInputIpc.ts";
 
 async function invokeVoiceInput<T>(
   channel: string,
-  request: { requestId: string; wav?: Uint8Array },
+  request: { requestId?: string; wav?: Uint8Array },
 ): Promise<T> {
   const result: VoiceInputIpcResult<T> = await ipcRenderer.invoke(channel, request);
   if (!result.ok) throw new Error(result.error);
@@ -396,6 +396,8 @@ contextBridge.exposeInMainWorld("forkDesktopBridge", {
             invokeVoiceInput<string>("fork:voice-transcribe", { requestId, wav }),
           cancel: (requestId: string): Promise<void> =>
             invokeVoiceInput<void>("fork:voice-cancel", { requestId }),
+          openMicrophoneSettings: (): Promise<void> =>
+            invokeVoiceInput<void>("fork:voice-open-microphone-settings", {}),
           onDownloadProgress: (
             listener: (event: { requestId: string; percent: number }) => void,
           ): (() => void) => {

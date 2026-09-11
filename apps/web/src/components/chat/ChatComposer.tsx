@@ -1780,6 +1780,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     disabled: dictationDisabled,
     // Invoked on start/stop, after the refs and callbacks declared below exist.
     getComposerElement: () => composerFormRef.current,
+    focusEditor: focusComposer,
     // While an approval or question is showing, the editor holds that answer
     // rather than the prompt (see the ComposerPromptEditor `value` binding), so
     // a dictation that started before it arrived reads and lands in the prompt
@@ -1806,7 +1807,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         false,
         readComposerSnapshot().terminalContextIds,
       );
-      window.requestAnimationFrame(() => composerEditorRef.current?.focusAt(collapsedCursor));
+      window.requestAnimationFrame(() => {
+        // focusAt re-commits the editor's snapshot; skip it if typing already
+        // moved on, or the caret would jump back behind the new text.
+        if (promptRef.current !== text) return;
+        composerEditorRef.current?.focusAt(collapsedCursor);
+      });
     },
   });
   /* fork:end fork-local-dictation */
@@ -2247,10 +2253,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isComposerCollapsedMobile && !isComposerApprovalState && pendingUserInputs.length === 0;
   const showComposerAttachAction =
     fileStagingLimit !== null &&
-    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-    // Attach steps aside while dictation is in flight; its bars and buttons take the slot.
-    !dictation.blocksSubmission &&
-    /* fork:end fork-local-dictation */
     (!activePendingProgress ||
       (supportsQuestionAttachments &&
         activePendingProgress.activeQuestion?.allowCustomAnswer !== false));
@@ -2377,6 +2379,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const collapsedComposerPrimaryActionLabel = "Send message";
   const showMobilePendingAnswerActions =
     isMobileViewport && !isComposerCollapsedMobile && pendingPrimaryAction !== null;
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  // Mirrors resolveComposerShellVisibility's showInlinePrimaryAction: when the
+  // mic/check/X cluster unmounts, a live recording is transcribed rather than
+  // left running with nothing on screen to end it.
+  const dictationControlsVisible =
+    activePendingApproval === null && !showMobilePendingAnswerActions;
+  const { settleWithoutControls: settleDictationWithoutControls } = dictation;
+  useEffect(() => {
+    if (!dictationControlsVisible) settleDictationWithoutControls();
+  }, [dictationControlsVisible, settleDictationWithoutControls]);
+  /* fork:end fork-local-dictation */
 
   // ------------------------------------------------------------------
   // Prompt helpers
@@ -5098,7 +5111,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       }
       className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
     >
-      {showComposerAttachAction ? (
+      {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
+      {/* Attach steps aside while dictation is in flight; its bars and buttons take the slot. */}
+      {showComposerAttachAction && !dictation.blocksSubmission ? (
+        /* fork:end fork-local-dictation */
         <>
           <input
             ref={attachmentInputRef}
@@ -5961,11 +5977,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     "relative",
                     isComposerResting && "flex min-w-0 items-center gap-1",
                     isComposerResting &&
-                      (settings.contextWindowMeterEnabled && activeContextWindow
-                        ? "pr-28"
-                        : showComposerAttachAction
-                          ? "pr-20"
-                          : "pr-12"),
+                      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+                      // The dictating cluster (meter, X, check) is wider than attach + send.
+                      (dictation.blocksSubmission
+                        ? "pr-36"
+                        : /* fork:end fork-local-dictation */
+                          settings.contextWindowMeterEnabled && activeContextWindow
+                          ? "pr-28"
+                          : showComposerAttachAction
+                            ? "pr-20"
+                            : "pr-12"),
                   )}
                 >
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}

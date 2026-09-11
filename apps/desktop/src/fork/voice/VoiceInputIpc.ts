@@ -45,7 +45,9 @@ export const installVoiceInputIpc = Effect.fn("desktop.fork.installVoiceInput")(
           `${environment.platform}-${environment.processArch}`,
           "whisper-cli",
         ),
-    cacheDirectory: NodePath.join(Electron.app.getPath("userData"), "voice-input"),
+    // Under the desktop's state dir so a --home-dir run keeps its own model
+    // cache instead of sharing the real install's.
+    cacheDirectory: NodePath.join(environment.stateDir, "voice-input"),
   });
   yield* Effect.addFinalizer(() => Effect.sync(() => engine.dispose()));
 
@@ -72,9 +74,14 @@ export const installVoiceInputIpc = Effect.fn("desktop.fork.installVoiceInput")(
           sender.removeListener("render-process-gone", cancel);
         }
       },
+      // Node's own errors carry absolute paths (ENOENT on a transcript, EACCES
+      // on the cache); those get the generic line, engine messages pass through.
       catch: (cause) =>
         new VoiceInputError({
-          message: cause instanceof Error ? cause.message : "Local dictation failed.",
+          message:
+            cause instanceof Error && !("code" in cause) && cause.message
+              ? cause.message
+              : "Local dictation failed.",
         }),
     });
 
@@ -98,6 +105,21 @@ export const installVoiceInputIpc = Effect.fn("desktop.fork.installVoiceInput")(
         engine.transcribe(requestKey, wav),
       );
     }, respond<string>()),
+  });
+
+  // The renderer's openExternal allows only web and editor schemes, so the
+  // system-settings deep link is served here, on the fork's own channel.
+  yield* ipc.handle({
+    channel: "fork:voice-open-microphone-settings",
+    handler: Effect.fn("desktop.fork.voice.openMicrophoneSettings")(function* () {
+      yield* Effect.tryPromise({
+        try: () =>
+          Electron.shell.openExternal(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+          ),
+        catch: () => new VoiceInputError({ message: "Could not open System Settings." }),
+      });
+    }, respond<void>()),
   });
 
   yield* ipc.handle({

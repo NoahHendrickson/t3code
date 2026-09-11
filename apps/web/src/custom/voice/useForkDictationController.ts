@@ -39,7 +39,10 @@ async function queryMicrophonePermission() {
  */
 function createBridgeTranscriber(
   bridge: ForkVoiceInputBridge,
-  events: { onDownload: (percent: number) => void; onDetail: (message: string) => void },
+  events: {
+    onDownload: (percent: number | null) => void;
+    onDetail: (message: string) => void;
+  },
 ): VoiceTranscriber {
   return {
     prepare: async ({ signal }) => {
@@ -52,6 +55,9 @@ function createBridgeTranscriber(
       try {
         await bridge.prepare(requestId);
         signal.throwIfAborted();
+        // The controller stays "preparing" through the mic permission prompt;
+        // a lingering "100%" would read as a stuck download.
+        events.onDownload(null);
       } catch (error) {
         signal.removeEventListener("abort", abort);
         if (!signal.aborted)
@@ -93,16 +99,25 @@ function isDictationChord(event: KeyboardEvent): boolean {
  * button only renders state and calls `start` / `stop` / `cancel`.
  *
  * `disabled` gates starting only. A recording already in flight survives the
- * composer becoming disabled (an approval or question arriving mid-sentence)
- * and is settled by the user, not silently dropped.
+ * composer becoming disabled (a question arriving mid-sentence) and is settled
+ * by the user. When the composer hides the controls themselves (an approval
+ * replaces the action cluster) the recording is transcribed on the spot, so a
+ * live mic is never left with no button to end it.
  */
 type DictationInput = {
   readonly ownerKey: string;
   readonly disabled: boolean;
   readonly getComposerElement: () => HTMLElement | null;
+  readonly focusEditor: () => void;
   readonly readDraft: () => { value: string; expandedCursor: number };
   readonly commitDraft: (text: string, cursor: number) => void;
 };
+
+const BLOCKING_PHASES = new Set<VoiceInputState["phase"]>([
+  "preparing",
+  "recording",
+  "transcribing",
+]);
 
 type LevelListener = (level: number) => void;
 
@@ -158,14 +173,19 @@ function createSession(
     },
   });
   recorder.onLimit = () => void controller.stop();
-  recorder.onInterrupted = () =>
-    void controller.interruptRecording("Microphone disconnected. Please record again.");
-  return { controller, subscribeLevel };
+  recorder.onInterrupted = (message) => void controller.interruptRecording(message);
+  const settleWithoutControls = () => {
+    const { phase } = controller.currentState;
+    if (phase === "recording") void controller.stop();
+    else if (phase === "preparing") controller.cancel();
+  };
+  return { controller, subscribeLevel, settleWithoutControls };
 }
 
 const NO_SESSION = {
   controller: null,
   subscribeLevel: (_listener: LevelListener) => () => {},
+  settleWithoutControls: () => {},
 };
 
 export function useForkDictationController(input: DictationInput) {
@@ -175,13 +195,19 @@ export function useForkDictationController(input: DictationInput) {
   // Called only from controller callbacks and key handlers, which run on user
   // events after commit and need the latest closures, not the mount-time ones.
   const readInput = useEffectEvent(() => input);
-  const [{ controller, subscribeLevel }] = useState(() => {
+  const [{ controller, subscribeLevel, settleWithoutControls }] = useState(() => {
     const bridge = readForkVoiceInputBridge();
     return bridge
       ? createSession(bridge, readInput, {
-          state: setState,
+          state: (next) => {
+            setState(next);
+            if (next.phase === "error") readInput().focusEditor();
+          },
           detail: setDetail,
-          download: setDownloadPercent,
+          // The one-time download reports every integer percent; the label
+          // only needs coarse steps, and each update re-renders the composer.
+          download: (percent) =>
+            setDownloadPercent(percent === null ? null : Math.floor(percent / 5) * 5),
         })
       : NO_SESSION;
   });
@@ -208,8 +234,11 @@ export function useForkDictationController(input: DictationInput) {
       const inComposer = target instanceof Node && composer?.contains(target) === true;
       const unfocused = target === document.body || target === document;
       if (event.key === "Escape") {
-        if (phase === "idle" || !(inComposer || unfocused)) return;
+        // Only while dictation is actually holding the composer; a lingering
+        // error banner must not eat Escape from other composer UI.
+        if (!BLOCKING_PHASES.has(phase) || !(inComposer || unfocused)) return;
         controller.cancel();
+        readInput().focusEditor();
       } else if (isDictationChord(event)) {
         if (phase === "recording") {
           if (!(inComposer || unfocused)) return;
@@ -230,7 +259,10 @@ export function useForkDictationController(input: DictationInput) {
     if (!input.disabled) void controller?.start();
   };
   const stop = () => void controller?.stop();
-  const cancel = () => controller?.cancel();
+  const cancel = () => {
+    controller?.cancel();
+    input.focusEditor();
+  };
 
   return {
     isAvailable: controller !== null,
@@ -239,12 +271,14 @@ export function useForkDictationController(input: DictationInput) {
     // Specific failure text from the bridge or recorder wins over the
     // controller's generic message, but only while an error is showing.
     error: state.phase === "error" ? (detail ?? state.error) : null,
+    errorAction: state.phase === "error" ? state.errorAction : null,
     blocksSubmission: voiceInputBlocksSubmission(state),
     freezesEditor: voiceInputFreezesEditor(state),
     subscribeLevel,
     start,
     stop,
     cancel,
+    settleWithoutControls,
   };
 }
 

@@ -104,6 +104,25 @@ describe("local speech engine", () => {
     );
   });
 
+  it("downloads again when the model was deleted after a session verified it", async () => {
+    const { engine, fetchModel, directory } = await fixture();
+    await engine.prepare("one", () => {});
+    await NodeFSP.rm(NodePath.join(directory, model.file));
+    await expect(engine.transcribe("one", wav())).rejects.toThrow("missing");
+    await engine.prepare("two", () => {});
+    expect(fetchModel).toHaveBeenCalledTimes(2);
+    expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
+  });
+
+  it("clears recording scratch directories left behind by a crash", async () => {
+    const { engine, directory } = await fixture();
+    const stale = NodePath.join(directory, "recording-stale");
+    await NodeFSP.mkdir(stale, { recursive: true });
+    await NodeFSP.writeFile(NodePath.join(stale, "audio.wav"), wav());
+    await engine.prepare("one", () => {});
+    expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
+  });
+
   it("rejects damaged downloads, removes partial files, and allows retry", async () => {
     const fetchModel = vi
       .fn<typeof fetch>()

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { VoiceInputController } from "@t3tools/client-runtime/voice-input";
-import { BrowserVoiceRecorder } from "./BrowserVoiceRecorder";
+import { BrowserVoiceRecorder, recordingToWav, releaseRecording } from "./BrowserVoiceRecorder";
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -51,7 +51,7 @@ function fixture() {
       recorder.release();
       released.resolve();
     },
-    deleteRecording: (uri) => URL.revokeObjectURL(uri),
+    deleteRecording: releaseRecording,
     readDraft: () => ({
       ownerKey: "thread",
       text: "",
@@ -64,8 +64,8 @@ function fixture() {
   recorder.onLimit = () => {
     void controller.stop();
   };
-  recorder.onInterrupted = () => {
-    void controller.interruptRecording();
+  recorder.onInterrupted = (message) => {
+    void controller.interruptRecording(message);
   };
   return {
     recorder,
@@ -92,6 +92,10 @@ describe("desktop microphone lifecycle", () => {
     await f.controller.stop();
     expect(f.commit).toHaveBeenCalledWith("spoken words", { start: 12, end: 12 });
     expect(f.revoke).toHaveBeenCalledWith(f.recorder.uri);
+    // The registry entry goes with the URL, or every dictation would pin its Blob.
+    await expect(recordingToWav(f.recorder.uri!, new AbortController().signal)).rejects.toThrow(
+      "no longer available",
+    );
   });
 
   it("cancels recording without transcribing or inserting it", async () => {

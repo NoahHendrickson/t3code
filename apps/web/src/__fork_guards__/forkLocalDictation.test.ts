@@ -2,7 +2,7 @@
 import * as NodeFS from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { VoiceInputController } from "@t3tools/client-runtime/voice-input";
-import { encodeVoiceWav } from "../custom/voice/BrowserVoiceRecorder";
+import { encodeVoiceWav, releaseRecording } from "../custom/voice/BrowserVoiceRecorder";
 
 const read = (path: string) => NodeFS.readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -35,7 +35,7 @@ describe("fork local dictation", () => {
       requestPermission: async () => ({ granted: true, canAskAgain: true }),
       configureRecording: async () => {},
       releaseRecording: async () => {},
-      deleteRecording: () => {},
+      deleteRecording: releaseRecording,
       readDraft: () => ({
         ownerKey: "thread-1",
         text,
@@ -61,18 +61,34 @@ describe("fork local dictation", () => {
     const preload = read("../../../desktop/src/preload.ts");
     const runtimeExports = read("../../../../packages/client-runtime/src/voice-input/index.ts");
     const packaging = read("../../../../scripts/build-desktop-artifact.ts");
-    // Composer holds the hook and reads the gates directly, like mobile.
+    const theme = read("../theme.custom.css");
+    // Composer holds the hook and reads the gates directly, like mobile:
+    // the send gate is the first clause of sendDisabledReason and the editor
+    // gate sits in the prompt editor's `disabled` chain.
     expect(composer).toContain("useForkDictationController({");
-    expect(composer).toContain("dictation.blocksSubmission ?");
-    expect(composer).toContain("dictation.freezesEditor ||");
+    expect(composer).toMatch(
+      /const sendDisabledReason =\s*(?:\/\*[^*]*\*\/\s*)*\(dictation\.blocksSubmission\s*\?/u,
+    );
+    expect(composer).toMatch(
+      /disabled=\{\s*isConnecting \|\|\s*isComposerApprovalState \|\|\s*(?:\/\*[^*]*\*\/\s*)*dictation\.freezesEditor \|\|/u,
+    );
     expect(composer).toContain("<ForkDictationControl dictation={dictation}");
+    // A hidden action cluster settles the recording instead of orphaning it.
+    expect(composer).toMatch(
+      /if \(!dictationControlsVisible\) settleDictationWithoutControls\(\)/u,
+    );
+    // The mic, X and check share the attach/send box and hover from theme.custom.css.
+    for (const action of ["dictate", "dictate-cancel"]) {
+      expect(control).toContain(`data-fork-composer-action="${action}"`);
+      expect(theme).toContain(`[data-fork-composer-action="${action}"]`);
+    }
     // The button renders state only.
     expect(control).toContain("if (!dictation.isAvailable) return null");
     expect(control).not.toContain("new VoiceInputController");
     // Fork IPC stays out of shared packages.
     expect(preload).toContain('"fork:voice-transcribe"');
     expect(preload).not.toContain("@t3tools/client-runtime");
-    expect(runtimeExports).not.toContain("fork");
+    expect(runtimeExports).not.toMatch(/^\s*\w.*\bfork/imu);
     expect(packaging).toContain('to: "voice-input"');
     expect(packaging).toContain("NSMicrophoneUsageDescription");
   });

@@ -1,4 +1,9 @@
-import type { VoiceRecorder } from "@t3tools/client-runtime/voice-input";
+import {
+  VOICE_RECORDING_LIMIT_SECONDS,
+  type VoiceRecorder,
+} from "@t3tools/client-runtime/voice-input";
+
+const SAMPLE_RATE = 16_000;
 
 export function encodeVoiceWav(samples: Float32Array): Uint8Array {
   const wav = new Uint8Array(44 + samples.length * 2);
@@ -42,22 +47,38 @@ export async function recordingToWav(uri: string, signal: AbortSignal): Promise<
   if (!blob) throw new Error("The recording is no longer available.");
   const bytes = await blob.arrayBuffer();
   signal.throwIfAborted();
-  const decoder = new OfflineAudioContext(1, 1, 16_000);
+  const decoder = new OfflineAudioContext(1, 1, SAMPLE_RATE);
   const decoded = await decoder.decodeAudioData(bytes);
   signal.throwIfAborted();
-  const length = Math.min(16_000 * 300, Math.ceil(decoded.duration * 16_000));
+  const length = Math.min(
+    SAMPLE_RATE * VOICE_RECORDING_LIMIT_SECONDS,
+    Math.ceil(decoded.duration * SAMPLE_RATE),
+  );
   if (length === 0) return null;
-  const context = new OfflineAudioContext(1, length, 16_000);
+  // decodeAudioData already resampled to the decoder's rate; the capture is
+  // mono, so the graph render is only a fallback for a device that ignored it.
+  const samples =
+    decoded.numberOfChannels === 1 && decoded.sampleRate === SAMPLE_RATE
+      ? decoded.getChannelData(0).subarray(0, length)
+      : await downmix(decoded, length, signal);
+  // Digital silence should never reach Whisper, which can invent text for empty audio.
+  if (!samples.some((sample) => Math.abs(sample) > 0.0001)) return null;
+  return encodeVoiceWav(samples);
+}
+
+async function downmix(
+  decoded: AudioBuffer,
+  length: number,
+  signal: AbortSignal,
+): Promise<Float32Array> {
+  const context = new OfflineAudioContext(1, length, SAMPLE_RATE);
   const source = context.createBufferSource();
   source.buffer = decoded;
   source.connect(context.destination);
   source.start();
   const audio = await context.startRendering();
   signal.throwIfAborted();
-  const samples = audio.getChannelData(0);
-  // Digital silence should never reach Whisper, which can invent text for empty audio.
-  if (!samples.some((sample) => Math.abs(sample) > 0.0001)) return null;
-  return encodeVoiceWav(samples);
+  return audio.getChannelData(0);
 }
 
 export class BrowserVoiceRecorder implements VoiceRecorder {
@@ -68,12 +89,15 @@ export class BrowserVoiceRecorder implements VoiceRecorder {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private meter: { context: AudioContext; timer: ReturnType<typeof setInterval> } | null = null;
   onLimit: () => void = () => {};
-  onInterrupted: () => void = () => {};
+  /** The recording cannot continue; the message says why. */
+  onInterrupted: (message: string) => void = () => {};
   onError: (message: string) => void = () => {};
   /** RMS input level in 0..1, sampled at 20 Hz while recording. */
   onLevel: (level: number) => void = () => {};
 
   async prepareToRecordAsync(): Promise<void> {
+    this.uri = null;
+    this.stopped = Promise.resolve();
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -90,12 +114,15 @@ export class BrowserVoiceRecorder implements VoiceRecorder {
       );
       throw error;
     }
-    this.uri = null;
     this.recorder = new MediaRecorder(this.stream);
     this.stream
       .getAudioTracks()
       .forEach((track) =>
-        track.addEventListener("ended", () => this.onInterrupted(), { once: true }),
+        track.addEventListener(
+          "ended",
+          () => this.onInterrupted("Microphone disconnected. Please record again."),
+          { once: true },
+        ),
       );
   }
 
@@ -117,7 +144,14 @@ export class BrowserVoiceRecorder implements VoiceRecorder {
         },
         { once: true },
       );
-      recorder.addEventListener("error", () => this.onInterrupted());
+      recorder.addEventListener("error", (event) => {
+        const cause = (event as ErrorEvent).error;
+        this.onInterrupted(
+          cause instanceof Error && cause.message
+            ? `Recording failed: ${cause.message}`
+            : "Recording failed. Please record again.",
+        );
+      });
     });
     recorder.start();
     this.timer = setTimeout(() => this.onLimit(), forDuration * 1000);
@@ -136,23 +170,28 @@ export class BrowserVoiceRecorder implements VoiceRecorder {
     this.stopMeter();
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
+    // `uri` stays: the controller releases the session before it reads the URI.
+    this.recorder = null;
   }
 
   /** Best effort: the recording must not depend on the level meter. */
   private startMeter(stream: MediaStream): void {
     this.stopMeter();
     if (typeof AudioContext === "undefined") return;
-    const context = new AudioContext();
-    const analyser = context.createAnalyser();
-    analyser.fftSize = 256;
+    let context: AudioContext | null = null;
+    let analyser: AnalyserNode;
     try {
+      context = new AudioContext();
+      analyser = context.createAnalyser();
+      analyser.fftSize = 256;
       context.createMediaStreamSource(stream).connect(analyser);
     } catch {
-      void context.close().catch(() => {});
+      void context?.close().catch(() => {});
       return;
     }
     const samples = new Float32Array(analyser.fftSize);
     const timer = setInterval(() => {
+      if (document.hidden) return;
       analyser.getFloatTimeDomainData(samples);
       let sum = 0;
       for (const sample of samples) sum += sample * sample;

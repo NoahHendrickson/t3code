@@ -8,6 +8,8 @@ export interface ForkVoiceInputBridge {
   prepare(requestId: string): Promise<void>;
   transcribe(requestId: string, wav: Uint8Array): Promise<string>;
   cancel(requestId: string): Promise<void>;
+  /** Opens the OS microphone privacy pane for a denied permission. */
+  openMicrophoneSettings(): Promise<void>;
   onDownloadProgress(listener: (event: { requestId: string; percent: number }) => void): () => void;
 }
 

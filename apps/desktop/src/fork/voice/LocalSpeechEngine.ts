@@ -7,6 +7,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeStream from "node:stream";
 import * as NodeStreamPromises from "node:stream/promises";
+import { VOICE_RECORDING_LIMIT_SECONDS } from "@t3tools/client-runtime/voice-input";
 
 /**
  * English-only quantized Small: dictated prompts are English, and the .en
@@ -19,7 +20,9 @@ const DEFAULT_MODEL = {
   bytes: 190098681,
   sha256: "bfdff4894dcb76bbf647d56263ea2a96645423f1669176f4844a1bf8e478ad30",
 };
-const MAX_AUDIO_BYTES = 44 + 16_000 * 2 * 300;
+// Bound by the same limit that arms the recorder, so raising it upstream can
+// never leave a full-length recording rejected here after the fact.
+const MAX_AUDIO_BYTES = 44 + 16_000 * 2 * VOICE_RECORDING_LIMIT_SECONDS;
 
 /** Only accept the bounded mono PCM format emitted by the recorder. */
 export function validateVoiceWav(wav: Uint8Array): void {
@@ -91,7 +94,7 @@ export function runWhisper(binary: string, args: string[], signal: AbortSignal):
 export class LocalSpeechEngine {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly requests = new Map<string, AbortController>();
-  private modelVerified = false;
+  private sweptRecordings = false;
 
   private readonly options: {
     binary: string;
@@ -149,12 +152,12 @@ export class LocalSpeechEngine {
         );
       }
       await NodeFSP.mkdir(this.options.cacheDirectory, { recursive: true });
+      await this.sweepStaleRecordings();
       const model = this.modelPath;
-      if (this.modelVerified) return;
-      if (await this.verifyModel(model, signal)) {
-        this.modelVerified = true;
-        return;
-      }
+      // Re-checked every session (a stat plus the sidecar stamp, so it is
+      // cheap): a model deleted to reclaim space must download again, not
+      // fail every later dictation until the app restarts.
+      if (await this.verifyModel(model, signal)) return;
       progress(0);
       const specification = this.model;
       const temporary = `${model}.download`;
@@ -205,7 +208,6 @@ export class LocalSpeechEngine {
         signal.throwIfAborted();
         await NodeFSP.rename(temporary, model);
         await NodeFSP.writeFile(`${model}.sha256`, specification.sha256, { mode: 0o600 });
-        this.modelVerified = true;
       } finally {
         await NodeFSP.rm(temporary, { force: true });
       }
@@ -217,6 +219,26 @@ export class LocalSpeechEngine {
    * missing. Every later launch is a size check, so the first dictation of a
    * session does not stall on hashing 181 MiB.
    */
+  /**
+   * Recording scratch directories are removed in `finally`, which a crash or
+   * force-quit skips; the first session of each launch clears any left behind.
+   */
+  private async sweepStaleRecordings(): Promise<void> {
+    if (this.sweptRecordings) return;
+    this.sweptRecordings = true;
+    const entries = await NodeFSP.readdir(this.options.cacheDirectory).catch(() => []);
+    await Promise.all(
+      entries
+        .filter((entry) => entry.startsWith("recording-"))
+        .map((entry) =>
+          NodeFSP.rm(NodePath.join(this.options.cacheDirectory, entry), {
+            recursive: true,
+            force: true,
+          }),
+        ),
+    );
+  }
+
   private async verifyModel(path: string, signal: AbortSignal): Promise<boolean> {
     const info = await NodeFSP.stat(path).catch(() => null);
     const specification = this.model;
@@ -234,7 +256,8 @@ export class LocalSpeechEngine {
   transcribe(requestKey: string, wav: Uint8Array): Promise<string> {
     return this.operate(requestKey, async (signal) => {
       validateVoiceWav(wav);
-      if (!this.modelVerified) throw new Error("Prepare the speech model before recording.");
+      if (!(await this.verifyModel(this.modelPath, signal)))
+        throw new Error("The speech model is missing. Start dictation again to download it.");
       const directory = await NodeFSP.mkdtemp(
         NodePath.join(this.options.cacheDirectory, "recording-"),
       );

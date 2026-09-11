@@ -77,6 +77,21 @@ if (current !== stamp || !assetsExist) {
     );
   }
   console.log("[voice-input] Building the whisper.cpp helper (one-time, cached afterwards)…");
+  try {
+    await buildHelper();
+  } catch (error) {
+    // Offline, or a compile failure: dev keeps working without dictation.
+    if (!values.optional) throw error;
+    console.warn(
+      `[voice-input] Could not build the local dictation helper; skipping it for this dev session. ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    process.exit(0);
+  }
+}
+
+async function buildHelper() {
   await NodeFSP.mkdir(root, { recursive: true });
   try {
     await NodeFSP.access(NodePath.join(source, "CMakeLists.txt"));
