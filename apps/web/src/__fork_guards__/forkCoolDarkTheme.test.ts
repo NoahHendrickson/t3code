@@ -371,7 +371,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
       'url("./custom/assets/westworld-thread.png") center / cover no-repeat',
     );
     expect(art?.body).toMatch(
-      /rgb\(38 39 44 \/ 10%\) 0,\s*#26272c 190px,\s*#26272c calc\(100% - 120px\),\s*rgb\(38 39 44 \/ 70%\) 100%/u,
+      /rgb\(38 39 44 \/ 10%\) 0,\s*#26272c 190px,\s*#26272c calc\(100% - 150px\),\s*rgb\(38 39 44 \/ 55%\) 100%/u,
     );
     expect(art?.body).toMatch(/,\s*#19191b;/u);
     expect(art?.body).toContain("z-index: -1");

@@ -1203,9 +1203,11 @@
     reads as #26272c, the violet glow rises along the left edge (surface
     again by ~190px) and a faint blue cast sits on the right. The scrim is
     a horizontal gradient standing in for the blur (10% at the left edge,
-    opaque from 190px to 120px from the right, 70% at the right edge); the
-    rotation is baked into the asset so one `center / cover` layer places it
-    at any card size. The ::after is the
+    opaque from 190px to 150px from the right, 55% at the right edge). The
+    rotation and the frame's crop are baked into the asset — the card sees
+    x 12–88% of the layer, where the bright violet and the faint blue-grey
+    live — so one `center / cover` layer lands the same edges at any card
+    size. The ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
     full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover
     at 66% 50% (the drawn crop, the figure on the card's right third); the
@@ -1220,8 +1222,8 @@
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
     Assets at custom/assets/westworld-hero.png (171 KB) and
-    westworld-thread.png (170 KB, rotated), Figma exports quantized to 256
-    colours.
+    westworld-thread.png (rotated and frame-cropped), Figma exports quantized
+    to 256 colours.
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
