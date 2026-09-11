@@ -50,19 +50,18 @@
   --fork-pill-hover: #333438;
   /* The composer is glass over the stage art — the one palette where the
      fork's opaque-composer rule yields, because here the backdrop is the
-     picture. These are the started-thread values (Figma 434:14898): an
-     opaque #39393c vessel with no blur (an opaque surface has nothing to
-     blur), white 12% glass chips at 18px, and an opaque #1f1f1f prompt
-     surface behind a white 12% hairline. The new-agent draft restates them
+     picture. These are the started-thread values (Figma 423:13864): white
+     glass — vessel white 8% at 20px, chips white 12% at 18px — over an
+     opaque #1f1f1f prompt surface behind a white 12% hairline. The new-agent draft restates them
      on its overlay below (Figma 416:8420's dark glass), and the blur radii
      ride the same two tokens so the rules under the art read one source. */
-  --fork-composer-vessel-bg: #39393c;
+  --fork-composer-vessel-bg: rgb(255 255 255 / 8%);
   --fork-composer-bg: #1f1f1f;
   --fork-composer-border: rgb(255 255 255 / 12%);
   --fork-composer-border-focus: #7d848b;
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
-  --fork-westworld-vessel-blur: 0px;
+  --fork-westworld-vessel-blur: 20px;
   --fork-westworld-chip-blur: 18px;
   /* Working is Figma's #1877f2 here, not the green every other dark palette
      uses: the status dot, the pixel rain (sidebar cards, the composer
@@ -133,16 +132,12 @@
   border-color: transparent;
 }
 
-/* Stage card — Figma 416:7408 "Frame 56": the chat column sits inside the
-   surface as a card, 8px in from the header and the edges, 8px radius, a
-   white 12% hairline and a shadow. The shadow is not the drawn one (1px 1px
-   8px black 40% plus a 24px bloom): on a card the same colour as its
-   surface, the offset blur read as a smudge along one side and the bloom
-   muddied the 8px gap. A card on a same-colour dark surface sits on a
-   two-tone edge — the light hairline inside, a 1px dark keyline just outside
-   it — and a shadow that falls under the card (offset down, negative spread
-   so it never widens past the edges) with a tight contact shadow for the
-   base. It is the same
+/* Stage card — Figma 423:13864 "Frame 56": the chat column sits inside the
+   surface as a card, 8px in from the header and the edges, a white 12%
+   hairline and the drawn stage drop shadow — a -4px 0 24px black 24% cast
+   to the left, a 1px 1px 8px black 40% contact shadow and a 0 0 24px
+   #141416 30% bloom. The card is #202023, a step below the #26272c surface,
+   so the shadow has a real step to fall from. It is the same
    drop-target wrapper the artwork paints on: ChatView's root fills the inset
    with an opaque bg-background, and this wrapper is the nearest element that
    is already position:relative and holds exactly the transcript and the
@@ -160,29 +155,18 @@
   border-radius: 10px;
   border: 1px solid rgb(255 255 255 / 12%);
   box-shadow:
-    0 0 0 1px rgb(0 0 0 / 35%),
-    0 2px 6px rgb(0 0 0 / 25%),
-    0 12px 32px -12px rgb(0 0 0 / 55%);
+    -4px 0 24px rgb(0 0 0 / 24%),
+    1px 1px 8px rgb(0 0 0 / 40%),
+    0 0 24px rgb(20 20 22 / 30%);
   overflow: clip;
 }
 
 /* Stage fill and artwork — one per state, on the card's two pseudo-elements,
    both at z-index -1 inside the isolated card.
 
-   ::before is the started thread (Figma 434:14898): the dither texture
-   ("justdither4", turned 180°) covering the card at full strength under a
-   50px-blurred scrim in the surface colour that hides the middle and
-   thins out towards both edges — so the card's body reads as the #26272c
-   surface, the violet glow rises along the left edge (the frame samples
-   #7746eb four pixels in, back to surface by ~190px) and a faint blue cast
-   sits on the right. The scrim is a horizontal gradient here: 10% at the
-   left edge, opaque from 190px, opaque to 150px from the right, 15% at
-   the right edge — the ramps stand in for the blur. The asset is pre-baked
-   with the rotation AND the frame's crop: the 1252-wide layer sits centred
-   on a 945 card, so the card sees x 12–88% of the image, which is where the
-   texture's bright violet (left) and faint blue-grey (right) live; baking
-   that window in means one `center / cover` layer lands the same edges at
-   any card size instead of the texture's dark outer margins.
+   ::before is the started thread (Figma 423:13864): a flat #202023 card, a
+   step below the #26272c surface, with no picture — the transcript reads
+   over plain dark and the white-glass composer sits on it.
 
    ::after is the new-agent draft (Figma 416:8420, layer 421:12528,
    "doloresbluedither4"): the blue portrait at full strength under a
@@ -200,10 +184,9 @@
    as the composer's slide and fold (draftHeroTransition shadow,
    theme.custom.css). Static images, static opacity at rest.
 
-   Both assets are Figma exports quantized to 256 colours (octree):
+   The asset is the Figma export quantized to 256 colours (octree):
    westworld-hero.png 171 KB against 1.3 MB (no channel more than 14 levels
-   off), westworld-thread.png the rotated, frame-cropped texture (no channel
-   more than 11 levels off). */
+   off). */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
@@ -211,16 +194,7 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(
-      to right,
-      rgb(38 39 44 / 10%) 0,
-      #26272c 190px,
-      #26272c calc(100% - 150px),
-      rgb(38 39 44 / 15%) 100%
-    ),
-    url("./custom/assets/westworld-thread.png") center / cover no-repeat,
-    #19191b;
+  background: #202023;
   opacity: 1;
   transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
 }

@@ -1157,10 +1157,9 @@
     active row), row hover #2e2f34, menus and popovers #303137 (one step
     above the surface), borders #33343a, muted text #8a8a8a, primary
     #fcfcf5. The composer is glass over the art, in two frames. A started
-    thread (Figma 434:14898) is an opaque #39393c vessel with no blur (an
-    opaque surface has nothing to blur), context chips white 12% glass at
-    18px, an opaque #1f1f1f prompt surface behind a white 12% hairline, and
-    the flat white send. The
+    thread (Figma 423:13864) is white glass: vessel white 8% with a 20px
+    backdrop blur, context chips white 12% at 18px, an opaque #1f1f1f prompt
+    surface behind a white 12% hairline, and the flat white send. The
     new-agent draft (Figma 416:8420) is dark glass: vessel and chips
     rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind a white
     28% hairline (white 45% on focus — whiter than the drawn 16% so the edge
@@ -1182,12 +1181,10 @@
 
     The chat column is the stage card (Figma "Frame 56"): 8px in from the
     header and the edges, 10px radius (drawn at 8; 10 sits concentric with
-    the window corner 8px further out), a 1px white 12% hairline and a
-    two-tone-edge shadow rather than the drawn one — a 1px black 35% keyline
-    outside the hairline, a 0 2px 6px contact shadow, and a 0 12px 32px -12px
-    downward blur, because the drawn 1px-offset blur and 24px bloom read as a
-    smudge on a card the same colour as its surface — clipped to its
-    corners. It is ChatView's [data-chat-workspace-drop-target]
+    the window corner 8px further out), a 1px white 12% hairline and the
+    drawn stage drop shadow (Figma 423:13864: a -4px 0 24px black 24% cast
+    to the left, a 1px 1px 8px black 40% contact shadow and a 0 0 24px
+    #141416 30% bloom), clipped to its corners. It is ChatView's [data-chat-workspace-drop-target]
     wrapper — the nearest element that is already position:relative and
     holds exactly the transcript and composer — isolated so the artwork's
     z-index -1 sits above the root's opaque fill and below every child. The
@@ -1197,17 +1194,9 @@
 
     One fill and one artwork, Westworld-only, one per state, on the
     wrapper's two pseudo-elements at z-index -1. The ::before is the started
-    thread (Figma 434:14898): the dither texture, turned 180°, covering the
-    card at full strength under a 50px-blurred scrim in the surface colour
-    that hides the middle and thins towards both edges, so the card body
-    reads as #26272c, the violet glow rises along the left edge (surface
-    again by ~190px) and a faint blue cast sits on the right. The scrim is
-    a horizontal gradient standing in for the blur (10% at the left edge,
-    opaque from 190px to 150px from the right, 15% at the right edge). The
-    rotation and the frame's crop are baked into the asset — the card sees
-    x 12–88% of the layer, where the bright violet and the faint blue-grey
-    live — so one `center / cover` layer lands the same edges at any card
-    size. The ::after is the
+    thread (Figma 423:13864): a flat #202023 card, a step below the #26272c
+    surface, with no picture, so the transcript reads over plain dark and
+    the white-glass composer sits on it. The ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
     full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover
     at 66% 50% (the drawn crop, the figure on the card's right third); the
@@ -1221,9 +1210,8 @@
     (fork-new-agent-draft's draftHeroTransition shadow). The composer backing
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
-    Assets at custom/assets/westworld-hero.png (171 KB) and
-    westworld-thread.png (rotated and frame-cropped), Figma exports quantized
-    to 256 colours.
+    Asset at custom/assets/westworld-hero.png (171 KB), the Figma export
+    quantized to 256 colours.
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
@@ -1237,7 +1225,6 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/custom/assets/westworld-hero.png
-    - apps/web/src/custom/assets/westworld-thread.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
   watch:

@@ -177,13 +177,12 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(panel).toContain("--sidebar: #26272c");
     expect(panel).toContain("--sidebar-stage-fade: #26272c");
     expect(panel).toContain("--sidebar-border: #33343a");
-    // Figma 434:14898: a started thread's composer is an opaque #39393c vessel
-    // (no blur — nothing behind an opaque surface to blur) with white-glass
-    // chips over an opaque prompt surface — the palette-root values.
-    expect(stage).toContain("--fork-composer-vessel-bg: #39393c");
+    // Figma 423:13864: a started thread's composer is white glass over an
+    // opaque prompt surface — the palette-root values.
+    expect(stage).toContain("--fork-composer-vessel-bg: rgb(255 255 255 / 8%)");
     expect(stage).toContain("--fork-composer-bg: #1f1f1f");
     expect(stage).toContain("--fork-composer-border: rgb(255 255 255 / 12%)");
-    expect(stage).toContain("--fork-westworld-vessel-blur: 0px");
+    expect(stage).toContain("--fork-westworld-vessel-blur: 20px");
     expect(stage).toContain("--fork-westworld-chip-blur: 18px");
     // Figma 416:8420: the new-agent draft restates dark glass on its overlay,
     // which every composer element descends from.
@@ -267,11 +266,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(card?.body).toMatch(/margin:\s*8px/u);
     expect(card?.body).toMatch(/border-radius:\s*10px/u);
     expect(card?.body).toMatch(/border:\s*1px solid rgb\(255 255 255 \/ 12%\)/u);
-    // Two-tone edge plus a shadow that falls under the card, not the drawn
-    // offset blur: a dark keyline outside the hairline, a contact shadow, and
-    // a downward blur with negative spread so it never widens past the edges.
+    // The drawn stage drop shadow (Figma 423:13864): a left cast, a contact
+    // shadow and a bloom.
     expect(card?.body).toMatch(
-      /box-shadow:\s*0 0 0 1px rgb\(0 0 0 \/ 35%\),\s*0 2px 6px rgb\(0 0 0 \/ 25%\),\s*0 12px 32px -12px rgb\(0 0 0 \/ 55%\)/u,
+      /box-shadow:\s*-4px 0 24px rgb\(0 0 0 \/ 24%\),\s*1px 1px 8px rgb\(0 0 0 \/ 40%\),\s*0 0 24px rgb\(20 20 22 \/ 30%\)/u,
     );
     expect(card?.body).toMatch(/overflow:\s*clip/u);
   });
@@ -335,12 +333,11 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(blockFor(theme, COOL_STAGE)).toContain("--fork-pill-border: #333333");
   });
 
-  it("paints the thread texture under a top-down fade behind started threads", () => {
-    // The ::before is the started-thread picture (Figma 424:14398), anchored
-    // to the card's right edge under a fade from the surface colour so the
-    // transcript reads over plain stage. The wrapper it paints on must already
-    // be positioned in ChatView, and must be isolated so z-index -1 stays
-    // above the root fill.
+  it("paints a flat dark card behind started threads", () => {
+    // The ::before is the started-thread fill (Figma 423:13864): a flat
+    // #202023 card, no picture. The wrapper it paints on must already be
+    // positioned in ChatView, and must be isolated so z-index -1 stays above
+    // the root fill.
     const chatView = readSibling("../components/ChatView.tsx");
     expect(chatView).toMatch(
       /className="relative flex min-h-0 min-w-0 flex-1 flex-col"[\s\S]{0,900}data-chat-workspace-drop-target="true"/u,
@@ -349,7 +346,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-thread.png", import.meta.url)),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-stage.png", import.meta.url)),
@@ -365,15 +362,8 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const art = rules.find((rule) =>
       rule.selector.endsWith('[data-chat-workspace-drop-target="true"]::before'),
     );
-    // Figma 434:14898: the rotated texture covering the card under a
-    // surface-coloured scrim that hides the middle and thins at both edges.
-    expect(art?.body).toContain(
-      'url("./custom/assets/westworld-thread.png") center / cover no-repeat',
-    );
-    expect(art?.body).toMatch(
-      /rgb\(38 39 44 \/ 10%\) 0,\s*#26272c 190px,\s*#26272c calc\(100% - 150px\),\s*rgb\(38 39 44 \/ 15%\) 100%/u,
-    );
-    expect(art?.body).toMatch(/,\s*#19191b;/u);
+    expect(art?.body).toMatch(/background:\s*#202023;/u);
+    expect(art?.body).not.toContain("url(");
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/opacity:\s*1;/u);
     expect(art?.body).toMatch(/transition:\s*opacity 400ms/u);
@@ -382,13 +372,11 @@ describe("fork guard: fork-cool-dark-theme", () => {
       rule.selector.endsWith('[data-chat-composer-overlay="true"]'),
     );
     expect(backing?.body).toMatch(/background:\s*none/u);
-    // No other palette takes either asset, and the old right-hung portrait is gone.
-    const artRules = cssRules(theme).filter(
-      (rule) =>
-        rule.body.includes("westworld-hero.png") || rule.body.includes("westworld-thread.png"),
-    );
+    // No other palette takes the artwork, and the retired thread pictures are gone.
+    const artRules = cssRules(theme).filter((rule) => rule.body.includes("westworld-hero.png"));
     expect(artRules.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR))).toBe(true);
     expect(theme).not.toContain("westworld-stage.png");
+    expect(theme).not.toContain("westworld-thread.png");
   });
 
   it("turns working blue and recolours the brand mark's arms", () => {
