@@ -81,8 +81,16 @@ export function runWhisper(binary: string, args: string[], signal: AbortSignal):
   });
 }
 
+/**
+ * One whisper process at a time, app-wide: each run loads the 181 MiB model,
+ * so concurrent runs would only fight for memory and GPU. Requests queue FIFO
+ * behind that slot. `requestKey` identifies a request so that a cancel (from
+ * its renderer, or from its window going away) aborts that request alone,
+ * whether it is running or still waiting.
+ */
 export class LocalSpeechEngine {
-  private active: { owner: string; abort: AbortController } | null = null;
+  private queue: Promise<unknown> = Promise.resolve();
+  private readonly requests = new Map<string, AbortController>();
   private modelVerified = false;
 
   private readonly options: {
@@ -105,30 +113,34 @@ export class LocalSpeechEngine {
     return NodePath.join(this.options.cacheDirectory, this.model.file);
   }
 
-  cancel(owner: string): void {
-    if (this.active?.owner === owner) this.active.abort.abort();
+  cancel(requestKey: string): void {
+    this.requests.get(requestKey)?.abort();
   }
 
   dispose(): void {
-    this.active?.abort.abort();
+    for (const abort of this.requests.values()) abort.abort();
   }
 
-  private async operate<T>(
-    owner: string,
+  private operate<T>(
+    requestKey: string,
     operation: (signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
-    if (this.active) throw new Error("Voice input is still finishing. Try again shortly.");
-    const active = { owner, abort: new AbortController() };
-    this.active = active;
-    try {
-      return await operation(active.abort.signal);
-    } finally {
-      if (this.active === active) this.active = null;
-    }
+    const abort = new AbortController();
+    this.requests.set(requestKey, abort);
+    const run = this.queue.then(async () => {
+      try {
+        if (abort.signal.aborted) throw new Error("Voice input was cancelled.");
+        return await operation(abort.signal);
+      } finally {
+        if (this.requests.get(requestKey) === abort) this.requests.delete(requestKey);
+      }
+    });
+    this.queue = run.catch(() => {});
+    return run;
   }
 
-  prepare(owner: string, progress: (percent: number) => void): Promise<void> {
-    return this.operate(owner, async (signal) => {
+  prepare(requestKey: string, progress: (percent: number) => void): Promise<void> {
+    return this.operate(requestKey, async (signal) => {
       try {
         await NodeFSP.access(this.options.binary);
       } catch {
@@ -219,8 +231,8 @@ export class LocalSpeechEngine {
     return true;
   }
 
-  transcribe(owner: string, wav: Uint8Array): Promise<string> {
-    return this.operate(owner, async (signal) => {
+  transcribe(requestKey: string, wav: Uint8Array): Promise<string> {
+    return this.operate(requestKey, async (signal) => {
       validateVoiceWav(wav);
       if (!this.modelVerified) throw new Error("Prepare the speech model before recording.");
       const directory = await NodeFSP.mkdtemp(

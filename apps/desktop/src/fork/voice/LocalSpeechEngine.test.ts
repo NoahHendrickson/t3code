@@ -116,25 +116,38 @@ describe("local speech engine", () => {
     expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
 
-  it("cancels a download only for its owner and holds the slot until it settles", async () => {
+  it("queues requests behind the single whisper slot and cancels each by its own key", async () => {
     const started = Promise.withResolvers<AbortSignal>();
     const finished = Promise.withResolvers<Response>();
+    let fetches = 0;
     const { engine } = await fixture({
       fetch: async (_url, options) => {
+        fetches += 1;
+        if (fetches > 1) return new Response(modelBytes);
         started.resolve(options!.signal!);
         return finished.promise;
       },
     });
-    const preparation = engine.prepare("owner", () => {});
-    const rejected = expect(preparation).rejects.toThrow();
+    const first = engine.prepare("window-1:a", () => {});
+    const rejected = expect(first).rejects.toThrow();
     const signal = await started.promise;
-    engine.cancel("other");
+    // Later requests wait their turn; a waiting one can be dropped without
+    // disturbing the running one.
+    const second = engine.prepare("window-2:b", () => {});
+    const third = engine.prepare("window-2:c", () => {});
+    engine.cancel("window-2:c");
     expect(signal.aborted).toBe(false);
-    engine.cancel("owner");
+    engine.cancel("window-2:b");
+    expect(signal.aborted).toBe(false);
+    engine.cancel("window-1:a");
     expect(signal.aborted).toBe(true);
-    await expect(engine.prepare("next", () => {})).rejects.toThrow("finishing");
     finished.resolve(new Response(modelBytes));
     await rejected;
+    await expect(second).rejects.toThrow("cancelled");
+    await expect(third).rejects.toThrow("cancelled");
+    // The queue keeps serving after cancellations.
+    await expect(engine.prepare("window-2:d", () => {})).resolves.toBeUndefined();
+    expect(fetches).toBe(2);
   });
 
   it("reads only the helper's transcript output and deletes temporary recordings", async () => {
@@ -164,11 +177,13 @@ describe("local speech engine", () => {
     const inference = engine.transcribe("owner", wav());
     const rejected = expect(inference).rejects.toThrow();
     const signal = await started.promise;
+    const next = engine.prepare("next", () => {});
     engine.cancel("owner");
     expect(signal.aborted).toBe(true);
-    await expect(engine.prepare("next", () => {})).rejects.toThrow("finishing");
     stopped.resolve();
     await rejected;
+    // The queued request runs once the cancelled inference has settled.
+    await expect(next).resolves.toBeUndefined();
     expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
 

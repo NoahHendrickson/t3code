@@ -49,23 +49,24 @@ export const installVoiceInputIpc = Effect.fn("desktop.fork.installVoiceInput")(
   });
   yield* Effect.addFinalizer(() => Effect.sync(() => engine.dispose()));
 
-  // Engine work is owned by the window that asked for it, and dies with it.
+  // Each request is keyed by its window and id so a cancel, or the window
+  // going away, aborts that request alone in the engine's shared queue.
   const withWindow = <T>(
     event: DesktopIpc.DesktopIpcInvokeEvent | undefined,
     requestId: string,
-    operation: (owner: string, sender: Electron.WebContents) => Promise<T>,
+    operation: (requestKey: string, sender: Electron.WebContents) => Promise<T>,
   ) =>
     Effect.tryPromise({
       try: async () => {
         const sender = event ? Electron.webContents.fromId(event.sender.id) : undefined;
         if (!sender || sender.getType() !== "window")
           throw new Error("Voice input requires a desktop window.");
-        const owner = `${sender.id}:${requestId}`;
-        const cancel = () => engine.cancel(owner);
+        const requestKey = `${sender.id}:${requestId}`;
+        const cancel = () => engine.cancel(requestKey);
         sender.once("destroyed", cancel);
         sender.on("render-process-gone", cancel);
         try {
-          return await operation(owner, sender);
+          return await operation(requestKey, sender);
         } finally {
           sender.removeListener("destroyed", cancel);
           sender.removeListener("render-process-gone", cancel);
@@ -81,8 +82,8 @@ export const installVoiceInputIpc = Effect.fn("desktop.fork.installVoiceInput")(
     channel: "fork:voice-prepare",
     handler: Effect.fn("desktop.fork.voice.prepare")(function* (raw, event) {
       const { requestId } = yield* decodeRequest(raw);
-      return yield* withWindow(event, requestId, (owner, sender) =>
-        engine.prepare(owner, (percent) => {
+      return yield* withWindow(event, requestId, (requestKey, sender) =>
+        engine.prepare(requestKey, (percent) => {
           if (!sender.isDestroyed()) sender.send("fork:voice-download", { requestId, percent });
         }),
       );
@@ -93,7 +94,9 @@ export const installVoiceInputIpc = Effect.fn("desktop.fork.installVoiceInput")(
     channel: "fork:voice-transcribe",
     handler: Effect.fn("desktop.fork.voice.transcribe")(function* (raw, event) {
       const { requestId, wav } = yield* decodeRecording(raw);
-      return yield* withWindow(event, requestId, (owner) => engine.transcribe(owner, wav));
+      return yield* withWindow(event, requestId, (requestKey) =>
+        engine.transcribe(requestKey, wav),
+      );
     }, respond<string>()),
   });
 

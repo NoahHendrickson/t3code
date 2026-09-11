@@ -1348,16 +1348,9 @@ export function renderMacPasskeyEntitlements(
     <array>
 ${associatedDomains}
     </array>
-    <key>com.apple.security.cs.allow-jit</key>
-    <true/>
     <!-- fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation -->
-    <key>com.apple.security.device.audio-input</key>
-    <true/>
+${MAC_SIGNED_ENTITLEMENT_KEYS}
     <!-- fork:end fork-local-dictation -->
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
   </dict>
 </plist>
 `;
@@ -1365,23 +1358,27 @@ ${associatedDomains}
 
 // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
 /**
- * Entitlements for a signed macOS build without passkey signing. electron-builder's
- * default template stops at the three hardened-runtime keys; the microphone
- * entitlement has to be present too or getUserMedia is denied in the signed app.
+ * Keys every signed macOS build carries: electron-builder's hardened-runtime
+ * defaults plus the microphone, which `NSMicrophoneUsageDescription` promises
+ * and which the hardened runtime otherwise denies to getUserMedia. Shared by
+ * both plist renderers so the passkey variant cannot drop it by accident.
  */
-export function renderMacEntitlements(): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-  <dict>
-    <key>com.apple.security.cs.allow-jit</key>
+const MAC_SIGNED_ENTITLEMENT_KEYS = `    <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
     <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
     <key>com.apple.security.device.audio-input</key>
-    <true/>
+    <true/>`;
+
+/** Entitlements for a signed macOS build without passkey signing. */
+export function renderMacEntitlements(): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+${MAC_SIGNED_ENTITLEMENT_KEYS}
   </dict>
 </plist>
 `;
