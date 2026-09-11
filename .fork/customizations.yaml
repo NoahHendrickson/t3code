@@ -1201,7 +1201,7 @@
     thread: a #1e1f22 card, a step below the #26272c surface, with a blob
     dither rising from its left edge — Noey's Shaders design 4737833 (four
     static Blobs in the theme's blues and violets under a 5px source-colour
-    Dither), centres moved 0.20 further left, rendered with the real WebGPU
+    Dither), deformation 1.0 and reseeded, centres moved 0.20 further left, rendered with the real WebGPU
     library, lightened onto the card colour and cropped to a `left top /
     auto 100%` strip, so it scales with the card and the rest stays flat. The ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
@@ -1220,7 +1220,7 @@
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
     Assets at custom/assets/westworld-hero.png (171 KB, the Figma export
-    quantized to 256 colours) and westworld-thread.png (62 KB, the blob
+    quantized to 256 colours) and westworld-thread.png (67 KB, the blob
     strip, kept truecolour because a palette bands the glow).
 
     Working status is Figma's #1877f2 rather than the shared green: the
