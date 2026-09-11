@@ -353,6 +353,13 @@ describe("fork guard: fork-cool-dark-theme", () => {
     ).toBe(true);
     expect(
       NodeFS.existsSync(
+        NodeURL.fileURLToPath(
+          new URL("../custom/assets/westworld-thread-right.png", import.meta.url),
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-stage.png", import.meta.url)),
       ),
     ).toBe(false);
@@ -368,6 +375,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
     expect(art?.body).toContain(
       'url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat',
+    );
+    expect(art?.body).toContain(
+      'url("./custom/assets/westworld-thread-right.png") right top / auto 100% no-repeat',
     );
     expect(art?.body).toMatch(/,\s*#24252a;/u);
     expect(art?.body).toContain("z-index: -1");
