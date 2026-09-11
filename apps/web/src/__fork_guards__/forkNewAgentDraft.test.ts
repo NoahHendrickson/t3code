@@ -223,6 +223,73 @@ describe("fork guard: fork-new-agent-draft", () => {
     );
   });
 
+  it("moves the composer to the dock as one 400ms motion", () => {
+    // Upstream's 180ms slide read as a snap once the fork's draft box also
+    // folds on the first send. The shadow lengthens the slide, and the fold
+    // (and Westworld's art fade) run on the same clock and curve — the three
+    // are pinned together here because they only look right in agreement.
+    const shadow = readSibling("../overrides/components/chat/draftHeroTransition.ts");
+    const css = readSibling("../theme.custom.css");
+    expect(shadow).toContain('export * from "~upstream/components/chat/draftHeroTransition";');
+    expect(shadow).toContain("export const DRAFT_HERO_TRANSITION_DURATION_MS = 400;");
+    expect(shadow).toContain(
+      'export const DRAFT_HERO_TRANSITION_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";',
+    );
+    expect(css).toMatch(
+      /\[data-chat-composer-body="true"\]\s*\{\s*transition:\s*padding-block 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u,
+    );
+    expect(css).toMatch(
+      /\[data-fork-composer-prompt\]\s*\{\s*min-height:\s*0;\s*transition:\s*min-height 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u,
+    );
+    // The draft composer is capped at the drawn 42rem and eases back out.
+    expect(chatView).toContain('data-fork-composer-stack="true"');
+    expect(css).toMatch(
+      /\[data-draft-hero\]\s*\[data-fork-composer-stack="true"\]\s*\{\s*max-width:\s*42rem/u,
+    );
+    expect(css).toMatch(
+      /\[data-fork-composer-stack="true"\]\s*\{\s*transition:\s*max-width 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u,
+    );
+    // ChatView still drives the slide from the shadowed constants.
+    expect(chatView).toContain("DRAFT_HERO_TRANSITION_DURATION_MS");
+    expect(chatView).toContain("DRAFT_HERO_TRANSITION_EASING");
+    // Reduced motion drops the fold the way upstream drops the slide.
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\[data-chat-composer-body="true"\],[^}]*\[data-fork-composer-prompt\],[^}]*\[data-fork-composer-stack="true"\]\s*\{\s*transition:\s*none/u,
+    );
+  });
+
+  it("names the composer for the mobile view transition only on mobile viewports", () => {
+    // A view-transition-name puts its element on its own compositing
+    // surface; the glass composer's backdrop-filter under a named wrapper had
+    // an empty backdrop on desktop (Westworld showed crisp dither through the
+    // chips on screen). The morph only runs below 640px, so the names are
+    // gated on the same viewport query it checks.
+    const names = [
+      ...chatView.matchAll(/viewTransitionName: MOBILE_[A-Z_]+_VIEW_TRANSITION_NAME/gu),
+    ];
+    expect(names.length).toBeGreaterThanOrEqual(2);
+    expect(
+      [...chatView.matchAll(/forceExpandedMobileComposer && isMobileViewport\s*\?/gu)].length,
+    ).toBe(names.length);
+    expect(chatView).not.toMatch(/forceExpandedMobileComposer\s*\?\s*\{ viewTransitionName/u);
+  });
+
+  it("holds the overlay height publishes while the hero slide runs", () => {
+    // Each publish is a ChatView re-render; seven inside the 400ms fold was
+    // the send-time stutter. The observer defers on the shadow's predicate
+    // and publishes once after upstream's waitForDraftHeroTransition.
+    const shadow = readSibling("../overrides/components/chat/draftHeroTransition.ts");
+    expect(shadow).toContain("export function isDraftHeroTransitionActive(): boolean");
+    expect(shadow).toContain("animation.id === DRAFT_HERO_TRANSITION_ANIMATION_ID");
+    expect(chatView).toMatch(
+      /const updateHeight = \(\) => \{\s*if \(!isDraftHeroTransitionActive\(\)\) \{\s*publishNow\(\);\s*return;\s*\}/u,
+    );
+    expect(chatView).toMatch(
+      /void waitForDraftHeroTransition\(\)\.then\(\(\) => \{[\s\S]{0,200}?publishNow\(\);/u,
+    );
+    expect(chatView).toContain("const resizeObserver = new ResizeObserver(updateHeight);");
+  });
+
   it("opens Usage from the chrome's fourth row", () => {
     expect(chromeRows).toContain('label="Usage"');
     expect(sidebar).toContain('void router.navigate({ to: "/usage" });');

@@ -241,7 +241,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(chatView).not.toContain("isDraftHero={isDraftHeroState}");
     // The greeting rides bottom-full above the composer inside the stack, so
     // the composer itself sits on the centre line; no separate greeting layer.
-    expect(chatView).toMatch(/bottom-full[\s\S]{0,600}<DraftHeroHeadline/u);
+    expect(chatView).toMatch(/bottom-full[\s\S]{0,1400}<DraftHeroHeadline/u);
     expect(chatView).not.toContain(
       'className="pointer-events-none absolute inset-0 z-10 flex items-center"',
     );

@@ -1,7 +1,7 @@
 /**
  * Fork-owned desktop IPC — see `.fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy`.
  *
- * Turns native macOS vibrancy on and off for the main window so the Cool Darker
+ * Turns native macOS vibrancy on and off for the main window so the Glass
  * sidebar can show the desktop wallpaper. The main window only — the preview
  * picture-in-picture window and the WSL splash carry their own fills and none of
  * the fork's CSS. Deliberately kept out of
@@ -36,9 +36,9 @@ const TRANSPARENT_BACKGROUND = "#00000000";
 /**
  * Mirrors `getInitialWindowBackgroundColor` in `window/DesktopWindow.ts`, which
  * is module-private there. The renderer must NOT supply this: it only knows the
- * palette it is switching to, and an earlier cut had it ship Cool Darker's stage
+ * palette it is switching to, and an earlier cut had it ship Glass's stage
  * colour on every call — which repainted the window fill for Light, default
- * Dark, Cool Dark and both Neutral palettes. Resolving it here from
+ * Dark, Westworld and both Neutral palettes. Resolving it here from
  * `nativeTheme` keeps the restore correct for whatever theme is actually
  * active. A fork guard pins these two values against DesktopWindow's.
  */

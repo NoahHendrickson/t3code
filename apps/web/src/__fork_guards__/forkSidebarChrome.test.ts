@@ -257,13 +257,28 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // cell into its neighbours — the blur the vector mark replaced. Keep it
     // vector, keep the viewBox on the 23-unit grid, and keep crispEdges so the
     // cells stay hard-edged at every DPR instead of antialiasing back to mush.
-    const mark = NodeFS.readFileSync(
-      NodeURL.fileURLToPath(new URL("../custom/assets/sidebar-brand-mark.svg", import.meta.url)),
-      "utf8",
-    );
+    // Inline SVG rather than an <img>, so a palette can recolour the arms
+    // through the --fork-brand-mark-* variables (Westworld does). The design's
+    // own colours ride along as the var() fallbacks; the outline is literal.
+    const mark = readSibling("../custom/SidebarBrandMark.tsx");
+    expect(chrome).toContain('<SidebarBrandMark className="size-4 shrink-0" />');
+    expect(chrome).not.toContain("sidebar-brand-mark.svg");
     expect(mark).toContain('viewBox="0 0 23 23"');
-    expect(mark).toContain('shape-rendering="crispEdges"');
+    expect(mark).toContain('shapeRendering="crispEdges"');
     expect(mark).not.toMatch(/image-rendering|<image\b/u);
+    for (const [slot, fallback] of [
+      ["top", "#26b846"],
+      ["top-light", "#3aed62"],
+      ["left", "#008755"],
+      ["left-light", "#08b776"],
+      ["right", "#f95b1c"],
+      ["right-light", "#ff8f0c"],
+      ["bottom", "#fcb01a"],
+      ["bottom-light", "#ffd233"],
+    ]) {
+      expect(mark).toContain(`fill="var(--fork-brand-mark-${slot}, ${fallback})"`);
+    }
+    expect(mark).toContain('<g fill="#000000">');
     // Every cell edge must land on the integer grid; a fractional coordinate is
     // the same smearing defect re-entering through the asset. The count keeps
     // the loop from passing vacuously, and the transform/<path> check pins the

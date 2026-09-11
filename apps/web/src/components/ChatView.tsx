@@ -391,6 +391,15 @@ import {
   MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME,
   runMobileComposerTransition,
 } from "./chat/draftHeroTransition";
+/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+// Through the alias, like FORK_ADOPTS_RESTING_COMPOSER_LAYOUT: TypeScript
+// resolves the relative path to upstream's module, which has no
+// isDraftHeroTransitionActive; the alias resolves override-first.
+import {
+  isDraftHeroTransitionActive,
+  waitForDraftHeroTransition,
+} from "~/components/chat/draftHeroTransition";
+/* fork:end fork-new-agent-draft */
 import {
   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
   agentControlledBrowserCloseConfirmation,
@@ -5389,9 +5398,28 @@ export default function ChatView(props: ChatViewProps) {
   useLayoutEffect(() => {
     if (!composerOverlayElement) return;
 
-    const updateHeight = () => {
+    /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+    // While the hero slide runs, the docked overlay's height changes every
+    // frame of the fold, and each publish here is a full ChatView re-render.
+    // Hold them and publish once the slide settles; a later resize that lands
+    // after the hold publishes normally.
+    const publishNow = () => {
       publishComposerOverlayHeight(composerOverlayElement.getBoundingClientRect().height);
     };
+    let trailingPublishPending = false;
+    const updateHeight = () => {
+      if (!isDraftHeroTransitionActive()) {
+        publishNow();
+        return;
+      }
+      if (trailingPublishPending) return;
+      trailingPublishPending = true;
+      void waitForDraftHeroTransition().then(() => {
+        trailingPublishPending = false;
+        publishNow();
+      });
+    };
+    /* fork:end fork-new-agent-draft */
 
     updateHeight();
     if (typeof ResizeObserver === "undefined") return;
@@ -8529,7 +8557,15 @@ export default function ChatView(props: ChatViewProps) {
                 ref={attachDraftHeroTransitionGroupRef}
                 className="w-full ps-[calc(env(safe-area-inset-left)+0.75rem)] pe-[calc(env(safe-area-inset-right)+0.75rem)] sm:ps-[calc(env(safe-area-inset-left)+1.25rem)] sm:pe-[calc(env(safe-area-inset-right)+1.25rem)]"
               >
-                <div className="group/composer-stack pointer-events-auto relative z-10 mx-auto w-full max-w-3xl">
+                <div
+                  className="group/composer-stack pointer-events-auto relative z-10 mx-auto w-full max-w-3xl"
+                  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                  // The draft composer is capped narrower than the docked one
+                  // (theme.custom.css keys on this stamp plus the overlay's
+                  // data-draft-hero) and eases back out on the first send.
+                  data-fork-composer-stack="true"
+                  /* fork:end fork-new-agent-draft */
+                >
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
                   {/* The banner stack and sync status render inside ChatComposer's
                       dock, so only the draft greeting rides above the composer
@@ -8540,8 +8576,16 @@ export default function ChatView(props: ChatViewProps) {
                       <div
                         className="pb-8"
                         style={
-                          forceExpandedMobileComposer
-                            ? { viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME }
+                          /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                          // Named only where the mobile morph can run (the same
+                          // viewport query runMobileComposerTransition checks).
+                          // A view-transition-name puts the element on its own
+                          // compositing surface, and the glass composer's
+                          // backdrop-filter inside a named wrapper had nothing
+                          // behind it to blur on desktop.
+                          forceExpandedMobileComposer && isMobileViewport
+                            ? /* fork:end fork-new-agent-draft */
+                              { viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME }
                             : undefined
                         }
                       >
@@ -8557,8 +8601,13 @@ export default function ChatView(props: ChatViewProps) {
                   <div
                     className="relative"
                     style={
-                      forceExpandedMobileComposer
-                        ? { viewTransitionName: MOBILE_COMPOSER_VIEW_TRANSITION_NAME }
+                      /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                      // See the headline above: the name is dead for the morph on
+                      // desktop but not for the compositor, and this wrapper is the
+                      // one the composer's backdrop-filter lives under.
+                      forceExpandedMobileComposer && isMobileViewport
+                        ? /* fork:end fork-new-agent-draft */
+                          { viewTransitionName: MOBILE_COMPOSER_VIEW_TRANSITION_NAME }
                         : undefined
                     }
                   >

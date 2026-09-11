@@ -398,7 +398,7 @@ export const make = Effect.gen(function* () {
       /* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
       // `vibrancy` is construction-only in Electron: a window created without it
       // can never gain the NSVisualEffectView later, so `setVibrancy` at runtime
-      // is a no-op and the Cool Darker sidebar stays solid. The material is
+      // is a no-op and the Glass sidebar stays solid. The material is
       // attached here for every macOS window and switched on and off at runtime
       // instead. It costs nothing while the background stays opaque — nothing
       // shows through until ForkSidebarVibrancy clears the fill.

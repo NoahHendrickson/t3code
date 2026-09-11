@@ -3,7 +3,7 @@
  * Fork guard — see `.fork/README.md` §4b and
  * `.fork/customizations.yaml#fork-glass-preview-parking`.
  *
- * Under Cool Darker glass the app is translucent, so a preview guest parked
+ * Under Glass the app is translucent, so a preview guest parked
  * "behind the app" is on screen. The parked wrapper is hidden with opacity and
  * nothing else: measured on Electron 43, a guest under `opacity: 0` inside the
  * viewport keeps producing fresh frames for capturePage, while a guest parked

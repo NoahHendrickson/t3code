@@ -13,6 +13,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { applyForkMarker, FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
+import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -47,9 +48,18 @@ describe("fork guard: fork-marker", () => {
   });
 
   it("keeps every fork theme rule scoped under the marker attribute", () => {
-    const theme = readSibling("../theme.custom.css");
-    const palettes = readSibling("../theme.custom.palettes.css");
-    expect(theme).toContain(`[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`);
-    expect(palettes).toContain(`[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`);
+    const marker = `[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
+    expect(readSibling("../theme.custom.css")).toContain(marker);
+    // The palette sheets are all rules that must never reach an unmarked
+    // build, so every leaf rule is checked, per file — a single `toContain`
+    // over the pair would be satisfied by one file and say nothing about the
+    // other. Nested @media / @layer rules are leaves too and are covered.
+    for (const file of ["../theme.custom.palettes.css", "../theme.custom.westworld.css"]) {
+      const rules = cssRules(readSibling(file));
+      expect(rules.length, `${file} parsed no rules`).toBeGreaterThan(0);
+      for (const rule of rules) {
+        expect(rule.selector, `${file}: unscoped rule "${rule.selector}"`).toContain(marker);
+      }
+    }
   });
 });

@@ -373,6 +373,48 @@
   margin-inline-end: auto;
 }
 
+/* The fold from the drawn draft box to the compact row runs on the same
+   400ms clock and curve as upstream's slide to the dock (draftHeroTransition,
+   shadowed in overrides/components/chat), so the composer travels and shrinks
+   as one motion instead of snapping to the compact row and then sliding. The
+   action row's flex-direction cannot animate and flips at the start; the
+   padding and the prompt's reserved height carry the visible change. Declared
+   on the base elements, not under data-draft-hero, so both directions ease.
+   Reduced motion drops it, the same query upstream skips its slide on. */
+:root[data-fork="noahhendrickson-t3code"] [data-chat-composer-body="true"] {
+  transition: padding-block 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+  min-height: 0;
+  transition: min-height 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The draft composer is narrower than the docked one: Figma 418:11501 draws
+   it at 663px, upstream's max-w-3xl is 768px, and at 768 the empty column
+   reads as a bar rather than a prompt. 42rem is the drawn width on the rem
+   grid. It eases back to the docked width on the same 400ms clock as the
+   slide and fold — max-width tweens between two lengths, and because the
+   slide measures the composer at the flip, before this tween has moved, the
+   slide stays vertical and the widening rides alongside it. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-stack="true"] {
+  transition: max-width 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"][data-draft-hero]
+  [data-fork-composer-stack="true"] {
+  max-width: 42rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"] [data-chat-composer-body="true"],
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt],
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-stack="true"] {
+    transition: none;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Timeline cutoff — see `.fork/customizations.yaml#fork-composer-shell`.
 
@@ -598,7 +640,7 @@
    here keeps the drop target legible and keeps the hairline in the same
    shadow, so the box does not gain a second one.
 
-   Use the chip-hover lift, not `--accent`: on Cool Dark / Cool Darker,
+   Use the chip-hover lift, not `--accent`: on Westworld / Glass,
    `--accent` is bit-identical to `--fork-composer-bg`, so a drag would show
    only the outline. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-drag-over] {
@@ -736,7 +778,7 @@
 }
 
 /* Hover / open fill. Upstream's ghost variant paints `--accent`, which is the
-   wrong channel on this row: on Cool Dark and Cool Darker `--accent` is
+   wrong channel on this row: on Westworld and Glass `--accent` is
    bit-identical to `--fork-composer-bg`, so hovering the model or effort
    trigger lands it on a fill the composer already wears rather than lifting it
    off the vessel — the same trap the drag-over state hit above.
@@ -929,7 +971,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark {
   /* Figma 322:6316 draws the chips as a white 12% wash, hover one step up —
-     the same pair the Cool Darker glass tier already uses. This replaced an
+     the same pair the Glass vibrancy tier already uses. This replaced an
      opaque rgb(41 41 41): that value was the composer's RGB, not the design's,
      and sat two levels off the stage. The old opacity worry was about a dark
      translucent fill sinking into the stage under design-mode canvas; a white
@@ -2006,7 +2048,7 @@
    driving a background thread's browser, a recording, picture-in-picture)
    inside the viewport at (0,0) z-index -1, because a guest parked fully
    offscreen stops compositing and capturePage never resolves. Over an opaque
-   window that park is invisible; under Cool Darker glass the app above it is
+   window that park is invisible; under Glass the app above it is
    translucent, so the parked page showed through the chat for the length of
    every automation call.
 
@@ -2022,8 +2064,8 @@
 :root[data-fork="noahhendrickson-t3code"].dark {
   /* Surface and field follow the THEME, not the palette the Figma file happened to be
      drawn in: the panel docks inside the workspace, so a pinned #232527 read as a lighter
-     slab bolted onto it — and drifted further with every alternate theme (Cool Dark's
-     background is #202326). Deriving them means the panel matches whatever surface it is
+     slab bolted onto it — and drifted further with every alternate theme (Westworld's
+     background is #26272c). Deriving them means the panel matches whatever surface it is
      sitting on, including themes that don't exist yet. */
   --fork-design-surface: var(--background);
   --fork-design-field: var(--muted);
@@ -2531,7 +2573,7 @@
    marks the selected/checked row with an 8% foreground wash. The fork palettes
    make --accent an opaque grey: on the Cool palettes it is the composer fill
    itself, the very colour the popup above paints, so a hovered row vanishes;
-   under Cool Darker glass the popup stands on the wallpaper-tinted floor and
+   under Glass the popup stands on the wallpaper-tinted floor and
    the same opaque accent lands as a bluish slab on a warm surface; and in the
    branch picker the hovered row never matched the "current" row beside it.
    Hover takes the selected row's own wash — an alpha, so it reads as a lift
@@ -2583,12 +2625,13 @@
 }
 
 /* ── Changed-files card in the chat column ───────────────────────────────────
-   Upstream paints `dark:bg-input/32` — a translucent wash of --input. Cool
-   Dark's --input is neutral #3f3f3f (border gray), so the card never lands on
-   the cool opaque ladder (--card #2b3033 / --secondary #353a3d). Same miss on
-   every fork dark palette: freeze the card to --card so each palette's stage
-   tokens actually show. Hairline uses --fork-composer-border (12% cool / 8%
-   neutral) so the card matches the vessel per palette. */
+   Upstream paints `dark:bg-input/32` — a translucent wash of --input. On every
+   fork dark palette --input is the border grey (Westworld's is #33343a), so
+   that wash lands the card on a smeared border tint over the stage instead of
+   the palette's own card step (Westworld: --card #303137 over the #26272c
+   stage; --secondary #393f44 is the chip step, not a card). Freeze the card to
+   --card so each palette's stage tokens actually show. Hairline uses
+   --fork-composer-border so the card matches the vessel per palette. */
 :root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] {
   background: var(--card);
   border-color: var(--fork-composer-border);

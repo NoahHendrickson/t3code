@@ -18,7 +18,7 @@ import {
 import { Badge } from "../ui/badge";
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
 import { SidebarBrandWordmark } from "~/custom/SidebarBrandWordmark";
-import sidebarBrandMarkUrl from "~/custom/assets/sidebar-brand-mark.svg";
+import { SidebarBrandMark } from "~/custom/SidebarBrandMark";
 /* fork:end fork-sidebar-chrome */
 import {
   SidebarFooter,
@@ -108,8 +108,8 @@ function SidebarBrand() {
           pixel mark, a 4px gap, then the 13×3 "no3y" wordmark at 8px / 40%
           foreground — not live APP_BASE_NAME type. The mark stays the 23-cell
           vector: a bitmap cannot resample that grid into 16px without smearing
-          every cell. crispEdges lives in the asset so cells stay hard-edged. */}
-      <img alt="" className="size-4 shrink-0" src={sidebarBrandMarkUrl} />
+          every cell. Inline so palettes can recolour its arms (Westworld). */}
+      <SidebarBrandMark className="size-4 shrink-0" />
       <SidebarBrandWordmark />
       {/* fork:end fork-app-identity */}
     </Link>

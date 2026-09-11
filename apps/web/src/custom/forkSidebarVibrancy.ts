@@ -45,7 +45,7 @@ function stampMarker(root: Element, enabled: boolean): void {
 
 /**
  * Monotonic id for in-flight syncs. Palette changes fire this without awaiting,
- * so Cool Darker → Dark → Cool Darker can resolve out of order and stamp the
+ * so Glass → Dark → Glass can resolve out of order and stamp the
  * marker from a superseded request. Only the newest sync is allowed to write.
  */
 let latestSyncId = 0;

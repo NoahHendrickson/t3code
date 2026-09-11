@@ -1,0 +1,214 @@
+/* Westworld stage — see `.fork/customizations.yaml#fork-cool-dark-theme`.
+
+   The layout, artwork and glass rules that make Westworld's stage a card
+   with a picture behind the composer. They live apart from
+   theme.custom.palettes.css on purpose: that file is a token table, one
+   block per palette, and these are rules. Imported from the top of the
+   palettes sheet so they still land after theme.custom.css in the cascade
+   (main.tsx imports the palettes after the megafile), which is what lets the
+   overlay's `background: none` below beat the docked floor there. Every
+   selector is marker- and palette-scoped, so no other palette sees any of
+   it. Tokens these rules read (`--fork-westworld-*-blur`, the composer
+   fills) stay with the other tokens in the palettes sheet. */
+
+/* Send is Figma's blue while the draft is empty (416:8420), the one saturated
+   control over the portrait; a started thread (423:13864) keeps the flat
+   white send from theme.custom.css, so the rule is scoped to the draft-hero
+   overlay rather than the palette alone. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-composer-overlay="true"][data-draft-hero]
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
+  background: #1877f2;
+  color: #ffffff;
+}
+
+/* No seam between the panel and the stage: they are one surface, and the
+   stage card's own hairline is what separates the work from the chrome (Figma
+   416:7408 draws no line there). Only the container's full-height `border-r`
+   goes — it is the one --sidebar-border reader that runs against the stage;
+   the ⌘K / ⇧⌘O pill rings inside the panel keep the token. Same target Glass
+   uses to soften its seam, so the two palettes disagree only on the value. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-slot="sidebar-container"][data-sidebar-version="v2"] {
+  border-color: transparent;
+}
+
+/* Stage card — Figma 447:15858 "Frame 56": the chat column sits inside the
+   surface as a card, 8px in from the header and the edges, a white 16%
+   hairline and the drawn stage drop shadow: a cast to the left, a contact
+   shadow and a bloom (the frame draws them at -4px 0 14px black 20%,
+   1px 1px 8px black 24%, 0 0 12px #141416 16%). In the app the card sits
+   in an 8px gutter whose containers clip at the sidebar boundary and the
+   window edges, so a 14px blur was truncated there and the cut read as a
+   line down the sidebar seam; each layer is scaled to fade inside the
+   gutter, keeping the frame's proportions. The card is #222325 (see ::before), a step
+   below the #26272c surface, so the shadow has a real step to fall from. It
+   is the same
+   drop-target wrapper the artwork paints on: ChatView's root fills the inset
+   with an opaque bg-background, and this wrapper is the nearest element that
+   is already position:relative and holds exactly the transcript and the
+   composer (Figma's "Frame 56", under the header). The isolated stacking
+   context keeps the art's z-index -1 above the root's fill and below every
+   in-flow child; overflow clip trims the art and the docked composer to the
+   rounded corners (menus and popovers are portaled, so nothing interactive
+   is clipped). The right panel, when open, sits beside the card. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"] {
+  isolation: isolate;
+  margin: 8px;
+  /* Drawn at 8px; 10px sits concentric with the window's own corner 8px
+     further out, so the two arcs read as one curve at the bottom edge. */
+  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  box-shadow:
+    -2px 0 6px rgb(0 0 0 / 20%),
+    1px 1px 4px rgb(0 0 0 / 24%),
+    0 0 6px rgb(20 20 22 / 16%);
+  overflow: clip;
+}
+
+/* Stage fill and artwork — one per state, on the card's two pseudo-elements,
+   both at z-index -1 inside the isolated card.
+
+   ::before is the started thread (Figma 447:15858): the #1e1f22 card with
+   Noey's "blobditherbluepurp" export (layer 447:15859, 875×1167 at
+   -357,-15, blend mode lighten) rising from its left edge, all of it under
+   a frosted overlay (layer 452:17308: white 10% fill with a glass blur) —
+   so the frame's card reads #353639 and the dither dissolves into a soft glow with
+   no visible dots. The overlay is a fixed blur over a static picture, so
+   it is baked rather than run: the asset is the window the frame reveals,
+   lightened onto #1e1f22, gaussian-blurred at 55px (fitted against the
+   frame's render, mean error under 5 levels) and blended 10.3% toward
+   white, which lands the flat card on the frame's #353639; Noey then wanted
+   the stage darker, so each pixel's lift over that flat is re-based onto
+   #222325 — the colour the rule paints as the base. Cropped to the 448px the glow reaches (about
+   46% of the frame's card) and stored at 1× (448×986) since there is nothing
+   sharp left to preserve; `left top / auto 100%` scales it with the card
+   height and the rest of the card stays the flat colour. Truecolour: with
+   no dither noise left to mask it, any 256-colour palette contours this
+   gradient into rings; at 1× the blurred strip is only 68 KB anyway.
+
+   ::after is the new-agent draft (Figma 416:8420, layer 421:12528,
+   "doloresbluedither4"): the blue portrait at full strength under a
+   left-to-right blue wash (rgb(24 119 242), 40% → 10%). `cover` at "66% 50%"
+   reproduces the drawn crop — the frame places the 16:9 image 621px left of
+   a 945px card, so the visible window is centred on 58% of the image and the
+   figure lands on the card's right third. The glass composer carries its own
+   legibility, so there is no halo.
+
+   The draft state is read off the overlay's own data-draft-hero stamp
+   (fork-new-agent-draft, the same isDraftHeroState that centres the
+   composer) through `:has(> …)` on the column — the overlay is the column's
+   direct child — so nothing in ChatView is stamped for the theme; the state
+   swaps which pseudo-element is at opacity 1. Both are always
+   painted and only their opacity moves — a pseudo-element that appears
+   cannot fade — so the first send crossfades the two on the same 400ms clock
+   as the composer's slide and fold (draftHeroTransition shadow,
+   theme.custom.css). Static images, static opacity at rest.
+
+   westworld-hero.png is the Figma export quantized to 256 colours (octree),
+   with the export's feathered cutout hardened: the figure sat on a soft drop
+   shadow and an anti-aliased rim, which read as a blurred smear along the
+   silhouette over the flat blue. Every pixel in that band now snaps to the
+   figure's light or the stage blue, and where the band crossed the dot field
+   the dots are copied back in from one lattice period (38px) further out.
+   123 KB against 1.3 MB; westworld-thread.png is the 448×986 frosted glow
+   strip, truecolour, 68 KB. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat,
+    #222325;
+  opacity: 1;
+  transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(to right, rgb(24 119 242 / 40%), rgb(24 119 242 / 10%)),
+    url("./custom/assets/westworld-hero.png") 66% 50% / cover no-repeat;
+  opacity: 0;
+  transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"]:has(
+    > [data-chat-composer-overlay="true"][data-draft-hero]
+  )::before {
+  opacity: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-workspace-drop-target="true"]:has(
+    > [data-chat-composer-overlay="true"][data-draft-hero]
+  )::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+    [data-chat-workspace-drop-target="true"]::before,
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+    [data-chat-workspace-drop-target="true"]::after {
+    transition: none;
+  }
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-vessel] {
+  -webkit-backdrop-filter: blur(var(--fork-westworld-vessel-blur));
+  backdrop-filter: blur(var(--fork-westworld-vessel-blur));
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  -webkit-backdrop-filter: blur(var(--fork-westworld-chip-blur));
+  backdrop-filter: blur(var(--fork-westworld-chip-blur));
+}
+
+/* The model and effort triggers are text-only ghosts on the glass control
+   row. theme.custom.css inks them #a6a6a6 for every dark palette, which reads
+   on an opaque vessel but sinks into the blue glass over the art; on
+   Westworld they take the foreground white. The mode chip keeps its own hue. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  color: #e8e8e8;
+}
+
+/* Same reason, one layer in: the draft's prompt is transparent glass over the
+   portrait, and theme.custom.css inks the placeholder --muted-foreground, which
+   is #8a8a8a here and sank into the blue behind it. 447:16789 draws it white
+   70%. Scoped to the draft overlay — a started thread's well is opaque, so the
+   muted ink still reads there. The selector is the placeholder rule's own
+   (Lexical renders it as a sibling of the editor, after a zero-height spacer;
+   the spacer has no text to ink). */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-composer-overlay="true"][data-draft-hero]
+  [data-fork-composer-box]
+  [data-testid="composer-editor"]
+  ~ div {
+  color: rgb(255 255 255 / 70%);
+}
+
+/* The composer's backing gradient (theme.custom.css,
+   [data-chat-composer-overlay]) would end the artwork in a slab of stage
+   colour above the pills. The cutoff mask already stops the transcript before
+   it reaches the composer, so the backing paints nothing here and the portrait
+   runs on behind the vessel as drawn. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-composer-overlay="true"] {
+  background: none;
+}

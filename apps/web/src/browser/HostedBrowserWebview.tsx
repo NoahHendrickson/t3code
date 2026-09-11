@@ -292,7 +292,7 @@ export function HostedBrowserWebview(props: {
          viewport at z-index -1 so capture keeps getting frames: a guest parked
          fully offscreen stops compositing and capturePage hangs (measured on
          Electron 43, see the manifest entry). Over an opaque window that park is
-         invisible. Under Cool Darker glass the app above it is translucent, so an
+         invisible. Under Glass the app above it is translucent, so an
          agent's snapshot in a background thread showed that thread's page through
          the chat. theme.custom.css hides the parked wrapper with opacity, which
          keeps the guest composited and capturable; the placement stays upstream's. */

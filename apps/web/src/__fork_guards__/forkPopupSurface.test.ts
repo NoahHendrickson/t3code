@@ -84,7 +84,7 @@ describe("fork guard: fork-popup-surface", () => {
     expect(rule?.body).toMatch(/backdrop-filter:\s*none/u);
   });
 
-  it("stands on the on-screen stage colour under Cool Darker glass", () => {
+  it("stands on the on-screen stage colour under Glass", () => {
     // The composer's well and tray are alphas over a wallpaper-lit stage
     // there, so the bare --background floor opens beside the Questions card
     // several points too dark. The floor swaps for the stage as it reads on
