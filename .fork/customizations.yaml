@@ -1160,9 +1160,11 @@
     thread (Figma 423:13864) is white glass: vessel white 8% with a 20px
     backdrop blur, context chips white 12% at 18px, an opaque #1f1f1f prompt
     surface behind a white 12% hairline, and the flat white send. The
-    new-agent draft (Figma 416:8420) is dark glass: vessel and chips
-    rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind a white
-    16% hairline, and a #1877f2 send (the working token's blue). The thread
+    new-agent draft (Figma 416:8420) is smoked glass: vessel and chips
+    rgb(96 100 108) 50% at 16px / 4px (the frame's rgb(47 47 47) sank too
+    dark against the bright blue on screen, so the grey is lifted at the same
+    translucency), prompt rgb(36 40 43) 80% behind a white 16% hairline, and
+    a #1877f2 send (the working token's blue). The thread
     values live on the palette root; the draft restates the same tokens —
     fills plus the two blur-radius tokens — on the draft-hero overlay, which
     every composer element descends from, so one set of rules resolves either
