@@ -293,41 +293,6 @@
   color: #e8e8e8;
 }
 
-/* Stage cards over the art borrow Glass's treatment (see the vibrancy block
-   below for the full reasoning): the changed-files card, the user's sent
-   bubble and every `.bg-card` in the inset paint an opaque `--card` slab,
-   and over the portrait each one reads as a rectangle of missing picture.
-   A white 5% wash lifts them a step off the stage while the art keeps its
-   cast. The changed-files header is cleared, not washed, so it stays flush
-   with its card instead of compounding to ~10%. No backdrop blur here on
-   purpose: a transcript holds dozens of these and every one would re-blur
-   on scroll; the composer is the one blurred surface. The `.bg-card` rule
-   keeps Glass's `@layer utilities` + `:where()` shape so hover / active
-   variants on exact `bg-card` elements still win. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-  [data-changed-files-state] {
-  background: rgb(255 255 255 / 5%);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-  [data-changed-files-header] {
-  background: none;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"] .bg-message {
-  background-color: rgb(255 255 255 / 5%);
-}
-
-@layer utilities {
-  :where(
-      :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
-        [data-slot="sidebar-inset"]
-    )
-    .bg-card {
-    background-color: rgb(255 255 255 / 5%);
-  }
-}
-
 /* The composer's backing gradient (theme.custom.css,
    [data-chat-composer-overlay]) would end the artwork in a slab of stage
    colour above the pills. The cutoff mask already stops the transcript before

@@ -1176,14 +1176,7 @@
     which must keep filters out of the composer, never sees them. The model
     and effort triggers on that glass row take the foreground white
     (#e8e8e8) instead of the shared #a6a6a6 ghost ink, which sank into the
-    blue. The stage cards borrow Glass's treatment over the art: the
-    changed-files card, the user's sent bubble (.bg-message) and every
-    .bg-card in the inset take a white 5% wash instead of the opaque --card
-    slab, the changed-files header is cleared so it stays flush, and the
-    .bg-card rule keeps Glass's @layer utilities + :where() shape so state
-    variants still win. No blur on them — a transcript holds dozens and each
-    would re-blur on scroll. Header split pills round to 8px with the drawn
-    #333333 outline.
+    blue. Header split pills round to 8px with the drawn #333333 outline.
     index.html pre-paints #26272c so the load flash matches the stage.
 
     The chat column is the stage card (Figma "Frame 56"): 8px in from the
