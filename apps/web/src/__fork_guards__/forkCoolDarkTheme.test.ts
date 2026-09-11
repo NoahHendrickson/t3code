@@ -336,10 +336,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(blockFor(theme, COOL_STAGE)).toContain("--fork-pill-border: #333333");
   });
 
-  it("paints the dark card with the blob dither on both edges behind started threads", () => {
-    // The ::before is the started-thread fill: the #24252a card with the two
-    // blob-dither strips (Shaders design 4737833, as drawn and mirrored)
-    // anchored to its left and right edges. The wrapper it paints on must already be
+  it("paints the dark card with the blob dither on its left edge behind started threads", () => {
+    // The ::before is the started-thread fill: the #24252a card with the
+    // blob-dither strip (Shaders design 4737833) anchored to its left edge. The wrapper it paints on must already be
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
     const chatView = readSibling("../components/ChatView.tsx");
@@ -357,7 +356,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
           new URL("../custom/assets/westworld-thread-right.png", import.meta.url),
         ),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-stage.png", import.meta.url)),
@@ -376,9 +375,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(art?.body).toContain(
       'url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat',
     );
-    expect(art?.body).toContain(
-      'url("./custom/assets/westworld-thread-right.png") right top / auto 100% no-repeat',
-    );
+    expect(theme).not.toContain("westworld-thread-right.png");
     expect(art?.body).toMatch(/,\s*#24252a;/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/opacity:\s*1;/u);

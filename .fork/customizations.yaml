@@ -1199,12 +1199,11 @@
     One fill and one artwork, Westworld-only, one per state, on the
     wrapper's two pseudo-elements at z-index -1. The ::before is the started
     thread: a #24252a card, a step below the #26272c surface, with a blob
-    dither rising from both side edges — Noey's Shaders design 4737833
-    (four static Blobs in the theme's blues and violets under an 8px
-    source-colour Dither) as drawn on the left and mirrored on the right,
-    each rendered with the real WebGPU library, lightened onto the card
-    colour and cropped to a `left top` / `right top` strip at `auto 100%`,
-    so both scale with the card and the middle stays flat. The ::after is the
+    dither rising from its left edge — Noey's Shaders design 4737833 (four
+    static Blobs in the theme's blues and violets under a 5px source-colour
+    Dither), centres moved 0.12 further left, rendered with the real WebGPU
+    library, lightened onto the card colour and cropped to a `left top /
+    auto 100%` strip, so it scales with the card and the rest stays flat. The ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
     full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover
     at 66% 50% (the drawn crop, the figure on the card's right third); the
@@ -1221,9 +1220,8 @@
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
     Assets at custom/assets/westworld-hero.png (171 KB, the Figma export
-    quantized to 256 colours), westworld-thread.png (65 KB) and
-    westworld-thread-right.png (56 KB), the two blob strips, kept
-    truecolour because a palette bands the glow.
+    quantized to 256 colours) and westworld-thread.png (79 KB, the blob
+    strip, kept truecolour because a palette bands the glow).
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
@@ -1238,7 +1236,6 @@
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/custom/assets/westworld-hero.png
     - apps/web/src/custom/assets/westworld-thread.png
-    - apps/web/src/custom/assets/westworld-thread-right.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
     # Westworld's card, artwork, glass and ink rules; the palettes sheet
