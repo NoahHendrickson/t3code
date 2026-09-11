@@ -1159,7 +1159,8 @@
     #fcfcf5. The composer is glass over the art, in two frames. A started
     thread (Figma 423:13864) is white glass: vessel white 8% with a 20px
     backdrop blur, context chips white 12% at 18px, an opaque #1f1f1f prompt
-    surface behind a white 12% hairline, and the flat white send. The
+    surface behind a white 12% hairline (white 22% on focus, one quiet step
+    up rather than the palette's opaque grey), and the flat white send. The
     new-agent draft (Figma 416:8420) is dark glass: vessel and chips
     rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind a white
     28% hairline (white 45% on focus — whiter than the drawn 16% so the edge

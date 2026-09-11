@@ -58,7 +58,9 @@
   --fork-composer-vessel-bg: rgb(255 255 255 / 8%);
   --fork-composer-bg: #1f1f1f;
   --fork-composer-border: rgb(255 255 255 / 12%);
-  --fork-composer-border-focus: #7d848b;
+  /* Focus stays in the hairline's family, one step up from its 12% rest:
+     the palette's opaque grey read as a bright ring on the #202023 card. */
+  --fork-composer-border-focus: rgb(255 255 255 / 22%);
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
   --fork-westworld-vessel-blur: 20px;

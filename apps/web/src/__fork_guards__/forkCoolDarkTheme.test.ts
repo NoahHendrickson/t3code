@@ -493,7 +493,6 @@ describe("fork guard: fork-cool-dark-theme", () => {
       "#393f44",
       "#434a50",
       "#33343a",
-      "#7d848b",
       "#1877f2",
     ];
     const lightRules = cssRules(theme).filter(
