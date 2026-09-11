@@ -278,6 +278,16 @@
   backdrop-filter: blur(var(--fork-westworld-chip-blur));
 }
 
+/* The model and effort triggers are text-only ghosts on the glass control
+   row. theme.custom.css inks them #a6a6a6 for every dark palette, which reads
+   on an opaque vessel but sinks into the blue glass over the art; on
+   Westworld they take the foreground white. The mode chip keeps its own hue. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  color: #e8e8e8;
+}
+
 /* The composer's backing gradient (theme.custom.css,
    [data-chat-composer-overlay]) would end the artwork in a slab of stage
    colour above the pills. The cutoff mask already stops the transcript before

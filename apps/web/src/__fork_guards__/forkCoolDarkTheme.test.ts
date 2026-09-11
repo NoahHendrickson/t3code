@@ -227,6 +227,19 @@ describe("fork guard: fork-cool-dark-theme", () => {
     ).toBe(true);
   });
 
+  it("inks the model and effort triggers white over the glass control row", () => {
+    // The shared #a6a6a6 ghost ink sinks into the blue glass; Westworld lifts
+    // it to the foreground white. The mode chip is excluded and keeps its hue.
+    const ink = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes(COOL_STAGE_SELECTOR) &&
+        rule.selector.includes("[data-fork-composer-model-controls]") &&
+        rule.selector.includes(":not([data-fork-composer-mode-chip])") &&
+        /color:/u.test(rule.body),
+    );
+    expect(ink?.body).toMatch(/color:\s*#e8e8e8/u);
+  });
+
   it("draws no seam between the panel and the stage", () => {
     // One surface: the card's hairline separates work from chrome, so the
     // container's full-height border-r goes transparent. Rings inside the

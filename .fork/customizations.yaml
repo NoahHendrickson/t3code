@@ -1171,9 +1171,11 @@
     else the backdrop is the vessel's own opaque fill and a blur is pure GPU
     cost; here the backdrop is the picture and the blur is what keeps the
     prompt readable over a dither. Palette-scoped, so Glass's vibrancy guard,
-    which must keep filters out of the composer, never sees them. Header
-    split pills round to 8px with the drawn #333333 outline. index.html
-    pre-paints #26272c so the load flash matches the stage.
+    which must keep filters out of the composer, never sees them. The model
+    and effort triggers on that glass row take the foreground white
+    (#e8e8e8) instead of the shared #a6a6a6 ghost ink, which sank into the
+    blue. Header split pills round to 8px with the drawn #333333 outline.
+    index.html pre-paints #26272c so the load flash matches the stage.
 
     The chat column is the stage card (Figma "Frame 56"): 8px in from the
     header and the edges, 8px radius, a 1px white 12% hairline and a
