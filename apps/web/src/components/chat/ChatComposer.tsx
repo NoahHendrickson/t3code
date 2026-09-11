@@ -1785,19 +1785,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     // rather than the prompt (see the ComposerPromptEditor `value` binding), so
     // a dictation that started before it arrived reads and lands in the prompt
     // draft directly instead of being judged stale or routed into the answer.
+    // That draft is the store's `prompt`, not `promptRef`: while a question is
+    // up the ref mirrors the answer field (the pending-input sync effect), and
+    // `composerCursor` is the answer editor's caret, so neither is touched.
     readDraft: () => {
       if (activePendingApproval === null && !activePendingProgress) return readComposerSnapshot();
-      return {
-        value: promptRef.current,
-        expandedCursor: expandCollapsedComposerCursor(promptRef.current, composerCursor),
-      };
+      return { value: prompt, expandedCursor: prompt.length };
     },
     commitDraft: (text, cursor) => {
       const collapsedCursor = collapseExpandedComposerCursor(text, cursor);
       if (activePendingApproval !== null || activePendingProgress) {
-        promptRef.current = text;
         setPrompt(text);
-        setComposerCursor(collapsedCursor);
         return;
       }
       onPromptChange(

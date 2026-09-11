@@ -55,6 +55,57 @@ describe("fork local dictation", () => {
     expect(controller.currentState.phase).toBe("idle");
   });
 
+  it("discards a transcript only when the draft text itself changed underneath it", async () => {
+    // What the composer wiring must satisfy: the read at commit time is
+    // compared against the read at start. A question arriving mid-recording
+    // swaps the editor to its answer field, so the composer must keep
+    // reading the prompt draft (see the guard below) or the transcript is
+    // judged stale and lost.
+    const run = async (drafts: { atStart: string; atStop: string }) => {
+      // The controller reads once at start, once as recording begins (the
+      // captured draft) and once at commit; only the commit read differs.
+      let recording = false;
+      let committed: string | null = null;
+      const controller = new VoiceInputController({
+        recorder: {
+          uri: "blob:recording",
+          prepareToRecordAsync: async () => {},
+          record: () => {},
+          stop: async () => {},
+        },
+        getTranscriber: () => ({
+          prepare: async () => ({ locale: "en", transcribe: async () => "the bug" }),
+        }),
+        requestPermission: async () => ({ granted: true, canAskAgain: true }),
+        configureRecording: async () => {},
+        releaseRecording: async () => {},
+        deleteRecording: releaseRecording,
+        readDraft: () => ({
+          ownerKey: "thread-1",
+          text: recording ? drafts.atStop : drafts.atStart,
+          selection: { start: 4, end: 4 },
+          revision: 0,
+        }),
+        commitDraft: (next) => {
+          committed = next;
+        },
+        onStateChange: () => {},
+      });
+      await controller.start();
+      recording = true;
+      await controller.stop();
+      return { committed, phase: controller.currentState.phase };
+    };
+    // Prompt preserved across the question: the transcript lands in it.
+    expect(await run({ atStart: "Fix  please", atStop: "Fix  please" })).toEqual({
+      committed: "Fix the bug please",
+      phase: "idle",
+    });
+    // The answer field read instead (the bug): the transcript is discarded.
+    const swapped = await run({ atStart: "Fix  please", atStop: "" });
+    expect(swapped.committed).toBeNull();
+  });
+
   it("keeps the composer owning the session, with the bridge and helper wired", () => {
     const composer = read("../components/chat/ChatComposer.tsx");
     const control = read("../custom/voice/ForkDictationControl.tsx");
@@ -73,6 +124,22 @@ describe("fork local dictation", () => {
       /disabled=\{\s*isConnecting \|\|\s*isComposerApprovalState \|\|\s*(?:\/\*[^*]*\*\/\s*)*dictation\.freezesEditor \|\|/u,
     );
     expect(composer).toContain("<ForkDictationControl dictation={dictation}");
+    // While a question or approval is showing, the dictation draft is the
+    // store's `prompt`, never `promptRef` (which mirrors the answer field then)
+    // and never the editor snapshot (which is the answer editor).
+    const hookArgument = composer.slice(
+      composer.indexOf("useForkDictationController({"),
+      composer.indexOf(
+        "/* fork:end fork-local-dictation */",
+        composer.indexOf("useForkDictationController({"),
+      ),
+    );
+    expect(hookArgument).toMatch(/return \{ value: prompt, expandedCursor: prompt\.length \}/u);
+    expect(hookArgument).toMatch(
+      /if \(activePendingApproval !== null \|\| activePendingProgress\) \{\s*setPrompt\(text\);\s*return;/u,
+    );
+    expect(hookArgument).not.toContain("promptRef.current =");
+    expect(hookArgument).not.toContain("value: promptRef.current");
     // A hidden action cluster settles the recording instead of orphaning it.
     expect(composer).toMatch(
       /if \(!dictationControlsVisible\) settleDictationWithoutControls\(\)/u,
