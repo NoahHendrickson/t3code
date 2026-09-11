@@ -3592,9 +3592,16 @@
     that only travelled) is shadowed to 400ms on the fork's chip-label curve,
     and the draft box's fold (padding and reserved prompt height, in
     theme.custom.css), its widening back to 48rem, and Westworld's art fade
-    (fork-cool-dark-theme) run on that same clock and curve. The action row's flex-direction cannot
-    animate and flips at the start. Reduced motion drops the fold on the
-    same query upstream skips the slide on. Choosing a project remaps the
+    (fork-cool-dark-theme) run on that same clock and curve. The action
+    row's flex-direction cannot animate and flips at the start. Reduced
+    motion drops the fold on the same query upstream skips the slide on.
+    While the slide runs, ChatView's overlay resize observer holds its
+    height publishes (the shadow exports isDraftHeroTransitionActive; the
+    trailing publish rides upstream's waitForDraftHeroTransition): the
+    docked overlay's height changes every frame of the fold and each publish
+    is a ~40ms ChatView re-render, and seven of those inside the 400ms
+    window, landing on whatever frames they happened to, was the send-time
+    stutter. Choosing a project remaps the
     draft in place — same draft id, same reserved thread id,
     same composer content — onto that project's logical key, seeding the
     project's own workspace defaults (env mode, start-from-origin) the way

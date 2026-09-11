@@ -274,6 +274,22 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(chatView).not.toMatch(/forceExpandedMobileComposer\s*\?\s*\{ viewTransitionName/u);
   });
 
+  it("holds the overlay height publishes while the hero slide runs", () => {
+    // Each publish is a ChatView re-render; seven inside the 400ms fold was
+    // the send-time stutter. The observer defers on the shadow's predicate
+    // and publishes once after upstream's waitForDraftHeroTransition.
+    const shadow = readSibling("../overrides/components/chat/draftHeroTransition.ts");
+    expect(shadow).toContain("export function isDraftHeroTransitionActive(): boolean");
+    expect(shadow).toContain("animation.id === DRAFT_HERO_TRANSITION_ANIMATION_ID");
+    expect(chatView).toMatch(
+      /const updateHeight = \(\) => \{\s*if \(!isDraftHeroTransitionActive\(\)\) \{\s*publishNow\(\);\s*return;\s*\}/u,
+    );
+    expect(chatView).toMatch(
+      /void waitForDraftHeroTransition\(\)\.then\(\(\) => \{[\s\S]{0,200}?publishNow\(\);/u,
+    );
+    expect(chatView).toContain("const resizeObserver = new ResizeObserver(updateHeight);");
+  });
+
   it("opens Usage from the chrome's fourth row", () => {
     expect(chromeRows).toContain('label="Usage"');
     expect(sidebar).toContain('void router.navigate({ to: "/usage" });');

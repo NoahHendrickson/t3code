@@ -391,6 +391,15 @@ import {
   MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME,
   runMobileComposerTransition,
 } from "./chat/draftHeroTransition";
+/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+// Through the alias, like FORK_ADOPTS_RESTING_COMPOSER_LAYOUT: TypeScript
+// resolves the relative path to upstream's module, which has no
+// isDraftHeroTransitionActive; the alias resolves override-first.
+import {
+  isDraftHeroTransitionActive,
+  waitForDraftHeroTransition,
+} from "~/components/chat/draftHeroTransition";
+/* fork:end fork-new-agent-draft */
 import {
   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
   agentControlledBrowserCloseConfirmation,
@@ -5389,9 +5398,28 @@ export default function ChatView(props: ChatViewProps) {
   useLayoutEffect(() => {
     if (!composerOverlayElement) return;
 
-    const updateHeight = () => {
+    /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+    // While the hero slide runs, the docked overlay's height changes every
+    // frame of the fold, and each publish here is a full ChatView re-render.
+    // Hold them and publish once the slide settles; a later resize that lands
+    // after the hold publishes normally.
+    const publishNow = () => {
       publishComposerOverlayHeight(composerOverlayElement.getBoundingClientRect().height);
     };
+    let trailingPublishPending = false;
+    const updateHeight = () => {
+      if (!isDraftHeroTransitionActive()) {
+        publishNow();
+        return;
+      }
+      if (trailingPublishPending) return;
+      trailingPublishPending = true;
+      void waitForDraftHeroTransition().then(() => {
+        trailingPublishPending = false;
+        publishNow();
+      });
+    };
+    /* fork:end fork-new-agent-draft */
 
     updateHeight();
     if (typeof ResizeObserver === "undefined") return;
