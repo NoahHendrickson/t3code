@@ -1220,9 +1220,9 @@
     (fork-new-agent-draft's draftHeroTransition shadow). The composer backing
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
-    Assets at custom/assets/westworld-hero.png (171 KB) and
-    westworld-thread.png (203 KB, the edge strip), Figma exports quantized to
-    256 colours.
+    Assets at custom/assets/westworld-hero.png (171 KB, the Figma export
+    quantized to 256 colours) and westworld-thread.png (134 KB, the edge
+    strip, kept truecolour because a palette bands the falloff).
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
