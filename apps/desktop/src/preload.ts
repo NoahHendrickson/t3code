@@ -384,24 +384,29 @@ contextBridge.exposeInMainWorld("desktopBridge", {
 contextBridge.exposeInMainWorld("forkDesktopBridge", {
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
   // Mirrored by `ForkVoiceInputBridge` in apps/web/src/custom/voice/forkVoiceInputBridge.ts.
-  voiceInput: {
-    prepare: (requestId: string): Promise<void> =>
-      invokeVoiceInput<void>("fork:voice-prepare", { requestId }),
-    transcribe: (requestId: string, wav: Uint8Array): Promise<string> =>
-      invokeVoiceInput<string>("fork:voice-transcribe", { requestId, wav }),
-    cancel: (requestId: string): Promise<void> =>
-      invokeVoiceInput<void>("fork:voice-cancel", { requestId }),
-    onDownloadProgress: (
-      listener: (event: { requestId: string; percent: number }) => void,
-    ): (() => void) => {
-      const receive = (
-        _event: Electron.IpcRendererEvent,
-        data: { requestId: string; percent: number },
-      ) => listener(data);
-      ipcRenderer.on("fork:voice-download", receive);
-      return () => ipcRenderer.removeListener("fork:voice-download", receive);
-    },
-  },
+  // Absent off macOS: the whisper helper only builds and ships there, and the
+  // renderer treats a missing bridge as "no dictation" rather than a failure.
+  voiceInput:
+    clientPlatform !== "darwin"
+      ? undefined
+      : {
+          prepare: (requestId: string): Promise<void> =>
+            invokeVoiceInput<void>("fork:voice-prepare", { requestId }),
+          transcribe: (requestId: string, wav: Uint8Array): Promise<string> =>
+            invokeVoiceInput<string>("fork:voice-transcribe", { requestId, wav }),
+          cancel: (requestId: string): Promise<void> =>
+            invokeVoiceInput<void>("fork:voice-cancel", { requestId }),
+          onDownloadProgress: (
+            listener: (event: { requestId: string; percent: number }) => void,
+          ): (() => void) => {
+            const receive = (
+              _event: Electron.IpcRendererEvent,
+              data: { requestId: string; percent: number },
+            ) => listener(data);
+            ipcRenderer.on("fork:voice-download", receive);
+            return () => ipcRenderer.removeListener("fork:voice-download", receive);
+          },
+        },
   /* fork:end fork-local-dictation */
   setSidebarVibrancy: (enabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled }),

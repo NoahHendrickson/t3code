@@ -1780,9 +1780,25 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     disabled: dictationDisabled,
     // Invoked on start/stop, after the refs and callbacks declared below exist.
     getComposerElement: () => composerFormRef.current,
-    readDraft: () => readComposerSnapshot(),
+    // While an approval or question is showing, the editor holds that answer
+    // rather than the prompt (see the ComposerPromptEditor `value` binding), so
+    // a dictation that started before it arrived reads and lands in the prompt
+    // draft directly instead of being judged stale or routed into the answer.
+    readDraft: () => {
+      if (activePendingApproval === null && !activePendingProgress) return readComposerSnapshot();
+      return {
+        value: promptRef.current,
+        expandedCursor: expandCollapsedComposerCursor(promptRef.current, composerCursor),
+      };
+    },
     commitDraft: (text, cursor) => {
       const collapsedCursor = collapseExpandedComposerCursor(text, cursor);
+      if (activePendingApproval !== null || activePendingProgress) {
+        promptRef.current = text;
+        setPrompt(text);
+        setComposerCursor(collapsedCursor);
+        return;
+      }
       onPromptChange(
         text,
         collapsedCursor,

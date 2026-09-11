@@ -49,18 +49,31 @@ const assetsExist = (
     ),
   )
 ).every(Boolean);
-if (current !== stamp || !assetsExist) {
+// The Metal shader library needs the full Xcode toolchain; Command Line Tools
+// alone provide `cmake` and a C++ compiler but no `metal` compiler.
+const missingTool = [
+  ["cmake", ["--version"]],
+  ["xcrun", ["-f", "metal"]],
+].find(([tool, args]) => {
   try {
-    NodeChildProcess.execFileSync("cmake", ["--version"], { stdio: "ignore" });
+    NodeChildProcess.execFileSync(tool, args, { stdio: "ignore" });
+    return false;
   } catch {
+    return true;
+  }
+})?.[0];
+if (current !== stamp || !assetsExist) {
+  if (missingTool) {
+    const toolchain =
+      missingTool === "cmake" ? "CMake" : "Xcode's Metal toolchain (xcrun -f metal)";
     if (values.optional) {
       console.warn(
-        "[voice-input] CMake not found; skipping the local dictation helper. Install CMake and Xcode (with the Metal toolchain) to enable dictation in dev.",
+        `[voice-input] ${toolchain} not found; skipping the local dictation helper. Install CMake and full Xcode to enable dictation in dev.`,
       );
       process.exit(0);
     }
     throw new Error(
-      "Building local dictation requires CMake and Xcode with the Metal toolchain. Install CMake, then rebuild.",
+      `Building local dictation requires CMake and Xcode with the Metal toolchain; ${toolchain} is missing.`,
     );
   }
   console.log("[voice-input] Building the whisper.cpp helper (one-time, cached afterwards)…");

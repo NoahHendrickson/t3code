@@ -31,6 +31,7 @@ import {
   MAC_FILE_EXCLUSIONS,
   // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
   MAC_VOICE_INPUT_EXTRA_RESOURCES,
+  renderMacEntitlements,
   // fork:end fork-local-dictation
   InvalidMacPasskeyRpDomainError,
   InvalidMacPasskeyPublishableKeyError,
@@ -1877,6 +1878,56 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // fork:end fork-app-identity
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
+
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  it.effect(
+    "signed macOS builds without passkey signing still carry the microphone entitlement",
+    () =>
+      Effect.gen(function* () {
+        const signed = yield* createBuildConfig(
+          "mac",
+          "dmg",
+          "1.2.3",
+          true,
+          false,
+          undefined,
+          undefined,
+          false,
+          "arm64",
+          "/tmp/entitlements.mac.plist",
+        );
+        const unsigned = yield* createBuildConfig(
+          "mac",
+          "dmg",
+          "1.2.3",
+          false,
+          false,
+          undefined,
+          undefined,
+          false,
+          "arm64",
+          undefined,
+        );
+
+        assert.equal(
+          (signed.mac as Record<string, unknown>).entitlements,
+          "/tmp/entitlements.mac.plist",
+        );
+        assert.notProperty(signed.mac as Record<string, unknown>, "provisioningProfile");
+        assert.notProperty(unsigned.mac as Record<string, unknown>, "entitlements");
+        assert.include(renderMacEntitlements(), "com.apple.security.device.audio-input");
+        assert.include(
+          renderMacPasskeyEntitlements({
+            teamId: "TEAM",
+            appId: "com.example.app",
+            rpDomains: ["example.com"],
+            provisioningProfilePath: "/tmp/p.provisionprofile",
+          }),
+          "com.apple.security.device.audio-input",
+        );
+      }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+  );
+  // fork:end fork-local-dictation
 
   it.effect("uses the nightly DMG background for nightly macOS builds", () =>
     Effect.gen(function* () {
