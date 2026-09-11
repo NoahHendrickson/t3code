@@ -1,8 +1,13 @@
 /**
- * The project pill on a draft's hero — see
+ * The project chip on a draft's composer — see
  * `.fork/customizations.yaml#fork-new-agent-draft`.
  *
  * A "New agent" draft opens with no project; this is where one is chosen.
+ * It is the first chip in the composer's context row, ahead of the workspace
+ * and branch chips, and dresses like them: the row's CSS (theme.custom.css,
+ * keyed on `[data-fork-composer-context-row]`) paints every button in it as
+ * the same filled 24px chip, and the `data-composer-label` pair lets the
+ * label collapse to its glyph with the neighbours when the strip overflows.
  * The same control stays on an assigned draft so the choice can be changed,
  * and changing it moves the draft — its sidebar row leaves one project's
  * section and appears under the other's — because the store keeps one
@@ -12,12 +17,12 @@
  * project resolves to are upstream's (`buildSidebarProjectPickerEntries`,
  * the same derivation the palette and the grouped header use), read the way
  * upstream's own draft hero read them. Only the presentation is the fork's:
- * a pill with the project's favicon, in place of the dotted-underline text
+ * a chip with the project's favicon, in place of the dotted-underline text
  * upstream wove into its headline.
  */
 import { scopedProjectKey } from "@t3tools/client-runtime/environment";
 import type { ScopedProjectRef } from "@t3tools/contracts";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 
 import { openCommandPalette } from "~/commandPaletteBus";
 import { sortLogicalProjectsForSidebar } from "~/components/Sidebar.logic";
@@ -44,6 +49,27 @@ import { useProjects, useThreadShells } from "~/state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
 import { ChevronDownIcon, FolderIcon, FolderPlusIcon } from "./icons/lucide-phosphor";
 import { useAssignDraftProject, useDraftProjectAssignmentPending } from "./useNewAgentDraft";
+
+/** Same trigger dress as the branch chip; the row's CSS owns the chip fill. */
+const DRAFT_PROJECT_CHIP_CLASS_NAME =
+  "min-w-0 max-w-72 font-normal text-muted-foreground/70 text-xs! hover:text-foreground/80 active:scale-100";
+
+/** Upstream's collapsing chip label: hidden with its siblings when the strip overflows. */
+function DraftProjectChipLabel({ children }: { readonly children: ReactNode }) {
+  return (
+    <span
+      data-composer-label
+      className="min-w-0 max-w-[240px] group-data-[compact]/composer-context:max-w-0"
+    >
+      <span
+        data-composer-label-motion
+        className="block w-full min-w-0 max-w-[240px] truncate transition-opacity duration-180 ease-[cubic-bezier(0.32,0.72,0,1)] group-data-[compact]/composer-context:opacity-0 motion-reduce:transition-none"
+      >
+        {children}
+      </span>
+    </span>
+  );
+}
 
 export function DraftProjectPill(props: {
   readonly draftId: DraftId | null;
@@ -126,14 +152,15 @@ export function DraftProjectPill(props: {
     return (
       <Button
         type="button"
-        size="sm"
-        variant="outline"
-        className="pointer-events-auto rounded-full before:rounded-full"
+        size="xs"
+        variant="ghost"
+        className={DRAFT_PROJECT_CHIP_CLASS_NAME}
         onClick={openAddProject}
         data-testid="draft-project-pill"
+        data-composer-context-control
       >
-        <FolderPlusIcon className="size-4" />
-        Add a project
+        <FolderPlusIcon className="size-3 shrink-0" />
+        <DraftProjectChipLabel>Add a project</DraftProjectChipLabel>
       </Button>
     );
   }
@@ -144,11 +171,14 @@ export function DraftProjectPill(props: {
         render={
           <Button
             type="button"
-            size="sm"
-            variant="outline"
+            size="xs"
+            variant="ghost"
             aria-label={hasResolvedProject ? `Change project — ${label}` : "Choose a project"}
-            className="pointer-events-auto max-w-72 rounded-full before:rounded-full"
+            // No press-scale, like the branch chip: the popup aligns live to
+            // this trigger and a momentary shrink drags it sideways.
+            className={DRAFT_PROJECT_CHIP_CLASS_NAME}
             data-testid="draft-project-pill"
+            data-composer-context-control
             data-project-assigned={hasResolvedProject ? "true" : "false"}
             aria-busy={pendingEntry !== null || undefined}
           />
@@ -157,16 +187,20 @@ export function DraftProjectPill(props: {
         {activeEntry ? (
           <ProjectFavicon
             project={activeEntry.targetProject}
-            className="size-4 shrink-0"
+            className="size-3 shrink-0"
             fallbackIcon={FolderIcon}
           />
         ) : (
-          <FolderIcon className="size-4 shrink-0" />
+          <FolderIcon className="size-3 shrink-0" />
         )}
-        <span className="min-w-0 truncate">{label}</span>
-        <ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        <DraftProjectChipLabel>{label}</DraftProjectChipLabel>
+        <ChevronDownIcon className="size-3 shrink-0 opacity-50" />
       </MenuTrigger>
-      <MenuPopup align="center" className="max-h-80 min-w-48! w-max max-w-72 overflow-y-auto">
+      <MenuPopup
+        align="start"
+        side="top"
+        className="max-h-80 min-w-48! w-max max-w-72 overflow-y-auto"
+      >
         <MenuRadioGroup
           value={activeProjectKey}
           onValueChange={(value) => {

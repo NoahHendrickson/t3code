@@ -2053,11 +2053,12 @@
   intent: >
     The chat composer is one outer 8px vessel that wraps the prompt surface and
     the control row, with context chips sitting 8px above the vessel. One
-    compact base layout in every thread state, including a brand-new draft.
-    ChatView always docks it to the bottom instead of centering it as a
-    new-chat hero. The empty-draft greeting ("What should we build…") is a
-    separate absolute layer centered in the chat column, not stacked above the
-    docked input. BranchToolbar renders upstream's ComposerSurface.ContextStrip
+    compact base layout in every thread state; the one exception is the
+    draft-only prompt geometry fork-new-agent-draft keys on the hero overlay.
+    ChatView centers the composer on the column while a draft has no
+    messages, with the empty-draft greeting ("What should we build…") parked
+    bottom-full above it as upstream does, and docks it to the bottom once
+    the thread starts. BranchToolbar renders upstream's ComposerSurface.ContextStrip
     untouched (the liveness fallback strip mounts the same component); the
     context-row CSS flatten, keyed on its data-slot, is the single owner of
     the strip geometry (width/margin/padding resets, unlayered so they beat
@@ -2238,7 +2239,8 @@
     in theme.custom.css; palette overlays only swap the fill tokens and never
     restate chip colour, since a palette copy of the white ink outranks the
     exemption and flattens the state colour.
-    The liveness pill, when shown, stays last.
+    The liveness pill, when shown, stays last; a draft's project chip
+    (fork-new-agent-draft's `leading` slot) is first.
     Upstream's resting composer layout (#7855) is neutralized in the
     composerFooterLayout shadow: its helpers are ported so ChatComposer
     compiles, but shouldUseRestingComposerLayout is fenced to always return
@@ -2258,9 +2260,10 @@
   watch:
     # Carries the base row, the context/control rows, and contextStrip prop.
     - apps/web/src/components/chat/ChatComposer.tsx
-    # Docks the composer for new drafts, centers the draft greeting on its own
-    # layer, passes BranchToolbar as contextStrip (with monitoring trailing),
-    # and keeps that strip mounted when the thread's worktree directory is missing.
+    # Centers the draft composer with the greeting above it and docks it once
+    # the thread starts, passes BranchToolbar as contextStrip (with monitoring
+    # trailing), and keeps that strip mounted when the thread's worktree
+    # directory is missing.
     - apps/web/src/components/ChatView.tsx
     # data-fork-composer-action on the send, stop and attach buttons; the whole 24px
     # square restyle hangs off it. Send also carries
@@ -3458,10 +3461,34 @@
     prompt itself stays editable on an unassigned draft (a fenced exception
     in ChatComposer's editor gate), so the user writes while choosing.
 
-    The project is chosen from a pill under the draft hero's headline
-    (custom/DraftProjectPill, via a shadow of upstream's DraftHeroHeadline
-    that keeps its prop surface so ChatView's call site is unfenced). Choosing
-    one remaps the draft in place — same draft id, same reserved thread id,
+    The project is chosen from the first chip in the composer's context row
+    (custom/DraftProjectPill), ahead of the workspace and branch chips and
+    dressed like them: the row's CSS paints it as the same filled 24px chip
+    and its label collapses with theirs when the strip overflows. ChatView
+    hands it to BranchToolbar through a fenced `leading` slot (the mirror of
+    fork-composer-shell's `trailing`), or to the bare fallback strip while the
+    draft has no project — and so no toolbar — yet. The headline shadow
+    (upstream's DraftHeroHeadline, same prop surface so ChatView's call site
+    is unfenced) is then just the sentence.
+
+    While the draft has no messages the composer sits on the chat column's
+    centre line with the headline parked above it, upstream's own hero
+    arrangement, and drops to the docked position on the first send through
+    upstream's layout transition. ChatView keeps upstream's one docked
+    className and only stamps data-draft-hero; that stamp is the layout
+    mode, and theme.custom.css owns everything keyed on it — the overlay's
+    move to the centre line, the docked-only floor gradient and the
+    draft-only prompt geometry. The move is an offset (top 50%, translate
+    -50%), never a stretch: the overlay is the element ChatView measures, and
+    its height feeds the timeline cutoff, the scroll-to-end clearance and the
+    floating preview's bottom inset — a preview can be floated over an unsent
+    draft, and a column-high inset collapsed it to nothing. The translate is
+    safe for the glass composer's backdrop-filter (verified on screen; the
+    blur failure once blamed on it was the view-transition-name below). That geometry is the drawn box (Figma 418:11501): an
+    80px prompt surface with 8px padding, the prompt line on top and the
+    attach / send actions on their own row beneath — attach leading, send
+    trailing — which folds back to the compact base row the moment the
+    thread starts. Choosing a project remaps the draft in place — same draft id, same reserved thread id,
     same composer content — onto that project's logical key, seeding the
     project's own workspace defaults (env mode, start-from-origin) the way
     upstream's handler seeds a fresh draft. The draft opens with the model
@@ -3500,14 +3527,20 @@
     - apps/web/src/custom/DraftProjectPill.tsx
     - apps/web/src/custom/newAgentDraft.test.ts
     - apps/web/src/custom/useNewAgentDraft.test.ts
+    # Draft-only prompt geometry and the docked-only floor, keyed on data-draft-hero.
+    - apps/web/src/theme.custom.css
   shadows:
     - apps/web/src/components/chat/DraftHeroHeadline.tsx
   watch:
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/routes/_chat.tsx
+    # Fenced `leading` slot: the project chip renders first in the strip.
+    - apps/web/src/components/BranchToolbar.tsx
     # Fenced editor gate: an unassigned draft's prompt stays editable.
     - apps/web/src/components/chat/ChatComposer.tsx
     # Fenced send gate: Send holds while a picked project's defaults resolve.
+    # Fenced hero overlay: centered draft composer, data-draft-hero, and the
+    # project chip handed into the context strip.
     - apps/web/src/components/ChatView.tsx
     # Fenced user-facing note on starting an agent and choosing its project.
     - docs/user/thread-sidebar.md
