@@ -1193,13 +1193,11 @@
     portaled, so the clip trims only the art and the docked composer's
     corners.
 
-    Two artworks, Westworld-only, one per state, on the wrapper's two
-    pseudo-elements at z-index -1. The ::before is the started thread (Figma
-    423:13864, layer 424:14398): a dither texture with a blue-violet glow in
-    the lower right, anchored to the card's right edge and covered by height,
-    under a top-down fade from the surface colour (#26272c opaque at the top,
-    50% at 81%, clear at the bottom) so the transcript reads over plain stage
-    and the glow only rises behind the docked composer. The ::after is the
+    One fill and one artwork, Westworld-only, one per state, on the
+    wrapper's two pseudo-elements at z-index -1. The ::before is the started
+    thread (Figma 423:13865): a flat #19191b card, a step below the #26272c
+    surface, with no picture, so the transcript reads over plain dark and
+    the white-glass composer sits on it. The ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
     full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover
     at 66% 50% (the drawn crop, the figure on the card's right third); the
@@ -1213,8 +1211,8 @@
     (fork-new-agent-draft's draftHeroTransition shadow). The composer backing
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
-    Assets at custom/assets/westworld-thread.png (169 KB) and
-    westworld-hero.png (171 KB), the Figma exports quantized to 256 colours.
+    Asset at custom/assets/westworld-hero.png (171 KB), the Figma export
+    quantized to 256 colours.
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
@@ -1228,7 +1226,6 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/custom/assets/westworld-hero.png
-    - apps/web/src/custom/assets/westworld-thread.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
   watch:

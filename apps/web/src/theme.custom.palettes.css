@@ -163,15 +163,12 @@
   overflow: clip;
 }
 
-/* Stage artwork — two pictures, one per state, on the card's two
-   pseudo-elements, both at z-index -1 inside the isolated card.
+/* Stage fill and artwork — one per state, on the card's two pseudo-elements,
+   both at z-index -1 inside the isolated card.
 
-   ::before is the started thread (Figma 423:13864, layer 424:14398,
-   "justdither4"): a dither texture with a blue-violet glow in the lower
-   right, anchored to the card's right edge and covered by height, under a
-   top-down fade from the surface colour (#26272c opaque at the top, 50% at
-   81%, clear at the bottom) so the transcript reads over plain stage and the
-   glow only rises behind the docked composer.
+   ::before is the started thread (Figma 423:13865): a flat #19191b card, a
+   step below the #26272c surface, with no picture — the transcript reads
+   over plain dark and the white-glass composer sits on it.
 
    ::after is the new-agent draft (Figma 416:8420, layer 421:12528,
    "doloresbluedither4"): the blue portrait at full strength under a
@@ -189,9 +186,9 @@
    as the composer's slide and fold (draftHeroTransition shadow,
    theme.custom.css). Static images, static opacity at rest.
 
-   Both assets are the Figma exports quantized to 256 colours (octree):
-   westworld-thread.png 169 KB against 1.8 MB (no channel more than 11 levels
-   off), westworld-hero.png 171 KB against 1.3 MB (14 levels). */
+   The asset is the Figma export quantized to 256 colours (octree):
+   westworld-hero.png 171 KB against 1.3 MB (no channel more than 14 levels
+   off). */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
@@ -199,9 +196,7 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(to bottom, #26272c 0%, rgb(38 39 44 / 50%) 80.7%, rgb(38 39 44 / 0%) 100%),
-    url("./custom/assets/westworld-thread.png") right 30% / cover no-repeat;
+  background: #19191b;
   opacity: 1;
   transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
 }
