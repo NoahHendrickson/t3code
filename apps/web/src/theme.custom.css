@@ -315,20 +315,20 @@
    fill, hairline and control row are the shared rules above. */
 /* The overlay itself: ChatView keeps upstream's one docked className and
    stamps data-draft-hero; this is where the draft state moves it to the
-   column's centre line. Stretched top-to-bottom and centred with flex —
-   upstream's own hero arrangement — never a translate: a transformed
-   ancestor puts the glass composer on its own compositing surface, which is
-   a hazard for its backdrop-filter. The measured height is the column's
-   while the draft is empty; the transcript is empty then, so the cutoff and
-   mini-player insets that read it have nothing to place, and the
-   ResizeObserver republishes on the first send. The docked top padding goes
-   with the docking. */
+   column's centre line. Offset, not stretched: this element is the one
+   ChatView measures, and its height feeds the timeline cutoff, the
+   scroll-to-end clearance and the floating preview's bottom inset. A
+   preview can be floated over an unsent draft, so stretching the overlay to
+   the column (upstream's own hero arrangement) handed the mini player the
+   whole column as its inset and it collapsed to nothing. The translate is
+   safe for the glass composer's backdrop-filter — verified on screen; the
+   blur failure once blamed on it was a view-transition-name (see
+   fork-new-agent-draft). The docked top padding goes with the docking. */
 :root[data-fork="noahhendrickson-t3code"] [data-chat-composer-overlay="true"][data-draft-hero] {
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
+  top: 50%;
+  bottom: auto;
   padding-top: 0;
+  translate: 0 -50%;
 }
 
 /* The body wrapper carries the surface's px-2 py-2.5; the drawn draft box is

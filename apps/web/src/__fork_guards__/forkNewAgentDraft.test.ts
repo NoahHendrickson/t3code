@@ -202,11 +202,13 @@ describe("fork guard: fork-new-agent-draft", () => {
     const shell = readSibling("../custom/ComposerShell.tsx");
     expect(chatView).toContain("data-draft-hero={isDraftHeroState || undefined}");
     // The overlay's centre-line position is CSS on the stamp, not a second
-    // className in ChatView; flex, never a transform.
+    // className in ChatView — and an offset, never a stretch: the overlay is
+    // the element ChatView measures, and a floating preview over an unsent
+    // draft reads that height as its bottom inset.
     expect(css).toMatch(
-      /\[data-chat-composer-overlay="true"\]\[data-draft-hero\]\s*\{\s*top:\s*0;\s*bottom:\s*0;\s*display:\s*flex;\s*align-items:\s*center;\s*padding-top:\s*0;/u,
+      /\[data-chat-composer-overlay="true"\]\[data-draft-hero\]\s*\{\s*top:\s*50%;\s*bottom:\s*auto;\s*padding-top:\s*0;\s*translate:\s*0 -50%;/u,
     );
-    expect(css).not.toMatch(/\[data-draft-hero\]\s*\{[^}]*transform/u);
+    expect(css).not.toMatch(/\[data-draft-hero\]\s*\{[^}]*top:\s*0;\s*bottom:\s*0/u);
     // The taller drawn box: prompt on top, attach leading and send trailing
     // on their own row — keyed off the overlay so it folds back on send.
     expect(shell).toContain('data-fork-composer-prompt-row="true"');
