@@ -1202,7 +1202,8 @@
     surface, with a blob dither rising from its left edge — the frame's
     "blobditherbluepurp" export (layer 447:15859) cropped to the window the
     frame shows, flipped and cut to its upper 70% so it is thin at the top
-    and widest at the bottom with no non-uniform scaling, lightened onto the card colour as the frame's blend mode
+    and widest at the bottom with no non-uniform scaling, re-dithered on its
+    recovered blob field at an 8px cell for finer dots, lightened onto the card colour as the frame's blend mode
     does, and cropped to a `left top / auto 100%` strip, so it scales with
     the card and the rest stays flat. The ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
@@ -1221,7 +1222,7 @@
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
     Assets at custom/assets/westworld-hero.png (171 KB, the Figma export
-    quantized to 256 colours) and westworld-thread.png (107 KB, the blob
+    quantized to 256 colours) and westworld-thread.png (97 KB, the blob
     strip, quantized with median cut because octree steps its falloff).
 
     Working status is Figma's #1877f2 rather than the shared green: the
