@@ -2231,6 +2231,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isComposerCollapsedMobile && !isComposerApprovalState && pendingUserInputs.length === 0;
   const showComposerAttachAction =
     fileStagingLimit !== null &&
+    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+    // Attach steps aside while dictation is in flight; its bars and buttons take the slot.
+    !dictation.blocksSubmission &&
+    /* fork:end fork-local-dictation */
     (!activePendingProgress ||
       (supportsQuestionAttachments &&
         activePendingProgress.activeQuestion?.allowCustomAnswer !== false));

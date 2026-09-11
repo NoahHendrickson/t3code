@@ -7,7 +7,7 @@ import {
   type VoiceTranscriber,
 } from "@t3tools/client-runtime/voice-input";
 import { randomUUID } from "~/lib/utils";
-import { BrowserVoiceRecorder, recordingToWav } from "./BrowserVoiceRecorder";
+import { BrowserVoiceRecorder, recordingToWav, releaseRecording } from "./BrowserVoiceRecorder";
 import { readForkVoiceInputBridge, type ForkVoiceInputBridge } from "./forkVoiceInputBridge";
 
 const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };
@@ -104,11 +104,16 @@ type DictationInput = {
   readonly commitDraft: (text: string, cursor: number) => void;
 };
 
+type LevelListener = (level: number) => void;
+
 /**
  * The controller's stale-draft check already compares owner and text, which is
  * what a switched thread or an edited prompt changes; the revision stays fixed.
+ *
+ * Input levels bypass React state on purpose: they arrive at 20 Hz and only the
+ * level meter cares, so subscribers write to the DOM themselves.
  */
-function createController(
+function createSession(
   bridge: ForkVoiceInputBridge,
   latest: () => DictationInput,
   set: {
@@ -116,15 +121,21 @@ function createController(
     detail: (message: string | null) => void;
     download: (percent: number | null) => void;
   },
-): VoiceInputController {
+) {
   const recorder = new BrowserVoiceRecorder();
   recorder.onError = set.detail;
+  const levelListeners = new Set<LevelListener>();
+  recorder.onLevel = (level) => levelListeners.forEach((listener) => listener(level));
+  const subscribeLevel = (listener: LevelListener) => {
+    levelListeners.add(listener);
+    return () => void levelListeners.delete(listener);
+  };
   const controller = new VoiceInputController({
     recorder,
     requestPermission: queryMicrophonePermission,
     configureRecording: async () => {},
     releaseRecording: async () => recorder.release(),
-    deleteRecording: (uri) => URL.revokeObjectURL(uri),
+    deleteRecording: releaseRecording,
     getTranscriber: () =>
       createBridgeTranscriber(bridge, { onDownload: set.download, onDetail: set.detail }),
     readDraft: () => {
@@ -149,8 +160,13 @@ function createController(
   recorder.onLimit = () => void controller.stop();
   recorder.onInterrupted = () =>
     void controller.interruptRecording("Microphone disconnected. Please record again.");
-  return controller;
+  return { controller, subscribeLevel };
 }
+
+const NO_SESSION = {
+  controller: null,
+  subscribeLevel: (_listener: LevelListener) => () => {},
+};
 
 export function useForkDictationController(input: DictationInput) {
   const [state, setState] = useState(INITIAL_STATE);
@@ -159,15 +175,15 @@ export function useForkDictationController(input: DictationInput) {
   // Called only from controller callbacks and key handlers, which run on user
   // events after commit and need the latest closures, not the mount-time ones.
   const readInput = useEffectEvent(() => input);
-  const [controller] = useState(() => {
+  const [{ controller, subscribeLevel }] = useState(() => {
     const bridge = readForkVoiceInputBridge();
     return bridge
-      ? createController(bridge, readInput, {
+      ? createSession(bridge, readInput, {
           state: setState,
           detail: setDetail,
           download: setDownloadPercent,
         })
-      : null;
+      : NO_SESSION;
   });
 
   const previousOwnerRef = useRef(input.ownerKey);
@@ -225,6 +241,7 @@ export function useForkDictationController(input: DictationInput) {
     error: state.phase === "error" ? (detail ?? state.error) : null,
     blocksSubmission: voiceInputBlocksSubmission(state),
     freezesEditor: voiceInputFreezesEditor(state),
+    subscribeLevel,
     start,
     stop,
     cancel,

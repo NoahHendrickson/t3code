@@ -25,8 +25,23 @@ export function encodeVoiceWav(samples: Float32Array): Uint8Array {
   return wav;
 }
 
+/**
+ * Recordings keyed by the object URL the shared controller passes around. The
+ * bytes are read from the Blob directly: fetching a blob: URL fails under the
+ * packaged app's CSP (connect-src has no blob:) and is not needed.
+ */
+const recordings = new Map<string, Blob>();
+
+export function releaseRecording(uri: string): void {
+  recordings.delete(uri);
+  URL.revokeObjectURL(uri);
+}
+
 export async function recordingToWav(uri: string, signal: AbortSignal): Promise<Uint8Array | null> {
-  const bytes = await (await fetch(uri, { signal })).arrayBuffer();
+  const blob = recordings.get(uri);
+  if (!blob) throw new Error("The recording is no longer available.");
+  const bytes = await blob.arrayBuffer();
+  signal.throwIfAborted();
   const decoder = new OfflineAudioContext(1, 1, 16_000);
   const decoded = await decoder.decodeAudioData(bytes);
   signal.throwIfAborted();
@@ -51,9 +66,12 @@ export class BrowserVoiceRecorder implements VoiceRecorder {
   private recorder: MediaRecorder | null = null;
   private stopped: Promise<void> = Promise.resolve();
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private meter: { context: AudioContext; timer: ReturnType<typeof setInterval> } | null = null;
   onLimit: () => void = () => {};
   onInterrupted: () => void = () => {};
   onError: (message: string) => void = () => {};
+  /** RMS input level in 0..1, sampled at 20 Hz while recording. */
+  onLevel: (level: number) => void = () => {};
 
   async prepareToRecordAsync(): Promise<void> {
     try {
@@ -92,7 +110,9 @@ export class BrowserVoiceRecorder implements VoiceRecorder {
       recorder.addEventListener(
         "stop",
         () => {
-          this.uri = URL.createObjectURL(new Blob(chunks, { type: recorder.mimeType }));
+          const blob = new Blob(chunks, { type: recorder.mimeType });
+          this.uri = URL.createObjectURL(blob);
+          recordings.set(this.uri, blob);
           resolve();
         },
         { once: true },
@@ -101,17 +121,50 @@ export class BrowserVoiceRecorder implements VoiceRecorder {
     });
     recorder.start();
     this.timer = setTimeout(() => this.onLimit(), forDuration * 1000);
+    if (this.stream) this.startMeter(this.stream);
   }
 
   async stop(): Promise<void> {
     clearTimeout(this.timer);
+    this.stopMeter();
     if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop();
     await this.stopped;
   }
 
   release(): void {
     clearTimeout(this.timer);
+    this.stopMeter();
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
+  }
+
+  /** Best effort: the recording must not depend on the level meter. */
+  private startMeter(stream: MediaStream): void {
+    this.stopMeter();
+    if (typeof AudioContext === "undefined") return;
+    const context = new AudioContext();
+    const analyser = context.createAnalyser();
+    analyser.fftSize = 256;
+    try {
+      context.createMediaStreamSource(stream).connect(analyser);
+    } catch {
+      void context.close().catch(() => {});
+      return;
+    }
+    const samples = new Float32Array(analyser.fftSize);
+    const timer = setInterval(() => {
+      analyser.getFloatTimeDomainData(samples);
+      let sum = 0;
+      for (const sample of samples) sum += sample * sample;
+      this.onLevel(Math.sqrt(sum / samples.length));
+    }, 50);
+    this.meter = { context, timer };
+  }
+
+  private stopMeter(): void {
+    if (!this.meter) return;
+    clearInterval(this.meter.timer);
+    void this.meter.context.close().catch(() => {});
+    this.meter = null;
   }
 }
