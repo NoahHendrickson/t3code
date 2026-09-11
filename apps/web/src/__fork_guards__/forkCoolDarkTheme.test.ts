@@ -257,7 +257,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
 
   it("frames the chat column as the stage card", () => {
     // Figma 416:7408 "Frame 56": 8px inset, a 10px radius (concentric with the
-    // window corner), white 12% hairline and
+    // window corner), white 16% hairline and
     // the drawn stage drop shadow, on the same wrapper the artwork paints on.
     const card = cssRules(theme).find(
       (rule) =>
@@ -267,12 +267,12 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
     expect(card?.body).toMatch(/margin:\s*8px/u);
     expect(card?.body).toMatch(/border-radius:\s*10px/u);
-    expect(card?.body).toMatch(/border:\s*1px solid rgb\(255 255 255 \/ 12%\)/u);
+    expect(card?.body).toMatch(/border:\s*1px solid rgb\(255 255 255 \/ 16%\)/u);
     // The drawn stage drop shadow (Figma 423:13864): a left cast, a contact
     // shadow and a bloom, scaled to fade inside the 8px gutter the card sits
     // in, since its containers clip at the sidebar seam and the window edges.
     expect(card?.body).toMatch(
-      /box-shadow:\s*-2px 0 6px rgb\(0 0 0 \/ 24%\),\s*1px 1px 4px rgb\(0 0 0 \/ 40%\),\s*0 0 8px rgb\(20 20 22 \/ 30%\)/u,
+      /box-shadow:\s*-2px 0 6px rgb\(0 0 0 \/ 20%\),\s*1px 1px 4px rgb\(0 0 0 \/ 24%\),\s*0 0 6px rgb\(20 20 22 \/ 16%\)/u,
     );
     expect(card?.body).toMatch(/overflow:\s*clip/u);
   });
@@ -338,9 +338,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("paints the dark card with the blob dither on its left edge behind started threads", () => {
-    // The ::before is the started-thread fill (Figma 447:15858): the #1e1f22
-    // card with the blob-dither strip (layer 447:15859) anchored to its left
-    // edge. The wrapper it paints on must already be
+    // The ::before is the started-thread fill (Figma 447:15858): the frosted
+    // #353639 card with the blurred blob-glow strip (layers 447:15859 under
+    // 452:17308, baked) anchored to its left edge. The wrapper it paints on must already be
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
     const chatView = readSibling("../components/ChatView.tsx");
@@ -365,7 +365,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(art?.body).toContain(
       'url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat',
     );
-    expect(art?.body).toMatch(/,\s*#1e1f22;/u);
+    expect(art?.body).toMatch(/,\s*#353639;/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/opacity:\s*1;/u);
     expect(art?.body).toMatch(/transition:\s*opacity 400ms/u);

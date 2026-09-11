@@ -41,7 +41,7 @@
    in an 8px gutter whose containers clip at the sidebar boundary and the
    window edges, so a 24px blur was truncated there and the cut read as a
    line down the sidebar seam; each layer is scaled to fade inside the
-   gutter, keeping the frame's proportions. The card is #1e1f22, a step
+   gutter, keeping the frame's proportions. The card is #353639 (the frosted result, see ::before), a step
    below the #26272c surface, so the shadow has a real step to fall from. It
    is the same
    drop-target wrapper the artwork paints on: ChatView's root fills the inset
@@ -59,43 +59,33 @@
   /* Drawn at 8px; 10px sits concentric with the window's own corner 8px
      further out, so the two arcs read as one curve at the bottom edge. */
   border-radius: 10px;
-  border: 1px solid rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 16%);
   box-shadow:
-    -2px 0 6px rgb(0 0 0 / 24%),
-    1px 1px 4px rgb(0 0 0 / 40%),
-    0 0 8px rgb(20 20 22 / 30%);
+    -2px 0 6px rgb(0 0 0 / 20%),
+    1px 1px 4px rgb(0 0 0 / 24%),
+    0 0 6px rgb(20 20 22 / 16%);
   overflow: clip;
 }
 
 /* Stage fill and artwork — one per state, on the card's two pseudo-elements,
    both at z-index -1 inside the isolated card.
 
-   ::before is the started thread (Figma 447:15858): a #1e1f22 card, a step
-   below the #26272c surface, with a blob dither rising from its left edge.
-   The frame places Noey's "blobditherbluepurp" export (layer 447:15859,
-   758×1011 at -357,-15 on a 971×1008 card, blend mode lighten) so only its
-   right 53% shows; the asset here is that window, flattened over black,
-   flipped vertically and cut to its upper 70% before a uniform scale to the
-   card height — Noey wanted it thin at the top and thick at the bottom,
-   and the flip puts the raster's thin end up while the cut lands its widest
-   bulge at the bottom edge. Uniform on purpose: a taper or a row warp
-   squashes the dots into ovals, which read as distortion. The dots are
-   then re-dithered finer than the export's: the raster is low-passed (two box
-   blurs at the 12px dot pitch, then a gaussian) to recover the soft blob
-   field it was dithered from with no ghost of the old grid, that soft
-   field is nudged with smooth low-frequency noise (row width ±18%, rows
-   drawn up to 8% into the edge, columns drifting ±4%, edges clamped) so
-   the silhouette varies a little from the export's — safe here because the
-   dots are drawn afterwards and stay square — and an 8×8 Bayer
-   pattern redraws lighter dots on that field at a 5px cell (2.5 CSS px, the
-   size the earlier Shaders renders used) instead of the export's 12 — the field stays underneath, as it does in
-   the export, so the glow between the dots survives. Then
-   lightened onto the card colour — lighten is what the frame does, and it
-   is what lets the black between the dots vanish into the card — and
-   cropped to the 336px it reaches (about 35% of the frame's card). It
-   paints as a `left top / auto 100%` layer, so it scales with the card
-   height and the rest of the card stays the flat colour. Quantized to 256 colours with median cut (octree steps the glow's
-   falloff into a visible staircase; median cut does not): 101 KB against truecolour, no channel more than 25 levels off.
+   ::before is the started thread (Figma 447:15858): the #1e1f22 card with
+   Noey's "blobditherbluepurp" export (layer 447:15859, 875×1167 at
+   -357,-15, blend mode lighten) rising from its left edge, all of it under
+   a frosted overlay (layer 452:17308: white 10% fill with a glass blur) —
+   so the card reads #353639 and the dither dissolves into a soft glow with
+   no visible dots. The overlay is a fixed blur over a static picture, so
+   it is baked rather than run: the asset is the window the frame reveals,
+   lightened onto #1e1f22, gaussian-blurred at 55px (fitted against the
+   frame's render, mean error under 5 levels) and blended 10.3% toward
+   white, which lands the flat card on exactly #353639 — that is the colour
+   the rule paints as the base. Cropped to the 448px the glow reaches (about
+   46% of the frame's card) and stored at 1× (448×986) since there is nothing
+   sharp left to preserve; `left top / auto 100%` scales it with the card
+   height and the rest of the card stays the flat colour. Quantized to 256
+   colours with median cut (octree steps a soft falloff into a staircase;
+   median cut does not): 29 KB.
 
    ::after is the new-agent draft (Figma 416:8420, layer 421:12528,
    "doloresbluedither4"): the blue portrait at full strength under a
@@ -117,7 +107,7 @@
 
    westworld-hero.png is the Figma export quantized to 256 colours (octree),
    171 KB against 1.3 MB (no channel more than 14 levels off);
-   westworld-thread.png is the 672×1972 left blob strip, 256 colours (median cut), 101 KB. */
+   westworld-thread.png is the 448×986 frosted glow strip, 256 colours (median cut), 29 KB. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
@@ -127,7 +117,7 @@
   pointer-events: none;
   background:
     url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat,
-    #1e1f22;
+    #353639;
   opacity: 1;
   transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
 }
