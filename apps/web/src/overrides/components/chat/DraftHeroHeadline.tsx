@@ -23,7 +23,7 @@ interface DraftHeroHeadlineProps {
 export function DraftHeroHeadline({ activeProjectTitle }: DraftHeroHeadlineProps) {
   const hasResolvedProject = activeProjectTitle !== null;
   return (
-    <h1 className="mx-auto w-full max-w-5xl text-center font-normal text-2xl text-foreground tracking-tight sm:text-3xl">
+    <h1 className="w-full text-center font-normal text-2xl text-foreground tracking-tight sm:text-3xl">
       {hasResolvedProject ? "What should we build?" : "Choose a project to start"}
     </h1>
   );
