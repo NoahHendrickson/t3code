@@ -336,9 +336,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(blockFor(theme, COOL_STAGE)).toContain("--fork-pill-border: #333333");
   });
 
-  it("paints a flat dark card behind started threads", () => {
-    // The ::before is the started-thread fill (Figma 423:13864): a flat
-    // #202023 card, no picture. The wrapper it paints on must already be
+  it("paints the dark card with the violet edge glow behind started threads", () => {
+    // The ::before is the started-thread fill (Figma 434:14898): the #24252a
+    // card with the scrimmed dither strip (layers 434:14900 + 435:15426)
+    // anchored to its left edge. The wrapper it paints on must already be
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
     const chatView = readSibling("../components/ChatView.tsx");
@@ -349,7 +350,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-thread.png", import.meta.url)),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-stage.png", import.meta.url)),
@@ -365,8 +366,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const art = rules.find((rule) =>
       rule.selector.endsWith('[data-chat-workspace-drop-target="true"]::before'),
     );
-    expect(art?.body).toMatch(/background:\s*#202023;/u);
-    expect(art?.body).not.toContain("url(");
+    expect(art?.body).toContain(
+      'url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat',
+    );
+    expect(art?.body).toMatch(/,\s*#24252a;/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/opacity:\s*1;/u);
     expect(art?.body).toMatch(/transition:\s*opacity 400ms/u);
@@ -375,11 +378,13 @@ describe("fork guard: fork-cool-dark-theme", () => {
       rule.selector.endsWith('[data-chat-composer-overlay="true"]'),
     );
     expect(backing?.body).toMatch(/background:\s*none/u);
-    // No other palette takes the artwork, and the retired thread pictures are gone.
-    const artRules = cssRules(theme).filter((rule) => rule.body.includes("westworld-hero.png"));
+    // No other palette takes either asset, and the old right-hung portrait is gone.
+    const artRules = cssRules(theme).filter(
+      (rule) =>
+        rule.body.includes("westworld-hero.png") || rule.body.includes("westworld-thread.png"),
+    );
     expect(artRules.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR))).toBe(true);
     expect(theme).not.toContain("westworld-stage.png");
-    expect(theme).not.toContain("westworld-thread.png");
   });
 
   it("turns working blue and recolours the brand mark's arms", () => {
