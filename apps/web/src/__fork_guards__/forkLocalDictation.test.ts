@@ -55,16 +55,24 @@ describe("fork local dictation", () => {
     expect(controller.currentState.phase).toBe("idle");
   });
 
-  it("retains the native bridge, packaged helper, and composer submission gate", () => {
+  it("keeps the composer owning the session, with the bridge and helper wired", () => {
     const composer = read("../components/chat/ChatComposer.tsx");
     const control = read("../custom/voice/ForkDictationControl.tsx");
     const preload = read("../../../desktop/src/preload.ts");
+    const runtimeExports = read("../../../../packages/client-runtime/src/voice-input/index.ts");
     const packaging = read("../../../../scripts/build-desktop-artifact.ts");
-    expect(composer).toContain("<ForkDictationControl");
-    expect(composer).toContain("if (voiceInputBusyRef.current)");
-    expect(control).toContain("if (!bridge) return null");
-    expect(control).toContain("instance.cancel()");
+    // Composer holds the hook and reads the gates directly, like mobile.
+    expect(composer).toContain("useForkDictationController({");
+    expect(composer).toContain("dictation.blocksSubmission ?");
+    expect(composer).toContain("dictation.freezesEditor ||");
+    expect(composer).toContain("<ForkDictationControl dictation={dictation}");
+    // The button renders state only.
+    expect(control).toContain("if (!dictation.isAvailable) return null");
+    expect(control).not.toContain("new VoiceInputController");
+    // Fork IPC stays out of shared packages.
     expect(preload).toContain('"fork:voice-transcribe"');
+    expect(preload).not.toContain("@t3tools/client-runtime");
+    expect(runtimeExports).not.toContain("fork");
     expect(packaging).toContain('to: "voice-input"');
     expect(packaging).toContain("NSMicrophoneUsageDescription");
   });

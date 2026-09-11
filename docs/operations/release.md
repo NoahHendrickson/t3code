@@ -45,12 +45,12 @@ This document covers the unified release workflow for stable and nightly desktop
 
 <!-- fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation -->
 
-Fork desktop builds also require CMake and a C++ compiler on the build host for
-local dictation (Xcode with the Metal toolchain on macOS; Visual Studio C++ tools on
-Windows). On macOS, `xcrun metal --version` must succeed so the build can precompile
-GPU shaders. The desktop dev/build commands download pinned whisper.cpp source on
-the first build and cache the compiled helper. Artifact packaging builds the
-helper for the selected architecture and includes it; end users need no compiler.
+Fork macOS desktop artifacts also require CMake and Xcode with the Metal toolchain
+on the build host for local dictation; `xcrun metal --version` must succeed so the
+build can precompile GPU shaders. The first build downloads pinned whisper.cpp
+source and caches the compiled helper under `native/voice-input/build/`. Artifact
+packaging fails without the toolchain; the desktop `dev` and `build` tasks skip the
+helper instead, so the app runs without dictation. End users need no compiler.
 <!-- fork:end fork-local-dictation -->
 
 Stable releases require these GitHub Actions secrets in addition to the platform and deployment

@@ -4,9 +4,6 @@ import { defineConfig } from "vite-plus";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
 
 const repoEnv = loadRepoEnv();
-/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-const voiceInputBuild = "node scripts/build-voice-input.mjs && ";
-/* fork:end fork-local-dictation */
 const shouldLaunchElectronAfterPack = process.env.T3CODE_DESKTOP_DEV === "1";
 const publicConfigDefine = {
   __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
@@ -18,29 +15,29 @@ export default defineConfig({
   run: {
     tasks: {
       build: {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+        // Literal strings on purpose: knip reads these to find script entries.
+        // `--optional` skips the whisper.cpp helper when CMake is missing; only
+        // the packaged artifact (scripts/build-desktop-artifact.ts) requires it.
         command:
-          /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-          voiceInputBuild +
-          /* fork:end fork-local-dictation */
-          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
+          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
+        // fork:end fork-local-dictation
         dependsOn: ["t3#build"],
         cache: false,
       },
       dev: {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         command:
-          /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-          voiceInputBuild +
-          /* fork:end fork-local-dictation */
-          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
+          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
+        // fork:end fork-local-dictation
         dependsOn: ["t3#build"],
         cache: false,
       },
       "dev:bundle": {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         command:
-          /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-          voiceInputBuild +
-          /* fork:end fork-local-dictation */
-          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack --watch",
+          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack --watch",
+        // fork:end fork-local-dictation
         cache: false,
       },
       "dev:electron": {

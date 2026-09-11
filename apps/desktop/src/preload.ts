@@ -10,13 +10,13 @@ import { contextBridge, ipcRenderer } from "electron";
 
 import * as IpcChannels from "./ipc/channels.ts";
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-import type {
-  DesktopVoiceInputBridge,
-  DesktopVoiceInputResult,
-} from "@t3tools/client-runtime/voice-input";
+import type { VoiceInputIpcResult } from "./fork/voice/VoiceInputIpc.ts";
 
-async function invokeVoiceInput(channel: string, request: { requestId: string; wav?: Uint8Array }) {
-  const result: DesktopVoiceInputResult = await ipcRenderer.invoke(channel, request);
+async function invokeVoiceInput<T>(
+  channel: string,
+  request: { requestId: string; wav?: Uint8Array },
+): Promise<T> {
+  const result: VoiceInputIpcResult<T> = await ipcRenderer.invoke(channel, request);
   if (!result.ok) throw new Error(result.error);
   return result.value;
 }
@@ -383,20 +383,17 @@ contextBridge.exposeInMainWorld("desktopBridge", {
  */
 contextBridge.exposeInMainWorld("forkDesktopBridge", {
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  // Mirrored by `ForkVoiceInputBridge` in apps/web/src/custom/voice/forkVoiceInputBridge.ts.
   voiceInput: {
-    prepare: async (requestId) => {
-      await invokeVoiceInput("fork:voice-prepare", { requestId });
-    },
-    transcribe: async (requestId, wav) => {
-      const text = await invokeVoiceInput("fork:voice-transcribe", { requestId, wav });
-      if (typeof text !== "string")
-        throw new Error("No transcript was returned. Please try again.");
-      return text;
-    },
-    cancel: async (requestId) => {
-      await invokeVoiceInput("fork:voice-cancel", { requestId });
-    },
-    onDownloadProgress: (listener) => {
+    prepare: (requestId: string): Promise<void> =>
+      invokeVoiceInput<void>("fork:voice-prepare", { requestId }),
+    transcribe: (requestId: string, wav: Uint8Array): Promise<string> =>
+      invokeVoiceInput<string>("fork:voice-transcribe", { requestId, wav }),
+    cancel: (requestId: string): Promise<void> =>
+      invokeVoiceInput<void>("fork:voice-cancel", { requestId }),
+    onDownloadProgress: (
+      listener: (event: { requestId: string; percent: number }) => void,
+    ): (() => void) => {
       const receive = (
         _event: Electron.IpcRendererEvent,
         data: { requestId: string; percent: number },
@@ -404,7 +401,7 @@ contextBridge.exposeInMainWorld("forkDesktopBridge", {
       ipcRenderer.on("fork:voice-download", receive);
       return () => ipcRenderer.removeListener("fork:voice-download", receive);
     },
-  } satisfies DesktopVoiceInputBridge,
+  },
   /* fork:end fork-local-dictation */
   setSidebarVibrancy: (enabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled }),

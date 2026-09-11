@@ -16,10 +16,12 @@ afterEach(async () => {
 });
 const modelBytes = new Uint8Array([1, 2, 3]);
 const model = {
+  file: "ggml-test.bin",
   url: "https://example.test/model",
   bytes: 3,
   sha256: NodeCrypto.createHash("sha256").update(modelBytes).digest("hex"),
 };
+const installedFiles = [model.file, `${model.file}.sha256`];
 async function fixture(options: Partial<ConstructorParameters<typeof LocalSpeechEngine>[0]> = {}) {
   const directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "voice-engine-test-"));
   directories.push(directory);
@@ -56,9 +58,9 @@ describe("local speech engine", () => {
     await engine.prepare("one", () => {});
     await engine.prepare("two", () => {});
     expect(fetchModel).toHaveBeenCalledTimes(1);
-    expect(
-      new Uint8Array(await NodeFSP.readFile(NodePath.join(directory, "ggml-small.bin"))),
-    ).toEqual(modelBytes);
+    expect(new Uint8Array(await NodeFSP.readFile(NodePath.join(directory, model.file)))).toEqual(
+      modelBytes,
+    );
     const offline = vi.fn<typeof fetch>(async () => {
       throw new Error("offline");
     });
@@ -72,6 +74,36 @@ describe("local speech engine", () => {
     expect(offline).not.toHaveBeenCalled();
   });
 
+  it("hashes an unstamped model once and trusts the stamp afterwards", async () => {
+    const { directory } = await fixture();
+    await NodeFSP.writeFile(NodePath.join(directory, model.file), modelBytes);
+    const engine = new LocalSpeechEngine({
+      binary: process.execPath,
+      cacheDirectory: directory,
+      model,
+      fetch: async () => {
+        throw new Error("offline");
+      },
+    });
+    await engine.prepare("one", () => {});
+    expect(await NodeFSP.readFile(NodePath.join(directory, `${model.file}.sha256`), "utf8")).toBe(
+      model.sha256,
+    );
+    // A same-size file with a wrong stamp is not trusted.
+    await NodeFSP.writeFile(NodePath.join(directory, `${model.file}.sha256`), "stale");
+    await NodeFSP.writeFile(NodePath.join(directory, model.file), new Uint8Array([9, 2, 3]));
+    const restarted = new LocalSpeechEngine({
+      binary: process.execPath,
+      cacheDirectory: directory,
+      model,
+      fetch: async () => new Response(modelBytes),
+    });
+    await restarted.prepare("two", () => {});
+    expect(new Uint8Array(await NodeFSP.readFile(NodePath.join(directory, model.file)))).toEqual(
+      modelBytes,
+    );
+  });
+
   it("rejects damaged downloads, removes partial files, and allows retry", async () => {
     const fetchModel = vi
       .fn<typeof fetch>()
@@ -81,7 +113,7 @@ describe("local speech engine", () => {
     await expect(engine.prepare("one", () => {})).rejects.toThrow("damaged");
     expect(await NodeFSP.readdir(directory)).toEqual([]);
     await engine.prepare("retry", () => {});
-    expect(await NodeFSP.readdir(directory)).toEqual(["ggml-small.bin"]);
+    expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
 
   it("cancels a download only for its owner and holds the slot until it settles", async () => {
@@ -115,7 +147,7 @@ describe("local speech engine", () => {
     const { engine, directory } = await fixture({ run });
     await engine.prepare("owner", () => {});
     expect(await engine.transcribe("owner", wav())).toBe("Add local dictation.");
-    expect(await NodeFSP.readdir(directory)).toEqual(["ggml-small.bin"]);
+    expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
 
   it("cancels inference and deletes audio even when the helper fails", async () => {
@@ -137,7 +169,7 @@ describe("local speech engine", () => {
     await expect(engine.prepare("next", () => {})).rejects.toThrow("finishing");
     stopped.resolve();
     await rejected;
-    expect(await NodeFSP.readdir(directory)).toEqual(["ggml-small.bin"]);
+    expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
 
   it("rejects malformed or oversized audio before inference", () => {

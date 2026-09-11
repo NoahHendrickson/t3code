@@ -1,40 +1,47 @@
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFSP from "node:fs/promises";
+import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import * as NodeUtil from "node:util";
 
 // oxlint-disable t3code/no-global-process-runtime -- Build-time host and toolchain selection.
+//
+// Builds the whisper.cpp CLI with Metal for macOS. The fork ships macOS only,
+// and whisper.cpp publishes no prebuilt macOS CLI, so compiling is the only
+// path. `--optional` is for the dev tasks: without CMake the helper is skipped
+// and the app runs without dictation instead of failing to start.
 const { values } = NodeUtil.parseArgs({
   options: {
     arch: { type: "string", default: process.arch },
     platform: { type: "string", default: process.platform },
     output: { type: "string" },
+    optional: { type: "boolean", default: false },
   },
 });
-const platform =
-  values.platform === "mac" ? "darwin" : values.platform === "win" ? "win32" : values.platform;
-if (platform !== process.platform)
-  throw new Error("Build the speech helper on the target operating system.");
-if (!["arm64", "x64", ...(platform === "darwin" ? ["universal"] : [])].includes(values.arch))
+const platform = values.platform === "mac" ? "darwin" : values.platform;
+if (platform !== "darwin") {
+  if (values.optional) process.exit(0);
+  throw new Error("Local dictation ships for macOS only.");
+}
+if (process.platform !== "darwin") throw new Error("Build the speech helper on macOS.");
+if (!["arm64", "x64", "universal"].includes(values.arch))
   throw new Error(`Unsupported speech helper architecture: ${values.arch}`);
-if (platform !== "darwin" && values.arch !== process.arch)
-  throw new Error("Build the speech helper on the target architecture.");
 
 // whisper.cpp v1.8.3, pinned so native builds are reproducible across upstream releases.
 const revision = "2eeeba56e9edd762b4b38467bab96c2517163158";
 const root = NodeURL.fileURLToPath(new URL("../../../native/voice-input/build/", import.meta.url));
 const source = NodePath.join(root, `whisper.cpp-${revision}`);
-const build = NodePath.join(root, `cmake-${platform}-${values.arch}`);
-const destination = NodePath.join(root, `${platform}-${values.arch}`);
-const binary = platform === "win32" ? "whisper-cli.exe" : "whisper-cli";
+const build = NodePath.join(root, `cmake-darwin-${values.arch}`);
+const destination = NodePath.join(root, `darwin-${values.arch}`);
+const assets = ["whisper-cli", "default.metallib"];
 const stamp = `${revision}:2`;
 const current = await NodeFSP.readFile(NodePath.join(destination, "version"), "utf8").catch(
   () => "",
 );
 const assetsExist = (
   await Promise.all(
-    [binary, ...(platform === "darwin" ? ["default.metallib"] : [])].map((asset) =>
+    assets.map((asset) =>
       NodeFSP.access(NodePath.join(destination, asset)).then(
         () => true,
         () => false,
@@ -46,10 +53,17 @@ if (current !== stamp || !assetsExist) {
   try {
     NodeChildProcess.execFileSync("cmake", ["--version"], { stdio: "ignore" });
   } catch {
+    if (values.optional) {
+      console.warn(
+        "[voice-input] CMake not found; skipping the local dictation helper. Install CMake and Xcode (with the Metal toolchain) to enable dictation in dev.",
+      );
+      process.exit(0);
+    }
     throw new Error(
-      "Building local dictation requires CMake and a C++ compiler (macOS: Xcode with the Metal toolchain). Install CMake, then rebuild.",
+      "Building local dictation requires CMake and Xcode with the Metal toolchain. Install CMake, then rebuild.",
     );
   }
+  console.log("[voice-input] Building the whisper.cpp helper (one-time, cached afterwards)…");
   await NodeFSP.mkdir(root, { recursive: true });
   try {
     await NodeFSP.access(NodePath.join(source, "CMakeLists.txt"));
@@ -66,6 +80,8 @@ if (current !== stamp || !assetsExist) {
     });
     await NodeFSP.rm(archive);
   }
+  const osxArchitectures =
+    values.arch === "universal" ? "arm64;x86_64" : values.arch === "x64" ? "x86_64" : "arm64";
   NodeChildProcess.execFileSync(
     "cmake",
     [
@@ -79,14 +95,9 @@ if (current !== stamp || !assetsExist) {
       "-DGGML_BLAS=OFF",
       "-DWHISPER_BUILD_TESTS=OFF",
       "-DGGML_METAL_EMBED_LIBRARY=OFF",
-      ...(platform === "darwin"
-        ? [
-            `-DCMAKE_OSX_ARCHITECTURES=${values.arch === "universal" ? "arm64;x86_64" : values.arch === "x64" ? "x86_64" : "arm64"}`,
-            "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
-            "-DGGML_METAL_MACOSX_VERSION_MIN=12.0",
-          ]
-        : []),
-      ...(platform === "win32" ? ["-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"] : []),
+      `-DCMAKE_OSX_ARCHITECTURES=${osxArchitectures}`,
+      "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
+      "-DGGML_METAL_MACOSX_VERSION_MIN=12.0",
     ],
     { stdio: "inherit" },
   );
@@ -99,28 +110,26 @@ if (current !== stamp || !assetsExist) {
       "Release",
       "--target",
       "whisper-cli",
-      ...(platform === "darwin" ? ["ggml-metal-lib"] : []),
+      "ggml-metal-lib",
       "--parallel",
-      "4",
+      String(NodeOS.availableParallelism()),
     ],
     { stdio: "inherit" },
   );
   await NodeFSP.mkdir(destination, { recursive: true });
   await NodeFSP.cp(
-    NodePath.join(build, "bin", ...(platform === "win32" ? ["Release"] : []), binary),
-    NodePath.join(destination, binary),
+    NodePath.join(build, "bin/whisper-cli"),
+    NodePath.join(destination, "whisper-cli"),
+  );
+  // Precompiled shaders avoid recompiling the Metal source on every dictation.
+  await NodeFSP.cp(
+    NodePath.join(build, "bin/default.metallib"),
+    NodePath.join(destination, "default.metallib"),
   );
   await NodeFSP.cp(
     NodePath.join(source, "LICENSE"),
     NodePath.join(destination, "LICENSE-whisper.cpp"),
   );
-  if (platform === "darwin") {
-    // Precompiled shaders avoid recompiling the Metal source on every dictation.
-    await NodeFSP.cp(
-      NodePath.join(build, "bin/default.metallib"),
-      NodePath.join(destination, "default.metallib"),
-    );
-  }
   await NodeFSP.writeFile(NodePath.join(destination, "version"), stamp);
 }
 await NodeFSP.cp(

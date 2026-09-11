@@ -981,6 +981,8 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/prod-resources/browser-secret",
   "!apps/desktop/prod-resources/browser-secret/**/*",
   // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  "!apps/desktop/resources/voice-input",
+  "!apps/desktop/resources/voice-input/**/*",
   "!apps/desktop/prod-resources/voice-input",
   "!apps/desktop/prod-resources/voice-input/**/*",
   // fork:end fork-local-dictation
@@ -1111,14 +1113,16 @@ export const WSL_RUNTIME_EXTRA_RESOURCES = [
   WSL_RUNTIME_ARCHIVE_HASH_EXTRA_RESOURCE,
 ] as const;
 export const DESKTOP_EXTRA_RESOURCES = [
-  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-  { from: "apps/desktop/prod-resources/voice-input", to: "voice-input" },
-  // fork:end fork-local-dictation
   {
     from: "apps/desktop/prod-resources/resource-monitor",
     to: "resource-monitor",
   },
 ] as const;
+// fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+export const MAC_VOICE_INPUT_EXTRA_RESOURCES = [
+  { from: "apps/desktop/prod-resources/voice-input", to: "voice-input" },
+] as const;
+// fork:end fork-local-dictation
 export const LINUX_CAPTURE_EXTRA_RESOURCES = [
   {
     from: "apps/desktop/prod-resources/hyprland-capture",
@@ -2712,6 +2716,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       : {}),
     extraResources: [
       ...DESKTOP_EXTRA_RESOURCES,
+      // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+      ...(platform === "mac" ? MAC_VOICE_INPUT_EXTRA_RESOURCES : []),
+      // fork:end fork-local-dictation
       ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(platform === "win" ? WINDOWS_SERVER_EXTRA_RESOURCES : []),
@@ -3739,22 +3746,24 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       });
   }
   // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-  yield* runCommand(
-    ChildProcess.make(
-      "node",
-      [
-        path.join(repoRoot, "apps/desktop/scripts/build-voice-input.mjs"),
-        "--platform",
-        options.platform,
-        "--arch",
-        options.arch,
-        "--output",
-        path.join(stageResourcesDir, "voice-input"),
-      ],
-      { cwd: repoRoot },
-    ),
-    { label: "build local speech helper", verbose: options.verbose },
-  );
+  if (options.platform === "mac") {
+    yield* runCommand(
+      ChildProcess.make(
+        "node",
+        [
+          path.join(repoRoot, "apps/desktop/scripts/build-voice-input.mjs"),
+          "--platform",
+          options.platform,
+          "--arch",
+          options.arch,
+          "--output",
+          path.join(stageResourcesDir, "voice-input"),
+        ],
+        { cwd: repoRoot },
+      ),
+      { label: "build local speech helper", verbose: options.verbose },
+    );
+  }
   // fork:end fork-local-dictation
   yield* stageBrowserSecret({
     repoRoot,

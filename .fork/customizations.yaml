@@ -26,12 +26,18 @@
 
 - id: fork-local-dictation
   intent: >
-    Desktop users can dictate prompts locally for free through a composer microphone
-    and Ctrl+Shift+Space. Whisper Small downloads once with integrity verification.
-    Audio stays on the client device even for remote environments. Recording and
-    transcription block sending, cancellation stops owned work, and stale drafts
-    never receive transcripts. The packaged helper exits after inference, freeing
-    model memory. Browser-only and mobile clients retain their existing behavior.
+    macOS desktop users can dictate prompts locally for free through a composer
+    microphone and Ctrl+Shift+Space. An English Whisper Small model (181 MiB)
+    downloads once with integrity verification; whisper.cpp runs with Metal.
+    Audio stays on the client device even for remote environments. The composer
+    owns the dictation session through a hook that mirrors mobile's
+    useVoiceInputController and reads its send/editor gates directly; the mic
+    button only renders state. Cancellation stops owned work, stale drafts never
+    receive transcripts, and a recording in flight survives the composer becoming
+    disabled. The packaged helper exits after inference, freeing model memory.
+    Fork IPC types live in the desktop fork and web custom folders, never in
+    packages/contracts or client-runtime. Browser-only and mobile clients retain
+    their existing behavior.
   files:
     - apps/desktop/src/fork/voice/LocalSpeechEngine.ts
     - apps/desktop/src/fork/voice/VoiceInputIpc.ts
@@ -39,14 +45,14 @@
     - native/voice-input/LICENSE-Whisper.txt
     - apps/web/src/custom/voice/BrowserVoiceRecorder.ts
     - apps/web/src/custom/voice/ForkDictationControl.tsx
-    - packages/client-runtime/src/voice-input/desktop.ts
+    - apps/web/src/custom/voice/forkVoiceInputBridge.ts
+    - apps/web/src/custom/voice/useForkDictationController.ts
   shadows: []
   watch:
     - apps/desktop/src/ipc/DesktopIpcHandlers.ts
     - apps/desktop/src/preload.ts
     - apps/desktop/vite.config.ts
     - apps/web/src/components/chat/ChatComposer.tsx
-    - packages/client-runtime/src/voice-input/index.ts
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     - docs/user/composer.md

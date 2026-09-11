@@ -29,6 +29,9 @@ import {
   LINUX_CAPTURE_EXTRA_RESOURCES,
   LINUX_BROWSER_SECRET_EXTRA_RESOURCES,
   MAC_FILE_EXCLUSIONS,
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  MAC_VOICE_INPUT_EXTRA_RESOURCES,
+  // fork:end fork-local-dictation
   InvalidMacPasskeyRpDomainError,
   InvalidMacPasskeyPublishableKeyError,
   InvalidMockUpdateServerPortError,
@@ -581,6 +584,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     for (const resource of [
       ...WSL_RUNTIME_EXTRA_RESOURCES,
       ...LINUX_BROWSER_SECRET_EXTRA_RESOURCES,
+      // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+      ...MAC_VOICE_INPUT_EXTRA_RESOURCES,
+      // fork:end fork-local-dictation
     ]) {
       assert.include(
         DESKTOP_FILE_EXCLUSIONS,
@@ -596,6 +602,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "!apps/desktop/prod-resources/browser-secret",
       "!apps/desktop/prod-resources/browser-secret/**/*",
       // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+      "!apps/desktop/resources/voice-input",
+      "!apps/desktop/resources/voice-input/**/*",
       "!apps/desktop/prod-resources/voice-input",
       "!apps/desktop/prod-resources/voice-input/**/*",
       // fork:end fork-local-dictation
@@ -667,7 +675,12 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(win.asarUnpack, [WINDOWS_NATIVE_ASAR_UNPACK_GLOB]);
       assert.deepStrictEqual(winWithoutWslPrebuild.asar, win.asar);
       assert.deepStrictEqual(winWithoutWslPrebuild.asarUnpack, win.asarUnpack);
-      assert.deepStrictEqual(mac.extraResources, DESKTOP_EXTRA_RESOURCES);
+      assert.deepStrictEqual(mac.extraResources, [
+        ...DESKTOP_EXTRA_RESOURCES,
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+        ...MAC_VOICE_INPUT_EXTRA_RESOURCES,
+        // fork:end fork-local-dictation
+      ]);
       assert.deepStrictEqual(linux.extraResources, [
         ...DESKTOP_EXTRA_RESOURCES,
         ...LINUX_CAPTURE_EXTRA_RESOURCES,

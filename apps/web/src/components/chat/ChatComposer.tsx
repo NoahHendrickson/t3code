@@ -1,6 +1,7 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
 import { ForkDictationControl } from "~/custom/voice/ForkDictationControl";
+import { useForkDictationController } from "~/custom/voice/useForkDictationController";
 /* fork:end fork-local-dictation */
 import {
   questionAttachmentDraftId,
@@ -1768,16 +1769,35 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     selectedModel,
   );
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-  const [voiceInputBusy, setVoiceInputBusy] = useState(false);
-  const voiceInputBusyRef = useRef(false);
-  const onVoiceInputBusyChange = useCallback((busy: boolean) => {
-    voiceInputBusyRef.current = busy;
-    setVoiceInputBusy(busy);
-  }, []);
+  const dictationDisabled =
+    isConnecting ||
+    activePendingApproval !== null ||
+    pendingUserInputs.length > 0 ||
+    promptLockedForProject ||
+    projectSelectionRequired;
+  const dictation = useForkDictationController({
+    ownerKey: composerTargetKey(composerDraftTarget),
+    prompt,
+    disabled: dictationDisabled,
+    // Invoked on start/stop, after the refs and callbacks declared below exist.
+    getComposerElement: () => composerFormRef.current,
+    readDraft: () => readComposerSnapshot(),
+    commitDraft: (text, cursor) => {
+      const collapsedCursor = collapseExpandedComposerCursor(text, cursor);
+      onPromptChange(
+        text,
+        collapsedCursor,
+        cursor,
+        false,
+        readComposerSnapshot().terminalContextIds,
+      );
+      window.requestAnimationFrame(() => composerEditorRef.current?.focusAt(collapsedCursor));
+    },
+  });
   /* fork:end fork-local-dictation */
   const sendDisabledReason =
     /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-    (voiceInputBusy ? "Finish or cancel dictation before sending." : null) ??
+    (dictation.blocksSubmission ? "Finish or cancel dictation before sending." : null) ??
     /* fork:end fork-local-dictation */
     externalSendDisabledReason ??
     (activePendingProgress
@@ -3067,12 +3087,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const submitComposer = useCallback(
     (event?: { preventDefault: () => void }, intent: ComposerSubmissionIntent = "foreground") => {
-      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-      if (voiceInputBusyRef.current) {
-        event?.preventDefault();
-        return;
-      }
-      /* fork:end fork-local-dictation */
       if (noProviderAvailable || isSendDisabled) {
         event?.preventDefault();
         return;
@@ -5102,31 +5116,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         </>
       ) : null}
       {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
-      <ForkDictationControl
-        key={composerTargetKey(composerDraftTarget)}
-        ownerKey={composerTargetKey(composerDraftTarget)}
-        prompt={prompt}
-        disabled={
-          isConnecting ||
-          isComposerApprovalState ||
-          pendingUserInputs.length > 0 ||
-          promptLockedForProject ||
-          projectSelectionRequired
-        }
-        readDraft={readComposerSnapshot}
-        commitDraft={(text, cursor) => {
-          const collapsedCursor = collapseExpandedComposerCursor(text, cursor);
-          onPromptChange(
-            text,
-            collapsedCursor,
-            cursor,
-            false,
-            readComposerSnapshot().terminalContextIds,
-          );
-          window.requestAnimationFrame(() => composerEditorRef.current?.focusAt(collapsedCursor));
-        }}
-        onBusyChange={onVoiceInputBusyChange}
-      />
+      <ForkDictationControl dictation={dictation} disabled={dictationDisabled} />
       {/* fork:end fork-local-dictation */}
       <ComposerFooterPrimaryActions
         compact={isComposerResting || isComposerPrimaryActionsCompact}
@@ -5157,9 +5147,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   return (
     <form
       ref={composerFormRef}
-      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-      data-fork-dictation-composer
-      /* fork:end fork-local-dictation */
       onSubmit={submitComposer}
       onPointerDownCapture={(event) => {
         const target = event.target;
@@ -6024,7 +6011,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       }
                       disabled={
                         /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-                        voiceInputBusy ||
+                        dictation.freezesEditor ||
                         /* fork:end fork-local-dictation */
                         isConnecting ||
                         isComposerApprovalState ||

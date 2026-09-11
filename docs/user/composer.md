@@ -82,18 +82,19 @@ and use **Attach again** or remove the missing file before sending.
 
 <!-- fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation -->
 
-## Local dictation on desktop
+## Local dictation on desktop (macOS)
 
 Use the composer's microphone, or press `Ctrl+Shift+Space` while the composer is
-focused, to start dictating. Stop recording to insert the transcript at the cursor,
-then review and edit it before sending. Press `Escape` or use Cancel to discard it.
-Recordings stop automatically after five minutes.
+focused, to start dictating. Press it again, or click the stop button, to insert
+the transcript at the cursor, then review and edit it before sending. Press
+`Escape` or use Cancel to discard it. Recordings stop automatically after five
+minutes.
 
-First use downloads the Whisper Small model (466 MiB). After that, transcription
+First use downloads an English speech model (181 MiB). After that, transcription
 works offline with no account, API key, or usage fee. Audio stays on your device,
 including when connected to a remote environment, and temporary recordings are
 deleted after processing. The desktop app needs microphone permission. Switching
-threads or hiding the app cancels an active recording.
+threads cancels an active recording; covering or minimizing the window does not.
 <!-- fork:end fork-local-dictation -->
 
 ## Voice input on iPhone

@@ -3,14 +3,21 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
+import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeStream from "node:stream";
 import * as NodeStreamPromises from "node:stream/promises";
 
-const SMALL_MODEL = {
-  url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
-  bytes: 487601967,
-  sha256: "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+/**
+ * English-only quantized Small: dictated prompts are English, and the .en
+ * models beat multilingual ones at the same size. q5_1 keeps Small's accuracy
+ * at 181 MiB instead of 466.
+ */
+const DEFAULT_MODEL = {
+  file: "ggml-small.en-q5_1.bin",
+  url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en-q5_1.bin",
+  bytes: 190098681,
+  sha256: "bfdff4894dcb76bbf647d56263ea2a96645423f1669176f4844a1bf8e478ad30",
 };
 const MAX_AUDIO_BYTES = 44 + 16_000 * 2 * 300;
 
@@ -83,11 +90,19 @@ export class LocalSpeechEngine {
     cacheDirectory: string;
     fetch?: typeof fetch;
     run?: typeof runWhisper;
-    model?: typeof SMALL_MODEL;
+    model?: typeof DEFAULT_MODEL;
   };
 
   constructor(options: LocalSpeechEngine["options"]) {
     this.options = options;
+  }
+
+  private get model() {
+    return this.options.model ?? DEFAULT_MODEL;
+  }
+
+  private get modelPath() {
+    return NodePath.join(this.options.cacheDirectory, this.model.file);
   }
 
   cancel(owner: string): void {
@@ -122,14 +137,14 @@ export class LocalSpeechEngine {
         );
       }
       await NodeFSP.mkdir(this.options.cacheDirectory, { recursive: true });
-      const model = NodePath.join(this.options.cacheDirectory, "ggml-small.bin");
+      const model = this.modelPath;
       if (this.modelVerified) return;
       if (await this.verifyModel(model, signal)) {
         this.modelVerified = true;
         return;
       }
       progress(0);
-      const specification = this.options.model ?? SMALL_MODEL;
+      const specification = this.model;
       const temporary = `${model}.download`;
       try {
         const response = await (this.options.fetch ?? fetch)(specification.url, { signal });
@@ -177,6 +192,7 @@ export class LocalSpeechEngine {
           throw new Error("Speech model download was incomplete or damaged. Please retry.");
         signal.throwIfAborted();
         await NodeFSP.rename(temporary, model);
+        await NodeFSP.writeFile(`${model}.sha256`, specification.sha256, { mode: 0o600 });
         this.modelVerified = true;
       } finally {
         await NodeFSP.rm(temporary, { force: true });
@@ -184,13 +200,23 @@ export class LocalSpeechEngine {
     });
   }
 
+  /**
+   * The full hash runs once, when the model lands or when the sidecar stamp is
+   * missing. Every later launch is a size check, so the first dictation of a
+   * session does not stall on hashing 181 MiB.
+   */
   private async verifyModel(path: string, signal: AbortSignal): Promise<boolean> {
     const info = await NodeFSP.stat(path).catch(() => null);
-    const specification = this.options.model ?? SMALL_MODEL;
+    const specification = this.model;
     if (info?.size !== specification.bytes) return false;
+    const stamp = `${path}.sha256`;
+    if ((await NodeFSP.readFile(stamp, "utf8").catch(() => null)) === specification.sha256)
+      return true;
     const hash = NodeCrypto.createHash("sha256");
     for await (const chunk of NodeFS.createReadStream(path, { signal })) hash.update(chunk);
-    return hash.digest("hex") === specification.sha256;
+    if (hash.digest("hex") !== specification.sha256) return false;
+    await NodeFSP.writeFile(stamp, specification.sha256, { mode: 0o600 });
+    return true;
   }
 
   transcribe(owner: string, wav: Uint8Array): Promise<string> {
@@ -204,17 +230,22 @@ export class LocalSpeechEngine {
         const audio = NodePath.join(directory, "audio.wav");
         const output = NodePath.join(directory, "transcript");
         await NodeFSP.writeFile(audio, wav, { mode: 0o600 });
+        // English is fixed by the .en model; auto-detect would only add a pass
+        // and misfire on short clips. Non-speech token suppression keeps a
+        // noisy-but-silent clip from turning into "Thank you." or "[MUSIC]".
         await (this.options.run ?? runWhisper)(
           this.options.binary,
           [
             "--model",
-            NodePath.join(this.options.cacheDirectory, "ggml-small.bin"),
+            this.modelPath,
             "--file",
             audio,
             "--language",
-            "auto",
+            "en",
             "--threads",
-            "4",
+            String(Math.min(8, Math.max(1, NodeOS.availableParallelism()))),
+            "--flash-attn",
+            "--suppress-nst",
             "--output-txt",
             "--output-file",
             output,
