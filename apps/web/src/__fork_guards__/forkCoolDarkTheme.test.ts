@@ -185,16 +185,17 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(stage).toContain("--fork-composer-border: rgb(255 255 255 / 12%)");
     expect(stage).toContain("--fork-westworld-vessel-blur: 20px");
     expect(stage).toContain("--fork-westworld-chip-blur: 18px");
-    // Figma 416:8420: the new-agent draft restates dark glass on its overlay,
-    // which every composer element descends from.
+    // Figma 447:16789: the new-agent draft restates dark glass on its overlay,
+    // which every composer element descends from — one rgb(47 47 47), 50% for
+    // the vessel and chips and 60% for the prompt well.
     const hero = cssRules(theme).find(
       (rule) =>
         rule.selector.includes(COOL_STAGE_SELECTOR) &&
         rule.selector.endsWith('[data-chat-composer-overlay="true"][data-draft-hero]'),
     );
     expect(hero?.body).toContain("--fork-composer-vessel-bg: rgb(47 47 47 / 50%)");
-    expect(hero?.body).toContain("--fork-composer-bg: rgb(36 40 43 / 80%)");
-    expect(hero?.body).toContain("--fork-composer-border: rgb(255 255 255 / 28%)");
+    expect(hero?.body).toContain("--fork-composer-bg: rgb(47 47 47 / 60%)");
+    expect(hero?.body).toContain("--fork-composer-border: rgb(255 255 255 / 24%)");
     expect(hero?.body).toContain("--fork-composer-border-focus: rgb(255 255 255 / 45%)");
     expect(hero?.body).toContain("--fork-context-chip-bg: rgb(47 47 47 / 50%)");
     expect(hero?.body).toContain("--fork-westworld-vessel-blur: 16px");
@@ -240,6 +241,20 @@ describe("fork guard: fork-cool-dark-theme", () => {
         /color:/u.test(rule.body),
     );
     expect(ink?.body).toMatch(/color:\s*#e8e8e8/u);
+  });
+
+  it("inks the draft placeholder white over the transparent prompt well", () => {
+    // Same legibility problem one layer in: the draft well is glass over the
+    // portrait and the shared --muted-foreground (#8a8a8a here) sinks into it.
+    // Figma 447:16789 draws white 70%. Draft-only — a started thread's well is
+    // opaque, so it keeps the muted ink.
+    const placeholder = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes(COOL_STAGE_SELECTOR) &&
+        rule.selector.includes("[data-draft-hero]") &&
+        rule.selector.includes('[data-testid="composer-editor"]'),
+    );
+    expect(placeholder?.body).toMatch(/color:\s*rgb\(255 255 255 \/ 70%\)/u);
   });
 
   it("draws no seam between the panel and the stage", () => {

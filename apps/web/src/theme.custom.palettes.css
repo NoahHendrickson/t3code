@@ -125,9 +125,9 @@
    over a dither. The fills and radii are tokens so the two frames can
    disagree: a started thread (423:13864) is white glass — vessel white 8% at
    20px, chips white 12% at 18px, opaque #1f1f1f prompt — declared on the
-   palette root above; the new-agent draft (416:8420) is dark glass — vessel
-   and chips rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind
-   a white 28% hairline (the drawn 16%, raised below) — restated here on the draft overlay, which every
+   palette root above; the new-agent draft (447:16789) is dark glass — one
+   fill, rgb(47 47 47), at 50% for the vessel and chips and 60% for the prompt
+   behind a white 24% hairline — restated here on the draft overlay, which every
    composer element descends from, so the same rules resolve either set. The
    layers are static at rest and only re-blur while the composer slides on
    the first send. Palette-scoped, so Glass's own vibrancy rules (which must
@@ -136,12 +136,14 @@
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-composer-overlay="true"][data-draft-hero] {
   --fork-composer-vessel-bg: rgb(47 47 47 / 50%);
-  --fork-composer-bg: rgb(36 40 43 / 80%);
-  /* Whiter than the drawn 16% so the well's edge reads as a line of light
-     over the blue rather than a grey seam; focus stays in the same family
-     instead of the palette's opaque grey, which read as a dull ring over the
-     art with the caret in the field. */
-  --fork-composer-border: rgb(255 255 255 / 28%);
+  /* The well is the vessel's own fill one step more opaque, not a separate
+     cooler grey: the frame tints both from rgb(47 47 47), so the prompt reads
+     as the glass thickening rather than a second material laid on it. */
+  --fork-composer-bg: rgb(47 47 47 / 60%);
+  /* Focus stays in the hairline's own family, one quiet step up from the drawn
+     24%, instead of the palette's opaque grey — that read as a dull ring over
+     the art with the caret in the field. */
+  --fork-composer-border: rgb(255 255 255 / 24%);
   --fork-composer-border-focus: rgb(255 255 255 / 45%);
   --fork-context-chip-bg: rgb(47 47 47 / 50%);
   --fork-context-chip-bg-hover: rgb(47 47 47 / 68%);

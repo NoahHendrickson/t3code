@@ -1161,11 +1161,14 @@
     backdrop blur, context chips white 12% at 18px, an opaque #1f1f1f prompt
     surface behind a white 12% hairline (white 22% on focus, one quiet step
     up rather than the palette's opaque grey), and the flat white send. The
-    new-agent draft (Figma 416:8420) is dark glass: vessel and chips
-    rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind a white
-    28% hairline (white 45% on focus — whiter than the drawn 16% so the edge
-    reads as light over the blue, and never the palette's opaque grey focus
-    ring), and a #1877f2 send (the working token's blue). The thread
+    new-agent draft (Figma 447:16789) is dark glass: one rgb(47 47 47) fill
+    at 50% for the vessel and chips (16px / 4px blur) and 60% for the prompt,
+    behind a white 24% hairline (white 45% on focus, one quiet step up in the
+    same family rather than the palette's opaque grey, which read as a dull
+    ring over the art), and a #1877f2 send (the working token's blue). The
+    draft placeholder takes white 70% for the same reason the control row
+    takes #e8e8e8 — the well is transparent there, and #8a8a8a sank into the
+    portrait behind it; a started thread's opaque well keeps it. The thread
     values live on the palette root; the draft restates the same tokens —
     fills plus the two blur-radius tokens — on the draft-hero overlay, which
     every composer element descends from, so one set of rules resolves either

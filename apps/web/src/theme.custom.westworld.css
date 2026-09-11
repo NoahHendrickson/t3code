@@ -183,6 +183,21 @@
   color: #e8e8e8;
 }
 
+/* Same reason, one layer in: the draft's prompt is transparent glass over the
+   portrait, and theme.custom.css inks the placeholder --muted-foreground, which
+   is #8a8a8a here and sank into the blue behind it. 447:16789 draws it white
+   70%. Scoped to the draft overlay — a started thread's well is opaque, so the
+   muted ink still reads there. The selector is the placeholder rule's own
+   (Lexical renders it as a sibling of the editor, after a zero-height spacer;
+   the spacer has no text to ink). */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
+  [data-chat-composer-overlay="true"][data-draft-hero]
+  [data-fork-composer-box]
+  [data-testid="composer-editor"]
+  ~ div {
+  color: rgb(255 255 255 / 70%);
+}
+
 /* The composer's backing gradient (theme.custom.css,
    [data-chat-composer-overlay]) would end the artwork in a slab of stage
    colour above the pills. The cutoff mask already stops the transcript before
