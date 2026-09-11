@@ -1203,7 +1203,7 @@
     reads as #26272c, the violet glow rises along the left edge (surface
     again by ~190px) and a faint blue cast sits on the right. The scrim is
     a horizontal gradient standing in for the blur (10% at the left edge,
-    opaque from 190px to 150px from the right, 55% at the right edge). The
+    opaque from 190px to 150px from the right, 15% at the right edge). The
     rotation and the frame's crop are baked into the asset — the card sees
     x 12–88% of the layer, where the bright violet and the faint blue-grey
     live — so one `center / cover` layer lands the same edges at any card

@@ -176,7 +176,7 @@
    surface, the violet glow rises along the left edge (the frame samples
    #7746eb four pixels in, back to surface by ~190px) and a faint blue cast
    sits on the right. The scrim is a horizontal gradient here: 10% at the
-   left edge, opaque from 190px, opaque to 120px from the right, 70% at
+   left edge, opaque from 190px, opaque to 150px from the right, 15% at
    the right edge — the ramps stand in for the blur. The asset is pre-baked
    with the rotation AND the frame's crop: the 1252-wide layer sits centred
    on a 945 card, so the card sees x 12–88% of the image, which is where the
@@ -217,7 +217,7 @@
       rgb(38 39 44 / 10%) 0,
       #26272c 190px,
       #26272c calc(100% - 150px),
-      rgb(38 39 44 / 55%) 100%
+      rgb(38 39 44 / 15%) 100%
     ),
     url("./custom/assets/westworld-thread.png") center / cover no-repeat,
     #19191b;
