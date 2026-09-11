@@ -337,8 +337,9 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("paints the dark card with the blob dither on its left edge behind started threads", () => {
-    // The ::before is the started-thread fill: the #1e1f22 card with the
-    // blob-dither strip (Shaders design 4737833) anchored to its left edge. The wrapper it paints on must already be
+    // The ::before is the started-thread fill (Figma 447:15858): the #1e1f22
+    // card with the blob-dither strip (layer 447:15859) anchored to its left
+    // edge. The wrapper it paints on must already be
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
     const chatView = readSibling("../components/ChatView.tsx");

@@ -70,20 +70,19 @@
 /* Stage fill and artwork — one per state, on the card's two pseudo-elements,
    both at z-index -1 inside the isolated card.
 
-   ::before is the started thread: a #1e1f22 card, a step below the #26272c
-   surface, with a blob dither rising from its left edge — Noey's Shaders
-   design 4737833 (four static Blobs in #2e37e6→#1877f2 and #a644fc→#5218f2
-   under a source-colour Dither, threshold 0.7, spread 0.5) with every blob
-   deformed to 1.0 at softness 0.5 and reseeded (7, 33, 64, 12) so the four
-   read as one irregular mass, every centre moved 0.20 further left, and the Dither's pixel size taken from 14
-   to 5, so the blobs reach about 39% of the card and the dots are fine.
-   Rendered with the real WebGPU library in headful Chrome at 2× on a
-   transparent base and lightened onto the card colour — the Dither's dark
-   cells are black, so a normal composite would smear black over the card —
-   then cropped to the 368px the blobs reach. It paints as a `left top /
-   auto 100%` layer, so it scales with the card height and the rest of the
-   card stays the flat colour. Truecolour on purpose: a 256-colour palette
-   bands the glow around the dots.
+   ::before is the started thread (Figma 447:15858): a #1e1f22 card, a step
+   below the #26272c surface, with a blob dither rising from its left edge.
+   The frame places Noey's "blobditherbluepurp" export (layer 447:15859,
+   758×1011 at -357,-15 on a 971×1008 card, blend mode lighten) so only its
+   right 53% shows; the asset here is that window, flattened over black,
+   flipped vertically and tapered (0.7× wide at the top, 1.2× at the bottom)
+   because Noey wanted it thin at the top and thick at the bottom, then
+   lightened onto the card colour — lighten is what the frame does, and it
+   is what lets the black between the dots vanish into the card — and
+   cropped to the 296px it reaches (about 30% of the frame's card). It
+   paints as a `left top / auto 100%` layer, so it scales with the card
+   height and the rest of the card stays the flat colour. Truecolour on
+   purpose: a 256-colour palette bands the glow around the dots.
 
    ::after is the new-agent draft (Figma 416:8420, layer 421:12528,
    "doloresbluedither4"): the blue portrait at full strength under a
@@ -105,7 +104,7 @@
 
    westworld-hero.png is the Figma export quantized to 256 colours (octree),
    171 KB against 1.3 MB (no channel more than 14 levels off);
-   westworld-thread.png is the 736×1972 left blob strip, truecolour, 67 KB. */
+   westworld-thread.png is the 592×1972 left blob strip, truecolour, 573 KB. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
