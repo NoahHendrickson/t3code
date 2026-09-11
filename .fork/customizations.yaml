@@ -1162,7 +1162,9 @@
     surface behind a white 12% hairline, and the flat white send. The
     new-agent draft (Figma 416:8420) is dark glass: vessel and chips
     rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind a white
-    16% hairline, and a #1877f2 send (the working token's blue). The thread
+    28% hairline (white 45% on focus — whiter than the drawn 16% so the edge
+    reads as light over the blue, and never the palette's opaque grey focus
+    ring), and a #1877f2 send (the working token's blue). The thread
     values live on the palette root; the draft restates the same tokens —
     fills plus the two blur-radius tokens — on the draft-hero overlay, which
     every composer element descends from, so one set of rules resolves either

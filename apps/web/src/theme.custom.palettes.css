@@ -258,7 +258,12 @@
   [data-chat-composer-overlay="true"][data-draft-hero] {
   --fork-composer-vessel-bg: rgb(47 47 47 / 50%);
   --fork-composer-bg: rgb(36 40 43 / 80%);
-  --fork-composer-border: rgb(255 255 255 / 16%);
+  /* Whiter than the drawn 16% so the well's edge reads as a line of light
+     over the blue rather than a grey seam; focus stays in the same family
+     instead of the palette's opaque grey, which read as a dull ring over the
+     art with the caret in the field. */
+  --fork-composer-border: rgb(255 255 255 / 28%);
+  --fork-composer-border-focus: rgb(255 255 255 / 45%);
   --fork-context-chip-bg: rgb(47 47 47 / 50%);
   --fork-context-chip-bg-hover: rgb(47 47 47 / 68%);
   --fork-westworld-vessel-blur: 16px;

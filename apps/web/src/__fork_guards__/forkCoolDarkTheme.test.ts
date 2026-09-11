@@ -193,7 +193,8 @@ describe("fork guard: fork-cool-dark-theme", () => {
     );
     expect(hero?.body).toContain("--fork-composer-vessel-bg: rgb(47 47 47 / 50%)");
     expect(hero?.body).toContain("--fork-composer-bg: rgb(36 40 43 / 80%)");
-    expect(hero?.body).toContain("--fork-composer-border: rgb(255 255 255 / 16%)");
+    expect(hero?.body).toContain("--fork-composer-border: rgb(255 255 255 / 28%)");
+    expect(hero?.body).toContain("--fork-composer-border-focus: rgb(255 255 255 / 45%)");
     expect(hero?.body).toContain("--fork-context-chip-bg: rgb(47 47 47 / 50%)");
     expect(hero?.body).toContain("--fork-westworld-vessel-blur: 16px");
     expect(hero?.body).toContain("--fork-westworld-chip-blur: 4px");
