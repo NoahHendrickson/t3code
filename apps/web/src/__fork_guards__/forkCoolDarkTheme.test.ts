@@ -267,9 +267,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(card?.body).toMatch(/border-radius:\s*10px/u);
     expect(card?.body).toMatch(/border:\s*1px solid rgb\(255 255 255 \/ 12%\)/u);
     // The drawn stage drop shadow (Figma 423:13864): a left cast, a contact
-    // shadow and a bloom.
+    // shadow and a bloom, scaled to fade inside the 8px gutter the card sits
+    // in, since its containers clip at the sidebar seam and the window edges.
     expect(card?.body).toMatch(
-      /box-shadow:\s*-4px 0 24px rgb\(0 0 0 \/ 24%\),\s*1px 1px 8px rgb\(0 0 0 \/ 40%\),\s*0 0 24px rgb\(20 20 22 \/ 30%\)/u,
+      /box-shadow:\s*-2px 0 6px rgb\(0 0 0 \/ 24%\),\s*1px 1px 4px rgb\(0 0 0 \/ 40%\),\s*0 0 8px rgb\(20 20 22 \/ 30%\)/u,
     );
     expect(card?.body).toMatch(/overflow:\s*clip/u);
   });

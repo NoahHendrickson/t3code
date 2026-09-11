@@ -134,10 +134,15 @@
 
 /* Stage card — Figma 423:13864 "Frame 56": the chat column sits inside the
    surface as a card, 8px in from the header and the edges, a white 12%
-   hairline and the drawn stage drop shadow — a -4px 0 24px black 24% cast
-   to the left, a 1px 1px 8px black 40% contact shadow and a 0 0 24px
-   #141416 30% bloom. The card is #202023, a step below the #26272c surface,
-   so the shadow has a real step to fall from. It is the same
+   hairline and the drawn stage drop shadow: a cast to the left, a contact
+   shadow and a bloom (Figma 423:13864 draws them at -4px 0 24px black 24%,
+   1px 1px 8px black 40%, 0 0 24px #141416 30%). In the app the card sits
+   in an 8px gutter whose containers clip at the sidebar boundary and the
+   window edges, so a 24px blur was truncated there and the cut read as a
+   line down the sidebar seam; each layer is scaled to fade inside the
+   gutter, keeping the frame's proportions. The card is #202023, a step
+   below the #26272c surface, so the shadow has a real step to fall from. It
+   is the same
    drop-target wrapper the artwork paints on: ChatView's root fills the inset
    with an opaque bg-background, and this wrapper is the nearest element that
    is already position:relative and holds exactly the transcript and the
@@ -155,9 +160,9 @@
   border-radius: 10px;
   border: 1px solid rgb(255 255 255 / 12%);
   box-shadow:
-    -4px 0 24px rgb(0 0 0 / 24%),
-    1px 1px 8px rgb(0 0 0 / 40%),
-    0 0 24px rgb(20 20 22 / 30%);
+    -2px 0 6px rgb(0 0 0 / 24%),
+    1px 1px 4px rgb(0 0 0 / 40%),
+    0 0 8px rgb(20 20 22 / 30%);
   overflow: clip;
 }
 
