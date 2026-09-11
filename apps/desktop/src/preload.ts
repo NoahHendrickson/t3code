@@ -9,6 +9,18 @@ import { exposeClerkBridge } from "@clerk/electron/preload";
 import { contextBridge, ipcRenderer } from "electron";
 
 import * as IpcChannels from "./ipc/channels.ts";
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+import type {
+  DesktopVoiceInputBridge,
+  DesktopVoiceInputResult,
+} from "@t3tools/client-runtime/voice-input";
+
+async function invokeVoiceInput(channel: string, request: { requestId: string; wav?: Uint8Array }) {
+  const result: DesktopVoiceInputResult = await ipcRenderer.invoke(channel, request);
+  if (!result.ok) throw new Error(result.error);
+  return result.value;
+}
+/* fork:end fork-local-dictation */
 
 const SNAP_SHOT_EVENT_TYPES = new Set([
   "requested",
@@ -370,6 +382,30 @@ contextBridge.exposeInMainWorld("desktopBridge", {
  * addition does not need a preload `alwaysBundle` entry.
  */
 contextBridge.exposeInMainWorld("forkDesktopBridge", {
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  voiceInput: {
+    prepare: async (requestId) => {
+      await invokeVoiceInput("fork:voice-prepare", { requestId });
+    },
+    transcribe: async (requestId, wav) => {
+      const text = await invokeVoiceInput("fork:voice-transcribe", { requestId, wav });
+      if (typeof text !== "string")
+        throw new Error("No transcript was returned. Please try again.");
+      return text;
+    },
+    cancel: async (requestId) => {
+      await invokeVoiceInput("fork:voice-cancel", { requestId });
+    },
+    onDownloadProgress: (listener) => {
+      const receive = (
+        _event: Electron.IpcRendererEvent,
+        data: { requestId: string; percent: number },
+      ) => listener(data);
+      ipcRenderer.on("fork:voice-download", receive);
+      return () => ipcRenderer.removeListener("fork:voice-download", receive);
+    },
+  } satisfies DesktopVoiceInputBridge,
+  /* fork:end fork-local-dictation */
   setSidebarVibrancy: (enabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled }),
 });

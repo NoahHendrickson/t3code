@@ -980,6 +980,10 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/resources/browser-secret/**/*",
   "!apps/desktop/prod-resources/browser-secret",
   "!apps/desktop/prod-resources/browser-secret/**/*",
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  "!apps/desktop/prod-resources/voice-input",
+  "!apps/desktop/prod-resources/voice-input/**/*",
+  // fork:end fork-local-dictation
   // Windows stages the server sidecar below prod-resources so electron-builder
   // can copy it using project-relative extraResources matchers. Keep those
   // staging inputs out of app.asar; they are emitted once at resources/.
@@ -1107,6 +1111,9 @@ export const WSL_RUNTIME_EXTRA_RESOURCES = [
   WSL_RUNTIME_ARCHIVE_HASH_EXTRA_RESOURCE,
 ] as const;
 export const DESKTOP_EXTRA_RESOURCES = [
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  { from: "apps/desktop/prod-resources/voice-input", to: "voice-input" },
+  // fork:end fork-local-dictation
   {
     from: "apps/desktop/prod-resources/resource-monitor",
     to: "resource-monitor",
@@ -1339,6 +1346,10 @@ ${associatedDomains}
     </array>
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
+    <!-- fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <!-- fork:end fork-local-dictation -->
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
     <key>com.apple.security.cs.disable-library-validation</key>
@@ -2730,6 +2741,10 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       icon: "icon.icns",
       category: "public.app-category.developer-tools",
       extendInfo: {
+        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+        NSMicrophoneUsageDescription:
+          "no3y Code uses your microphone to transcribe prompts on your device.",
+        // fork:end fork-local-dictation
         NSScreenCaptureUsageDescription:
           "T3 Code captures the active window when you use the window capture shortcut.",
       },
@@ -3723,6 +3738,24 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         verbose: options.verbose,
       });
   }
+  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+  yield* runCommand(
+    ChildProcess.make(
+      "node",
+      [
+        path.join(repoRoot, "apps/desktop/scripts/build-voice-input.mjs"),
+        "--platform",
+        options.platform,
+        "--arch",
+        options.arch,
+        "--output",
+        path.join(stageResourcesDir, "voice-input"),
+      ],
+      { cwd: repoRoot },
+    ),
+    { label: "build local speech helper", verbose: options.verbose },
+  );
+  // fork:end fork-local-dictation
   yield* stageBrowserSecret({
     repoRoot,
     stageResourcesDir,

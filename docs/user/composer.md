@@ -80,6 +80,22 @@ Stashes containing uploaded files must be restored in their original environment
 Those files are retained for 24 hours. After an upload expires, restore the prompt
 and use **Attach again** or remove the missing file before sending.
 
+<!-- fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation -->
+
+## Local dictation on desktop
+
+Use the composer's microphone, or press `Ctrl+Shift+Space` while the composer is
+focused, to start dictating. Stop recording to insert the transcript at the cursor,
+then review and edit it before sending. Press `Escape` or use Cancel to discard it.
+Recordings stop automatically after five minutes.
+
+First use downloads the Whisper Small model (466 MiB). After that, transcription
+works offline with no account, API key, or usage fee. Audio stays on your device,
+including when connected to a remote environment, and temporary recordings are
+deleted after processing. The desktop app needs microphone permission. Switching
+threads or hiding the app cancels an active recording.
+<!-- fork:end fork-local-dictation -->
+
 ## Voice input on iPhone
 
 On supported iPhones with iOS 26 or later, use the composer's microphone to record,

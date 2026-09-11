@@ -24,6 +24,38 @@
 # rejected alternatives, and incident write-ups live in
 # .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md — narrative there, contract here.
 
+- id: fork-local-dictation
+  intent: >
+    Desktop users can dictate prompts locally for free through a composer microphone
+    and Ctrl+Shift+Space. Whisper Small downloads once with integrity verification.
+    Audio stays on the client device even for remote environments. Recording and
+    transcription block sending, cancellation stops owned work, and stale drafts
+    never receive transcripts. The packaged helper exits after inference, freeing
+    model memory. Browser-only and mobile clients retain their existing behavior.
+  files:
+    - apps/desktop/src/fork/voice/LocalSpeechEngine.ts
+    - apps/desktop/src/fork/voice/VoiceInputIpc.ts
+    - apps/desktop/scripts/build-voice-input.mjs
+    - native/voice-input/LICENSE-Whisper.txt
+    - apps/web/src/custom/voice/BrowserVoiceRecorder.ts
+    - apps/web/src/custom/voice/ForkDictationControl.tsx
+    - packages/client-runtime/src/voice-input/desktop.ts
+  shadows: []
+  watch:
+    - apps/desktop/src/ipc/DesktopIpcHandlers.ts
+    - apps/desktop/src/preload.ts
+    - apps/desktop/vite.config.ts
+    - apps/web/src/components/chat/ChatComposer.tsx
+    - packages/client-runtime/src/voice-input/index.ts
+    - scripts/build-desktop-artifact.ts
+    - scripts/build-desktop-artifact.test.ts
+    - docs/user/composer.md
+    - docs/operations/release.md
+  verify:
+    - apps/web/src/__fork_guards__/forkLocalDictation.test.ts
+    - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
+    - apps/web/src/custom/voice/BrowserVoiceRecorder.test.ts
+
 - id: ci-on-custom
   intent: >
     CI runs on pushes to custom and does not run on pushes to main. Custom is

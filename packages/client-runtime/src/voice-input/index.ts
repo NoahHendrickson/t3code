@@ -18,3 +18,6 @@ export {
   type VoiceTranscriptionErrorCode,
   type VoiceTranscriptionOptions,
 } from "./transcription.ts";
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+export type { DesktopVoiceInputBridge, DesktopVoiceInputResult } from "./desktop.ts";
+/* fork:end fork-local-dictation */

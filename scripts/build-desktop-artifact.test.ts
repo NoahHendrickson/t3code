@@ -595,6 +595,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "!apps/desktop/resources/browser-secret/**/*",
       "!apps/desktop/prod-resources/browser-secret",
       "!apps/desktop/prod-resources/browser-secret/**/*",
+      // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+      "!apps/desktop/prod-resources/voice-input",
+      "!apps/desktop/prod-resources/voice-input/**/*",
+      // fork:end fork-local-dictation
       "!apps/desktop/prod-resources/windows-server",
       "!apps/desktop/prod-resources/windows-server/**/*",
       "!apps/desktop/prod-resources/wsl-runtime.tar.gz",

@@ -4,6 +4,9 @@ import { defineConfig } from "vite-plus";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
 
 const repoEnv = loadRepoEnv();
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+const voiceInputBuild = "node scripts/build-voice-input.mjs && ";
+/* fork:end fork-local-dictation */
 const shouldLaunchElectronAfterPack = process.env.T3CODE_DESKTOP_DEV === "1";
 const publicConfigDefine = {
   __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
@@ -16,18 +19,27 @@ export default defineConfig({
     tasks: {
       build: {
         command:
+          /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+          voiceInputBuild +
+          /* fork:end fork-local-dictation */
           "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
         dependsOn: ["t3#build"],
         cache: false,
       },
       dev: {
         command:
+          /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+          voiceInputBuild +
+          /* fork:end fork-local-dictation */
           "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
         dependsOn: ["t3#build"],
         cache: false,
       },
       "dev:bundle": {
         command:
+          /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+          voiceInputBuild +
+          /* fork:end fork-local-dictation */
           "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack --watch",
         cache: false,
       },

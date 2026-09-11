@@ -1,4 +1,7 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+import { ForkDictationControl } from "~/custom/voice/ForkDictationControl";
+/* fork:end fork-local-dictation */
 import {
   questionAttachmentDraftId,
   useQuestionAttachmentPreparation,
@@ -1764,7 +1767,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     selectedProviderEntry?.snapshot,
     selectedModel,
   );
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  const [voiceInputBusy, setVoiceInputBusy] = useState(false);
+  const voiceInputBusyRef = useRef(false);
+  const onVoiceInputBusyChange = useCallback((busy: boolean) => {
+    voiceInputBusyRef.current = busy;
+    setVoiceInputBusy(busy);
+  }, []);
+  /* fork:end fork-local-dictation */
   const sendDisabledReason =
+    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+    (voiceInputBusy ? "Finish or cancel dictation before sending." : null) ??
+    /* fork:end fork-local-dictation */
     externalSendDisabledReason ??
     (activePendingProgress
       ? attachmentBlockReason
@@ -3053,6 +3067,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const submitComposer = useCallback(
     (event?: { preventDefault: () => void }, intent: ComposerSubmissionIntent = "foreground") => {
+      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+      if (voiceInputBusyRef.current) {
+        event?.preventDefault();
+        return;
+      }
+      /* fork:end fork-local-dictation */
       if (noProviderAvailable || isSendDisabled) {
         event?.preventDefault();
         return;
@@ -5081,6 +5101,33 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           </Tooltip>
         </>
       ) : null}
+      {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
+      <ForkDictationControl
+        key={composerTargetKey(composerDraftTarget)}
+        ownerKey={composerTargetKey(composerDraftTarget)}
+        prompt={prompt}
+        disabled={
+          isConnecting ||
+          isComposerApprovalState ||
+          pendingUserInputs.length > 0 ||
+          promptLockedForProject ||
+          projectSelectionRequired
+        }
+        readDraft={readComposerSnapshot}
+        commitDraft={(text, cursor) => {
+          const collapsedCursor = collapseExpandedComposerCursor(text, cursor);
+          onPromptChange(
+            text,
+            collapsedCursor,
+            cursor,
+            false,
+            readComposerSnapshot().terminalContextIds,
+          );
+          window.requestAnimationFrame(() => composerEditorRef.current?.focusAt(collapsedCursor));
+        }}
+        onBusyChange={onVoiceInputBusyChange}
+      />
+      {/* fork:end fork-local-dictation */}
       <ComposerFooterPrimaryActions
         compact={isComposerResting || isComposerPrimaryActionsCompact}
         pendingAction={pendingPrimaryAction}
@@ -5110,6 +5157,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   return (
     <form
       ref={composerFormRef}
+      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+      data-fork-dictation-composer
+      /* fork:end fork-local-dictation */
       onSubmit={submitComposer}
       onPointerDownCapture={(event) => {
         const target = event.target;
@@ -5973,6 +6023,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                         /* fork:end fork-composer-shell */
                       }
                       disabled={
+                        /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+                        voiceInputBusy ||
+                        /* fork:end fork-local-dictation */
                         isConnecting ||
                         isComposerApprovalState ||
                         /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
