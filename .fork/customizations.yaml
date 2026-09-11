@@ -1196,9 +1196,14 @@
 
     One fill and one artwork, Westworld-only, one per state, on the
     wrapper's two pseudo-elements at z-index -1. The ::before is the started
-    thread (Figma 423:13865): a flat #19191b card, a step below the #26272c
-    surface, with no picture, so the transcript reads over plain dark and
-    the white-glass composer sits on it. The ::after is the
+    thread (Figma 434:14899): a flat #19191b card, a step below the #26272c
+    surface, with the dither texture showing only as a strip along the right
+    edge under a fade panel from the card colour (opaque to 186px from the
+    edge, 50% at 83px, clear at 27px), so the violet glow emerges from the
+    dark. The frame's 180° rotation and 50% opacity are baked into the
+    asset, which is cropped to the left 26% the frame reveals, so one
+    `right center / auto 100%` layer places it at every card height. The
+    ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
     full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover
     at 66% 50% (the drawn crop, the figure on the card's right third); the
@@ -1212,8 +1217,9 @@
     (fork-new-agent-draft's draftHeroTransition shadow). The composer backing
     gradient paints nothing under Westworld so the art runs on behind the
     vessel as drawn; the cutoff mask already ends the transcript above it.
-    Asset at custom/assets/westworld-hero.png (171 KB), the Figma export
-    quantized to 256 colours.
+    Assets at custom/assets/westworld-hero.png (171 KB) and
+    westworld-thread.png (the baked strip), Figma exports quantized to 256
+    colours.
 
     Working status is Figma's #1877f2 rather than the shared green: the
     stage and v2 panel blocks restate --sidebar-v2-status-working, which is
@@ -1227,6 +1233,7 @@
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/custom/assets/westworld-hero.png
+    - apps/web/src/custom/assets/westworld-thread.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
   watch:

@@ -348,7 +348,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-thread.png", import.meta.url)),
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-stage.png", import.meta.url)),
@@ -364,9 +364,15 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const art = rules.find((rule) =>
       rule.selector.endsWith('[data-chat-workspace-drop-target="true"]::before'),
     );
-    // Figma 423:13865: a flat #19191b card on a thread, no picture.
-    expect(art?.body).toMatch(/background:\s*#19191b;/u);
-    expect(art?.body).not.toContain("url(");
+    // Figma 434:14899: the #19191b card with the pre-baked texture strip at
+    // the right edge under a fade panel from the card colour.
+    expect(art?.body).toContain(
+      'url("./custom/assets/westworld-thread.png") right center / auto 100% no-repeat',
+    );
+    expect(art?.body).toMatch(
+      /#19191b calc\(100% - 186px\),\s*rgb\(25 25 27 \/ 50%\) calc\(100% - 83px\),\s*rgb\(25 25 27 \/ 0%\) calc\(100% - 27px\)/u,
+    );
+    expect(art?.body).toMatch(/,\s*#19191b;/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/opacity:\s*1;/u);
     expect(art?.body).toMatch(/transition:\s*opacity 400ms/u);
@@ -375,11 +381,13 @@ describe("fork guard: fork-cool-dark-theme", () => {
       rule.selector.endsWith('[data-chat-composer-overlay="true"]'),
     );
     expect(backing?.body).toMatch(/background:\s*none/u);
-    // No other palette takes the artwork, and the retired thread pictures are gone.
-    const artRules = cssRules(theme).filter((rule) => rule.body.includes("westworld-hero.png"));
+    // No other palette takes either asset, and the old right-hung portrait is gone.
+    const artRules = cssRules(theme).filter(
+      (rule) =>
+        rule.body.includes("westworld-hero.png") || rule.body.includes("westworld-thread.png"),
+    );
     expect(artRules.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR))).toBe(true);
     expect(theme).not.toContain("westworld-stage.png");
-    expect(theme).not.toContain("westworld-thread.png");
   });
 
   it("turns working blue and recolours the brand mark's arms", () => {
