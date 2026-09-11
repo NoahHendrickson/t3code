@@ -1204,8 +1204,9 @@
     the card reads #353639 and the dither becomes a soft glow. The overlay
     is a fixed blur over a static picture, so it is baked: the asset is the
     frame's window lightened onto #1e1f22, blurred at 55px and blended
-    toward white to land on #353639, cropped to a `left top / auto 100%`
-    strip at 1×, and the rule paints #353639 as the base, so it scales with
+    toward white to land on the frame's #353639 and re-based onto #16171a
+    for the darker stage Noey wanted, cropped to a `left top / auto 100%`
+    strip at 1×, and the rule paints #16171a as the base, so it scales with
     the card and the rest stays flat. The ::after is the
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
     full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover

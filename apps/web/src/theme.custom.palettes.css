@@ -61,7 +61,7 @@
   --fork-composer-bg: #1f1f1f;
   --fork-composer-border: rgb(255 255 255 / 12%);
   /* Focus stays in the hairline's family, one step up from its 12% rest:
-     the palette's opaque grey read as a bright ring on the #353639 card. */
+     the palette's opaque grey read as a bright ring on the #16171a card. */
   --fork-composer-border-focus: rgb(255 255 255 / 22%);
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
