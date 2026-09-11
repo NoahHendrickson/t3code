@@ -50,18 +50,19 @@
   --fork-pill-hover: #333438;
   /* The composer is glass over the stage art — the one palette where the
      fork's opaque-composer rule yields, because here the backdrop is the
-     picture. These are the started-thread values (Figma 423:13864): white
-     glass — vessel white 8%, chips white 12% — over an opaque #1f1f1f prompt
+     picture. These are the started-thread values (Figma 434:14898): an
+     opaque #39393c vessel with no blur (an opaque surface has nothing to
+     blur), white 12% glass chips at 18px, and an opaque #1f1f1f prompt
      surface behind a white 12% hairline. The new-agent draft restates them
      on its overlay below (Figma 416:8420's dark glass), and the blur radii
      ride the same two tokens so the rules under the art read one source. */
-  --fork-composer-vessel-bg: rgb(255 255 255 / 8%);
+  --fork-composer-vessel-bg: #39393c;
   --fork-composer-bg: #1f1f1f;
   --fork-composer-border: rgb(255 255 255 / 12%);
   --fork-composer-border-focus: #7d848b;
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
-  --fork-westworld-vessel-blur: 20px;
+  --fork-westworld-vessel-blur: 0px;
   --fork-westworld-chip-blur: 18px;
   /* Working is Figma's #1877f2 here, not the green every other dark palette
      uses: the status dot, the pixel rain (sidebar cards, the composer
@@ -168,15 +169,17 @@
 /* Stage fill and artwork — one per state, on the card's two pseudo-elements,
    both at z-index -1 inside the isolated card.
 
-   ::before is the started thread (Figma 434:14899): a flat #19191b card, a
-   step below the #26272c surface, with the dither texture ("justdither4",
-   turned 180° at 50%) showing only as a strip along the right edge under a
-   fade panel from the card colour — opaque to 186px from the edge, 50% at
-   83px, clear at 27px — so the violet glow emerges from the dark rather
-   than starting at a seam. The asset is pre-baked: the frame's rotation and
-   50% opacity are applied to the pixels and the image is cropped to the
-   left 26% that the frame reveals, so one `right center / auto 100%` layer
-   places it at every card height and no per-layer opacity is needed.
+   ::before is the started thread (Figma 434:14898): the dither texture
+   ("justdither4", turned 180°) covering the card at full strength under a
+   50px-blurred scrim in the surface colour that hides the middle and
+   thins out towards both edges — so the card's body reads as the #26272c
+   surface, the violet glow rises along the left edge (the frame samples
+   #7746eb four pixels in, back to surface by ~190px) and a faint blue cast
+   sits on the right. The scrim is a horizontal gradient here: 10% at the
+   left edge, opaque from 190px, opaque to 120px from the right, 70% at
+   the right edge — the ramps stand in for the blur. The asset is pre-baked
+   with the rotation, so one `center / cover` layer places it at any card
+   size.
 
    ::after is the new-agent draft (Figma 416:8420, layer 421:12528,
    "doloresbluedither4"): the blue portrait at full strength under a
@@ -196,8 +199,8 @@
 
    Both assets are Figma exports quantized to 256 colours (octree):
    westworld-hero.png 171 KB against 1.3 MB (no channel more than 14 levels
-   off), westworld-thread.png the rotated, blended, cropped strip (no channel
-   more than 12 levels off). */
+   off), westworld-thread.png the rotated texture, 170 KB against 1.8 MB (no
+   channel more than 11 levels off). */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-workspace-drop-target="true"]::before {
   content: "";
@@ -208,11 +211,12 @@
   background:
     linear-gradient(
       to right,
-      #19191b calc(100% - 186px),
-      rgb(25 25 27 / 50%) calc(100% - 83px),
-      rgb(25 25 27 / 0%) calc(100% - 27px)
+      rgb(38 39 44 / 10%) 0,
+      #26272c 190px,
+      #26272c calc(100% - 120px),
+      rgb(38 39 44 / 70%) 100%
     ),
-    url("./custom/assets/westworld-thread.png") right center / auto 100% no-repeat,
+    url("./custom/assets/westworld-thread.png") center / cover no-repeat,
     #19191b;
   opacity: 1;
   transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);

@@ -177,12 +177,13 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(panel).toContain("--sidebar: #26272c");
     expect(panel).toContain("--sidebar-stage-fade: #26272c");
     expect(panel).toContain("--sidebar-border: #33343a");
-    // Figma 423:13864: a started thread's composer is white glass over an
-    // opaque prompt surface — the palette-root values.
-    expect(stage).toContain("--fork-composer-vessel-bg: rgb(255 255 255 / 8%)");
+    // Figma 434:14898: a started thread's composer is an opaque #39393c vessel
+    // (no blur — nothing behind an opaque surface to blur) with white-glass
+    // chips over an opaque prompt surface — the palette-root values.
+    expect(stage).toContain("--fork-composer-vessel-bg: #39393c");
     expect(stage).toContain("--fork-composer-bg: #1f1f1f");
     expect(stage).toContain("--fork-composer-border: rgb(255 255 255 / 12%)");
-    expect(stage).toContain("--fork-westworld-vessel-blur: 20px");
+    expect(stage).toContain("--fork-westworld-vessel-blur: 0px");
     expect(stage).toContain("--fork-westworld-chip-blur: 18px");
     // Figma 416:8420: the new-agent draft restates dark glass on its overlay,
     // which every composer element descends from.
@@ -364,13 +365,13 @@ describe("fork guard: fork-cool-dark-theme", () => {
     const art = rules.find((rule) =>
       rule.selector.endsWith('[data-chat-workspace-drop-target="true"]::before'),
     );
-    // Figma 434:14899: the #19191b card with the pre-baked texture strip at
-    // the right edge under a fade panel from the card colour.
+    // Figma 434:14898: the rotated texture covering the card under a
+    // surface-coloured scrim that hides the middle and thins at both edges.
     expect(art?.body).toContain(
-      'url("./custom/assets/westworld-thread.png") right center / auto 100% no-repeat',
+      'url("./custom/assets/westworld-thread.png") center / cover no-repeat',
     );
     expect(art?.body).toMatch(
-      /#19191b calc\(100% - 186px\),\s*rgb\(25 25 27 \/ 50%\) calc\(100% - 83px\),\s*rgb\(25 25 27 \/ 0%\) calc\(100% - 27px\)/u,
+      /rgb\(38 39 44 \/ 10%\) 0,\s*#26272c 190px,\s*#26272c calc\(100% - 120px\),\s*rgb\(38 39 44 \/ 70%\) 100%/u,
     );
     expect(art?.body).toMatch(/,\s*#19191b;/u);
     expect(art?.body).toContain("z-index: -1");
