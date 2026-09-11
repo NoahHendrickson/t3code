@@ -246,12 +246,9 @@
    over a dither. The fills and radii are tokens so the two frames can
    disagree: a started thread (423:13864) is white glass — vessel white 8% at
    20px, chips white 12% at 18px, opaque #1f1f1f prompt — declared on the
-   palette root above; the new-agent draft (416:8420) is smoked glass —
-   vessel and chips rgb(96 100 108) 50% at 16px / 4px (the frame draws
-   rgb(47 47 47), which sank too dark against the bright blue on screen, so
-   the grey is lifted two steps at the same translucency), prompt
-   rgb(36 40 43) 80% behind a white 16% hairline — restated here on the draft
-   overlay, which every
+   palette root above; the new-agent draft (416:8420) is dark glass — vessel
+   and chips rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind
+   a white 16% hairline — restated here on the draft overlay, which every
    composer element descends from, so the same rules resolve either set. The
    layers are static at rest and only re-blur while the composer slides on
    the first send. Palette-scoped, so Glass's own vibrancy rules (which must
@@ -259,11 +256,11 @@
    the blur is inert and the fills carry. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-composer-overlay="true"][data-draft-hero] {
-  --fork-composer-vessel-bg: rgb(96 100 108 / 50%);
+  --fork-composer-vessel-bg: rgb(47 47 47 / 50%);
   --fork-composer-bg: rgb(36 40 43 / 80%);
   --fork-composer-border: rgb(255 255 255 / 16%);
-  --fork-context-chip-bg: rgb(96 100 108 / 50%);
-  --fork-context-chip-bg-hover: rgb(96 100 108 / 66%);
+  --fork-context-chip-bg: rgb(47 47 47 / 50%);
+  --fork-context-chip-bg-hover: rgb(47 47 47 / 68%);
   --fork-westworld-vessel-blur: 16px;
   --fork-westworld-chip-blur: 4px;
 }

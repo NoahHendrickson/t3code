@@ -191,10 +191,10 @@ describe("fork guard: fork-cool-dark-theme", () => {
         rule.selector.includes(COOL_STAGE_SELECTOR) &&
         rule.selector.endsWith('[data-chat-composer-overlay="true"][data-draft-hero]'),
     );
-    expect(hero?.body).toContain("--fork-composer-vessel-bg: rgb(96 100 108 / 50%)");
+    expect(hero?.body).toContain("--fork-composer-vessel-bg: rgb(47 47 47 / 50%)");
     expect(hero?.body).toContain("--fork-composer-bg: rgb(36 40 43 / 80%)");
     expect(hero?.body).toContain("--fork-composer-border: rgb(255 255 255 / 16%)");
-    expect(hero?.body).toContain("--fork-context-chip-bg: rgb(96 100 108 / 50%)");
+    expect(hero?.body).toContain("--fork-context-chip-bg: rgb(47 47 47 / 50%)");
     expect(hero?.body).toContain("--fork-westworld-vessel-blur: 16px");
     expect(hero?.body).toContain("--fork-westworld-chip-blur: 4px");
   });
@@ -434,8 +434,8 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("makes Westworld chips glass and keeps default dark chips on the Figma white wash", () => {
-    // Westworld chips are white 12% glass on a thread and rgb(96 100 108) 50%
-    // on a draft (the blur is pinned above). Default dark follows Figma
+    // Westworld chips are white 12% glass on a thread and rgb(47 47 47) 50% on
+    // a draft (the blur is pinned above). Default dark follows Figma
     // 322:6316 — a white 12% wash that lifts off any dark stage.
     const contextRules = cssRules(theme).filter((rule) =>
       rule.body.includes("--fork-context-chip-bg:"),
