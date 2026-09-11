@@ -38,6 +38,7 @@ const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = [
   readSibling("../theme.custom.css"),
   readSibling("../theme.custom.palettes.css"),
+  readSibling("../theme.custom.westworld.css"),
 ].join("\n");
 const indexHtml = readSibling("../../index.html");
 const main = readSibling("../main.tsx");
@@ -277,11 +278,16 @@ describe("fork guard: fork-cool-dark-theme", () => {
 
   it("shows the portrait under the wash while the draft is empty", () => {
     // The ::after is the new-agent picture (Figma 421:12528 under the blue
-    // wash), always painted at opacity 0 and lifted by the stamp ChatView sets
-    // for exactly the draft-hero state, so it can crossfade with the thread
-    // picture on the same 400ms clock as the composer's slide and fold.
+    // wash), always painted at opacity 0 and lifted when the column's own
+    // overlay carries data-draft-hero (fork-new-agent-draft's stamp, read
+    // through :has), so it can crossfade with the thread fill on the same
+    // 400ms clock as the composer's slide and fold. Nothing in ChatView is
+    // stamped for the theme.
     const chatView = readSibling("../components/ChatView.tsx");
-    expect(chatView).toContain("data-fork-stage-hero={isDraftHeroState || undefined}");
+    expect(chatView).not.toContain("data-fork-stage-hero");
+    expect(readSibling("../theme.custom.palettes.css")).toContain(
+      '@import "./theme.custom.westworld.css";',
+    );
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-hero.png", import.meta.url)),
@@ -298,17 +304,13 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(hero?.body).toContain("z-index: -1");
     expect(hero?.body).toMatch(/opacity:\s*0;/u);
     expect(hero?.body).toMatch(/transition:\s*opacity 400ms/u);
-    const heroLift = rules.find((rule) =>
-      rule.selector.endsWith(
-        '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::after',
-      ),
-    );
+    // The formatter wraps `:has(` across lines; compare without whitespace.
+    const HERO =
+      '[data-chat-workspace-drop-target="true"]:has(>[data-chat-composer-overlay="true"][data-draft-hero])';
+    const compact = (selector: string) => selector.replace(/\s+/gu, "");
+    const heroLift = rules.find((rule) => compact(rule.selector).endsWith(`${HERO}::after`));
     expect(heroLift?.body).toMatch(/opacity:\s*1/u);
-    const threadDrop = rules.find((rule) =>
-      rule.selector.endsWith(
-        '[data-chat-workspace-drop-target="true"][data-fork-stage-hero]::before',
-      ),
-    );
+    const threadDrop = rules.find((rule) => compact(rule.selector).endsWith(`${HERO}::before`));
     expect(threadDrop?.body).toMatch(/opacity:\s*0/u);
   });
 

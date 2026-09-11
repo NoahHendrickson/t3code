@@ -1204,10 +1204,12 @@
     new-agent draft (Figma 416:8420, layer 421:12528): the blue portrait at
     full strength under a left-to-right rgb(24 119 242) 40% → 10% wash, cover
     at 66% 50% (the drawn crop, the figure on the card's right third); the
-    glass composer carries its own legibility, so there is no halo. ChatView
-    stamps data-fork-stage-hero on the wrapper for exactly the draft-hero
-    state (the same isDraftHeroState that centres the composer, see
-    fork-new-agent-draft), which swaps which pseudo-element is at opacity 1.
+    glass composer carries its own legibility, so there is no halo. The draft
+    state is read off the overlay's own data-draft-hero stamp
+    (fork-new-agent-draft, the same isDraftHeroState that centres the
+    composer) through `:has(> …)` on the wrapper — the overlay is its direct
+    child — so nothing in ChatView is stamped for the theme; that state swaps
+    which pseudo-element is at opacity 1.
     Both are always painted and only their opacity moves — a pseudo-element
     that appears cannot fade — so the first send crossfades them over 400ms on
     the same clock and curve as the composer's slide and fold
@@ -1231,11 +1233,13 @@
     - apps/web/src/custom/assets/westworld-hero.png
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
+    # Westworld's card, artwork, glass and ink rules; the palettes sheet
+    # stays a token table and @imports this at its top.
+    - apps/web/src/theme.custom.westworld.css
   watch:
     - apps/web/src/main.tsx
     - apps/web/src/hooks/useTheme.ts
     - apps/web/src/components/settings/SettingsPanels.tsx
-    - apps/web/src/components/ChatView.tsx
     - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
   verify:

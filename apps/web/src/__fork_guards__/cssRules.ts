@@ -31,8 +31,13 @@ export interface CssRule {
 
 function stripComments(css: string): string {
   // Replaced with spaces rather than removed so every offset still lines up
-  // with the original text, which keeps selector slicing honest.
-  return css.replace(/\/\*[\s\S]*?\*\//gu, (match) => " ".repeat(match.length));
+  // with the original text, which keeps selector slicing honest. Statement
+  // at-rules (`@import …;`) go the same way: they end at a semicolon, not a
+  // block, and left in place the walker would read everything up to the next
+  // `{` — the first real selector included — as one at-rule header.
+  return css
+    .replace(/\/\*[\s\S]*?\*\//gu, (match) => " ".repeat(match.length))
+    .replace(/@(?:import|charset|namespace|layer)[^;{]*;/gu, (match) => " ".repeat(match.length));
 }
 
 function matchingClose(source: string, open: number, end: number): number {

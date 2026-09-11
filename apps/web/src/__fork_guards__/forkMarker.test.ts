@@ -48,7 +48,10 @@ describe("fork guard: fork-marker", () => {
 
   it("keeps every fork theme rule scoped under the marker attribute", () => {
     const theme = readSibling("../theme.custom.css");
-    const palettes = readSibling("../theme.custom.palettes.css");
+    const palettes = [
+      readSibling("../theme.custom.palettes.css"),
+      readSibling("../theme.custom.westworld.css"),
+    ].join("\n");
     expect(theme).toContain(`[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`);
     expect(palettes).toContain(`[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`);
   });
