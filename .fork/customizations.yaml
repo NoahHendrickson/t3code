@@ -3377,9 +3377,10 @@
 - id: fork-changed-files-card
   intent: >
     The chat-column changed-files card uses the fork dark surface ladder
-    instead of upstream's translucent dark:bg-input/32 wash. Westworld's
-    --input is neutral #3f3f3f, so that wash never lands on the cool opaque
-    card/secondary fills; under the fork marker the card and sticky header
+    instead of upstream's translucent dark:bg-input/32 wash. On every fork
+    dark palette --input is the border grey (Westworld's is #33343a), so
+    that wash smears a border tint over the stage instead of landing on the
+    opaque card fill; under the fork marker the card and sticky header
     paint var(--card), an 8px radius, and border-color var(--fork-composer-
     border) so Cool / Neutral palettes keep their own hairline weight. Path
     labels outside the header lift to --foreground (not the Show/Hide hint).

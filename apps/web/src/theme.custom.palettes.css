@@ -12,9 +12,9 @@
    and the sidebar: what separates the work from the chrome is no longer a
    darker panel but the stage card below — the chat column sits 8px inside
    the surface behind a white 12% hairline and a soft shadow. Rows lift to
-   #333438; chips and the composer vessel sit at #393f44, with the prompt
-   surface just under the stage at #24282b behind a white 24% hairline so the
-   typing area reads as a well cut into the vessel. Send is the one saturated
+   #333438. The composer is glass over the stage art; the vessel token's
+   comment below carries the two glass sets (white glass on a thread, dark
+   glass on a draft). Send is the one saturated
    control, Figma's #1877f2 — the same blue the working status token takes.
    Barely cool (B−R ≤ 7), not blue-slate. Storage id stays "cool-dark": the
    key is a persisted preference and the fences that carry it are named after
@@ -127,7 +127,7 @@
    20px, chips white 12% at 18px, opaque #1f1f1f prompt — declared on the
    palette root above; the new-agent draft (416:8420) is dark glass — vessel
    and chips rgb(47 47 47) 50% at 16px / 4px, prompt rgb(36 40 43) 80% behind
-   a white 16% hairline — restated here on the draft overlay, which every
+   a white 28% hairline (the drawn 16%, raised below) — restated here on the draft overlay, which every
    composer element descends from, so the same rules resolve either set. The
    layers are static at rest and only re-blur while the composer slides on
    the first send. Palette-scoped, so Glass's own vibrancy rules (which must

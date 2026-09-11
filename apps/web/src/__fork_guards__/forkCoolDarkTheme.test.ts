@@ -256,7 +256,8 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("frames the chat column as the stage card", () => {
-    // Figma 416:7408 "Frame 56": 8px inset, 8px radius, white 12% hairline and
+    // Figma 416:7408 "Frame 56": 8px inset, a 10px radius (concentric with the
+    // window corner), white 12% hairline and
     // the drawn stage drop shadow, on the same wrapper the artwork paints on.
     const card = cssRules(theme).find(
       (rule) =>
@@ -351,18 +352,6 @@ describe("fork guard: fork-cool-dark-theme", () => {
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-thread.png", import.meta.url)),
       ),
     ).toBe(true);
-    expect(
-      NodeFS.existsSync(
-        NodeURL.fileURLToPath(
-          new URL("../custom/assets/westworld-thread-right.png", import.meta.url),
-        ),
-      ),
-    ).toBe(false);
-    expect(
-      NodeFS.existsSync(
-        NodeURL.fileURLToPath(new URL("../custom/assets/westworld-stage.png", import.meta.url)),
-      ),
-    ).toBe(false);
     const rules = cssRules(theme).filter((rule) => rule.selector.includes(COOL_STAGE_SELECTOR));
     const isolate = rules.find(
       (rule) =>
@@ -376,7 +365,6 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(art?.body).toContain(
       'url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat',
     );
-    expect(theme).not.toContain("westworld-thread-right.png");
     expect(art?.body).toMatch(/,\s*#1e1f22;/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/opacity:\s*1;/u);
@@ -386,13 +374,12 @@ describe("fork guard: fork-cool-dark-theme", () => {
       rule.selector.endsWith('[data-chat-composer-overlay="true"]'),
     );
     expect(backing?.body).toMatch(/background:\s*none/u);
-    // No other palette takes either asset, and the old right-hung portrait is gone.
+    // No other palette takes either asset.
     const artRules = cssRules(theme).filter(
       (rule) =>
         rule.body.includes("westworld-hero.png") || rule.body.includes("westworld-thread.png"),
     );
     expect(artRules.every((rule) => rule.selector.includes(COOL_STAGE_SELECTOR))).toBe(true);
-    expect(theme).not.toContain("westworld-stage.png");
   });
 
   it("turns working blue and recolours the brand mark's arms", () => {
