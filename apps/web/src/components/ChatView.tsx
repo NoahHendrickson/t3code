@@ -8553,8 +8553,16 @@ export default function ChatView(props: ChatViewProps) {
                       <div
                         className="pb-8"
                         style={
-                          forceExpandedMobileComposer
-                            ? { viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME }
+                          /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                          // Named only where the mobile morph can run (the same
+                          // viewport query runMobileComposerTransition checks).
+                          // A view-transition-name puts the element on its own
+                          // compositing surface, and the glass composer's
+                          // backdrop-filter inside a named wrapper had nothing
+                          // behind it to blur on desktop.
+                          forceExpandedMobileComposer && isMobileViewport
+                            ? /* fork:end fork-new-agent-draft */
+                              { viewTransitionName: MOBILE_DRAFT_HEADLINE_VIEW_TRANSITION_NAME }
                             : undefined
                         }
                       >
@@ -8570,8 +8578,13 @@ export default function ChatView(props: ChatViewProps) {
                   <div
                     className="relative"
                     style={
-                      forceExpandedMobileComposer
-                        ? { viewTransitionName: MOBILE_COMPOSER_VIEW_TRANSITION_NAME }
+                      /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+                      // See the headline above: the name is dead for the morph on
+                      // desktop but not for the compositor, and this wrapper is the
+                      // one the composer's backdrop-filter lives under.
+                      forceExpandedMobileComposer && isMobileViewport
+                        ? /* fork:end fork-new-agent-draft */
+                          { viewTransitionName: MOBILE_COMPOSER_VIEW_TRANSITION_NAME }
                         : undefined
                     }
                   >

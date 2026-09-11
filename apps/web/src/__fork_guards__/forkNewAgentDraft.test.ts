@@ -258,6 +258,22 @@ describe("fork guard: fork-new-agent-draft", () => {
     );
   });
 
+  it("names the composer for the mobile view transition only on mobile viewports", () => {
+    // A view-transition-name puts its element on its own compositing
+    // surface; the glass composer's backdrop-filter under a named wrapper had
+    // an empty backdrop on desktop (Westworld showed crisp dither through the
+    // chips on screen). The morph only runs below 640px, so the names are
+    // gated on the same viewport query it checks.
+    const names = [
+      ...chatView.matchAll(/viewTransitionName: MOBILE_[A-Z_]+_VIEW_TRANSITION_NAME/gu),
+    ];
+    expect(names.length).toBeGreaterThanOrEqual(2);
+    expect(
+      [...chatView.matchAll(/forceExpandedMobileComposer && isMobileViewport\s*\?/gu)].length,
+    ).toBe(names.length);
+    expect(chatView).not.toMatch(/forceExpandedMobileComposer\s*\?\s*\{ viewTransitionName/u);
+  });
+
   it("opens Usage from the chrome's fourth row", () => {
     expect(chromeRows).toContain('label="Usage"');
     expect(sidebar).toContain('void router.navigate({ to: "/usage" });');

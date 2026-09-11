@@ -3567,7 +3567,19 @@
     floating preview's bottom inset — a preview can be floated over an unsent
     draft, and a column-high inset collapsed it to nothing. The translate is
     safe for the glass composer's backdrop-filter (verified on screen; the
-    blur failure once blamed on it was the view-transition-name below). That geometry is the drawn box (Figma 418:11501): an
+    blur failure once blamed on it was the view-transition-name below).
+
+    The mobile morph's view-transition-names (upstream's
+    MOBILE_COMPOSER / MOBILE_DRAFT_HEADLINE) are stamped only on mobile
+    viewports — the same query runMobileComposerTransition checks before it
+    starts a transition — not whenever the draft route sets
+    forceExpandedMobileComposer. On desktop the name was dead for the morph
+    but not for the compositor: Chromium composites a named element on its
+    own surface, and Westworld's glass composer (fork-cool-dark-theme) sits
+    under that wrapper, so its backdrop-filter had nothing behind it to blur
+    on screen while offscreen renders blurred. Found by reparenting the
+    vessel up the ancestor chain in headful Chrome; neutralising the name
+    alone restored the blur. That geometry is the drawn box (Figma 418:11501): an
     80px prompt surface with 8px padding, the prompt line on top and the
     attach / send actions on their own row beneath — attach leading, send
     trailing — which folds back to the compact base row the moment the
