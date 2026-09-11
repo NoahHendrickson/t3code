@@ -41,7 +41,7 @@
    in an 8px gutter whose containers clip at the sidebar boundary and the
    window edges, so a 14px blur was truncated there and the cut read as a
    line down the sidebar seam; each layer is scaled to fade inside the
-   gutter, keeping the frame's proportions. The card is #16171a (see ::before), a step
+   gutter, keeping the frame's proportions. The card is #222325 (see ::before), a step
    below the #26272c surface, so the shadow has a real step to fall from. It
    is the same
    drop-target wrapper the artwork paints on: ChatView's root fills the inset
@@ -81,7 +81,7 @@
    frame's render, mean error under 5 levels) and blended 10.3% toward
    white, which lands the flat card on the frame's #353639; Noey then wanted
    the stage darker, so each pixel's lift over that flat is re-based onto
-   #16171a — the colour the rule paints as the base. Cropped to the 448px the glow reaches (about
+   #222325 — the colour the rule paints as the base. Cropped to the 448px the glow reaches (about
    46% of the frame's card) and stored at 1× (448×986) since there is nothing
    sharp left to preserve; `left top / auto 100%` scales it with the card
    height and the rest of the card stays the flat colour. Truecolour: with
@@ -118,7 +118,7 @@
   pointer-events: none;
   background:
     url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat,
-    #16171a;
+    #222325;
   opacity: 1;
   transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
 }
