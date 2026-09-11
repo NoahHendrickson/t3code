@@ -2065,7 +2065,7 @@
   /* Surface and field follow the THEME, not the palette the Figma file happened to be
      drawn in: the panel docks inside the workspace, so a pinned #232527 read as a lighter
      slab bolted onto it — and drifted further with every alternate theme (Westworld's
-     background is #202326). Deriving them means the panel matches whatever surface it is
+     background is #26272c). Deriving them means the panel matches whatever surface it is
      sitting on, including themes that don't exist yet. */
   --fork-design-surface: var(--background);
   --fork-design-field: var(--muted);
@@ -2625,12 +2625,13 @@
 }
 
 /* ── Changed-files card in the chat column ───────────────────────────────────
-   Upstream paints `dark:bg-input/32` — a translucent wash of --input. Cool
-   Dark's --input is neutral #3f3f3f (border gray), so the card never lands on
-   the cool opaque ladder (--card #2b3033 / --secondary #353a3d). Same miss on
-   every fork dark palette: freeze the card to --card so each palette's stage
-   tokens actually show. Hairline uses --fork-composer-border (12% cool / 8%
-   neutral) so the card matches the vessel per palette. */
+   Upstream paints `dark:bg-input/32` — a translucent wash of --input. On every
+   fork dark palette --input is the border grey (Westworld's is #33343a), so
+   that wash lands the card on a smeared border tint over the stage instead of
+   the palette's own card step (Westworld: --card #303137 over the #26272c
+   stage; --secondary #393f44 is the chip step, not a card). Freeze the card to
+   --card so each palette's stage tokens actually show. Hairline uses
+   --fork-composer-border so the card matches the vessel per palette. */
 :root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-state] {
   background: var(--card);
   border-color: var(--fork-composer-border);
