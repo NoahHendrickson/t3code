@@ -337,7 +337,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
   });
 
   it("paints the dark card with the blob dither on its left edge behind started threads", () => {
-    // The ::before is the started-thread fill: the #24252a card with the
+    // The ::before is the started-thread fill: the #1e1f22 card with the
     // blob-dither strip (Shaders design 4737833) anchored to its left edge. The wrapper it paints on must already be
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
@@ -376,7 +376,7 @@ describe("fork guard: fork-cool-dark-theme", () => {
       'url("./custom/assets/westworld-thread.png") left top / auto 100% no-repeat',
     );
     expect(theme).not.toContain("westworld-thread-right.png");
-    expect(art?.body).toMatch(/,\s*#24252a;/u);
+    expect(art?.body).toMatch(/,\s*#1e1f22;/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toMatch(/opacity:\s*1;/u);
     expect(art?.body).toMatch(/transition:\s*opacity 400ms/u);
