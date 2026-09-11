@@ -241,6 +241,29 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(ink?.body).toMatch(/color:\s*#e8e8e8/u);
   });
 
+  it("washes the stage cards and the sent bubble over the art, Glass-style", () => {
+    // Opaque --card slabs read as missing picture over the portrait; a white
+    // 5% wash lifts them, the header is cleared so it stays flush, and the
+    // .bg-card wash keeps Glass's layered :where() shape so state variants
+    // on exact bg-card elements still win. No blur: these repaint on scroll.
+    const rules = cssRules(theme).filter((rule) => rule.selector.includes(COOL_STAGE_SELECTOR));
+    const card = rules.find((rule) => rule.selector.endsWith("[data-changed-files-state]"));
+    expect(card?.body).toMatch(/background:\s*rgb\(255 255 255 \/ 5%\)/u);
+    const header = rules.find((rule) => rule.selector.endsWith("[data-changed-files-header]"));
+    expect(header?.body).toMatch(/background:\s*none/u);
+    const bubble = rules.find((rule) => rule.selector.endsWith(".bg-message"));
+    expect(bubble?.body).toMatch(/background-color:\s*rgb\(255 255 255 \/ 5%\)/u);
+    const cards = rules.find(
+      (rule) => rule.selector.includes(":where(") && rule.selector.endsWith(".bg-card"),
+    );
+    expect(cards?.selector).toContain('[data-slot="sidebar-inset"]');
+    expect(cards?.atRules).toContain("@layer utilities");
+    expect(cards?.body).toMatch(/background-color:\s*rgb\(255 255 255 \/ 5%\)/u);
+    for (const rule of [card, header, bubble, cards]) {
+      expect(rule?.body).not.toContain("backdrop-filter");
+    }
+  });
+
   it("draws no seam between the panel and the stage", () => {
     // One surface: the card's hairline separates work from chrome, so the
     // container's full-height border-r goes transparent. Rings inside the
