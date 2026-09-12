@@ -32,7 +32,9 @@
     Audio stays on the client device even for remote environments. The composer
     owns the dictation session through a hook that mirrors mobile's
     useVoiceInputController and reads its send/editor gates directly; the mic
-    button only renders state. Cancellation stops owned work, stale drafts never
+    button only renders state. Dictation follows the committed composer's thread
+    after navigation, including when the composer is memoized.
+    Cancellation stops owned work, stale drafts never
     receive transcripts, and a recording in flight survives the composer becoming
     disabled: a pending approval or question routes the transcript into the
     prompt draft itself, and when the action cluster unmounts the recording is
@@ -68,6 +70,7 @@
     - docs/operations/release.md
   verify:
     - apps/web/src/__fork_guards__/forkLocalDictation.test.ts
+    - apps/web/src/__fork_guards__/forkDictationThreadOwnership.test.tsx
     - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
     - apps/web/src/custom/voice/BrowserVoiceRecorder.test.ts
 

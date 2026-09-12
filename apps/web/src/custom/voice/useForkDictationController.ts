@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   VoiceInputController,
   voiceInputBlocksSubmission,
@@ -192,9 +192,17 @@ export function useForkDictationController(input: DictationInput) {
   const [state, setState] = useState(INITIAL_STATE);
   const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
-  // Called only from controller callbacks and key handlers, which run on user
-  // events after commit and need the latest closures, not the mount-time ones.
-  const readInput = useEffectEvent(() => input);
+  // The composer is memoized. React's effect-event callback can retain its
+  // first render there, routing later recordings into the first thread.
+  // Refresh after commit so the session reads the visible composer's callbacks,
+  // never an abandoned concurrent render's target.
+  const inputRef = useRef(input);
+  useLayoutEffect(() => {
+    inputRef.current = input;
+  });
+  const readInput = useCallback(() => inputRef.current, []);
+  // Initialization only registers callbacks; none reads the input until an event.
+  // oxlint-disable-next-line react/refs
   const [{ controller, subscribeLevel, settleWithoutControls }] = useState(() => {
     const bridge = readForkVoiceInputBridge();
     return bridge
@@ -253,7 +261,7 @@ export function useForkDictationController(input: DictationInput) {
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [controller]);
+  }, [controller, readInput]);
 
   const start = () => {
     if (!input.disabled) void controller?.start();
