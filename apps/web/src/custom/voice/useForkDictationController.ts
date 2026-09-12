@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   VoiceInputController,
   voiceInputBlocksSubmission,
@@ -189,27 +189,41 @@ const NO_SESSION = {
 };
 
 export function useForkDictationController(input: DictationInput) {
+  // Handing the ref mirror below into a render-phase initializer costs this
+  // hook its React Compiler memoization ("Cannot access refs during render").
+  // Stated so the loss is deliberate: ChatComposer itself does not compile
+  // either, so nothing downstream keys on the returned object's identity.
+  "use no memo";
   const [state, setState] = useState(INITIAL_STATE);
   const [downloadPercent, setDownloadPercent] = useState<number | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
-  // The composer is memoized. React's effect-event callback can retain its
-  // first render there, routing later recordings into the first thread.
-  // Refresh after commit so the session reads the visible composer's callbacks,
-  // never an abandoned concurrent render's target.
+  // ChatComposer is `memo(fn)`, and react-dom applies useEffectEvent impls only
+  // for FunctionComponent fibers — memo and forwardRef hosts are skipped
+  // outright (`case 11: case 15: break;` in commitBeforeMutationEffects,
+  // react-dom 19.2.6). An effect event declared here would keep its mount-time
+  // closure forever and route every later recording into the first thread
+  // opened. Audit on a React bump: grep useEffectEvent, check whether the host
+  // component is memoized or a forwardRef.
+  //
+  // The mirror syncs in the layout phase rather than during render (the shape
+  // BranchToolbar and mobile's useVoiceInputController use) because a
+  // render-phase write can latch an input from a concurrent render that never
+  // commits. The owner-change cancel below is a layout effect for the same
+  // reason: layout effects run in declaration order, so the mirror and the
+  // cancel land in one uninterruptible commit with no window between them.
   const inputRef = useRef(input);
   useLayoutEffect(() => {
     inputRef.current = input;
   });
-  const readInput = useCallback(() => inputRef.current, []);
   // Initialization only registers callbacks; none reads the input until an event.
   // oxlint-disable-next-line react/refs
   const [{ controller, subscribeLevel, settleWithoutControls }] = useState(() => {
     const bridge = readForkVoiceInputBridge();
     return bridge
-      ? createSession(bridge, readInput, {
+      ? createSession(bridge, () => inputRef.current, {
           state: (next) => {
             setState(next);
-            if (next.phase === "error") readInput().focusEditor();
+            if (next.phase === "error") inputRef.current.focusEditor();
           },
           detail: setDetail,
           // The one-time download reports every integer percent; the label
@@ -221,7 +235,7 @@ export function useForkDictationController(input: DictationInput) {
   });
 
   const previousOwnerRef = useRef(input.ownerKey);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousOwnerRef.current === input.ownerKey) return;
     previousOwnerRef.current = input.ownerKey;
     controller?.ownerChanged();
@@ -238,7 +252,7 @@ export function useForkDictationController(input: DictationInput) {
       if (event.repeat || event.defaultPrevented) return;
       const { phase } = controller.currentState;
       const target = event.target;
-      const composer = readInput().getComposerElement();
+      const composer = inputRef.current.getComposerElement();
       const inComposer = target instanceof Node && composer?.contains(target) === true;
       const unfocused = target === document.body || target === document;
       if (event.key === "Escape") {
@@ -246,13 +260,13 @@ export function useForkDictationController(input: DictationInput) {
         // error banner must not eat Escape from other composer UI.
         if (!BLOCKING_PHASES.has(phase) || !(inComposer || unfocused)) return;
         controller.cancel();
-        readInput().focusEditor();
+        inputRef.current.focusEditor();
       } else if (isDictationChord(event)) {
         if (phase === "recording") {
           if (!(inComposer || unfocused)) return;
           void controller.stop();
         } else if (phase === "idle" || phase === "error") {
-          if (!inComposer || readInput().disabled) return;
+          if (!inComposer || inputRef.current.disabled) return;
           void controller.start();
         } else return;
       } else return;
@@ -261,15 +275,19 @@ export function useForkDictationController(input: DictationInput) {
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [controller, readInput]);
+  }, [controller]);
 
+  // Through the mirror, not the render scope: a caller that retains these
+  // (memoizing ForkDictationControl, hoisting start into a command action)
+  // would otherwise regress the click path to the old thread while the
+  // keyboard path kept working.
   const start = () => {
-    if (!input.disabled) void controller?.start();
+    if (!inputRef.current.disabled) void controller?.start();
   };
   const stop = () => void controller?.stop();
   const cancel = () => {
     controller?.cancel();
-    input.focusEditor();
+    inputRef.current.focusEditor();
   };
 
   return {
