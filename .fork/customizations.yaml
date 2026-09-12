@@ -3267,7 +3267,7 @@
     surface attribute, so the remap lists the peek slot as a second hook and
     gives it the hairline in place of its severity border utility.
 
-    Geometry (Figma t3-fork 360:11682, 360:10808): upstream's 1.375rem-inset
+    Geometry (Figma t3-fork 467:33308, earlier 360:11682, 360:10808): upstream's 1.375rem-inset
     16px-corner card tucked 1rem + 1px under the prompt surface becomes no card
     at all. A banner is vessel floor above the prompt box, exactly as the
     control row is vessel floor below it, so the wrappers go to vessel width,
@@ -3279,19 +3279,17 @@
     prompt into one bordered box on the composer fill, is the deliberate
     exception and keeps that construction — including its own top edge under
     a notice, since the notice above it paints no outline to share. Shoulder tabs (stash, tasks) are
-    excluded by name and keep riding the card's shoulder. Notices and the
-    activity strip additionally take the design's metrics — 16 / 8 / 16 / 16
-    around a 16px icon on a 4px gutter, title stacked over description on
-    14/16 with a 4px gutter (Figma 364:19233; the title's leading-7 /
-    sm:leading-6 is neutralized on every descendant so the 16px icon lines
-    up with the first line, including nested titles like the branch-change
-    card; the copy pins to the same start edge as the icon so Restore /
-    Dismiss cannot drop it), 8px between actions pinned to that first
-    line — while the
-    approval, stash and tasks drawers that share the card keep their own
-    density. The activity strip stays a single row. A notice's primary
-    action is the design's white Primary button, which the fork's
-    --primary already resolves to.
+    excluded by name and keep riding the card's shoulder. The three Figma
+    467:33308 cards (settled, resume compaction, branch changed) are stamped
+    data-fork-composer-notice so drawer density stays on Reconnect / Update /
+    tasks. Those cards drop font-medium / leading-7 at the source, stack
+    title over description, and stamp primary / dismiss actions by name
+    (data-fork-composer-notice-action) so Compact still matches when a
+    tooltip wraps it. Compaction uses ChevronsDownUpIcon. The activity strip
+    stays a single row at 16px padding, including when folded into the stack
+    (the in-drawer activity Root is stamped data-chat-composer-activity-strip).
+    A notice's primary action is the design's white Primary button, which the
+    fork's --primary already resolves to.
 
     Outline and tint apply in both schemes; the fill and the geometry are
     dark-only like the vessel.
@@ -3307,8 +3305,9 @@
     # --chat-composer-attached-* / --chat-composer-attachment-overlap
     # variables the rules re-point.
     - apps/web/src/components/chat/ComposerBanner.tsx
-    # Renders the notice stack (data-composer-banner-drawer) and the activity
-    # strip the metrics are keyed on, inside the dock.
+    # Renders the notice stack (data-composer-banner-drawer) and stamps
+    # data-fork-composer-notice / the optional-icon fence / the in-drawer
+    # activity strip attribute.
     - apps/web/src/components/chat/ComposerBannerStack.tsx
     - apps/web/src/components/chat/ChatComposer.tsx
     # Carries the fenced variant="default" on the notice primary actions.

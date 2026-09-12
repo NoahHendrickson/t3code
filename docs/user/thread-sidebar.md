@@ -79,7 +79,7 @@ sending an answer or restarting the agent.
 
 <!-- fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface -->
 
-On web and desktop, a settled thread shows only the **Un-settle** notice above the composer.
+On web and desktop, a settled thread shows only the **Unsettle** notice above the composer.
 Other notices, including **Resume with less context**, appear after you un-settle the thread
 if they still apply.
 
