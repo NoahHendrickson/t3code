@@ -13,7 +13,10 @@ export interface ComposerBannerStackItem {
   readonly id: string;
   readonly variant: ComposerBannerVariant;
   readonly priority?: "urgent" | "activity" | "notice";
+  /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
   readonly icon?: ReactNode;
+  readonly noticeCard?: boolean;
+  /* fork:end fork-composer-banner-surface */
   readonly title: ReactNode;
   readonly description?: ReactNode;
   readonly children?: ReactNode;
@@ -258,6 +261,11 @@ function ComposerBannerStackAlert({
         density="comfortable"
         placement={attached ? "attached" : "floating"}
         variant={item.variant}
+        /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+        {...(item.id === "composer-activity"
+          ? { "data-chat-composer-activity-strip": "true" }
+          : {})}
+        /* fork:end fork-composer-banner-surface */
       >
         {item.content}
       </ComposerBanner.Root>
@@ -269,10 +277,13 @@ function ComposerBannerStackAlert({
       placement={attached ? "attached" : "floating"}
       variant={item.variant}
       density="comfortable"
+      /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+      {...(item.noticeCard ? { "data-fork-composer-notice": "true" } : {})}
+      /* fork:end fork-composer-banner-surface */
     >
       <ComposerBanner.Row layout="wrap-actions-narrow">
         {/* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */}
-        {item.icon ? (
+        {item.icon != null ? (
           <ComposerBanner.Icon className="h-(--composer-banner-icon-column) self-start">
             {item.icon}
           </ComposerBanner.Icon>
@@ -281,39 +292,57 @@ function ComposerBannerStackAlert({
         <ComposerBanner.Content className="whitespace-nowrap">
           <span
             className={cn(
-              "min-w-0 font-medium leading-7 sm:leading-6",
-              typeof item.title === "string" && "truncate",
+              "min-w-0",
+              /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+              item.noticeCard
+                ? "w-full truncate font-normal leading-4"
+                : cn(
+                    "font-medium leading-7 sm:leading-6",
+                    typeof item.title === "string" && "truncate",
+                  ),
+              /* fork:end fork-composer-banner-surface */
             )}
           >
             {item.title}
           </span>
           {item.description ? (
             <>
-              <span className="min-w-0 shrink-[9999] truncate text-muted-foreground @max-[400px]:sr-only">
+              <span
+                className={cn(
+                  "min-w-0 text-muted-foreground",
+                  /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+                  item.noticeCard ? "w-full" : "shrink-[9999] truncate @max-[400px]:sr-only",
+                  /* fork:end fork-composer-banner-surface */
+                )}
+              >
                 {item.description}
               </span>
-              <Popover>
-                <PopoverTrigger
-                  openOnHover
-                  render={
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      aria-label="Show notice details"
-                      className="hidden flex-none text-muted-foreground hover:text-foreground @max-[400px]:inline-flex"
-                    />
-                  }
-                >
-                  <InfoIcon className="size-3.5" />
-                </PopoverTrigger>
-                <PopoverPopup
-                  tooltipStyle
-                  side="top"
-                  className="max-w-72 whitespace-normal text-pretty"
-                >
-                  {item.description}
-                </PopoverPopup>
-              </Popover>
+              {/* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */}
+              {item.noticeCard ? null : (
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    render={
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        aria-label="Show notice details"
+                        className="hidden flex-none text-muted-foreground hover:text-foreground @max-[400px]:inline-flex"
+                      />
+                    }
+                  >
+                    <InfoIcon className="size-3.5" />
+                  </PopoverTrigger>
+                  <PopoverPopup
+                    tooltipStyle
+                    side="top"
+                    className="max-w-72 whitespace-normal text-pretty"
+                  >
+                    {item.description}
+                  </PopoverPopup>
+                </Popover>
+              )}
+              {/* fork:end fork-composer-banner-surface */}
             </>
           ) : null}
         </ComposerBanner.Content>
@@ -325,6 +354,9 @@ function ComposerBannerStackAlert({
                 aria-label={item.dismissLabel ?? "Dismiss warning"}
                 disabled={exiting}
                 onClick={onDismissRequest}
+                /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+                {...(item.noticeCard ? { "data-fork-composer-notice-action": "dismiss" } : {})}
+                /* fork:end fork-composer-banner-surface */
               />
             ) : null}
           </ComposerBanner.Actions>

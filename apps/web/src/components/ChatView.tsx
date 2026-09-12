@@ -5781,6 +5781,9 @@ export default function ChatView(props: ChatViewProps) {
     return {
       id: `thread-${isSnoozed ? "snoozed" : "settled"}:${activeThread?.id ?? "unknown"}`,
       variant: "info",
+      /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+      noticeCard: true,
+      /* fork:end fork-composer-banner-surface */
       icon: isSnoozed ? <AlarmClockIcon /> : undefined,
       title: `This thread is ${isSnoozed ? "snoozed" : "settled"}`,
       description: isSnoozed
@@ -5791,6 +5794,7 @@ export default function ChatView(props: ChatViewProps) {
           size="xs"
           /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
           variant="default"
+          data-fork-composer-notice-action="primary"
           /* fork:end fork-composer-banner-surface */
           disabled={isSnoozed ? isUnsnoozing : isUnsettling}
           onClick={() =>
@@ -5881,6 +5885,7 @@ export default function ChatView(props: ChatViewProps) {
         size="xs"
         /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
         variant="default"
+        data-fork-composer-notice-action="primary"
         /* fork:end fork-composer-banner-surface */
         disabled={compactDisabled}
         onClick={() => {
@@ -5894,6 +5899,9 @@ export default function ChatView(props: ChatViewProps) {
     return {
       id: `resume-compaction:${resumeCompactionKey}`,
       variant: "info",
+      /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+      noticeCard: true,
+      /* fork:end fork-composer-banner-surface */
       icon: <ChevronsDownUpIcon />,
       title: "Resume with less context",
       description: `${formatContextWindowTokens(activeContextWindow.usedTokens)} tokens from an older session.`,
@@ -5975,6 +5983,9 @@ export default function ChatView(props: ChatViewProps) {
       {
         id: `branch-mismatch:${activeBranchMismatchKey}`,
         variant: "info",
+        /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+        noticeCard: true,
+        /* fork:end fork-composer-banner-surface */
         icon: <GitBranchIcon />,
         title: (
           <>
@@ -5982,7 +5993,7 @@ export default function ChatView(props: ChatViewProps) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <span className="min-w-0 font-medium text-foreground">
+                  <span className="inline-block min-w-0 max-w-full truncate font-medium text-foreground">
                     {localCheckoutBranchMismatch.currentBranch}
                   </span>
                 }
@@ -5996,7 +6007,10 @@ export default function ChatView(props: ChatViewProps) {
         ),
         description: (
           <>
-            was <span className="font-medium">{localCheckoutBranchMismatch.threadBranch}</span>
+            was{" "}
+            <span className="inline-block min-w-0 max-w-full truncate font-medium">
+              {localCheckoutBranchMismatch.threadBranch}
+            </span>
           </>
         ),
         actions: (
@@ -6004,6 +6018,7 @@ export default function ChatView(props: ChatViewProps) {
             size="xs"
             /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
             variant="default"
+            data-fork-composer-notice-action="primary"
             /* fork:end fork-composer-banner-surface */
             disabled={isRestoringThreadBranch}
             onClick={handleRestoreThreadBranch}

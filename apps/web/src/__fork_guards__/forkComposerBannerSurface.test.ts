@@ -206,15 +206,16 @@ describe("fork guard: fork-composer-banner-surface", () => {
     const rule = rules.find((candidate) =>
       candidate.body.includes("--composer-banner-icon-column"),
     );
-    expect(rule?.selector).toContain('[data-composer-banner-drawer="true"]');
+    expect(rule?.selector).toContain('[data-fork-composer-notice="true"]');
     expect(rule?.selector).toContain('[data-chat-composer-activity-strip="true"]');
+    expect(rule?.selector).not.toContain('[data-composer-banner-drawer="true"]');
     expect(rule?.body).toMatch(/--composer-banner-icon-column:\s*16px/u);
     expect(rule?.body).toMatch(/font-size:\s*14px/u);
     const noticePadding = rules.find(
       (candidate) =>
-        flat(candidate.selector).includes('[data-composer-banner-drawer="true"]') &&
-        flat(candidate.selector).includes('[data-slot="composer-banner"]') &&
+        flat(candidate.selector).includes('[data-fork-composer-notice="true"]') &&
         !flat(candidate.selector).includes("activity-strip") &&
+        !flat(candidate.selector).includes("composer-banner-") &&
         candidate.body.includes("padding:"),
     );
     expect(noticePadding?.body).toMatch(/padding:\s*12px 8px 12px 16px/u);
@@ -224,59 +225,38 @@ describe("fork guard: fork-composer-banner-surface", () => {
         candidate.body.includes("padding:"),
     );
     expect(stripPadding?.body).toMatch(/padding:\s*16px 8px 16px 16px/u);
-    // Title carries leading-7 / sm:leading-6; without a child-level 16px
-    // line-height the 16px self-start icon sits high of the copy.
-    const content = rules.find(
-      (candidate) =>
-        flat(candidate.selector).includes('[data-slot="composer-banner-content"]') &&
-        candidate.body.includes("gap: 4px"),
-    );
-    expect(content?.body).toMatch(/line-height:\s*16px/u);
-    // Nested titles (branch names inside the title) keep leading-7 unless
-    // every descendant is pinned; `> *` never reaches those inner spans.
-    const contentDescendants = rules.find(
-      (candidate) =>
-        /composer-banner-content"\]\s+\*/u.test(flat(candidate.selector)) &&
-        candidate.body.includes("line-height"),
-    );
-    expect(contentDescendants?.body).toMatch(/line-height:\s*16px/u);
-    expect(contentDescendants?.body).toMatch(/align-items:\s*center/u);
     const iconSvg = rules.find((candidate) =>
       /composer-banner-icon"\]\s*>\s*svg/u.test(flat(candidate.selector)),
     );
     expect(iconSvg?.body).toMatch(/display:\s*block/u);
     expect(iconSvg?.body).toMatch(/width:\s*16px/u);
-    // Notices stack title over description. The activity strip stays a row.
     const noticeStack = rules.find(
       (candidate) =>
-        flat(candidate.selector).includes('[data-composer-banner-drawer="true"]') &&
+        flat(candidate.selector).includes('[data-fork-composer-notice="true"]') &&
         flat(candidate.selector).includes('[data-slot="composer-banner-content"]') &&
         candidate.body.includes("flex-direction: column"),
     );
-    expect(noticeStack?.selector).not.toContain('[data-chat-composer-activity-strip="true"]');
+    expect(noticeStack?.selector).not.toContain('[data-composer-banner-drawer="true"]');
     expect(noticeStack?.body).toMatch(/align-items:\s*flex-start/u);
-    // Same start edge as the self-start icon, so the two-line copy stays
-    // top-aligned while Compact/Unsettle/Restore center on the row.
     expect(noticeStack?.body).toMatch(/align-self:\s*start/u);
-    const titleWeight = rules.find(
-      (candidate) =>
-        /composer-banner-content"\]\s+>\s+span:first-of-type/u.test(flat(candidate.selector)) &&
-        candidate.body.includes("font-weight"),
-    );
-    expect(titleWeight?.body).toMatch(/font-weight:\s*400/u);
     const rowGap = rules.find(
       (candidate) =>
         flat(candidate.selector).includes("[data-composer-banner-row]") &&
         candidate.body.includes("column-gap"),
     );
+    expect(rowGap?.selector).toContain('[data-fork-composer-notice="true"]');
+    expect(rowGap?.selector).not.toContain('[data-composer-banner-drawer="true"]');
     expect(rowGap?.body).toMatch(/column-gap:\s*6px/u);
-    const actions = rules.find(
-      (candidate) =>
-        flat(candidate.selector).includes('[data-composer-banner-drawer="true"]') &&
-        /composer-banner-actions"\]\s*$/u.test(flat(candidate.selector)) &&
-        candidate.body.includes("margin-inline-start"),
+    expect(
+      rules.some(
+        (candidate) =>
+          flat(candidate.selector).includes('[data-slot="composer-banner-actions"]') &&
+          candidate.body.includes("margin-inline-start"),
+      ),
+    ).toBe(false);
+    expect(rules.some((candidate) => /span:first-of-type/u.test(flat(candidate.selector)))).toBe(
+      false,
     );
-    expect(actions?.body).toMatch(/margin-inline-start:\s*18px/u);
   });
 
   it("targets the slots and attributes the geometry is keyed on", () => {
@@ -299,26 +279,33 @@ describe("fork guard: fork-composer-banner-surface", () => {
   });
 
   it("keeps the notice primary action on the fork's white Primary", () => {
-    // --primary is #ffffff on every fork palette, so the design's white
-    // Primary button is variant="default" rather than upstream's outline.
+    const stamped = [...chatView.matchAll(/data-fork-composer-notice-action="primary"/gu)];
+    expect(stamped).toHaveLength(3);
     const fenced = chatView.matchAll(
       /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
     );
-    const bodies = [...fenced];
-    expect(bodies).toHaveLength(3);
-    for (const [body] of bodies) {
+    const primaries = [...fenced].filter(([body]) =>
+      body.includes('data-fork-composer-notice-action="primary"'),
+    );
+    expect(primaries).toHaveLength(3);
+    for (const [body] of primaries) {
       expect(body).toContain('variant="default"');
     }
+    expect(theme).toContain('[data-fork-composer-notice-action="primary"]');
+    expect(theme).toContain('[data-fork-composer-notice-action="dismiss"]');
+    expect(rules.some((candidate) => candidate.selector.includes(":has(svg)"))).toBe(false);
   });
 
-  it("matches Figma 467:33308 copy, glyphs, and optional icon on the three notice cards", () => {
-    expect(chatView).toContain("icon: isSnoozed ? <AlarmClockIcon /> : undefined");
+  it("stamps the three Figma notice cards and leaves other drawer banners alone", () => {
     expect(chatView).toContain("Sending a message moves it back to Active in the sidebar.");
-    expect(chatView).toContain('"Unsettle"');
-    expect(chatView).toContain("<ChevronsDownUpIcon />");
+    expect(chatView).toContain("Unsettle");
+    expect(chatView).toContain("ChevronsDownUpIcon");
     expect(chatView).toContain("tokens from an older session.");
     expect(chatView).toContain("Branch changed to");
-    expect(chatView).toContain('was <span className="font-medium">');
-    expect(bannerStack).toContain("{item.icon ? (");
+    expect(bannerStack).toContain('"data-fork-composer-notice": "true"');
+    expect(bannerStack).toContain("readonly icon?:");
+    expect(bannerStack).toContain("item.icon != null");
+    expect(bannerStack).toContain('item.id === "composer-activity"');
+    expect(theme).toContain('[data-fork-composer-notice="true"]');
   });
 });

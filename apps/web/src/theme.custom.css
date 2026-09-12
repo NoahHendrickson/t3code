@@ -2377,19 +2377,13 @@
   border-radius: var(--fork-composer-radius) var(--fork-composer-radius) 0 0;
 }
 
-/* Notice metrics, Figma 467:33308: 12 / 8 / 12 / 16 around a 16px icon, 6px
-   to the copy, title stacked over description on 14/16 Regular with a 4px
-   gutter, 24px to the actions, 8px between Compact/Restore and Dismiss.
-   The activity strip shares the type and icon size but keeps its own
-   padding — it is a status line, not one of those three notice cards.
-   Approval, stash and tasks drawers that share the card keep their density. */
+/* Notice metrics, Figma 467:33308, keyed on data-fork-composer-notice so
+   Reconnect / Update / tasks / the rest of the drawer keep their density.
+   The activity strip shares the 14/16 type and 16px icon but stays a status
+   line at 16px padding — including when it is folded into the stack. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner"],
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-slot="composer-banner"][data-chat-composer-activity-strip="true"] {
+  :is([data-fork-composer-notice="true"], [data-chat-composer-activity-strip="true"]) {
   --composer-banner-icon-column: 16px;
   font-size: 14px;
   line-height: 16px;
@@ -2397,8 +2391,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner"] {
+  [data-fork-composer-notice="true"] {
   padding: 12px 8px 12px 16px;
 }
 
@@ -2410,14 +2403,14 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
+  [data-fork-composer-notice="true"]
   [data-composer-banner-row] {
   column-gap: 6px;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  :is([data-fork-composer-notice="true"], [data-chat-composer-activity-strip="true"])
   [data-slot="composer-banner-icon"]
   > svg {
   display: block;
@@ -2427,59 +2420,45 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  [data-chat-composer-activity-strip="true"]
   [data-slot="composer-banner-content"] {
   gap: 4px;
-  /* The title span carries Tailwind leading-7 / sm:leading-6 (28/24). The
-     16px icon is self-start, so it pins to the top of that line box while
-     the 14px glyphs sit in the middle — the check floats high of the copy.
-     Nested titles (branch names inside the title) keep that 28px box unless
-     every descendant is pinned too: an inherited value loses to the utility,
-     and `> *` never reaches the inner spans. */
+  /* Strip titles still ship leading-7 / sm:leading-6. Pin every descendant
+     so the 16px icon sits on the first line. */
   line-height: 16px;
-  padding-inline: 0;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  [data-chat-composer-activity-strip="true"]
   [data-slot="composer-banner-content"]
   * {
   line-height: 16px;
-  /* No-op on non-flex descendants. Branch names inside the title inherit
-     16px so the 16px icon sits on the first line. */
   align-items: center;
 }
 
-/* Notices stack title over description (Figma 467:33308). The activity strip
-   stays a single row — it is a status line, not a two-line caption. Title is
-   Regular, not Medium; only branch names inside the copy go Medium. */
+/* Notices stack title over description. Title is Regular at the source
+   (ComposerBannerStack drops font-medium / leading-7 on these cards); only
+   branch names inside the copy go Medium. padding-inline zeros the no-icon
+   ps-2 so settled copy starts on the 16px pad. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
+  [data-fork-composer-notice="true"]
   [data-slot="composer-banner-content"] {
   flex-direction: column;
   align-items: flex-start;
-  /* Same edge as the self-start icon. The actions stay items-center on the
-     row so Compact / Unsettle / Restore sit in the middle of the two-line
-     copy, matching the frame. */
   align-self: start;
+  gap: 4px;
+  line-height: 16px;
+  padding-inline: 0;
   white-space: normal;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
+  [data-fork-composer-notice="true"]
   [data-slot="composer-banner-content"]
-  > span:first-of-type {
-  font-weight: 400;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner-content"]
-  > * {
+  > :not(:first-of-type) {
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
@@ -2487,54 +2466,32 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  :is([data-composer-banner-drawer="true"], [data-chat-composer-activity-strip="true"])
+  [data-fork-composer-notice="true"]
   [data-slot="composer-banner-actions"] {
   gap: 8px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner-actions"] {
-  /* Row column-gap is 6px (icon to copy). This 18px makes copy-to-actions 24px. */
-  margin-inline-start: 18px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner-actions"]
-  > [data-slot="button"] {
+/* Primaries and Dismiss are stamped in ChatView / ComposerBannerStack —
+   never selected by child position or :has(svg). The stamp survives
+   Compact's TooltipTrigger <span> wrapper. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-notice-action="primary"] {
   height: 24px;
   min-height: 24px;
   border-radius: 4px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner-actions"]
-  > [data-slot="button"]:not(:has(svg)) {
   padding-inline: 6px;
   font-size: 10px;
   line-height: 16px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner-actions"]
-  > [data-slot="button"]:has(svg) {
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-notice-action="dismiss"] {
   width: 24px;
+  height: 24px;
+  min-height: 24px;
   padding: 0;
+  border-radius: 4px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-banner-drawer="true"]
-  [data-slot="composer-banner-actions"]
-  > [data-slot="button"]
-  svg {
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-notice-action="dismiss"] svg {
   width: 16px;
   height: 16px;
 }
