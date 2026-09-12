@@ -209,8 +209,21 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(rule?.selector).toContain('[data-composer-banner-drawer="true"]');
     expect(rule?.selector).toContain('[data-chat-composer-activity-strip="true"]');
     expect(rule?.body).toMatch(/--composer-banner-icon-column:\s*16px/u);
-    expect(rule?.body).toMatch(/padding:\s*16px 8px 16px 16px/u);
     expect(rule?.body).toMatch(/font-size:\s*14px/u);
+    const noticePadding = rules.find(
+      (candidate) =>
+        flat(candidate.selector).includes('[data-composer-banner-drawer="true"]') &&
+        flat(candidate.selector).includes('[data-slot="composer-banner"]') &&
+        !flat(candidate.selector).includes("activity-strip") &&
+        candidate.body.includes("padding:"),
+    );
+    expect(noticePadding?.body).toMatch(/padding:\s*12px 8px 12px 16px/u);
+    const stripPadding = rules.find(
+      (candidate) =>
+        flat(candidate.selector).includes('[data-chat-composer-activity-strip="true"]') &&
+        candidate.body.includes("padding:"),
+    );
+    expect(stripPadding?.body).toMatch(/padding:\s*16px 8px 16px 16px/u);
     // Title carries leading-7 / sm:leading-6; without a child-level 16px
     // line-height the 16px self-start icon sits high of the copy.
     const content = rules.find(
@@ -219,7 +232,7 @@ describe("fork guard: fork-composer-banner-surface", () => {
         candidate.body.includes("gap: 4px"),
     );
     expect(content?.body).toMatch(/line-height:\s*16px/u);
-    // Nested titles (branch-change inner flex + <code>) keep leading-7 unless
+    // Nested titles (branch names inside the title) keep leading-7 unless
     // every descendant is pinned; `> *` never reaches those inner spans.
     const contentDescendants = rules.find(
       (candidate) =>
@@ -242,9 +255,28 @@ describe("fork guard: fork-composer-banner-surface", () => {
     );
     expect(noticeStack?.selector).not.toContain('[data-chat-composer-activity-strip="true"]');
     expect(noticeStack?.body).toMatch(/align-items:\s*flex-start/u);
-    // Same start edge as the self-start icon, so Restore/Dismiss cannot drop
-    // the copy to the middle of the row.
+    // Same start edge as the self-start icon, so the two-line copy stays
+    // top-aligned while Compact/Unsettle/Restore center on the row.
     expect(noticeStack?.body).toMatch(/align-self:\s*start/u);
+    const titleWeight = rules.find(
+      (candidate) =>
+        /composer-banner-content"\]\s+>\s+span:first-of-type/u.test(flat(candidate.selector)) &&
+        candidate.body.includes("font-weight"),
+    );
+    expect(titleWeight?.body).toMatch(/font-weight:\s*400/u);
+    const rowGap = rules.find(
+      (candidate) =>
+        flat(candidate.selector).includes("[data-composer-banner-row]") &&
+        candidate.body.includes("column-gap"),
+    );
+    expect(rowGap?.body).toMatch(/column-gap:\s*6px/u);
+    const actions = rules.find(
+      (candidate) =>
+        flat(candidate.selector).includes('[data-composer-banner-drawer="true"]') &&
+        /composer-banner-actions"\]\s*$/u.test(flat(candidate.selector)) &&
+        candidate.body.includes("margin-inline-start"),
+    );
+    expect(actions?.body).toMatch(/margin-inline-start:\s*18px/u);
   });
 
   it("targets the slots and attributes the geometry is keyed on", () => {
@@ -273,9 +305,20 @@ describe("fork guard: fork-composer-banner-surface", () => {
       /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
     );
     const bodies = [...fenced];
-    expect(bodies).toHaveLength(2);
+    expect(bodies).toHaveLength(3);
     for (const [body] of bodies) {
       expect(body).toContain('variant="default"');
     }
+  });
+
+  it("matches Figma 467:33308 copy, glyphs, and optional icon on the three notice cards", () => {
+    expect(chatView).toContain("icon: isSnoozed ? <AlarmClockIcon /> : undefined");
+    expect(chatView).toContain("Sending a message moves it back to Active in the sidebar.");
+    expect(chatView).toContain('"Unsettle"');
+    expect(chatView).toContain("<ChevronsDownUpIcon />");
+    expect(chatView).toContain("tokens from an older session.");
+    expect(chatView).toContain("Branch changed to");
+    expect(chatView).toContain('was <span className="font-medium">');
+    expect(bannerStack).toContain("{item.icon ? (");
   });
 });

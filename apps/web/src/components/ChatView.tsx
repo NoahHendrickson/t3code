@@ -218,10 +218,9 @@ import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings"
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
 import {
   AlarmClockIcon,
-  CheckCircle2Icon,
   ChevronDownIcon,
+  ChevronsDownUpIcon,
   GitBranchIcon,
-  Minimize2Icon,
   PaperclipIcon,
   WifiOffIcon,
 } from "lucide-react";
@@ -5782,9 +5781,11 @@ export default function ChatView(props: ChatViewProps) {
     return {
       id: `thread-${isSnoozed ? "snoozed" : "settled"}:${activeThread?.id ?? "unknown"}`,
       variant: "info",
-      icon: isSnoozed ? <AlarmClockIcon /> : <CheckCircle2Icon />,
+      icon: isSnoozed ? <AlarmClockIcon /> : undefined,
       title: `This thread is ${isSnoozed ? "snoozed" : "settled"}`,
-      description: `Send a message to ${isSnoozed ? "wake" : "unsettle"}`,
+      description: isSnoozed
+        ? "Send a message to wake"
+        : "Sending a message moves it back to Active in the sidebar.",
       actions: (
         <Button
           size="xs"
@@ -5801,8 +5802,8 @@ export default function ChatView(props: ChatViewProps) {
               ? "Waking..."
               : "Wake now"
             : isUnsettling
-              ? "Un-settling..."
-              : "Un-settle"}
+              ? "Unsettling..."
+              : "Unsettle"}
         </Button>
       ),
     };
@@ -5893,9 +5894,9 @@ export default function ChatView(props: ChatViewProps) {
     return {
       id: `resume-compaction:${resumeCompactionKey}`,
       variant: "info",
-      icon: <Minimize2Icon />,
+      icon: <ChevronsDownUpIcon />,
       title: "Resume with less context",
-      description: `${formatContextWindowTokens(activeContextWindow.usedTokens)} tokens from earlier`,
+      description: `${formatContextWindowTokens(activeContextWindow.usedTokens)} tokens from an older session.`,
       actions: compactDisabledReason ? (
         <Tooltip>
           <TooltipTrigger render={<span className="inline-flex">{compactAction}</span>} />
@@ -5976,14 +5977,14 @@ export default function ChatView(props: ChatViewProps) {
         variant: "info",
         icon: <GitBranchIcon />,
         title: (
-          <span className="flex min-w-0 items-baseline gap-1.5">
-            <span className="shrink-0 font-normal text-muted-foreground">Branch changed — was</span>
+          <>
+            Branch changed to{" "}
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <code className="min-w-0 truncate font-medium text-foreground">
-                    {localCheckoutBranchMismatch.threadBranch}
-                  </code>
+                  <span className="min-w-0 font-medium text-foreground">
+                    {localCheckoutBranchMismatch.currentBranch}
+                  </span>
                 }
               />
               <TooltipPopup side="top" className="max-w-80">
@@ -5991,12 +5992,19 @@ export default function ChatView(props: ChatViewProps) {
                 continue on {localCheckoutBranchMismatch.currentBranch}.
               </TooltipPopup>
             </Tooltip>
-          </span>
+          </>
+        ),
+        description: (
+          <>
+            was <span className="font-medium">{localCheckoutBranchMismatch.threadBranch}</span>
+          </>
         ),
         actions: (
           <Button
             size="xs"
-            variant="ghost"
+            /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
+            variant="default"
+            /* fork:end fork-composer-banner-surface */
             disabled={isRestoringThreadBranch}
             onClick={handleRestoreThreadBranch}
           >

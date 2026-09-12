@@ -13,7 +13,7 @@ export interface ComposerBannerStackItem {
   readonly id: string;
   readonly variant: ComposerBannerVariant;
   readonly priority?: "urgent" | "activity" | "notice";
-  readonly icon: ReactNode;
+  readonly icon?: ReactNode;
   readonly title: ReactNode;
   readonly description?: ReactNode;
   readonly children?: ReactNode;
@@ -271,9 +271,13 @@ function ComposerBannerStackAlert({
       density="comfortable"
     >
       <ComposerBanner.Row layout="wrap-actions-narrow">
-        <ComposerBanner.Icon className="h-(--composer-banner-icon-column) self-start">
-          {item.icon}
-        </ComposerBanner.Icon>
+        {/* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */}
+        {item.icon ? (
+          <ComposerBanner.Icon className="h-(--composer-banner-icon-column) self-start">
+            {item.icon}
+          </ComposerBanner.Icon>
+        ) : null}
+        {/* fork:end fork-composer-banner-surface */}
         <ComposerBanner.Content className="whitespace-nowrap">
           <span
             className={cn(

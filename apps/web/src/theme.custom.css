@@ -2246,7 +2246,8 @@
 }
 
 /* ── Composer banners (fork-composer-banner-surface) ────────────────────────
-   Figma t3-fork 360:11682 (resume with less context) and 360:10808 (settled).
+   Figma t3-fork 467:33308 (settled, resume compaction, branch changed).
+   Earlier frames 360:11682 / 360:10808 established the vessel-floor geometry.
    Two separate things were wrong with upstream's banners on this composer.
 
    Colour. Upstream tints every ComposerBanner by severity: an --info /
@@ -2376,11 +2377,12 @@
   border-radius: var(--fork-composer-radius) var(--fork-composer-radius) 0 0;
 }
 
-/* Notice metrics, from the two frames: 16 / 8 / 16 / 16 around a 16px icon and
-   a 4px gutter, title and description both on the prompt's 14/16, 8px between
-   the actions. Keyed on the notice stack and the activity strip rather than on
-   every card, because the approval, stash and tasks drawers that share the
-   card are lists and headers with their own density. */
+/* Notice metrics, Figma 467:33308: 12 / 8 / 12 / 16 around a 16px icon, 6px
+   to the copy, title stacked over description on 14/16 Regular with a 4px
+   gutter, 24px to the actions, 8px between Compact/Restore and Dismiss.
+   The activity strip shares the type and icon size but keeps its own
+   padding — it is a status line, not one of those three notice cards.
+   Approval, stash and tasks drawers that share the card keep their density. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-composer-banner-drawer="true"]
@@ -2389,9 +2391,28 @@
   [data-fork-composer-vessel]
   [data-slot="composer-banner"][data-chat-composer-activity-strip="true"] {
   --composer-banner-icon-column: 16px;
-  padding: 16px 8px 16px 16px;
   font-size: 14px;
   line-height: 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner"] {
+  padding: 12px 8px 12px 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner"][data-chat-composer-activity-strip="true"] {
+  padding: 16px 8px 16px 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-composer-banner-row] {
+  column-gap: 6px;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
@@ -2412,10 +2433,11 @@
   /* The title span carries Tailwind leading-7 / sm:leading-6 (28/24). The
      16px icon is self-start, so it pins to the top of that line box while
      the 14px glyphs sit in the middle — the check floats high of the copy.
-     Nested titles (the branch-change card's inner flex + <code>) keep that
-     28px box unless every descendant is pinned too: an inherited value
-     loses to the utility, and `> *` never reaches the inner spans. */
+     Nested titles (branch names inside the title) keep that 28px box unless
+     every descendant is pinned too: an inherited value loses to the utility,
+     and `> *` never reaches the inner spans. */
   line-height: 16px;
+  padding-inline: 0;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
@@ -2424,26 +2446,33 @@
   [data-slot="composer-banner-content"]
   * {
   line-height: 16px;
-  /* No-op on non-flex descendants. The branch-change title is an inner
-     flex with items-baseline; mixed sans/mono baselines stretch that
-     line so the 16px icon sits high. Center here absorbs the stretch
-     without a ChatView fence. */
+  /* No-op on non-flex descendants. Branch names inside the title inherit
+     16px so the 16px icon sits on the first line. */
   align-items: center;
 }
 
-/* Notices stack title over description (Figma 364:19233). The activity strip
-   stays a single row — it is a status line, not a two-line caption. */
+/* Notices stack title over description (Figma 467:33308). The activity strip
+   stays a single row — it is a status line, not a two-line caption. Title is
+   Regular, not Medium; only branch names inside the copy go Medium. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-composer-banner-drawer="true"]
   [data-slot="composer-banner-content"] {
   flex-direction: column;
   align-items: flex-start;
-  /* Same edge as the self-start icon. Without this, the row's items-center
-     drops the copy to the middle of the taller Restore/Dismiss buttons and
-     the 16px icon sits high of the first line. */
+  /* Same edge as the self-start icon. The actions stay items-center on the
+     row so Compact / Unsettle / Restore sit in the middle of the two-line
+     copy, matching the frame. */
   align-self: start;
   white-space: normal;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-content"]
+  > span:first-of-type {
+  font-weight: 400;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
@@ -2467,7 +2496,47 @@
   [data-fork-composer-vessel]
   [data-composer-banner-drawer="true"]
   [data-slot="composer-banner-actions"] {
-  align-self: start;
+  /* Row column-gap is 6px (icon to copy). This 18px makes copy-to-actions 24px. */
+  margin-inline-start: 18px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-actions"]
+  > [data-slot="button"] {
+  height: 24px;
+  min-height: 24px;
+  border-radius: 4px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-actions"]
+  > [data-slot="button"]:not(:has(svg)) {
+  padding-inline: 6px;
+  font-size: 10px;
+  line-height: 16px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-actions"]
+  > [data-slot="button"]:has(svg) {
+  width: 24px;
+  padding: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-banner-drawer="true"]
+  [data-slot="composer-banner-actions"]
+  > [data-slot="button"]
+  svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ── Popup menus on the composer fill (fork-popup-surface) ───────────────────
