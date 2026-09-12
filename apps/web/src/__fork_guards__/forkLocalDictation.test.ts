@@ -1,4 +1,11 @@
 // @effect-diagnostics nodeBuiltinImport:off
+/**
+ * Fork guard — see `.fork/customizations.yaml#fork-local-dictation`.
+ *
+ * Pins the wire format the packaged helper expects, the draft-insertion
+ * contract, and the composer owning the session. Thread targeting across
+ * navigation is guarded separately in `forkDictationThreadOwnership.test.tsx`.
+ */
 import * as NodeFS from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { VoiceInputController } from "@t3tools/client-runtime/voice-input";
