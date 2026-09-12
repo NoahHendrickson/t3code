@@ -3332,8 +3332,12 @@
     ring vanished, worst under the hover wash. Number-key
     handlers stay; options announce them via aria-keyshortcuts without kbd
     badges. Behavior stays the same — multi toggles in place, single
-    auto-advances — only the chrome changes. Card interaction lives in
-    custom/useComposerPendingUserInputCard.ts; the override is presentational.
+    auto-advances — only the chrome changes, and that holds for every question
+    in a prompt: the card is memoized and keyed by requestId, so it stays
+    mounted while questionIndex advances and its selection handler must read
+    the question on screen rather than the one it mounted with. Card
+    interaction lives in custom/useComposerPendingUserInputCard.ts; the
+    override is presentational.
     Dark-only true-outline Previous (and shared outline
     tokens with changed-files) keep Previous/Next at 24px; compact Previous
     is pinned to a 24×24 square.
@@ -3375,6 +3379,7 @@
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
   verify:
     - apps/web/src/__fork_guards__/forkPendingUserInput.test.ts
+    - apps/web/src/__fork_guards__/forkPendingUserInputQuestionAdvance.test.tsx
 
 - id: fork-model-picker
   intent: >

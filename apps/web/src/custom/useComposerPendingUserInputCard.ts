@@ -6,7 +6,7 @@
  * override can stay presentational. Port upstream effect fixes here first.
  */
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
   derivePendingUserInputProgress,
@@ -32,15 +32,24 @@ export function useComposerPendingUserInputCard({
   const progress = derivePendingUserInputProgress(prompt.questions, answers, questionIndex);
   const activeQuestion = progress.activeQuestion;
   const autoAdvanceTimerRef = useRef<number | null>(null);
-  const onAdvanceRef = useRef(onAdvance);
   const [optimisticSingleSelect, setOptimisticSingleSelect] = useState<{
     questionId: string;
     optionValue: string;
   } | null>(null);
 
-  useEffect(() => {
-    onAdvanceRef.current = onAdvance;
-  }, [onAdvance]);
+  // ComposerPendingUserInputCard is `memo(fn)`, and react-dom applies
+  // useEffectEvent impls only for FunctionComponent fibers — memo and
+  // forwardRef hosts are skipped outright (`case 11: case 15: break;` in
+  // commitBeforeMutationEffects, react-dom 19.2.6). The card is keyed by
+  // requestId, so it stays mounted while questionIndex advances, and an effect
+  // event here would answer every later question with question 1's closure.
+  // A layout-phase mirror instead, the same shape and reasoning as
+  // useForkDictationController. Audit on a React bump: grep useEffectEvent,
+  // check whether the host component is memoized or a forwardRef.
+  const latestRef = useRef({ activeQuestion, onToggleOption, onAdvance });
+  useLayoutEffect(() => {
+    latestRef.current = { activeQuestion, onToggleOption, onAdvance };
+  });
 
   useEffect(() => {
     if (!activeQuestion || activeQuestion.multiSelect || !optimisticSingleSelect) {
@@ -72,21 +81,24 @@ export function useComposerPendingUserInputCard({
     };
   }, []);
 
-  const handleOptionSelection = useEffectEvent((questionId: string, optionValue: string) => {
-    if (activeQuestion?.multiSelect) {
-      onToggleOption(questionId, optionValue);
+  // Stable so the number-key listener below is not torn down and rebuilt on
+  // every render; everything it reads comes from the mirror or a setState.
+  const handleOptionSelection = useCallback((questionId: string, optionValue: string) => {
+    const { activeQuestion: question, onToggleOption: toggle } = latestRef.current;
+    if (question?.multiSelect) {
+      toggle(questionId, optionValue);
       return;
     }
     setOptimisticSingleSelect({ questionId, optionValue });
-    onToggleOption(questionId, optionValue);
+    toggle(questionId, optionValue);
     if (autoAdvanceTimerRef.current !== null) {
       window.clearTimeout(autoAdvanceTimerRef.current);
     }
     autoAdvanceTimerRef.current = window.setTimeout(() => {
       autoAdvanceTimerRef.current = null;
-      onAdvanceRef.current();
+      latestRef.current.onAdvance();
     }, 200);
-  });
+  }, []);
 
   // Keyboard shortcut: number keys 1-9 select corresponding options when focus is
   // outside editable fields. Multi-select prompts toggle options in place; single-
@@ -116,7 +128,7 @@ export function useComposerPendingUserInputCard({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activeQuestion, isResponding]);
+  }, [activeQuestion, isResponding, handleOptionSelection]);
 
   return {
     progress,
