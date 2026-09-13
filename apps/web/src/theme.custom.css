@@ -832,27 +832,29 @@
   background: var(--fork-composer-control-hover);
 }
 
-/* The ghost actions (attach, dictate, dictate-cancel) read as pure white in
-   dark mode. Upstream's ghost variant routes icons through
+/* The ghost actions (attach, dictate, dictate-cancel, dictate-done) read as
+   pure white in dark mode. Upstream's ghost variant routes icons through
    --control-icon-color at the contrast-muted tone, which on the prompt surface
    is too faint next to the filled send. Disabled keeps upstream's opacity. */
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
     [data-fork-composer-action="attach"],
     [data-fork-composer-action="dictate"],
-    [data-fork-composer-action="dictate-cancel"]
+    [data-fork-composer-action="dictate-cancel"],
+    [data-fork-composer-action="dictate-done"]
   ) {
   --control-icon-color: #ffffff;
   color: #ffffff;
 }
 
-/* Dictate and its cancel (fork-local-dictation) are ghosts too and share
-   attach's box and hover so the mic does not re-grow the prompt row. */
+/* Dictate, its cancel and its check (fork-local-dictation) are ghosts too and
+   share attach's box and hover so the mic does not re-grow the prompt row. */
 :root[data-fork="noahhendrickson-t3code"]
-  :is([data-fork-composer-action="dictate"], [data-fork-composer-action="dictate-cancel"]):is(
-    :hover,
-    [data-pressed]
-  ):not(:disabled) {
+  :is(
+    [data-fork-composer-action="dictate"],
+    [data-fork-composer-action="dictate-cancel"],
+    [data-fork-composer-action="dictate-done"]
+  ):is(:hover, [data-pressed]):not(:disabled) {
   background: var(--fork-composer-control-hover);
 }
 
@@ -2616,6 +2618,198 @@
     [data-slot="menu-popup"].dropdown-glass[data-fork-glass-menu] {
     background: var(--popover);
   }
+}
+
+/* ── Dictate tooltip (fork-local-dictation) ─────────────────────────────────
+   Same frosted recipe as the project-header menu: 70% popover tint, 20px
+   blur. The chip sits over the composer vessel, which is something to see
+   through, and a step larger than the default tooltip (12px / 8×4) so
+   "Dictate" does not read as a status crumb. The second block restates the
+   material at enough specificity to keep the blur when the Glass palette
+   clears every .dropdown-glass overlay. */
+:root[data-fork="noahhendrickson-t3code"] [data-slot="tooltip-popup"][data-fork-glass-tooltip] {
+  font-size: 13px;
+  line-height: 18px;
+  border-radius: 8px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-slot="tooltip-popup"][data-fork-glass-tooltip]
+  [data-slot="tooltip-viewport"] {
+  padding-block: 6px;
+  padding-inline: 10px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip] {
+  background: color-mix(in srgb, var(--popover) 70%, transparent);
+  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip] {
+  --glass-opacity: 80%;
+  background: color-mix(in srgb, var(--popover) 70%, transparent);
+  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root[data-fork="noahhendrickson-t3code"].dark
+    [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip],
+  :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip] {
+    background: var(--popover);
+  }
+}
+
+/* ── Dictation tray (fork-local-dictation) ──────────────────────────────────
+   Starting a session opens a tray to the right of the mic holding the level
+   timeline, cancel X and check. The tray is a zero-basis flex item whose
+   flex-grow goes 0 → 1: with free space in the row (the drawn draft box, where
+   the action cluster spans it) it grows to fill, and with none (beside the
+   editor in an existing thread) the cluster is content-sized and the tray
+   grows to its content's width. Either way the mic slides left to make room.
+   One transition per open or close, never a continuous animation.
+
+   The content-sized case needs care: a collapsing flex item still reports its
+   full content width to the cluster until flex-grow reaches zero, so the
+   cluster would stay wide for the whole collapse and then snap, and attach
+   (which returns as the tray starts closing) would land far left and jump.
+   Inline-size containment makes the tray report no content width at all;
+   its animated min-width stands in for the content instead, so the cluster
+   shrinks and grows in step with the slide. The minimum is the tray's inner
+   row at the timeline's floor: 4px lead, timeline, 4px gap, X, 1px, check,
+   plus the 3px of padding below.
+
+   Clips horizontally only, so the buttons' focus rings can still show above
+   and below the 24px row; the 3px of padding, cancelled by the margin, keeps
+   the check's ring inside the clip without widening the gap to send. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray] {
+  --fork-dictation-timeline-min: 96px;
+  --fork-dictation-tray-min: calc(var(--fork-dictation-timeline-min) + 60px);
+  display: flex;
+  flex: 0 1 0px;
+  min-width: 0;
+  contain: inline-size;
+  overflow-x: clip;
+  padding-right: 3px;
+  margin-right: -3px;
+  transition:
+    flex-grow 240ms cubic-bezier(0.32, 0.72, 0, 1),
+    min-width 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray="open"] {
+  flex-grow: 1;
+  min-width: var(--fork-dictation-tray-min);
+}
+
+/* ── Dictation row in a started thread (fork-local-dictation) ─────────────
+   In a started thread the action cluster shares the prompt row with the
+   editor, so a full-width timeline would squeeze the text. While dictating
+   (ChatComposer stamps the prompt row's wrapper) the cluster drops under the
+   prompt and spans the row, the drawn draft box's arrangement, so the
+   timeline gets the whole width and the typed text keeps its lines. The
+   compact single-line wrapper is itself a flex row, so the stacked prompt
+   row is also told to fill it. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-dictating="true"]
+  [data-fork-composer-prompt-row] {
+  flex: 1 1 0px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-dictating="true"]
+  [data-chat-composer-inline-actions] {
+  align-self: stretch;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-dictating="true"]
+  [data-chat-composer-actions="right"] {
+  width: 100%;
+}
+
+/* The timeline's floor keeps a readable stretch of history where the cluster
+   has no free space to grow into (a row too narrow to spread out in). */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray-item="bars"] {
+  min-width: var(--fork-dictation-timeline-min);
+}
+
+/* The three items spring up in sequence while the tray slides: bars first,
+   then X, then check. Each starts invisible at zero size and grows from its
+   centre with a small overshoot (the back-out curve), so the entrances read as
+   pops rather than fades. The delays are spaced wider than the slide's reveal
+   so each pop lands after its spot has been uncovered. Closing shrinks all
+   three together and at once so the collapse reads as one move. `scale` is its
+   own property, so the level bars' scaleY transforms and the buttons' press
+   scale are untouched. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray-item] {
+  opacity: 0;
+  scale: 0;
+  transition:
+    opacity 100ms ease-in,
+    scale 100ms ease-in;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-dictation-tray="open"]
+  [data-fork-dictation-tray-item] {
+  opacity: 1;
+  scale: 1;
+  transition:
+    opacity 120ms ease-out,
+    scale 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-dictation-tray="open"]
+  [data-fork-dictation-tray-item="bars"] {
+  transition-delay: 80ms;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-dictation-tray="open"]
+  [data-fork-dictation-tray-item="cancel"] {
+  transition-delay: 130ms;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-dictation-tray="open"]
+  [data-fork-dictation-tray-item="done"] {
+  transition-delay: 260ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray],
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray-item] {
+    transition: none;
+  }
+}
+
+/* The live mic (Figma 472:33926) is a 16% blue chip with the button's 10px
+   corner, and its glyph is solid blue over a 2px-blurred 50% copy of itself;
+   a drop shadow of the same blur and tint stands in for that copy. Sits after
+   the shared hover rule at equal specificity so the fill wins while hovered. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-action="dictate"][aria-pressed="true"] {
+  --control-icon-color: #3d91ff;
+  color: #3d91ff;
+  background: rgb(24 124 255 / 16%);
+  border-radius: 10px;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-action="dictate"][aria-pressed="true"]
+  svg {
+  filter: drop-shadow(0 0 2px rgb(61 145 255 / 50%));
 }
 
 /* ── Popup row hover (fork-popup-surface) ───────────────────────────────────

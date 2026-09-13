@@ -27,7 +27,8 @@
 - id: fork-local-dictation
   intent: >
     macOS desktop users can dictate prompts locally for free through a composer
-    microphone and Ctrl+Shift+Space. An English Whisper Small model (181 MiB)
+    microphone and a tap of the right Command key. An English Whisper Small
+    model (181 MiB)
     downloads once with integrity verification; whisper.cpp runs with Metal.
     Audio stays on the client device even for remote environments. The composer
     owns the dictation session through a hook that mirrors mobile's
@@ -39,9 +40,22 @@
     disabled: a pending approval or question routes the transcript into the
     prompt draft itself, and when the action cluster unmounts the recording is
     transcribed on the spot rather than left running with no control to end it.
-    While dictating, the attach button steps aside and the mic, cancel X and
-    check share the attach/send 24px box and pure-white ghost colour from
-    theme.custom.css. The packaged helper exits after inference, freeing model
+    While dictating, the attach button steps aside. The mic stays a mic and
+    slides left as a tray opens to its right holding the level timeline,
+    cancel X and check, which spring up from nothing in that order while the
+    tray slides (one transition each way, no continuous animation). While
+    dictating, the action cluster drops under the prompt at full width in a
+    started thread too (the drawn draft box's arrangement), so the tray spans
+    the composer and the typed text keeps its lines. The timeline is a canvas: a 2px dot per 50 ms
+    sample, newest at the right, so silence is dots and speech is bars
+    scrolling left. The live mic is a 16% blue chip with a glowing blue glyph;
+    the timeline is white. Mic, X and check share the attach/send 24px box, and
+    the idle mic, X and check the pure-white ghost colour, from
+    theme.custom.css. The idle microphone tooltip
+    is the word Dictate, on
+    the frosted glass recipe (70% popover tint, 20px blur) a step larger
+    than the default chip. Recording and transcribing keep their action
+    labels. The packaged helper exits after inference, freeing model
     memory; the model cache lives under the desktop state dir so --home-dir runs
     stay isolated.
     Fork IPC types live in the desktop fork and web custom folders, never in

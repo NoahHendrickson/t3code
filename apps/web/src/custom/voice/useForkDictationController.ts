@@ -87,10 +87,13 @@ function createBridgeTranscriber(
   };
 }
 
-function isDictationChord(event: KeyboardEvent): boolean {
-  return (
-    event.code === "Space" && event.ctrlKey && event.shiftKey && !event.metaKey && !event.altKey
-  );
+function extraModifiersHeld(event: KeyboardEvent): boolean {
+  return event.ctrlKey || event.altKey || event.shiftKey;
+}
+
+/** Right Command by itself. Fires on keyup of a tap so ⌘C and friends stay chords. */
+function isRightCommandTap(event: KeyboardEvent): boolean {
+  return event.code === "MetaRight" && !event.repeat && !extraModifiersHeld(event);
 }
 
 /**
@@ -246,35 +249,67 @@ export function useForkDictationController(input: DictationInput) {
   // Window-level on purpose: freezing the editor drops focus to <body>, so
   // stop and cancel must work from there. Starting still needs focus inside
   // this composer, and a focused dialog keeps its own Escape.
+  //
+  // Right Command toggles on keyup of a bare tap. Arming on keydown and
+  // disarming on any other key lets ⌘C stay a copy, and a leftover meta
+  // (left ⌘ still held) is rejected because metaKey is still true on keyup.
   useEffect(() => {
     if (!controller) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || event.defaultPrevented) return;
-      const { phase } = controller.currentState;
-      const target = event.target;
+    let pendingRightCommand = false;
+    const targetContext = (target: EventTarget | null) => {
       const composer = inputRef.current.getComposerElement();
       const inComposer = target instanceof Node && composer?.contains(target) === true;
       const unfocused = target === document.body || target === document;
-      if (event.key === "Escape") {
-        // Only while dictation is actually holding the composer; a lingering
-        // error banner must not eat Escape from other composer UI.
-        if (!BLOCKING_PHASES.has(phase) || !(inComposer || unfocused)) return;
-        controller.cancel();
-        inputRef.current.focusEditor();
-      } else if (isDictationChord(event)) {
-        if (phase === "recording") {
-          if (!(inComposer || unfocused)) return;
-          void controller.stop();
-        } else if (phase === "idle" || phase === "error") {
-          if (!inComposer || inputRef.current.disabled) return;
-          void controller.start();
-        } else return;
-      } else return;
+      return { inComposer, unfocused };
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isRightCommandTap(event) && !event.defaultPrevented) {
+        pendingRightCommand = true;
+        return;
+      }
+      pendingRightCommand = false;
+      if (event.repeat || event.defaultPrevented) return;
+      if (event.key !== "Escape") return;
+      const { phase } = controller.currentState;
+      const { inComposer, unfocused } = targetContext(event.target);
+      // Only while dictation is actually holding the composer; a lingering
+      // error banner must not eat Escape from other composer UI.
+      if (!BLOCKING_PHASES.has(phase) || !(inComposer || unfocused)) return;
+      controller.cancel();
+      inputRef.current.focusEditor();
       event.preventDefault();
       event.stopPropagation();
     };
+    const onKeyUp = (event: KeyboardEvent) => {
+      const tapped =
+        pendingRightCommand &&
+        isRightCommandTap(event) &&
+        !event.metaKey &&
+        !event.defaultPrevented;
+      pendingRightCommand = false;
+      if (!tapped) return;
+      const { phase } = controller.currentState;
+      const { inComposer, unfocused } = targetContext(event.target);
+      if (phase === "recording") {
+        if (!(inComposer || unfocused)) return;
+        void controller.stop();
+      } else if (phase === "idle" || phase === "error") {
+        if (!inComposer || inputRef.current.disabled) return;
+        void controller.start();
+      } else return;
+      event.preventDefault();
+    };
+    const onBlur = () => {
+      pendingRightCommand = false;
+    };
     window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
+    window.addEventListener("keyup", onKeyUp, true);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("keyup", onKeyUp, true);
+      window.removeEventListener("blur", onBlur);
+    };
   }, [controller]);
 
   // Through the mirror, not the render scope: a caller that retains these
