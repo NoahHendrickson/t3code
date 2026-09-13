@@ -50,6 +50,9 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(upstream).toContain("shortcutKey");
     expect(upstream).toContain("activeQuestion.header");
     expect(override).not.toContain("activeQuestion.header");
+    // The card is memoized, which is what makes a frozen selection closure
+    // reachable across questions — see forkPendingUserInputQuestionAdvance.
+    expect(override).toContain("memo(function ComposerPendingUserInputCard(");
   });
 
   it("uses checkboxes for multi-select and radios for single-select", () => {
