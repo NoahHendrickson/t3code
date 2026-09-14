@@ -266,6 +266,19 @@ describe("dictation thread ownership", () => {
     expect(dictation.state.phase).toBe("idle");
   });
 
+  it("does not start dictation when right Command modifies a click or scroll", async () => {
+    await renderThread("thread-a");
+    const editor = editorFor("thread-a");
+    for (const type of ["pointerdown", "wheel"]) {
+      await act(async () => {
+        dispatchKey("keydown", editor, { key: "Meta", code: "MetaRight", metaKey: true });
+        window.dispatchEvent(new Event(type));
+        dispatchKey("keyup", editor, { key: "Meta", code: "MetaRight", metaKey: false });
+      });
+      expect(dictation.state.phase, type).toBe("idle");
+    }
+  });
+
   it("ignores a tap of left Command", async () => {
     await renderThread("thread-a");
     const editor = editorFor("thread-a");

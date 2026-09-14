@@ -5971,26 +5971,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   )}
 
                 <div
-                  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-                  // While dictating, theme.custom.css drops the action cluster under
-                  // the prompt at full width (the draft box's arrangement) so the
-                  // timeline spans the composer and the typed text keeps its lines.
-                  // Nothing then sits beside the text, so no padding is reserved.
-                  data-fork-composer-dictating={dictation.blocksSubmission ? "true" : undefined}
-                  /* fork:end fork-local-dictation */
                   className={cn(
                     "relative",
                     isComposerResting && "flex min-w-0 items-center gap-1",
                     isComposerResting &&
-                      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-                      (dictation.blocksSubmission
-                        ? ""
-                        : /* fork:end fork-local-dictation */
-                          settings.contextWindowMeterEnabled && activeContextWindow
-                          ? "pr-28"
-                          : showComposerAttachAction
-                            ? "pr-20"
-                            : "pr-12"),
+                      (settings.contextWindowMeterEnabled && activeContextWindow
+                        ? "pr-28"
+                        : showComposerAttachAction
+                          ? "pr-20"
+                          : "pr-12"),
                   )}
                 >
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}

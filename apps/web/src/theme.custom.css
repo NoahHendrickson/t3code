@@ -2624,9 +2624,9 @@
    Same frosted recipe as the project-header menu: 70% popover tint, 20px
    blur. The chip sits over the composer vessel, which is something to see
    through, and a step larger than the default tooltip (12px / 8×4) so
-   "Dictate" does not read as a status crumb. The second block restates the
-   material at enough specificity to keep the blur when the Glass palette
-   clears every .dropdown-glass overlay. */
+   "Dictate" does not read as a status crumb. Dark only, like the menu, and
+   not restated under the Glass palette: that palette clears no tooltip, and
+   its guard forbids any backdrop-filter under its own selector. */
 :root[data-fork="noahhendrickson-t3code"] [data-slot="tooltip-popup"][data-fork-glass-tooltip] {
   font-size: 13px;
   line-height: 18px;
@@ -2648,19 +2648,8 @@
   backdrop-filter: blur(20px) saturate(1.2);
 }
 
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip] {
-  --glass-opacity: 80%;
-  background: color-mix(in srgb, var(--popover) 70%, transparent);
-  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  backdrop-filter: blur(20px) saturate(1.2);
-}
-
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   :root[data-fork="noahhendrickson-t3code"].dark
-    [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip],
-  :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
     [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip] {
     background: var(--popover);
   }
@@ -2710,15 +2699,15 @@
 
 /* ── Dictation row in a started thread (fork-local-dictation) ─────────────
    In a started thread the action cluster shares the prompt row with the
-   editor, so a full-width timeline would squeeze the text. While dictating
-   (ChatComposer stamps the prompt row's wrapper) the cluster drops under the
-   prompt and spans the row, the drawn draft box's arrangement, so the
-   timeline gets the whole width and the typed text keeps its lines. The
+   editor, so a full-width timeline would squeeze the text. While the tray is
+   open the cluster drops under the prompt and spans the row, the drawn draft
+   box's arrangement, so the timeline gets the whole width and the typed text
+   keeps its lines. Keyed on the tray's own open state with :has(), so
+   ChatComposer stamps nothing; the tray already says when it is open. The
    compact single-line wrapper is itself a flex row, so the stacked prompt
    row is also told to fill it. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-dictating="true"]
-  [data-fork-composer-prompt-row] {
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"]) {
   flex: 1 1 0px;
   flex-direction: column;
   align-items: stretch;
@@ -2726,15 +2715,29 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-dictating="true"]
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"])
   [data-chat-composer-inline-actions] {
   align-self: stretch;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-dictating="true"]
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"])
   [data-chat-composer-actions="right"] {
   width: 100%;
+}
+
+/* The compact wrapper reserves right padding (pr-12/20/28) for the cluster
+   that normally sits beside the text; with the cluster under the prompt
+   nothing sits there. Unlayered, so it outranks the utility. */
+:root[data-fork="noahhendrickson-t3code"]
+  :has(> [data-fork-composer-prompt-row] [data-fork-dictation-tray="open"]) {
+  padding-right: 0;
+}
+
+/* The timeline paints in its own `color`: the foreground in light mode, and
+   in dark the same pure white as the X and check beside it. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-dictation-tray-item="bars"] {
+  color: #ffffff;
 }
 
 /* The timeline's floor keeps a readable stretch of history where the cluster
@@ -2749,8 +2752,7 @@
    pops rather than fades. The delays are spaced wider than the slide's reveal
    so each pop lands after its spot has been uncovered. Closing shrinks all
    three together and at once so the collapse reads as one move. `scale` is its
-   own property, so the level bars' scaleY transforms and the buttons' press
-   scale are untouched. */
+   own property, so the buttons' press transform is untouched. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray-item] {
   opacity: 0;
   scale: 0;
@@ -2787,9 +2789,15 @@
   transition-delay: 260ms;
 }
 
+/* The open-state item rule above is one attribute more specific than the
+   base item rule, so the override names that ancestor too, or opening would
+   keep its springs and delays under Reduce Motion. */
 @media (prefers-reduced-motion: reduce) {
   :root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray],
-  :root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray-item] {
+  :root[data-fork="noahhendrickson-t3code"] [data-fork-dictation-tray-item],
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-fork-dictation-tray="open"]
+    [data-fork-dictation-tray-item] {
     transition: none;
   }
 }

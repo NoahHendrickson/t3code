@@ -253,6 +253,8 @@ export function useForkDictationController(input: DictationInput) {
   // Right Command toggles on keyup of a bare tap. Arming on keydown and
   // disarming on any other key lets ⌘C stay a copy, and a leftover meta
   // (left ⌘ still held) is rejected because metaKey is still true on keyup.
+  // A pointer or wheel event disarms it too: ⌘-clicking a link or ⌘-scrolling
+  // presses no key, but it was a modifier, not a tap.
   useEffect(() => {
     if (!controller) return;
     let pendingRightCommand = false;
@@ -299,16 +301,20 @@ export function useForkDictationController(input: DictationInput) {
       } else return;
       event.preventDefault();
     };
-    const onBlur = () => {
+    const disarm = () => {
       pendingRightCommand = false;
     };
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("keyup", onKeyUp, true);
-    window.addEventListener("blur", onBlur);
+    window.addEventListener("pointerdown", disarm, true);
+    window.addEventListener("wheel", disarm, { capture: true, passive: true });
+    window.addEventListener("blur", disarm);
     return () => {
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("keyup", onKeyUp, true);
-      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("pointerdown", disarm, true);
+      window.removeEventListener("wheel", disarm, true);
+      window.removeEventListener("blur", disarm);
     };
   }, [controller]);
 

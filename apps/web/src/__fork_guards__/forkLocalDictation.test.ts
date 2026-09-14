@@ -150,15 +150,17 @@ describe("fork local dictation", () => {
     expect(hookArgument).not.toContain("value: promptRef.current");
     // While dictating in a started thread the cluster drops under the prompt
     // at full width, so the timeline spans the composer and the text keeps
-    // its lines.
-    expect(composer).toContain(
-      'data-fork-composer-dictating={dictation.blocksSubmission ? "true" : undefined}',
+    // its lines. Keyed in CSS on the tray's own open state: ChatComposer
+    // stamps no attribute and reserves no padding for it.
+    expect(composer).not.toContain("data-fork-composer-dictating");
+    expect(theme).toMatch(
+      /\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\{[^}]*flex-direction:\s*column/u,
     );
     expect(theme).toMatch(
-      /\[data-fork-composer-dictating="true"\]\s*\[data-fork-composer-prompt-row\]\s*\{[^}]*flex-direction:\s*column/u,
+      /\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\[data-chat-composer-actions="right"\]\s*\{[^}]*width:\s*100%/u,
     );
     expect(theme).toMatch(
-      /\[data-fork-composer-dictating="true"\]\s*\[data-chat-composer-actions="right"\]\s*\{[^}]*width:\s*100%/u,
+      /:has\(> \[data-fork-composer-prompt-row\] \[data-fork-dictation-tray="open"\]\)\s*\{[^}]*padding-right:\s*0/u,
     );
     // A hidden action cluster settles the recording instead of orphaning it.
     expect(composer).toMatch(
@@ -187,7 +189,7 @@ describe("fork local dictation", () => {
     // The timeline is a canvas that fills the tray: dots for silence, bars
     // for speech, newest at the right edge.
     expect(control).toContain("<canvas");
-    expect(control).toContain('className="block h-6 flex-1"');
+    expect(control).toContain('className="block h-6 flex-1 text-foreground"');
     // The tray reports no content width of its own; its animated min-width
     // stands in, so a content-sized cluster shrinks in step with the collapse
     // instead of snapping once flex-grow hits zero.
@@ -213,10 +215,20 @@ describe("fork local dictation", () => {
       );
     expect(delayOf("bars")).toBeLessThan(delayOf("cancel"));
     expect(delayOf("cancel")).toBeLessThan(delayOf("done"));
-    // While live, the mic is pressed on a blue chip with a glowing blue glyph;
-    // the timeline is white like the X and check beside it.
+    // Reduce Motion has to name the open-tray ancestor, or the open-state
+    // springs and delays (one attribute more specific) keep winning.
+    expect(theme).toMatch(
+      /prefers-reduced-motion: reduce\)\s*\{[^{]*\[data-fork-dictation-tray="open"\]\s*\[data-fork-dictation-tray-item\]\s*\{\s*transition:\s*none/u,
+    );
+    // While live, the mic is pressed on a blue chip with a glowing blue glyph.
+    // The timeline paints in its own colour, the foreground, so it survives
+    // light mode; dark makes it the same white as the X and check beside it.
     expect(control).toContain("aria-pressed={busy}");
-    expect(control).toContain('const BAR_COLOR = "#ffffff"');
+    expect(control).toContain("getComputedStyle(canvas).color");
+    expect(control).not.toContain('"#ffffff"');
+    expect(theme).toMatch(
+      /\.dark \[data-fork-dictation-tray-item="bars"\]\s*\{[^}]*color:\s*#ffffff/u,
+    );
     expect(theme).toMatch(
       /\[data-fork-composer-action="dictate"\]\[aria-pressed="true"\]\s*\{[^}]*background:\s*rgb\(24 124 255 \/ 16%\)/u,
     );

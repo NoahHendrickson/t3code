@@ -46,10 +46,13 @@
     tray slides (one transition each way, no continuous animation). While
     dictating, the action cluster drops under the prompt at full width in a
     started thread too (the drawn draft box's arrangement), so the tray spans
-    the composer and the typed text keeps its lines. The timeline is a canvas: a 2px dot per 50 ms
+    the composer and the typed text keeps its lines; the CSS keys that on
+    the tray's own open state, so ChatComposer stamps nothing for it. The
+    timeline is a canvas: a 2px dot per 50 ms
     sample, newest at the right, so silence is dots and speech is bars
     scrolling left. The live mic is a 16% blue chip with a glowing blue glyph;
-    the timeline is white. Mic, X and check share the attach/send 24px box, and
+    the timeline paints in the foreground colour, pure white in dark mode.
+    Mic, X and check share the attach/send 24px box, and
     the idle mic, X and check the pure-white ghost colour, from
     theme.custom.css. The idle microphone tooltip
     is the word Dictate, on

@@ -9,16 +9,16 @@ import type { ForkDictation } from "./useForkDictationController";
 
 // Figma 472:33881 draws 2px blue dots on a 4px pitch, 3px in from either
 // edge, bars up to 16px tall in a 24px row. By request the bars are 1px wide
-// and white, matching the X and check beside them; the pitch stays 4px so the
-// timeline scrolls at the same speed, and a silent sample is a 1×2 pill so it
-// still reads as a dot.
+// and painted in the canvas's own `color` (the foreground; pure white in dark
+// via theme.custom.css), matching the X and check beside them. The pitch stays
+// 4px so the timeline scrolls at the same speed, and a silent sample is a 1×2
+// mark so it still reads as a dot.
 const BAR_WIDTH = 1;
 const BAR_PITCH = 4;
 const BAR_GAP = BAR_PITCH - BAR_WIDTH;
 const DOT_HEIGHT = 2;
 const BAR_MAX_HEIGHT = 16;
 const BAR_INSET = 3;
-const BAR_COLOR = "#ffffff";
 // Samples arrive at 20 Hz; 30 s of history at 4px each outruns any composer.
 const HISTORY_LIMIT = 600;
 // Quiet speech sits around -40 dBFS and normal speech near -20, so map the
@@ -44,6 +44,11 @@ function levelToUnit(rms: number): number {
  * every 50 ms would never settle. Stays mounted while the tray slides shut so
  * the row keeps its width for the whole collapse; `active` clears the history
  * between sessions instead.
+ *
+ * The bitmap follows the element's box, so the tray's 240ms slide repaints
+ * it once per frame while the width moves. A paint is a clear plus a few
+ * hundred 1px fillRects, well under a millisecond, and the slide is bounded:
+ * it runs once per open and once per close, never continuously.
  */
 function VoiceLevelTimeline(props: {
   subscribe: ForkDictation["subscribeLevel"];
@@ -68,7 +73,9 @@ function VoiceLevelTimeline(props: {
       }
       context.setTransform(scale, 0, 0, scale, 0, 0);
       context.clearRect(0, 0, width, height);
-      context.fillStyle = BAR_COLOR;
+      // Read per paint so an appearance switch mid-session recolours the
+      // next sample rather than the next session.
+      context.fillStyle = getComputedStyle(canvas).color;
       const slots = Math.floor((width - 2 * BAR_INSET + BAR_GAP) / BAR_PITCH);
       for (let slot = 0; slot < slots; slot++) {
         const sample = history[history.length - slots + slot];
@@ -77,9 +84,7 @@ function VoiceLevelTimeline(props: {
             ? DOT_HEIGHT
             : DOT_HEIGHT + Math.round(sample * (BAR_MAX_HEIGHT - DOT_HEIGHT));
         const x = width - BAR_INSET + BAR_GAP - (slots - slot) * BAR_PITCH;
-        context.beginPath();
-        context.roundRect(x, (height - barHeight) / 2, BAR_WIDTH, barHeight, BAR_WIDTH / 2);
-        context.fill();
+        context.fillRect(x, (height - barHeight) / 2, BAR_WIDTH, barHeight);
       }
     };
     // The tray's slide resizes the canvas every frame; repaint to keep the
@@ -104,8 +109,9 @@ function VoiceLevelTimeline(props: {
       aria-hidden
       data-fork-dictation-tray-item="bars"
       // Its minimum width comes from theme.custom.css, shared with the tray's
-      // own animated minimum so the two never disagree.
-      className="block h-6 flex-1"
+      // own animated minimum so the two never disagree. The paint colour is
+      // this element's `color`.
+      className="block h-6 flex-1 text-foreground"
     />
   );
 }
