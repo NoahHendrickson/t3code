@@ -149,9 +149,8 @@ describe("fork local dictation", () => {
     expect(hookArgument).not.toContain("promptRef.current =");
     expect(hookArgument).not.toContain("value: promptRef.current");
     // While dictating in a started thread the cluster drops under the prompt
-    // at full width, so the timeline spans the composer and the text keeps
-    // its lines. Keyed in CSS on the tray's own open state: ChatComposer
-    // stamps no attribute and reserves no padding for it.
+    // at full width, so the timeline spans the composer. Keyed in CSS on the
+    // tray's own open state: ChatComposer stamps no attribute for it.
     expect(composer).not.toContain("data-fork-composer-dictating");
     expect(theme).toMatch(
       /\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\{[^}]*flex-direction:\s*column/u,
@@ -159,9 +158,22 @@ describe("fork local dictation", () => {
     expect(theme).toMatch(
       /\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\[data-chat-composer-actions="right"\]\s*\{[^}]*width:\s*100%/u,
     );
+    // The typed text keeps its exact measure: the docked prompt reserves the
+    // width the cluster had beside it (mic + send, plus attach when offered,
+    // on 8px gaps, plus the row's 24px gap), so nothing reflows. Attach is
+    // hidden by CSS while the tray is open, not unmounted, so ChatComposer
+    // keeps upstream's render and the reserve can still count it.
     expect(theme).toMatch(
-      /:has\(> \[data-fork-composer-prompt-row\] \[data-fork-dictation-tray="open"\]\)\s*\{[^}]*padding-right:\s*0/u,
+      /:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)/u,
     );
+    expect(theme).toMatch(
+      /:has\(\[data-fork-dictation-tray="open"\]\):has\(\s*\[data-fork-composer-action="attach"\]\s*\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 8px \+ 24px \+ 24px\)/u,
+    );
+    expect(theme).toMatch(
+      /\[data-chat-composer-actions="right"\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\[data-fork-composer-action="attach"\]\s*\{[^}]*display:\s*none/u,
+    );
+    expect(composer).toContain("{showComposerAttachAction ? (");
+    expect(composer).not.toContain("showComposerAttachAction && !dictation.blocksSubmission");
     // A hidden action cluster settles the recording instead of orphaning it.
     expect(composer).toMatch(
       /if \(!dictationControlsVisible\) settleDictationWithoutControls\(\)/u,

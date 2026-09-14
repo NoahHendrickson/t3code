@@ -2701,14 +2701,11 @@
    In a started thread the action cluster shares the prompt row with the
    editor, so a full-width timeline would squeeze the text. While the tray is
    open the cluster drops under the prompt and spans the row, the drawn draft
-   box's arrangement, so the timeline gets the whole width and the typed text
-   keeps its lines. Keyed on the tray's own open state with :has(), so
-   ChatComposer stamps nothing; the tray already says when it is open. The
-   compact single-line wrapper is itself a flex row, so the stacked prompt
-   row is also told to fill it. */
+   box's arrangement, so the timeline gets the whole width. Keyed on the
+   tray's own open state with :has(), so ChatComposer stamps nothing; the
+   tray already says when it is open. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"]) {
-  flex: 1 1 0px;
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
@@ -2726,12 +2723,36 @@
   width: 100%;
 }
 
-/* The compact wrapper reserves right padding (pr-12/20/28) for the cluster
-   that normally sits beside the text; with the cluster under the prompt
-   nothing sits there. Unlayered, so it outranks the utility. */
+/* The typed text keeps its measure. Beside the cluster the prompt was the
+   row minus the cluster and the row's 24px gap; with the cluster underneath
+   it reserves that same width as padding, so nothing reflows when the tray
+   opens or shuts. The cluster is 24px boxes on 8px gaps: mic and send, plus
+   attach when the composer offers it (hidden below, not unmounted, so it
+   still counts here). The draft box already keeps its cluster under the
+   prompt, so it reserves nothing. */
 :root[data-fork="noahhendrickson-t3code"]
-  :has(> [data-fork-composer-prompt-row] [data-fork-dictation-tray="open"]) {
-  padding-right: 0;
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"])
+  [data-fork-composer-prompt] {
+  padding-right: calc(24px + 8px + 24px + 24px);
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"]):has(
+    [data-fork-composer-action="attach"]
+  )
+  [data-fork-composer-prompt] {
+  padding-right: calc(24px + 8px + 24px + 8px + 24px + 24px);
+}
+
+/* Attach steps aside while the tray is open; the timeline takes its slot.
+   Hidden rather than unmounted, so ChatComposer keeps upstream's render and
+   the reserve above can still count it. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-actions="right"]:has([data-fork-dictation-tray="open"])
+  [data-fork-composer-action="attach"] {
+  display: none;
 }
 
 /* The timeline paints in its own `color`: the foreground in light mode, and
