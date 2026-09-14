@@ -49,8 +49,11 @@
     started thread too (the drawn draft box's arrangement), so the tray spans
     the composer and the typed text keeps its exact measure: the prompt
     reserves the width the cluster had beside it (mic, send, and attach when
-    offered, on their gaps), so nothing reflows. The CSS keys that on
-    the tray's own open state, so ChatComposer stamps nothing for it. The
+    offered, on their gaps), so nothing reflows, and the row stays stacked
+    until the closing slide has brought the tray back to zero (the tray
+    reports open, closing, or closed off its own box), so the text is never
+    squeezed by a still-wide cluster on the way out. The CSS keys all of
+    that on the tray's own state, so ChatComposer stamps nothing for it. The
     timeline is a canvas: a 2px dot per 50 ms
     sample, newest at the right, so silence is dots and speech is bars
     scrolling left. The live mic is a 16% blue chip with a glowing blue glyph;

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckIcon, XIcon } from "lucide-react";
 import { MicrophoneIcon } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
@@ -126,14 +126,37 @@ function VoiceLevelTimeline(props: {
  * on the drawn draft box it spans the whole action row. It stays in the DOM
  * while closed so the slide runs both ways; `inert` keeps its buttons out of
  * the tab order and the accessibility tree until it opens.
+ *
+ * The tray reports three states, not two. A session ending drops it to
+ * "closing", which slides it shut exactly like "closed" but keeps a started
+ * thread's row stacked (theme.custom.css keys the stack on open or closing),
+ * so the prompt holds its reserve and the typed text its measure until the
+ * slide has brought the tray back to zero. The tray's own box says when:
+ * a ResizeObserver flips "closing" to "closed" the moment its content width
+ * reaches zero, which is at once under Reduce Motion and after the 240ms
+ * slide otherwise, with no timer to drift from the CSS.
  */
 export function ForkDictationControl(props: { dictation: ForkDictation; disabled: boolean }) {
   const { dictation, disabled } = props;
+  const [trayAtRest, setTrayAtRest] = useState(true);
+  // A callback ref rather than an effect, so the observer follows the tray's
+  // own mount (it only renders once the bridge is available) and React runs
+  // the returned cleanup when it unmounts.
+  const observeTray = useCallback((tray: HTMLDivElement | null) => {
+    if (!tray) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      if (entry) setTrayAtRest(entry.contentRect.width === 0);
+    });
+    observer.observe(tray);
+    return () => observer.disconnect();
+  }, []);
   if (!dictation.isAvailable) return null;
   const { phase } = dictation.state;
   const recording = phase === "recording";
   const transcribing = phase === "transcribing";
   const busy = dictation.blocksSubmission;
+  const trayState = busy ? "open" : trayAtRest ? "closed" : "closing";
   const label = transcribing
     ? "Transcribing (Escape to cancel)"
     : recording
@@ -208,7 +231,7 @@ export function ForkDictationControl(props: { dictation: ForkDictation; disabled
           {recording || transcribing ? label : "Dictate"}
         </TooltipPopup>
       </Tooltip>
-      <div data-fork-dictation-tray={busy ? "open" : "closed"} inert={!busy}>
+      <div ref={observeTray} data-fork-dictation-tray={trayState} inert={!busy}>
         <div className="flex w-full min-w-0 items-center gap-1 pl-1">
           <VoiceLevelTimeline subscribe={dictation.subscribeLevel} active={busy} />
           {/* Each button sits in its own stagger wrapper so the entrance

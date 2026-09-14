@@ -2701,24 +2701,37 @@
    In a started thread the action cluster shares the prompt row with the
    editor, so a full-width timeline would squeeze the text. While the tray is
    open the cluster drops under the prompt and spans the row, the drawn draft
-   box's arrangement, so the timeline gets the whole width. Keyed on the
-   tray's own open state with :has(), so ChatComposer stamps nothing; the
-   tray already says when it is open. */
+   box's arrangement, so the timeline gets the whole width. Keyed with
+   :has() on the tray's own state, so ChatComposer stamps nothing. Open or
+   closing, not just open: the tray stays "closing" until its slide shut has
+   brought it back to zero (ForkDictationControl watches its box), and the
+   row stays stacked for all of it. Flipping back to a single row while the
+   cluster was still wide would squeeze the prompt for the length of the
+   slide, then let it out again. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"]) {
+  [data-fork-composer-prompt-row]:has(
+    [data-fork-dictation-tray="open"],
+    [data-fork-dictation-tray="closing"]
+  ) {
   flex-direction: column;
   align-items: stretch;
   gap: 4px;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"])
+  [data-fork-composer-prompt-row]:has(
+    [data-fork-dictation-tray="open"],
+    [data-fork-dictation-tray="closing"]
+  )
   [data-chat-composer-inline-actions] {
   align-self: stretch;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"])
+  [data-fork-composer-prompt-row]:has(
+    [data-fork-dictation-tray="open"],
+    [data-fork-dictation-tray="closing"]
+  )
   [data-chat-composer-actions="right"] {
   width: 100%;
 }
@@ -2732,16 +2745,20 @@
    prompt, so it reserves nothing. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"])
+  [data-fork-composer-prompt-row]:has(
+    [data-fork-dictation-tray="open"],
+    [data-fork-dictation-tray="closing"]
+  )
   [data-fork-composer-prompt] {
   padding-right: calc(24px + 8px + 24px + 24px);
 }
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-tray="open"]):has(
-    [data-fork-composer-action="attach"]
-  )
+  [data-fork-composer-prompt-row]:has(
+    [data-fork-dictation-tray="open"],
+    [data-fork-dictation-tray="closing"]
+  ):has([data-fork-composer-action="attach"])
   [data-fork-composer-prompt] {
   padding-right: calc(24px + 8px + 24px + 8px + 24px + 24px);
 }
@@ -2750,7 +2767,10 @@
    Hidden rather than unmounted, so ChatComposer keeps upstream's render and
    the reserve above can still count it. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-chat-composer-actions="right"]:has([data-fork-dictation-tray="open"])
+  [data-chat-composer-actions="right"]:has(
+    [data-fork-dictation-tray="open"],
+    [data-fork-dictation-tray="closing"]
+  )
   [data-fork-composer-action="attach"] {
   display: none;
 }

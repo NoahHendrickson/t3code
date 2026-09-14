@@ -150,13 +150,22 @@ describe("fork local dictation", () => {
     expect(hookArgument).not.toContain("value: promptRef.current");
     // While dictating in a started thread the cluster drops under the prompt
     // at full width, so the timeline spans the composer. Keyed in CSS on the
-    // tray's own open state: ChatComposer stamps no attribute for it.
+    // tray's own state: ChatComposer stamps no attribute for it. Open or
+    // closing, not just open: the row stays stacked for the whole slide shut,
+    // so the prompt is never squeezed by a still-wide cluster on the way out.
     expect(composer).not.toContain("data-fork-composer-dictating");
+    const stacked = String.raw`:has\(\s*\[data-fork-dictation-tray="open"\],\s*\[data-fork-dictation-tray="closing"\]\s*\)`;
     expect(theme).toMatch(
-      /\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\{[^}]*flex-direction:\s*column/u,
+      new RegExp(
+        String.raw`\[data-fork-composer-prompt-row\]${stacked}\s*\{[^}]*flex-direction:\s*column`,
+        "u",
+      ),
     );
     expect(theme).toMatch(
-      /\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\[data-chat-composer-actions="right"\]\s*\{[^}]*width:\s*100%/u,
+      new RegExp(
+        String.raw`\[data-fork-composer-prompt-row\]${stacked}\s*\[data-chat-composer-actions="right"\]\s*\{[^}]*width:\s*100%`,
+        "u",
+      ),
     );
     // The typed text keeps its exact measure: the docked prompt reserves the
     // width the cluster had beside it (mic + send, plus attach when offered,
@@ -164,13 +173,22 @@ describe("fork local dictation", () => {
     // hidden by CSS while the tray is open, not unmounted, so ChatComposer
     // keeps upstream's render and the reserve can still count it.
     expect(theme).toMatch(
-      /:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)/u,
+      new RegExp(
+        String.raw`:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]${stacked}\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)`,
+        "u",
+      ),
     );
     expect(theme).toMatch(
-      /:has\(\[data-fork-dictation-tray="open"\]\):has\(\s*\[data-fork-composer-action="attach"\]\s*\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 8px \+ 24px \+ 24px\)/u,
+      new RegExp(
+        String.raw`${stacked}:has\(\s*\[data-fork-composer-action="attach"\]\s*\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 8px \+ 24px \+ 24px\)`,
+        "u",
+      ),
     );
     expect(theme).toMatch(
-      /\[data-chat-composer-actions="right"\]:has\(\[data-fork-dictation-tray="open"\]\)\s*\[data-fork-composer-action="attach"\]\s*\{[^}]*display:\s*none/u,
+      new RegExp(
+        String.raw`\[data-chat-composer-actions="right"\]${stacked}\s*\[data-fork-composer-action="attach"\]\s*\{[^}]*display:\s*none`,
+        "u",
+      ),
     );
     expect(composer).toContain("{showComposerAttachAction ? (");
     expect(composer).not.toContain("showComposerAttachAction && !dictation.blocksSubmission");
@@ -188,7 +206,14 @@ describe("fork local dictation", () => {
     // shut) and theme.custom.css transitions its flex-grow 0 → 1, so it fills
     // the row where there is free space (the draft box) and its content
     // width where there is none.
-    expect(control).toContain('data-fork-dictation-tray={busy ? "open" : "closed"} inert={!busy}');
+    expect(control).toContain("data-fork-dictation-tray={trayState} inert={!busy}");
+    // "closing" holds the started thread's row stacked until the tray's own
+    // box is back to zero, so the collapse never squeezes the prompt; the box
+    // says when, not a timer, so Reduce Motion (no slide) closes at once.
+    expect(control).toContain(
+      'const trayState = busy ? "open" : trayAtRest ? "closed" : "closing";',
+    );
+    expect(control).toContain("setTrayAtRest(entry.contentRect.width === 0)");
     expect(control).toMatch(/<MicrophoneIcon \/>\s*<\/TooltipTrigger>/u);
     // The wrapper never changes size on its own; only the tray animates, so
     // the mic's slide is continuous in both directions.
