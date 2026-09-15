@@ -27,11 +27,14 @@ describe("fork guard: fork-usage-popover", () => {
   it("opens Usage as a popover from the chrome row", () => {
     expect(chromeRows).toContain("<SidebarV2UsageRow");
     expect(chromeRows).not.toContain("onUsage");
-    expect(usagePopover).toContain('data-testid="sidebar-v2-usage"');
+    expect(chromeRows).toContain('testId="sidebar-v2-usage"');
+    expect(chromeRows).toContain("icon={ChartDonutIcon}");
     expect(usagePopover).toContain('data-testid="usage-popover"');
     expect(usagePopover).toContain('chrome="panel"');
     expect(usagePopover).toContain('side="right"');
-    expect(usagePopover).toContain("w-[min(56rem,var(--available-width))]");
+    expect(usagePopover).toContain("w-[min(56rem,var(--available-width,calc(100vw-2rem)))]");
+    expect(usagePopover).toContain("useSidebar");
+    expect(usagePopover).toContain("DialogPopup");
     expect(usagePage).toContain("flex-wrap items-center gap-x-3 gap-y-2 py-2");
     expect(sidebar).not.toContain('void router.navigate({ to: "/usage" });');
     expect(sidebar).not.toContain("handleUsageClick");

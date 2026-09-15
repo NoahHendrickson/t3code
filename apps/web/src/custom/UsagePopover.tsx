@@ -1,41 +1,59 @@
 /**
- * Sidebar V2's Usage row — a popover over the current thread instead of the
- * /usage page. See `.fork/customizations.yaml#fork-usage-popover`.
+ * Sidebar V2's Usage row overlay — a popover over the current thread instead
+ * of the /usage page. See `.fork/customizations.yaml#fork-usage-popover`.
  *
- * Positioner sits at z-40 so the model-prices Dialog (z-50) can stack above
- * it; menus and selects stay at z-[130] and still clear the panel. The popup
- * is sized to the remaining viewport to the right of the row, so it covers
- * the thread rather than replacing it. 56rem is the default width: 48rem
- * let the metric and period toggles collide with the environment filter.
+ * Desktop: Positioner sits at z-40 so the model-prices Dialog (z-50) can
+ * stack above it; menus and selects stay at z-[130] and still clear the
+ * panel. The popup is sized to the remaining viewport to the right of the
+ * row, so it covers the thread rather than replacing it. 56rem is the
+ * default width: 48rem let the metric and period toggles collide with the
+ * environment filter.
+ *
+ * Below 768px the V2 sidebar is a z-50 Sheet. A z-40 popover portals outside
+ * that sheet and is inert underneath it. Narrow viewports use a nested
+ * Dialog (also z-50) so Usage stacks above the sheet and the model-prices
+ * Dialog can still stack above Usage.
  */
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import { useState } from "react";
+import { cloneElement, useState, type ReactElement } from "react";
 
 import { UsagePage } from "~/components/usage/UsagePage";
+import { Dialog, DialogPopup, DialogTrigger } from "~/components/ui/dialog";
 import { Popover, PopoverTrigger } from "~/components/ui/popover";
-import { SidebarMenuButton } from "~/components/ui/sidebar";
+import { useSidebar } from "~/components/ui/sidebar";
 import { cn } from "~/lib/utils";
-import { ChartDonutIcon } from "./icons/lucide-phosphor";
 
-export function SidebarV2UsageRow(props: { readonly className: string }) {
+const USAGE_PANEL_SIZE =
+  "flex h-[min(42rem,calc(100dvh-2rem))] w-[min(56rem,var(--available-width,calc(100vw-2rem)))] flex-col overflow-hidden";
+
+export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ active?: boolean }> }) {
   const [open, setOpen] = useState(false);
+  const { isMobile } = useSidebar();
+  const trigger = cloneElement(props.trigger, { active: open });
+  const panel = <UsagePage chrome="panel" />;
+
+  if (isMobile) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger render={trigger} />
+        <DialogPopup
+          aria-label="Usage"
+          showCloseButton={false}
+          className={cn(
+            USAGE_PANEL_SIZE,
+            "dropdown-glass max-w-none p-0 text-popover-foreground shadow-[0_16px_40px_-18px_rgb(0_0_0/55%)] dark:shadow-[0_18px_44px_-18px_rgb(0_0_0/80%)]",
+          )}
+          data-testid="usage-popover"
+        >
+          {panel}
+        </DialogPopup>
+      </Dialog>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <SidebarMenuButton
-            size="sm"
-            type="button"
-            className={cn(props.className, open && "bg-sidebar-row-hover text-sidebar-foreground")}
-            isActive={open}
-            aria-label="Usage"
-            data-testid="sidebar-v2-usage"
-          />
-        }
-      >
-        <ChartDonutIcon className="size-4 shrink-0" />
-        <span className="min-w-0 flex-1 truncate text-left">Usage</span>
-      </PopoverTrigger>
+      <PopoverTrigger render={trigger} />
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Positioner
           side="right"
@@ -46,11 +64,14 @@ export function SidebarV2UsageRow(props: { readonly className: string }) {
         >
           <PopoverPrimitive.Popup
             aria-label="Usage"
-            className="dropdown-glass relative flex h-[min(42rem,var(--available-height))] w-[min(56rem,var(--available-width))] origin-(--transform-origin) flex-col overflow-hidden rounded-lg text-popover-foreground shadow-[0_16px_40px_-18px_rgb(0_0_0/55%)] outline-none transition-[scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0 dark:shadow-[0_18px_44px_-18px_rgb(0_0_0/80%)]"
+            className={cn(
+              USAGE_PANEL_SIZE,
+              "dropdown-glass relative origin-(--transform-origin) rounded-lg text-popover-foreground shadow-[0_16px_40px_-18px_rgb(0_0_0/55%)] outline-none transition-[scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0 dark:shadow-[0_18px_44px_-18px_rgb(0_0_0/80%)]",
+            )}
             data-slot="popover-popup"
             data-testid="usage-popover"
           >
-            <UsagePage chrome="panel" />
+            {panel}
           </PopoverPrimitive.Popup>
         </PopoverPrimitive.Positioner>
       </PopoverPrimitive.Portal>

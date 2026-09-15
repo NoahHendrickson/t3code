@@ -51,7 +51,7 @@ describe("fork guard: fork-new-agent-draft", () => {
       "newThreadActive={isUnassignedDraft(newThreadContext.activeDraftThread)}",
     );
     expect(chromeRows).toContain("active={props.newThreadActive}");
-    expect(chromeRows).toContain('props.active && "bg-sidebar-row-hover text-sidebar-foreground"');
+    expect(chromeRows).toContain('active && "bg-sidebar-row-hover text-sidebar-foreground"');
   });
 
   it("routes the chat.new shortcut through the same door", () => {

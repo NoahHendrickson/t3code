@@ -1899,10 +1899,13 @@
     Clicking Usage in the V2 sidebar opens a popover over the current thread
     instead of navigating to /usage. The thread stays mounted underneath.
     The popover is anchored to the Usage row and sized to the remaining
-    viewport to its right. Closing it (Escape, outside click, or the row
-    again) returns to the thread that was already open. The /usage route
-    still exists for a typed URL; the chrome row is not that door. The
-    footer Usage icon stays hidden on V2 so there is still one chrome door.
+    viewport to its right. Below 768px the sidebar is a z-50 Sheet, so Usage
+    is a nested Dialog (also z-50) rather than a z-40 popover that would sit
+    inert under the sheet; the model-prices Dialog still stacks above it.
+    Closing it (Escape, outside click, or the row again) returns to the
+    thread that was already open. The /usage route still exists for a typed
+    URL; the chrome row is not that door. The footer Usage icon stays hidden
+    on V2 so there is still one chrome door.
   tier: 4
   files:
     - apps/web/src/custom/UsagePopover.tsx
