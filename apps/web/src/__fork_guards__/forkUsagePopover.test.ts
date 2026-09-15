@@ -1,0 +1,51 @@
+// @effect-diagnostics nodeBuiltinImport:off
+/**
+ * Fork guard — see `.fork/README.md` §4b and
+ * `.fork/customizations.yaml#fork-usage-popover`.
+ *
+ * Usage is a popover over the current thread. A sync that restores the
+ * sidebar's navigate-to-/usage door, or drops the panel chrome on UsagePage,
+ * silently brings the dedicated page back.
+ */
+
+import * as NodeFS from "node:fs";
+import * as NodeURL from "node:url";
+import { describe, expect, it } from "vite-plus/test";
+
+function readSibling(relativePath: string): string {
+  return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
+}
+
+const usagePopover = readSibling("../custom/UsagePopover.tsx");
+const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+const sidebar = readSibling("../components/Sidebar.tsx");
+const usagePage = readSibling("../components/usage/UsagePage.tsx");
+const usageDocs = readSibling("../../../../docs/user/usage.md");
+const sidebarDocs = readSibling("../../../../docs/user/thread-sidebar.md");
+
+describe("fork guard: fork-usage-popover", () => {
+  it("opens Usage as a popover from the chrome row", () => {
+    expect(chromeRows).toContain("<SidebarV2UsageRow");
+    expect(chromeRows).not.toContain("onUsage");
+    expect(usagePopover).toContain('data-testid="sidebar-v2-usage"');
+    expect(usagePopover).toContain('data-testid="usage-popover"');
+    expect(usagePopover).toContain('chrome="panel"');
+    expect(usagePopover).toContain('side="right"');
+    expect(usagePopover).toContain("w-[min(56rem,var(--available-width))]");
+    expect(usagePage).toContain("flex-wrap items-center gap-x-3 gap-y-2 py-2");
+    expect(sidebar).not.toContain('void router.navigate({ to: "/usage" });');
+    expect(sidebar).not.toContain("handleUsageClick");
+  });
+
+  it("renders the usage dashboard as a panel, not a workspace page", () => {
+    expect(usagePage).toContain('chrome === "panel"');
+    expect(usagePage).toContain('data-testid="usage-panel"');
+    expect(usagePage).toContain("fork-usage-popover");
+  });
+
+  it("describes Usage as an overlay over the current thread", () => {
+    expect(usageDocs).toMatch(/sits over the thread you\s+are looking at/u);
+    expect(sidebarDocs).toContain("opens a popover over the current thread");
+    expect(sidebarDocs).not.toContain("opens the usage page");
+  });
+});

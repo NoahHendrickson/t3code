@@ -6,6 +6,12 @@
 environments. It shows token use, cache savings, model breakdowns, and estimated API-equivalent
 cost. These estimates are not your subscription bill.
 
+<!-- fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover -->
+
+On web and desktop, open **Usage** from the sidebar. It sits over the thread you
+are looking at rather than replacing it.
+<!-- fork:end fork-usage-popover -->
+
 Totals depend on the history available on each server. Grok turns without a saved completed-turn
 record are missing from the totals.
 

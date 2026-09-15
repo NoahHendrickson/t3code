@@ -290,8 +290,7 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(chatView).toContain("const resizeObserver = new ResizeObserver(updateHeight);");
   });
 
-  it("opens Usage from the chrome's fourth row", () => {
-    expect(chromeRows).toContain('label="Usage"');
-    expect(sidebar).toContain('void router.navigate({ to: "/usage" });');
+  it("keeps Usage as the chrome's fourth row", () => {
+    expect(chromeRows).toContain("<SidebarV2UsageRow");
   });
 });

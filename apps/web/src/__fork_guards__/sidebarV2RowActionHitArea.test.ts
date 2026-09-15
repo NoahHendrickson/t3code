@@ -194,12 +194,13 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     // 16px icons, matching the marks they line up with. Asserted positively:
     // a negative on `size-5` is anchored to class order and walks straight
     // through `className="shrink-0 size-5"`.
-    // New agent / Add a project / Usage render through ChromeLabeledAction's
-    // Icon slot; the Projects row mounts its sort and filter glyphs directly.
-    // Pin size-4 either way.
+    // New agent / Add a project render through ChromeLabeledAction's Icon
+    // slot; Usage mounts ChartDonutIcon in its popover trigger; the Projects
+    // row mounts its sort and filter glyphs directly. Pin size-4 either way.
     expect(chromeRows).toContain("icon={NavigationArrowIcon}");
     expect(chromeRows).toContain("icon={FolderPlusIcon}");
-    expect(chromeRows).toContain("icon={ChartDonutIcon}");
+    const usageRow = readSibling("../custom/UsagePopover.tsx");
+    expect(usageRow).toMatch(/<ChartDonutIcon[\s\S]{0,80}?\bsize-4\b/u);
     const labeledIcon = /<Icon className="([^"]*)"/u.exec(chromeRows)?.[1];
     expect(labeledIcon, "ChromeLabeledAction icon class missing").toBeDefined();
     expect(labeledIcon).toMatch(/\bsize-4\b/u);

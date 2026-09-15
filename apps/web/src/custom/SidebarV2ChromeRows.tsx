@@ -30,10 +30,10 @@ import { CheckIcon, EllipsisIcon, FolderIcon, FolderPlusIcon, SearchIcon } from 
 // file is fork-owned, so there is no upstream import site to preserve.
 import {
   ArrowUpDownIcon,
-  ChartDonutIcon,
   FadersHorizontalIcon,
   NavigationArrowIcon,
 } from "./icons/lucide-phosphor";
+import { SidebarV2UsageRow } from "./UsagePopover";
 import { CommandDialogTrigger } from "~/components/ui/command";
 import {
   Menu,
@@ -114,8 +114,9 @@ const CHROME_ACTION = cn(
 
 type ChromeIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
-/** New agent, Add a project and Usage share one shape; Search keeps its own
-    (CommandDialogTrigger). */
+/** New agent and Add a project share one shape; Search keeps its own
+    (CommandDialogTrigger). Usage is a popover trigger of the same button
+    geometry (custom/UsagePopover). */
 function ChromeLabeledAction(props: {
   readonly icon: ChromeIcon;
   readonly label: string;
@@ -187,7 +188,6 @@ export function SidebarV2ChromeActionRows(props: {
   readonly newThreadActive: boolean;
   readonly onNewThread: () => void;
   readonly onAddProject: () => void;
-  readonly onUsage: () => void;
 }) {
   const newThreadDisabledReason = props.newThreadDisabled
     ? "Add a project to start an agent"
@@ -218,13 +218,7 @@ export function SidebarV2ChromeActionRows(props: {
         testId="sidebar-v2-add-project"
         onClick={props.onAddProject}
       />
-      <ChromeLabeledAction
-        icon={ChartDonutIcon}
-        label="Usage"
-        ariaLabel="Usage"
-        testId="sidebar-v2-usage"
-        onClick={props.onUsage}
-      />
+      <SidebarV2UsageRow className={CHROME_ACTION} />
     </SidebarGroup>
   );
 }

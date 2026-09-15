@@ -1776,9 +1776,10 @@
     32px tall, 10px corners, 12px inline padding, a 16px icon 6px from a
     Label/14 Regular label, icon and label alike at the panel's foreground,
     stacked 2px apart inside the panel's 8px inset and flush under the header.
-    No shortcut chips; the shortcut rides the accessible name. Usage opens the
-    /usage route, and the V2 sidebar's footer hides its own Usage icon so the
-    page has one door there; the footer takes a hideUsage flag rather than
+    No shortcut chips; the shortcut rides the accessible name. Usage opens a
+    popover over the current thread rather than the /usage route (see
+    fork-usage-popover); the V2 sidebar's footer hides its own Usage icon so
+    the row is the one door there; the footer takes a hideUsage flag rather than
     losing the item, because the legacy sidebar has no Usage row and keeps
     it. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
     shrink it.
@@ -1892,6 +1893,29 @@
   verify:
     - apps/web/src/__fork_guards__/forkSidebarChrome.test.ts
     - apps/web/src/custom/sidebarV2ProjectSort.test.ts
+
+- id: fork-usage-popover
+  intent: >
+    Clicking Usage in the V2 sidebar opens a popover over the current thread
+    instead of navigating to /usage. The thread stays mounted underneath.
+    The popover is anchored to the Usage row and sized to the remaining
+    viewport to its right. Closing it (Escape, outside click, or the row
+    again) returns to the thread that was already open. The /usage route
+    still exists for a typed URL; the chrome row is not that door. The
+    footer Usage icon stays hidden on V2 so there is still one chrome door.
+  tier: 4
+  files:
+    - apps/web/src/custom/UsagePopover.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/usage/UsagePage.tsx
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/components/Sidebar.tsx
+    - docs/user/usage.md
+    - docs/user/thread-sidebar.md
+  verify:
+    - apps/web/src/__fork_guards__/forkUsagePopover.test.ts
+    - apps/web/src/components/usage/UsagePage.test.tsx
 
 - id: fork-workspace-header
   intent: >
