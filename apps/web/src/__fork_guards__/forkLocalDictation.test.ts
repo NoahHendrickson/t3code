@@ -213,16 +213,7 @@ describe("fork local dictation", () => {
     expect(control).toContain(
       'const trayState = busy ? "open" : trayAtRest ? "closed" : "closing";',
     );
-    expect(control).toContain("const atRest = entry.contentRect.width === 0;");
-    // Once shut, the row flips back to a single line and the composer drops
-    // by the cluster row's height. One height animation on the row, from the
-    // measure taken before the flip to the one after, settles it instead of
-    // snapping; Reduce Motion skips it.
-    expect(control).toContain('tray.closest<HTMLElement>("[data-fork-composer-prompt-row]")');
-    expect(control).toMatch(
-      /before\.row\.animate\(\[\{ height: `\$\{before\.height\}px` \}, \{ height: `\$\{after\}px` \}\], \{\s*duration: 240,/u,
-    );
-    expect(control).toContain('window.matchMedia("(prefers-reduced-motion: reduce)").matches');
+    expect(control).toContain("setTrayAtRest(entry.contentRect.width === 0)");
     expect(control).toMatch(/<MicrophoneIcon \/>\s*<\/TooltipTrigger>/u);
     // The wrapper never changes size on its own; only the tray animates, so
     // the mic's slide is continuous in both directions.

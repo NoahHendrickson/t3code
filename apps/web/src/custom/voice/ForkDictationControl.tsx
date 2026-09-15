@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckIcon, XIcon } from "lucide-react";
 import { MicrophoneIcon } from "@phosphor-icons/react";
 import { Button } from "~/components/ui/button";
@@ -139,9 +139,6 @@ function VoiceLevelTimeline(props: {
 export function ForkDictationControl(props: { dictation: ForkDictation; disabled: boolean }) {
   const { dictation, disabled } = props;
   const [trayAtRest, setTrayAtRest] = useState(true);
-  // The prompt row and its height as measured just before "closed" flips a
-  // started thread's row back to a single line, for the settle below.
-  const rowBeforeRest = useRef<{ row: HTMLElement; height: number } | null>(null);
   // A callback ref rather than an effect, so the observer follows the tray's
   // own mount (it only renders once the bridge is available) and React runs
   // the returned cleanup when it unmounts.
@@ -149,41 +146,17 @@ export function ForkDictationControl(props: { dictation: ForkDictation; disabled
     if (!tray) return;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[entries.length - 1];
-      if (!entry) return;
-      const atRest = entry.contentRect.width === 0;
-      if (atRest) {
-        const row = tray.closest<HTMLElement>("[data-fork-composer-prompt-row]");
-        rowBeforeRest.current = row ? { row, height: row.getBoundingClientRect().height } : null;
-      }
-      setTrayAtRest(atRest);
+      if (entry) setTrayAtRest(entry.contentRect.width === 0);
     });
     observer.observe(tray);
     return () => observer.disconnect();
   }, []);
-  const busy = dictation.blocksSubmission;
-  const trayState = busy ? "open" : trayAtRest ? "closed" : "closing";
-  // Flipping the row back to a single line drops the composer by the cluster
-  // row's height in one frame. Ease it instead: one height animation on the
-  // row from the measure taken before the flip to the one after, on the
-  // tray's own curve, so the box settles down onto the text rather than
-  // snapping. Runs once per close, never continuously; the draft box's row
-  // never flips, so its heights match and nothing runs.
-  useLayoutEffect(() => {
-    const before = rowBeforeRest.current;
-    rowBeforeRest.current = null;
-    if (!before || trayState !== "closed") return;
-    const after = before.row.getBoundingClientRect().height;
-    if (after === before.height) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    before.row.animate([{ height: `${before.height}px` }, { height: `${after}px` }], {
-      duration: 240,
-      easing: "cubic-bezier(0.32, 0.72, 0, 1)",
-    });
-  }, [trayState]);
   if (!dictation.isAvailable) return null;
   const { phase } = dictation.state;
   const recording = phase === "recording";
   const transcribing = phase === "transcribing";
+  const busy = dictation.blocksSubmission;
+  const trayState = busy ? "open" : trayAtRest ? "closed" : "closing";
   const label = transcribing
     ? "Transcribing (Escape to cancel)"
     : recording

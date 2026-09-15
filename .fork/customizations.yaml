@@ -52,11 +52,8 @@
     offered, on their gaps), so nothing reflows, and the row stays stacked
     until the closing slide has brought the tray back to zero (the tray
     reports open, closing, or closed off its own box), so the text is never
-    squeezed by a still-wide cluster on the way out, and once the tray is
-    shut the row eases down to its single-line height (one 240ms height
-    animation on the prompt row, skipped under Reduce Motion) instead of
-    snapping. The CSS keys the stack on the tray's own state, so
-    ChatComposer stamps nothing for it. The
+    squeezed by a still-wide cluster on the way out. The CSS keys all of
+    that on the tray's own state, so ChatComposer stamps nothing for it. The
     timeline is a canvas: a 2px dot per 50 ms
     sample, newest at the right, so silence is dots and speech is bars
     scrolling left. The live mic is a 16% blue chip with a glowing blue glyph;
