@@ -116,6 +116,7 @@ describe("fork local dictation", () => {
   it("keeps the composer owning the session, with the bridge and helper wired", () => {
     const composer = read("../components/chat/ChatComposer.tsx");
     const control = read("../custom/voice/ForkDictationControl.tsx");
+    const controller = read("../custom/voice/useForkDictationController.ts");
     const preload = read("../../../desktop/src/preload.ts");
     const runtimeExports = read("../../../../packages/client-runtime/src/voice-input/index.ts");
     const packaging = read("../../../../scripts/build-desktop-artifact.ts");
@@ -147,18 +148,150 @@ describe("fork local dictation", () => {
     );
     expect(hookArgument).not.toContain("promptRef.current =");
     expect(hookArgument).not.toContain("value: promptRef.current");
+    // While dictating in a started thread the cluster drops under the prompt
+    // at full width, so the timeline spans the composer. Keyed in CSS on the
+    // tray's own state: ChatComposer stamps no attribute for it. Open or
+    // closing, not just open: the row stays stacked for the whole slide shut,
+    // so the prompt is never squeezed by a still-wide cluster on the way out.
+    expect(composer).not.toContain("data-fork-composer-dictating");
+    const stacked = String.raw`:has\(\s*\[data-fork-dictation-tray="open"\],\s*\[data-fork-dictation-tray="closing"\]\s*\)`;
+    expect(theme).toMatch(
+      new RegExp(
+        String.raw`\[data-fork-composer-prompt-row\]${stacked}\s*\{[^}]*flex-direction:\s*column`,
+        "u",
+      ),
+    );
+    expect(theme).toMatch(
+      new RegExp(
+        String.raw`\[data-fork-composer-prompt-row\]${stacked}\s*\[data-chat-composer-actions="right"\]\s*\{[^}]*width:\s*100%`,
+        "u",
+      ),
+    );
+    // The typed text keeps its exact measure: the docked prompt reserves the
+    // width the cluster had beside it (mic + send, plus attach when offered,
+    // on 8px gaps, plus the row's 24px gap), so nothing reflows. Attach is
+    // hidden by CSS while the tray is open, not unmounted, so ChatComposer
+    // keeps upstream's render and the reserve can still count it.
+    expect(theme).toMatch(
+      new RegExp(
+        String.raw`:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]${stacked}\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)`,
+        "u",
+      ),
+    );
+    expect(theme).toMatch(
+      new RegExp(
+        String.raw`${stacked}:has\(\s*\[data-fork-composer-action="attach"\]\s*\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 8px \+ 24px \+ 24px\)`,
+        "u",
+      ),
+    );
+    expect(theme).toMatch(
+      new RegExp(
+        String.raw`\[data-chat-composer-actions="right"\]${stacked}\s*\[data-fork-composer-action="attach"\]\s*\{[^}]*display:\s*none`,
+        "u",
+      ),
+    );
+    expect(composer).toContain("{showComposerAttachAction ? (");
+    expect(composer).not.toContain("showComposerAttachAction && !dictation.blocksSubmission");
     // A hidden action cluster settles the recording instead of orphaning it.
     expect(composer).toMatch(
       /if \(!dictationControlsVisible\) settleDictationWithoutControls\(\)/u,
     );
     // The mic, X and check share the attach/send box and hover from theme.custom.css.
-    for (const action of ["dictate", "dictate-cancel"]) {
+    for (const action of ["dictate", "dictate-cancel", "dictate-done"]) {
       expect(control).toContain(`data-fork-composer-action="${action}"`);
       expect(theme).toContain(`[data-fork-composer-action="${action}"]`);
     }
+    // The mic stays a mic and slides left as a tray opens beside it with the
+    // level timeline, X and check: the tray is always mounted (inert while
+    // shut) and theme.custom.css transitions its flex-grow 0 → 1, so it fills
+    // the row where there is free space (the draft box) and its content
+    // width where there is none.
+    expect(control).toContain("data-fork-dictation-tray={trayState} inert={!busy}");
+    // "closing" holds the started thread's row stacked until the tray's own
+    // box is back to zero, so the collapse never squeezes the prompt; the box
+    // says when, not a timer, so Reduce Motion (no slide) closes at once.
+    expect(control).toContain(
+      'const trayState = busy ? "open" : trayAtRest ? "closed" : "closing";',
+    );
+    expect(control).toContain("setTrayAtRest(entry.contentRect.width === 0)");
+    expect(control).toMatch(/<MicrophoneIcon \/>\s*<\/TooltipTrigger>/u);
+    // The wrapper never changes size on its own; only the tray animates, so
+    // the mic's slide is continuous in both directions.
+    expect(control).toContain('className="relative flex min-w-0 flex-1 items-center justify-end"');
+    expect(control).not.toContain('busy ? "min-w-0 flex-1"');
+    expect(theme).toMatch(
+      /\[data-fork-dictation-tray\]\s*\{[^}]*flex:\s*0 1 0px;[^}]*transition:\s*flex-grow/u,
+    );
+    expect(theme).toMatch(/\[data-fork-dictation-tray="open"\]\s*\{[^}]*flex-grow:\s*1/u);
+    // The timeline is a canvas that fills the tray: dots for silence, bars
+    // for speech, newest at the right edge.
+    expect(control).toContain("<canvas");
+    expect(control).toContain('className="block h-6 flex-1 text-foreground"');
+    // The tray reports no content width of its own; its animated min-width
+    // stands in, so a content-sized cluster shrinks in step with the collapse
+    // instead of snapping once flex-grow hits zero.
+    expect(theme).toMatch(
+      /\[data-fork-dictation-tray\]\s*\{[^}]*contain:\s*inline-size;[^}]*transition:[^}]*min-width 240ms/u,
+    );
+    expect(theme).toMatch(
+      /\[data-fork-dictation-tray="open"\]\s*\{[^}]*min-width:\s*var\(--fork-dictation-tray-min\)/u,
+    );
+    expect(control).toContain("new ResizeObserver(paint)");
+    // Bars, X and check stagger in behind the slide, in that order.
+    for (const item of ["bars", "cancel", "done"]) {
+      expect(control).toContain(`data-fork-dictation-tray-item="${item}"`);
+    }
+    const delayOf = (item: string) =>
+      Number(
+        theme.match(
+          new RegExp(
+            `\\[data-fork-dictation-tray="open"\\]\\s*\\[data-fork-dictation-tray-item="${item}"\\]\\s*\\{[^}]*transition-delay:\\s*(\\d+)ms`,
+            "u",
+          ),
+        )?.[1],
+      );
+    expect(delayOf("bars")).toBeLessThan(delayOf("cancel"));
+    expect(delayOf("cancel")).toBeLessThan(delayOf("done"));
+    // Reduce Motion has to name the open-tray ancestor, or the open-state
+    // springs and delays (one attribute more specific) keep winning.
+    expect(theme).toMatch(
+      /prefers-reduced-motion: reduce\)\s*\{[^{]*\[data-fork-dictation-tray="open"\]\s*\[data-fork-dictation-tray-item\]\s*\{\s*transition:\s*none/u,
+    );
+    // While live, the mic is pressed on a blue chip with a glowing blue glyph.
+    // The timeline paints in its own colour, the foreground, so it survives
+    // light mode; dark makes it the same white as the X and check beside it.
+    expect(control).toContain("aria-pressed={busy}");
+    expect(control).toContain("getComputedStyle(canvas).color");
+    expect(control).not.toContain('"#ffffff"');
+    expect(theme).toMatch(
+      /\.dark \[data-fork-dictation-tray-item="bars"\]\s*\{[^}]*color:\s*#ffffff/u,
+    );
+    expect(theme).toMatch(
+      /\[data-fork-composer-action="dictate"\]\[aria-pressed="true"\]\s*\{[^}]*background:\s*rgb\(24 124 255 \/ 16%\)/u,
+    );
+    expect(theme).toMatch(
+      /\[data-fork-composer-action="dictate"\]\[aria-pressed="true"\]\s*svg\s*\{[^}]*drop-shadow/u,
+    );
     // The button renders state only.
     expect(control).toContain("if (!dictation.isAvailable) return null");
     expect(control).not.toContain("new VoiceInputController");
+    // Idle microphone hover is "Dictate" on the frosted glass tooltip, a
+    // step larger than the default chip. Recording/transcribing keep labels.
+    expect(control).toContain('variant="glass"');
+    expect(control).toContain('data-fork-glass-tooltip=""');
+    expect(control).toContain('{recording || transcribing ? label : "Dictate"}');
+    expect(control).not.toContain("Free and local");
+    expect(theme).toMatch(
+      /\[data-slot="tooltip-popup"\]\.dropdown-glass\[data-fork-glass-tooltip\]\s*\{[^}]*backdrop-filter:\s*blur\(20px\)/u,
+    );
+    expect(theme).toMatch(
+      /\[data-slot="tooltip-popup"\]\[data-fork-glass-tooltip\]\s*\{[^}]*font-size:\s*13px/u,
+    );
+    // Toggle is a tap of right Command, not a chord that would steal ⌘C.
+    expect(controller).toContain('event.code === "MetaRight"');
+    expect(controller).not.toContain('event.code === "Space"');
+    expect(control).toContain("Dictate (Right Command)");
+    expect(control).not.toContain("Ctrl+Shift+Space");
     // Fork IPC stays out of shared packages.
     expect(preload).toContain('"fork:voice-transcribe"');
     expect(preload).not.toContain("@t3tools/client-runtime");

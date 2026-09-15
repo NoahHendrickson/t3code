@@ -35,8 +35,8 @@ const transcribe = vi.fn(async () => "spoken words");
 
 /**
  * Each thread gets its own composer element, so a stale `getComposerElement`
- * is observable: the chord only starts when the keydown target sits inside the
- * composer of the thread currently rendered.
+ * is observable: the right-Command tap only starts when the keyup target sits
+ * inside the composer of the thread currently rendered.
  */
 class FakeNode {
   constructor(readonly ownerKey: string) {}
@@ -87,19 +87,35 @@ async function renderThread(ownerKey: string) {
   });
 }
 
-function pressChord(target: unknown) {
-  const event = new Event("keydown", { cancelable: true });
+function dispatchKey(
+  type: "keydown" | "keyup",
+  target: unknown,
+  init: {
+    key: string;
+    code: string;
+    metaKey?: boolean;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+  },
+) {
+  const event = new Event(type, { cancelable: true });
   Object.defineProperty(event, "target", { value: target });
   Object.assign(event, {
-    key: " ",
-    code: "Space",
-    ctrlKey: true,
-    shiftKey: true,
-    metaKey: false,
-    altKey: false,
+    key: init.key,
+    code: init.code,
+    ctrlKey: init.ctrlKey ?? false,
+    shiftKey: init.shiftKey ?? false,
+    altKey: init.altKey ?? false,
+    metaKey: init.metaKey ?? false,
     repeat: false,
   });
   window.dispatchEvent(event);
+}
+
+function tapRightCommand(target: unknown) {
+  dispatchKey("keydown", target, { key: "Meta", code: "MetaRight", metaKey: true });
+  dispatchKey("keyup", target, { key: "Meta", code: "MetaRight", metaKey: false });
 }
 
 beforeEach(async () => {
@@ -216,26 +232,61 @@ describe("dictation thread ownership", () => {
     expect(drafts.has("thread-a")).toBe(false);
   });
 
-  it("runs the keyboard chord against the visible thread's composer", async () => {
+  it("runs the right Command tap against the visible thread's composer", async () => {
     await renderThread("thread-a");
     await renderThread("thread-b");
 
     // The previous thread's editor is no longer inside the composer the hook reads.
     await act(async () => {
-      pressChord(editorFor("thread-a"));
+      tapRightCommand(editorFor("thread-a"));
     });
     expect(dictation.state.phase).toBe("idle");
 
     await act(async () => {
-      pressChord(editorFor("thread-b"));
+      tapRightCommand(editorFor("thread-b"));
     });
     expect(dictation.state.phase).toBe("recording");
     await act(async () => {
-      pressChord(editorFor("thread-b"));
+      tapRightCommand(editorFor("thread-b"));
     });
     expect(dictation.state.phase).toBe("idle");
     expect(drafts.get("thread-b")).toBe("spoken words");
     expect(drafts.has("thread-a")).toBe(false);
+  });
+
+  it("does not start dictation when right Command is used as a modifier", async () => {
+    await renderThread("thread-a");
+    const editor = editorFor("thread-a");
+    await act(async () => {
+      dispatchKey("keydown", editor, { key: "Meta", code: "MetaRight", metaKey: true });
+      dispatchKey("keydown", editor, { key: "c", code: "KeyC", metaKey: true });
+      dispatchKey("keyup", editor, { key: "c", code: "KeyC", metaKey: true });
+      dispatchKey("keyup", editor, { key: "Meta", code: "MetaRight", metaKey: false });
+    });
+    expect(dictation.state.phase).toBe("idle");
+  });
+
+  it("does not start dictation when right Command modifies a click or scroll", async () => {
+    await renderThread("thread-a");
+    const editor = editorFor("thread-a");
+    for (const type of ["pointerdown", "wheel"]) {
+      await act(async () => {
+        dispatchKey("keydown", editor, { key: "Meta", code: "MetaRight", metaKey: true });
+        window.dispatchEvent(new Event(type));
+        dispatchKey("keyup", editor, { key: "Meta", code: "MetaRight", metaKey: false });
+      });
+      expect(dictation.state.phase, type).toBe("idle");
+    }
+  });
+
+  it("ignores a tap of left Command", async () => {
+    await renderThread("thread-a");
+    const editor = editorFor("thread-a");
+    await act(async () => {
+      dispatchKey("keydown", editor, { key: "Meta", code: "MetaLeft", metaKey: true });
+      dispatchKey("keyup", editor, { key: "Meta", code: "MetaLeft", metaKey: false });
+    });
+    expect(dictation.state.phase).toBe("idle");
   });
 
   it("keeps retained start and cancel callbacks pointed at the visible thread", async () => {

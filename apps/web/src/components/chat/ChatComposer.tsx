@@ -5109,10 +5109,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       }
       className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
     >
-      {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
-      {/* Attach steps aside while dictation is in flight; its bars and buttons take the slot. */}
-      {showComposerAttachAction && !dictation.blocksSubmission ? (
-        /* fork:end fork-local-dictation */
+      {showComposerAttachAction ? (
         <>
           <input
             ref={attachmentInputRef}
@@ -5975,16 +5972,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     "relative",
                     isComposerResting && "flex min-w-0 items-center gap-1",
                     isComposerResting &&
-                      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-                      // The dictating cluster (meter, X, check) is wider than attach + send.
-                      (dictation.blocksSubmission
-                        ? "pr-36"
-                        : /* fork:end fork-local-dictation */
-                          settings.contextWindowMeterEnabled && activeContextWindow
-                          ? "pr-28"
-                          : showComposerAttachAction
-                            ? "pr-20"
-                            : "pr-12"),
+                      (settings.contextWindowMeterEnabled && activeContextWindow
+                        ? "pr-28"
+                        : showComposerAttachAction
+                          ? "pr-20"
+                          : "pr-12"),
                   )}
                 >
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}

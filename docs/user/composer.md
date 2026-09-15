@@ -84,8 +84,8 @@ and use **Attach again** or remove the missing file before sending.
 
 ## Local dictation on desktop (macOS)
 
-Use the composer's microphone, or press `Ctrl+Shift+Space` while the composer is
-focused, to start dictating. Press it again, or click the stop button, to insert
+Use the composer's microphone, or tap the right Command key while the composer is
+focused, to start dictating. Tap it again, or click the check, to insert
 the transcript at the cursor, then review and edit it before sending. Press
 `Escape` or use Cancel to discard it. Recordings stop automatically after five
 minutes.
