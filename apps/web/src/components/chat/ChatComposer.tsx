@@ -1,6 +1,6 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-import { ForkDictationControl } from "~/custom/voice/ForkDictationControl";
+import { ForkDictationGhostMic, ForkDictationNotices } from "~/custom/voice/ForkDictationControl";
 import { useForkDictationController } from "~/custom/voice/useForkDictationController";
 /* fork:end fork-local-dictation */
 import {
@@ -1134,6 +1134,9 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   hasSendableContent: boolean;
   preserveComposerFocusOnPointerDown?: boolean;
   showSendWhileRunning?: boolean;
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  forkDictation?: ComponentProps<typeof ComposerPrimaryActions>["forkDictation"];
+  /* fork:end fork-local-dictation */
   onPreviousPendingQuestion: () => void;
   onInterrupt: () => void;
   onImplementPlanInNewThread: () => void;
@@ -1168,6 +1171,9 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
         hasSendableContent={props.hasSendableContent}
         preserveComposerFocusOnPointerDown={props.preserveComposerFocusOnPointerDown ?? false}
         showSendWhileRunning={props.showSendWhileRunning ?? false}
+        /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+        forkDictation={props.forkDictation ?? null}
+        /* fork:end fork-local-dictation */
         onPreviousPendingQuestion={props.onPreviousPendingQuestion}
         onInterrupt={props.onInterrupt}
         onImplementPlanInNewThread={props.onImplementPlanInNewThread}
@@ -1769,12 +1775,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     selectedModel,
   );
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  // The plan follow-up prompt puts Implement/Refine in the send slot, so the
+  // mic has no place to appear there and the keyboard must not start one.
+  // Dictation follows the editor's gate, not send's: an unassigned new-agent
+  // draft keeps its prompt editable while a project is still to be chosen,
+  // so it can be dictated into too, and send stays blocked as before.
   const dictationDisabled =
     isConnecting ||
     activePendingApproval !== null ||
     pendingUserInputs.length > 0 ||
-    promptLockedForProject ||
-    projectSelectionRequired;
+    showPlanFollowUpPrompt ||
+    promptLockedForProject;
   const dictation = useForkDictationController({
     ownerKey: composerTargetKey(composerDraftTarget),
     disabled: dictationDisabled,
@@ -2378,11 +2389,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const showMobilePendingAnswerActions =
     isMobileViewport && !isComposerCollapsedMobile && pendingPrimaryAction !== null;
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-  // Mirrors resolveComposerShellVisibility's showInlinePrimaryAction: when the
-  // mic/check/X cluster unmounts, a live recording is transcribed rather than
-  // left running with nothing on screen to end it.
+  // Mirrors the paths on which ComposerPrimaryActions renders the send slot:
+  // when the check and X unmount (an approval takes the cluster, a pending
+  // question puts its Next/Submit there on every viewport, or a plan
+  // follow-up puts Implement there), a live recording is transcribed rather
+  // than left running with nothing on screen to end it.
   const dictationControlsVisible =
-    activePendingApproval === null && !showMobilePendingAnswerActions;
+    activePendingApproval === null &&
+    pendingPrimaryAction === null &&
+    !(pendingUserInputs.length === 0 && showPlanFollowUpPrompt);
+  // Dictation takes the send slot with nothing to send (the mic in place of a
+  // disabled send) and for the whole of a live session (the check and X).
+  const dictationOwnsPrimaryAction =
+    dictation.isAvailable &&
+    (dictation.blocksSubmission ||
+      (!composerSendState.hasSendableContent && !isSendBusy && !isConnecting));
   const { settleWithoutControls: settleDictationWithoutControls } = dictation;
   useEffect(() => {
     if (!dictationControlsVisible) settleDictationWithoutControls();
@@ -5100,6 +5121,46 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       </>
     ) : null;
 
+  // Attach leads the prompt row (ComposerPromptRow's leading slot) rather
+  // than riding the primary cluster, so typed text starts after the plus.
+  const composerAttachAction = showComposerAttachAction ? (
+    <>
+      <input
+        ref={attachmentInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? []);
+          event.currentTarget.value = "";
+          void addComposerAttachments(files);
+          focusComposer();
+        }}
+      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={() => attachmentInputRef.current?.click()}
+              aria-label="Attach files"
+              /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+              data-fork-composer-action="attach"
+              /* fork:end fork-composer-shell */
+            />
+          }
+        >
+          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+          <PlusIcon />
+          {/* fork:end fork-composer-shell */}
+        </TooltipTrigger>
+        <TooltipPopup>Attach files</TooltipPopup>
+      </Tooltip>
+    </>
+  ) : null;
   const composerPrimaryActionSlot = (
     <div
       data-chat-composer-actions="right"
@@ -5109,46 +5170,22 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       }
       className="flex shrink-0 flex-nowrap items-center justify-end gap-2"
     >
-      {showComposerAttachAction ? (
-        <>
-          <input
-            ref={attachmentInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(event) => {
-              const files = Array.from(event.currentTarget.files ?? []);
-              event.currentTarget.value = "";
-              void addComposerAttachments(files);
-              focusComposer();
-            }}
-          />
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onPointerDown={(event) => event.preventDefault()}
-                  onClick={() => attachmentInputRef.current?.click()}
-                  aria-label="Attach files"
-                  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-                  data-fork-composer-action="attach"
-                  /* fork:end fork-composer-shell */
-                />
-              }
-            >
-              {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-              <PlusIcon />
-              {/* fork:end fork-composer-shell */}
-            </TooltipTrigger>
-            <TooltipPopup>Attach files</TooltipPopup>
-          </Tooltip>
-        </>
-      ) : null}
       {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
-      <ForkDictationControl dictation={dictation} disabled={dictationDisabled} />
+      <ForkDictationNotices dictation={dictation} />
+      {/* Once there is something to send, send takes its slot back and the mic
+          steps beside it as a ghost. A live session's X and check live in the
+          slot itself, so the ghost hides for the session; it stays mounted
+          when the session started over typed text, so the stacked row's
+          prompt reserve (theme.custom.css, keyed on its presence) still
+          counts the width it had. */}
+      {!dictationOwnsPrimaryAction ||
+      (dictation.blocksSubmission && composerSendState.hasSendableContent) ? (
+        <ForkDictationGhostMic
+          dictation={dictation}
+          disabled={dictationDisabled}
+          hidden={dictationOwnsPrimaryAction}
+        />
+      ) : null}
       {/* fork:end fork-local-dictation */}
       <ComposerFooterPrimaryActions
         compact={isComposerResting || isComposerPrimaryActionsCompact}
@@ -5166,6 +5203,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         hasSendableContent={composerSendState.hasSendableContent}
         preserveComposerFocusOnPointerDown={isMobileViewport || isComposerResting}
         showSendWhileRunning={isMobileViewport}
+        /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+        forkDictation={
+          dictationOwnsPrimaryAction ? { dictation, disabled: dictationDisabled } : null
+        }
+        /* fork:end fork-local-dictation */
         onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
         onInterrupt={handleInterruptPrimaryAction}
         onImplementPlanInNewThread={handleImplementPlanInNewThreadPrimaryAction}
@@ -5982,6 +6024,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
                   <ComposerPromptRow
                     action={composerPrimaryActionSlot}
+                    leading={composerAttachAction}
                     approvalPending={activePendingApproval !== null}
                     mobilePendingActionsVisible={showMobilePendingAnswerActions}
                   >

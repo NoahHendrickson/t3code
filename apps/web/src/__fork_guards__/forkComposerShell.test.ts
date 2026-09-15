@@ -638,6 +638,30 @@ describe("fork guard: fork-composer-shell", () => {
     // squash it and steal its hover.
     expect(chatComposer).toContain('data-fork-composer-action="attach"');
     expect(chatComposer).toContain('aria-label="Attach files"');
+    // Attach leads the prompt row (ComposerPromptRow's leading slot), so in a
+    // started thread the text starts after the plus and send trails alone.
+    expect(chatComposer).toMatch(/const composerAttachAction = showComposerAttachAction \? \(/u);
+    expect(chatComposer).toContain("leading={composerAttachAction}");
+    const leadingGap = rules.find(
+      (rule) =>
+        rule.selector.includes(":not([data-draft-hero])") &&
+        rule.selector.includes("[data-fork-composer-leading-actions]"),
+    );
+    expect(leadingGap?.body, "plus sits 6px from the text, not the row's 24px").toMatch(
+      /margin-inline-end:\s*-18px/u,
+    );
+    const promptLift = rules.find(
+      (rule) =>
+        rule.selector.includes(":not([data-draft-hero])") &&
+        rule.selector.endsWith("[data-fork-composer-prompt]") &&
+        rule.body.includes("translate:"),
+    );
+    expect(promptLift?.body, "text is lifted 1px to centre on the plus").toMatch(
+      /translate:\s*0 -1px/u,
+    );
+    expect(chatComposer).not.toMatch(
+      /data-chat-composer-actions="right"[\s\S]{0,600}?\{showComposerAttachAction \? \(/u,
+    );
     // The glyph is a plus; upstream's paperclip must not come back on a sync.
     expect(chatComposer).toMatch(/data-fork-composer-action="attach"[\s\S]{0,400}?<PlusIcon \/>/u);
     expect(chatComposer).not.toContain("<PaperclipIcon />");
