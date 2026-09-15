@@ -90,7 +90,11 @@ function isUsageWindowDays(value: number): value is UsagePagePreferences["window
   return WINDOW_OPTIONS.some((option) => option.days === value);
 }
 
-export function UsagePage() {
+export function UsagePage(
+  /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
+  { chrome = "page" }: { readonly chrome?: "page" | "panel" } = {},
+  /* fork:end fork-usage-popover */
+) {
   const [preferences, setPreferences] = useState(readUsagePagePreferences);
   const [windowSelection, setWindowSelection] = useState(() => ({
     days: preferences.windowDays,
@@ -202,7 +206,18 @@ export function UsagePage() {
       ? `${formatDateTimeShort(window.sinceTime, window.timeZone)} to ${formatDateTimeShort(window.untilTime, window.timeZone)}`
       : `${formatDayShort(window.sinceDay)} to ${formatDayShort(window.untilDay)}`;
   const topbarContent = (
-    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-2 xl:flex">
+    <div
+      className={
+        /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover
+           The page toolbar keys off viewport xl/2xl. Inside the popover those
+           breakpoints still fire, so the date label and toggle groups share
+           one overflowing row. Panel chrome wraps and drops the date label. */
+        chrome === "panel"
+          ? "flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2 py-2"
+          : "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-2 xl:flex"
+        /* fork:end fork-usage-popover */
+      }
+    >
       <WorkspaceBreadcrumb ariaLabel="Usage breadcrumb" className="col-span-2 min-w-0">
         <WorkspaceBreadcrumbItem>
           <h1>Usage</h1>
@@ -222,11 +237,27 @@ export function UsagePage() {
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
       {!showingLimits ? (
-        <span className="hidden min-w-0 truncate text-xs text-muted-foreground 2xl:block">
+        <span
+          className={
+            /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
+            chrome === "panel"
+              ? "hidden"
+              : "hidden min-w-0 truncate text-xs text-muted-foreground 2xl:block"
+            /* fork:end fork-usage-popover */
+          }
+        >
           {windowLabel}
         </span>
       ) : null}
-      <div className="ms-auto hidden min-w-0 items-center justify-end gap-2 xl:flex">
+      <div
+        className={
+          /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
+          chrome === "panel"
+            ? "ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2"
+            : "ms-auto hidden min-w-0 items-center justify-end gap-2 xl:flex"
+          /* fork:end fork-usage-popover */
+        }
+      >
         <ToggleGroup
           aria-label="Usage metric"
           variant="segmented"
@@ -271,7 +302,15 @@ export function UsagePage() {
           <RefreshIcon className="size-3.5" refreshing={isRefreshing} />
         </Button>
       </div>
-      <div className="col-span-2 ms-auto flex min-w-0 items-center justify-end gap-1 xl:hidden">
+      <div
+        className={
+          /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
+          chrome === "panel"
+            ? "hidden"
+            : "col-span-2 ms-auto flex min-w-0 items-center justify-end gap-1 xl:hidden"
+          /* fork:end fork-usage-popover */
+        }
+      >
         <Select
           value={metric}
           onValueChange={(value) => {
@@ -333,265 +372,292 @@ export function UsagePage() {
     </div>
   );
 
-  return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
+  const usageBody = (
+    <>
+      {/* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */}
+      {chrome === "panel" ? (
+        <div className="shrink-0 px-4">{topbarContent}</div>
+      ) : (
         <WorkspacePageHeader electron={isElectron} className="h-auto">
           {topbarContent}
         </WorkspacePageHeader>
+      )}
+      {/* fork:end fork-usage-popover */}
 
-        <ScrollArea className="min-h-0 flex-1">
-          <WorkspacePageContainer width="wide">
-            {selectedEnvironments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {environments.length === 0
-                  ? `Connect an environment to see ${showingLimits ? "limits" : "usage"}.`
-                  : `Select an environment to see ${showingLimits ? "limits" : "usage"}.`}
-              </p>
-            ) : showingLimits ? (
-              <UsageLimitsSection selectedEnvironmentIds={selectedEnvironmentIds} />
-            ) : isPending ? (
-              <UsageSkeleton />
-            ) : (
-              <>
-                <section className="grid gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-                  <div className="flex min-w-0 flex-col gap-5">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-4xl font-semibold text-foreground tabular-nums">
-                        {metric === "cost"
-                          ? formatUsd(merged.costUsd)
-                          : formatTokens(merged.totalTokens)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {metric === "cost"
-                          ? `${formatCount(merged.sessions)} sessions · API estimate`
-                          : `${formatCount(merged.sessions)} sessions`}
-                      </span>
-                    </div>
+      <ScrollArea className="min-h-0 flex-1">
+        <WorkspacePageContainer
+          width="wide"
+          /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
+          className={chrome === "panel" ? "max-w-none px-4 pt-4 pb-6 sm:px-4" : undefined}
+          /* fork:end fork-usage-popover */
+        >
+          {selectedEnvironments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {environments.length === 0
+                ? `Connect an environment to see ${showingLimits ? "limits" : "usage"}.`
+                : `Select an environment to see ${showingLimits ? "limits" : "usage"}.`}
+            </p>
+          ) : showingLimits ? (
+            <UsageLimitsSection selectedEnvironmentIds={selectedEnvironmentIds} />
+          ) : isPending ? (
+            <UsageSkeleton />
+          ) : (
+            <>
+              <section className="grid gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+                <div className="flex min-w-0 flex-col gap-5">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-4xl font-semibold text-foreground tabular-nums">
+                      {metric === "cost"
+                        ? formatUsd(merged.costUsd)
+                        : formatTokens(merged.totalTokens)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {metric === "cost"
+                        ? `${formatCount(merged.sessions)} sessions · API estimate`
+                        : `${formatCount(merged.sessions)} sessions`}
+                    </span>
+                  </div>
 
-                    {activeProviders.map((provider) => {
-                      const totals = merged.providers.find((entry) => entry.provider === provider);
-                      const share =
-                        metric === "cost" ? (totals?.costShare ?? 0) : (totals?.tokenShare ?? 0);
-                      const providerSessions = totals?.sessions ?? 0;
-                      const sessionLabel = `${formatCount(providerSessions)} ${
-                        providerSessions === 1 ? "session" : "sessions"
-                      }`;
-                      return (
-                        <div key={provider} className="flex flex-col gap-1">
-                          <div className="flex items-baseline justify-between gap-4">
-                            <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
-                              <span
-                                aria-hidden
-                                className="size-2 shrink-0 rounded-full"
-                                style={{
-                                  backgroundColor: PROVIDER_PRESENTATION[provider].color,
-                                }}
-                              />
-                              <ProviderMark provider={provider} className="size-4" />
-                              <span className="flex min-w-0 items-baseline gap-1.5">
-                                <span className="truncate">
-                                  {PROVIDER_PRESENTATION[provider].label}
-                                </span>
-                                <span className="shrink-0 whitespace-nowrap text-[11px] text-muted-foreground tabular-nums">
-                                  {sessionLabel}
-                                </span>
+                  {activeProviders.map((provider) => {
+                    const totals = merged.providers.find((entry) => entry.provider === provider);
+                    const share =
+                      metric === "cost" ? (totals?.costShare ?? 0) : (totals?.tokenShare ?? 0);
+                    const providerSessions = totals?.sessions ?? 0;
+                    const sessionLabel = `${formatCount(providerSessions)} ${
+                      providerSessions === 1 ? "session" : "sessions"
+                    }`;
+                    return (
+                      <div key={provider} className="flex flex-col gap-1">
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
+                            <span
+                              aria-hidden
+                              className="size-2 shrink-0 rounded-full"
+                              style={{
+                                backgroundColor: PROVIDER_PRESENTATION[provider].color,
+                              }}
+                            />
+                            <ProviderMark provider={provider} className="size-4" />
+                            <span className="flex min-w-0 items-baseline gap-1.5">
+                              <span className="truncate">
+                                {PROVIDER_PRESENTATION[provider].label}
+                              </span>
+                              <span className="shrink-0 whitespace-nowrap text-[11px] text-muted-foreground tabular-nums">
+                                {sessionLabel}
                               </span>
                             </span>
-                            <span className="shrink-0 text-sm font-medium text-foreground tabular-nums">
-                              {metric === "cost"
-                                ? formatUsd(totals?.costUsd ?? 0)
-                                : formatTokens(totals?.totalTokens ?? 0)}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">
+                          </span>
+                          <span className="shrink-0 text-sm font-medium text-foreground tabular-nums">
                             {metric === "cost"
-                              ? `${formatPercent(share)} of cost · ${formatTokens(totals?.totalTokens ?? 0)} tokens`
-                              : `${formatPercent(share)} of tokens · ${formatUsd(totals?.costUsd ?? 0)}`}
+                              ? formatUsd(totals?.costUsd ?? 0)
+                              : formatTokens(totals?.totalTokens ?? 0)}
                           </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <span className="text-xs text-muted-foreground">
+                          {metric === "cost"
+                            ? `${formatPercent(share)} of cost · ${formatTokens(totals?.totalTokens ?? 0)} tokens`
+                            : `${formatPercent(share)} of tokens · ${formatUsd(totals?.costUsd ?? 0)}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                  <div className="flex min-w-0 flex-col gap-3">
-                    <h2 className="text-sm font-medium text-foreground">
-                      {isPast24Hours ? "Hourly" : "Daily"}{" "}
-                      {metric === "tokens" ? "processed tokens" : "cost"}
-                    </h2>
-                    <UsageProviderChart
-                      providers={activeProviders}
-                      days={days}
-                      daily={merged.daily}
-                      hours={hours}
-                      hourly={merged.hourly}
-                      metric={metric}
-                      referenceTime={window.untilTime}
-                      resolution={isPast24Hours ? "hour" : "day"}
-                      timeZone={window.timeZone}
-                    />
-                  </div>
-                </section>
+                <div className="flex min-w-0 flex-col gap-3">
+                  <h2 className="text-sm font-medium text-foreground">
+                    {isPast24Hours ? "Hourly" : "Daily"}{" "}
+                    {metric === "tokens" ? "processed tokens" : "cost"}
+                  </h2>
+                  <UsageProviderChart
+                    providers={activeProviders}
+                    days={days}
+                    daily={merged.daily}
+                    hours={hours}
+                    hourly={merged.hourly}
+                    metric={metric}
+                    referenceTime={window.untilTime}
+                    resolution={isPast24Hours ? "hour" : "day"}
+                    timeZone={window.timeZone}
+                  />
+                </div>
+              </section>
 
-                <section className="flex flex-col gap-2">
-                  <h2 className="text-sm font-medium text-foreground">Totals</h2>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-5">
-                    <Metric label="Processed tokens" value={formatTokens(merged.totalTokens)} />
-                    <Metric label="Cached input" value={formatTokens(merged.cachedInputTokens)} />
-                    <Metric
-                      label="Uncached input"
-                      value={formatTokens(merged.uncachedInputTokens)}
-                    />
-                    <Metric label="Output" value={formatTokens(merged.outputTokens)} />
-                    <Metric
-                      label="Cache savings"
-                      value={formatUsd(merged.costQuality.cacheSavingsUsd)}
-                    />
-                  </div>
-                </section>
+              <section className="flex flex-col gap-2">
+                <h2 className="text-sm font-medium text-foreground">Totals</h2>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-1 md:grid-cols-5">
+                  <Metric label="Processed tokens" value={formatTokens(merged.totalTokens)} />
+                  <Metric label="Cached input" value={formatTokens(merged.cachedInputTokens)} />
+                  <Metric label="Uncached input" value={formatTokens(merged.uncachedInputTokens)} />
+                  <Metric label="Output" value={formatTokens(merged.outputTokens)} />
+                  <Metric
+                    label="Cache savings"
+                    value={formatUsd(merged.costQuality.cacheSavingsUsd)}
+                  />
+                </div>
+              </section>
 
-                <section className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-sm font-medium text-foreground">Breakdown</h2>
-                    <ToggleGroup
-                      aria-label="Usage breakdown"
-                      variant="segmented"
-                      value={[breakdown]}
-                      onValueChange={(next) => {
-                        const value = next[0];
-                        if (value === "model" || value === "time") setBreakdown(value);
-                      }}
-                    >
-                      {(
-                        [
-                          { value: "model", label: "Model" },
-                          { value: "time", label: isPast24Hours ? "Hour" : "Day" },
-                        ] as const
-                      ).map((option) => (
-                        <Toggle key={option.value} value={option.value}>
-                          {option.label}
-                        </Toggle>
+              <section className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-medium text-foreground">Breakdown</h2>
+                  <ToggleGroup
+                    aria-label="Usage breakdown"
+                    variant="segmented"
+                    value={[breakdown]}
+                    onValueChange={(next) => {
+                      const value = next[0];
+                      if (value === "model" || value === "time") setBreakdown(value);
+                    }}
+                  >
+                    {(
+                      [
+                        { value: "model", label: "Model" },
+                        { value: "time", label: isPast24Hours ? "Hour" : "Day" },
+                      ] as const
+                    ).map((option) => (
+                      <Toggle key={option.value} value={option.value}>
+                        {option.label}
+                      </Toggle>
+                    ))}
+                  </ToggleGroup>
+                </div>
+
+                {breakdown === "model" ? (
+                  <table className="w-full table-fixed text-sm">
+                    <colgroup>
+                      <col className="w-2/5" />
+                      <col className="w-1/5" />
+                      <col className="w-1/5" />
+                      <col className="w-1/5" />
+                    </colgroup>
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                        <th className="py-2 font-normal">Model</th>
+                        <th className="py-2 text-right font-normal">Cost</th>
+                        <th className="py-2 text-right font-normal">Share</th>
+                        <th className="py-2 text-right font-normal">Tokens</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {breakdownModels.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-muted-foreground">
+                            No activity in this window.
+                          </td>
+                        </tr>
+                      ) : (
+                        breakdownModels.map((model) => (
+                          <tr
+                            key={`${model.provider}:${model.model}`}
+                            className="border-b border-border/50 transition-colors hover:bg-muted/50"
+                          >
+                            <td className="py-2 text-foreground">
+                              <span className="flex items-center gap-2">
+                                <ProviderMark provider={model.provider} className="size-3.5" />
+                                {model.model}
+                              </span>
+                            </td>
+                            <td className="py-2 text-right text-foreground tabular-nums">
+                              {formatUsd(model.costUsd)}
+                            </td>
+                            <td className="py-2 text-right text-muted-foreground tabular-nums">
+                              {formatPercent(model.costShare)}
+                            </td>
+                            <td className="py-2 text-right text-muted-foreground tabular-nums">
+                              {formatTokens(model.totalTokens)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="w-full table-fixed text-sm">
+                    <colgroup>
+                      <col className="w-2/5" />
+                      {activeProviders.map((provider) => (
+                        <col key={provider} style={{ width: timeValueColumnWidth }} />
                       ))}
-                    </ToggleGroup>
-                  </div>
-
-                  {breakdown === "model" ? (
-                    <table className="w-full table-fixed text-sm">
-                      <colgroup>
-                        <col className="w-2/5" />
-                        <col className="w-1/5" />
-                        <col className="w-1/5" />
-                        <col className="w-1/5" />
-                      </colgroup>
-                      <thead>
-                        <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                          <th className="py-2 font-normal">Model</th>
-                          <th className="py-2 text-right font-normal">Cost</th>
-                          <th className="py-2 text-right font-normal">Share</th>
-                          <th className="py-2 text-right font-normal">Tokens</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {breakdownModels.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="py-6 text-center text-muted-foreground">
-                              No activity in this window.
-                            </td>
-                          </tr>
-                        ) : (
-                          breakdownModels.map((model) => (
-                            <tr
-                              key={`${model.provider}:${model.model}`}
-                              className="border-b border-border/50 transition-colors hover:bg-muted/50"
-                            >
-                              <td className="py-2 text-foreground">
-                                <span className="flex items-center gap-2">
-                                  <ProviderMark provider={model.provider} className="size-3.5" />
-                                  {model.model}
-                                </span>
-                              </td>
-                              <td className="py-2 text-right text-foreground tabular-nums">
-                                {formatUsd(model.costUsd)}
-                              </td>
-                              <td className="py-2 text-right text-muted-foreground tabular-nums">
-                                {formatPercent(model.costShare)}
-                              </td>
-                              <td className="py-2 text-right text-muted-foreground tabular-nums">
-                                {formatTokens(model.totalTokens)}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <table className="w-full table-fixed text-sm">
-                      <colgroup>
-                        <col className="w-2/5" />
+                      <col style={{ width: timeValueColumnWidth }} />
+                      <col style={{ width: timeValueColumnWidth }} />
+                    </colgroup>
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                        <th className="py-2 font-normal">{isPast24Hours ? "Hour" : "Day"}</th>
                         {activeProviders.map((provider) => (
-                          <col key={provider} style={{ width: timeValueColumnWidth }} />
+                          <th key={provider} className="py-2 text-right font-normal">
+                            {PROVIDER_PRESENTATION[provider].label}
+                          </th>
                         ))}
-                        <col style={{ width: timeValueColumnWidth }} />
-                        <col style={{ width: timeValueColumnWidth }} />
-                      </colgroup>
-                      <thead>
-                        <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                          <th className="py-2 font-normal">{isPast24Hours ? "Hour" : "Day"}</th>
-                          {activeProviders.map((provider) => (
-                            <th key={provider} className="py-2 text-right font-normal">
-                              {PROVIDER_PRESENTATION[provider].label}
-                            </th>
-                          ))}
-                          <th className="py-2 text-right font-normal">Total</th>
-                          <th className="py-2 text-right font-normal">Tokens</th>
+                        <th className="py-2 text-right font-normal">Total</th>
+                        <th className="py-2 text-right font-normal">Tokens</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {breakdownPeriods.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={activeProviders.length + 3}
+                            className="py-6 text-center text-muted-foreground"
+                          >
+                            No activity in this window.
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {breakdownPeriods.length === 0 ? (
-                          <tr>
-                            <td
-                              colSpan={activeProviders.length + 3}
-                              className="py-6 text-center text-muted-foreground"
-                            >
-                              No activity in this window.
+                      ) : (
+                        breakdownPeriods.map((period) => (
+                          <tr
+                            key={"hourStart" in period ? period.hourStart : period.day}
+                            className="border-b border-border/50 transition-colors hover:bg-muted/50"
+                          >
+                            <td className="py-2 text-foreground">
+                              {"hourStart" in period
+                                ? formatHourShort(period.hourStart, window.timeZone)
+                                : formatDayShort(period.day)}
+                            </td>
+                            {activeProviders.map((provider) => (
+                              <td
+                                key={provider}
+                                className="py-2 text-right text-muted-foreground tabular-nums"
+                              >
+                                {formatUsd(period.byProvider.get(provider)?.costUsd ?? 0)}
+                              </td>
+                            ))}
+                            <td className="py-2 text-right text-foreground tabular-nums">
+                              {formatUsd(period.costUsd)}
+                            </td>
+                            <td className="py-2 text-right text-muted-foreground tabular-nums">
+                              {formatTokens(period.totalTokens)}
                             </td>
                           </tr>
-                        ) : (
-                          breakdownPeriods.map((period) => (
-                            <tr
-                              key={"hourStart" in period ? period.hourStart : period.day}
-                              className="border-b border-border/50 transition-colors hover:bg-muted/50"
-                            >
-                              <td className="py-2 text-foreground">
-                                {"hourStart" in period
-                                  ? formatHourShort(period.hourStart, window.timeZone)
-                                  : formatDayShort(period.day)}
-                              </td>
-                              {activeProviders.map((provider) => (
-                                <td
-                                  key={provider}
-                                  className="py-2 text-right text-muted-foreground tabular-nums"
-                                >
-                                  {formatUsd(period.byProvider.get(provider)?.costUsd ?? 0)}
-                                </td>
-                              ))}
-                              <td className="py-2 text-right text-foreground tabular-nums">
-                                {formatUsd(period.costUsd)}
-                              </td>
-                              <td className="py-2 text-right text-muted-foreground tabular-nums">
-                                {formatTokens(period.totalTokens)}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-                </section>
-              </>
-            )}
-          </WorkspacePageContainer>
-        </ScrollArea>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+            </>
+          )}
+        </WorkspacePageContainer>
+      </ScrollArea>
+    </>
+  );
+
+  /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
+  if (chrome === "panel") {
+    return (
+      <div
+        className="flex h-full min-h-0 flex-col bg-background text-foreground"
+        data-testid="usage-panel"
+      >
+        {usageBody}
+      </div>
+    );
+  }
+  /* fork:end fork-usage-popover */
+
+  return (
+    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
+        {usageBody}
       </div>
     </SidebarInset>
   );

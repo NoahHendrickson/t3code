@@ -142,20 +142,18 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(rows).toContain('data-testid="command-palette-trigger"');
     expect(rows).toContain('testId="sidebar-v2-new-thread"');
     expect(rows).toContain('testId="sidebar-v2-add-project"');
-    expect(rows).toContain('testId="sidebar-v2-usage"');
+    expect(rows).toContain("<SidebarV2UsageRow");
     expect(rows).toContain('data-testid="sidebar-v2-project-filter"');
     // The design's four rows (Figma 364:11246), in its words.
     expect(rows).toMatch(/>Search</u);
     expect(rows).toContain('label="New agent"');
     expect(rows).toContain('label="Add a project"');
-    expect(rows).toContain('label="Usage"');
     expect(rows).not.toContain("New thread");
-    // The row hands the click up so the sidebar's own navigate (and
-    // mobile-drawer close) runs it.
-    expect(sidebarV2).toContain("onUsage={handleUsageClick}");
-    expect(sidebarV2).toContain('void router.navigate({ to: "/usage" });');
+    // Usage is a popover over the current thread, not a navigate from Sidebar.
+    expect(sidebarV2).not.toContain("onUsage=");
+    expect(sidebarV2).not.toContain('void router.navigate({ to: "/usage" });');
     // One door, not two: the V2 sidebar's footer hides its Usage icon since
-    // the row above is the same page. The legacy sidebar has no row and keeps
+    // the row above is the same overlay. The legacy sidebar has no row and keeps
     // the icon, so the footer takes the flag rather than dropping the item.
     expect(sidebarV2).toContain("<SidebarChromeFooter hideUsage />");
     expect(chrome).toMatch(

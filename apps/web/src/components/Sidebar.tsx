@@ -3638,12 +3638,6 @@ export default function Sidebar() {
     if (isMobile) setOpenMobile(false);
     void startNewAgentDraft();
   }, [isMobile, setOpenMobile, startNewAgentDraft]);
-  // The chrome's Usage row (Figma 364:19891) opens the usage page; it replaces
-  // the footer's Usage icon here, which this sidebar's footer hides.
-  const handleUsageClick = useCallback(() => {
-    if (isMobile) setOpenMobile(false);
-    void router.navigate({ to: "/usage" });
-  }, [isMobile, router, setOpenMobile]);
   /* fork:end fork-new-agent-draft */
 
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
@@ -3795,7 +3789,6 @@ export default function Sidebar() {
           /* fork:end fork-new-agent-draft */
           onNewThread={handleNewThreadClick}
           onAddProject={openAddProjectCommandPalette}
-          onUsage={handleUsageClick}
         />
         <SidebarV2ProjectScopeRow
           projectGroups={projectGroups}

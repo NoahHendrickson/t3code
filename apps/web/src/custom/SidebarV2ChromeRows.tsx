@@ -22,7 +22,13 @@
  * is produced cannot break this file.
  */
 import type { SidebarProjectSortOrder } from "@t3tools/contracts/settings";
-import type { ComponentType, MouseEvent as ReactMouseEvent, ReactNode, SVGProps } from "react";
+import type {
+  ComponentProps,
+  ComponentType,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+  SVGProps,
+} from "react";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { CheckIcon, EllipsisIcon, FolderIcon, FolderPlusIcon, SearchIcon } from "lucide-react";
@@ -34,6 +40,7 @@ import {
   FadersHorizontalIcon,
   NavigationArrowIcon,
 } from "./icons/lucide-phosphor";
+import { SidebarV2UsageRow } from "./UsagePopover";
 import { CommandDialogTrigger } from "~/components/ui/command";
 import {
   Menu,
@@ -114,9 +121,24 @@ const CHROME_ACTION = cn(
 
 type ChromeIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
-/** New agent, Add a project and Usage share one shape; Search keeps its own
-    (CommandDialogTrigger). */
-function ChromeLabeledAction(props: {
+/** New agent, Add a project, and Usage share one shape; Search keeps its own
+    (CommandDialogTrigger). onClick is optional so Usage can hand the same
+    button to PopoverTrigger / DialogTrigger via `render`, the way Search
+    hands SidebarMenuButton to CommandDialogTrigger. Extra props (ref,
+    aria-expanded) forward onto the button. */
+function ChromeLabeledAction({
+  icon: Icon,
+  label,
+  ariaLabel,
+  title,
+  testId,
+  disabled,
+  active,
+  onClick,
+  trailing,
+  className,
+  ...rest
+}: {
   readonly icon: ChromeIcon;
   readonly label: string;
   readonly ariaLabel: string;
@@ -125,27 +147,44 @@ function ChromeLabeledAction(props: {
   readonly disabled?: boolean | undefined;
   /** Holds the row in its hover fill. The New agent row is "active" while the
       open draft has no project yet — the column it opened is still the
-      row's own until a project is chosen and the draft gets a card. */
+      row's own until a project is chosen and the draft gets a card. Usage
+      uses the same fill while the overlay is open. */
   readonly active?: boolean | undefined;
-  readonly onClick: () => void;
+  readonly onClick?: () => void;
   readonly trailing?: ReactNode;
-}) {
-  const Icon = props.icon;
+  readonly className?: string;
+} & Omit<
+  ComponentProps<typeof SidebarMenuButton>,
+  | "aria-label"
+  | "children"
+  | "className"
+  | "disabled"
+  | "isActive"
+  | "onClick"
+  | "size"
+  | "title"
+  | "type"
+>) {
   return (
     <SidebarMenuButton
       size="sm"
       type="button"
-      className={cn(CHROME_ACTION, props.active && "bg-sidebar-row-hover text-sidebar-foreground")}
-      isActive={props.active === true}
-      onClick={props.onClick}
-      disabled={props.disabled}
-      aria-label={props.ariaLabel}
-      title={props.title}
-      data-testid={props.testId}
+      className={cn(
+        CHROME_ACTION,
+        active && "bg-sidebar-row-hover text-sidebar-foreground",
+        className,
+      )}
+      isActive={active === true}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      title={title}
+      data-testid={testId}
+      {...rest}
     >
       <Icon className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-left">{props.label}</span>
-      {props.trailing}
+      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+      {trailing}
     </SidebarMenuButton>
   );
 }
@@ -187,7 +226,6 @@ export function SidebarV2ChromeActionRows(props: {
   readonly newThreadActive: boolean;
   readonly onNewThread: () => void;
   readonly onAddProject: () => void;
-  readonly onUsage: () => void;
 }) {
   const newThreadDisabledReason = props.newThreadDisabled
     ? "Add a project to start an agent"
@@ -218,12 +256,15 @@ export function SidebarV2ChromeActionRows(props: {
         testId="sidebar-v2-add-project"
         onClick={props.onAddProject}
       />
-      <ChromeLabeledAction
-        icon={ChartDonutIcon}
-        label="Usage"
-        ariaLabel="Usage"
-        testId="sidebar-v2-usage"
-        onClick={props.onUsage}
+      <SidebarV2UsageRow
+        trigger={
+          <ChromeLabeledAction
+            icon={ChartDonutIcon}
+            label="Usage"
+            ariaLabel="Usage"
+            testId="sidebar-v2-usage"
+          />
+        }
       />
     </SidebarGroup>
   );
