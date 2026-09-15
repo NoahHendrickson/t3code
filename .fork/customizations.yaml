@@ -40,30 +40,36 @@
     disabled: a pending approval or question routes the transcript into the
     prompt draft itself, and when the action cluster unmounts the recording is
     transcribed on the spot rather than left running with no control to end it.
-    While dictating, the attach button steps aside (hidden by CSS while the
-    tray is open, kept mounted so upstream's render stands). The mic stays a mic and
-    slides left as a tray opens to its right holding the level timeline,
-    cancel X and check, which spring up from nothing in that order while the
-    tray slides (one transition each way, no continuous animation). While
-    dictating, the action cluster drops under the prompt at full width in a
-    started thread too (the drawn draft box's arrangement), so the tray spans
-    the composer and the typed text keeps its exact measure: the prompt
-    reserves the width the cluster had beside it (mic, send, and attach when
-    offered, on their gaps), so nothing reflows, and the row stays stacked
-    until the closing slide has brought the tray back to zero (the tray
-    reports open, closing, or closed off its own box), so the text is never
-    squeezed by a still-wide cluster on the way out. The CSS keys all of
-    that on the tray's own state, so ChatComposer stamps nothing for it. The
-    timeline is a canvas: a 2px dot per 50 ms
-    sample, newest at the right, so silence is dots and speech is bars
-    scrolling left. The live mic is a 16% blue chip with a glowing blue glyph;
-    the timeline paints in the foreground colour, pure white in dark mode.
-    Mic, X and check share the attach/send 24px box, and
-    the idle mic, X and check the pure-white ghost colour, from
-    theme.custom.css. The idle microphone tooltip
-    is the word Dictate, on
-    the frosted glass recipe (70% popover tint, 20px blur) a step larger
-    than the default chip. Recording and transcribing keep their action
+    Dictation borrows the send button rather than adding controls beside it.
+    With nothing to send, the slot shows an enabled filled microphone in
+    place of a disabled send (never over a sending or connecting spinner);
+    once there is something to send, send takes the slot back and the same
+    filled mic steps beside it as a ghost in attach's box; starting a
+    session turns that same button into the check and puts a ghost cancel X
+    and the level timeline beside it; the check spins while transcribing. The
+    timeline is a canvas filling the row to the left of the X: a 2px dot per
+    50 ms sample, newest at the right, so silence is dots and speech is bars
+    scrolling left, painted in the foreground colour (pure white in dark). In
+    a started thread the cluster drops under the prompt at full width for the
+    session so the timeline spans the composer, keyed in CSS on the
+    timeline's presence, and the prompt reserves the idle cluster's width so
+    the typed text never reflows (attach's slot on the left, and on the right
+    the send slot or the ghost mic that stood before it, kept mounted and
+    hidden for the session so it still counts); attach is hidden by CSS for
+    the session. ChatComposer decides when
+    dictation owns the slot and ComposerPrimaryActions hands it over on every
+    path that renders send, including beside stop while a turn runs. The mic
+    and check wear the send button's own class list and fork tone attribute,
+    so the flat white fill in dark applies to them too; the X is a ghost in
+    attach's 24px box in the pure-white ghost colour, from theme.custom.css.
+    Nothing animates: no tray, no slide or stagger, and no separate blue mic;
+    the timeline appears in place. When the send slot
+    shows something else (an approval, a question, or the plan follow-up's
+    Implement) a live recording settles on the spot and the keyboard cannot
+    start one. The download percentage and error popover render beside the
+    slot whatever it shows. The microphone tooltip is the word Dictate, on the
+    frosted glass recipe (70% popover tint, 20px blur) a step larger than the
+    default chip. Recording and transcribing keep their action
     labels. The packaged helper exits after inference, freeing model
     memory; the model cache lives under the desktop state dir so --home-dir runs
     stay isolated.
@@ -87,6 +93,7 @@
     - apps/desktop/src/preload.ts
     - apps/desktop/vite.config.ts
     - apps/web/src/components/chat/ChatComposer.tsx
+    - apps/web/src/components/chat/ComposerPrimaryActions.tsx
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     - docs/user/composer.md
@@ -2353,9 +2360,11 @@
     that floor; it carries no backdrop blur, because its backdrop is the
     vessel's own opaque fill and blurring a uniform solid is pure GPU cost.
     BranchToolbar's stitched-strip spacing is flattened in the named context
-    row. Send and stop remain 24px square at 4px radius; dark builds without
-    stage-channel art use a flat white send button with a black icon, while
-    Dev and Nightly retain their channel fill. Existing project components
+    row. Send and stop remain 24px square at 4px radius; dark builds use a
+    flat white send button with a black icon on every build, Dev and Nightly
+    included: upstream's stage art still renders inside the button (so its
+    artwork test and exports stand) but is stamped and hidden by the theme,
+    and the tone attribute is always "flat". Existing project components
     supply all icons and controls; no Figma-exported assets are committed.
 
     Type follows the design system's dark tokens: the prompt is body/md — 14px
@@ -2391,10 +2400,12 @@
     so the banner stack lives in ChatComposer, not ChatView, and nothing
     hangs above the vessel any more (no shoulder clearance). Upstream's
     bottom toolbar is not rendered at all — the control row owns those
-    controls — and its attach-files control rides the prompt row's action
-    cluster ahead of send instead, stamped data-fork-composer-action="attach"
-    (fenced in ChatComposer) so it shares send/stop's 24px square and the
-    items-end row does not drop the prompt below the send axis, and hovering
+    controls — and its attach-files control leads the prompt row instead
+    (ComposerPromptRow's leading slot, so in a started thread the text starts
+    after the plus and send trails alone), stamped
+    data-fork-composer-action="attach" (fenced in ChatComposer) so it shares
+    send/stop's 24px square and the items-end row does not drop the prompt
+    below the send axis, and hovering
     with the ghost controls' 4% lift rather than --accent, which on the Cool
     palettes is the prompt surface it sits on. Its glyph is a plus, not
     upstream's paperclip, and in dark mode the row's ghost actions (attach and
@@ -2446,8 +2457,9 @@
     - apps/web/src/components/ChatView.tsx
     # data-fork-composer-action on the send, stop and attach buttons; the whole 24px
     # square restyle hangs off it. Send also carries
-    # data-fork-composer-send-tone ("channel" with stage art, "flat"
-    # otherwise) for the dark-mode white/black fill.
+    # data-fork-composer-send-tone (always "flat") for the dark-mode
+    # white/black fill, and its stage-art span data-fork-composer-send-art,
+    # which the theme hides.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
     # Keeps the compact stage-art renderer used inside the 24px send button.
     - apps/web/src/components/SidebarStageBackdrop.tsx
@@ -3683,8 +3695,8 @@
     alone restored the blur. That geometry is the drawn box (Figma 418:11501): an
     80px prompt surface with 8px padding, the prompt line on top and the
     attach / send actions on their own row beneath — attach leading, send
-    trailing — which folds back to the compact base row the moment the
-    thread starts. The draft composer is also capped at 42rem (the drawn
+    trailing, a two-column grid since attach is the row's own leading slot —
+    which folds back to the compact base row the moment the thread starts. The draft composer is also capped at 42rem (the drawn
     663px) instead of upstream's 48rem, keyed on a data-fork-composer-stack
     stamp on ChatView's composer stack plus the overlay's data-draft-hero.
 

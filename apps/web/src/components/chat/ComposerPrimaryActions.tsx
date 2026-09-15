@@ -3,6 +3,12 @@ import { ChevronDownIcon, ChevronLeftIcon } from "lucide-react";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import { StopSquareIcon } from "~/custom/StopSquareIcon";
 /* fork:end fork-composer-shell */
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+import {
+  ForkDictationPrimaryButton,
+  type ForkDictationPrimary,
+} from "~/custom/voice/ForkDictationControl";
+/* fork:end fork-local-dictation */
 import { useEnvironmentIdentificationMode } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
 import { StageBackdropButtonArt, useSidebarStageBackdropVariant } from "../SidebarStageBackdrop";
@@ -35,6 +41,11 @@ interface ComposerPrimaryActionsProps {
   /** Enter-to-send is disabled on mobile viewports, where stop would otherwise
    * be the only primary action and a running turn could not be steered. */
   showSendWhileRunning?: boolean;
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  /** Set when dictation takes the send slot: the mic with nothing to send, the
+   * check (and a cancel X beside it) while a session is live. */
+  forkDictation?: ForkDictationPrimary | null;
+  /* fork:end fork-local-dictation */
   onPreviousPendingQuestion: () => void;
   onInterrupt: () => void;
   onImplementPlanInNewThread: () => void;
@@ -76,6 +87,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   hasSendableContent,
   preserveComposerFocusOnPointerDown = false,
   showSendWhileRunning = false,
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  forkDictation = null,
+  /* fork:end fork-local-dictation */
   onPreviousPendingQuestion,
   onInterrupt,
   onImplementPlanInNewThread,
@@ -234,19 +248,31 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     );
   }
 
-  const sendButton = (
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+     The send button's look, hoisted so dictation can wear it: with nothing to
+     send the slot shows the mic instead of a disabled send, and a live session
+     shows the check with a cancel X beside it. Always the filled variant: the
+     fork's send is its normal button on every build (fork-composer-shell hides
+     the Dev/Nightly stage art below), so the transparent art variant would
+     leave a white glyph on nothing. */
+  const sendButtonClassName =
+    "relative isolate flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-message-action text-message-action-foreground shadow-xs transition-all duration-150 enabled:cursor-pointer enabled:inset-shadow-[0_1px_--theme(--color-white/16%)] enabled:shadow-message-action/24 hover:scale-105 hover:bg-message-action-hover active:inset-shadow-[0_1px_--theme(--color-black/8%)] active:shadow-none disabled:pointer-events-none disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100 sm:h-8 sm:w-8";
+  const sendButton = forkDictation ? (
+    <ForkDictationPrimaryButton
+      dictation={forkDictation.dictation}
+      disabled={forkDictation.disabled}
+      className={sendButtonClassName}
+    />
+  ) : (
+    /* fork:end fork-local-dictation */
     <button
       type="submit"
-      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+         Always "flat": the fork's send is its normal button on every build. */
       data-fork-composer-action="send"
-      data-fork-composer-send-tone={stageBackdropVariant ? "channel" : "flat"}
+      data-fork-composer-send-tone="flat"
       /* fork:end fork-composer-shell */
-      className={cn(
-        "relative isolate flex h-9 w-9 items-center justify-center overflow-hidden rounded-full shadow-xs transition-all duration-150 enabled:cursor-pointer enabled:inset-shadow-[0_1px_--theme(--color-white/16%)] hover:scale-105 active:inset-shadow-[0_1px_--theme(--color-black/8%)] active:shadow-none disabled:pointer-events-none disabled:opacity-30 disabled:shadow-none disabled:hover:scale-100 sm:h-8 sm:w-8",
-        stageBackdropVariant
-          ? "bg-transparent text-white enabled:shadow-black/24 enabled:hover:brightness-110"
-          : "bg-message-action text-message-action-foreground enabled:shadow-message-action/24 hover:bg-message-action-hover",
-      )}
+      className={sendButtonClassName}
       {...pointerFocusProps}
       disabled={
         isSendBusy ||
@@ -270,7 +296,16 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
       }
     >
       {stageBackdropVariant ? (
-        <span className="absolute inset-0 -z-10" aria-hidden="true">
+        <span
+          className="absolute inset-0 -z-10"
+          aria-hidden="true"
+          /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+             theme.custom.css hides the Dev/Nightly stage art off this: the
+             fork's send is its normal button on every build. Rendered still,
+             so upstream's artwork test and exports stand. */
+          data-fork-composer-send-art=""
+          /* fork:end fork-composer-shell */
+        >
           <StageBackdropButtonArt variant={stageBackdropVariant} />
         </span>
       ) : null}
@@ -309,7 +344,10 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   return (
     <>
       {renderStopGenerationButton(false)}
-      {showSendWhileRunning && hasSendableContent ? sendButton : null}
+      {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+          The mic keeps its place beside stop, and a live session its check. */}
+      {forkDictation || (showSendWhileRunning && hasSendableContent) ? sendButton : null}
+      {/* fork:end fork-local-dictation */}
     </>
   );
 });
