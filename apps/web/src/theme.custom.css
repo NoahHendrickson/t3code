@@ -2719,10 +2719,11 @@
    the row minus attach and its 6px gap on the left and minus the cluster
    and its 24px gap on the right; with everything underneath it reserves
    those same widths as padding, so nothing reflows when the session starts
-   or ends. Idle, the cluster is the 24px send slot (the mic), or the ghost
-   mic on an 8px gap before send once there was text (the ghost stays
-   mounted, hidden, for the session so it still counts). The draft box
-   already keeps its actions under the prompt, so it reserves nothing. */
+   or ends. Idle, the cluster is the 24px send slot (the mic), or two boxes
+   on an 8px gap: the ghost mic before send once there was text (the ghost
+   stays mounted, hidden, for the session so it still counts), or stop
+   before the slot while a turn runs. The draft box already keeps its
+   actions under the prompt, so it reserves nothing. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
   [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline])
@@ -2733,7 +2734,8 @@
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
   [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):has(
-    [data-fork-composer-action="dictate"]
+    [data-fork-composer-action="dictate"],
+    [data-fork-composer-action="stop"]
   )
   [data-fork-composer-prompt] {
   padding-right: calc(24px + 8px + 24px + 24px);

@@ -2390,12 +2390,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isMobileViewport && !isComposerCollapsedMobile && pendingPrimaryAction !== null;
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
   // Mirrors the paths on which ComposerPrimaryActions renders the send slot:
-  // when the check and X unmount (an approval or question takes the cluster,
-  // or a plan follow-up puts Implement there), a live recording is transcribed
-  // rather than left running with nothing on screen to end it.
+  // when the check and X unmount (an approval takes the cluster, a pending
+  // question puts its Next/Submit there on every viewport, or a plan
+  // follow-up puts Implement there), a live recording is transcribed rather
+  // than left running with nothing on screen to end it.
   const dictationControlsVisible =
     activePendingApproval === null &&
-    !showMobilePendingAnswerActions &&
+    pendingPrimaryAction === null &&
     !(pendingUserInputs.length === 0 && showPlanFollowUpPrompt);
   // Dictation takes the send slot with nothing to send (the mic in place of a
   // disabled send) and for the whole of a live session (the check and X).

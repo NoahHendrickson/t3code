@@ -225,8 +225,8 @@ describe("fork local dictation", () => {
     // the timeline spans the composer, keyed in CSS on the timeline's own
     // presence (ChatComposer stamps nothing), and the prompt reserves what
     // stood beside it (attach and its 6px gap on the left; the 24px send
-    // slot, or the ghost mic on its 8px gap before it, and the 24px gap on
-    // the right) so the typed text never reflows.
+    // slot, or the ghost mic or stop on an 8px gap beside it, and the 24px
+    // gap on the right) so the typed text never reflows.
     const live = String.raw`:has\(\[data-fork-dictation-timeline\]\)`;
     expect(theme).toMatch(
       new RegExp(
@@ -248,7 +248,7 @@ describe("fork local dictation", () => {
     );
     expect(theme).toMatch(
       new RegExp(
-        String.raw`${live}:has\(\s*\[data-fork-composer-action="dictate"\]\s*\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)`,
+        String.raw`${live}:has\(\s*\[data-fork-composer-action="dictate"\],\s*\[data-fork-composer-action="stop"\]\s*\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)`,
         "u",
       ),
     );
@@ -291,6 +291,14 @@ describe("fork local dictation", () => {
       /if \(!dictationControlsVisible\) settleDictationWithoutControls\(\)/u,
     );
     expect(composer).toMatch(/const dictationControlsVisible =[^;]*showPlanFollowUpPrompt/u);
+    // A pending question takes the slot on every viewport (ComposerPrimaryActions
+    // returns its pending-action branch before the send slot), so the gate is
+    // the pending action itself, not the mobile-only answer strip: a desktop
+    // recording must settle when a question arrives, not run on with no check.
+    expect(composer).toMatch(/const dictationControlsVisible =[^;]*pendingPrimaryAction === null/u);
+    expect(composer).not.toMatch(
+      /const dictationControlsVisible =[^;]*showMobilePendingAnswerActions/u,
+    );
     expect(composer).toMatch(/const dictationDisabled =[^;]*showPlanFollowUpPrompt/u);
     // The mic follows the editor's gate, not send's: an unassigned new-agent
     // draft (fork-new-agent-draft) blocks send until a project is chosen but
