@@ -662,13 +662,18 @@
    composer itself is not in this list any more: upstream #8734 dropped its
    .chat-composer-glass class for arbitrary utilities on ComposerSurface, and
    the composer's own filters are cleared by the [data-fork-composer-box] and
-   composer-shell rules above. */
+   composer-shell rules above.
+
+   Usage (fork-usage-popover) stamps data-fork-glass-usage and is skipped:
+   that overlay is a temporary frost over the thread, and flattening the
+   wallpaper behind it is the frost rather than a chrome surface sitting on
+   the glass. The recipe lives in theme.custom.css. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     .surface-glass,
     .alert-glass,
-    .dialog-glass,
-    .dropdown-glass,
+    .dialog-glass:not([data-fork-glass-usage]),
+    .dropdown-glass:not([data-fork-glass-usage]),
     .dialog-backdrop,
     .sidebar-stage-backdrop
   ) {
@@ -691,10 +696,14 @@
    text clearly. So the floor stays opaque and changes colour instead —
    `--fork-popup-glass-floor`, the stage as it reads on screen — and the two
    alphas over it resolve to the card's own value. The blur is already
-   cleared by the glass-set rule above. Same three arms as the base rule. */
+   cleared by the glass-set rule above. Same three arms as the base rule.
+   The usage overlay stamps data-fork-glass-usage and is skipped so it can
+   keep the frost from theme.custom.css instead of this opaque floor. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
-    :is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass,
+    :is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass:not(
+        [data-fork-glass-usage]
+      ),
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"])
   ) {

@@ -649,10 +649,7 @@ export function UsagePage(
   /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
   if (chrome === "panel") {
     return (
-      <div
-        className="flex h-full min-h-0 flex-col bg-background text-foreground"
-        data-testid="usage-panel"
-      >
+      <div className="flex h-full min-h-0 flex-col text-foreground" data-testid="usage-panel">
         {usageBody}
       </div>
     );
