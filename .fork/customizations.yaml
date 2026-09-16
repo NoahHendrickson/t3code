@@ -1905,7 +1905,10 @@
     Closing it (Escape, outside click, or the row again) returns to the
     thread that was already open. The /usage route still exists for a typed
     URL; the chrome row is not that door. The footer Usage icon stays hidden
-    on V2 so there is still one chrome door.
+    on V2 so there is still one chrome door. The popover imports the
+    dashboard lazily so the /usage route's chunk stays out of the initial
+    bundle; nothing loads or mounts until it opens. The legacy sidebar keeps
+    its footer icon and the dedicated page.
   tier: 4
   files:
     - apps/web/src/custom/UsagePopover.tsx

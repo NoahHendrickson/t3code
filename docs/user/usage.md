@@ -11,6 +11,8 @@ cost. These estimates are not your subscription bill.
 On web and desktop, open **Usage** from the sidebar. It sits over the thread you
 are looking at rather than replacing it. On a narrow screen the sidebar is a
 sheet, so Usage opens as a dialog over that sheet instead of a popover under it.
+With **Sidebar (legacy)** turned on in Settings, the footer icon opens the
+dedicated Usage page instead.
 <!-- fork:end fork-usage-popover -->
 
 Totals depend on the history available on each server. Grok turns without a saved completed-turn

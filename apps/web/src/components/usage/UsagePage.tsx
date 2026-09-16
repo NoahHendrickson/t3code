@@ -372,6 +372,10 @@ export function UsagePage(
     </div>
   );
 
+  /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover
+     The body is hoisted so the panel chrome (below) and upstream's page shell
+     can share it. The JSX inside this fence is upstream's, re-indented one
+     level; the fork's own edits carry inner fences. */
   const usageBody = (
     <>
       {/* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */}
@@ -640,6 +644,7 @@ export function UsagePage(
       </ScrollArea>
     </>
   );
+  /* fork:end fork-usage-popover */
 
   /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
   if (chrome === "panel") {

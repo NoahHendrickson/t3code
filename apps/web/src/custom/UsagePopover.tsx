@@ -12,16 +12,26 @@
  * Below 768px the V2 sidebar is a z-50 Sheet. A z-40 popover portals outside
  * that sheet and is inert underneath it. Narrow viewports use a nested
  * Dialog (also z-50) so Usage stacks above the sheet and the model-prices
- * Dialog can still stack above Usage.
+ * Dialog can still stack above Usage. The dialog keeps DialogPopup's mobile
+ * sheet treatment but sizes itself to the viewport below its 3rem top inset,
+ * where the panel's own height would otherwise run past the bottom edge.
+ *
+ * The dashboard is loaded lazily: the sidebar is in the main chunk, and a
+ * static import here would pull the whole /usage route (page, price
+ * overrides, provider chart) into every cold load whether or not Usage is
+ * ever opened. Nothing mounts until the popup opens.
  */
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import { cloneElement, useState, type ReactElement } from "react";
+import { cloneElement, lazy, Suspense, useState, type ReactElement } from "react";
 
-import { UsagePage } from "~/components/usage/UsagePage";
 import { Dialog, DialogPopup, DialogTrigger } from "~/components/ui/dialog";
 import { Popover, PopoverTrigger } from "~/components/ui/popover";
 import { useSidebar } from "~/components/ui/sidebar";
 import { cn } from "~/lib/utils";
+
+const UsagePage = lazy(() =>
+  import("~/components/usage/UsagePage").then((module) => ({ default: module.UsagePage })),
+);
 
 const USAGE_PANEL_SIZE =
   "flex h-[min(42rem,calc(100dvh-2rem))] w-[min(56rem,var(--available-width,calc(100vw-2rem)))] flex-col overflow-hidden";
@@ -30,7 +40,11 @@ export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ acti
   const [open, setOpen] = useState(false);
   const { isMobile } = useSidebar();
   const trigger = cloneElement(props.trigger, { active: open });
-  const panel = <UsagePage chrome="panel" />;
+  const panel = (
+    <Suspense fallback={null}>
+      <UsagePage chrome="panel" />
+    </Suspense>
+  );
 
   if (isMobile) {
     return (
@@ -41,7 +55,7 @@ export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ acti
           showCloseButton={false}
           className={cn(
             USAGE_PANEL_SIZE,
-            "dropdown-glass max-w-none p-0 text-popover-foreground shadow-[0_16px_40px_-18px_rgb(0_0_0/55%)] dark:shadow-[0_18px_44px_-18px_rgb(0_0_0/80%)]",
+            "dropdown-glass max-w-none p-0 text-popover-foreground shadow-[0_16px_40px_-18px_rgb(0_0_0/55%)] max-sm:h-[calc(100dvh-3rem)] max-sm:w-full dark:shadow-[0_18px_44px_-18px_rgb(0_0_0/80%)]",
           )}
           data-testid="usage-popover"
         >
