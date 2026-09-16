@@ -2652,6 +2652,36 @@
   }
 }
 
+/* ── Usage overlay (fork-usage-popover) ────────────────────────────────────
+   Same frosted recipe as the project-header menu: 70% popover tint, 20px
+   blur. Usage sits over the current thread — the messages behind it are
+   something to see through, where a model-picker menu over the transcript
+   is not. Desktop is a popover; below 768px it is a Dialog. Dark only, like
+   the opaque rule it carves out of; light keeps upstream's glass. The extra
+   attribute gives it the specificity to win without !important. Under Glass
+   the utility-clear and the opaque popup floor both skip this stamp so the
+   frost actually lands (theme.custom.palettes.css). */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="popover-popup"],
+    [data-slot="dialog-popup"]
+  ).dropdown-glass[data-fork-glass-usage] {
+  background: color-mix(in srgb, var(--popover) 70%, transparent);
+  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root[data-fork="noahhendrickson-t3code"].dark
+    :is(
+      [data-slot="popover-popup"],
+      [data-slot="dialog-popup"]
+    ).dropdown-glass[data-fork-glass-usage] {
+    background: var(--popover);
+  }
+}
+
 /* ── Dictate tooltip (fork-local-dictation) ─────────────────────────────────
    Same frosted recipe as the project-header menu: 70% popover tint, 20px
    blur. The chip sits over the composer vessel, which is something to see
