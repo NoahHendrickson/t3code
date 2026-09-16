@@ -52,15 +52,23 @@
     timeline is a canvas filling the row to the left of the X: a 2px dot per
     50 ms sample, newest at the right, so silence is dots and speech is bars
     scrolling left, painted in the foreground colour (pure white in dark). In
-    a started thread the cluster drops under the prompt at full width for the
-    session so the timeline spans the composer, keyed in CSS on the
-    timeline's presence, and the prompt reserves the idle cluster's width so
-    the typed text never reflows (attach's slot on the left, and on the right
-    the send slot or the ghost mic that stood before it, kept mounted and
-    hidden for the session so it still counts); attach is hidden by CSS for
-    the session. ChatComposer decides when
+    a started thread an empty prompt keeps the compact one-line row: attach
+    hides and the cluster (timeline, X, check) fills that slot and the editor
+    so the composer does not grow and no hole is left on the left. Typed text
+    turns the row into the draft box's grid: attach keeps its place beside
+    the last line, disabled rather than hidden so it cannot be clicked
+    mid-session (the draft box's attach is likewise disabled in place), and
+    the cluster spans the row beneath so the timeline does not squeeze the
+    lines; the prompt reserves the idle cluster's width on the right (the
+    send slot or the ghost mic that stood before it, kept mounted and hidden
+    for the session so it still counts) so the typed text never reflows.
+    ChatComposer stamps prompt-empty on the row; the timeline's presence keys
+    the rest.
+    ChatComposer decides when
     dictation owns the slot and ComposerPrimaryActions hands it over on every
-    path that renders send, including beside stop while a turn runs. The mic
+    path that renders send, including while a turn runs, where it sits to
+    stop's left so stop keeps the right edge and never moves when a session
+    starts (upstream's send while running keeps its place after stop). The mic
     and check wear the send button's own class list and fork tone attribute,
     so the flat white fill in dark applies to them too; the X is a ghost in
     attach's 24px box in the pure-white ghost colour, from theme.custom.css.
@@ -87,6 +95,7 @@
     - apps/web/src/custom/voice/ForkDictationControl.tsx
     - apps/web/src/custom/voice/forkVoiceInputBridge.ts
     - apps/web/src/custom/voice/useForkDictationController.ts
+    - apps/web/src/custom/ComposerShell.tsx
     - apps/web/src/theme.custom.css
     - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
   shadows: []

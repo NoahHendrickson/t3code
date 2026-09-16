@@ -97,8 +97,9 @@ function VoiceLevelTimeline(props: { subscribe: ForkDictation["subscribeLevel"] 
     <canvas
       ref={canvasRef}
       aria-hidden
-      // theme.custom.css keys the started thread's stacked row, the prompt's
-      // width reserve, and the timeline's own floor and colour on this.
+      // theme.custom.css keys the started thread's compact fill, the stacked
+      // row when there is typed text, the prompt's width reserve, and the
+      // timeline's own floor and colour on this.
       data-fork-dictation-timeline=""
       className="block h-6 min-w-0 flex-1 text-foreground"
     />
