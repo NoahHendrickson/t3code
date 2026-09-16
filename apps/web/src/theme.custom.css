@@ -2687,22 +2687,59 @@
 /* ── Dictation timeline (fork-local-dictation) ─────────────────────────────
    While a session is live the action row holds the level timeline, the cancel
    X and the check (which is the send button). The timeline is a canvas that
-   fills whatever width the row has left; in a started thread the cluster
-   shares the prompt row with the editor, so a full-width timeline would
-   squeeze the text. For the whole session the cluster drops under the prompt
-   and spans the row, the drawn draft box's arrangement, so the timeline gets
-   the whole width. Keyed with :has() on the timeline's own presence, so
-   ChatComposer stamps nothing; it appears and leaves in place, no slide. */
+   fills whatever width the row has left. In a started thread an empty prompt
+   would grow if the cluster dropped under it, and hiding attach would leave
+   its slot empty, so the compact row stays one line and the cluster takes
+   attach's place plus the editor. Typed text still drops the cluster under
+   the prompt so the timeline does not squeeze the lines: the row becomes the
+   draft box's grid, attach keeping its place beside the last line (disabled
+   for the session, from ChatComposer) and the cluster spanning the row
+   beneath; the prompt then reserves the idle cluster's width on the right
+   so nothing reflows. Keyed on the timeline's presence plus prompt-empty
+   from ComposerPromptRow. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]) {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
+    [data-fork-composer-prompt-empty]
+  ) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "leading prompt"
+    "actions actions";
+  align-items: end;
+  gap: 4px 0;
+}
+
+/* Attach's 6px lead is a margin here rather than the row's 24px gap pulled
+   in, so a row with no attach slot (the column collapses to nothing) starts
+   the prompt at the edge. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
+    [data-fork-composer-prompt-empty]
+  )
+  [data-fork-composer-leading-actions] {
+  grid-area: leading;
+  margin-inline-end: 6px;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline])
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
+    [data-fork-composer-prompt-empty]
+  )
+  [data-fork-composer-prompt] {
+  grid-area: prompt;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
+    [data-fork-composer-prompt-empty]
+  )
   [data-chat-composer-inline-actions] {
+  grid-area: actions;
   align-self: stretch;
 }
 
@@ -2712,47 +2749,78 @@
   width: 100%;
 }
 
-/* The typed text keeps its measure. Between its neighbours the prompt was
-   the row minus attach and its 6px gap on the left and minus the cluster
-   and its 24px gap on the right; with everything underneath it reserves
-   those same widths as padding, so nothing reflows when the session starts
-   or ends. Idle, the cluster is the 24px send slot (the mic), or two boxes
-   on an 8px gap: the ghost mic before send once there was text (the ghost
-   stays mounted, hidden, for the session so it still counts), or stop
-   before the slot while a turn runs. The draft box already keeps its
-   actions under the prompt, so it reserves nothing. */
+/* Empty started-thread prompt: stay in the compact row. Collapse the editor
+   (still mounted, so the transcript can land) and let the cluster grow into
+   attach's slot and the prompt. Gap is zeroed so the 0-width prompt does not
+   keep the row's 24px neighbour gap as a hole on the left. The draft box is
+   already two rows, so it is left alone. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline])
+  [data-fork-composer-prompt-row][data-fork-composer-prompt-empty]:has(
+    [data-fork-dictation-timeline]
+  ) {
+  gap: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row][data-fork-composer-prompt-empty]:has(
+    [data-fork-dictation-timeline]
+  )
+  [data-fork-composer-prompt] {
+  flex: 0 0 0;
+  min-width: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row][data-fork-composer-prompt-empty]:has(
+    [data-fork-dictation-timeline]
+  )
+  [data-chat-composer-inline-actions] {
+  flex: 1 1 0;
+  min-width: 0;
+  align-self: stretch;
+}
+
+/* The typed text keeps its measure. Between its neighbours the prompt was
+   the row minus attach and its 6px lead on the left (still there in the
+   grid) and minus the cluster and its 24px gap on the right; with the
+   cluster underneath it reserves that right-hand width as padding, so
+   nothing reflows when the session starts or ends. Idle, the cluster is the
+   24px send slot (the mic), or two boxes on an 8px gap: the ghost mic before
+   send once there was text (the ghost stays mounted, hidden, for the session
+   so it still counts), or stop before the slot while a turn runs. The draft
+   box already keeps its actions under the prompt, so it reserves nothing. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-composer-overlay="true"]:not([data-draft-hero])
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
+    [data-fork-composer-prompt-empty]
+  )
   [data-fork-composer-prompt] {
   padding-right: calc(24px + 24px);
 }
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):has(
-    [data-fork-composer-action="dictate"],
-    [data-fork-composer-action="stop"]
-  )
+  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
+    [data-fork-composer-prompt-empty]
+  ):has([data-fork-composer-action="dictate"], [data-fork-composer-action="stop"])
   [data-fork-composer-prompt] {
   padding-right: calc(24px + 8px + 24px + 24px);
 }
 
+/* Attach steps aside only where the cluster needs its slot: the compact
+   empty row in a started thread. Hidden rather than unmounted, so
+   ChatComposer keeps upstream's render. Everywhere else (typed text, the
+   draft box) it stays in place, disabled for the session. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):has(
-    [data-fork-composer-leading-actions]
+  [data-fork-composer-prompt-row][data-fork-composer-prompt-empty]:has(
+    [data-fork-dictation-timeline]
   )
-  [data-fork-composer-prompt] {
-  padding-left: calc(24px + 6px);
-}
-
-/* Attach steps aside while a session is live; the timeline takes the row.
-   Its slot is hidden rather than unmounted, so ChatComposer keeps upstream's
-   render and the reserve above can still count it. In the draft box the
-   leading grid column collapses with it, so the actions span the row. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline])
   [data-fork-composer-leading-actions] {
   display: none;
 }

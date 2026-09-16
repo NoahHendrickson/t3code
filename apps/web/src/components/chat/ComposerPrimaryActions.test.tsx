@@ -146,4 +146,51 @@ describe("ComposerPrimaryActions", () => {
     expect(markup).toContain('aria-label="Stop generation"');
     expect(markup).not.toContain('aria-label="Send message"');
   });
+
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+  it("keeps stop at the right edge with dictation beside it while running", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ComposerPrimaryActions, {
+        compact: true,
+        pendingAction: null,
+        isRunning: true,
+        showPlanFollowUpPrompt: false,
+        promptHasText: false,
+        isSendBusy: false,
+        sendDisabledReason: null,
+        isConnecting: false,
+        isEnvironmentUnavailable: false,
+        isPreparingWorktree: false,
+        hasSendableContent: false,
+        showSendWhileRunning: true,
+        forkDictation: {
+          dictation: {
+            isAvailable: true,
+            state: { phase: "idle" },
+            downloadPercent: null,
+            error: null,
+            errorAction: null,
+            blocksSubmission: false,
+            freezesEditor: false,
+            subscribeLevel: () => () => {},
+            start: () => {},
+            stop: () => {},
+            cancel: () => {},
+            settleWithoutControls: () => {},
+          } as never,
+          disabled: false,
+        },
+        onPreviousPendingQuestion: () => {},
+        onInterrupt: () => {},
+        onImplementPlanInNewThread: () => {},
+      }),
+    );
+
+    const dictate = markup.indexOf('data-fork-dictation-action="dictate"');
+    const stop = markup.indexOf('aria-label="Stop generation"');
+    expect(dictate).toBeGreaterThan(-1);
+    expect(stop).toBeGreaterThan(dictate);
+    expect(markup).not.toContain('aria-label="Send message"');
+  });
+  /* fork:end fork-local-dictation */
 });

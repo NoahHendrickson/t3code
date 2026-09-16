@@ -345,10 +345,16 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
 
   return (
     <>
-      {renderStopGenerationButton(false)}
       {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-          The mic keeps its place beside stop, and a live session its check. */}
-      {forkDictation || (showSendWhileRunning && hasSendableContent) ? sendButton : null}
+          Dictation sits to stop's left, as the ghost mic does over typed text,
+          so stop keeps the right edge: the mic beside it, and a live session's
+          timeline, X and check growing leftward without moving it. Upstream's
+          send while running (mobile viewports) keeps its place after stop. */}
+      {forkDictation ? sendButton : null}
+      {/* fork:end fork-local-dictation */}
+      {renderStopGenerationButton(false)}
+      {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
+      {!forkDictation && showSendWhileRunning && hasSendableContent ? sendButton : null}
       {/* fork:end fork-local-dictation */}
     </>
   );

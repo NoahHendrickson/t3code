@@ -5153,6 +5153,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               onClick={() => attachmentInputRef.current?.click()}
               aria-label="Attach files"
               data-fork-composer-action="attach"
+              /* fork-local-dictation: inert in place, not hidden, while a
+                 session is live; only the compact empty row hides it. */
+              disabled={dictation.blocksSubmission}
             />
           }
         >
@@ -6029,6 +6032,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     leading={composerAttachAction}
                     approvalPending={activePendingApproval !== null}
                     mobilePendingActionsVisible={showMobilePendingAnswerActions}
+                    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+                    promptEmpty={prompt.length === 0}
+                    /* fork:end fork-local-dictation */
                   >
                     {/* fork:end fork-composer-shell */}
                     <ComposerPromptEditor
