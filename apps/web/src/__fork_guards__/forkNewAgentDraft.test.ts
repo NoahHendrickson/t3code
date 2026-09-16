@@ -210,13 +210,19 @@ describe("fork guard: fork-new-agent-draft", () => {
     );
     expect(css).not.toMatch(/\[data-draft-hero\]\s*\{[^}]*top:\s*0;\s*bottom:\s*0/u);
     // The taller drawn box: prompt on top, attach leading and send trailing
-    // on their own row — keyed off the overlay so it folds back on send.
+    // on their own row — keyed off the overlay so it folds back on send. A
+    // grid, since attach is the row's own leading slot (a started thread puts
+    // it before the text) and a column would give it a row to itself.
     expect(shell).toContain('data-fork-composer-prompt-row="true"');
+    expect(shell).toContain('data-fork-composer-leading-actions="true"');
     expect(css).toMatch(
-      /\[data-draft-hero\]\s*\[data-fork-composer-prompt-row\]\s*\{[^}]*flex-direction:\s*column/u,
+      /\[data-draft-hero\]\s*\[data-fork-composer-prompt-row\]\s*\{[^}]*display:\s*grid;[^}]*grid-template-areas:\s*"prompt prompt"\s*"leading actions"/u,
     );
     expect(css).toMatch(
-      /\[data-draft-hero\]\s*\[data-fork-composer-action="attach"\]\s*\{[^}]*margin-inline-end:\s*auto/u,
+      /\[data-draft-hero\]\s*\[data-fork-composer-leading-actions\]\s*\{[^}]*grid-area:\s*leading/u,
+    );
+    expect(css).toMatch(
+      /\[data-draft-hero\]\s*\[data-chat-composer-inline-actions\]\s*\{[^}]*grid-area:\s*actions/u,
     );
     expect(css).toMatch(
       /\[data-draft-hero\]\s*\[data-chat-composer-body="true"\]\s*\{[^}]*padding-block:\s*8px/u,

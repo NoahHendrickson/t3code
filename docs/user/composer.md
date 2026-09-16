@@ -84,11 +84,12 @@ and use **Attach again** or remove the missing file before sending.
 
 ## Local dictation on desktop (macOS)
 
-Use the composer's microphone, or tap the right Command key while the composer is
-focused, to start dictating. Tap it again, or click the check, to insert
-the transcript at the cursor, then review and edit it before sending. Press
-`Escape` or use Cancel to discard it. Recordings stop automatically after five
-minutes.
+The microphone takes the Send button's place while the prompt is empty; type
+anything and Send returns with the microphone beside it. Click the microphone,
+or tap the right Command key while the composer is focused, to start dictating. Tap it again, or click the check, to
+insert the transcript at the cursor, then review and edit it before sending.
+Press `Escape` or use Cancel to discard it. Recordings stop automatically after
+five minutes.
 
 First use downloads an English speech model (181 MiB). After that, transcription
 works offline with no account, API key, or usage fee. Audio stays on your device,

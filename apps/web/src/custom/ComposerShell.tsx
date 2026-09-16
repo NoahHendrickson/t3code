@@ -114,14 +114,21 @@ type ComposerPromptRowProps = Pick<
   "approvalPending" | "mobilePendingActionsVisible"
 > & {
   action: ReactNode;
+  /** Attach: leads the row in a started thread, so the text starts after it. */
+  leading?: ReactNode;
   children?: ReactNode;
 };
 
-/** Keeps the prompt and its single primary-action cluster in the drawn base row. */
+/**
+ * Keeps the prompt between its leading action (attach) and its primary-action
+ * cluster in the drawn base row. Both go with showInlinePrimaryAction, so an
+ * approval takes attach away along with send.
+ */
 export const ComposerPromptRow = memo(function ComposerPromptRow({
   action,
   approvalPending,
   children,
+  leading,
   mobilePendingActionsVisible,
 }: ComposerPromptRowProps) {
   const { showInlinePrimaryAction } = resolveComposerShellVisibility({
@@ -132,8 +139,17 @@ export const ComposerPromptRow = memo(function ComposerPromptRow({
 
   return (
     // Stamped so the draft-only geometry (theme.custom.css, keyed on the
-    // overlay's data-draft-hero) can stack the action row under the prompt.
+    // overlay's data-draft-hero) can put the prompt on top and both action
+    // slots on one row beneath it.
     <div data-fork-composer-prompt-row="true" className="flex min-w-0 items-end gap-6">
+      {leading && showInlinePrimaryAction ? (
+        <div
+          data-fork-composer-leading-actions="true"
+          className="flex shrink-0 items-center self-end"
+        >
+          {leading}
+        </div>
+      ) : null}
       <div data-fork-composer-prompt="true" className="relative min-w-0 flex-1">
         {children}
       </div>
