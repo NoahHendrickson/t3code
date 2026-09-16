@@ -42,7 +42,9 @@
     transcribed on the spot rather than left running with no control to end it.
     Dictation borrows the send button rather than adding controls beside it.
     With nothing to send, the slot shows an enabled filled microphone in
-    place of a disabled send (never over a sending or connecting spinner);
+    place of a disabled send (never over a sending or connecting spinner,
+    and a send in flight also blocks starting a session from the ghost mic
+    or the keyboard);
     once there is something to send, send takes the slot back and the same
     filled mic steps beside it as a ghost in attach's box; starting a
     session turns that same button into the check and puts a ghost cancel X

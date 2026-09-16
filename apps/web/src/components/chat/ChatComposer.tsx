@@ -1780,8 +1780,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // Dictation follows the editor's gate, not send's: an unassigned new-agent
   // draft keeps its prompt editable while a project is still to be chosen,
   // so it can be dictated into too, and send stays blocked as before.
+  // A send in flight keeps the spinner in the slot: neither the ghost mic
+  // beside typed text nor the keyboard may start a session over it.
   const dictationDisabled =
     isConnecting ||
+    isSendBusy ||
     activePendingApproval !== null ||
     pendingUserInputs.length > 0 ||
     showPlanFollowUpPrompt ||
@@ -5121,8 +5124,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       </>
     ) : null;
 
-  // Attach leads the prompt row (ComposerPromptRow's leading slot) rather
-  // than riding the primary cluster, so typed text starts after the plus.
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+     Attach leads the prompt row (ComposerPromptRow's leading slot) rather
+     than riding the primary cluster, so typed text starts after the plus.
+     Upstream renders this input and button inside the right-hand cluster. */
   const composerAttachAction = showComposerAttachAction ? (
     <>
       <input
@@ -5147,20 +5152,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               onPointerDown={(event) => event.preventDefault()}
               onClick={() => attachmentInputRef.current?.click()}
               aria-label="Attach files"
-              /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
               data-fork-composer-action="attach"
-              /* fork:end fork-composer-shell */
             />
           }
         >
-          {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
           <PlusIcon />
-          {/* fork:end fork-composer-shell */}
         </TooltipTrigger>
         <TooltipPopup>Attach files</TooltipPopup>
       </Tooltip>
     </>
   ) : null;
+  /* fork:end fork-composer-shell */
   const composerPrimaryActionSlot = (
     <div
       data-chat-composer-actions="right"

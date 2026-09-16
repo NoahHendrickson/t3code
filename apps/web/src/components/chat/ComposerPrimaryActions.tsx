@@ -272,7 +272,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
       data-fork-composer-action="send"
       data-fork-composer-send-tone="flat"
       /* fork:end fork-composer-shell */
+      /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
       className={sendButtonClassName}
+      /* fork:end fork-local-dictation */
       {...pointerFocusProps}
       disabled={
         isSendBusy ||

@@ -305,6 +305,9 @@ describe("fork local dictation", () => {
     // keeps the prompt editable, and dictation only writes into the prompt.
     expect(composer).toMatch(/const dictationDisabled =[^;]*promptLockedForProject;/u);
     expect(composer).not.toMatch(/const dictationDisabled =[^;]*projectSelectionRequired/u);
+    // A send in flight keeps the spinner in the slot; the ghost mic beside
+    // typed text and the keyboard must not start a session over it.
+    expect(composer).toMatch(/const dictationDisabled =[^;]*isSendBusy/u);
     // The notices (download percentage, error popover) render beside the slot
     // whatever it shows, so a failed transcription is reported even after typed
     // text has put send back. The buttons render state only.

@@ -641,6 +641,14 @@ describe("fork guard: fork-composer-shell", () => {
     // Attach leads the prompt row (ComposerPromptRow's leading slot), so in a
     // started thread the text starts after the plus and send trails alone.
     expect(chatComposer).toMatch(/const composerAttachAction = showComposerAttachAction \? \(/u);
+    // The whole moved block is one fence, not just its data attribute: a sync
+    // conflict inside it must show the fork's boundary.
+    expect(chatComposer).toMatch(
+      /fork:begin fork-composer-shell[\s\S]{0,400}?const composerAttachAction = showComposerAttachAction \? \(/u,
+    );
+    expect(chatComposer).toMatch(
+      /\) : null;\s*\/\* fork:end fork-composer-shell \*\/\s*const composerPrimaryActionSlot = \(/u,
+    );
     expect(chatComposer).toContain("leading={composerAttachAction}");
     const leadingGap = rules.find(
       (rule) =>
