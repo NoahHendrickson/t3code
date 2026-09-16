@@ -51,7 +51,7 @@ describe("fork guard: fork-new-agent-draft", () => {
       "newThreadActive={isUnassignedDraft(newThreadContext.activeDraftThread)}",
     );
     expect(chromeRows).toContain("active={props.newThreadActive}");
-    expect(chromeRows).toContain('props.active && "bg-sidebar-row-hover text-sidebar-foreground"');
+    expect(chromeRows).toContain('active && "bg-sidebar-row-hover text-sidebar-foreground"');
   });
 
   it("routes the chat.new shortcut through the same door", () => {
@@ -296,8 +296,7 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(chatView).toContain("const resizeObserver = new ResizeObserver(updateHeight);");
   });
 
-  it("opens Usage from the chrome's fourth row", () => {
-    expect(chromeRows).toContain('label="Usage"');
-    expect(sidebar).toContain('void router.navigate({ to: "/usage" });');
+  it("keeps Usage as the chrome's fourth row", () => {
+    expect(chromeRows).toContain("<SidebarV2UsageRow");
   });
 });

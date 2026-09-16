@@ -205,3 +205,16 @@ describe("UsagePage model breakdown", () => {
     ]);
   });
 });
+
+describe("UsagePage panel chrome", () => {
+  it("keeps the breakdown without the workspace page shell", () => {
+    testState.breakdown = "model";
+
+    const markup = renderToStaticMarkup(<UsagePage chrome="panel" />);
+    const body = markup.match(/<tbody>(.*?)<\/tbody>/)?.[1] ?? "";
+
+    expect(markup).toContain("usage-panel");
+    expect(markup).not.toContain("h-dvh");
+    expect(body).toContain("expensive-model");
+  });
+});
