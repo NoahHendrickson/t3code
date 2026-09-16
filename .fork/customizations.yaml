@@ -105,6 +105,7 @@
     - apps/desktop/vite.config.ts
     - apps/web/src/components/chat/ChatComposer.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    - apps/web/src/components/chat/ComposerPrimaryActions.test.tsx
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     - docs/user/composer.md
