@@ -2626,46 +2626,29 @@
   position: relative;
 }
 
-/* ── Glass popup (sidebar-v2-project-grouping) ──────────────────────────────
-   The project header's menu opens over the thread list, not the stage: the
-   cards behind it are exactly what a blur has to work with, so this one
-   popup keeps a glass surface where the rule above makes every other menu
-   opaque. Heavier than upstream's dropdown-glass (20px, not 12) so the
-   rows behind read as texture, not as text, and a 70% popover tint so the
-   items stay legible over a card title. Dark only, like the opaque rule it
-   carves out of; light keeps upstream's glass. The extra attribute gives it
-   the specificity to win without !important, and the backdrop-filter is on
-   the popup itself — no mask, no pseudo-element — so it composites like
-   upstream's own. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-slot="menu-popup"].dropdown-glass[data-fork-glass-menu] {
-  background: color-mix(in srgb, var(--popover) 70%, transparent);
-  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  backdrop-filter: blur(20px) saturate(1.2);
-}
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  :root[data-fork="noahhendrickson-t3code"].dark
-    [data-slot="menu-popup"].dropdown-glass[data-fork-glass-menu] {
-    background: var(--popover);
-  }
-}
-
-/* ── Usage overlay (fork-usage-popover) ────────────────────────────────────
-   Same frosted recipe as the project-header menu: 70% popover tint, 20px
-   blur. Usage sits over the current thread — the messages behind it are
-   something to see through, where a model-picker menu over the transcript
-   is not. Desktop is a popover; below 768px it is a Dialog. Dark only, like
-   the opaque rule it carves out of; light keeps upstream's glass. The extra
-   attribute gives it the specificity to win without !important. Under Glass
-   the utility-clear and the opaque popup floor both skip this stamp so the
-   frost actually lands (theme.custom.palettes.css). */
+/* ── Glass overlays (fork-popup-surface carve-outs) ─────────────────────────
+   One frosted recipe for the popups that open over something worth seeing
+   through, where the rule above makes every other popup opaque: the project
+   header's menu (sidebar-v2-project-grouping) over the thread list, the
+   Usage overlay (fork-usage-popover) over the current thread — a popover on
+   desktop, a Dialog below 768px — and the Dictate tooltip
+   (fork-local-dictation) over the composer vessel. Heavier than upstream's
+   dropdown-glass (20px, not 12) so what is behind reads as texture, not as
+   text, and a 70% popover tint so the contents stay legible over it. Dark
+   only, like the opaque rule it carves out of; light keeps upstream's glass.
+   Each arm pairs the slot with its stamp, which gives the rule the
+   specificity to win without !important, and the backdrop-filter is on the
+   popup itself — no mask, no pseudo-element — so it composites like
+   upstream's own. Under Glass the palette's utility-clear and opaque floor
+   skip only Usage's stamp (theme.custom.palettes.css): the menu opens over
+   the sidebar's native material, which a filter flattens to grey. */
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
-    [data-slot="popover-popup"],
-    [data-slot="dialog-popup"]
-  ).dropdown-glass[data-fork-glass-usage] {
+    [data-slot="menu-popup"][data-fork-glass-menu],
+    [data-slot="tooltip-popup"][data-fork-glass-tooltip],
+    [data-slot="popover-popup"][data-fork-glass-usage],
+    [data-slot="dialog-popup"][data-fork-glass-usage]
+  ).dropdown-glass {
   background: color-mix(in srgb, var(--popover) 70%, transparent);
   border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
@@ -2675,20 +2658,19 @@
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   :root[data-fork="noahhendrickson-t3code"].dark
     :is(
-      [data-slot="popover-popup"],
-      [data-slot="dialog-popup"]
-    ).dropdown-glass[data-fork-glass-usage] {
+      [data-slot="menu-popup"][data-fork-glass-menu],
+      [data-slot="tooltip-popup"][data-fork-glass-tooltip],
+      [data-slot="popover-popup"][data-fork-glass-usage],
+      [data-slot="dialog-popup"][data-fork-glass-usage]
+    ).dropdown-glass {
     background: var(--popover);
   }
 }
 
 /* ── Dictate tooltip (fork-local-dictation) ─────────────────────────────────
-   Same frosted recipe as the project-header menu: 70% popover tint, 20px
-   blur. The chip sits over the composer vessel, which is something to see
-   through, and a step larger than the default tooltip (12px / 8×4) so
-   "Dictate" does not read as a status crumb. Dark only, like the menu, and
-   not restated under the Glass palette: that palette clears no tooltip, and
-   its guard forbids any backdrop-filter under its own selector. */
+   Sizing only; the frost is the shared glass-overlay rule above. A step
+   larger than the default tooltip (12px / 8×4) so "Dictate" does not read
+   as a status crumb. */
 :root[data-fork="noahhendrickson-t3code"] [data-slot="tooltip-popup"][data-fork-glass-tooltip] {
   font-size: 13px;
   line-height: 18px;
@@ -2700,21 +2682,6 @@
   [data-slot="tooltip-viewport"] {
   padding-block: 6px;
   padding-inline: 10px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip] {
-  background: color-mix(in srgb, var(--popover) 70%, transparent);
-  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  backdrop-filter: blur(20px) saturate(1.2);
-}
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  :root[data-fork="noahhendrickson-t3code"].dark
-    [data-slot="tooltip-popup"].dropdown-glass[data-fork-glass-tooltip] {
-    background: var(--popover);
-  }
 }
 
 /* ── Dictation timeline (fork-local-dictation) ─────────────────────────────

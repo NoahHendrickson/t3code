@@ -78,6 +78,10 @@ describe("fork guard: fork-usage-popover", () => {
     expect(frost?.selector).toContain('[data-slot="popover-popup"]');
     expect(frost?.selector).toContain('[data-slot="dialog-popup"]');
     expect(frost?.selector).toContain(".dropdown-glass");
+    // One recipe, not a third copy: the same rule frosts the project-header
+    // menu and the Dictate tooltip.
+    expect(frost?.selector).toContain('[data-slot="menu-popup"][data-fork-glass-menu]');
+    expect(frost?.selector).toContain('[data-slot="tooltip-popup"][data-fork-glass-tooltip]');
     expect(frost?.body).toMatch(
       /background:\s*color-mix\(in srgb, var\(--popover\) 70%, transparent\)/u,
     );

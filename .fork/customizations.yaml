@@ -1922,8 +1922,9 @@
     dashboard lazily so the /usage route's chunk stays out of the initial
     bundle; nothing loads or mounts until it opens. The legacy sidebar keeps
     its footer icon and the dedicated page. The overlay stamps
-    data-fork-glass-usage and keeps the frosted recipe (70% popover tint,
-    20px blur) that fork-popup-surface otherwise paints opaque on every
+    data-fork-glass-usage and joins the one frosted recipe (70% popover
+    tint, 20px blur) shared with the project-header menu and the Dictate
+    tooltip, which fork-popup-surface otherwise paints opaque on every
     dropdown-glass popover — it opens over the thread, so the messages
     behind it are something to see through. The panel chrome does not paint
     bg-background, which would cover the frost from inside.
@@ -3284,14 +3285,17 @@
     floor under Glass glass, and it never matched the branch
     picker's "current" row. An alpha lifts whatever the popup paints.
 
-    One carve-out, owned by sidebar-v2-project-grouping: the project
-    header's menu stamps data-fork-glass-menu and keeps a glass surface
-    (70% popover tint, 20px blur) — it opens over the thread list, and the
-    cards behind it are something to see through where the stage is not.
-    A second, owned by fork-usage-popover: the Usage overlay stamps
-    data-fork-glass-usage and keeps the same frost. Desktop is a popover;
-    below 768px it is a Dialog. Under Glass the utility-clear and this
-    opaque floor both skip that stamp so the frost actually lands.
+    The carve-outs share one frosted rule (70% popover tint, 20px blur),
+    one arm per stamped slot. The project header's menu
+    (sidebar-v2-project-grouping, data-fork-glass-menu) opens over the
+    thread list, and the cards behind it are something to see through
+    where the stage is not. The Usage overlay (fork-usage-popover,
+    data-fork-glass-usage) opens over the current thread, a popover on
+    desktop and a Dialog below 768px. The Dictate tooltip
+    (fork-local-dictation, data-fork-glass-tooltip) sits over the composer
+    vessel. Under Glass the utility-clear and this opaque floor skip only
+    the Usage stamp so its frost lands; the menu opens over the sidebar's
+    native material, which a filter would flatten to grey.
   tier: 1
   files:
     - apps/web/src/theme.custom.css

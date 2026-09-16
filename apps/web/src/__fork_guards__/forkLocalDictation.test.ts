@@ -10,6 +10,7 @@ import * as NodeFS from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import { VoiceInputController } from "@t3tools/client-runtime/voice-input";
 import { encodeVoiceWav, releaseRecording } from "../custom/voice/BrowserVoiceRecorder";
+import { cssRules } from "./cssRules";
 
 const read = (path: string) => NodeFS.readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -320,9 +321,14 @@ describe("fork local dictation", () => {
     expect(control).toContain('data-fork-glass-tooltip=""');
     expect(control).toContain('{busy ? label : "Dictate"}');
     expect(control).not.toContain("Free and local");
-    expect(theme).toMatch(
-      /\[data-slot="tooltip-popup"\]\.dropdown-glass\[data-fork-glass-tooltip\]\s*\{[^}]*backdrop-filter:\s*blur\(20px\)/u,
+    // The frost itself is the one recipe shared with the other glass
+    // carve-outs (fork-popup-surface); only the sizing is the tooltip's own.
+    const frost = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes('[data-slot="tooltip-popup"][data-fork-glass-tooltip]') &&
+        rule.body.includes("backdrop-filter: blur(20px)"),
     );
+    expect(frost?.selector).toContain(".dropdown-glass");
     expect(theme).toMatch(
       /\[data-slot="tooltip-popup"\]\[data-fork-glass-tooltip\]\s*\{[^}]*font-size:\s*13px/u,
     );

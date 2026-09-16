@@ -23,6 +23,8 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+import { cssRules } from "./cssRules";
+
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
@@ -169,12 +171,16 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     );
     const theme = readSibling("../theme.custom.css");
     expect(theme).toContain("[data-fork-section-actions][data-fork-menu-open]");
-    // The menu is glass: it opens over the thread list, so it is the one
-    // popup the fork's opaque-popup rule (fork-popup-surface) carves out.
+    // The menu is glass: it opens over the thread list, so it is one of the
+    // popups the fork's opaque-popup rule (fork-popup-surface) carves out, on
+    // the one frost recipe those carve-outs share.
     expect(header).toContain('data-fork-glass-menu=""');
-    expect(theme).toMatch(
-      /\[data-slot="menu-popup"\]\.dropdown-glass\[data-fork-glass-menu\]\s*\{[^}]*backdrop-filter:\s*blur\(20px\)/u,
+    const frost = cssRules(theme).find(
+      (rule) =>
+        rule.selector.includes('[data-slot="menu-popup"][data-fork-glass-menu]') &&
+        rule.body.includes("backdrop-filter: blur(20px)"),
     );
+    expect(frost?.selector).toContain(".dropdown-glass");
     expect(theme).toMatch(
       /li\[data-fork-project-section-header\]\s+\[data-fork-section-actions\]\s*\{\s*opacity:\s*0;/u,
     );
