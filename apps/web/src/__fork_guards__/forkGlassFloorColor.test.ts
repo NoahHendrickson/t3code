@@ -60,7 +60,18 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(desktopMethod).toContain("const PANEL_TINT_ALPHA = 0.85;");
     expect(palettes).toContain("--sidebar: rgb(22 22 22 / 82%);");
     // Anything unreadable resolves null rather than failing the invoke.
-    expect(desktopMethod).toContain("catch: () => null");
+    expect(desktopMethod).toContain(".catch(() => null)");
+    // Cover, not contain: the smaller ratio fills the longer side.
+    expect(desktopMethod).toContain(
+      "const scale = Math.min(thumbnail.width / display.width, thumbnail.height / display.height);",
+    );
+    // No sampling while glass is off, and no repeated full-size decode.
+    expect(desktopMethod).toContain("if (!isForkGlassActive()) return;");
+    expect(desktopMethod).toContain("thumbnailCache?.key === key");
+    // The import sits in its own fence, not the vibrancy customization's.
+    expect(desktopHandlers).toMatch(
+      /fork:begin fork-glass-floor-color[^]*?import \{ installForkGlassFloorColorIpc \}[^]*?fork:end fork-glass-floor-color/u,
+    );
   });
 
   it("writes the estimate over the floor token only while glass is on", async () => {
@@ -68,7 +79,7 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(renderer).toContain("root.style.setProperty(FORK_GLASS_FLOOR_TOKEN");
     // forkTheme chains it on the vibrancy answer, not on the palette choice.
     expect(forkTheme).toMatch(
-      /syncForkSidebarVibrancy\(activePalette === COOL_DARKER_THEME\)\.then\(\(applied\) =>\s*syncForkGlassFloorColor\(applied\)/u,
+      /syncForkSidebarVibrancy\(activePalette === COOL_DARKER_THEME\)\s*\.then\(\(applied\) =>\s*syncForkGlassFloorColor\(applied\)\)\s*\.catch\(/u,
     );
 
     const listeners: Array<(color: { r: number; g: number; b: number }) => void> = [];

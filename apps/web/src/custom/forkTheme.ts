@@ -201,9 +201,11 @@ function syncForkPaletteFromStorage(): void {
     // what lets the helper import nothing back from it.
     // The popups' floor colour rides on the resolved answer: only a window
     // that actually got the material has a wallpaper worth sampling.
-    void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME).then((applied) =>
-      syncForkGlassFloorColor(applied),
-    );
+    void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME)
+      .then((applied) => syncForkGlassFloorColor(applied))
+      // The floor is cosmetic: a failure there must never surface as an
+      // unhandled rejection out of a palette change.
+      .catch(() => undefined);
   }
   lastPalette = palette;
   emitChange();

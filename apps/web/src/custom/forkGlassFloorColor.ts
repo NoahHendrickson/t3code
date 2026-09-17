@@ -44,6 +44,9 @@ function readSidebarWidth(): number {
 }
 
 function writeFloor(root: HTMLElement, color: FloorColor | null): void {
+  // The theme tests hand the palette sync a bare fake root with no style
+  // object; a token that cannot be written is simply not written.
+  if (typeof root.style?.setProperty !== "function") return;
   if (color === null) {
     root.style.removeProperty(FORK_GLASS_FLOOR_TOKEN);
   } else {
