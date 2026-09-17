@@ -206,17 +206,15 @@ describe("fork guard: fork-popup-surface", () => {
     expect(separator?.selector).toContain('[data-slot="combobox-separator"]');
   });
 
-  it("carries one arm per primitive, in the frost and its no-filter fallback", () => {
-    const fallback = cssRules(theme).find(
-      (candidate) =>
-        candidate.atRules.some((atRule) => atRule.includes("@supports not")) &&
-        candidate.selector.includes(".dropdown-glass") &&
-        candidate.body.includes("var(--popover);"),
+  it("carries one arm per primitive", () => {
+    // No fork fallback for browsers without backdrop-filter: upstream's
+    // utility paints --popover with !important there, which nothing declared
+    // in the fork sheets can outrank, so a fork block would be dead weight.
+    expect(theme).not.toMatch(
+      /@supports not \(\(-webkit-backdrop-filter[^{]*\{\s*:root\[data-fork/u,
     );
-    expect(fallback?.body).not.toContain("backdrop-filter");
     for (const arm of SELECTOR_ARMS) {
       expect(flat(frost?.selector ?? ""), arm).toContain(arm);
-      expect(flat(fallback?.selector ?? ""), arm).toContain(arm);
     }
   });
 

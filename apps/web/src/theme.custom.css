@@ -2550,7 +2550,10 @@
    per shape: menu, popover, tooltip and dialog carry `dropdown-glass` on the
    popup element itself, select on a child of the popup, and combobox on the
    wrapper span around the popup (components/ui/combobox.tsx). Toasts and the
-   timeline's own glass carry the utility too and keep upstream's recipe. */
+   timeline's own glass carry the utility too and keep upstream's recipe. No
+   no-filter fallback of its own: upstream's dropdown-glass utility already
+   paints --popover with !important where backdrop-filter is unsupported,
+   which outranks anything declared here. */
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
     :is(
@@ -2571,27 +2574,6 @@
   border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);
-}
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  :root[data-fork="noahhendrickson-t3code"].dark
-    :is(
-      :is(
-        [data-slot="menu-popup"],
-        [data-slot="popover-popup"],
-        [data-slot="tooltip-popup"],
-        [data-slot="dialog-popup"]
-      ).dropdown-glass,
-      [data-slot="select-popup"] > .dropdown-glass,
-      .dropdown-glass:has(> [data-slot="combobox-popup"])
-    ) {
-    background:
-      linear-gradient(
-        color-mix(in srgb, var(--contrast-foreground) 8%, transparent),
-        color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
-      ),
-      var(--popover);
-  }
 }
 
 /* ── Project drop edge (sidebar-v2-project-grouping) ────────────────────────

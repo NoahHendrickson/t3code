@@ -667,7 +667,8 @@
    composer-shell rules above.
 
    Popups are not in the list: they have their own rule below, which drops
-   the filter and keeps the tint translucent instead of making it opaque.
+   the filter and stands them opaque on the measured floor instead of on
+   --glass-opacity.
    The Usage dialog is the one dialog on that recipe — it carries
    dropdown-glass beside dialog-glass — so the dialog arm skips it too. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
