@@ -256,11 +256,7 @@ export function SidebarV2ProjectGroupHeader(props: {
                 >
                   <EllipsisVerticalIcon aria-hidden className="size-4" />
                 </MenuTrigger>
-                {/* data-fork-glass-menu: this popup opens over the thread list,
-                    so unlike the chat-side menus there is something to see
-                    through — theme.custom.css gives it a blurred, translucent
-                    surface instead of the fork's opaque popup fill. */}
-                <MenuPopup align="end" className="min-w-48" data-fork-glass-menu="">
+                <MenuPopup align="end" className="min-w-48">
                   <MenuItem
                     disabled={settleAllCount === 0}
                     onClick={() => props.onSettleAllThreads?.()}
