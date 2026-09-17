@@ -44,8 +44,8 @@ import * as Electron from "electron";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
 
-export const FORK_GLASS_FLOOR_COLOR_CHANNEL = "fork:glass-floor-color";
-export const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
+const FORK_GLASS_FLOOR_COLOR_CHANNEL = "fork:glass-floor-color";
+const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
 
 /**
  * The Glass panel tint the wallpaper shows through: rgb(22 22 22 / 82%) in
