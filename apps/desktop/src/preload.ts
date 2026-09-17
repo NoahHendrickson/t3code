@@ -412,5 +412,22 @@ contextBridge.exposeInMainWorld("forkDesktopBridge", {
   /* fork:end fork-local-dictation */
   setSidebarVibrancy: (enabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled }),
+  /* fork:begin fork-glass-floor-color — see .fork/customizations.yaml#fork-glass-floor-color */
+  // Mirrored by apps/web/src/custom/forkGlassFloorColor.ts. Resolves null off
+  // macOS or when the wallpaper cannot be read; the renderer then keeps the
+  // palette's measured token.
+  glassFloorColor: {
+    read: (sidebarWidth: number): Promise<{ r: number; g: number; b: number } | null> =>
+      ipcRenderer.invoke("fork:glass-floor-color", { sidebarWidth }),
+    onChange: (listener: (color: { r: number; g: number; b: number }) => void): (() => void) => {
+      const receive = (
+        _event: Electron.IpcRendererEvent,
+        color: { r: number; g: number; b: number },
+      ) => listener(color);
+      ipcRenderer.on("fork:glass-floor-color-changed", receive);
+      return () => ipcRenderer.removeListener("fork:glass-floor-color-changed", receive);
+    },
+  },
+  /* fork:end fork-glass-floor-color */
 });
 /* fork:end fork-cool-darker-sidebar-vibrancy */

@@ -64,6 +64,7 @@ import * as PreviewIpc from "./methods/preview.ts";
 import * as AppActivationIpc from "./methods/appActivation.ts";
 import { getWslState, setWslBackendEnabled, setWslDistro, setWslOnly } from "./methods/wsl.ts";
 /* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
+import { installForkGlassFloorColorIpc } from "../fork/ForkGlassFloorColor.ts";
 import { setForkSidebarVibrancy } from "../fork/ForkSidebarVibrancy.ts";
 /* fork:end fork-cool-darker-sidebar-vibrancy */
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
@@ -146,4 +147,7 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   /* fork:begin fork-cool-darker-sidebar-vibrancy — see .fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy */
   yield* ipc.handle(setForkSidebarVibrancy);
   /* fork:end fork-cool-darker-sidebar-vibrancy */
+  /* fork:begin fork-glass-floor-color — see .fork/customizations.yaml#fork-glass-floor-color */
+  yield* installForkGlassFloorColorIpc();
+  /* fork:end fork-glass-floor-color */
 });

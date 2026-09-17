@@ -22,6 +22,7 @@ import {
   subscribeToThemeChanges,
   syncBrowserChromeTheme,
 } from "../hooks/useTheme";
+import { syncForkGlassFloorColor } from "./forkGlassFloorColor";
 import { syncForkSidebarVibrancy } from "./forkSidebarVibrancy";
 import type { ThemePreference } from "../themePalette";
 
@@ -198,7 +199,11 @@ function syncForkPaletteFromStorage(): void {
     // Which palettes want glass is decided here rather than in the helper: this
     // module owns palette semantics, and keeping the knowledge on this side is
     // what lets the helper import nothing back from it.
-    void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME);
+    // The popups' floor colour rides on the resolved answer: only a window
+    // that actually got the material has a wallpaper worth sampling.
+    void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME).then((applied) =>
+      syncForkGlassFloorColor(applied),
+    );
   }
   lastPalette = palette;
   emitChange();
