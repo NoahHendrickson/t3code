@@ -31,12 +31,29 @@
     model (181 MiB)
     downloads once with integrity verification; whisper.cpp runs with Metal.
     Audio stays on the client device even for remote environments. The composer
-    owns the dictation session through a hook that mirrors mobile's
-    useVoiceInputController and reads its send/editor gates directly; the mic
-    button only renders state. A new recording targets the thread the composer
-    is currently showing, and an owner change cancels an in-flight one rather
-    than re-targeting it. Cancellation stops owned work, stale drafts never
-    receive transcripts, and a recording in flight survives the composer becoming
+    owns its dictation session through a hook that mirrors mobile's
+    useVoiceInputController (built once, cancelled on owner change, disposed on
+    unmount) and reads its send/editor gates directly; the mic button only
+    renders state. The keyboard lives at the root: a host mounted once above the
+    router installs the right Command and Escape hotkeys and owns a second,
+    fallback session that is disposed with it. A bare right Command tap starts
+    wherever focus sits while the app is active, into the composer on screen
+    when it can take one, and a second tap finishes the live session. When no
+    composer can take it (another page, no thread open, a pending approval or
+    question, a send in flight) the fallback session records instead and its
+    transcript goes to a toast: one per session, updated in place from
+    preparing through listening, ending as the transcript with a Copy button
+    that stays until dismissed. Closing a live toast by any route (corner X,
+    swipe) cancels through the toast's own close callback; the finished toast
+    is detached so dismissing it cannot touch a session started since. Two
+    controllers never record at once (client-runtime's process-wide session
+    lock), a composer that mounts mid-fallback stays idle and editable because
+    it never started, and Escape cancels a live session only from the composer
+    or an unfocused page so a focused dialog, palette, or field keeps its own
+    Escape. A new recording targets the thread the composer is currently
+    showing, and an owner change cancels an in-flight one rather than
+    re-targeting it. Cancellation stops owned work, stale drafts never receive
+    transcripts, and a recording in flight survives the composer becoming
     disabled: a pending approval or question routes the transcript into the
     prompt draft itself, and when the action cluster unmounts the recording is
     transcribed on the spot rather than left running with no control to end it.
@@ -93,6 +110,8 @@
     - native/voice-input/LICENSE-Whisper.txt
     - apps/web/src/custom/voice/BrowserVoiceRecorder.ts
     - apps/web/src/custom/voice/ForkDictationControl.tsx
+    - apps/web/src/custom/voice/ForkDictationHotkeyHost.tsx
+    - apps/web/src/custom/voice/forkDictationSession.ts
     - apps/web/src/custom/voice/forkVoiceInputBridge.ts
     - apps/web/src/custom/voice/useForkDictationController.ts
     - apps/web/src/custom/ComposerShell.tsx
@@ -106,6 +125,7 @@
     - apps/web/src/components/chat/ChatComposer.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.test.tsx
+    - apps/web/src/routes/__root.tsx
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     - docs/user/composer.md

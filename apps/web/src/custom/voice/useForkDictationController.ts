@@ -1,107 +1,28 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  VoiceInputController,
   voiceInputBlocksSubmission,
   voiceInputFreezesEditor,
   type VoiceInputState,
-  type VoiceTranscriber,
 } from "@t3tools/client-runtime/voice-input";
-import { randomUUID } from "~/lib/utils";
-import { BrowserVoiceRecorder, recordingToWav, releaseRecording } from "./BrowserVoiceRecorder";
-import { readForkVoiceInputBridge, type ForkVoiceInputBridge } from "./forkVoiceInputBridge";
+import {
+  createDictationSession,
+  registerDictationComposer,
+  type DictationSession,
+} from "./forkDictationSession";
+import { readForkVoiceInputBridge } from "./forkVoiceInputBridge";
 
 const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };
-
-function messageOf(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback;
-}
-
-/**
- * Chromium reports a firm "denied" before getUserMedia would fail, which lets
- * the controller show its settings hint instead of a generic recorder error.
- * Anything else (prompt, granted, unsupported) defers to getUserMedia.
- */
-async function queryMicrophonePermission() {
-  try {
-    const status = await navigator.permissions.query({
-      name: "microphone" as PermissionName,
-    });
-    return { granted: status.state !== "denied", canAskAgain: status.state !== "denied" };
-  } catch {
-    return { granted: true, canAskAgain: true };
-  }
-}
-
-/**
- * Adapts the preload bridge to the controller's transcriber contract. The
- * controller hands the same abort signal to prepare and transcribe, so one
- * listener forwards cancellation to the main process for the whole session.
- */
-function createBridgeTranscriber(
-  bridge: ForkVoiceInputBridge,
-  events: {
-    onDownload: (percent: number | null) => void;
-    onDetail: (message: string) => void;
-  },
-): VoiceTranscriber {
-  return {
-    prepare: async ({ signal }) => {
-      const requestId = randomUUID();
-      const abort = () => void bridge.cancel(requestId).catch(() => {});
-      signal.addEventListener("abort", abort, { once: true });
-      const unsubscribe = bridge.onDownloadProgress((event) => {
-        if (event.requestId === requestId) events.onDownload(event.percent);
-      });
-      try {
-        await bridge.prepare(requestId);
-        signal.throwIfAborted();
-        // The controller stays "preparing" through the mic permission prompt;
-        // a lingering "100%" would read as a stuck download.
-        events.onDownload(null);
-      } catch (error) {
-        signal.removeEventListener("abort", abort);
-        if (!signal.aborted)
-          events.onDetail(messageOf(error, "Could not prepare local dictation."));
-        throw error;
-      } finally {
-        unsubscribe();
-      }
-      return {
-        locale: "en",
-        transcribe: async (uri, { signal: transcriptionSignal }) => {
-          try {
-            const wav = await recordingToWav(uri, transcriptionSignal);
-            if (!wav) return "";
-            transcriptionSignal.throwIfAborted();
-            return await bridge.transcribe(requestId, wav);
-          } catch (error) {
-            if (!transcriptionSignal.aborted)
-              events.onDetail(messageOf(error, "Local transcription failed."));
-            throw error;
-          } finally {
-            signal.removeEventListener("abort", abort);
-          }
-        },
-      };
-    },
-  };
-}
-
-function extraModifiersHeld(event: KeyboardEvent): boolean {
-  return event.ctrlKey || event.altKey || event.shiftKey;
-}
-
-/** Right Command by itself. Fires on keyup of a tap so ⌘C and friends stay chords. */
-function isRightCommandTap(event: KeyboardEvent): boolean {
-  return event.code === "MetaRight" && !event.repeat && !extraModifiersHeld(event);
-}
 
 /**
  * Composer-owned dictation session, mirroring mobile's `useVoiceInputController`.
  * The composer reads `blocksSubmission` / `freezesEditor` directly; the mic
- * button only renders state and calls `start` / `stop` / `cancel`.
+ * button only renders state and calls `start` / `stop` / `cancel`. The
+ * keyboard lives at the root (`ForkDictationHotkeyHost`): this hook registers
+ * the mounted composer so a right Command tap anywhere in the window starts
+ * into the thread on screen, and unregisters (disposing the session) on unmount.
  *
- * `disabled` gates starting only. A recording already in flight survives the
+ * `disabled` gates starting only; a tap while disabled goes to the root's
+ * fallback session instead. A recording already in flight survives the
  * composer becoming disabled (a question arriving mid-sentence) and is settled
  * by the user. When the composer hides the controls themselves (an approval
  * replaces the action cluster) the recording is transcribed on the spot, so a
@@ -116,80 +37,7 @@ type DictationInput = {
   readonly commitDraft: (text: string, cursor: number) => void;
 };
 
-const BLOCKING_PHASES = new Set<VoiceInputState["phase"]>([
-  "preparing",
-  "recording",
-  "transcribing",
-]);
-
-type LevelListener = (level: number) => void;
-
-/**
- * The controller's stale-draft check already compares owner and text, which is
- * what a switched thread or an edited prompt changes; the revision stays fixed.
- *
- * Input levels bypass React state on purpose: they arrive at 20 Hz and only the
- * level meter cares, so subscribers write to the DOM themselves.
- */
-function createSession(
-  bridge: ForkVoiceInputBridge,
-  latest: () => DictationInput,
-  set: {
-    state: (next: VoiceInputState) => void;
-    detail: (message: string | null) => void;
-    download: (percent: number | null) => void;
-  },
-) {
-  const recorder = new BrowserVoiceRecorder();
-  recorder.onError = set.detail;
-  const levelListeners = new Set<LevelListener>();
-  recorder.onLevel = (level) => levelListeners.forEach((listener) => listener(level));
-  const subscribeLevel = (listener: LevelListener) => {
-    levelListeners.add(listener);
-    return () => void levelListeners.delete(listener);
-  };
-  const controller = new VoiceInputController({
-    recorder,
-    requestPermission: queryMicrophonePermission,
-    configureRecording: async () => {},
-    releaseRecording: async () => recorder.release(),
-    deleteRecording: releaseRecording,
-    getTranscriber: () =>
-      createBridgeTranscriber(bridge, { onDownload: set.download, onDetail: set.detail }),
-    readDraft: () => {
-      const current = latest();
-      const snapshot = current.readDraft();
-      return {
-        ownerKey: current.ownerKey,
-        text: snapshot.value,
-        selection: { start: snapshot.expandedCursor, end: snapshot.expandedCursor },
-        revision: 0,
-      };
-    },
-    commitDraft: (text, selection) => latest().commitDraft(text, selection.start),
-    onStateChange: (next) => {
-      if (next.phase === "preparing") {
-        set.detail(null);
-        set.download(null);
-      }
-      set.state(next);
-    },
-  });
-  recorder.onLimit = () => void controller.stop();
-  recorder.onInterrupted = (message) => void controller.interruptRecording(message);
-  const settleWithoutControls = () => {
-    const { phase } = controller.currentState;
-    if (phase === "recording") void controller.stop();
-    else if (phase === "preparing") controller.cancel();
-  };
-  return { controller, subscribeLevel, settleWithoutControls };
-}
-
-const NO_SESSION = {
-  controller: null,
-  subscribeLevel: (_listener: LevelListener) => () => {},
-  settleWithoutControls: () => {},
-};
+const NO_SESSION: DictationSession | null = null;
 
 export function useForkDictationController(input: DictationInput) {
   // Handing the ref mirror below into a render-phase initializer costs this
@@ -220,22 +68,36 @@ export function useForkDictationController(input: DictationInput) {
   });
   // Initialization only registers callbacks; none reads the input until an event.
   // oxlint-disable-next-line react/refs
-  const [{ controller, subscribeLevel, settleWithoutControls }] = useState(() => {
+  const [session] = useState(() => {
     const bridge = readForkVoiceInputBridge();
-    return bridge
-      ? createSession(bridge, () => inputRef.current, {
-          state: (next) => {
-            setState(next);
-            if (next.phase === "error") inputRef.current.focusEditor();
-          },
-          detail: setDetail,
-          // The one-time download reports every integer percent; the label
-          // only needs coarse steps, and each update re-renders the composer.
-          download: (percent) =>
-            setDownloadPercent(percent === null ? null : Math.floor(percent / 5) * 5),
-        })
-      : NO_SESSION;
+    if (!bridge) return NO_SESSION;
+    // The controller's stale-draft check already compares owner and text, which
+    // is what a switched thread or an edited prompt changes; the revision stays fixed.
+    return createDictationSession(bridge, {
+      readDraft: () => {
+        const current = inputRef.current;
+        const snapshot = current.readDraft();
+        return {
+          ownerKey: current.ownerKey,
+          text: snapshot.value,
+          selection: { start: snapshot.expandedCursor, end: snapshot.expandedCursor },
+          revision: 0,
+        };
+      },
+      commitDraft: (text, selection) => inputRef.current.commitDraft(text, selection.start),
+      onStateChange: (next) => {
+        if (next.phase === "preparing") {
+          setDetail(null);
+          setDownloadPercent(null);
+        }
+        setState(next);
+        if (next.phase === "error") inputRef.current.focusEditor();
+      },
+      onDetail: setDetail,
+      onDownload: setDownloadPercent,
+    });
   });
+  const controller = session?.controller ?? null;
 
   const previousOwnerRef = useRef(input.ownerKey);
   useLayoutEffect(() => {
@@ -244,77 +106,25 @@ export function useForkDictationController(input: DictationInput) {
     controller?.ownerChanged();
   }, [controller, input.ownerKey]);
 
-  useEffect(() => () => controller?.dispose(), [controller]);
-
-  // Window-level on purpose: freezing the editor drops focus to <body>, so
-  // stop and cancel must work from there. Starting still needs focus inside
-  // this composer, and a focused dialog keeps its own Escape.
-  //
-  // Right Command toggles on keyup of a bare tap. Arming on keydown and
-  // disarming on any other key lets ⌘C stay a copy, and a leftover meta
-  // (left ⌘ still held) is rejected because metaKey is still true on keyup.
-  // A pointer or wheel event disarms it too: ⌘-clicking a link or ⌘-scrolling
-  // presses no key, but it was a modifier, not a tap.
+  // Registered once per mount; every callback reads the mirror, so the root
+  // hotkeys always reach the thread this composer is showing now.
   useEffect(() => {
     if (!controller) return;
-    let pendingRightCommand = false;
-    const targetContext = (target: EventTarget | null) => {
-      const composer = inputRef.current.getComposerElement();
-      const inComposer = target instanceof Node && composer?.contains(target) === true;
-      const unfocused = target === document.body || target === document;
-      return { inComposer, unfocused };
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (isRightCommandTap(event) && !event.defaultPrevented) {
-        pendingRightCommand = true;
-        return;
-      }
-      pendingRightCommand = false;
-      if (event.repeat || event.defaultPrevented) return;
-      if (event.key !== "Escape") return;
-      const { phase } = controller.currentState;
-      const { inComposer, unfocused } = targetContext(event.target);
-      // Only while dictation is actually holding the composer; a lingering
-      // error banner must not eat Escape from other composer UI.
-      if (!BLOCKING_PHASES.has(phase) || !(inComposer || unfocused)) return;
-      controller.cancel();
-      inputRef.current.focusEditor();
-      event.preventDefault();
-      event.stopPropagation();
-    };
-    const onKeyUp = (event: KeyboardEvent) => {
-      const tapped =
-        pendingRightCommand &&
-        isRightCommandTap(event) &&
-        !event.metaKey &&
-        !event.defaultPrevented;
-      pendingRightCommand = false;
-      if (!tapped) return;
-      const { phase } = controller.currentState;
-      const { inComposer, unfocused } = targetContext(event.target);
-      if (phase === "recording") {
-        if (!(inComposer || unfocused)) return;
-        void controller.stop();
-      } else if (phase === "idle" || phase === "error") {
-        if (!inComposer || inputRef.current.disabled) return;
-        void controller.start();
-      } else return;
-      event.preventDefault();
-    };
-    const disarm = () => {
-      pendingRightCommand = false;
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("keyup", onKeyUp, true);
-    window.addEventListener("pointerdown", disarm, true);
-    window.addEventListener("wheel", disarm, { capture: true, passive: true });
-    window.addEventListener("blur", disarm);
+    const unregister = registerDictationComposer({
+      controller,
+      canStart: () => !inputRef.current.disabled,
+      contains: (target) => {
+        const composer = inputRef.current.getComposerElement();
+        return target instanceof Node && composer?.contains(target) === true;
+      },
+      cancel: () => {
+        controller.cancel();
+        inputRef.current.focusEditor();
+      },
+    });
     return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("keyup", onKeyUp, true);
-      window.removeEventListener("pointerdown", disarm, true);
-      window.removeEventListener("wheel", disarm, true);
-      window.removeEventListener("blur", disarm);
+      unregister();
+      controller.dispose();
     };
   }, [controller]);
 
@@ -330,6 +140,14 @@ export function useForkDictationController(input: DictationInput) {
     controller?.cancel();
     inputRef.current.focusEditor();
   };
+  // For the composer whose controls just left the screen: a recording is
+  // transcribed on the spot rather than left running with nothing to end it.
+  const settleWithoutControls = () => {
+    if (!controller) return;
+    const { phase } = controller.currentState;
+    if (phase === "recording") void controller.stop();
+    else if (phase === "preparing") controller.cancel();
+  };
 
   return {
     isAvailable: controller !== null,
@@ -341,7 +159,7 @@ export function useForkDictationController(input: DictationInput) {
     errorAction: state.phase === "error" ? state.errorAction : null,
     blocksSubmission: voiceInputBlocksSubmission(state),
     freezesEditor: voiceInputFreezesEditor(state),
-    subscribeLevel,
+    subscribeLevel: session?.subscribeLevel ?? ((_listener: (level: number) => void) => () => {}),
     start,
     stop,
     cancel,

@@ -25,6 +25,9 @@ import { SnapShotCoordinator } from "../components/desktop/SnapShotCoordinator";
 import { DesktopAppActivationCoordinator } from "../components/desktop/DesktopAppActivationCoordinator";
 import { ProviderUpdateLaunchNotification } from "../components/ProviderUpdateLaunchNotification";
 import { SlowRpcRequestToastCoordinator } from "../components/SlowRpcRequestToastCoordinator";
+/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+import { ForkDictationHotkeyHost } from "../custom/voice/ForkDictationHotkeyHost";
+/* fork:end fork-local-dictation */
 import { ThemeEditorHost } from "../components/settings/ThemeEditorHost";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useDefaultThemeAdoption } from "../hooks/useDefaultTheme";
@@ -199,6 +202,9 @@ function RootRouteView() {
           <SnapShotCoordinator />
           <ConfirmDialogHost />
           <SlowRpcRequestToastCoordinator />
+          {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
+          <ForkDictationHotkeyHost />
+          {/* fork:end fork-local-dictation */}
           <HostedStaticEnvironmentBootstrap />
           {primaryEnvironmentAuthenticated ? (
             <EventRouter skipInitialBootstrapNavigation={returningFromWelcomeRef.current} />

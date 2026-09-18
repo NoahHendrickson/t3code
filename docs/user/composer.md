@@ -86,10 +86,17 @@ and use **Attach again** or remove the missing file before sending.
 
 The microphone takes the Send button's place while the prompt is empty; type
 anything and Send returns with the microphone beside it. Click the microphone,
-or tap the right Command key while the composer is focused, to start dictating. Tap it again, or click the check, to
-insert the transcript at the cursor, then review and edit it before sending.
-Press `Escape` or use Cancel to discard it. Recordings stop automatically after
+or tap the right Command key anywhere in the app, to start dictating. Tap it
+again, or click the check, to insert the transcript at the cursor of the thread
+on screen, then review and edit it before sending. Press `Escape` (with nothing
+else focused) or use Cancel to discard it. Recordings stop automatically after
 five minutes.
+
+If no thread is open, or the composer cannot take text right now (a pending
+approval or question, a send in flight), the tap still records. A toast shows
+the session and then the transcript with a **Copy** button, and stays until you
+copy or dismiss it. Closing the toast while it is still listening cancels the
+recording.
 
 First use downloads an English speech model (181 MiB). After that, transcription
 works offline with no account, API key, or usage fee. Audio stays on your device,
