@@ -3,8 +3,9 @@
  * Fork guard — see `.fork/customizations.yaml#fork-local-dictation`.
  *
  * Pins the wire format the packaged helper expects, the draft-insertion
- * contract, and the composer owning the session. Thread targeting across
- * navigation is guarded separately in `forkDictationThreadOwnership.test.tsx`.
+ * contract, the app-level session with the composer bound as its target, and
+ * the root-mounted hotkey host. Thread targeting across navigation and the
+ * no-composer fallback are guarded in `forkDictationThreadOwnership.test.tsx`.
  */
 import * as NodeFS from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
@@ -114,10 +115,13 @@ describe("fork local dictation", () => {
     expect(swapped.committed).toBeNull();
   });
 
-  it("keeps the composer owning the session, with the bridge and helper wired", () => {
+  it("keeps the composer bound to the app-level session, with the bridge and helper wired", () => {
     const composer = read("../components/chat/ChatComposer.tsx");
     const control = read("../custom/voice/ForkDictationControl.tsx");
     const controller = read("../custom/voice/useForkDictationController.ts");
+    const host = read("../custom/voice/forkDictationHost.ts");
+    const hotkeyHost = read("../custom/voice/ForkDictationHotkeyHost.tsx");
+    const rootRoute = read("../routes/__root.tsx");
     const preload = read("../../../desktop/src/preload.ts");
     const runtimeExports = read("../../../../packages/client-runtime/src/voice-input/index.ts");
     const packaging = read("../../../../scripts/build-desktop-artifact.ts");
@@ -226,6 +230,23 @@ describe("fork local dictation", () => {
     expect(theme).toMatch(/\.dark \[data-fork-dictation-timeline\]\s*\{[^}]*color:\s*#ffffff/u);
     expect(theme).toMatch(/\[data-fork-dictation-timeline\]\s*\{[^}]*min-width:\s*96px/u);
     expect(controller).toContain("subscribeLevel");
+    // One session for the whole app, above the router: the composer binds
+    // itself as the target while mounted and only renders state. The hotkey
+    // host at the root installs the keys and presents sessions with no
+    // composer as a toast whose transcript can be copied.
+    expect(host).toContain("new VoiceInputController");
+    expect(controller).not.toContain("new VoiceInputController");
+    expect(controller).toContain("bindDictationComposer(binding)");
+    expect(controller).toContain("unbindDictationComposer(binding)");
+    expect(controller).toContain("useSyncExternalStore(subscribeDictation, getDictationSnapshot)");
+    expect(rootRoute).toContain("<ForkDictationHotkeyHost />");
+    expect(hotkeyHost).toContain("installDictationHotkeys()");
+    expect(hotkeyHost).toContain("setDictationFallbackPresenter(createToastPresenter())");
+    expect(hotkeyHost).toMatch(/children: "Copy",\s*onClick:/u);
+    expect(hotkeyHost).toContain("writeTextToClipboard(view.text");
+    // Starting is not gated on focus inside the composer any more.
+    expect(host).not.toContain("inComposer");
+    expect(controller).not.toContain("getComposerElement");
     // In a started thread an empty prompt keeps the compact row: the cluster
     // fills attach's slot and the editor (gap 0, prompt collapsed, actions
     // flex). Typed text turns the row into the draft box's grid: attach keeps
@@ -376,8 +397,8 @@ describe("fork local dictation", () => {
       /\[data-slot="tooltip-popup"\]\[data-fork-glass-tooltip\]\s*\{[^}]*font-size:\s*13px/u,
     );
     // Toggle is a tap of right Command, not a chord that would steal ⌘C.
-    expect(controller).toContain('event.code === "MetaRight"');
-    expect(controller).not.toContain('event.code === "Space"');
+    expect(host).toContain('event.code === "MetaRight"');
+    expect(host).not.toContain('event.code === "Space"');
     expect(control).toContain("Dictate (Right Command)");
     expect(control).not.toContain("Ctrl+Shift+Space");
     // Fork IPC stays out of shared packages.

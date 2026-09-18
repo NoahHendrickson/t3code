@@ -30,16 +30,27 @@
     microphone and a tap of the right Command key. An English Whisper Small
     model (181 MiB)
     downloads once with integrity verification; whisper.cpp runs with Metal.
-    Audio stays on the client device even for remote environments. The composer
-    owns the dictation session through a hook that mirrors mobile's
-    useVoiceInputController and reads its send/editor gates directly; the mic
-    button only renders state. A new recording targets the thread the composer
-    is currently showing, and an owner change cancels an in-flight one rather
-    than re-targeting it. Cancellation stops owned work, stale drafts never
-    receive transcripts, and a recording in flight survives the composer becoming
-    disabled: a pending approval or question routes the transcript into the
-    prompt draft itself, and when the action cluster unmounts the recording is
-    transcribed on the spot rather than left running with no control to end it.
+    Audio stays on the client device even for remote environments. One
+    dictation session serves the whole app: a module-level host above the
+    router (mirroring mobile's useVoiceInputController) owns the controller,
+    and the composer binds itself as the target while it is mounted through a
+    hook that reads the host's send/editor gates directly; the mic button only
+    renders state. The right Command tap and Escape are window-level and work
+    wherever focus sits while the app is active: a tap starts a session, a
+    second tap finishes it, Escape cancels. A new recording targets the thread
+    the composer is currently showing, and when no composer can take it (another
+    page, no thread open, a pending approval or question, a send in flight) the
+    session runs against a fallback presenter instead: one toast, updated in
+    place from preparing through listening to the transcript with a Copy button
+    that stays until dismissed. The target is pinned when a session starts; a
+    composer arriving or leaving mid-session never receives a transcript it did
+    not start, a fallback session leaves the composer idle and editable, and a
+    composer owner change (thread switch, unmount) cancels an in-flight one
+    rather than re-targeting it. Cancellation stops owned work, stale drafts
+    never receive transcripts, and a recording in flight survives the composer
+    becoming disabled: a pending approval or question routes the transcript into
+    the prompt draft itself, and when the action cluster unmounts the recording
+    is transcribed on the spot rather than left running with no control to end it.
     Dictation borrows the send button rather than adding controls beside it.
     With nothing to send, the slot shows an enabled filled microphone in
     place of a disabled send (never over a sending or connecting spinner,
@@ -93,6 +104,8 @@
     - native/voice-input/LICENSE-Whisper.txt
     - apps/web/src/custom/voice/BrowserVoiceRecorder.ts
     - apps/web/src/custom/voice/ForkDictationControl.tsx
+    - apps/web/src/custom/voice/ForkDictationHotkeyHost.tsx
+    - apps/web/src/custom/voice/forkDictationHost.ts
     - apps/web/src/custom/voice/forkVoiceInputBridge.ts
     - apps/web/src/custom/voice/useForkDictationController.ts
     - apps/web/src/custom/ComposerShell.tsx
@@ -106,6 +119,7 @@
     - apps/web/src/components/chat/ChatComposer.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.test.tsx
+    - apps/web/src/routes/__root.tsx
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     - docs/user/composer.md

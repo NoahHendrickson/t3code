@@ -1793,7 +1793,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ownerKey: composerTargetKey(composerDraftTarget),
     disabled: dictationDisabled,
     // Invoked on start/stop, after the refs and callbacks declared below exist.
-    getComposerElement: () => composerFormRef.current,
     focusEditor: focusComposer,
     // While an approval or question is showing, the editor holds that answer
     // rather than the prompt (see the ComposerPromptEditor `value` binding), so
