@@ -2530,35 +2530,50 @@
   height: 16px;
 }
 
-/* ── Popup menus on the composer fill (fork-popup-surface) ───────────────────
-   Menus, selects, comboboxes and popovers (the model picker among them) open
-   on upstream's `dropdown-glass`: a blurred, partly translucent --popover tint
-   under a 10% contrast-foreground border. The Questions card and the prompt
-   surface paint the composer fill over the vessel floor with the 8% composer
-   hairline, so a menu opening beside them in a different grey reads as a
-   third material. Paint them the same way — the three layers the card
-   composites on screen (fill over vessel over stage) — so the value tracks
-   each palette's own tokens and stays opaque, because the stage always is.
-   With nothing to see through, the blur is pure GPU cost and goes too. Dark
-   only, like the vessel: a light build keeps upstream's popover.
+/* ── Popup frost (fork-popup-surface) ────────────────────────────────────────
+   Menus, selects, comboboxes, popovers (the model picker among them), glass
+   tooltips and the Usage dialog open on one frosted material: a thin white
+   wash over a light --popover tint, blurred well past upstream's
+   dropdown-glass (28px, not 12) so what is behind reads as texture, not as
+   text, and saturated so the popup takes on the colour of whatever it opens
+   over instead of sitting on it as a neutral slab. The fork's dark palettes
+   put --popover a step off the stage, so upstream's 80% tint — and the
+   opaque composer-stack fill this rule used to paint — both read as chrome.
+   The tint is kept low (45%) on purpose: the blurred backdrop is what
+   colours the popup, and the wash (8%, under the context chips' 12%) only
+   lifts it a step lighter than its surroundings. Dark only; light keeps
+   upstream's glass. Under Glass the palette stands the popup opaque on the
+   measured panel colour under Figma's 20% tint (theme.custom.palettes.css):
+   over the native material this filter never blurs the rows on screen.
 
    Where the utility sits differs per primitive, so the selector has one arm
-   per shape: menu and popover carry `dropdown-glass` on the popup element
-   itself, select on a child of the popup, and combobox on the wrapper span
-   around the popup (components/ui/combobox.tsx). */
+   per shape: menu, popover, tooltip and dialog carry `dropdown-glass` on the
+   popup element itself, select on a child of the popup, and combobox on the
+   wrapper span around the popup (components/ui/combobox.tsx). Toasts and the
+   timeline's own glass carry the utility too and keep upstream's recipe. No
+   no-filter fallback of its own: upstream's dropdown-glass utility already
+   paints --popover with !important where backdrop-filter is unsupported,
+   which outranks anything declared here. */
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
-    :is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass,
+    :is(
+      [data-slot="menu-popup"],
+      [data-slot="popover-popup"],
+      [data-slot="tooltip-popup"],
+      [data-slot="dialog-popup"]
+    ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"])
   ) {
   background:
-    linear-gradient(var(--fork-composer-bg), var(--fork-composer-bg)),
-    linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
-    var(--background);
-  border-color: var(--fork-composer-border);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+    linear-gradient(
+      color-mix(in srgb, var(--contrast-foreground) 8%, transparent),
+      color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
+    ),
+    color-mix(in srgb, var(--popover) 45%, transparent);
+  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
 }
 
 /* ── Project drop edge (sidebar-v2-project-grouping) ────────────────────────
@@ -2626,51 +2641,10 @@
   position: relative;
 }
 
-/* ── Glass overlays (fork-popup-surface carve-outs) ─────────────────────────
-   One frosted recipe for the popups that open over something worth seeing
-   through, where the rule above makes every other popup opaque: the project
-   header's menu (sidebar-v2-project-grouping) over the thread list, the
-   Usage overlay (fork-usage-popover) over the current thread — a popover on
-   desktop, a Dialog below 768px — and the Dictate tooltip
-   (fork-local-dictation) over the composer vessel. Heavier than upstream's
-   dropdown-glass (20px, not 12) so what is behind reads as texture, not as
-   text, and a 70% popover tint so the contents stay legible over it. Dark
-   only, like the opaque rule it carves out of; light keeps upstream's glass.
-   Each arm pairs the slot with its stamp, which gives the rule the
-   specificity to win without !important, and the backdrop-filter is on the
-   popup itself — no mask, no pseudo-element — so it composites like
-   upstream's own. Under Glass the palette's utility-clear and opaque floor
-   skip only Usage's stamp (theme.custom.palettes.css): the menu opens over
-   the sidebar's native material, which a filter flattens to grey. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-slot="menu-popup"][data-fork-glass-menu],
-    [data-slot="tooltip-popup"][data-fork-glass-tooltip],
-    [data-slot="popover-popup"][data-fork-glass-usage],
-    [data-slot="dialog-popup"][data-fork-glass-usage]
-  ).dropdown-glass {
-  background: color-mix(in srgb, var(--popover) 70%, transparent);
-  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  backdrop-filter: blur(20px) saturate(1.2);
-}
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  :root[data-fork="noahhendrickson-t3code"].dark
-    :is(
-      [data-slot="menu-popup"][data-fork-glass-menu],
-      [data-slot="tooltip-popup"][data-fork-glass-tooltip],
-      [data-slot="popover-popup"][data-fork-glass-usage],
-      [data-slot="dialog-popup"][data-fork-glass-usage]
-    ).dropdown-glass {
-    background: var(--popover);
-  }
-}
-
 /* ── Dictate tooltip (fork-local-dictation) ─────────────────────────────────
-   Sizing only; the frost is the shared glass-overlay rule above. A step
-   larger than the default tooltip (12px / 8×4) so "Dictate" does not read
-   as a status crumb. */
+   Sizing only; the frost is the popup rule (fork-popup-surface), which every
+   glass tooltip shares. A step larger than the default tooltip (12px / 8×4)
+   so "Dictate" does not read as a status crumb. */
 :root[data-fork="noahhendrickson-t3code"] [data-slot="tooltip-popup"][data-fork-glass-tooltip] {
   font-size: 13px;
   line-height: 18px;
@@ -2868,6 +2842,20 @@
     [data-slot="combobox-item"]
   ):is([data-selected], [data-checked]):is([data-highlighted], :hover) {
   background: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
+/* ── Popup separators (fork-popup-surface) ──────────────────────────────────
+   Upstream draws them in --border, an opaque palette grey, which on the
+   fork's frosted and measured-floor popups lands as a dark bar of another
+   material. A contrast alpha at the hairline's own 12% reads as a light
+   rule lifted off whatever the popup paints, on every palette. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  :is(
+    [data-slot="menu-separator"],
+    [data-slot="select-separator"],
+    [data-slot="combobox-separator"]
+  ) {
+  background: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
 }
 
 /* ── Model picker popup corners (fork-model-picker) ─────────────────────────

@@ -78,8 +78,8 @@
     Implement) a live recording settles on the spot and the keyboard cannot
     start one. The download percentage and error popover render beside the
     slot whatever it shows. The microphone tooltip is the word Dictate, on the
-    frosted glass recipe (70% popover tint, 20px blur) a step larger than the
-    default chip. Recording and transcribing keep their action
+    popup frost every glass tooltip shares (fork-popup-surface), a step
+    larger than the default chip. Recording and transcribing keep their action
     labels. The packaged helper exits after inference, freeing model
     memory; the model cache lives under the desktop state dir so --home-dir runs
     stay isolated.
@@ -1535,16 +1535,16 @@
     saturate(2.6) and measured as a channel spread of 3 against 25 in the sidebar
     and 14-20 in the stage beside it: a flat grey slab in a translucent window.
     All of them are cleared explicitly — the composer, and upstream's own
-    .dropdown-glass / .dialog-glass / .alert-glass /
-    .dialog-backdrop utilities, which open over the sidebar and the stage and
-    flatten whatever patch they cover. Those four are made opaque in the same
-    rule (--glass-opacity: 100%): without the blur a translucent menu leaks the
-    text under it, which is worse than the grey card it replaces. The cutoff
-    mask is what makes clearing the composer's own filter safe. Usage
-    (fork-usage-popover) stamps data-fork-glass-usage and is skipped by
-    that clear and by the opaque popup floor: flattening the wallpaper
-    behind a temporary overlay over the thread is the frost, not a chrome
-    surface sitting on the glass.
+    .dialog-glass / .alert-glass / .dialog-backdrop utilities, which open
+    over the sidebar and the stage and flatten whatever patch they cover.
+    Those are made opaque in the same rule (--glass-opacity: 100%): without
+    the blur a translucent dialog leaks the text under it, which is worse
+    than the grey card it replaces. The cutoff mask is what makes clearing
+    the composer's own filter safe. Popups (.dropdown-glass, fork-popup-surface)
+    are not in that clear: their own rule paints Figma's 20% menu tint over
+    the measured on-screen panel colour, opaque, so a menu carries the
+    wallpaper's cast without showing the rows through it. The dialog arm skips the one dialog that
+    carries dropdown-glass (Usage) for the same reason.
 
     Three separate failures in this feature all present identically, as "the
     stylesheet is not reloading":
@@ -1931,12 +1931,10 @@
     on V2 so there is still one chrome door. The popover imports the
     dashboard lazily so the /usage route's chunk stays out of the initial
     bundle; nothing loads or mounts until it opens. The legacy sidebar keeps
-    its footer icon and the dedicated page. The overlay stamps
-    data-fork-glass-usage and joins the one frosted recipe (70% popover
-    tint, 20px blur) shared with the project-header menu and the Dictate
-    tooltip, which fork-popup-surface otherwise paints opaque on every
-    dropdown-glass popover — it opens over the thread, so the messages
-    behind it are something to see through. The panel chrome does not paint
+    its footer icon and the dedicated page. Both shells carry dropdown-glass
+    and take the one popup frost (fork-popup-surface); the dialog is the
+    only dialog on that recipe, so under Glass the utility clear skips
+    dialogs that carry dropdown-glass. The panel chrome does not paint
     bg-background, which would cover the frost from inside.
   tier: 4
   files:
@@ -3270,42 +3268,49 @@
 - id: fork-popup-surface
   intent: >
     Popup menus (menu, select, combobox and popover popups — the model
-    picker among them) paint the same material as the Questions card and
-    the prompt surface: the composer fill layered over the vessel floor over
-    the stage, with the composer hairline, instead of upstream's blurred
-    translucent --popover tint under a 10% contrast border. Layering the
-    palette's own tokens keeps the value in step with every palette and
-    opaque (the stage always is), and the backdrop blur goes with nothing
-    left to see through. Under Glass glass (theme.custom.palettes.css)
-    the composer is alphas over a wallpaper-lit stage, so the same two
-    alphas there stand on --fork-popup-glass-floor — the stage as it reads
-    on screen, measured, opaque — instead of the bare --background tint;
-    generic surface-glass overlays use the context-chip fill over that same
-    opaque floor, with the context-chip hover fill on glass buttons.
-    The menu lands on the Questions card's colour without going
-    translucent, which would show the transcript through it. Dark only;
-    keyed on upstream's popup data-slot names, no upstream fence. One
-    selector arm per primitive, because each stamps dropdown-glass on a
-    different node: menu and popover on the popup itself, select on a child
-    of it, combobox on the wrapper span around it. Menu, select and
-    combobox rows hover with the selected row's 8% foreground wash (12% on
-    a selected or checked row) instead of --accent: the fork palettes make
-    --accent an opaque grey that is the popup's own fill on the Cool
-    palettes (hover vanished) and a bluish slab on the wallpaper-tinted
-    floor under Glass glass, and it never matched the branch
-    picker's "current" row. An alpha lifts whatever the popup paints.
-
-    The carve-outs share one frosted rule (70% popover tint, 20px blur),
-    one arm per stamped slot. The project header's menu
-    (sidebar-v2-project-grouping, data-fork-glass-menu) opens over the
-    thread list, and the cards behind it are something to see through
-    where the stage is not. The Usage overlay (fork-usage-popover,
-    data-fork-glass-usage) opens over the current thread, a popover on
-    desktop and a Dialog below 768px. The Dictate tooltip
-    (fork-local-dictation, data-fork-glass-tooltip) sits over the composer
-    vessel. Under Glass the utility-clear and this opaque floor skip only
-    the Usage stamp so its frost lands; the menu opens over the sidebar's
-    native material, which a filter would flatten to grey.
+    picker among them), glass tooltips and the Usage dialog open on one
+    frosted material in dark: an 8% contrast-foreground wash over a 45%
+    --popover tint, blurred at 28px and saturated at 1.4 (upstream's
+    dropdown-glass is 12px at 80%), under a 12% contrast hairline. The
+    fork's dark palettes put --popover a step off the stage, so upstream's
+    near-opaque tint — and the opaque composer-stack fill this rule used to
+    paint — read as a slab of neutral chrome sitting on the surface. The
+    tint is kept low so the blurred backdrop is what colours the popup and
+    it takes on whatever it opens over; the wash only lifts it a step
+    lighter, and the heavy blur keeps what is behind it texture rather than
+    text. There is one rule and no per-surface carve-out: the project
+    header's menu, the Usage overlay and the Dictate tooltip are on it by
+    their slot, not a stamp. Under Glass (theme.custom.palettes.css) the
+    popups are off the utility clear and stand opaque on Figma's menu fill
+    (t3-fork 497:4233, #1f1f1f at 20%) over --fork-popup-glass-floor —
+    the panel as it reads on screen, measured between the sidebar's rows,
+    the floor the surface-glass overlays share — a shade darker than the
+    panel, behind an 8% white hairline and the design's shadow. Opaque because both translucent routes fail here: over
+    the native material a backdrop-filter never blurs the rows on screen
+    (tested with plain squares in the root and in a body surface, with
+    stacked layers, and with the list composited on its own; a list-side
+    element blur read as a modal dim, and a sharp-clone-with-a-hole frost
+    desynced on scroll), and without a blur a translucent tint shows the
+    rows through the menu. The floor token is the one dial when the
+    wallpaper changes. The dialog
+    arm of the clear skips the one dialog that carries dropdown-glass.
+    Generic surface-glass overlays still
+    use the context-chip fill over --fork-popup-glass-floor — the stage as
+    it reads on screen, measured, opaque — with the context-chip hover fill
+    on glass buttons. Dark only; light keeps upstream's glass. Keyed on
+    upstream's popup data-slot names, no upstream fence. One selector arm
+    per primitive, because each stamps dropdown-glass on a different node:
+    menu, popover, tooltip and dialog on the popup itself, select on a
+    child of it, combobox on the wrapper span around it; toasts and the
+    timeline's own glass keep upstream's recipe. Menu, select and combobox
+    rows hover with the selected row's 8% foreground wash (12% on a
+    selected or checked row) instead of --accent: the fork palettes make
+    --accent an opaque grey that is a bluish slab on the frost, and it
+    never matched the branch picker's "current" row. An alpha lifts
+    whatever the popup paints. Menu, select and combobox separators take
+    the same idea: a 12% contrast-foreground alpha instead of upstream's
+    opaque --border, which sat on the popups as a dark bar of another
+    material.
   tier: 1
   files:
     - apps/web/src/theme.custom.css

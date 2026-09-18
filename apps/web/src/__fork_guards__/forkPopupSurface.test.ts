@@ -2,13 +2,14 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-popup-surface`.
  *
- * Popup menus paint the composer fill (fill over vessel over stage) with the
- * composer hairline, so a menu beside the Questions card is the same material.
- * A sync that renames a popup slot or drops the rule quietly returns the
- * menus to upstream's blurred --popover tint — everything still compiles.
- * The rule has one arm per primitive because each puts `dropdown-glass` on a
- * different node relative to its `data-slot`; a sync that moves the class
- * silently un-matches that primitive, so the guard pins the DOM shape too.
+ * Popup menus frost on one recipe: a contrast wash over a translucent
+ * --popover tint under a heavy blur, so a menu reads as a lighter floating
+ * layer over whatever it opens on. A sync that renames a popup slot or drops
+ * the rule quietly returns the menus to upstream's denser, darker glass —
+ * everything still compiles. The rule has one arm per primitive because each
+ * puts `dropdown-glass` on a different node relative to its `data-slot`; a
+ * sync that moves the class silently un-matches that primitive, so the guard
+ * pins the DOM shape too.
  */
 
 import * as NodeFS from "node:fs";
@@ -38,16 +39,20 @@ const menu = readSibling("../components/ui/menu.tsx");
 const select = readSibling("../components/ui/select.tsx");
 const combobox = readSibling("../components/ui/combobox.tsx");
 const popover = readSibling("../components/ui/popover.tsx");
+const tooltip = readSibling("../components/ui/tooltip.tsx");
 
 /** One arm per primitive, keyed to where it stamps `dropdown-glass`. */
 const SELECTOR_ARMS = [
-  ':is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass',
+  ':is( [data-slot="menu-popup"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"] ).dropdown-glass',
   '[data-slot="select-popup"] > .dropdown-glass',
   '.dropdown-glass:has(> [data-slot="combobox-popup"])',
 ] as const;
 
 const GLASS_GATE =
   ':root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]';
+
+const WASH = "color-mix(in srgb, var(--contrast-foreground) 8%, transparent)";
+const HAIRLINE = "color-mix(in srgb, var(--contrast-foreground) 12%, transparent)";
 
 describe("fork guard: fork-popup-surface", () => {
   it.each([
@@ -62,53 +67,87 @@ describe("fork guard: fork-popup-surface", () => {
     );
   });
 
-  const rule = cssRules(theme).find(
+  const frosts = cssRules(theme).filter(
     (candidate) =>
       candidate.selector.includes(".dropdown-glass") &&
-      candidate.body.includes("--fork-composer-vessel-bg"),
+      /backdrop-filter: blur\(\d+px\)/u.test(candidate.body),
   );
-  const glass = cssRules(palettes).find(
-    (candidate) =>
-      candidate.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
-      candidate.selector.includes(".dropdown-glass") &&
-      candidate.body.includes("--fork-composer-vessel-bg"),
-  );
+  const frost = frosts[0];
 
-  it("paints popup menus as the composer stack, opaque and unblurred", () => {
-    expect(rule?.selector).toContain(MARKER);
-    expect(rule?.selector).toContain(".dark");
-    expect(rule?.body).toMatch(
-      /background:\s*linear-gradient\(var\(--fork-composer-bg\), var\(--fork-composer-bg\)\),\s*linear-gradient\(var\(--fork-composer-vessel-bg\), var\(--fork-composer-vessel-bg\)\),\s*var\(--background\)/u,
+  it("frosts popup menus lighter than what they open over", () => {
+    // One rule, not one per surface: the earlier design carved frosted
+    // exceptions out of an opaque fill, each keyed on its own stamp.
+    expect(frosts).toHaveLength(1);
+    expect(frost?.selector).toContain(MARKER);
+    expect(frost?.selector).toContain(".dark");
+    expect(frost?.selector).not.toContain("data-fork-glass");
+    // A low tint: the blurred backdrop colours the popup, the wash only
+    // lifts it. Heavier than upstream's 12px so text behind reads as texture.
+    expect(flat(frost?.body ?? "")).toContain(
+      `background: linear-gradient( ${WASH}, ${WASH} ), color-mix(in srgb, var(--popover) 45%, transparent);`,
     );
-    expect(rule?.body).toMatch(/border-color:\s*var\(--fork-composer-border\)/u);
-    expect(rule?.body).toMatch(/backdrop-filter:\s*none/u);
+    expect(frost?.body).toContain(`border-color: ${HAIRLINE};`);
+    expect(frost?.body).toContain("backdrop-filter: blur(28px) saturate(1.4);");
+    expect(frost?.body).not.toContain("backdrop-filter: none");
+    // No fork rule paints the popups opaque any more — in either sheet.
+    for (const sheet of [theme, palettes]) {
+      const opaque = cssRules(sheet).find(
+        (candidate) =>
+          candidate.selector.includes(".dropdown-glass") &&
+          candidate.body.includes("--fork-composer-vessel-bg"),
+      );
+      expect(opaque).toBeUndefined();
+    }
   });
 
-  it("stands on the on-screen stage colour under Glass", () => {
-    // The composer's well and tray are alphas over a wallpaper-lit stage
-    // there, so the bare --background floor opens beside the Questions card
-    // several points too dark. The floor swaps for the stage as it reads on
-    // screen — and stays opaque, because the menu opens over the transcript
-    // and a translucent one shows the text through.
-    expect(glass?.selector).toContain(MARKER);
-    expect(glass?.selector).toContain('[data-fork-theme="cool-darker"]');
-    expect(glass?.body).toMatch(
-      /background:\s*linear-gradient\(var\(--fork-composer-bg\), var\(--fork-composer-bg\)\),\s*linear-gradient\(var\(--fork-composer-vessel-bg\), var\(--fork-composer-vessel-bg\)\),\s*var\(--fork-popup-glass-floor\);/u,
-    );
-    const floor = cssRules(palettes).find(
+  it("stands opaque on the measured panel colour under Glass", () => {
+    // Over the native material a backdrop-filter never blurs the rows on
+    // screen (tested), and a translucent tint shows them through the menu,
+    // so the Glass popup is Figma's 20% menu tint over the floor token: the
+    // panel as it reads on screen, measured, opaque — a shade darker than
+    // the panel, never lighter.
+    const strip = cssRules(palettes).find(
       (candidate) =>
-        candidate.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
+        candidate.selector.startsWith(GLASS_GATE) &&
+        candidate.body.includes("--glass-opacity: 100%"),
+    );
+    expect(strip?.selector).toContain(".dialog-glass:not(.dropdown-glass)");
+    expect(flat(strip?.selector ?? "")).not.toMatch(/[\s,]\.dropdown-glass/u);
+    const glassPopup = cssRules(palettes).find(
+      (candidate) =>
+        flat(candidate.selector).startsWith(`${GLASS_GATE} :is(`) &&
+        candidate.selector.includes('[data-slot="menu-popup"]') &&
+        candidate.selector.includes(".dropdown-glass"),
+    );
+    for (const arm of SELECTOR_ARMS) {
+      expect(flat(glassPopup?.selector ?? ""), arm).toContain(arm);
+    }
+    expect(glassPopup?.body).toContain("backdrop-filter: none;");
+    expect(glassPopup?.body).not.toContain("--glass-opacity");
+    expect(flat(glassPopup?.body ?? "")).toContain(
+      "background: linear-gradient(rgb(31 31 31 / 20%), rgb(31 31 31 / 20%)), var(--fork-popup-glass-floor);",
+    );
+    expect(glassPopup?.body).toContain("border-color: rgb(255 255 255 / 8%);");
+    // The floor is opaque — an rgb() triple with no alpha — and measured, so
+    // the popup carries the wallpaper's cast without showing rows through.
+    const glassTokens = cssRules(palettes).find(
+      (candidate) =>
+        candidate.selector.trim() === GLASS_GATE &&
         candidate.body.includes("--fork-popup-glass-floor:"),
     );
-    // Opaque: an rgb() triple with no alpha.
-    expect(floor?.body).toMatch(/--fork-popup-glass-floor:\s*rgb\(\d+ \d+ \d+\);/u);
+    expect(glassTokens?.body).toMatch(/--fork-popup-glass-floor:\s*rgb\(\d+ \d+ \d+\);/u);
+    // No list-side blur, no page surface, no clone: those were tried and read
+    // as a modal dim rather than a frost.
+    for (const candidate of cssRules(palettes)) {
+      expect(candidate.body, candidate.selector).not.toMatch(/(?<!backdrop-)filter: blur/u);
+      expect(flat(candidate.selector).endsWith(") body")).toBe(false);
+    }
   });
 
   it("hovers popup rows with the selected row's wash, not --accent", () => {
-    // The fork palettes make --accent an opaque grey — the popup's own fill on
-    // the Cool palettes, a bluish slab on the wallpaper-tinted floor under
-    // glass — so upstream's hover either vanishes or reads as a second
-    // material next to the 8% foreground wash on a selected row.
+    // The fork palettes make --accent an opaque grey — a bluish slab on the
+    // frost — so upstream's hover reads as a second material next to the 8%
+    // foreground wash on a selected row.
     const ROW_SLOTS = [
       "menu-item",
       "menu-checkbox-item",
@@ -148,17 +187,43 @@ describe("fork guard: fork-popup-surface", () => {
     );
   });
 
-  it("carries the same arm for each primitive in both sheets", () => {
+  it("draws popup separators as a light contrast hairline", () => {
+    // Upstream's --border is an opaque palette grey that reads as a dark bar
+    // on the frosted and measured-floor popups; a 12% contrast alpha lifts
+    // off whatever the popup paints instead.
+    for (const slot of ["menu-separator", "select-separator", "combobox-separator"] as const) {
+      const source = slot.startsWith("menu") ? menu : slot.startsWith("select") ? select : combobox;
+      expect(source, slot).toContain(`data-slot="${slot}"`);
+    }
+    const separator = cssRules(theme).find(
+      (candidate) =>
+        flat(candidate.selector).includes('[data-slot="menu-separator"]') &&
+        candidate.body.includes("var(--contrast-foreground) 12%"),
+    );
+    expect(separator?.selector).toContain(MARKER);
+    expect(separator?.selector).toContain(".dark");
+    expect(separator?.selector).toContain('[data-slot="select-separator"]');
+    expect(separator?.selector).toContain('[data-slot="combobox-separator"]');
+  });
+
+  it("carries one arm per primitive", () => {
+    // No fork fallback for browsers without backdrop-filter: upstream's
+    // utility paints --popover with !important there, which nothing declared
+    // in the fork sheets can outrank, so a fork block would be dead weight.
+    expect(theme).not.toMatch(
+      /@supports not \(\(-webkit-backdrop-filter[^{]*\{\s*:root\[data-fork/u,
+    );
     for (const arm of SELECTOR_ARMS) {
-      expect(flat(rule?.selector ?? ""), arm).toContain(arm);
-      expect(flat(glass?.selector ?? ""), arm).toContain(arm);
+      expect(flat(frost?.selector ?? ""), arm).toContain(arm);
     }
   });
 
   it("targets dropdown-glass on the node each primitive actually puts it on", () => {
-    // Menu and popover: the class sits on the slotted popup element itself.
+    // Menu, popover and the glass tooltip: the class sits on the slotted
+    // popup element itself.
     expect(openingTagBefore(menu, 'data-slot="menu-popup"')).toContain("dropdown-glass");
     expect(openingTagBefore(popover, 'data-slot="popover-popup"')).toContain("dropdown-glass");
+    expect(openingTagBefore(tooltip, 'data-slot="tooltip-popup"')).toContain("dropdown-glass");
 
     // Select: the popup is bare; the glass is a <div> child inside it.
     expect(openingTagBefore(select, 'data-slot="select-popup"')).not.toContain("dropdown-glass");

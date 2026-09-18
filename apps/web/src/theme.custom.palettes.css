@@ -482,15 +482,17 @@
      transcript above the whole composer, the row included. */
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
-  /* The stage as it reads ON SCREEN — the 82–90% tint with the wallpaper's
-     light through it — not the tint itself. Popups (rule below) stand on
-     this instead of the translucent stage, because they open over the
-     transcript and anything less than opaque shows the text through them.
-     Measured off the running app against a warm wallpaper — read the bare
-     stage beside the composer, not the composer itself; the branch pill above
-     it should resolve to white 12% over this value. This is the one dial if
-     the desktop changes and the menus drift from the composer. */
-  --fork-popup-glass-floor: rgb(33 28 33);
+  /* The panel as it reads ON SCREEN — the 82–90% tint with the wallpaper's
+     light through it — not the tint itself. Popups and the surface-glass
+     overlays (rules below) stand on this instead of the translucent panel:
+     they open over rows and transcript, and anything less than opaque
+     shows the text through them, while a filter over the native material
+     never blurs it. Measured off the running app between the sidebar's
+     rows, 2026-09-17, against a purple wallpaper (the earlier warm one read
+     rgb(33 28 33)); Figma's 20% menu tint over this value is what a menu paints.
+     This is the one dial if the wallpaper changes and the menus drift from
+     the panel. */
+  --fork-popup-glass-floor: rgb(51 33 41);
   /* Hover and selected fills. The palette's --accent is an opaque cool
      #282d30, and under glass nothing it lands on is that colour any more: the
      stage is the 90% neutral tint with the wallpaper's cast, the cards are 5%
@@ -664,16 +666,16 @@
    the composer's own filters are cleared by the [data-fork-composer-box] and
    composer-shell rules above.
 
-   Usage (fork-usage-popover) stamps data-fork-glass-usage and is skipped:
-   that overlay is a temporary frost over the thread, and flattening the
-   wallpaper behind it is the frost rather than a chrome surface sitting on
-   the glass. The recipe lives in theme.custom.css. */
+   Popups are not in the list: they have their own rule below, which drops
+   the filter and stands them opaque on the measured floor instead of on
+   --glass-opacity.
+   The Usage dialog is the one dialog on that recipe — it carries
+   dropdown-glass beside dialog-glass — so the dialog arm skips it too. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     .surface-glass,
     .alert-glass,
-    .dialog-glass:not([data-fork-glass-usage]),
-    .dropdown-glass:not([data-fork-glass-usage]),
+    .dialog-glass:not(.dropdown-glass),
     .dialog-backdrop,
     .sidebar-stage-backdrop
   ) {
@@ -682,38 +684,39 @@
   backdrop-filter: none;
 }
 
-/* Popup menus under glass (theme.custom.css, fork-popup-surface). The base
-   rule paints the composer stack — well over tray — and closes it with an
-   opaque `var(--background)`, which is the palette's stage tint with no
-   wallpaper in it. Under glass the Questions card and the prompt surface are
-   those same two alphas over a stage the wallpaper lights from behind, so a
-   menu on the bare tint opens beside them several points darker and flatter
-   — the model picker was the visible case.
-
-   The menu cannot simply go translucent to match: the card sits where the
-   cutoff mask has already ended the transcript, while a menu opens straight
-   over the message text, and even the card's 56% pass-through reads that
-   text clearly. So the floor stays opaque and changes colour instead —
-   `--fork-popup-glass-floor`, the stage as it reads on screen — and the two
-   alphas over it resolve to the card's own value. The blur is already
-   cleared by the glass-set rule above. Same three arms as the base rule.
-   The usage overlay stamps data-fork-glass-usage and is skipped so it can
-   keep the frost from theme.custom.css instead of this opaque floor. */
+/* Popups under glass (theme.custom.css, fork-popup-surface). Opaque:
+   Figma's menu fill (t3-fork 497:4233, #1f1f1f at 20%) composited over
+   --fork-popup-glass-floor, the panel as it reads on screen — a shade
+   darker than the panel, not lighter, with the design's 8% hairline and
+   0 2px 16px shadow doing the separation. Opaque because the two things a
+   translucent popup could do here both fail: over the native material a
+   backdrop-filter never blurs the rows on screen (tested with plain
+   squares drawn into the root and into a body surface, with stacked
+   filter layers, and with the list composited on its own), and without
+   the blur a translucent tint shows the rows through the menu. Standing
+   on the measured panel colour instead, the menu carries the wallpaper's
+   cast with none of it showing through. Same arms as the base rule; the
+   palette gate outranks it. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
-    :is([data-slot="menu-popup"], [data-slot="popover-popup"]).dropdown-glass:not(
-        [data-fork-glass-usage]
-      ),
+    :is(
+      [data-slot="menu-popup"],
+      [data-slot="popover-popup"],
+      [data-slot="tooltip-popup"],
+      [data-slot="dialog-popup"]
+    ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"])
   ) {
   background:
-    linear-gradient(var(--fork-composer-bg), var(--fork-composer-bg)),
-    linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
-    var(--fork-popup-glass-floor);
+    linear-gradient(rgb(31 31 31 / 20%), rgb(31 31 31 / 20%)), var(--fork-popup-glass-floor);
+  border-color: rgb(255 255 255 / 8%);
+  box-shadow: 0 2px 16px rgb(0 0 0 / 25%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
-/* Keep floating glass surfaces opaque over transcript text, using the glass menu floor. */
+/* Keep floating glass surfaces opaque over transcript text, on the on-screen stage floor. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   .surface-glass {
   background:

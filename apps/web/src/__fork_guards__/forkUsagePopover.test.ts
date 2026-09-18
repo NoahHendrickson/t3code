@@ -34,7 +34,7 @@ describe("fork guard: fork-usage-popover", () => {
     expect(chromeRows).toContain('testId="sidebar-v2-usage"');
     expect(chromeRows).toContain("icon={ChartDonutIcon}");
     expect(usagePopover).toContain('data-testid="usage-popover"');
-    expect(usagePopover).toContain('data-fork-glass-usage=""');
+    expect(usagePopover).not.toContain("data-fork-glass-usage");
     expect(usagePopover).toContain('chrome="panel"');
     expect(usagePopover).toContain('side="right"');
     expect(usagePopover).toContain("w-[min(56rem,var(--available-width,calc(100vw-2rem)))]");
@@ -69,37 +69,27 @@ describe("fork guard: fork-usage-popover", () => {
     expect(usagePage).toMatch(/<\/>\s*\);\s*\/\* fork:end fork-usage-popover \*\//u);
   });
 
-  it("keeps the overlay frosted instead of the opaque popup floor", () => {
+  it("frosts both shells on the popup recipe, the dialog included", () => {
+    // Both shells carry dropdown-glass. The popover is a popover-popup like
+    // any other; the dialog is the one dialog-popup on the popup frost
+    // (fork-popup-surface), so that rule carries a dialog arm for it.
     const frost = cssRules(theme).find(
       (rule) =>
-        rule.selector.includes("[data-fork-glass-usage]") &&
-        rule.body.includes("backdrop-filter: blur(20px)"),
+        rule.selector.includes('[data-slot="dialog-popup"]') &&
+        /backdrop-filter: blur\(\d+px\)/u.test(rule.body),
     );
     expect(frost?.selector).toContain('[data-slot="popover-popup"]');
-    expect(frost?.selector).toContain('[data-slot="dialog-popup"]');
     expect(frost?.selector).toContain(".dropdown-glass");
-    // One recipe, not a third copy: the same rule frosts the project-header
-    // menu and the Dictate tooltip.
-    expect(frost?.selector).toContain('[data-slot="menu-popup"][data-fork-glass-menu]');
-    expect(frost?.selector).toContain('[data-slot="tooltip-popup"][data-fork-glass-tooltip]');
-    expect(frost?.body).toMatch(
-      /background:\s*color-mix\(in srgb, var\(--popover\) 70%, transparent\)/u,
-    );
+    // Under Glass the utility clear flattens dialogs, and must skip this one
+    // by the class it shares with the popups rather than a stamp.
     const strip = cssRules(palettes).find(
       (rule) =>
         rule.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
-        rule.selector.includes(".dropdown-glass") &&
+        rule.selector.includes(".dialog-glass") &&
         rule.body.includes("--glass-opacity: 100%"),
     );
-    expect(strip?.selector).toContain(".dropdown-glass:not([data-fork-glass-usage])");
-    expect(strip?.selector).toContain(".dialog-glass:not([data-fork-glass-usage])");
-    const floor = cssRules(palettes).find(
-      (rule) =>
-        rule.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
-        rule.selector.includes('[data-slot="popover-popup"]') &&
-        rule.body.includes("--fork-popup-glass-floor"),
-    );
-    expect(floor?.selector.replace(/\s+/gu, "")).toContain(":not([data-fork-glass-usage])");
+    expect(strip?.selector).toContain(".dialog-glass:not(.dropdown-glass)");
+    expect(strip?.selector).not.toContain(".dropdown-glass:not(");
   });
 
   it("describes Usage as an overlay over the current thread", () => {

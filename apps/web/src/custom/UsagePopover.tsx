@@ -21,9 +21,10 @@
  * overrides, provider chart) into every cold load whether or not Usage is
  * ever opened. Nothing mounts until the popup opens.
  *
- * data-fork-glass-usage keeps the overlay on the frosted recipe (70%
- * popover tint, 20px blur) instead of the opaque popup floor. The panel
- * chrome does not paint bg-background, which would cover that frost.
+ * Both shells carry dropdown-glass, so they take the popup frost from
+ * theme.custom.css (fork-popup-surface) — the dialog is the one dialog on
+ * that recipe. The panel chrome does not paint bg-background, which would
+ * cover that frost.
  */
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { cloneElement, lazy, Suspense, useState, type ReactElement } from "react";
@@ -62,7 +63,6 @@ export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ acti
             "dropdown-glass max-w-none p-0 text-popover-foreground shadow-[0_16px_40px_-18px_rgb(0_0_0/55%)] max-sm:h-[calc(100dvh-3rem)] max-sm:w-full dark:shadow-[0_18px_44px_-18px_rgb(0_0_0/80%)]",
           )}
           data-testid="usage-popover"
-          data-fork-glass-usage=""
         >
           {panel}
         </DialogPopup>
@@ -81,9 +81,6 @@ export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ acti
           className="z-40 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width)"
           data-slot="popover-positioner"
         >
-          {/* data-fork-glass-usage: this overlay sits over the thread, so it
-              keeps the frosted recipe the opaque-popup rule (fork-popup-surface)
-              otherwise paints on every dropdown-glass popover. */}
           <PopoverPrimitive.Popup
             aria-label="Usage"
             className={cn(
@@ -92,7 +89,6 @@ export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ acti
             )}
             data-slot="popover-popup"
             data-testid="usage-popover"
-            data-fork-glass-usage=""
           >
             {panel}
           </PopoverPrimitive.Popup>
