@@ -30,23 +30,36 @@ vi.mock("../custom/voice/BrowserVoiceRecorder", () => ({
 
 type DictationHook =
   typeof import("../custom/voice/useForkDictationController").useForkDictationController;
-type DictationHost = typeof import("../custom/voice/forkDictationHost");
+type DictationSessionModule = typeof import("../custom/voice/forkDictationSession");
 
 let useForkDictationController: DictationHook;
-let host: DictationHost;
+let sessions: DictationSessionModule;
+let fallback: ReturnType<DictationSessionModule["createDictationFallback"]>;
 let uninstallHotkeys: () => void;
 let root: Root;
 let dictation: ReturnType<DictationHook>;
 let drafts: Map<string, string>;
 let focused: string[];
-let presented: Array<ReturnType<DictationHost["getDictationSnapshot"]>["state"]["phase"] | string>;
+let presented: string[];
 const transcribe = vi.fn(async () => "spoken words");
 
-/** Stands in for whatever has focus: the editor, the sidebar, a settings field. */
+/**
+ * Stands in for whatever has focus. Each thread gets its own editor node so
+ * a stale `getComposerElement` is observable through the Escape rule.
+ */
 class FakeNode {
   constructor(readonly name: string) {}
 }
 const elsewhere = new FakeNode("sidebar-search");
+let editors: Map<string, FakeNode>;
+function editorFor(ownerKey: string) {
+  let node = editors.get(ownerKey);
+  if (!node) {
+    node = new FakeNode(ownerKey);
+    editors.set(ownerKey, node);
+  }
+  return node;
+}
 
 // ChatComposer uses memo: without it, the stale effect-event bug does not reproduce.
 const Composer = memo(function Composer({
@@ -59,6 +72,10 @@ const Composer = memo(function Composer({
   const session = useForkDictationController({
     ownerKey,
     disabled,
+    getComposerElement: () => {
+      const editor = editorFor(ownerKey);
+      return { contains: (node: unknown) => node === editor } as unknown as HTMLElement;
+    },
     focusEditor: () => {
       focused.push(ownerKey);
     },
@@ -133,7 +150,7 @@ beforeEach(async () => {
   // graph reaches modules that sniff the real navigator at load.
   vi.resetModules();
   ({ useForkDictationController } = await import("../custom/voice/useForkDictationController"));
-  host = await import("../custom/voice/forkDictationHost");
+  sessions = await import("../custom/voice/forkDictationSession");
 
   // The probe renders no host nodes, but ReactDOM still needs an event target.
   const document = { nodeType: 9, addEventListener() {}, removeEventListener() {} };
@@ -164,14 +181,26 @@ beforeEach(async () => {
   });
   transcribe.mockReset().mockResolvedValue("spoken words");
   drafts = new Map();
+  editors = new Map();
   focused = [];
   presented = [];
-  // What `ForkDictationHotkeyHost` does at the root: the hotkeys and the
-  // presenter for sessions with no composer, installed after the bridge stub.
-  host.setDictationFallbackPresenter((view) => {
-    presented.push(view.kind === "delivered" ? `delivered:${view.text}` : view.kind);
-  });
-  uninstallHotkeys = host.installDictationHotkeys();
+  // What `ForkDictationHotkeyHost` does at the root: the fallback session
+  // with its presenter, and the hotkeys, built after the bridge stub.
+  const bridge = (globalThis as { forkDesktopBridge?: { voiceInput: unknown } }).forkDesktopBridge!
+    .voiceInput as Parameters<DictationSessionModule["createDictationFallback"]>[0];
+  fallback = sessions.createDictationFallback(bridge, () => ({
+    onStateChange: (state) => {
+      presented.push(state.phase);
+    },
+    onDownload: () => {},
+    onTranscript: (text) => {
+      presented.push(`delivered:${text}`);
+    },
+    dismiss: () => {
+      presented.push("dismissed");
+    },
+  }));
+  uninstallHotkeys = sessions.installDictationHotkeys(fallback);
   root = createRoot(container as unknown as HTMLElement);
 });
 
@@ -183,6 +212,7 @@ afterEach(async () => {
     });
   } finally {
     uninstallHotkeys();
+    fallback.dispose();
     vi.unstubAllGlobals();
   }
 });
@@ -264,19 +294,33 @@ describe("dictation thread ownership", () => {
     expect(presented).toEqual([]);
   });
 
-  it("cancels a live session with Escape from anywhere and returns focus to the editor", async () => {
+  it("cancels with Escape only from the composer or an unfocused page", async () => {
     await renderThread("thread-a");
     await act(async () => {
       tapRightCommand(elsewhere);
     });
     expect(dictation.state.phase).toBe("recording");
-    focused.length = 0;
+    // A focused control elsewhere (a dialog, the palette, a field) keeps its Escape.
     await act(async () => {
       dispatchKey("keydown", elsewhere, { key: "Escape", code: "Escape" });
+    });
+    expect(dictation.state.phase).toBe("recording");
+    focused.length = 0;
+    await act(async () => {
+      dispatchKey("keydown", editorFor("thread-a"), { key: "Escape", code: "Escape" });
     });
     expect(dictation.state.phase).toBe("idle");
     expect(drafts.size).toBe(0);
     expect(focused).toEqual(["thread-a"]);
+
+    await act(async () => {
+      tapRightCommand(elsewhere);
+    });
+    expect(dictation.state.phase).toBe("recording");
+    await act(async () => {
+      dispatchKey("keydown", window.document, { key: "Escape", code: "Escape" });
+    });
+    expect(dictation.state.phase).toBe("idle");
   });
 
   it("offers the transcript to copy when no composer is on screen", async () => {
@@ -284,12 +328,18 @@ describe("dictation thread ownership", () => {
     await act(async () => {
       tapRightCommand(elsewhere);
     });
-    expect(host.getDictationSnapshot().state.phase).toBe("recording");
+    expect(fallback.controller.currentState.phase).toBe("recording");
     await act(async () => {
       tapRightCommand(elsewhere);
     });
-    expect(host.getDictationSnapshot().state.phase).toBe("idle");
-    expect(presented).toEqual(["preparing", "recording", "transcribing", "delivered:spoken words"]);
+    expect(fallback.controller.currentState.phase).toBe("idle");
+    expect(presented).toEqual([
+      "preparing",
+      "recording",
+      "transcribing",
+      "delivered:spoken words",
+      "idle",
+    ]);
     expect(drafts.size).toBe(0);
   });
 
@@ -301,7 +351,7 @@ describe("dictation thread ownership", () => {
     // Not this composer's session: it stays idle and editable.
     expect(dictation.state.phase).toBe("idle");
     expect(dictation.blocksSubmission).toBe(false);
-    expect(host.getDictationSnapshot().state.phase).toBe("recording");
+    expect(fallback.controller.currentState.phase).toBe("recording");
     await act(async () => {
       tapRightCommand(elsewhere);
     });
@@ -324,7 +374,7 @@ describe("dictation thread ownership", () => {
     await act(async () => {
       tapRightCommand(elsewhere);
     });
-    expect(host.getDictationSnapshot().state.phase).toBe("transcribing");
+    expect(fallback.controller.currentState.phase).toBe("transcribing");
     await renderThread("thread-a");
     expect(dictation.state.phase).toBe("idle");
     await act(async () => {
@@ -343,16 +393,27 @@ describe("dictation thread ownership", () => {
     expect(drafts.get("thread-a")).toBe("spoken words");
   });
 
-  it("closes the fallback toast when a session is cancelled before it finishes", async () => {
+  it("settles a cancelled fallback session back to idle for its toast to close", async () => {
     await renderNoComposer();
     await act(async () => {
       tapRightCommand(elsewhere);
     });
     await act(async () => {
-      dispatchKey("keydown", elsewhere, { key: "Escape", code: "Escape" });
+      dispatchKey("keydown", window.document, { key: "Escape", code: "Escape" });
     });
-    expect(host.getDictationSnapshot().state.phase).toBe("idle");
-    expect(presented).toEqual(["preparing", "recording", "dismissed"]);
+    expect(fallback.controller.currentState.phase).toBe("idle");
+    expect(presented).toEqual(["preparing", "recording", "idle"]);
+  });
+
+  it("disposes the fallback session with its host", async () => {
+    await renderNoComposer();
+    await act(async () => {
+      tapRightCommand(elsewhere);
+    });
+    expect(fallback.controller.currentState.phase).toBe("recording");
+    fallback.dispose();
+    expect(fallback.controller.currentState.phase).toBe("idle");
+    expect(presented).toEqual(["preparing", "recording", "idle", "dismissed"]);
   });
 
   it("does not start dictation when right Command is used as a modifier", async () => {

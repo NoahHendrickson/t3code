@@ -1,12 +1,13 @@
 import { useEffect } from "react";
+import type { VoiceInputState } from "@t3tools/client-runtime/voice-input";
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { writeTextToClipboard } from "~/hooks/useCopyToClipboard";
 import {
-  cancelDictation,
+  createDictationFallback,
   installDictationHotkeys,
-  setDictationFallbackPresenter,
-  type DictationFallbackView,
-} from "./forkDictationHost";
+  type DictationFallbackActions,
+  type DictationFallbackPresenter,
+} from "./forkDictationSession";
 import { readForkVoiceInputBridge } from "./forkVoiceInputBridge";
 
 type ToastId = ReturnType<typeof toastManager.add>;
@@ -14,120 +15,138 @@ type ToastId = ReturnType<typeof toastManager.add>;
 /**
  * The words for a session with no composer to land in: one toast per session,
  * updated in place from preparing through listening to the transcript with a
- * Copy button. The finished toast stays until dismissed (or copied) so the
- * words are never lost; the corner X on a live one cancels the session.
+ * Copy button. Closing a live toast by any route (corner X, swipe) cancels
+ * the session, through the toast's own close callback rather than the corner
+ * X alone. The finished toast (transcript or error) is detached from the
+ * session: it stays until dismissed or copied, and dismissing it cannot
+ * touch a session that started since.
  */
-function createToastPresenter() {
-  let toastId: ToastId | null = null;
-  const show = (options: ReturnType<typeof stackedThreadToast>) => {
-    if (toastId === null) toastId = toastManager.add(options);
-    else toastManager.update(toastId, options);
+function createToastPresenter(actions: DictationFallbackActions): DictationFallbackPresenter {
+  let liveId: ToastId | null = null;
+  let downloadPercent: number | null = null;
+  const live = (title: string, description: string) => {
+    const options = {
+      ...stackedThreadToast({ type: "loading", title, description, timeout: 0 }),
+      onClose: () => {
+        // Closed by the user while still live: end the session with it.
+        if (liveId === null) return;
+        liveId = null;
+        actions.cancel();
+      },
+    };
+    if (liveId === null) liveId = toastManager.add(options);
+    else toastManager.update(liveId, options);
   };
-  return (view: DictationFallbackView) => {
-    switch (view.kind) {
-      case "preparing":
-        show(
-          stackedThreadToast({
-            type: "loading",
-            title: "Preparing dictation",
-            description:
-              view.downloadPercent === null
-                ? "Getting the microphone ready."
-                : `Downloading speech model ${view.downloadPercent}%`,
-            timeout: 0,
-            data: { onClose: cancelDictation },
-          }),
-        );
-        return;
-      case "recording":
-        show(
-          stackedThreadToast({
-            type: "loading",
-            title: "Listening",
-            description: "Tap Right Command to finish, or press Escape to cancel.",
-            timeout: 0,
-            data: { onClose: cancelDictation },
-          }),
-        );
-        return;
-      case "transcribing":
-        show(
-          stackedThreadToast({
-            type: "loading",
-            title: "Transcribing",
-            description: "Press Escape to cancel.",
-            timeout: 0,
-            data: { onClose: cancelDictation },
-          }),
-        );
-        return;
-      case "delivered": {
-        const finished = toastId;
-        show(
-          stackedThreadToast({
-            type: "success",
-            title: "Dictation ready to copy",
-            description: view.text,
-            timeout: 0,
-            actionProps: {
-              children: "Copy",
-              onClick: () => {
-                void writeTextToClipboard(view.text, "dictation")
-                  .then(() => {
-                    if (finished !== null) toastManager.close(finished);
-                  })
-                  .catch(() => {
-                    toastManager.add({ type: "error", title: "Could not copy the transcript." });
-                  });
-              },
-            },
-            data: {},
-          }),
-        );
-        toastId = null;
-        return;
+  type FinishedOptions = ReturnType<typeof stackedThreadToast> & {
+    onClose: (() => void) | undefined;
+  };
+  const finish = (build: (id: ToastId | null) => FinishedOptions) => {
+    const id = liveId;
+    liveId = null;
+    if (id === null) toastManager.add(build(null));
+    else toastManager.update(id, build(id));
+  };
+  return {
+    onStateChange: (state: VoiceInputState, error: string | null) => {
+      switch (state.phase) {
+        case "preparing":
+          downloadPercent = null;
+          live("Preparing dictation", "Getting the microphone ready.");
+          return;
+        case "recording":
+          live("Listening", "Tap Right Command to finish, or press Escape to cancel.");
+          return;
+        case "transcribing":
+          live("Transcribing", "Press Escape to cancel.");
+          return;
+        case "error":
+          finish(() => ({
+            ...stackedThreadToast({
+              type: "error",
+              title: "Dictation failed",
+              description: error ?? "Dictation failed.",
+              ...(state.errorAction === "settings"
+                ? {
+                    actionProps: {
+                      children: "Open microphone settings",
+                      onClick: () => void readForkVoiceInputBridge()?.openMicrophoneSettings(),
+                    },
+                  }
+                : {}),
+              data: { hideCopyButton: true },
+            }),
+            onClose: actions.clearError,
+          }));
+          return;
+        case "idle": {
+          if (liveId === null) return;
+          // Cancelled or interrupted before a transcript: nothing to keep.
+          // Detach first so the toast's close callback does not cancel again.
+          const id = liveId;
+          liveId = null;
+          toastManager.close(id);
+          return;
+        }
       }
-      case "error":
-        show(
-          stackedThreadToast({
-            type: "error",
-            title: "Dictation failed",
-            description: view.message,
-            ...(view.errorAction === "settings"
-              ? {
-                  actionProps: {
-                    children: "Open microphone settings",
-                    onClick: () => void readForkVoiceInputBridge()?.openMicrophoneSettings(),
-                  },
-                }
-              : {}),
-            // The X clears the controller's error so the next tap starts clean.
-            data: { onClose: cancelDictation, hideCopyButton: true },
-          }),
-        );
-        toastId = null;
-        return;
-      case "dismissed":
-        if (toastId !== null) toastManager.close(toastId);
-        toastId = null;
-        return;
-    }
+    },
+    onDownload: (percent) => {
+      downloadPercent = percent;
+      if (liveId === null) return;
+      live(
+        "Preparing dictation",
+        downloadPercent === null
+          ? "Getting the microphone ready."
+          : `Downloading speech model ${downloadPercent}%`,
+      );
+    },
+    onTranscript: (text) => {
+      finish((id) => ({
+        ...stackedThreadToast({
+          type: "success",
+          title: "Dictation ready to copy",
+          description: text,
+          timeout: 0,
+          actionProps: {
+            children: "Copy",
+            onClick: () => {
+              void writeTextToClipboard(text, "dictation")
+                .then(() => {
+                  if (id !== null) toastManager.close(id);
+                })
+                .catch(() => {
+                  toastManager.add({ type: "error", title: "Could not copy the transcript." });
+                });
+            },
+          },
+        }),
+        onClose: undefined,
+      }));
+    },
+    dismiss: () => {
+      if (liveId === null) return;
+      const id = liveId;
+      liveId = null;
+      toastManager.close(id);
+    },
   };
 }
 
 /**
- * Mounted once above the router (see `__root.tsx`): installs the right
- * Command / Escape hotkeys for the app-level dictation session and presents
- * sessions that have no composer on screen as a toast. Renders nothing, and
- * does nothing where the desktop voice bridge is absent.
+ * Mounted once above the router (see `__root.tsx`): owns the fallback
+ * dictation session for taps with no composer on screen, presents it as a
+ * toast, and installs the right Command / Escape hotkeys for both it and the
+ * composer's own session. Disposes all of it on unmount. Renders nothing,
+ * and does nothing where the desktop voice bridge is absent.
  */
 export function ForkDictationHotkeyHost() {
   useEffect(() => {
-    setDictationFallbackPresenter(createToastPresenter());
-    const uninstall = installDictationHotkeys();
+    const bridge = readForkVoiceInputBridge();
+    if (!bridge) return;
+    const fallback = createDictationFallback(bridge, createToastPresenter);
+    const uninstall = installDictationHotkeys(fallback);
     return () => {
       uninstall();
-      setDictationFallbackPresenter(null);
+      fallback.dispose();
     };
   }, []);
   return null;

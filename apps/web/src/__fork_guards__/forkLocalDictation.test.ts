@@ -3,8 +3,8 @@
  * Fork guard — see `.fork/customizations.yaml#fork-local-dictation`.
  *
  * Pins the wire format the packaged helper expects, the draft-insertion
- * contract, the app-level session with the composer bound as its target, and
- * the root-mounted hotkey host. Thread targeting across navigation and the
+ * contract, the composer owning its session, and the root-mounted hotkey host
+ * with its fallback session. Thread targeting across navigation and the
  * no-composer fallback are guarded in `forkDictationThreadOwnership.test.tsx`.
  */
 import * as NodeFS from "node:fs";
@@ -115,11 +115,11 @@ describe("fork local dictation", () => {
     expect(swapped.committed).toBeNull();
   });
 
-  it("keeps the composer bound to the app-level session, with the bridge and helper wired", () => {
+  it("keeps the composer owning its session, with the root hotkeys, bridge and helper wired", () => {
     const composer = read("../components/chat/ChatComposer.tsx");
     const control = read("../custom/voice/ForkDictationControl.tsx");
     const controller = read("../custom/voice/useForkDictationController.ts");
-    const host = read("../custom/voice/forkDictationHost.ts");
+    const session = read("../custom/voice/forkDictationSession.ts");
     const hotkeyHost = read("../custom/voice/ForkDictationHotkeyHost.tsx");
     const rootRoute = read("../routes/__root.tsx");
     const preload = read("../../../desktop/src/preload.ts");
@@ -230,23 +230,29 @@ describe("fork local dictation", () => {
     expect(theme).toMatch(/\.dark \[data-fork-dictation-timeline\]\s*\{[^}]*color:\s*#ffffff/u);
     expect(theme).toMatch(/\[data-fork-dictation-timeline\]\s*\{[^}]*min-width:\s*96px/u);
     expect(controller).toContain("subscribeLevel");
-    // One session for the whole app, above the router: the composer binds
-    // itself as the target while mounted and only renders state. The hotkey
-    // host at the root installs the keys and presents sessions with no
-    // composer as a toast whose transcript can be copied.
-    expect(host).toContain("new VoiceInputController");
-    expect(controller).not.toContain("new VoiceInputController");
-    expect(controller).toContain("bindDictationComposer(binding)");
-    expect(controller).toContain("unbindDictationComposer(binding)");
-    expect(controller).toContain("useSyncExternalStore(subscribeDictation, getDictationSnapshot)");
+    // The composer owns its session (built once, disposed on unmount) and
+    // registers it with the root hotkeys while mounted. The root host owns a
+    // second, fallback session for taps with no composer to land in, presents
+    // it as a toast whose transcript can be copied, and disposes it with
+    // itself; closing a live toast by any route cancels through the toast's
+    // own close callback.
+    expect(session).toContain("new VoiceInputController");
+    expect(controller).toContain("createDictationSession(bridge, {");
+    expect(controller).toContain("registerDictationComposer({");
+    expect(controller).toMatch(/unregister\(\);\s*controller\.dispose\(\);/u);
+    expect(controller).not.toContain("addEventListener");
     expect(rootRoute).toContain("<ForkDictationHotkeyHost />");
-    expect(hotkeyHost).toContain("installDictationHotkeys()");
-    expect(hotkeyHost).toContain("setDictationFallbackPresenter(createToastPresenter())");
+    expect(hotkeyHost).toContain("createDictationFallback(bridge, createToastPresenter)");
+    expect(hotkeyHost).toContain("installDictationHotkeys(fallback)");
+    expect(hotkeyHost).toMatch(/uninstall\(\);\s*fallback\.dispose\(\);/u);
     expect(hotkeyHost).toMatch(/children: "Copy",\s*onClick:/u);
-    expect(hotkeyHost).toContain("writeTextToClipboard(view.text");
-    // Starting is not gated on focus inside the composer any more.
-    expect(host).not.toContain("inComposer");
-    expect(controller).not.toContain("getComposerElement");
+    expect(hotkeyHost).toContain("writeTextToClipboard(text");
+    expect(hotkeyHost).toMatch(/onClose: \(\) => \{[^}]*actions\.cancel\(\)/u);
+    expect(hotkeyHost).toContain("onClose: actions.clearError");
+    // Starting is not gated on focus inside the composer; Escape still is.
+    expect(session).toMatch(
+      /if \(!unfocused && composer\?\.contains\(target\) !== true\) return;/u,
+    );
     // In a started thread an empty prompt keeps the compact row: the cluster
     // fills attach's slot and the editor (gap 0, prompt collapsed, actions
     // flex). Typed text turns the row into the draft box's grid: attach keeps
@@ -397,8 +403,8 @@ describe("fork local dictation", () => {
       /\[data-slot="tooltip-popup"\]\[data-fork-glass-tooltip\]\s*\{[^}]*font-size:\s*13px/u,
     );
     // Toggle is a tap of right Command, not a chord that would steal ⌘C.
-    expect(host).toContain('event.code === "MetaRight"');
-    expect(host).not.toContain('event.code === "Space"');
+    expect(session).toContain('event.code === "MetaRight"');
+    expect(session).not.toContain('event.code === "Space"');
     expect(control).toContain("Dictate (Right Command)");
     expect(control).not.toContain("Ctrl+Shift+Space");
     // Fork IPC stays out of shared packages.
