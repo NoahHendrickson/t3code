@@ -23,6 +23,7 @@ import {
   syncBrowserChromeTheme,
 } from "../hooks/useTheme";
 import { syncForkGlassFloorColor } from "./forkGlassFloorColor";
+import { syncForkGlassPopupCutout } from "./forkGlassPopupCutout";
 import { syncForkSidebarVibrancy } from "./forkSidebarVibrancy";
 import type { ThemePreference } from "../themePalette";
 
@@ -200,9 +201,13 @@ function syncForkPaletteFromStorage(): void {
     // module owns palette semantics, and keeping the knowledge on this side is
     // what lets the helper import nothing back from it.
     // The popups' floor colour rides on the resolved answer: only a window
-    // that actually got the material has a wallpaper worth sampling.
+    // that actually got the material has a wallpaper worth sampling. Popups
+    // cut their hole through the page on the same answer.
     void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME)
-      .then((applied) => syncForkGlassFloorColor(applied))
+      .then((applied) => {
+        syncForkGlassPopupCutout(applied);
+        return syncForkGlassFloorColor(applied);
+      })
       // The floor is cosmetic: a failure there must never surface as an
       // unhandled rejection out of a palette change.
       .catch(() => undefined);

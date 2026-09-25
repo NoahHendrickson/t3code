@@ -16,6 +16,7 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+import { FORK_GLASS_POPUP_SELECTOR } from "../custom/forkGlassPopupCutout";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
 
@@ -100,12 +101,12 @@ describe("fork guard: fork-popup-surface", () => {
     }
   });
 
-  it("stands opaque on the measured panel colour under Glass", () => {
+  it("stands on the composer's wash over a cut-out hole under Glass", () => {
     // Over the native material a backdrop-filter never blurs the rows on
-    // screen (tested), and a translucent tint shows them through the menu,
-    // so the Glass popup is Figma's 20% menu tint over the floor token: the
-    // panel as it reads on screen, measured, opaque — a shade darker than
-    // the panel, never lighter.
+    // screen (tested), so the Glass popup copies the composer's control row:
+    // custom/forkGlassPopupCutout.ts masks the rows out from under it and
+    // the popup paints the vessel's 6% white wash over the stage tint,
+    // straight on the material — no measured floor.
     const strip = cssRules(palettes).find(
       (candidate) =>
         candidate.selector.startsWith(GLASS_GATE) &&
@@ -124,18 +125,25 @@ describe("fork guard: fork-popup-surface", () => {
     }
     expect(glassPopup?.body).toContain("backdrop-filter: none;");
     expect(glassPopup?.body).not.toContain("--glass-opacity");
+    expect(glassPopup?.body).not.toContain("--fork-popup-glass-floor");
     expect(flat(glassPopup?.body ?? "")).toContain(
-      "background: linear-gradient(rgb(31 31 31 / 20%), rgb(31 31 31 / 20%)), var(--fork-popup-glass-floor);",
+      "background: linear-gradient(rgb(255 255 255 / 6%), rgb(255 255 255 / 6%)), rgb(22 22 22 / 84%);",
     );
     expect(glassPopup?.body).toContain("border-color: rgb(255 255 255 / 8%);");
-    // The floor is opaque — an rgb() triple with no alpha — and measured, so
-    // the popup carries the wallpaper's cast without showing rows through.
-    const glassTokens = cssRules(palettes).find(
+    // The hole is cut the frame a popup mounts, so a fade-in would flash the
+    // bare material through it: Glass popups open at full strength.
+    const opening = cssRules(palettes).find(
       (candidate) =>
-        candidate.selector.trim() === GLASS_GATE &&
-        candidate.body.includes("--fork-popup-glass-floor:"),
+        flat(candidate.selector) === `${GLASS_GATE} .dropdown-glass[data-starting-style]`,
     );
-    expect(glassTokens?.body).toMatch(/--fork-popup-glass-floor:\s*rgb\(\d+ \d+ \d+\);/u);
+    expect(opening?.body).toContain("opacity: 1;");
+    expect(opening?.body).toContain("scale: none;");
+    // The cutout script finds the same popups the rule paints.
+    const tight = (selector: string) =>
+      flat(selector).replace(/\(\s+/gu, "(").replace(/\s+\)/gu, ")");
+    for (const arm of SELECTOR_ARMS) {
+      expect(tight(FORK_GLASS_POPUP_SELECTOR), arm).toContain(tight(arm));
+    }
     // No list-side blur, no page surface, no clone: those were tried and read
     // as a modal dim rather than a frost.
     for (const candidate of cssRules(palettes)) {

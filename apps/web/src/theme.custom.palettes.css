@@ -684,19 +684,20 @@
   backdrop-filter: none;
 }
 
-/* Popups under glass (theme.custom.css, fork-popup-surface). Opaque:
-   Figma's menu fill (t3-fork 497:4233, #1f1f1f at 20%) composited over
-   --fork-popup-glass-floor, the panel as it reads on screen — a shade
-   darker than the panel, not lighter, with the design's 8% hairline and
-   0 2px 16px shadow doing the separation. Opaque because the two things a
-   translucent popup could do here both fail: over the native material a
-   backdrop-filter never blurs the rows on screen (tested with plain
-   squares drawn into the root and into a body surface, with stacked
-   filter layers, and with the list composited on its own), and without
-   the blur a translucent tint shows the rows through the menu. Standing
-   on the measured panel colour instead, the menu carries the wallpaper's
-   cast with none of it showing through. Same arms as the base rule; the
-   palette gate outranks it. */
+/* Popups under glass (theme.custom.css, fork-popup-surface) are the
+   composer's control row, floating: the vessel's 6% white wash over the
+   stage tint where the composer sits, straight on the native material.
+   Nothing in the page shows through because nothing is painted there —
+   custom/forkGlassPopupCutout.ts masks a popup-shaped hole out of #root
+   while one is open, the way the timeline cutoff clears the transcript
+   from behind the composer. So the tint is the whole stack under the
+   popup, not a layer on top of the stage's.
+
+   A backdrop-filter still cannot help: over the native material it never
+   blurs the rows on screen (tested with plain squares drawn into the root
+   and into a body surface, with stacked filter layers, and with the list
+   composited on its own). Same arms as the base rule; the palette gate
+   outranks it. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     :is(
@@ -708,12 +709,22 @@
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"])
   ) {
-  background:
-    linear-gradient(rgb(31 31 31 / 20%), rgb(31 31 31 / 20%)), var(--fork-popup-glass-floor);
+  background: linear-gradient(rgb(255 255 255 / 6%), rgb(255 255 255 / 6%)), rgb(22 22 22 / 84%);
   border-color: rgb(255 255 255 / 8%);
   box-shadow: 0 2px 16px rgb(0 0 0 / 25%);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+/* Glass popups open at full strength instead of fading in. The hole under a
+   popup is cut the frame it mounts, so a fade would show the bare material
+   through it — a bright flash — until the tint caught up. Native menus open
+   the same way. Closing still fades: the hole goes first and the popup
+   dissolves over the rows it was covering. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  .dropdown-glass[data-starting-style] {
+  opacity: 1;
+  scale: none;
 }
 
 /* Keep floating glass surfaces opaque over transcript text, on the on-screen stage floor. */

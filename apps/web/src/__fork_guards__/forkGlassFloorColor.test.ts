@@ -79,7 +79,7 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(renderer).toContain("root.style.setProperty(FORK_GLASS_FLOOR_TOKEN");
     // forkTheme chains it on the vibrancy answer, not on the palette choice.
     expect(forkTheme).toMatch(
-      /syncForkSidebarVibrancy\(activePalette === COOL_DARKER_THEME\)\s*\.then\(\(applied\) =>\s*syncForkGlassFloorColor\(applied\)\)[\s\S]{0,240}?\.catch\(/u,
+      /syncForkSidebarVibrancy\(activePalette === COOL_DARKER_THEME\)\s*\.then\(\(applied\) => \{[\s\S]{0,120}?return syncForkGlassFloorColor\(applied\);\s*\}\)[\s\S]{0,240}?\.catch\(/u,
     );
 
     const listeners: Array<(color: { r: number; g: number; b: number }) => void> = [];
