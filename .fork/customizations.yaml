@@ -3302,8 +3302,8 @@
     header's menu, the Usage overlay and the Dictate tooltip are on it by
     their slot, not a stamp. Under Glass (theme.custom.palettes.css) the
     popups are off the utility clear and wear the composer control row's
-    recipe — a 6% white wash over rgb(22 22 22 / 84%) — straight on the
-    native material, because fork-glass-popup-cutout masks the page out
+    recipe — the vessel wash (--fork-composer-vessel-bg, 6% white under
+    Glass) over the stage's 82% floor tint — straight on the native material, because fork-glass-popup-cutout masks the page out
     from under them; they open without the fade-in so the fresh hole never
     flashes. A backdrop-filter still cannot help there: over the native
     material it never blurs the rows on screen (tested with plain squares
@@ -3387,18 +3387,28 @@
     the Usage dialog — the fork-popup-surface arms) read as the same live
     glass as the sidebar and the composer's control row, not as an
     estimated solid. While one is open, custom/forkGlassPopupCutout.ts masks
-    a popup-shaped hole out of #root (an SVG mask on the root's inline
-    style, holes unioned through an inner <mask>), so nothing in the page
-    paints under the popup and its own tint lands directly on the native
-    vibrancy — the same reason the composer row reads as glass, where the
-    timeline cutoff clears the transcript from behind it. Popups portal into
-    <body>, outside #root, so the mask never cuts them. The mask exists only
-    while a popup is open; only the portal containers are observed, never
-    #root, so a streaming transcript never drives it; it tracks a moving
-    popup frame by frame only until it holds still. A closing popup
-    (data-ending-style) gives its hole back at once and fades over the rows.
-    Started from forkTheme.ts on syncForkSidebarVibrancy's resolved answer,
-    so web, Linux and non-Glass palettes never mask anything.
+    a popup-shaped hole out of everything painted beneath it, so its own
+    tint lands directly on the native vibrancy — the same reason the
+    composer row reads as glass, where the timeline cutoff clears the
+    transcript from behind it. Beneath means #root plus every portal opened
+    before the popup (a menu over the Usage panel, a select in a dialog):
+    portals mount into <body> in open order, and the mask goes on the
+    children of each lower portal container, since an empty-box container
+    cannot mask its fixed children. One viewport-sized SVG mask per surface,
+    holes unioned through an inner <mask>, mask-clip no-clip so a lower
+    popup keeps its shadow; a mask is not a containing block for fixed
+    descendants (checked in Chromium). Masks exist only while a popup is
+    open. With none open only childList observers run, on <body> and the
+    portal containers (Base UI mounts the container before rendering into
+    it); attribute and size observers attach only to containers holding an
+    open popup, re-observed rather than accumulated, and frame tracking runs
+    only until a moving popup holds still (tooltip and popover positioners
+    transition their position). A closing popup (data-ending-style) gives
+    its hole back at once and fades over the rows. Driven from forkTheme.ts
+    by the vibrancy marker, not a sync's return value, because a superseded
+    sync resolves with its own stale answer; the sync is idempotent, so a
+    palette tick that leaves glass on keeps the running cutout. Web, Linux
+    and non-Glass palettes never mask anything.
   tier: 3
   files:
     - apps/web/src/custom/forkGlassPopupCutout.ts

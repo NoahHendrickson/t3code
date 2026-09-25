@@ -18,6 +18,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
 import {
   FORK_SIDEBAR_VIBRANCY_ATTRIBUTE,
+  isForkSidebarVibrancyApplied,
   syncForkSidebarVibrancy,
 } from "../custom/forkSidebarVibrancy";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
@@ -63,6 +64,9 @@ function makeRoot() {
   const attributes = new Map<string, string>();
   return {
     attributes,
+    getAttribute(name: string) {
+      return attributes.get(name) ?? null;
+    },
     setAttribute(name: string, value: string) {
       attributes.set(name, value);
     },
@@ -752,6 +756,33 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     releaseFirst?.(true);
     await expect(stale).resolves.toBe(true);
     expect(root.attributes.has(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE)).toBe(false);
+
+    delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
+  });
+
+  it("keeps glass on when an older disable answers after a newer enable", async () => {
+    // The popup cutout and the floor colour follow the marker, not a sync's
+    // return value, because a superseded call still resolves with its own
+    // answer. Here that answer is "off" while glass is on.
+    const root = makeRoot();
+    let releaseFirst: ((value: boolean) => void) | undefined;
+    const gate = new Promise<boolean>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let call = 0;
+    (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge = {
+      setSidebarVibrancy: (enabled: boolean) => {
+        call += 1;
+        return call === 1 ? gate : Promise.resolve(enabled);
+      },
+    };
+
+    const stale = syncForkSidebarVibrancy(false, root);
+    const fresh = syncForkSidebarVibrancy(true, root);
+    await expect(fresh).resolves.toBe(true);
+    releaseFirst?.(false);
+    await expect(stale).resolves.toBe(false);
+    expect(isForkSidebarVibrancyApplied(root)).toBe(true);
 
     delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
   });

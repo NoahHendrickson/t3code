@@ -44,6 +44,19 @@ function stampMarker(root: Element, enabled: boolean): void {
 }
 
 /**
+ * Whether the glass is on right now, read from the marker rather than from a
+ * sync's return value: a superseded sync still resolves with its own answer,
+ * but only the newest one is allowed to stamp.
+ */
+export function isForkSidebarVibrancyApplied(
+  root: Element | null = typeof document === "undefined" ? null : document.documentElement,
+): boolean {
+  // The theme tests hand the palette sync a bare fake root with no reader.
+  if (typeof root?.getAttribute !== "function") return false;
+  return root.getAttribute(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE) === "true";
+}
+
+/**
  * Monotonic id for in-flight syncs. Palette changes fire this without awaiting,
  * so Glass → Dark → Glass can resolve out of order and stamp the
  * marker from a superseded request. Only the newest sync is allowed to write.

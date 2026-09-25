@@ -90,12 +90,14 @@ describe("fork guard: fork-popup-surface", () => {
     expect(frost?.body).toContain(`border-color: ${HAIRLINE};`);
     expect(frost?.body).toContain("backdrop-filter: blur(28px) saturate(1.4);");
     expect(frost?.body).not.toContain("backdrop-filter: none");
-    // No fork rule paints the popups opaque any more — in either sheet.
+    // No fork rule paints the popups with the opaque composer-stack fill.
+    // Only Glass may use the vessel token, where it is a 6% wash.
     for (const sheet of [theme, palettes]) {
       const opaque = cssRules(sheet).find(
         (candidate) =>
           candidate.selector.includes(".dropdown-glass") &&
-          candidate.body.includes("--fork-composer-vessel-bg"),
+          candidate.body.includes("--fork-composer-vessel-bg") &&
+          !candidate.selector.startsWith(GLASS_GATE),
       );
       expect(opaque).toBeUndefined();
     }
@@ -127,7 +129,7 @@ describe("fork guard: fork-popup-surface", () => {
     expect(glassPopup?.body).not.toContain("--glass-opacity");
     expect(glassPopup?.body).not.toContain("--fork-popup-glass-floor");
     expect(flat(glassPopup?.body ?? "")).toContain(
-      "background: linear-gradient(rgb(255 255 255 / 6%), rgb(255 255 255 / 6%)), rgb(22 22 22 / 84%);",
+      "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)), rgb(22 22 22 / 82%);",
     );
     expect(glassPopup?.body).toContain("border-color: rgb(255 255 255 / 8%);");
     // The hole is cut the frame a popup mounts, so a fade-in would flash the

@@ -23,16 +23,29 @@ const indexHtml = readSibling("../../index.html");
 const customizations = readSibling("../../../../.fork/customizations.yaml");
 
 describe("fork guard: fork-glass-popup-cutout", () => {
-  it("starts on the vibrancy answer, not on the palette choice", () => {
+  it("follows the vibrancy marker, not the palette choice or a stale answer", () => {
+    // A superseded vibrancy sync resolves with its own result; only the
+    // marker reflects the newest one (forkCoolDarkerSidebarVibrancy guard).
     expect(forkTheme).toMatch(
-      /syncForkSidebarVibrancy\(activePalette === COOL_DARKER_THEME\)\s*\.then\(\(applied\) => \{\s*syncForkGlassPopupCutout\(applied\);/u,
+      /const glassOn = isForkSidebarVibrancyApplied\(\);[\s\S]{0,120}?syncForkGlassPopupCutout\(glassOn\);/u,
     );
+  });
+
+  it("keeps a running cutout when a palette sync leaves glass on", () => {
+    expect(cutout).toContain("if (glassOn === (stop !== null)) return;");
+  });
+
+  it("clears portals opened beneath a popup, not only the app root", () => {
+    // A menu over the Usage panel, a select inside a dialog: the lower
+    // portal is outside #root and would otherwise show through the tint.
+    expect(cutout).toMatch(/hole\.layer > layer/u);
+    expect(cutout).toContain('"mask-clip", "no-clip"');
   });
 
   it("masks the app root that the popups portal outside of", () => {
     expect(cutout).toContain('document.getElementById("root")');
     expect(indexHtml).toMatch(/<div id="root">/u);
-    expect(cutout).toContain('appRoot.style.setProperty("mask-image", mask)');
+    expect(cutout).toContain("next.set(appRoot, holes);");
   });
 
   it("is registered in the manifest", () => {

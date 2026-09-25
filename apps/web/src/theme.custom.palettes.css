@@ -685,13 +685,14 @@
 }
 
 /* Popups under glass (theme.custom.css, fork-popup-surface) are the
-   composer's control row, floating: the vessel's 6% white wash over the
-   stage tint where the composer sits, straight on the native material.
-   Nothing in the page shows through because nothing is painted there —
-   custom/forkGlassPopupCutout.ts masks a popup-shaped hole out of #root
-   while one is open, the way the timeline cutoff clears the transcript
-   from behind the composer. So the tint is the whole stack under the
-   popup, not a layer on top of the stage's.
+   composer's control row, floating: the vessel wash over the stage tint
+   where the composer sits (the ramp's 82% floor, which is also the
+   sidebar panel's), straight on the native material. Nothing in the page
+   shows through because nothing is painted there —
+   custom/forkGlassPopupCutout.ts masks a popup-shaped hole out of #root and
+   any portal beneath while one is open, the way the timeline cutoff clears
+   the transcript from behind the composer. So the tint is the whole stack
+   under the popup, not a layer on top of the stage's.
 
    A backdrop-filter still cannot help: over the native material it never
    blurs the rows on screen (tested with plain squares drawn into the root
@@ -709,7 +710,9 @@
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"])
   ) {
-  background: linear-gradient(rgb(255 255 255 / 6%), rgb(255 255 255 / 6%)), rgb(22 22 22 / 84%);
+  background:
+    linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
+    rgb(22 22 22 / 82%);
   border-color: rgb(255 255 255 / 8%);
   box-shadow: 0 2px 16px rgb(0 0 0 / 25%);
   -webkit-backdrop-filter: none;
