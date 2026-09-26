@@ -6,6 +6,7 @@ import { stripProviderName } from "./modelPickerDisplayName";
 const claude = ProviderDriverKind.make("claudeAgent");
 const codex = ProviderDriverKind.make("codex");
 const cursor = ProviderDriverKind.make("cursor");
+const grok = ProviderDriverKind.make("grok");
 
 describe("stripProviderName", () => {
   it("drops the standard provider name", () => {
@@ -22,6 +23,11 @@ describe("stripProviderName", () => {
     expect(stripProviderName("Claude Opus 5.5", { driverKind: cursor })).toBe("Opus 5.5");
     expect(stripProviderName("Composer 2", { driverKind: cursor })).toBe("Composer 2");
     expect(stripProviderName("Claude Opus 5.5", { driverKind: codex })).toBe("Claude Opus 5.5");
+  });
+
+  it("keeps a family word that carries the model's identity", () => {
+    expect(stripProviderName("Grok Build", { driverKind: grok })).toBe("Grok Build");
+    expect(stripProviderName("Grok 4.6", { driverKind: grok })).toBe("Grok 4.6");
   });
 
   it("leaves names that don't lead with the provider", () => {

@@ -3554,7 +3554,9 @@
     not "Claude Opus 5.5"; the tooltip keeps the full name), so the composer
     keeps upstream's provider icon on the trigger — it is the only thing
     telling a Cursor-served Opus from Claude's own. Cursor's models also drop
-    the "Claude" family name they are resold under. Picker rows drop the name
+    the "Claude" family name they are resold under. The strip is a per-provider
+    list of family words, not the provider's display name: Grok's "Grok Build"
+    keeps its name because "Build" alone is nothing. Picker rows drop the name
     too, since the provider submenu or the row's provider label names it.
     The root menu holds a
     search field, then Favorites (heart, only when favorites exist), then one
