@@ -156,7 +156,7 @@ describe("fork guard: fork-popup-surface", () => {
     expect(opening?.body).toContain("opacity: 1;");
     expect(opening?.body).toContain("scale: none;");
     expect(flat(opening?.selector ?? "")).not.toContain(" .dropdown-glass[data-starting-style]");
-    for (const slot of ["menu-popup", "select-popup", "combobox-popup"]) {
+    for (const slot of ["menu-popup", "menu-sub-content", "select-popup", "combobox-popup"]) {
       expect(opening?.selector, slot).toContain(`[data-slot="${slot}"]`);
     }
     // The cutout script finds the same popups the rule paints.
@@ -233,6 +233,23 @@ describe("fork guard: fork-popup-surface", () => {
     expect(separator?.selector).toContain(".dark");
     expect(separator?.selector).toContain('[data-slot="select-separator"]');
     expect(separator?.selector).toContain('[data-slot="combobox-separator"]');
+  });
+
+  it("renders menu row tags as baseline-aligned captions", () => {
+    // The traits menu's Default tag is an outline Badge in a radio row; as a
+    // fixed-height chip it sat off the row label's baseline.
+    expect(menu).toContain('data-slot="menu-radio-item"');
+    expect(readSibling("../components/ui/badge.tsx")).toContain('"data-slot": "badge"');
+    expect(readSibling("../components/chat/TraitsPicker.tsx")).toMatch(
+      /function DefaultBadge\(\) \{\s*return \(\s*<Badge/u,
+    );
+    const tag = cssRules(theme).find((candidate) =>
+      flat(candidate.selector).includes('[data-slot="menu-radio-item"] [data-slot="badge"]'),
+    );
+    expect(tag?.selector).toContain(MARKER);
+    expect(tag?.body).toContain("display: inline;");
+    expect(tag?.body).toContain("background: none;");
+    expect(tag?.body).toContain("vertical-align: baseline;");
   });
 
   it("carries one arm per primitive", () => {

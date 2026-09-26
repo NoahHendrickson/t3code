@@ -159,6 +159,54 @@ const ROW_CLASS =
 const HOVER_REVEAL_CLASS =
   "opacity-0 transition-opacity group-hover:opacity-100 group-data-highlighted:opacity-100";
 const SUBMENU_CLASS = "w-64";
+/**
+ * Submenus anchor to their row, which sits 9px inside the popup edge (1px
+ * border, then 4px padding twice). This leaves a 4px gap between the two
+ * popups, so their hairlines and shadows never stack where they meet.
+ */
+const SUBMENU_SIDE_OFFSET = 13;
+
+type SubmenuSide = "inline-start" | "inline-end";
+
+/**
+ * One level of the cascade. Each popup flips on its own collisions, and a
+ * parent popup is not one of them, so a third level asked to open inline-end
+ * lands on the root menu once the second level has flipped inline-start.
+ * Every level therefore opens toward the side its parent opened to (read off
+ * the parent's data-side as it opens).
+ */
+function ModelPickerSubmenu(props: { trigger: ReactNode; disabled: boolean; children: ReactNode }) {
+  const floatingLayerProps = useContext(ModelPickerFloatingLayerContext);
+  const [side, setSide] = useState<SubmenuSide>("inline-end");
+  return (
+    <MenuSub
+      onOpenChange={(open, details) => {
+        if (!open) return;
+        const from =
+          details.trigger ??
+          (details.event.target instanceof Element ? details.event.target : null);
+        const parentSide = from
+          ?.closest('[data-slot="menu-sub-content"]')
+          ?.getAttribute("data-side");
+        setSide(parentSide === "inline-start" ? "inline-start" : "inline-end");
+      }}
+    >
+      {props.trigger}
+      {props.disabled ? null : (
+        <MenuSubPopup
+          className={SUBMENU_CLASS}
+          side={side}
+          sideOffset={SUBMENU_SIDE_OFFSET}
+          {...floatingLayerProps}
+        >
+          <div data-model-picker-content="true" data-fork-model-picker="true">
+            {props.children}
+          </div>
+        </MenuSubPopup>
+      )}
+    </MenuSub>
+  );
+}
 const TOOLTIP_CLASS = "max-w-64 text-balance font-normal leading-snug";
 
 export const ModelPickerContent = memo(function ModelPickerContent(props: {
@@ -207,8 +255,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   });
   const activeModelSlug =
     activeModel?.slug ?? (props.model === ANTIGRAVITY_DEFAULT_MODEL ? "" : props.model);
-
-  const floatingLayerProps = useContext(ModelPickerFloatingLayerContext);
 
   const focusSearchInput = useCallback(() => {
     searchInputRef.current?.focus({ preventScroll: true });
@@ -589,16 +635,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   };
 
   const renderSubmenu = (trigger: ReactNode, body: ReactNode, disabled = false) => (
-    <MenuSub>
-      {trigger}
-      {disabled ? null : (
-        <MenuSubPopup className={SUBMENU_CLASS} sideOffset={8} {...floatingLayerProps}>
-          <div data-model-picker-content="true" data-fork-model-picker="true">
-            {body}
-          </div>
-        </MenuSubPopup>
-      )}
-    </MenuSub>
+    <ModelPickerSubmenu trigger={trigger} disabled={disabled}>
+      {body}
+    </ModelPickerSubmenu>
   );
 
   const renderProviderRow = (entry: ProviderInstanceEntry) => {

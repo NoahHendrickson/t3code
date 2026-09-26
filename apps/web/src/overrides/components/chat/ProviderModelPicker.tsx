@@ -6,8 +6,9 @@
  * the picker can cascade — providers in the root menu, each opening its models
  * in a submenu on hover (ModelPickerContent's shadow renders both levels).
  * Non-modal like the popover it replaces; upstream's own wheel/touch lock below
- * still guards the page. And the trigger label drops the provider name its
- * icon already shows ("Opus 5.5", not "Claude Opus 5.5").
+ * still guards the page. And the trigger label drops the provider name
+ * ("Opus 5.5", not "Claude Opus 5.5"). The composer's trigger hides the
+ * provider icon too, except where its label collapses; Settings keeps it.
  */
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
@@ -93,8 +94,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     (activeEntry?.driverKind === "opencode" || activeEntry?.driverKind === "antigravity"
       ? undefined
       : selectedInstanceOptions[0]);
-  // The provider icon beside it names the provider; the tooltip keeps the full
-  // name.
+  // The provider name is dropped here; the tooltip keeps the full model name
+  // and names the provider instance.
   const triggerTitle = selectedModel
     ? activeEntry
       ? stripProviderName(getTriggerDisplayModelName(selectedModel), activeEntry)
@@ -208,7 +209,14 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               displayName={activeEntry.displayName}
               accentColor={activeEntry.accentColor}
               showBadge={showInstanceBadge}
-              className="size-4"
+              // The composer shows the model name alone. Its resting strip
+              // (size xs) collapses that name to nothing below 640px, so the
+              // icon comes back there rather than leave a bare chevron.
+              className={cn(
+                "size-4",
+                props.isComposerOwned &&
+                  (size === "xs" ? "hidden @max-[640px]/composer-surface:inline-flex" : "hidden"),
+              )}
               iconClassName={cn("size-4", props.activeProviderIconClassName)}
               indicatorBackground={props.instanceIndicatorBackground ?? "var(--contrast-input)"}
               badgeClassName={cn(
@@ -228,7 +236,14 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             >
               {triggerTitle}
             </TooltipTrigger>
-            <TooltipPopup side="top">{triggerLabel}</TooltipPopup>
+            <TooltipPopup side="top">
+              {triggerLabel}
+              {/* The composer hides the provider icon, so the tooltip names
+                  the instance serving the model. */}
+              {activeEntry ? (
+                <span className="block text-muted-foreground">{activeEntry.displayName}</span>
+              ) : null}
+            </TooltipPopup>
           </Tooltip>
           {selectedModel?.isUnavailable ? (
             <Badge variant="outline" size="sm">

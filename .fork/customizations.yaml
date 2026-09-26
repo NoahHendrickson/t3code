@@ -3326,7 +3326,9 @@
     whatever the popup paints. Menu, select and combobox separators take
     the same idea: a 12% contrast-foreground alpha instead of upstream's
     opaque --border, which sat on the popups as a dark bar of another
-    material.
+    material. Badges in menu radio rows (the traits menu's "Default" tag)
+    drop upstream's bordered chip and read as a plain muted caption, inline
+    so it shares the row label's baseline.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
@@ -3338,6 +3340,10 @@
     - apps/web/src/components/ui/select.tsx
     - apps/web/src/components/ui/combobox.tsx
     - apps/web/src/components/ui/popover.tsx
+    # Stamps data-slot="badge" on the Default tag the menu row tag rule restyles.
+    - apps/web/src/components/ui/badge.tsx
+    # Renders DefaultBadge inside its menu radio rows.
+    - apps/web/src/components/chat/TraitsPicker.tsx
   verify:
     - apps/web/src/__fork_guards__/forkPopupSurface.test.ts
 
@@ -3598,9 +3604,12 @@
     swaps upstream's Popover for a non-modal Base UI Menu and keeps the rest
     of the file (trigger, wheel/touch lock) upstream's, except that the
     trigger label drops the provider name its icon already shows ("Opus 5.5",
-    not "Claude Opus 5.5"; the tooltip keeps the full name), so the composer
-    keeps upstream's provider icon on the trigger — it is the only thing
-    telling a Cursor-served Opus from Claude's own. Cursor's models also drop
+    not "Claude Opus 5.5"; the tooltip keeps the full name). The composer's
+    trigger also hides the provider icon, showing the model name alone; the
+    tooltip is what tells a Cursor-served Opus from Claude's own there. The
+    icon returns only in the composer's resting strip below 640px, where
+    upstream collapses the label to nothing and the icon would otherwise be
+    the trigger's only content. Settings pickers keep the icon. Cursor's models also drop
     the "Claude" family name they are resold under. The strip is a per-provider
     list of family words, not the provider's display name: Grok's "Grok Build"
     keeps its name because "Build" alone is nothing. Picker rows drop the name
@@ -3609,7 +3618,9 @@
     search field, then Favorites (heart, only when favorites exist), then one
     row per enabled provider instance with its glyph, name and a dot on the
     current provider; hovering a row opens that provider's current models in
-    a submenu, with legacy models one submenu deeper. Typing anywhere in the
+    a submenu, with legacy models one submenu deeper. Each level opens
+    toward the side its parent opened to, 4px clear of it, so a flipped
+    cascade never stacks Legacy on the root menu. Typing anywhere in the
     cascade lands in the search field (capture-phase redirect, ahead of the
     menu's type-ahead), and any query swaps the providers for one flat,
     provider-agnostic list of every matching model — glyph and instance name
