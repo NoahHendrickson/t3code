@@ -5987,13 +5987,15 @@ export default function ChatView(props: ChatViewProps) {
         noticeCard: true,
         /* fork:end fork-composer-banner-surface */
         icon: <GitBranchIcon />,
+        // Truncating inline-blocks baseline on their bottom edge; align-bottom
+        // keeps the branch names on the text baseline and the line at 16px.
         title: (
           <>
             Branch changed to{" "}
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <span className="inline-block min-w-0 max-w-full truncate font-medium text-foreground">
+                  <span className="inline-block min-w-0 max-w-full truncate align-bottom font-medium text-foreground">
                     {localCheckoutBranchMismatch.currentBranch}
                   </span>
                 }
@@ -6008,7 +6010,7 @@ export default function ChatView(props: ChatViewProps) {
         description: (
           <>
             was{" "}
-            <span className="inline-block min-w-0 max-w-full truncate font-medium">
+            <span className="inline-block min-w-0 max-w-full truncate align-bottom font-medium">
               {localCheckoutBranchMismatch.threadBranch}
             </span>
           </>
