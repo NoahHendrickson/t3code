@@ -704,6 +704,7 @@
   :is(
     :is(
       [data-slot="menu-popup"],
+      [data-slot="menu-sub-content"],
       [data-slot="popover-popup"],
       [data-slot="tooltip-popup"],
       [data-slot="dialog-popup"]

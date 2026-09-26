@@ -3287,8 +3287,8 @@
 
 - id: fork-popup-surface
   intent: >
-    Popup menus (menu, select, combobox and popover popups — the model
-    picker among them), glass tooltips and the Usage dialog open on one
+    Popup menus (menu and submenu, select, combobox and popover popups — the
+    model picker among them), glass tooltips and the Usage dialog open on one
     frosted material in dark: an 8% contrast-foreground wash over a 45%
     --popover tint, blurred at 28px and saturated at 1.4 (upstream's
     dropdown-glass is 12px at 80%), under a 12% contrast hairline. The
@@ -3591,57 +3591,61 @@
 
 - id: fork-model-picker
   intent: >
-    The composer model picker follows Figma t3-fork 342:8038: a compact
-    12px-radius card (5px inset) with the provider entries laid out as a
-    horizontal segmented tab strip across the top — favorites (heart) first,
-    then one 32px tab per configured instance, the selected tab lifted on a
-    lighter fill — a search toggle at the strip's right end, and the models
-    beneath as plain 32px rows (name, check on the selected row). The strip
-    scrolls once the instances outgrow the 256px popup (about six tabs),
-    keeps the selected tab in view and fades the edge that has more; its
-    tabs are plain toggle buttons (aria-pressed), not ARIA tabs, since no
-    tabpanel or arrow-key contract backs them. Search replaces the tab
-    strip with the input once toggled or typed into, with Escape or its X
-    closing it; the input stays mounted (visually hidden) otherwise so the
-    combobox keeps keyboard navigation and type-to-search. Opening search
-    lists every provider's current models before anything is typed (locked
-    provider still respected, ordered by instance), so a query narrows from
-    the whole catalogue rather than the current tab; legacy models and the
-    ⌘1–9 jump keys wait for a query, so opening search never remaps the
-    keys onto another provider's models. The input's fill sits on a `flex
-    h-8` wrapper — Input's wrapper span is inline under `unstyled`, which
-    painted the pill as a 17px line box. The list is content-sized from its
-    fixed 32px rows up to a 280px cap, a definite height so the virtualized
-    list windows instead of mounting every row. Favorites star and
-    jump-shortcut badge surface on hover / keyboard highlight; favorites and
-    search results carry a leading provider glyph and the instance name
-    inline, since no provider footer remains and the glyph alone cannot
-    tell two accounts of one driver apart. Legacy-models disclosure,
-    locked-provider disabling, instance badges and the "new" sparkle all
-    remain. Selection, ordering, favorites, shortcuts and scroll-lock are
-    upstream's; the render half of ModelPickerContent is the fork's, the
-    logic above it upstream's with each fork hunk marked, and all three
-    shadows keep upstream's relative imports so a sync diffs cleanly.
-    Reaches every entry point through ProviderModelPicker (composer and
-    Settings).
+    The model picker is a cascade menu in the style of Figma t3-fork
+    342:8038 (8px inset, 32px rows with a 12px medium label and a check on
+    the selected model), squared off a step from upstream's menus: 8px
+    corners on every popup level, 4px on the rows and search field. ProviderModelPicker's shadow
+    swaps upstream's Popover for a non-modal Base UI Menu and keeps the rest
+    of the file (trigger, wheel/touch lock) upstream's, except that the
+    trigger label drops the provider name its icon already shows ("Opus 5.5",
+    not "Claude Opus 5.5"; the tooltip keeps the full name), so the composer
+    keeps upstream's provider icon on the trigger — it is the only thing
+    telling a Cursor-served Opus from Claude's own. Cursor's models also drop
+    the "Claude" family name they are resold under. The strip is a per-provider
+    list of family words, not the provider's display name: Grok's "Grok Build"
+    keeps its name because "Build" alone is nothing. Picker rows drop the name
+    too, since the provider submenu or the row's provider label names it.
+    The root menu holds a
+    search field, then Favorites (heart, only when favorites exist), then one
+    row per enabled provider instance with its glyph, name and a dot on the
+    current provider; hovering a row opens that provider's current models in
+    a submenu, with legacy models one submenu deeper. Typing anywhere in the
+    cascade lands in the search field (capture-phase redirect, ahead of the
+    menu's type-ahead), and any query swaps the providers for one flat,
+    provider-agnostic list of every matching model — glyph and instance name
+    inline, ranked like upstream's search, locked provider still respected;
+    Enter picks the first result and Escape clears the query before it
+    closes the menu. Rows reveal the favorites star and ⌘1–9 badge on hover;
+    the star toggles without choosing the row. ⌘1–9 map to the search
+    results, else Favorites, else the current provider's models. Providers
+    locked out of the thread or not ready stay listed but disabled, with the
+    reason as a tooltip; a provider needing setup opens a submenu with its
+    status and an "Open provider setup" item. Every popup level stamps
+    [data-model-picker-content] (shortcut arbitration, wheel lock) and the
+    submenus restamp the composer floating-layer marker, since each portals
+    out on its own — only when the composer owns the picker (the root passes
+    it down by context; Settings mounts the picker too). The exported helpers of ModelPickerContent stay upstream's
+    verbatim and both shadows keep upstream's relative imports. Reaches every
+    entry point through ProviderModelPicker (composer and Settings).
   tier: 2
   files:
+    - apps/web/src/overrides/components/chat/ProviderModelPicker.tsx
     - apps/web/src/overrides/components/chat/ModelPickerContent.tsx
-    - apps/web/src/overrides/components/chat/ModelPickerSidebar.tsx
-    - apps/web/src/overrides/components/chat/ModelListRow.tsx
+    - apps/web/src/custom/modelPickerDisplayName.ts
+    - apps/web/src/custom/modelPickerFloatingLayer.ts
+    - apps/web/src/custom/modelPickerDisplayName.test.ts
     - apps/web/src/theme.custom.css
   shadows:
-    - apps/web/src/components/chat/ModelPickerContent.tsx
-    - apps/web/src/components/chat/ModelPickerSidebar.tsx
-    - apps/web/src/components/chat/ModelListRow.tsx
-  watch:
-    # Renders the popup shell the corner rule targets, and passes the props
-    # the content shadow must keep accepting.
     - apps/web/src/components/chat/ProviderModelPicker.tsx
-    # Reads [data-model-picker-content]; the shadow must keep stamping it.
+    - apps/web/src/components/chat/ModelPickerContent.tsx
+  watch:
+    # Supplies the Menu, submenu and item primitives both levels render.
+    - apps/web/src/components/ui/menu.tsx
+    # Reads [data-model-picker-content]; every popup level must keep stamping it.
     - apps/web/src/modelPickerVisibility.ts
   verify:
     - apps/web/src/__fork_guards__/forkModelPicker.test.ts
+    - apps/web/src/custom/modelPickerDisplayName.test.ts
 
 - id: fork-changed-files-card
   intent: >
