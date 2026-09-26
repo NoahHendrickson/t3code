@@ -54,11 +54,14 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(desktopMethod).toContain("com.apple.wallpaper/Store/Index.plist");
     expect(desktopMethod).not.toContain("osascript");
     // The strip under the sidebar, composited under the panel tint the
-    // palette paints (rgb(22 22 22 / 82%)); the alpha runs 3% heavier than
-    // the stylesheet's, calibrated against the panel measured on screen.
+    // palette paints; the alpha runs 3% heavier than the stylesheet's,
+    // calibrated against the panel measured on screen. Pinned as that
+    // relationship, so a tint change that forgets the estimate fails here.
     expect(desktopMethod).toContain("const PANEL_TINT = 22;");
-    expect(desktopMethod).toContain("const PANEL_TINT_ALPHA = 0.85;");
-    expect(palettes).toContain("--sidebar: rgb(22 22 22 / 82%);");
+    const sidebarAlpha = Number(/--sidebar: rgb\(22 22 22 \/ (\d+)%\);/u.exec(palettes)?.[1]);
+    const estimateAlpha = Number(/const PANEL_TINT_ALPHA = ([\d.]+);/u.exec(desktopMethod)?.[1]);
+    expect(sidebarAlpha, "the panel tint must be declared").toBeGreaterThan(0);
+    expect(estimateAlpha).toBeCloseTo((sidebarAlpha + 3) / 100, 5);
     // Anything unreadable resolves null rather than failing the invoke.
     expect(desktopMethod).toContain(".catch(() => null)");
     // Cover, not contain: the smaller ratio fills the longer side.

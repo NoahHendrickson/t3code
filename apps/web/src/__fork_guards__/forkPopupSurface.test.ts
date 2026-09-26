@@ -141,7 +141,7 @@ describe("fork guard: fork-popup-surface", () => {
     expect(glassPopup?.body).not.toContain("--glass-opacity");
     expect(glassPopup?.body).not.toContain("--fork-popup-glass-floor");
     expect(flat(glassPopup?.body ?? "")).toContain(
-      "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)), rgb(22 22 22 / 82%);",
+      "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)), rgb(22 22 22 / 73%);",
     );
     expect(glassPopup?.body).toContain("border-color: rgb(255 255 255 / 8%);");
     // The hole is cut the frame a popup mounts, so a fade-in would flash the

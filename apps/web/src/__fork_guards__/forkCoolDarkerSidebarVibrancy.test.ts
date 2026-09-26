@@ -603,7 +603,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     // reading surface.
     const topAlpha = stops[0]?.alpha ?? 0;
     for (const stop of stops) {
-      expect(stop.alpha, "no part of the stage may go below 80%").toBeGreaterThanOrEqual(80);
+      expect(stop.alpha, "no part of the stage may go below 70%").toBeGreaterThanOrEqual(70);
       expect(stop.alpha, "no stop may exceed the reading area").toBeLessThanOrEqual(topAlpha);
     }
 
