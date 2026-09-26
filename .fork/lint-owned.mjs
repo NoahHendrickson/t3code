@@ -85,11 +85,11 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
  * baseline only ever ratchets down. Remove entries as they reach zero.
  */
 export const DEFERRED_RULES = new Map([
-  ["react(exhaustive-effect-dependencies)", 4],
+  ["react(exhaustive-effect-dependencies)", 3],
   ["react(memo-dependencies)", 13],
   ["react(purity)", 1],
   ["react(refs)", 18],
-  ["react(set-state-in-effect)", 24],
+  ["react(set-state-in-effect)", 23],
   ["react(static-components)", 2],
 ]);
 

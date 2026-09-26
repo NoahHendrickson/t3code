@@ -907,27 +907,6 @@
   background: #ea3150;
 }
 
-/* The model pill is the provider's name and a caret, nothing else. Upstream
-   leads it with a ProviderInstanceIcon, but this is the only named model
-   control on the lower row, so the icon is redundant with the word beside it.
-
-   Scoped to the composer: ProviderModelPicker is also used in Settings, where
-   the icon still does the work of distinguishing one configured instance from
-   another.
-
-   The `:not()` is load-bearing rather than decorative. The icon wrapper is the
-   label group's first child and carries no attributes of its own, while the
-   model name is wrapped in a tooltip trigger. If upstream ever drops the icon,
-   the model name becomes the first child — and without this guard the rule
-   would hide the name instead, leaving a pill with nothing but a caret. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-control-row]
-  [data-chat-provider-model-picker]
-  > span:first-child
-  > span:first-child:not([data-base-ui-tooltip-trigger]) {
-  display: none;
-}
-
 /* The mode controls carry leading and interleaved vertical rules, which earned
    their keep when they trailed the model picker inside the box and needed to be
    told apart from it. On the control row they are the first thing in the line,
@@ -2548,7 +2527,8 @@
 
    Where the utility sits differs per primitive, so the selector has one arm
    per shape: menu, popover, tooltip and dialog carry `dropdown-glass` on the
-   popup element itself, select on a child of the popup, and combobox on the
+   popup element itself (a submenu's popup is slotted `menu-sub-content` —
+   MenuSubPopup overwrites the slot — so it needs its own name in the arm), select on a child of the popup, and combobox on the
    wrapper span around the popup (components/ui/combobox.tsx). Toasts and the
    timeline's own glass carry the utility too and keep upstream's recipe. No
    no-filter fallback of its own: upstream's dropdown-glass utility already
@@ -2558,6 +2538,7 @@
   :is(
     :is(
       [data-slot="menu-popup"],
+      [data-slot="menu-sub-content"],
       [data-slot="popover-popup"],
       [data-slot="tooltip-popup"],
       [data-slot="dialog-popup"]
@@ -2859,25 +2840,15 @@
 }
 
 /* ── Model picker popup corners (fork-model-picker) ─────────────────────────
-   Figma t3-fork 342:8038 draws the picker as a 12px-radius card with a 5px
-   inset; the inset is the content's own padding, but the corner belongs to
-   the popup shell ProviderModelPicker renders (rounded-lg = 10px, and it
-   clips its viewport to match). Keyed on the picker so every other popover
-   keeps upstream's radius. */
+   The cascade squares off a step from upstream's menus: 8px on the popup
+   (rounded-lg = 10px), 4px on the rows and search field inside it. The inset
+   is the content's own padding, but the corner belongs to the menu popup
+   shell. The root menu and every submenu (slotted menu-sub-content) stamp the
+   picker marker, so all levels share the corner; keyed on it so every other
+   menu keeps upstream's radius. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-slot="popover-popup"]:has([data-fork-model-picker]) {
-  border-radius: 12px;
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-slot="popover-popup"]:has([data-fork-model-picker])::before {
-  border-radius: 11px;
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  [data-slot="popover-viewport"]:has(> [data-fork-model-picker]) {
-  border-radius: 11px;
-  clip-path: inset(0 round 11px);
+  :is([data-slot="menu-popup"], [data-slot="menu-sub-content"]):has([data-fork-model-picker]) {
+  border-radius: 8px;
 }
 
 /* ── Changed-files card in the chat column ───────────────────────────────────

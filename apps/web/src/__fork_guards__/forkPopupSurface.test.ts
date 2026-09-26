@@ -43,7 +43,7 @@ const tooltip = readSibling("../components/ui/tooltip.tsx");
 
 /** One arm per primitive, keyed to where it stamps `dropdown-glass`. */
 const SELECTOR_ARMS = [
-  ':is( [data-slot="menu-popup"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"] ).dropdown-glass',
+  ':is( [data-slot="menu-popup"], [data-slot="menu-sub-content"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"] ).dropdown-glass',
   '[data-slot="select-popup"] > .dropdown-glass',
   '.dropdown-glass:has(> [data-slot="combobox-popup"])',
 ] as const;

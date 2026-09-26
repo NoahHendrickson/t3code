@@ -450,17 +450,6 @@ describe("fork guard: fork-composer-shell", () => {
     expect(new Set(tokens.map((token) => token["--fork-mode-fg-dark"])).size).toBe(4);
   });
 
-  it("keeps the provider icon hidden in the composer only", () => {
-    const iconRules = rules.filter((rule) =>
-      rule.selector.includes("[data-chat-provider-model-picker]"),
-    );
-    expect(iconRules.length).toBeGreaterThan(0);
-    for (const rule of iconRules) {
-      expect(rule.selector).toContain("[data-fork-composer-control-row]");
-      expect(rule.selector).toContain(":not([data-base-ui-tooltip-trigger])");
-    }
-  });
-
   it("opens the workspace select above the context chip row", () => {
     // Assert independently — prop order must not matter to the guard.
     expect(envModeSelector).toMatch(/SelectPopup[^>]*alignItemWithTrigger=\{false\}/u);
