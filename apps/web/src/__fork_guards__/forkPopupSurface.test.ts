@@ -68,6 +68,18 @@ describe("fork guard: fork-popup-surface", () => {
     );
   });
 
+  it("keeps the overlays' floor opaque", () => {
+    // The surface-glass overlays sit over transcript inside #root, where the
+    // popup cutout cannot clear, so their floor must be an opaque rgb()
+    // triple: any alpha shows the text through the scroll-to-end pill.
+    const glassTokens = cssRules(palettes).find(
+      (candidate) =>
+        candidate.selector.trim() === GLASS_GATE &&
+        candidate.body.includes("--fork-popup-glass-floor:"),
+    );
+    expect(glassTokens?.body).toMatch(/--fork-popup-glass-floor:\s*rgb\(\d+ \d+ \d+\);/u);
+  });
+
   const frosts = cssRules(theme).filter(
     (candidate) =>
       candidate.selector.includes(".dropdown-glass") &&
@@ -134,12 +146,19 @@ describe("fork guard: fork-popup-surface", () => {
     expect(glassPopup?.body).toContain("border-color: rgb(255 255 255 / 8%);");
     // The hole is cut the frame a popup mounts, so a fade-in would flash the
     // bare material through it: Glass popups open at full strength.
+    // Only the popups that get a hole: toasts wear dropdown-glass too and
+    // keep their fade.
     const opening = cssRules(palettes).find(
       (candidate) =>
-        flat(candidate.selector) === `${GLASS_GATE} .dropdown-glass[data-starting-style]`,
+        flat(candidate.selector).startsWith(GLASS_GATE) &&
+        candidate.selector.includes("[data-starting-style]"),
     );
     expect(opening?.body).toContain("opacity: 1;");
     expect(opening?.body).toContain("scale: none;");
+    expect(flat(opening?.selector ?? "")).not.toContain(" .dropdown-glass[data-starting-style]");
+    for (const slot of ["menu-popup", "select-popup", "combobox-popup"]) {
+      expect(opening?.selector, slot).toContain(`[data-slot="${slot}"]`);
+    }
     // The cutout script finds the same popups the rule paints.
     const tight = (selector: string) =>
       flat(selector).replace(/\(\s+/gu, "(").replace(/\s+\)/gu, ")");

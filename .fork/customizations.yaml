@@ -3394,9 +3394,14 @@
     before the popup (a menu over the Usage panel, a select in a dialog):
     portals mount into <body> in open order, and the mask goes on the
     children of each lower portal container, since an empty-box container
-    cannot mask its fixed children. One viewport-sized SVG mask per surface,
-    holes unioned through an inner <mask>, mask-clip no-clip so a lower
-    popup keeps its shadow; a mask is not a containing block for fixed
+    cannot mask its fixed children. Each masked surface wears one solid
+    viewport-sized layer with every hole subtracted from it, one small
+    rounded-rect image per hole placed by mask-position, so a moving popup
+    only moves its layer and never mints an image to decode; mask-clip
+    no-clip so a lower popup keeps its shadow. A closing popup is detected
+    on either element split (combobox stamps data-ending-style on the child
+    the wrapper holds), and the instant-open rule matches only the cutout's
+    arms, so toasts keep their fade; a mask is not a containing block for fixed
     descendants (checked in Chromium). Masks exist only while a popup is
     open. With none open only childList observers run, on <body> and the
     portal containers (Base UI mounts the container before rendering into

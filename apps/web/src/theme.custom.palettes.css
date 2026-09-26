@@ -483,15 +483,14 @@
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
   /* The panel as it reads ON SCREEN — the 82–90% tint with the wallpaper's
-     light through it — not the tint itself. Popups and the surface-glass
-     overlays (rules below) stand on this instead of the translucent panel:
-     they open over rows and transcript, and anything less than opaque
-     shows the text through them, while a filter over the native material
-     never blurs it. Measured off the running app between the sidebar's
+     light through it — not the tint itself. The surface-glass overlays
+     (rules below) stand on this instead of the translucent panel: they sit
+     over transcript inside #root, where the popup cutout cannot clear under
+     them, so anything less than opaque shows the text through them, while a
+     filter over the native material never blurs it. Measured off the running app between the sidebar's
      rows, 2026-09-17, against a purple wallpaper (the earlier warm one read
-     rgb(33 28 33)); Figma's 20% menu tint over this value is what a menu paints.
-     This is the one dial if the wallpaper changes and the menus drift from
-     the panel. */
+     rgb(33 28 33)). This is the one dial if the wallpaper changes and the
+     overlays drift from the panel. */
   --fork-popup-glass-floor: rgb(51 33 41);
   /* Hover and selected fills. The palette's --accent is an opaque cool
      #282d30, and under glass nothing it lands on is that colour any more: the
@@ -723,9 +722,24 @@
    popup is cut the frame it mounts, so a fade would show the bare material
    through it — a bright flash — until the tint caught up. Native menus open
    the same way. Closing still fades: the hole goes first and the popup
-   dissolves over the rows it was covering. */
+   dissolves over the rows it was covering.
+
+   Only the popups that get a hole (the cutout's arms), matched on whichever
+   node carries data-starting-style: the popup itself for menu, popover,
+   tooltip and dialog, the popup around the glass for select, the popup
+   inside it for combobox. Toasts wear dropdown-glass too but get no hole,
+   so they keep their fade. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  .dropdown-glass[data-starting-style] {
+  :is(
+    :is(
+        [data-slot="menu-popup"],
+        [data-slot="popover-popup"],
+        [data-slot="tooltip-popup"],
+        [data-slot="dialog-popup"]
+      ).dropdown-glass[data-starting-style],
+    [data-slot="select-popup"][data-starting-style]:has(> .dropdown-glass),
+    .dropdown-glass > [data-slot="combobox-popup"][data-starting-style]
+  ) {
   opacity: 1;
   scale: none;
 }

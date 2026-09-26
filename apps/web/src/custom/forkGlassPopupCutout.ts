@@ -45,24 +45,52 @@ const SETTLED_FRAMES = 3;
 /** Reaches past a lower surface's border box to the popup shadows around it. */
 const SHADOW_REACH = 48;
 
-const MASK_PROPERTIES = ["mask-image", "mask-size", "mask-position", "mask-repeat", "mask-clip"];
+const MASK_PROPERTIES = [
+  "mask-image",
+  "mask-composite",
+  "mask-position",
+  "mask-size",
+  "mask-repeat",
+  "mask-clip",
+];
 
-type Hole = {
+type Rect = {
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
+};
+
+export type CutoutHole = Rect & {
   readonly radius: number;
   /** Index of the portal container the popup lives in; higher opened later. */
   readonly layer: number;
 };
 
+/** Something that may paint under a popup: #root (layer -1) or a portal's child. */
+export type CutoutSurface<Key> = {
+  readonly key: Key;
+  readonly layer: number;
+  readonly rect: Rect;
+};
+
 const round = (value: number) => Math.round(value * 2) / 2;
 
-function measure(popup: HTMLElement, layer: number): Hole | null {
-  // A closing popup fades out over the content it no longer hides, like a
-  // cross-fade, rather than leaving a hole the fade reveals.
-  if (popup.closest("[data-ending-style]")) return null;
+/**
+ * Closing, in either element split: menu, popover, tooltip and dialog stamp
+ * `data-ending-style` on the popup or an ancestor, combobox on the child the
+ * matched wrapper holds. A closing popup gives its hole back at once and fades
+ * over the content like a cross-fade, rather than fading over a hole.
+ */
+function isClosing(popup: HTMLElement): boolean {
+  return (
+    popup.closest("[data-ending-style]") !== null ||
+    popup.querySelector(":scope > [data-ending-style]") !== null
+  );
+}
+
+function measure(popup: HTMLElement, layer: number): CutoutHole | null {
+  if (isClosing(popup)) return null;
   const rect = popup.getBoundingClientRect();
   if (rect.width < 1 || rect.height < 1) return null;
   const style = getComputedStyle(popup);
@@ -77,29 +105,61 @@ function measure(popup: HTMLElement, layer: number): Hole | null {
   };
 }
 
-function touches(rect: DOMRect, hole: Hole): boolean {
+function touches(rect: Rect, hole: Rect): boolean {
   return (
-    rect.left - SHADOW_REACH < hole.x + hole.width &&
-    rect.right + SHADOW_REACH > hole.x &&
-    rect.top - SHADOW_REACH < hole.y + hole.height &&
-    rect.bottom + SHADOW_REACH > hole.y
+    rect.x - SHADOW_REACH < hole.x + hole.width &&
+    rect.x + rect.width + SHADOW_REACH > hole.x &&
+    rect.y - SHADOW_REACH < hole.y + hole.height &&
+    rect.y + rect.height + SHADOW_REACH > hole.y
   );
 }
 
 /**
- * An SVG mask the size of the viewport: white everywhere, black where a popup
- * sits. Drawn through an inner <mask> so overlapping popups union instead of
- * cancelling out, as they would with an even-odd path.
+ * Which holes each surface carries: only popups opened after it (a higher
+ * layer), and only those that reach it. Surfaces that carry none are absent.
  */
-function viewportMask(width: number, height: number, holes: ReadonlyArray<Hole>): string {
-  const cutouts = holes
-    .map(
-      (hole) =>
-        `<rect x='${round(hole.x)}' y='${round(hole.y)}' width='${round(hole.width)}' height='${round(hole.height)}' rx='${round(hole.radius)}' fill='black'/>`,
-    )
-    .join("");
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}'><mask id='m'><rect width='100%' height='100%' fill='white'/>${cutouts}</mask><rect width='100%' height='100%' mask='url(#m)'/></svg>`;
+export function planCutout<Key>(
+  surfaces: ReadonlyArray<CutoutSurface<Key>>,
+  holes: ReadonlyArray<CutoutHole>,
+): Map<Key, Array<CutoutHole>> {
+  const plan = new Map<Key, Array<CutoutHole>>();
+  for (const surface of surfaces) {
+    const cut = holes.filter((hole) => hole.layer > surface.layer && touches(surface.rect, hole));
+    if (cut.length > 0) plan.set(surface.key, cut);
+  }
+  return plan;
+}
+
+/** A hole as its own small image, keyed on size and radius only. */
+function holeImage(hole: CutoutHole): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${round(hole.width)}' height='${round(hole.height)}'><rect width='100%' height='100%' rx='${round(hole.radius)}'/></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+}
+
+/**
+ * The mask a surface wears: a solid layer the size of the viewport with every
+ * hole subtracted, the holes unioned beneath it. Each hole is a separate
+ * layer placed by mask-position, so a popup that moves changes positions only
+ * and never mints a new image to decode. no-clip keeps a lower popup's shadow,
+ * which sits outside its border box.
+ */
+export function cutoutMaskStyle(
+  surface: Rect,
+  holes: ReadonlyArray<CutoutHole>,
+  viewport: { readonly width: number; readonly height: number },
+): Record<string, string> {
+  const at = (x: number, y: number) => `${round(x - surface.x)}px ${round(y - surface.y)}px`;
+  return {
+    "mask-image": ["linear-gradient(#000, #000)", ...holes.map(holeImage)].join(", "),
+    "mask-composite": ["subtract", ...holes.map(() => "add")].join(", "),
+    "mask-position": [at(0, 0), ...holes.map((hole) => at(hole.x, hole.y))].join(", "),
+    "mask-size": [
+      `${viewport.width}px ${viewport.height}px`,
+      ...holes.map((hole) => `${round(hole.width)}px ${round(hole.height)}px`),
+    ].join(", "),
+    "mask-repeat": "no-repeat",
+    "mask-clip": "no-clip",
+  };
 }
 
 function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
@@ -116,7 +176,7 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
 
   /** Writes every mask for the current popups; true if anything changed. */
   const apply = (): boolean => {
-    const holes: Array<Hole> = [];
+    const holes: Array<CutoutHole> = [];
     containers.forEach((container, layer) => {
       for (const popup of container.querySelectorAll<HTMLElement>(FORK_GLASS_POPUP_SELECTOR)) {
         const hole = measure(popup, layer);
@@ -124,42 +184,41 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
       }
     });
 
-    const next = new Map<HTMLElement, ReadonlyArray<Hole>>();
+    const surfaces: Array<CutoutSurface<HTMLElement>> = [];
     if (holes.length > 0) {
-      next.set(appRoot, holes);
+      const toRect = (element: Element): Rect => {
+        const rect = element.getBoundingClientRect();
+        return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+      };
+      surfaces.push({ key: appRoot, layer: -1, rect: toRect(appRoot) });
       containers.forEach((container, layer) => {
-        const above = holes.filter((hole) => hole.layer > layer);
-        if (above.length === 0) return;
         for (const child of container.children) {
-          if (!(child instanceof HTMLElement)) continue;
-          const rect = child.getBoundingClientRect();
-          const cut = above.filter((hole) => touches(rect, hole));
-          if (cut.length > 0) next.set(child, cut);
+          if (child instanceof HTMLElement)
+            surfaces.push({ key: child, layer, rect: toRect(child) });
         }
       });
     }
+    const plan = planCutout(surfaces, holes);
 
-    const width = document.documentElement.clientWidth;
-    const height = document.documentElement.clientHeight;
+    const viewport = {
+      width: document.documentElement.clientWidth,
+      height: document.documentElement.clientHeight,
+    };
     let changed = false;
-    for (const [element, cut] of next) {
-      // The same viewport-sized image on every surface, shifted so it lines up
-      // with the viewport; no-clip keeps a lower popup's shadow outside its box.
-      const rect = element.getBoundingClientRect();
-      const image = viewportMask(width, height, cut);
-      const position = `${round(-rect.left)}px ${round(-rect.top)}px`;
-      const written = `${image} ${position}`;
-      if (masked.get(element) === written) continue;
-      masked.set(element, written);
-      element.style.setProperty("mask-image", image);
-      element.style.setProperty("mask-size", `${width}px ${height}px`);
-      element.style.setProperty("mask-position", position);
-      element.style.setProperty("mask-repeat", "no-repeat");
-      element.style.setProperty("mask-clip", "no-clip");
+    for (const surface of surfaces) {
+      const cut = plan.get(surface.key);
+      if (cut === undefined) continue;
+      const style = cutoutMaskStyle(surface.rect, cut, viewport);
+      const written = Object.values(style).join("|");
+      if (masked.get(surface.key) === written) continue;
+      masked.set(surface.key, written);
+      for (const [property, value] of Object.entries(style)) {
+        surface.key.style.setProperty(property, value);
+      }
       changed = true;
     }
     for (const element of masked.keys()) {
-      if (next.has(element)) continue;
+      if (plan.has(element)) continue;
       masked.delete(element);
       clearMask(element);
       changed = true;

@@ -2542,9 +2542,10 @@
    The tint is kept low (45%) on purpose: the blurred backdrop is what
    colours the popup, and the wash (8%, under the context chips' 12%) only
    lifts it a step lighter than its surroundings. Dark only; light keeps
-   upstream's glass. Under Glass the palette stands the popup opaque on the
-   measured panel colour under Figma's 20% tint (theme.custom.palettes.css):
-   over the native material this filter never blurs the rows on screen.
+   upstream's glass. Under Glass the palette drops the filter, which never
+   blurs the rows over the native material, and paints the composer row's
+   wash straight on the glass through a hole the cutout clears beneath the
+   popup (theme.custom.palettes.css, custom/forkGlassPopupCutout.ts).
 
    Where the utility sits differs per primitive, so the selector has one arm
    per shape: menu, popover, tooltip and dialog carry `dropdown-glass` on the
@@ -2815,8 +2816,8 @@
    marks the selected/checked row with an 8% foreground wash. The fork palettes
    make --accent an opaque grey: on the Cool palettes it is the composer fill
    itself, the very colour the popup above paints, so a hovered row vanishes;
-   under Glass the popup stands on the wallpaper-tinted floor and
-   the same opaque accent lands as a bluish slab on a warm surface; and in the
+   under Glass the popup is a translucent wash on the native glass and
+   the same opaque accent lands as a bluish slab on it; and in the
    branch picker the hovered row never matched the "current" row beside it.
    Hover takes the selected row's own wash — an alpha, so it reads as a lift
    of whatever the popup paints — and hover on a selected row steps to 12% so
@@ -2846,7 +2847,7 @@
 
 /* ── Popup separators (fork-popup-surface) ──────────────────────────────────
    Upstream draws them in --border, an opaque palette grey, which on the
-   fork's frosted and measured-floor popups lands as a dark bar of another
+   fork's frosted and Glass popups lands as a dark bar of another
    material. A contrast alpha at the hairline's own 12% reads as a light
    rule lifted off whatever the popup paints, on every palette. */
 :root[data-fork="noahhendrickson-t3code"].dark
