@@ -96,7 +96,10 @@ describe("fork guard: fork-model-picker", () => {
     // Non-modal like the popover it replaces; upstream's wheel lock stays.
     expect(picker).toMatch(/<Menu\s+modal=\{false\}/u);
     expect(picker).toContain('closest("[data-model-picker-content]")');
-    expect(picker).toContain("props.isComposerOwned ? composerFloatingLayerProps : {}");
+    expect(picker).toContain(
+      "const floatingLayerProps = props.isComposerOwned ? composerFloatingLayerProps : {};",
+    );
+    expect(picker).toContain("<MenuPopup {...floatingLayerProps}");
   });
 
   it("drops the provider name wherever the provider is already shown", () => {
@@ -136,7 +139,11 @@ describe("fork guard: fork-model-picker", () => {
     expect(visibility).toContain('"[data-model-picker-content]"');
     expect(content.match(/data-model-picker-content="true"/gu)?.length).toBe(2);
     expect(content.match(/data-fork-model-picker="true"/gu)?.length).toBe(2);
-    expect(content).toContain("{...composerFloatingLayerProps}");
+    // Submenus restamp the root popup's composer marker, only when the
+    // composer owns the picker — Settings mounts it too.
+    expect(picker).toContain("<ModelPickerFloatingLayerContext value={floatingLayerProps}>");
+    expect(content).toContain("{...floatingLayerProps}>");
+    expect(content).not.toContain("composerFloatingLayerProps");
   });
 
   it("searches every provider's models as one flat list", () => {

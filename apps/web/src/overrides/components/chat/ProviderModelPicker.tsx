@@ -22,6 +22,7 @@ import { buttonVariants } from "../ui/button";
 import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
+import { ModelPickerFloatingLayerContext } from "~/custom/modelPickerFloatingLayer";
 import { stripProviderName } from "~/custom/modelPickerDisplayName";
 import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
@@ -106,6 +107,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     : triggerTitle;
   const showInstanceBadge =
     activeEntry !== null && shouldShowInstanceBadge(activeEntry, props.instanceEntries);
+
+  const floatingLayerProps = props.isComposerOwned ? composerFloatingLayerProps : {};
 
   const setIsMenuOpen = (open: boolean) => {
     props.onOpenChange?.(open);
@@ -237,27 +240,28 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           <ComposerControlChevron size={size} />
         </span>
       </MenuTrigger>
-      <MenuPopup
-        {...(props.isComposerOwned ? composerFloatingLayerProps : {})}
-        align="start"
-        className="w-56"
-      >
-        <ModelPickerContent
-          activeInstanceId={activeInstanceId}
-          model={props.model}
-          lockedProvider={props.lockedProvider}
-          lockedContinuationGroupKey={props.lockedContinuationGroupKey ?? null}
-          instanceEntries={props.instanceEntries}
-          {...(props.keybindings ? { keybindings: props.keybindings } : {})}
-          modelOptionsByInstance={props.modelOptionsByInstance}
-          terminalOpen={props.terminalOpen ?? false}
-          onRequestClose={() => setIsMenuOpen(false)}
-          {...(props.onOpenProviderSetup ? { onOpenProviderSetup: props.onOpenProviderSetup } : {})}
-          {...(props.getModelDisabledReason
-            ? { getModelDisabledReason: props.getModelDisabledReason }
-            : {})}
-          onInstanceModelChange={handleInstanceModelChange}
-        />
+      <MenuPopup {...floatingLayerProps} align="start" className="w-56">
+        {/* Submenus portal out of this popup and restamp these themselves. */}
+        <ModelPickerFloatingLayerContext value={floatingLayerProps}>
+          <ModelPickerContent
+            activeInstanceId={activeInstanceId}
+            model={props.model}
+            lockedProvider={props.lockedProvider}
+            lockedContinuationGroupKey={props.lockedContinuationGroupKey ?? null}
+            instanceEntries={props.instanceEntries}
+            {...(props.keybindings ? { keybindings: props.keybindings } : {})}
+            modelOptionsByInstance={props.modelOptionsByInstance}
+            terminalOpen={props.terminalOpen ?? false}
+            onRequestClose={() => setIsMenuOpen(false)}
+            {...(props.onOpenProviderSetup
+              ? { onOpenProviderSetup: props.onOpenProviderSetup }
+              : {})}
+            {...(props.getModelDisabledReason
+              ? { getModelDisabledReason: props.getModelDisabledReason }
+              : {})}
+            onInstanceModelChange={handleInstanceModelChange}
+          />
+        </ModelPickerFloatingLayerContext>
       </MenuPopup>
     </Menu>
   );

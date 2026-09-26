@@ -23,6 +23,7 @@ import {
   Fragment,
   memo,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -35,7 +36,6 @@ import { CheckIcon, SearchIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { getProviderStatusMessage, hasProviderSetup } from "./ProviderStatusBanner";
 import { buildModelPickerSearchText, scoreModelPickerSearch } from "./modelPickerSearch";
-import { composerFloatingLayerProps } from "./composerEventScope";
 import { getDisplayModelName, ModelEsque, PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
 import { MenuItem, MenuSub, MenuSubPopup, MenuSubTrigger } from "../ui/menu";
 import { Badge } from "../ui/badge";
@@ -51,6 +51,7 @@ import {
 } from "../../keybindings";
 import { useClientSettings, useUpdateClientSettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
+import { ModelPickerFloatingLayerContext } from "~/custom/modelPickerFloatingLayer";
 import { stripProviderName } from "~/custom/modelPickerDisplayName";
 import {
   isProviderInstancePickerReady,
@@ -206,6 +207,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   });
   const activeModelSlug =
     activeModel?.slug ?? (props.model === ANTIGRAVITY_DEFAULT_MODEL ? "" : props.model);
+
+  const floatingLayerProps = useContext(ModelPickerFloatingLayerContext);
 
   const focusSearchInput = useCallback(() => {
     searchInputRef.current?.focus({ preventScroll: true });
@@ -589,7 +592,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     <MenuSub>
       {trigger}
       {disabled ? null : (
-        <MenuSubPopup className={SUBMENU_CLASS} sideOffset={8} {...composerFloatingLayerProps}>
+        <MenuSubPopup className={SUBMENU_CLASS} sideOffset={8} {...floatingLayerProps}>
           <div data-model-picker-content="true" data-fork-model-picker="true">
             {body}
           </div>

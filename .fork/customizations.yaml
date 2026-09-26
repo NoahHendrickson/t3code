@@ -3574,7 +3574,8 @@
     status and an "Open provider setup" item. Every popup level stamps
     [data-model-picker-content] (shortcut arbitration, wheel lock) and the
     submenus restamp the composer floating-layer marker, since each portals
-    out on its own. The exported helpers of ModelPickerContent stay upstream's
+    out on its own — only when the composer owns the picker (the root passes
+    it down by context; Settings mounts the picker too). The exported helpers of ModelPickerContent stay upstream's
     verbatim and both shadows keep upstream's relative imports. Reaches every
     entry point through ProviderModelPicker (composer and Settings).
   tier: 2
@@ -3582,6 +3583,7 @@
     - apps/web/src/overrides/components/chat/ProviderModelPicker.tsx
     - apps/web/src/overrides/components/chat/ModelPickerContent.tsx
     - apps/web/src/custom/modelPickerDisplayName.ts
+    - apps/web/src/custom/modelPickerFloatingLayer.ts
     - apps/web/src/custom/modelPickerDisplayName.test.ts
     - apps/web/src/theme.custom.css
   shadows:
