@@ -26,7 +26,7 @@
 
 /** Where each primitive puts `dropdown-glass` — the arms of the popup rule. */
 export const FORK_GLASS_POPUP_SELECTOR = [
-  ':is([data-slot="menu-popup"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"]).dropdown-glass',
+  ':is([data-slot="menu-popup"], [data-slot="menu-sub-content"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"]).dropdown-glass',
   '[data-slot="select-popup"] > .dropdown-glass',
   '.dropdown-glass:has(> [data-slot="combobox-popup"])',
 ].join(", ");

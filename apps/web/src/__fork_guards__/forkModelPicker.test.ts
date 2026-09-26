@@ -103,11 +103,16 @@ describe("fork guard: fork-model-picker", () => {
   });
 
   it("drops the provider name wherever the provider is already shown", () => {
-    // Trigger: the icon names the provider, so no rule may hide it.
+    // Trigger: the composer shows the name alone, but its resting strip
+    // collapses the label below 640px, so the icon must come back there;
+    // Settings keeps the icon, and no stylesheet rule may hide it.
     expect(picker).toContain(
       "stripProviderName(getTriggerDisplayModelName(selectedModel), activeEntry)",
     );
     expect(picker).toMatch(/\{activeEntry \? \(\s*<ProviderInstanceIcon/u);
+    expect(picker).toContain(
+      'props.isComposerOwned &&\n                  (size === "xs" ? "hidden @max-[640px]/composer-surface:inline-flex" : "hidden")',
+    );
     for (const rule of cssRules(theme)) {
       if (rule.selector.includes("[data-chat-provider-model-picker]")) {
         expect(rule.body, rule.selector).not.toMatch(/display:\s*none/u);
@@ -118,8 +123,13 @@ describe("fork guard: fork-model-picker", () => {
   });
 
   it("cascades providers into hover submenus, favorites first", () => {
-    expect(content).toContain("<MenuSub>");
-    expect(content).toContain("<MenuSubPopup");
+    expect(content).toContain("<MenuSub");
+    // Submenus render MenuPopup under the submenu slot the popup rules key
+    // on, opening toward their parent's side so Legacy never lands on the
+    // root menu after the provider level flips.
+    expect(content).toContain('data-slot="menu-sub-content"');
+    expect(content).toContain("closest('[data-slot=\"menu-sub-content\"]')");
+    expect(content).toContain("side={side}");
     expect(content).toContain('data-model-picker-provider="favorites"');
     expect(content.indexOf('data-model-picker-provider="favorites"')).toBeLessThan(
       content.indexOf("{providerEntries.map(renderProviderRow)}"),
@@ -142,7 +152,7 @@ describe("fork guard: fork-model-picker", () => {
     // Submenus restamp the root popup's composer marker, only when the
     // composer owns the picker — Settings mounts it too.
     expect(picker).toContain("<ModelPickerFloatingLayerContext value={floatingLayerProps}>");
-    expect(content).toContain("{...floatingLayerProps}>");
+    expect(content).toContain("{...floatingLayerProps}");
     expect(content).not.toContain("composerFloatingLayerProps");
   });
 

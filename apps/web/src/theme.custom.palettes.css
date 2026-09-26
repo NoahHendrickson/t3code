@@ -736,6 +736,7 @@
   :is(
     :is(
         [data-slot="menu-popup"],
+        [data-slot="menu-sub-content"],
         [data-slot="popover-popup"],
         [data-slot="tooltip-popup"],
         [data-slot="dialog-popup"]
@@ -951,10 +952,11 @@
    --sidebar-border, and this is the only one of them running the full height of
    the window against a darker column — at the shared #3f3f3f it was the
    brightest edge on screen while the rings, which are short and sit inside the
-   tint, read correctly. Halving the step above the panel (#2b2b2b) leaves the
-   two columns separated without the line announcing itself; the rings keep
-   #3f3f3f. Opaque for the reason the token above gives: alpha here lets the
-   wallpaper through the line and the seam shimmers.
+   tint, read correctly. Opaque greys (#2b2b2b, #353535) read as a dead grey
+   line laid over the glass; a thin white wash (7%, 12%) let so much wallpaper
+   through that the seam became a see-through strip of raw wallpaper colour.
+   A mostly opaque grey splits it: 60% #404040 hides most of the wallpaper but
+   keeps some of its warmth in the line. The rings keep #3f3f3f.
 
    Unlike the tint above, this is NOT gated on the panel sitting beside the chat
    column. The two rules answer different questions: the tint asks what is behind
@@ -964,5 +966,5 @@
    neighbouring column, and it is the panel's only edge. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-container"][data-sidebar-version="v2"] {
-  border-color: #2b2b2b;
+  border-color: rgb(64 64 64 / 60%);
 }
