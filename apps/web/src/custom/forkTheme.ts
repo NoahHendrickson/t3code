@@ -23,7 +23,8 @@ import {
   syncBrowserChromeTheme,
 } from "../hooks/useTheme";
 import { syncForkGlassFloorColor } from "./forkGlassFloorColor";
-import { syncForkSidebarVibrancy } from "./forkSidebarVibrancy";
+import { syncForkGlassPopupCutout } from "./forkGlassPopupCutout";
+import { isForkSidebarVibrancyApplied, syncForkSidebarVibrancy } from "./forkSidebarVibrancy";
 import type { ThemePreference } from "../themePalette";
 
 export const FORK_THEME_ATTRIBUTE = "data-fork-theme";
@@ -199,12 +200,19 @@ function syncForkPaletteFromStorage(): void {
     // Which palettes want glass is decided here rather than in the helper: this
     // module owns palette semantics, and keeping the knowledge on this side is
     // what lets the helper import nothing back from it.
-    // The popups' floor colour rides on the resolved answer: only a window
-    // that actually got the material has a wallpaper worth sampling.
+    // The overlays' floor colour and the popup cutout follow whether the
+    // window actually got the material. They read the marker, not this call's
+    // answer: a superseded sync resolves with its own stale result, and only
+    // the newest may stamp. Started independently, so one failing never
+    // skips the other.
+    // Both are cosmetic: a failure in either must never surface as an
+    // unhandled rejection out of a palette change.
     void syncForkSidebarVibrancy(activePalette === COOL_DARKER_THEME)
-      .then((applied) => syncForkGlassFloorColor(applied))
-      // The floor is cosmetic: a failure there must never surface as an
-      // unhandled rejection out of a palette change.
+      .then(() => {
+        const glassOn = isForkSidebarVibrancyApplied();
+        void syncForkGlassFloorColor(glassOn).catch(() => undefined);
+        syncForkGlassPopupCutout(glassOn);
+      })
       .catch(() => undefined);
   }
   lastPalette = palette;

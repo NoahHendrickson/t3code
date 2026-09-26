@@ -3301,18 +3301,14 @@
     text. There is one rule and no per-surface carve-out: the project
     header's menu, the Usage overlay and the Dictate tooltip are on it by
     their slot, not a stamp. Under Glass (theme.custom.palettes.css) the
-    popups are off the utility clear and stand opaque on Figma's menu fill
-    (t3-fork 497:4233, #1f1f1f at 20%) over --fork-popup-glass-floor —
-    the panel as it reads on screen, measured between the sidebar's rows,
-    the floor the surface-glass overlays share — a shade darker than the
-    panel, behind an 8% white hairline and the design's shadow. Opaque because both translucent routes fail here: over
-    the native material a backdrop-filter never blurs the rows on screen
-    (tested with plain squares in the root and in a body surface, with
-    stacked layers, and with the list composited on its own; a list-side
-    element blur read as a modal dim, and a sharp-clone-with-a-hole frost
-    desynced on scroll), and without a blur a translucent tint shows the
-    rows through the menu. The floor token is the one dial when the
-    wallpaper changes. The dialog
+    popups are off the utility clear and wear the composer control row's
+    recipe — the vessel wash (--fork-composer-vessel-bg, 6% white under
+    Glass) over the stage's 82% floor tint — straight on the native material, because fork-glass-popup-cutout masks the page out
+    from under them; they open without the fade-in so the fresh hole never
+    flashes. A backdrop-filter still cannot help there: over the native
+    material it never blurs the rows on screen (tested with plain squares
+    in the root and in a body surface, with stacked layers, and with the
+    list composited on its own). The dialog
     arm of the clear skips the one dialog that carries dropdown-glass.
     Generic surface-glass overlays still
     use the context-chip fill over --fork-popup-glass-floor — the stage as
@@ -3347,8 +3343,10 @@
 
 - id: fork-glass-floor-color
   intent: >
-    Under Glass the opaque popups stand on --fork-popup-glass-floor, the
-    colour the sidebar panel reads on screen. Nothing can read that colour
+    Under Glass the opaque surface-glass overlays (the scroll-to-end pill
+    and its kin, which live inside #root and so cannot take the popup
+    cutout) stand on --fork-popup-glass-floor, the colour the sidebar panel
+    reads on screen. Nothing can read that colour
     off the screen — it is the wallpaper drawn by macOS behind a transparent
     window, outside the page and outside capturePage — so the desktop main
     process estimates it from the wallpaper image instead: the file macOS
@@ -3370,7 +3368,7 @@
     channel lives on the fork's own forkDesktopBridge key, never on
     DesktopBridge or in packages/contracts. An estimate, not a reading:
     vibrancy lightens and desaturates a little, so PANEL_TINT_ALPHA is the
-    dial if the popups drift from the panel.
+    dial if the overlays drift from the panel.
   tier: 3
   files:
     - apps/desktop/src/fork/ForkGlassFloorColor.ts
@@ -3382,6 +3380,55 @@
     - apps/desktop/src/electron/ElectronWindow.ts
   verify:
     - apps/web/src/__fork_guards__/forkGlassFloorColor.test.ts
+
+- id: fork-glass-popup-cutout
+  intent: >
+    Under Glass, popups (menu, select, combobox, popover, glass tooltip and
+    the Usage dialog — the fork-popup-surface arms) read as the same live
+    glass as the sidebar and the composer's control row, not as an
+    estimated solid. While one is open, custom/forkGlassPopupCutout.ts masks
+    a popup-shaped hole out of everything painted beneath it, so its own
+    tint lands directly on the native vibrancy — the same reason the
+    composer row reads as glass, where the timeline cutoff clears the
+    transcript from behind it. Beneath means #root plus every portal opened
+    before the popup (a menu over the Usage panel, a select in a dialog):
+    portals mount into <body> in open order, and the mask goes on the
+    children of each lower portal container, since an empty-box container
+    cannot mask its fixed children. Each masked surface wears one solid
+    viewport-sized layer with every hole subtracted from it, one small
+    rounded-rect image per hole placed by mask-position, so a moving popup
+    only moves its layer and never mints an image to decode; mask-clip
+    no-clip so a lower popup keeps its shadow. A closing popup is detected
+    on either element split (combobox stamps data-ending-style on the child
+    the wrapper holds), and the instant-open rule matches only the cutout's
+    arms, so toasts keep their fade; a mask is not a containing block for fixed
+    descendants (checked in Chromium). Masks exist only while a popup is
+    open. With none open only childList observers run, on <body> and the
+    portal containers (Base UI mounts the container before rendering into
+    it); attribute and size observers attach only to containers holding an
+    open popup, re-observed rather than accumulated, and frame tracking runs
+    only until a moving popup holds still (tooltip and popover positioners
+    transition their position). A closing popup (data-ending-style) gives
+    its hole back at once and fades over the rows. Driven from forkTheme.ts
+    by the vibrancy marker, not a sync's return value, because a superseded
+    sync resolves with its own stale answer; the sync is idempotent, so a
+    palette tick that leaves glass on keeps the running cutout. Web, Linux
+    and non-Glass palettes never mask anything.
+  tier: 3
+  files:
+    - apps/web/src/custom/forkGlassPopupCutout.ts
+    - apps/web/src/custom/forkTheme.ts
+    - apps/web/src/theme.custom.palettes.css
+  watch:
+    - apps/web/index.html
+    - apps/web/src/components/ui/menu.tsx
+    - apps/web/src/components/ui/popover.tsx
+    - apps/web/src/components/ui/tooltip.tsx
+    - apps/web/src/components/ui/select.tsx
+    - apps/web/src/components/ui/combobox.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGlassPopupCutout.test.ts
+    - apps/web/src/__fork_guards__/forkPopupSurface.test.ts
 
 - id: fork-right-panel-tabbar-divider
   intent: >

@@ -4,8 +4,8 @@
  * Fork-owned desktop IPC — see `.fork/customizations.yaml#fork-glass-floor-color`.
  *
  * Estimates the colour the Glass sidebar reads on screen, so the opaque
- * popups (fork-popup-surface) can stand on it instead of on a hand-measured
- * constant. Nothing can read that colour off the screen: it is the desktop
+ * surface-glass overlays (the scroll-to-end pill and its kin) can stand on it
+ * instead of on a hand-measured constant. Nothing can read that colour off the screen: it is the desktop
  * wallpaper drawn by macOS behind a transparent window, outside the page and
  * outside `capturePage`. So it is rebuilt from the wallpaper image instead —
  * the file macOS records in its wallpaper store, shrunk to a thumbnail,
