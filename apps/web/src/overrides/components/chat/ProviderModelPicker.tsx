@@ -94,8 +94,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     (activeEntry?.driverKind === "opencode" || activeEntry?.driverKind === "antigravity"
       ? undefined
       : selectedInstanceOptions[0]);
-  // The provider icon beside it names the provider; the tooltip keeps the full
-  // name.
+  // The provider name is dropped here; the tooltip keeps the full model name
+  // and names the provider instance.
   const triggerTitle = selectedModel
     ? activeEntry
       ? stripProviderName(getTriggerDisplayModelName(selectedModel), activeEntry)
@@ -236,7 +236,14 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             >
               {triggerTitle}
             </TooltipTrigger>
-            <TooltipPopup side="top">{triggerLabel}</TooltipPopup>
+            <TooltipPopup side="top">
+              {triggerLabel}
+              {/* The composer hides the provider icon, so the tooltip names
+                  the instance serving the model. */}
+              {activeEntry ? (
+                <span className="block text-muted-foreground">{activeEntry.displayName}</span>
+              ) : null}
+            </TooltipPopup>
           </Tooltip>
           {selectedModel?.isUnavailable ? (
             <Badge variant="outline" size="sm">

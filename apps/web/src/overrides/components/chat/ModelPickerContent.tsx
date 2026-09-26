@@ -37,7 +37,7 @@ import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { getProviderStatusMessage, hasProviderSetup } from "./ProviderStatusBanner";
 import { buildModelPickerSearchText, scoreModelPickerSearch } from "./modelPickerSearch";
 import { getDisplayModelName, ModelEsque, PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
-import { MenuItem, MenuPopup, MenuSub, MenuSubTrigger } from "../ui/menu";
+import { MenuItem, MenuSub, MenuSubPopup, MenuSubTrigger } from "../ui/menu";
 import { Badge } from "../ui/badge";
 import { Kbd } from "../ui/kbd";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -173,8 +173,7 @@ type SubmenuSide = "inline-start" | "inline-end";
  * parent popup is not one of them, so a third level asked to open inline-end
  * lands on the root menu once the second level has flipped inline-start.
  * Every level therefore opens toward the side its parent opened to (read off
- * the parent's data-side as it opens). MenuSubPopup pins inline-end, so this
- * renders MenuPopup with its slot and offsets.
+ * the parent's data-side as it opens).
  */
 function ModelPickerSubmenu(props: { trigger: ReactNode; disabled: boolean; children: ReactNode }) {
   const floatingLayerProps = useContext(ModelPickerFloatingLayerContext);
@@ -194,19 +193,16 @@ function ModelPickerSubmenu(props: { trigger: ReactNode; disabled: boolean; chil
     >
       {props.trigger}
       {props.disabled ? null : (
-        <MenuPopup
+        <MenuSubPopup
           className={SUBMENU_CLASS}
-          data-slot="menu-sub-content"
           side={side}
           sideOffset={SUBMENU_SIDE_OFFSET}
-          align="start"
-          alignOffset={-5}
           {...floatingLayerProps}
         >
           <div data-model-picker-content="true" data-fork-model-picker="true">
             {props.children}
           </div>
-        </MenuPopup>
+        </MenuSubPopup>
       )}
     </MenuSub>
   );

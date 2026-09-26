@@ -105,13 +105,17 @@ describe("fork guard: fork-model-picker", () => {
   it("drops the provider name wherever the provider is already shown", () => {
     // Trigger: the composer shows the name alone, but its resting strip
     // collapses the label below 640px, so the icon must come back there;
-    // Settings keeps the icon, and no stylesheet rule may hide it.
+    // Settings keeps the icon, and no stylesheet rule may hide it. The
+    // tooltip names the instance the hidden icon used to.
     expect(picker).toContain(
       "stripProviderName(getTriggerDisplayModelName(selectedModel), activeEntry)",
     );
     expect(picker).toMatch(/\{activeEntry \? \(\s*<ProviderInstanceIcon/u);
     expect(picker).toContain(
       'props.isComposerOwned &&\n                  (size === "xs" ? "hidden @max-[640px]/composer-surface:inline-flex" : "hidden")',
+    );
+    expect(picker).toMatch(
+      /\{activeEntry \? \(\s*<span[^>]*>\{activeEntry\.displayName\}<\/span>/u,
     );
     for (const rule of cssRules(theme)) {
       if (rule.selector.includes("[data-chat-provider-model-picker]")) {
@@ -124,12 +128,15 @@ describe("fork guard: fork-model-picker", () => {
 
   it("cascades providers into hover submenus, favorites first", () => {
     expect(content).toContain("<MenuSub");
-    // Submenus render MenuPopup under the submenu slot the popup rules key
-    // on, opening toward their parent's side so Legacy never lands on the
-    // root menu after the provider level flips.
-    expect(content).toContain('data-slot="menu-sub-content"');
+    // Submenus open toward their parent's side so Legacy never lands on the
+    // root menu after the provider level flips; MenuSubPopup takes the side
+    // through a fenced prop on menu.tsx.
+    expect(content).toContain("<MenuSubPopup");
     expect(content).toContain("closest('[data-slot=\"menu-sub-content\"]')");
     expect(content).toContain("side={side}");
+    expect(readSibling("../components/ui/menu.tsx")).toMatch(
+      /fork:begin fork-model-picker[^\n]*\n\s*side\?: MenuPrimitive\.Positioner\.Props\["side"\];/u,
+    );
     expect(content).toContain('data-model-picker-provider="favorites"');
     expect(content.indexOf('data-model-picker-provider="favorites"')).toBeLessThan(
       content.indexOf("{providerEntries.map(renderProviderRow)}"),

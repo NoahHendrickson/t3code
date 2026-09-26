@@ -280,6 +280,9 @@ function MenuSubPopup({
   align?: MenuPrimitive.Positioner.Props["align"];
   sideOffset?: MenuPrimitive.Positioner.Props["sideOffset"];
   alignOffset?: MenuPrimitive.Positioner.Props["alignOffset"];
+  /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker */
+  side?: MenuPrimitive.Positioner.Props["side"];
+  /* fork:end fork-model-picker */
 }) {
   const defaultAlignOffset = align !== "center" ? -5 : undefined;
 
