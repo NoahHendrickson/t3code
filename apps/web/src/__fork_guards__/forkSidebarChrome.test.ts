@@ -24,6 +24,7 @@ const layout = readSibling("../components/AppSidebarLayout.tsx");
 const chrome = readSibling("../components/sidebar/SidebarChrome.tsx");
 const legacySidebar = readSibling("../components/LegacySidebar.tsx");
 const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
+const sidebarPrimitive = readSibling("../components/ui/sidebar.tsx");
 
 describe("fork guard: fork-sidebar-chrome", () => {
   it("still offers a toggle while the sidebar is collapsed", () => {
@@ -57,19 +58,22 @@ describe("fork guard: fork-sidebar-chrome", () => {
   it("matches the macOS control geometry from the header design", () => {
     expect(chrome).toContain("pl-[var(--workspace-controls-left)]");
     expect(layout).toContain('MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px"');
-    // y=18 shares the header's optical axis with the toggle/brand; y=20 sat ~2pt low.
-    // The fence stays even when the number matches upstream — unfenced, a sync
+    // y=19 centres the 14pt lights at 26pt, the 52px header's axis the
+    // toggle, brand, and workspace title share; y=18 sat 1pt high.
+    // The fence stays even if the number matches upstream — unfenced, a sync
     // retune lands silently and the value assert only fails after the fact.
     expect(desktopWindow).toContain("fork:begin fork-sidebar-chrome");
     expect(desktopWindow).toContain("fork:end fork-sidebar-chrome");
-    expect(desktopWindow).toContain("trafficLightPosition: { x: 16, y: 18 }");
-    expect(desktopWindow).not.toContain("trafficLightPosition: { x: 16, y: 20 }");
+    expect(desktopWindow).toContain("trafficLightPosition: { x: 16, y: 19 }");
     const start = chrome.indexOf("<SidebarTrigger");
     const trigger = chrome.slice(start, chrome.indexOf("/>", start));
-    expect(trigger).toContain("[&_svg]:size-5!");
+    expect(trigger).toContain("[&_svg]:size-4!");
     expect(trigger).toContain("[&_svg]:text-sidebar-muted-foreground/80!");
     expect(trigger).not.toContain("text-white");
-    expect(layout).toContain('className="pointer-events-auto [&_svg]:size-5!"');
+    expect(layout).toContain('className="pointer-events-auto [&_svg]:size-4!"');
+    // One glyph open or shut: an upstream sync restoring the ternary would
+    // swap the toggle for a different shape whenever the panel collapses.
+    expect(sidebarPrimitive).not.toContain("<PanelLeftIcon />");
   });
 
   it("draws the fork's dither on the Dev channel and leaves Nightly alone", () => {
