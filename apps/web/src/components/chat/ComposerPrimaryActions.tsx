@@ -127,7 +127,11 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     </button>
   );
 
-  if (pendingAction) {
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+     A live session dictating a question's answer holds the slot (the send
+     path below) until it settles; Next/Submit come back with the transcript. */
+  if (pendingAction && !forkDictation) {
+    /* fork:end fork-local-dictation */
     return (
       <div className={cn("flex items-center justify-end", compact ? "gap-1.5" : "gap-2")}>
         {isRunning ? renderStopGenerationButton(true) : null}

@@ -6,6 +6,7 @@ import {
 } from "@t3tools/client-runtime/voice-input";
 import {
   createDictationSession,
+  isDictationLive,
   registerDictationComposer,
   type DictationSession,
 } from "./forkDictationSession";
@@ -22,18 +23,23 @@ const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction
  * into the thread on screen, and unregisters (disposing the session) on unmount.
  *
  * `disabled` gates starting only; a tap while disabled goes to the root's
- * fallback session instead. A recording already in flight survives the
- * composer becoming disabled (a question arriving mid-sentence) and is settled
- * by the user. When the composer hides the controls themselves (an approval
- * replaces the action cluster) the recording is transcribed on the spot, so a
- * live mic is never left with no button to end it.
+ * fallback session instead. A session writes to the field it started in (the
+ * prompt, or a question's typed answer). When that field leaves the editor
+ * (a question arriving mid-sentence) or the composer hides the controls (an
+ * approval replaces the action cluster), the recording is transcribed on the
+ * spot, so a live mic is never left with no button to end it.
  */
 type DictationInput = {
   readonly ownerKey: string;
   readonly disabled: boolean;
   readonly getComposerElement: () => HTMLElement | null;
   readonly focusEditor: () => void;
-  readonly readDraft: () => { value: string; expandedCursor: number };
+  /**
+   * `starting` is true for the read that opens a session, so the composer can
+   * pin the field the transcript goes to. Null once that field has left the
+   * editor, which the controller treats as a stale draft.
+   */
+  readonly readDraft: (starting: boolean) => { value: string; expandedCursor: number } | null;
   readonly commitDraft: (text: string, cursor: number) => void;
 };
 
@@ -73,10 +79,11 @@ export function useForkDictationController(input: DictationInput) {
     if (!bridge) return NO_SESSION;
     // The controller's stale-draft check already compares owner and text, which
     // is what a switched thread or an edited prompt changes; the revision stays fixed.
-    return createDictationSession(bridge, {
+    const created: DictationSession = createDictationSession(bridge, {
       readDraft: () => {
         const current = inputRef.current;
-        const snapshot = current.readDraft();
+        const snapshot = current.readDraft(!isDictationLive(created.controller.currentState));
+        if (!snapshot) return null;
         return {
           ownerKey: current.ownerKey,
           text: snapshot.value,
@@ -96,6 +103,7 @@ export function useForkDictationController(input: DictationInput) {
       onDetail: setDetail,
       onDownload: setDownloadPercent,
     });
+    return created;
   });
   const controller = session?.controller ?? null;
 
