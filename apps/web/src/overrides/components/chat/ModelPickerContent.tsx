@@ -66,7 +66,6 @@ type ModelPickerItem = {
   name: string;
   shortName?: string;
   subProvider?: string;
-  badge?: "new";
   instanceId: ProviderInstanceId;
   driverKind: ProviderDriverKind;
   instanceDisplayName: string;
@@ -319,7 +318,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           name: model.name,
           ...(model.shortName ? { shortName: model.shortName } : {}),
           ...(model.subProvider ? { subProvider: model.subProvider } : {}),
-          ...(model.badge ? { badge: model.badge } : {}),
           ...(model.isLegacy ? { isLegacy: true } : {}),
           ...(model.isUnavailable ? { isUnavailable: true } : {}),
           instanceId,
@@ -552,15 +550,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           <ProviderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         ) : null}
         <span className="min-w-0 truncate">{modelName}</span>
-        {/* Sits against the name it qualifies, as a quiet tint rather than a chip. */}
-        {model.badge === "new" ? (
-          <span
-            className="shrink-0 rounded-[4px] bg-update/12 px-1 py-0.5 text-[10px] font-medium leading-none text-update-foreground"
-            aria-label="New model"
-          >
-            New
-          </span>
-        ) : null}
         {showProvider ? (
           <span className="min-w-0 truncate font-normal text-muted-foreground/70">
             {providerLabel}
