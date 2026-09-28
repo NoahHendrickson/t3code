@@ -2209,9 +2209,14 @@
    glass card: 16px corners, its own backdrop-filter, overlapping the surface
    by 1rem + 1px. The design draws the Questions card and the prompt row as
    one box instead — the card takes the vessel's full width, the composer's
-   fill and hairline (top / left / right only) on 8px top corners, and the
-   prompt row sits flush beneath with square top corners, its own hairline
-   drawing the divider.
+   hairline (top / left / right only) on 8px top corners, and the prompt row
+   sits flush beneath with square top corners, its own hairline drawing the
+   divider.
+
+   The fill is the popup material's (fork-popup-surface, below), not the
+   prompt well's: the card is the agent asking, and reads like the menus that
+   open over the composer. No filter — the vessel under it is the only thing
+   it could blur. Glass paints it in theme.custom.palettes.css.
 
    That geometry is shared with every other banner now and lives in the banner
    section below. What stays here is only what this panel does differently:
@@ -2230,7 +2235,7 @@
   border: 1px solid var(--fork-composer-border);
   border-bottom: 0;
   border-radius: var(--fork-composer-radius) var(--fork-composer-radius) 0 0;
-  background: var(--fork-composer-bg);
+  background: var(--fork-popup-fill);
   transition: border-color 200ms;
 }
 
@@ -2534,7 +2539,20 @@
    timeline's own glass carry the utility too and keep upstream's recipe. No
    no-filter fallback of its own: upstream's dropdown-glass utility already
    paints --popover with !important where backdrop-filter is unsupported,
-   which outranks anything declared here. */
+   which outranks anything declared here.
+
+   The fill is named once, --fork-popup-fill, so a surface that should read
+   as the popup material without the frost (the Questions card above the
+   composer, fork-pending-user-input) wears the same recipe. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-popup-fill:
+    linear-gradient(
+      color-mix(in srgb, var(--contrast-foreground) 8%, transparent),
+      color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
+    ),
+    color-mix(in srgb, var(--popover) 45%, transparent);
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
     :is(
@@ -2547,12 +2565,7 @@
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"])
   ) {
-  background:
-    linear-gradient(
-      color-mix(in srgb, var(--contrast-foreground) 8%, transparent),
-      color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
-    ),
-    color-mix(in srgb, var(--popover) 45%, transparent);
+  background: var(--fork-popup-fill);
   border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);
