@@ -1784,7 +1784,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // beside typed text nor the keyboard may start a session over it.
   // A question that takes a typed answer holds it in the editor (see the
   // ComposerPromptEditor `value` binding), so dictation writes there too.
+  // Not on a compact viewport (max-sm, which Electron reaches through zoom):
+  // there the question's Next/Submit sit in a strip below the editor
+  // (showMobilePendingAnswerActions, and the collapsed row's own instance)
+  // that has no slot for the session's controls, so the question stays
+  // dictation-free and the keyboard goes to the fallback. Its own query:
+  // `isMobileViewport` is declared further down, past this hook.
+  const dictationCompactViewport = useMediaQuery("max-sm");
   const dictationAnswersQuestion =
+    !dictationCompactViewport &&
     activePendingApproval === null &&
     activePendingProgress?.activeQuestion != null &&
     activePendingProgress.activeQuestion.allowCustomAnswer !== false &&
@@ -5223,7 +5231,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       {/* fork:end fork-local-dictation */}
       <ComposerFooterPrimaryActions
         compact={isComposerResting || isComposerPrimaryActionsCompact}
-        pendingAction={pendingPrimaryAction}
+        /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+           A live session dictating a question's answer holds the slot (the
+           send path) until it settles; Next/Submit come back with the transcript. */
+        pendingAction={dictationOwnsPrimaryAction ? null : pendingPrimaryAction}
+        /* fork:end fork-local-dictation */
         isRunning={phase === "running"}
         showPlanFollowUpPrompt={pendingUserInputs.length === 0 && showPlanFollowUpPrompt}
         promptHasText={prompt.trim().length > 0}

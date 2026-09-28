@@ -56,7 +56,9 @@
     transcripts, and a session writes to the field it started in: a question
     that takes a typed answer is dictated into like the prompt (the ghost mic
     beside Next/Submit, and a live session holds that slot as it holds
-    send's), while a prompt session outlived by an approval or question
+    send's; not on a compact viewport, where Next/Submit sit in a strip below
+    the editor with no slot for the controls, so the question stays
+    dictation-free there), while a prompt session outlived by an approval or question
     routes its transcript into the prompt draft itself. When the session's
     field leaves the editor or the action cluster unmounts, the recording is
     transcribed on the spot rather than left running with no control to end it.

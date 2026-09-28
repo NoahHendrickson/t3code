@@ -163,6 +163,12 @@ describe("fork local dictation", () => {
     expect(composer).toMatch(
       /const dictationAnswersQuestion =[^;]*allowCustomAnswer !== false[^;]*!activePendingIsResponding;/u,
     );
+    // Not on a compact viewport: there Next/Submit sit in a strip below the
+    // editor with no slot for the session's controls, so a question stays
+    // dictation-free rather than starting a recording nothing can end.
+    expect(composer).toMatch(
+      /const dictationCompactViewport = useMediaQuery\("max-sm"\);\s*const dictationAnswersQuestion =\s*!dictationCompactViewport &&/u,
+    );
     expect(hookArgument).not.toContain("promptRef.current =");
     expect(hookArgument).not.toContain("value: promptRef.current");
     // Dictation borrows the send button. ChatComposer says when it owns the
@@ -179,8 +185,13 @@ describe("fork local dictation", () => {
       /const dictationOwnsPrimaryAction =\s*dictation\.isAvailable &&\s*\(dictation\.blocksSubmission \|\|\s*\(pendingPrimaryAction === null &&\s*!composerSendState\.hasSendableContent &&\s*!isSendBusy &&\s*!isConnecting\)\)/u,
     );
     // A question keeps Next/Submit until a session starts, then the live
-    // session holds the slot like send's.
-    expect(primary).toContain("if (pendingAction && !forkDictation) {");
+    // session holds the slot like send's. ChatComposer decides that where it
+    // hands the slot over; ComposerPrimaryActions' pending branch is upstream's.
+    expect(primary).toContain("if (pendingAction) {");
+    expect(primary).not.toContain("!forkDictation)");
+    expect(composer).toContain(
+      "pendingAction={dictationOwnsPrimaryAction ? null : pendingPrimaryAction}",
+    );
     expect(composer).toContain(
       "dictationOwnsPrimaryAction ? { dictation, disabled: dictationDisabled } : null",
     );
@@ -383,7 +394,8 @@ describe("fork local dictation", () => {
     // returns its pending-action branch before the send slot), so the gate is
     // the pending action itself, not the mobile-only answer strip: a desktop
     // recording must settle when a choice-only question arrives, not run on
-    // with no check.
+    // with no check. The strip's own case rides on dictationAnswersQuestion,
+    // which is false on a compact viewport.
     expect(composer).toMatch(
       /const dictationControlsVisible =[^;]*\(pendingPrimaryAction === null \|\| dictationAnswersQuestion\)/u,
     );
