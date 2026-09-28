@@ -234,10 +234,15 @@ describe("fork guard: fork-popup-surface", () => {
     expect(separator?.selector).toContain('[data-slot="select-separator"]');
     expect(separator?.selector).toContain('[data-slot="combobox-separator"]');
 
-    // The branch picker's footer divides itself with a border-t, not a slot.
-    expect(readSibling("../components/BranchToolbarBranchSelector.tsx")).toMatch(
-      /<ComboboxPopup[\s\S]*className="[^"]*\bborder-t\b[^"]*"[\s\S]*Start from origin/u,
-    );
+    // The branch picker's footer divides itself with a border-t on its own
+    // label, not a slot. Sliced to that label: the rule below reaches every
+    // top border inside a combobox popup, and this is the one that exists.
+    const selector = readSibling("../components/BranchToolbarBranchSelector.tsx");
+    const footerText = selector.indexOf("Start from origin");
+    const footerLabel = selector.slice(selector.lastIndexOf("<label", footerText), footerText);
+    expect(footerLabel).toMatch(/className="[^"]*\bborder-t\b[^"]*"/u);
+    expect(selector.indexOf("<ComboboxPopup")).toBeLessThan(footerText);
+    expect(selector.indexOf("</ComboboxPopup>", footerText)).toBeGreaterThan(footerText);
     const footer = cssRules(theme).find((candidate) =>
       flat(candidate.selector).includes('[data-slot="combobox-popup"] .border-t'),
     );
