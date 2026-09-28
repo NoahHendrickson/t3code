@@ -1782,12 +1782,36 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // so it can be dictated into too, and send stays blocked as before.
   // A send in flight keeps the spinner in the slot: neither the ghost mic
   // beside typed text nor the keyboard may start a session over it.
+  // A question that takes a typed answer holds it in the editor (see the
+  // ComposerPromptEditor `value` binding), so dictation writes there too.
+  // Not on a compact viewport (max-sm, which Electron reaches through zoom):
+  // there the question's Next/Submit sit in a strip below the editor
+  // (showMobilePendingAnswerActions, and the collapsed row's own instance)
+  // that has no slot for the session's controls, so the question stays
+  // dictation-free and the keyboard goes to the fallback. Its own query:
+  // `isMobileViewport` is declared further down, past this hook.
+  const dictationCompactViewport = useMediaQuery("max-sm");
+  const dictationAnswersQuestion =
+    !dictationCompactViewport &&
+    activePendingApproval === null &&
+    activePendingProgress?.activeQuestion != null &&
+    activePendingProgress.activeQuestion.allowCustomAnswer !== false &&
+    !activePendingIsResponding;
+  // The field the editor shows. A session pins the one it started in
+  // (dictationFieldRef) and settles when that field leaves the editor.
+  const dictationEditorField =
+    activePendingApproval !== null
+      ? "approval"
+      : activePendingProgress?.activeQuestion
+        ? `answer:${pendingUserInputs[0]?.requestId}:${activePendingProgress.activeQuestion.id}`
+        : "prompt";
+  const dictationFieldRef = useRef(dictationEditorField);
   const dictationDisabled =
     isConnecting ||
     isSendBusy ||
     activePendingApproval !== null ||
-    pendingUserInputs.length > 0 ||
-    showPlanFollowUpPrompt ||
+    (pendingUserInputs.length > 0 && !dictationAnswersQuestion) ||
+    (pendingUserInputs.length === 0 && showPlanFollowUpPrompt) ||
     promptLockedForProject;
   const dictation = useForkDictationController({
     ownerKey: composerTargetKey(composerDraftTarget),
@@ -1795,20 +1819,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     // Invoked on start/stop, after the refs and callbacks declared below exist.
     getComposerElement: () => composerFormRef.current,
     focusEditor: focusComposer,
-    // While an approval or question is showing, the editor holds that answer
-    // rather than the prompt (see the ComposerPromptEditor `value` binding), so
-    // a dictation that started before it arrived reads and lands in the prompt
-    // draft directly instead of being judged stale or routed into the answer.
-    // That draft is the store's `prompt`, not `promptRef`: while a question is
-    // up the ref mirrors the answer field (the pending-input sync effect), and
-    // `composerCursor` is the answer editor's caret, so neither is touched.
-    readDraft: () => {
-      if (activePendingApproval === null && !activePendingProgress) return readComposerSnapshot();
+    // A prompt session outlived by an approval or question reads and lands in
+    // the prompt draft directly instead of being judged stale or routed into
+    // the answer. That draft is the store's `prompt`, not `promptRef`: while a
+    // question is up the ref mirrors the answer field (the pending-input sync
+    // effect), and `composerCursor` is the answer editor's caret, so neither is
+    // touched. An answer session whose question has gone reads nothing.
+    readDraft: (starting) => {
+      if (starting) dictationFieldRef.current = dictationEditorField;
+      if (dictationFieldRef.current === dictationEditorField) return readComposerSnapshot();
+      if (dictationFieldRef.current !== "prompt") return null;
       return { value: prompt, expandedCursor: prompt.length };
     },
     commitDraft: (text, cursor) => {
       const collapsedCursor = collapseExpandedComposerCursor(text, cursor);
-      if (activePendingApproval !== null || activePendingProgress) {
+      if (dictationFieldRef.current !== dictationEditorField) {
         setPrompt(text);
         return;
       }
@@ -2393,24 +2418,32 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isMobileViewport && !isComposerCollapsedMobile && pendingPrimaryAction !== null;
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
   // Mirrors the paths on which ComposerPrimaryActions renders the send slot:
-  // when the check and X unmount (an approval takes the cluster, a pending
+  // when the check and X unmount (an approval takes the cluster, a choice-only
   // question puts its Next/Submit there on every viewport, or a plan
   // follow-up puts Implement there), a live recording is transcribed rather
-  // than left running with nothing on screen to end it.
+  // than left running with nothing on screen to end it. A question that takes
+  // a typed answer hands the slot to a live session, as send does.
   const dictationControlsVisible =
     activePendingApproval === null &&
-    pendingPrimaryAction === null &&
+    (pendingPrimaryAction === null || dictationAnswersQuestion) &&
     !(pendingUserInputs.length === 0 && showPlanFollowUpPrompt);
   // Dictation takes the send slot with nothing to send (the mic in place of a
-  // disabled send) and for the whole of a live session (the check and X).
+  // disabled send) and for the whole of a live session (the check and X). A
+  // question keeps Next/Submit in the slot until a session starts; the mic
+  // stands beside it as the ghost.
   const dictationOwnsPrimaryAction =
     dictation.isAvailable &&
     (dictation.blocksSubmission ||
-      (!composerSendState.hasSendableContent && !isSendBusy && !isConnecting));
+      (pendingPrimaryAction === null &&
+        !composerSendState.hasSendableContent &&
+        !isSendBusy &&
+        !isConnecting));
   const { settleWithoutControls: settleDictationWithoutControls } = dictation;
   useEffect(() => {
-    if (!dictationControlsVisible) settleDictationWithoutControls();
-  }, [dictationControlsVisible, settleDictationWithoutControls]);
+    if (!dictationControlsVisible || dictationFieldRef.current !== dictationEditorField) {
+      settleDictationWithoutControls();
+    }
+  }, [dictationControlsVisible, dictationEditorField, settleDictationWithoutControls]);
   /* fork:end fork-local-dictation */
 
   // ------------------------------------------------------------------
@@ -5182,19 +5215,27 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           slot itself, so the ghost hides for the session; it stays mounted
           when the session started over typed text, so the stacked row's
           prompt reserve (theme.custom.css, keyed on its presence) still
-          counts the width it had. */}
+          counts the width it had. A choice-only question has no field to
+          dictate into, so the ghost hides beside its Next/Submit. */}
       {!dictationOwnsPrimaryAction ||
       (dictation.blocksSubmission && composerSendState.hasSendableContent) ? (
         <ForkDictationGhostMic
           dictation={dictation}
           disabled={dictationDisabled}
-          hidden={dictationOwnsPrimaryAction}
+          hidden={
+            dictationOwnsPrimaryAction ||
+            (pendingPrimaryAction !== null && !dictationAnswersQuestion)
+          }
         />
       ) : null}
       {/* fork:end fork-local-dictation */}
       <ComposerFooterPrimaryActions
         compact={isComposerResting || isComposerPrimaryActionsCompact}
-        pendingAction={pendingPrimaryAction}
+        /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+           A live session dictating a question's answer holds the slot (the
+           send path) until it settles; Next/Submit come back with the transcript. */
+        pendingAction={dictationOwnsPrimaryAction ? null : pendingPrimaryAction}
+        /* fork:end fork-local-dictation */
         isRunning={phase === "running"}
         showPlanFollowUpPrompt={pendingUserInputs.length === 0 && showPlanFollowUpPrompt}
         promptHasText={prompt.trim().length > 0}
@@ -6033,7 +6074,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     approvalPending={activePendingApproval !== null}
                     mobilePendingActionsVisible={showMobilePendingAnswerActions}
                     /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-                    promptEmpty={prompt.length === 0}
+                    promptEmpty={(activePendingProgress?.customAnswer ?? prompt).length === 0}
                     /* fork:end fork-local-dictation */
                   >
                     {/* fork:end fork-composer-shell */}

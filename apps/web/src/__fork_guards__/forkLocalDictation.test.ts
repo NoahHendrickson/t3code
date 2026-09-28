@@ -138,9 +138,12 @@ describe("fork local dictation", () => {
       /disabled=\{\s*isConnecting \|\|\s*isComposerApprovalState \|\|\s*(?:\/\*[^*]*\*\/\s*)*dictation\.freezesEditor \|\|/u,
     );
     expect(composer).toContain("<ForkDictationNotices dictation={dictation} />");
-    // While a question or approval is showing, the dictation draft is the
-    // store's `prompt`, never `promptRef` (which mirrors the answer field then)
-    // and never the editor snapshot (which is the answer editor).
+    // A session pins the field it started in. A prompt session outlived by a
+    // question or approval keeps the store's `prompt` as its draft, never
+    // `promptRef` (which mirrors the answer field then) and never the editor
+    // snapshot (which is the answer editor). A session started on a question
+    // that takes a typed answer reads and writes the editor, where onPromptChange
+    // routes it into that answer; once the question leaves, it reads nothing.
     const hookArgument = composer.slice(
       composer.indexOf("useForkDictationController({"),
       composer.indexOf(
@@ -148,9 +151,23 @@ describe("fork local dictation", () => {
         composer.indexOf("useForkDictationController({"),
       ),
     );
-    expect(hookArgument).toMatch(/return \{ value: prompt, expandedCursor: prompt\.length \}/u);
     expect(hookArgument).toMatch(
-      /if \(activePendingApproval !== null \|\| activePendingProgress\) \{\s*setPrompt\(text\);\s*return;/u,
+      /if \(starting\) dictationFieldRef\.current = dictationEditorField;\s*if \(dictationFieldRef\.current === dictationEditorField\) return readComposerSnapshot\(\);\s*if \(dictationFieldRef\.current !== "prompt"\) return null;\s*return \{ value: prompt, expandedCursor: prompt\.length \}/u,
+    );
+    expect(hookArgument).toMatch(
+      /if \(dictationFieldRef\.current !== dictationEditorField\) \{\s*setPrompt\(text\);\s*return;/u,
+    );
+    expect(composer).toMatch(
+      /const dictationDisabled =[^;]*\(pendingUserInputs\.length > 0 && !dictationAnswersQuestion\)/u,
+    );
+    expect(composer).toMatch(
+      /const dictationAnswersQuestion =[^;]*allowCustomAnswer !== false[^;]*!activePendingIsResponding;/u,
+    );
+    // Not on a compact viewport: there Next/Submit sit in a strip below the
+    // editor with no slot for the session's controls, so a question stays
+    // dictation-free rather than starting a recording nothing can end.
+    expect(composer).toMatch(
+      /const dictationCompactViewport = useMediaQuery\("max-sm"\);\s*const dictationAnswersQuestion =\s*!dictationCompactViewport &&/u,
     );
     expect(hookArgument).not.toContain("promptRef.current =");
     expect(hookArgument).not.toContain("value: promptRef.current");
@@ -165,7 +182,15 @@ describe("fork local dictation", () => {
     // running (mobile viewports) keeps its place after stop.
     const primary = read("../components/chat/ComposerPrimaryActions.tsx");
     expect(composer).toMatch(
-      /const dictationOwnsPrimaryAction =\s*dictation\.isAvailable &&\s*\(dictation\.blocksSubmission \|\|\s*\(!composerSendState\.hasSendableContent && !isSendBusy && !isConnecting\)\)/u,
+      /const dictationOwnsPrimaryAction =\s*dictation\.isAvailable &&\s*\(dictation\.blocksSubmission \|\|\s*\(pendingPrimaryAction === null &&\s*!composerSendState\.hasSendableContent &&\s*!isSendBusy &&\s*!isConnecting\)\)/u,
+    );
+    // A question keeps Next/Submit until a session starts, then the live
+    // session holds the slot like send's. ChatComposer decides that where it
+    // hands the slot over; ComposerPrimaryActions' pending branch is upstream's.
+    expect(primary).toContain("if (pendingAction) {");
+    expect(primary).not.toContain("!forkDictation)");
+    expect(composer).toContain(
+      "pendingAction={dictationOwnsPrimaryAction ? null : pendingPrimaryAction}",
     );
     expect(composer).toContain(
       "dictationOwnsPrimaryAction ? { dictation, disabled: dictationDisabled } : null",
@@ -264,7 +289,9 @@ describe("fork local dictation", () => {
     const typed = String.raw`${live}:not\(\s*\[data-fork-composer-prompt-empty\]\s*\)`;
     expect(shell).toContain("promptEmpty");
     expect(shell).toContain("data-fork-composer-prompt-empty");
-    expect(composer).toContain("promptEmpty={prompt.length === 0}");
+    expect(composer).toContain(
+      "promptEmpty={(activePendingProgress?.customAnswer ?? prompt).length === 0}",
+    );
     expect(theme).toMatch(
       new RegExp(
         String.raw`:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]${typed}\s*\{[^}]*display:\s*grid;[^}]*grid-template-areas:\s*"leading prompt"\s*"actions actions"`,
@@ -325,7 +352,7 @@ describe("fork local dictation", () => {
     expect(composer).toMatch(
       /\(dictation\.blocksSubmission && composerSendState\.hasSendableContent\) \? \(\s*<ForkDictationGhostMic/u,
     );
-    expect(composer).toContain("hidden={dictationOwnsPrimaryAction}");
+    expect(composer).toMatch(/hidden=\{\s*dictationOwnsPrimaryAction \|\|/u);
     expect(control).toMatch(/data-fork-composer-action="dictate"\s*hidden=\{hidden\}/u);
     // Attach steps aside only where the cluster needs its slot, the compact
     // empty row: hidden by CSS rather than unmounted, so upstream's render
@@ -355,18 +382,23 @@ describe("fork local dictation", () => {
     expect(theme).not.toMatch(/\[data-fork-composer-action="dictate"\]\[aria-pressed/u);
     expect(theme).not.toContain("dictate-done");
     expect(theme).not.toMatch(/\[data-fork-dictation-timeline\][^{]*\{[^}]*transition/u);
-    // When the send slot shows something else (an approval, a question, the
-    // plan follow-up's Implement), a live recording settles instead of running
-    // with no check on screen, and the keyboard cannot start one there.
+    // When the send slot shows something else (an approval, a choice-only
+    // question, the plan follow-up's Implement), or the session's field has
+    // left the editor, a live recording settles instead of running with no
+    // check on screen, and the keyboard cannot start one there.
     expect(composer).toMatch(
-      /if \(!dictationControlsVisible\) settleDictationWithoutControls\(\)/u,
+      /if \(!dictationControlsVisible \|\| dictationFieldRef\.current !== dictationEditorField\) \{\s*settleDictationWithoutControls\(\);/u,
     );
     expect(composer).toMatch(/const dictationControlsVisible =[^;]*showPlanFollowUpPrompt/u);
     // A pending question takes the slot on every viewport (ComposerPrimaryActions
     // returns its pending-action branch before the send slot), so the gate is
     // the pending action itself, not the mobile-only answer strip: a desktop
-    // recording must settle when a question arrives, not run on with no check.
-    expect(composer).toMatch(/const dictationControlsVisible =[^;]*pendingPrimaryAction === null/u);
+    // recording must settle when a choice-only question arrives, not run on
+    // with no check. The strip's own case rides on dictationAnswersQuestion,
+    // which is false on a compact viewport.
+    expect(composer).toMatch(
+      /const dictationControlsVisible =[^;]*\(pendingPrimaryAction === null \|\| dictationAnswersQuestion\)/u,
+    );
     expect(composer).not.toMatch(
       /const dictationControlsVisible =[^;]*showMobilePendingAnswerActions/u,
     );

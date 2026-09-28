@@ -40,7 +40,7 @@
     wherever focus sits while the app is active, into the composer on screen
     when it can take one, and a second tap finishes the live session. When no
     composer can take it (another page, no thread open, a pending approval or
-    question, a send in flight) the fallback session records instead and its
+    choice-only question, a send in flight) the fallback session records instead and its
     transcript goes to a toast: one per session, updated in place from
     preparing through listening, ending as the transcript with a Copy button
     that stays until dismissed. Closing a live toast by any route (corner X,
@@ -53,9 +53,14 @@
     Escape. A new recording targets the thread the composer is currently
     showing, and an owner change cancels an in-flight one rather than
     re-targeting it. Cancellation stops owned work, stale drafts never receive
-    transcripts, and a recording in flight survives the composer becoming
-    disabled: a pending approval or question routes the transcript into the
-    prompt draft itself, and when the action cluster unmounts the recording is
+    transcripts, and a session writes to the field it started in: a question
+    that takes a typed answer is dictated into like the prompt (the ghost mic
+    beside Next/Submit, and a live session holds that slot as it holds
+    send's; not on a compact viewport, where Next/Submit sit in a strip below
+    the editor with no slot for the controls, so the question stays
+    dictation-free there), while a prompt session outlived by an approval or question
+    routes its transcript into the prompt draft itself. When the session's
+    field leaves the editor or the action cluster unmounts, the recording is
     transcribed on the spot rather than left running with no control to end it.
     Dictation borrows the send button rather than adding controls beside it.
     With nothing to send, the slot shows an enabled filled microphone in
@@ -91,7 +96,7 @@
     attach's 24px box in the pure-white ghost colour, from theme.custom.css.
     Nothing animates: no tray, no slide or stagger, and no separate blue mic;
     the timeline appears in place. When the send slot
-    shows something else (an approval, a question, or the plan follow-up's
+    shows something else (an approval, a choice-only question, or the plan follow-up's
     Implement) a live recording settles on the spot and the keyboard cannot
     start one. The download percentage and error popover render beside the
     slot whatever it shows. The microphone tooltip is the word Dictate, on the
