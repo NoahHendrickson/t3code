@@ -233,6 +233,17 @@ describe("fork guard: fork-popup-surface", () => {
     expect(separator?.selector).toContain(".dark");
     expect(separator?.selector).toContain('[data-slot="select-separator"]');
     expect(separator?.selector).toContain('[data-slot="combobox-separator"]');
+
+    // The branch picker's footer divides itself with a border-t, not a slot.
+    expect(readSibling("../components/BranchToolbarBranchSelector.tsx")).toMatch(
+      /<ComboboxPopup[\s\S]*className="[^"]*\bborder-t\b[^"]*"[\s\S]*Start from origin/u,
+    );
+    const footer = cssRules(theme).find((candidate) =>
+      flat(candidate.selector).includes('[data-slot="combobox-popup"] .border-t'),
+    );
+    expect(footer?.selector).toContain(MARKER);
+    expect(footer?.selector).toContain(".dark");
+    expect(footer?.body).toContain("var(--contrast-foreground) 12%");
   });
 
   it("renders menu row tags as baseline-aligned captions", () => {

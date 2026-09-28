@@ -2840,6 +2840,12 @@
   background: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
 }
 
+/* The branch picker's "Start from origin" footer is split off the list by its
+   own border-t in --border, not a separator slot, so it gets the same alpha. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-slot="combobox-popup"] .border-t {
+  border-top-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+}
+
 /* ── Menu row tags (fork-popup-surface) ─────────────────────────────────────
    The traits menu's "Default" tag is upstream's outline Badge: a fixed-height
    inline-flex chip whose centred 10px label sits off the row label's baseline.
