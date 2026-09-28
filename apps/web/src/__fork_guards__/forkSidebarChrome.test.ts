@@ -73,7 +73,16 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(layout).toContain('className="pointer-events-auto [&_svg]:size-4!"');
     // One glyph open or shut: an upstream sync restoring the ternary would
     // swap the toggle for a different shape whenever the panel collapses.
-    expect(sidebarPrimitive).not.toContain("<PanelLeftIcon />");
+    // Scoped to SidebarTrigger itself, so an upstream PanelLeftIcon elsewhere
+    // in the module (a rail, a menu) does not trip the guard.
+    const triggerStart = sidebarPrimitive.indexOf("function SidebarTrigger(");
+    const triggerPrimitive = sidebarPrimitive.slice(
+      triggerStart,
+      sidebarPrimitive.indexOf("\nfunction ", triggerStart + 1),
+    );
+    expect(triggerPrimitive).toContain("fork:begin fork-sidebar-chrome");
+    expect(triggerPrimitive).toContain("<PanelLeftCloseIcon />");
+    expect(triggerPrimitive).not.toContain("<PanelLeftIcon />");
   });
 
   it("draws the fork's dither on the Dev channel and leaves Nightly alone", () => {
