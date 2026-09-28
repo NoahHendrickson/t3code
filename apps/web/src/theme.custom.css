@@ -2235,12 +2235,7 @@
   border: 1px solid var(--fork-composer-border);
   border-bottom: 0;
   border-radius: var(--fork-composer-radius) var(--fork-composer-radius) 0 0;
-  background:
-    linear-gradient(
-      color-mix(in srgb, var(--contrast-foreground) 8%, transparent),
-      color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
-    ),
-    color-mix(in srgb, var(--popover) 45%, transparent);
+  background: var(--fork-popup-fill);
   transition: border-color 200ms;
 }
 
@@ -2544,7 +2539,20 @@
    timeline's own glass carry the utility too and keep upstream's recipe. No
    no-filter fallback of its own: upstream's dropdown-glass utility already
    paints --popover with !important where backdrop-filter is unsupported,
-   which outranks anything declared here. */
+   which outranks anything declared here.
+
+   The fill is named once, --fork-popup-fill, so a surface that should read
+   as the popup material without the frost (the Questions card above the
+   composer, fork-pending-user-input) wears the same recipe. */
+:root[data-fork="noahhendrickson-t3code"].dark {
+  --fork-popup-fill:
+    linear-gradient(
+      color-mix(in srgb, var(--contrast-foreground) 8%, transparent),
+      color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
+    ),
+    color-mix(in srgb, var(--popover) 45%, transparent);
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
     :is(
@@ -2557,12 +2565,7 @@
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"])
   ) {
-  background:
-    linear-gradient(
-      color-mix(in srgb, var(--contrast-foreground) 8%, transparent),
-      color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
-    ),
-    color-mix(in srgb, var(--popover) 45%, transparent);
+  background: var(--fork-popup-fill);
   border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);

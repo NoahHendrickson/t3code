@@ -118,11 +118,11 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(card?.body).toMatch(
       /border-radius:\s*var\(--fork-composer-radius\) var\(--fork-composer-radius\) 0 0/u,
     );
-    // The popup material's fill (fork-popup-surface), not the prompt well's,
-    // so the card reads like the menus that open over the composer.
+    // The popup material's fill (fork-popup-surface's token, whose recipe
+    // that guard pins), not the prompt well's, so the card reads like the
+    // menus that open over the composer.
     expect(card?.body).not.toContain("--fork-composer-bg");
-    expect(card?.body).toContain("color-mix(in srgb, var(--contrast-foreground) 8%, transparent)");
-    expect(card?.body).toContain("color-mix(in srgb, var(--popover) 45%, transparent)");
+    expect(card?.body).toMatch(/background:\s*var\(--fork-popup-fill\);/u);
     // Under Glass the vessel beneath is already the popup material (its wash
     // over the 73% floor), so the card lets it through instead of stacking a
     // second tint.

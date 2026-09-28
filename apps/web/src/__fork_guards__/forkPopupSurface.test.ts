@@ -96,9 +96,17 @@ describe("fork guard: fork-popup-surface", () => {
     expect(frost?.selector).not.toContain("data-fork-glass");
     // A low tint: the blurred backdrop colours the popup, the wash only
     // lifts it. Heavier than upstream's 12px so text behind reads as texture.
-    expect(flat(frost?.body ?? "")).toContain(
-      `background: linear-gradient( ${WASH}, ${WASH} ), color-mix(in srgb, var(--popover) 45%, transparent);`,
+    // The recipe is the --fork-popup-fill token, declared once on the dark
+    // fork root so the Questions card (forkPendingUserInput) can wear it.
+    const fill = cssRules(theme).find(
+      (candidate) =>
+        candidate.selector.trim() === `${MARKER}.dark` &&
+        candidate.body.includes("--fork-popup-fill:"),
     );
+    expect(flat(fill?.body ?? "")).toContain(
+      `--fork-popup-fill: linear-gradient( ${WASH}, ${WASH} ), color-mix(in srgb, var(--popover) 45%, transparent);`,
+    );
+    expect(frost?.body).toMatch(/background:\s*var\(--fork-popup-fill\);/u);
     expect(frost?.body).toContain(`border-color: ${HAIRLINE};`);
     expect(frost?.body).toContain("backdrop-filter: blur(28px) saturate(1.4);");
     expect(frost?.body).not.toContain("backdrop-filter: none");
