@@ -64,13 +64,13 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           toggle lived in AppSidebarLayout's fixed SidebarControl, which now
           renders only while the panel is shut.
 
-          The left inset clears native traffic lights on macOS and places the
-          20px glyph at the design's x=84. Everywhere else it reduces to the
+          The left inset clears native traffic lights on macOS and centres the
+          16px glyph at x=94. Everywhere else it reduces to the
           safe-area gutter. */}
       <div className="flex items-center pl-[var(--workspace-controls-left)]">
         <SidebarTrigger
           aria-label="Toggle main sidebar"
-          className="[:hover,[data-pressed]]:bg-sidebar-row-hover focus-visible:ring-ring focus-visible:ring-offset-sidebar [&_svg]:size-5! [&_svg]:text-sidebar-muted-foreground/80! [&_svg]:opacity-100!"
+          className="[:hover,[data-pressed]]:bg-sidebar-row-hover focus-visible:ring-ring focus-visible:ring-offset-sidebar [&_svg]:size-4! [&_svg]:text-sidebar-muted-foreground/80! [&_svg]:opacity-100!"
         />
       </div>
       {/* Preserve the existing identification setting without changing the

@@ -1,7 +1,9 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
-import { PanelLeftCloseIcon, PanelLeftIcon } from "lucide-react";
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+import { PanelLeftCloseIcon } from "lucide-react";
+/* fork:end fork-sidebar-chrome */
 import * as React from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -341,7 +343,11 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       variant="ghost"
       {...props}
     >
-      {isOpen ? <PanelLeftCloseIcon /> : <PanelLeftIcon />}
+      {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+          One glyph in both states: the toggle reads as the same control
+          whether the panel is open or shut. */}
+      <PanelLeftCloseIcon />
+      {/* fork:end fork-sidebar-chrome */}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

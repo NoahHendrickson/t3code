@@ -46,8 +46,8 @@ import {
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-   A 28px trigger starting at x=80 centers its 20px glyph at x=84, exactly
-   16px after the native traffic-light group's 52px box. */
+   A 28px trigger starting at x=80 centers its 16px glyph at x=94, clear of
+   the native traffic-light group. */
 const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px";
 /* fork:end fork-sidebar-chrome */
 
@@ -125,7 +125,7 @@ function SidebarControl() {
         <TooltipTrigger
           render={
             <SidebarTrigger
-              className="pointer-events-auto [&_svg]:size-5!"
+              className="pointer-events-auto [&_svg]:size-4!"
               aria-label="Toggle main sidebar"
             />
           }

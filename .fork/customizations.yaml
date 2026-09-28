@@ -1843,10 +1843,10 @@
 
     The header follows Figma node 157:4536. It is flat and transparent on every
     build, so the panel surface shows through with no stage artwork. Its native
-    macOS traffic lights start at x=16, y=18 (same as upstream; y=20 sat ~2pt
-    below the header's toggle/brand axis on Tahoe's 13.5pt lights); a 28px
-    trigger starts at x=80 so its exact 20px Phosphor SidebarSimple glyph begins
-    at x=84 — 16px after the traffic-light group's 52px box. Non-macOS surfaces
+    macOS traffic lights start at x=16, y=19, which centres the 14pt lights at
+    26pt — the 52px header's axis, shared by the toggle, the brand, and the
+    workspace header's title (y=18 sat 1pt high). A 28px trigger starts at
+    x=80 and centres its 16px Phosphor SidebarSimple glyph in it. Non-macOS surfaces
     keep the same safe-area variable and place the glyph at the ordinary 16px
     edge inset.
 
@@ -1926,6 +1926,9 @@
     - apps/web/src/components/SidebarStageBackdrop.test.tsx
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
+    # Fenced: SidebarTrigger draws the SidebarSimple glyph open or shut, so the
+    # toggle does not change shape when the panel collapses.
+    - apps/web/src/components/ui/sidebar.tsx
     # Styles ::-webkit-scrollbar { width: var(--app-scrollbar-width) }, which
     # is what makes the thread list's reserved lane a styled 6px at all — and
     # what the intent's cross-engine argument is anchored to. A retune the
