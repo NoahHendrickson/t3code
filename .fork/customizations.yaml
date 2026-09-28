@@ -3329,7 +3329,9 @@
     whatever the popup paints. Menu, select and combobox separators take
     the same idea: a 12% contrast-foreground alpha instead of upstream's
     opaque --border, which sat on the popups as a dark bar of another
-    material. Badges in menu radio rows (the traits menu's "Default" tag)
+    material; the branch picker's "Start from origin" footer, split off
+    by its own border-t rather than a separator slot, takes the same alpha
+    on its top border. Badges in menu radio rows (the traits menu's "Default" tag)
     drop upstream's bordered chip and read as a plain muted caption, inline
     so it shares the row label's baseline.
   tier: 1
@@ -3347,6 +3349,8 @@
     - apps/web/src/components/ui/badge.tsx
     # Renders DefaultBadge inside its menu radio rows.
     - apps/web/src/components/chat/TraitsPicker.tsx
+    # Draws the "Start from origin" footer hairline as a border-t.
+    - apps/web/src/components/BranchToolbarBranchSelector.tsx
   verify:
     - apps/web/src/__fork_guards__/forkPopupSurface.test.ts
 

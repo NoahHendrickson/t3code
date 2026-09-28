@@ -2853,6 +2853,17 @@
   background: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
 }
 
+/* A top border drawn inside a combobox popup is a divider of that popup, so
+   it takes the separator's alpha too. Today that is one element: the branch
+   picker's "Start from origin" footer, which splits itself off the list with
+   a border-t in --border rather than a separator slot. Kept as a stylesheet
+   rule rather than a fenced ComboboxSeparator in BranchToolbarBranchSelector:
+   the slot would also change the divider's geometry (inset, with margins),
+   and the fork keeps its fences out of that file. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-slot="combobox-popup"] .border-t {
+  border-top-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+}
+
 /* ── Menu row tags (fork-popup-surface) ─────────────────────────────────────
    The traits menu's "Default" tag is upstream's outline Badge: a fixed-height
    inline-flex chip whose centred 10px label sits off the row label's baseline.
