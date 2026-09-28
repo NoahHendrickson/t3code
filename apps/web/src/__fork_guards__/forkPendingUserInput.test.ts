@@ -22,6 +22,7 @@ function readSibling(relativePath: string): string {
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const theme = readSibling("../theme.custom.css");
+const palettes = readSibling("../theme.custom.palettes.css");
 const override = readSibling("../overrides/components/chat/ComposerPendingUserInputPanel.tsx");
 const hook = readSibling("../custom/useComposerPendingUserInputCard.ts");
 const upstream = readSibling("../components/chat/ComposerPendingUserInputPanel.tsx");
@@ -104,7 +105,7 @@ describe("fork guard: fork-pending-user-input", () => {
     // Root carries p-1 on every side plus the overlap tuck below; all of it goes.
     expect(drawer?.body).toMatch(/padding:\s*0/u);
 
-    // Composer fill and hairline, open at the bottom, 8px top corners.
+    // Composer hairline, open at the bottom, 8px top corners.
     const card = rules.find(
       (rule) =>
         flat(rule.selector).endsWith(
@@ -117,7 +118,22 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(card?.body).toMatch(
       /border-radius:\s*var\(--fork-composer-radius\) var\(--fork-composer-radius\) 0 0/u,
     );
-    expect(card?.body).toMatch(/background:\s*var\(--fork-composer-bg\)/u);
+    // The popup material's fill (fork-popup-surface), not the prompt well's,
+    // so the card reads like the menus that open over the composer.
+    expect(card?.body).not.toContain("--fork-composer-bg");
+    expect(card?.body).toContain("color-mix(in srgb, var(--contrast-foreground) 8%, transparent)");
+    expect(card?.body).toContain("color-mix(in srgb, var(--popover) 45%, transparent)");
+    // Under Glass the vessel beneath is already the popup material (its wash
+    // over the 73% floor), so the card lets it through instead of stacking a
+    // second tint.
+    const glassCard = cssRules(palettes).find(
+      (rule) =>
+        rule.selector.includes('[data-fork-sidebar-vibrancy="true"]') &&
+        flat(rule.selector).endsWith(
+          "[data-chat-composer-top-drawer] > [data-fork-pending-user-input]",
+        ),
+    );
+    expect(glassCard?.body).toMatch(/background:\s*transparent/u);
     // The card's ring follows the prompt's focus recolour so the stack keeps
     // one ring. The hairline is on the panel, not the drawer, so the recolour
     // targets the panel directly.

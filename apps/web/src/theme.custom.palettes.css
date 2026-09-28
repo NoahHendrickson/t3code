@@ -721,6 +721,17 @@
   backdrop-filter: none;
 }
 
+/* The Questions card (theme.custom.css, fork-pending-user-input) wears the
+   popup material too. It sits on the vessel, which is already that wash over
+   the 73% floor, so it paints nothing and lets the vessel through; the base
+   dark fill would stack a second tint on it. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-vessel]
+  [data-chat-composer-top-drawer]
+  > [data-fork-pending-user-input] {
+  background: transparent;
+}
+
 /* Glass popups open at full strength instead of fading in. The hole under a
    popup is cut the frame it mounts, so a fade would show the bare material
    through it — a bright flash — until the tint caught up. Native menus open

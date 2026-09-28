@@ -3569,9 +3569,11 @@
     rules in theme.custom.css give the drawer (the ComposerBanner.Root marked
     data-chat-composer-top-drawer and, since #8734, both attachment wrappers
     around it) the vessel's full width with no inset or overlap tuck, paint
-    the panel with the composer fill and a top/left/right hairline on 8px
-    top corners (recoloured with the prompt's focus ring so the stack keeps
-    one ring), and square the prompt surface's top corners so the two read as
+    the panel with the popup material's fill (fork-popup-surface; under
+    Glass the vessel beneath already is that material, so the palette rule
+    leaves the card transparent) and a top/left/right composer hairline on
+    8px top corners (recoloured with the prompt's focus ring so the stack
+    keeps one ring), and square the prompt surface's top corners so the two read as
     one box. Because the card takes the whole dock row, the stash tab cannot
     sit beside it as it does beside upstream's inset drawer: the dock stacks
     and the tab rides above the card's right shoulder, its overlap padding
@@ -3581,6 +3583,7 @@
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
     - apps/web/src/overrides/components/chat/ComposerPendingUserInputPanel.tsx
     - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.palettes.css
   shadows:
     - apps/web/src/components/chat/ComposerPendingUserInputPanel.tsx
   watch:
