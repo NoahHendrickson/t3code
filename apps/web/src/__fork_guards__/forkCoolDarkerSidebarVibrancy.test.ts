@@ -382,6 +382,37 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(contextRow, "the context row must still precede the vessel").toBeLessThan(vessel);
   });
 
+  it("turns the palette's opaque greys into white washes on the stage", () => {
+    // Borders, the switch track, segmented controls, bar tracks and muted
+    // labels all read these tokens; an opaque cool grey reads as a slab or a
+    // dead line on the glass.
+    const stage = glassRules.find((rule) => rule.body.includes("--fork-context-chip-bg:"));
+    for (const token of [
+      "--border",
+      "--input",
+      "--fork-pill-border",
+      "--muted",
+      "--secondary",
+      "--muted-foreground",
+    ]) {
+      const declaration = new RegExp(`\\s${token}:\\s*([^;]+);`, "u").exec(stage?.body ?? "")?.[1];
+      expect(declaration, `${token} must be a white wash under glass`).toMatch(
+        /^rgb\(255 255 255 \/ \d+%\)$/u,
+      );
+    }
+
+    // The floating preview's placeholder covers the transcript, so it alone
+    // stays opaque.
+    const miniPlayer = glassRules.find(
+      (rule) =>
+        rule.selector.includes("[data-preview-mini-player]") && rule.selector.includes(".bg-muted"),
+    );
+    expect(miniPlayer?.body).toContain("var(--fork-popup-glass-floor)");
+    expect(readSibling("../components/preview/ThreadPreviewMiniPlayer.tsx")).toContain(
+      "data-preview-mini-player={tabId}",
+    );
+  });
+
   it("hands the design-mode chrome the stage's own glass", () => {
     // The panel is an ordinary child of the inset, so anything it paints
     // composites ON the stage and can only move it toward opaque. Painting

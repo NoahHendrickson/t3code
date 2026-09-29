@@ -507,6 +507,39 @@
      hover reads the same token in every other palette and follows it here. */
   --accent: rgb(255 255 255 / 8%);
   --fork-pill-hover: rgb(255 255 255 / 8%);
+  /* The palette's remaining greys, for the same reason as --accent: each is an
+     opaque cool step that reads as a slab (fills), a dead line (borders) or a
+     flat grey (text) on the glass. Every one is the white alpha that lands
+     where the opaque token did over the stage, so relative weights hold:
+     outline and header-pill borders, dividers and card rings; the switch's
+     unchecked track and the segmented controls (bg-input/N); code blocks and
+     the Usage bars' tracks (bg-muted); and every muted label. The sidebar
+     panel restates its own --border and --muted-foreground and keeps them —
+     its seam and icons are deliberately glass-independent (block below). */
+  --border: rgb(255 255 255 / 8%);
+  --input: rgb(255 255 255 / 12%);
+  --fork-pill-border: rgb(255 255 255 / 10%);
+  --muted: rgb(255 255 255 / 6%);
+  --secondary: rgb(255 255 255 / 6%);
+  --muted-foreground: rgb(255 255 255 / 50%);
+}
+
+/* The floating preview's placeholder is the one bg-muted user that covers
+   content — it floats over the transcript while the guest loads — so it
+   stands on the on-screen floor instead of taking the wash above. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-preview-mini-player]
+  .bg-muted {
+  background-color: var(--fork-popup-glass-floor);
+}
+
+/* The composer's control-row ink (theme.custom.css) is #a6a6a6 on every dark
+   palette — white 65% flattened onto black. Under glass it is the alpha
+   itself, so the labels carry the tint behind them like the rest of the row. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
+  :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
+  color: rgb(255 255 255 / 65%);
 }
 
 /* Design-mode chrome — the second column in the inset to take the glass.

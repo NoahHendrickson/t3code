@@ -1470,6 +1470,12 @@
     both opaque and neutral (R=G=B) — the "keep alpha" rule belongs to the docked
     block alone, since alpha is exactly what floating gives up.
 
+    On the stage and in popups the palette's opaque greys (--border, --input,
+    --fork-pill-border, --muted, --secondary, --muted-foreground) are white
+    washes, so borders, switch tracks, segmented controls and muted labels carry
+    the glass instead of reading as grey slabs. The floating preview's bg-muted
+    placeholder covers the transcript and stays opaque on the glass floor.
+
     syncWindowAppearance in window/DesktopWindow.ts writes the same fill on OS
     appearance changes. Two owners of one slot means the glass dies silently
     with the renderer's marker still set, so that write is gated on
