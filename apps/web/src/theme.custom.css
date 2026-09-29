@@ -800,7 +800,7 @@
 :root[data-fork="noahhendrickson-t3code"].dark
   :is([data-fork-composer-model-controls], [data-fork-composer-control-row-slot="left"])
   :is(button, [data-slot="button"]):not([data-fork-composer-mode-chip]) {
-  color: #a6a6a6;
+  color: var(--fork-composer-control-ink, #a6a6a6);
 }
 
 /* Hover / open fill. Upstream's ghost variant paints `--accent`, which is the

@@ -394,10 +394,34 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       "--muted",
       "--secondary",
       "--muted-foreground",
+      "--fork-composer-control-ink",
     ]) {
       const declaration = new RegExp(`\\s${token}:\\s*([^;]+);`, "u").exec(stage?.body ?? "")?.[1];
       expect(declaration, `${token} must be a white wash under glass`).toMatch(
         /^rgb\(255 255 255 \/ \d+%\)$/u,
+      );
+    }
+
+    const controlRow = themeRules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-model-controls]") &&
+        /color:\s*var\(--fork-composer-control-ink/u.test(rule.body),
+    );
+    expect(controlRow, "the control row must read its ink from the token").toBeDefined();
+
+    // index.css resolves these at :root, where --muted-foreground is now the
+    // wash, so the sidebar inherits it unless it re-derives them against its
+    // own opaque ink — the wallpaper would show through its labels and icons.
+    const panel = themeRules.find(
+      (rule) =>
+        rule.selector.includes('[data-fork-theme="cool-darker"]') &&
+        rule.selector.includes('[data-sidebar-version="v2"]') &&
+        !rule.selector.includes(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE),
+    );
+    expect(panel?.body).toMatch(/\s--muted-foreground:\s*#[0-9a-f]{6};/u);
+    for (const token of ["--placeholder", "--secondary-label", "--icon-muted"]) {
+      expect(panel?.body, `${token} must re-derive in the sidebar`).toMatch(
+        new RegExp(`\\s${token}:\\s*var\\(--muted-foreground\\);`, "u"),
       );
     }
 
