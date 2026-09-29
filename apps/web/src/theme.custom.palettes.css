@@ -212,6 +212,12 @@
   --accent: #282d30;
   --accent-foreground: #e8e8e8;
   --muted-foreground: #8a8a8a;
+  /* index.css derives these at :root, where Glass's vibrancy block makes
+     --muted-foreground a white wash; re-derived here so the panel's labels
+     and icons stay on its opaque ink instead of showing the wallpaper. */
+  --placeholder: var(--muted-foreground);
+  --secondary-label: var(--muted-foreground);
+  --icon-muted: var(--muted-foreground);
   --sidebar-muted-foreground: #d0d4d6;
   --fork-sidebar-card-title-receded: #aeb2b6;
   --sidebar-control-surface: #2f3437;
@@ -507,6 +513,27 @@
      hover reads the same token in every other palette and follows it here. */
   --accent: rgb(255 255 255 / 8%);
   --fork-pill-hover: rgb(255 255 255 / 8%);
+  /* The palette's remaining greys, for the same reason as --accent: each
+     opaque cool step reads as a slab, a dead line or flat grey text on the
+     glass. Each wash lands where the opaque token did over the stage, so
+     relative weights hold. The sidebar keeps its own opaque ink (the v2
+     block above re-derives the muted labels from it). */
+  --border: rgb(255 255 255 / 8%);
+  --input: rgb(255 255 255 / 12%);
+  --fork-pill-border: rgb(255 255 255 / 10%);
+  --muted: rgb(255 255 255 / 6%);
+  --secondary: rgb(255 255 255 / 6%);
+  --muted-foreground: rgb(255 255 255 / 50%);
+  /* theme.custom.css's #a6a6a6 is this alpha flattened onto black. */
+  --fork-composer-control-ink: rgb(255 255 255 / 65%);
+}
+
+/* The floating preview's placeholder floats over the transcript, so it is
+   the one bg-muted user that must not take the wash above. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-preview-mini-player]
+  .bg-muted {
+  background-color: var(--fork-popup-glass-floor);
 }
 
 /* Design-mode chrome — the second column in the inset to take the glass.

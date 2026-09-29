@@ -382,6 +382,61 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(contextRow, "the context row must still precede the vessel").toBeLessThan(vessel);
   });
 
+  it("turns the palette's opaque greys into white washes on the stage", () => {
+    // Borders, the switch track, segmented controls, bar tracks and muted
+    // labels all read these tokens; an opaque cool grey reads as a slab or a
+    // dead line on the glass.
+    const stage = glassRules.find((rule) => rule.body.includes("--fork-context-chip-bg:"));
+    for (const token of [
+      "--border",
+      "--input",
+      "--fork-pill-border",
+      "--muted",
+      "--secondary",
+      "--muted-foreground",
+      "--fork-composer-control-ink",
+    ]) {
+      const declaration = new RegExp(`\\s${token}:\\s*([^;]+);`, "u").exec(stage?.body ?? "")?.[1];
+      expect(declaration, `${token} must be a white wash under glass`).toMatch(
+        /^rgb\(255 255 255 \/ \d+%\)$/u,
+      );
+    }
+
+    const controlRow = themeRules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-model-controls]") &&
+        /color:\s*var\(--fork-composer-control-ink/u.test(rule.body),
+    );
+    expect(controlRow, "the control row must read its ink from the token").toBeDefined();
+
+    // index.css resolves these at :root, where --muted-foreground is now the
+    // wash, so the sidebar inherits it unless it re-derives them against its
+    // own opaque ink — the wallpaper would show through its labels and icons.
+    const panel = themeRules.find(
+      (rule) =>
+        rule.selector.includes('[data-fork-theme="cool-darker"]') &&
+        rule.selector.includes('[data-sidebar-version="v2"]') &&
+        !rule.selector.includes(FORK_SIDEBAR_VIBRANCY_ATTRIBUTE),
+    );
+    expect(panel?.body).toMatch(/\s--muted-foreground:\s*#[0-9a-f]{6};/u);
+    for (const token of ["--placeholder", "--secondary-label", "--icon-muted"]) {
+      expect(panel?.body, `${token} must re-derive in the sidebar`).toMatch(
+        new RegExp(`\\s${token}:\\s*var\\(--muted-foreground\\);`, "u"),
+      );
+    }
+
+    // The floating preview's placeholder covers the transcript, so it alone
+    // stays opaque.
+    const miniPlayer = glassRules.find(
+      (rule) =>
+        rule.selector.includes("[data-preview-mini-player]") && rule.selector.includes(".bg-muted"),
+    );
+    expect(miniPlayer?.body).toContain("var(--fork-popup-glass-floor)");
+    expect(readSibling("../components/preview/ThreadPreviewMiniPlayer.tsx")).toContain(
+      "data-preview-mini-player={tabId}",
+    );
+  });
+
   it("hands the design-mode chrome the stage's own glass", () => {
     // The panel is an ordinary child of the inset, so anything it paints
     // composites ON the stage and can only move it toward opaque. Painting
