@@ -40,6 +40,7 @@ import {
 import { toastManager } from "~/components/ui/toast";
 import type { DraftId } from "~/composerDraftStore";
 import { useClientSettings } from "~/hooks/useSettings";
+import { cn } from "~/lib/utils";
 import { selectProjectGroupingSettings } from "~/logicalProject";
 import {
   buildSidebarProjectPickerEntries,
@@ -69,6 +70,14 @@ function DraftProjectChipLabel({ children }: { readonly children: ReactNode }) {
       </span>
     </span>
   );
+}
+
+/** The picker rows' folder for a project with no favicon, emoji or chosen
+    icon: white at low opacity, so it tints with the glass popup instead of
+    sitting on it as the flat grey of upstream's muted-icon token. Dark only;
+    the light popup keeps that token, where white would vanish. */
+function PickerFolderIcon(props: { readonly className?: string | undefined }) {
+  return <FolderIcon className={cn(props.className, "dark:text-white/40")} />;
 }
 
 export function DraftProjectPill(props: {
@@ -228,7 +237,7 @@ export function DraftProjectPill(props: {
               <ProjectFavicon
                 project={targetProject}
                 className="size-4 shrink-0"
-                fallbackIcon={FolderIcon}
+                fallbackIcon={PickerFolderIcon}
               />
               <span className="min-w-0 truncate">{group.displayName}</span>
             </MenuRadioItem>
