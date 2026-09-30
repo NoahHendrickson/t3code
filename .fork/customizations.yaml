@@ -1398,6 +1398,10 @@
     upstream theme = dark, data-fork-theme="cool-darker"). Palette tokens
     live in theme.custom.palettes.css (two-block stage + v2 panel). index.html
     pre-paints #141618.
+
+    The sidebar's project chrome — the Projects row and each project header —
+    rests on white at 65% rather than the panel's opaque #8a8a8a muted ink,
+    which the thread cards keep.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts

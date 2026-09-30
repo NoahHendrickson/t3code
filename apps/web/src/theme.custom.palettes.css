@@ -226,6 +226,21 @@
   --sidebar-row-selected: #2c3134;
 }
 
+/* Project chrome — the Projects row and every project header — rests on white
+   at 65% instead of the panel's #8a8a8a, so the label, folder mark and icon
+   buttons tint with the surface under them. The thread cards keep the opaque
+   ink above.
+
+   The derived token, not --muted-foreground: index.css computes
+   --contrast-muted-foreground on [data-app-sidebar] and a descendant inherits
+   the result, so restating the source here would change nothing. Stated flat,
+   so the appearance-contrast slider does not move these labels. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"]
+  :is([data-fork-projects-row], [data-fork-project-section-header]) {
+  --contrast-muted-foreground: rgb(255 255 255 / 65%);
+}
+
 /* ---------------------------------------------------------------------------
    Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
 
