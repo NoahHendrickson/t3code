@@ -226,10 +226,11 @@
   --sidebar-row-selected: #2c3134;
 }
 
-/* Project chrome — the Projects row and every project header — rests on white
-   at 65% instead of the panel's #8a8a8a, so the label, folder mark and icon
-   buttons tint with the surface under them. The thread cards keep the opaque
-   ink above.
+/* Project chrome — the Projects row, every project header and each thread
+   card's meta line (project chip, branch, model) — rests on white at 65%
+   instead of the panel's #8a8a8a, so the labels, marks and icon buttons tint
+   with the surface under them. The panel's opaque ink above stays for
+   everything else that reads the muted channel.
 
    The derived token, not --muted-foreground: index.css computes
    --contrast-muted-foreground on [data-app-sidebar] and a descendant inherits
@@ -237,7 +238,7 @@
    so the appearance-contrast slider does not move these labels. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
-  :is([data-fork-projects-row], [data-fork-project-section-header]) {
+  :is([data-fork-projects-row], [data-fork-project-section-header], [data-fork-thread-card-meta]) {
   --contrast-muted-foreground: rgb(255 255 255 / 65%);
 }
 

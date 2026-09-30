@@ -370,8 +370,8 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
     // as 32px icon buttons pulled onto the list edge. pt-4 is the gap between
     // the action block and this row; the design (364:8534) leaves 24px
     // between the block and the first project group, and this row spends it.
-    // data-fork-projects-row is the palette's hook: Glass re-inks this row and
-    // the project headers together (theme.custom.palettes.css).
+    // data-fork-projects-row is the palette's hook: Glass re-inks this row, the
+    // project headers and the card meta lines together (theme.custom.palettes.css).
     <SidebarGroup data-fork-projects-row="" className={cn("px-2 pt-4 pb-0", CHROME_ROW_INSET)}>
       <div className="flex h-8 items-center gap-1.5 px-3">
         <span

@@ -1399,9 +1399,9 @@
     live in theme.custom.palettes.css (two-block stage + v2 panel). index.html
     pre-paints #141618.
 
-    The sidebar's project chrome — the Projects row and each project header —
-    rests on white at 65% rather than the panel's opaque #8a8a8a muted ink,
-    which the thread cards keep.
+    The sidebar's project chrome — the Projects row, each project header and
+    each thread card's meta line — rests on white at 65% rather than the
+    panel's opaque #8a8a8a muted ink.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
