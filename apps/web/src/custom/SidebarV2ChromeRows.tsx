@@ -399,7 +399,11 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                   />
                 }
               >
-                <ArrowUpDownIcon className="size-4 shrink-0" />
+                {/* Regular, not the shim's bold pin: the faders beside it are
+                    duotone, whose outline is the regular weight, and the row's
+                    other marks are duotone too. Bold read a stroke heavier
+                    than every neighbour. */}
+                <ArrowUpDownIcon weight="regular" className="size-4 shrink-0" />
               </TooltipTrigger>
               <TooltipPopup side="right">{sortTooltip}</TooltipPopup>
             </Tooltip>
