@@ -145,6 +145,28 @@ describe("fork guard: fork-cool-darker-theme", () => {
     );
   });
 
+  it("inks the project chrome and card meta as white at 65%, on the derived token", () => {
+    const projectChrome = ruleBodyFor(themeRules, [
+      ...DARKER_PANEL,
+      ":is([data-fork-projects-row], [data-fork-project-section-header], [data-fork-thread-card-meta])",
+    ]);
+    // The derived token: text-muted-foreground reads it, and restating
+    // --muted-foreground below [data-app-sidebar] would not re-derive it.
+    expect(projectChrome).toMatch(/\s--contrast-muted-foreground:\s*rgb\(255 255 255 \/ 65%\);/u);
+    // The panel's muted channel itself stays opaque for everything else.
+    expect(declarationHex(ruleBodyFor(themeRules, DARKER_PANEL), "--muted-foreground")).toBe(
+      "#8a8a8a",
+    );
+    // Every hook has to exist for the rule to land on anything.
+    expect(readSibling("../custom/SidebarV2ChromeRows.tsx")).toContain('data-fork-projects-row=""');
+    expect(readSibling("../custom/SidebarV2ProjectGroupHeader.tsx")).toContain(
+      'data-fork-project-section-header=""',
+    );
+    expect(readSibling("../custom/SidebarV2ThreadCardMeta.tsx")).toContain(
+      'data-fork-thread-card-meta=""',
+    );
+  });
+
   it("pre-paints Glass from the palette key so the load flash matches the stage", () => {
     expect(indexHtml).toContain(COOL_DARKER_BACKGROUND);
     expect(indexHtml).toContain(

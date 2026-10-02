@@ -104,7 +104,9 @@ export function SidebarV2ProjectFolderMark(props: { readonly className?: string 
 
 export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
   return (
-    <div data-testid="sidebar-v2-card-line" className={REPO_ROW}>
+    // data-fork-thread-card-meta is the palette's hook: Glass inks this line
+    // with the project chrome (theme.custom.palettes.css).
+    <div data-testid="sidebar-v2-card-line" data-fork-thread-card-meta="" className={REPO_ROW}>
       <span className="flex min-w-0 flex-1 items-center gap-3">
         <span className="flex min-w-0 flex-1 items-center gap-1">
           {/* Runtime leads the line (364:18405): where the agent runs, then a
