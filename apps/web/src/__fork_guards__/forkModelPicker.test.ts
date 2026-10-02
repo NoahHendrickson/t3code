@@ -155,6 +155,8 @@ describe("fork guard: fork-model-picker", () => {
     // The menu parks focus on the popup after a swap; typing still searches.
     expect(content).toContain("closest<HTMLElement>('[data-slot=\"menu-popup\"]')");
     expect(content).toContain("if (event.target === popup) redirectTypingToSearch(event);");
+    // Backspace held to clear a query stops at the empty field.
+    expect(content).toContain("if (!event.repeat) openPage(parentPage(page));");
     // Disabled providers keep pointer events so the reason tooltip opens.
     expect(content).toContain('input.disabled && "data-disabled:pointer-events-auto"');
     expect(content).toContain("describeUnavailableInstance(entry)");
@@ -219,10 +221,21 @@ describe("fork guard: fork-model-picker", () => {
     expect(composer).not.toMatch(/<ProviderModelPicker\b/u);
     expect(composer).not.toMatch(/^\s*const providerTraitsPicker = /mu);
     expect(composer).not.toMatch(/^\s*id: "traits",/mu);
+    // Upstream's ⋯-menu traits wiring is dropped too, not left built and unread.
+    expect(composer).not.toMatch(/renderProviderTraitsMenuContent\(/u);
+    expect(composer).not.toMatch(/^\s*traitsMenuContent=/mu);
     // The trigger reads "Opus 5.5 High"; the panel sits under the pages, and a
     // pick keeps the menu open so effort can follow.
     expect(picker).toContain("data-chat-provider-model-picker-traits");
-    expect(picker).toContain("{props.traits.panel}");
+    // The traits label truncates inside the trigger's max width, and the
+    // resting strip collapses it (and the bolt) with the model name.
+    expect(picker).toContain('"min-w-0 truncate text-muted-foreground"');
+    expect(
+      picker.match(/size === "xs" && "@max-\[640px\]\/composer-surface:hidden"/gu),
+    ).toHaveLength(2);
+    // The panel is stamped like the pages, so the wheel lock and
+    // modelPickerHoldsFocus both count its controls as inside the picker.
+    expect(picker).toContain('<div data-model-picker-content="true">{props.traits.panel}</div>');
     // Anchored to the trigger's right edge, which stays put as the label changes length.
     expect(picker).toContain('align={props.isComposerOwned ? "end" : "start"}');
     // Every pick in the composer keeps it open, even from a model without
@@ -234,7 +247,12 @@ describe("fork guard: fork-model-picker", () => {
     // a pick: ChatView's post-pick focusAtEnd stands down, and the editor's
     // rewrite on a provider switch skips placing the DOM selection.
     expect(composer).toMatch(
-      /focusAtEnd: \(\) => \{[^}]*?if \(isComposerModelPickerOpen\) return;/u,
+      /focusAtEnd: \(\) => \{[^}]*?if \(isComposerModelPickerOpen\) \{\s*composerFocusOwedRef\.current = true;\s*return;\s*\}/u,
+    );
+    // The focus it skipped is paid when the picker closes, unless the close
+    // itself moved focus to another control.
+    expect(composer).toMatch(
+      /if \(isComposerModelPickerOpen \|\| !composerFocusOwedRef\.current\) return;\s*composerFocusOwedRef\.current = false;[\s\S]*?modelPickerHoldsFocus\(\)\s*\) \{\s*composerEditorRef\.current\?\.focusAtEnd\(\);/u,
     );
     expect(readSibling("../components/ComposerPromptEditor.tsx")).toMatch(
       /!isFocused && modelPickerHoldsFocus\(\)\s*\?\s*\{ tag: SKIP_DOM_SELECTION_TAG \}/u,

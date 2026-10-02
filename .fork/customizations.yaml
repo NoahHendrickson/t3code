@@ -3645,7 +3645,8 @@
     glyph, name and a dot on the current provider. Clicking a row swaps the
     menu in place to that provider's current models, led by a back row;
     legacy models are one page deeper. ArrowRight opens a row's page, and
-    ArrowLeft (or Backspace / ArrowLeft in an empty search field) steps back.
+    ArrowLeft (or Backspace / ArrowLeft in an empty search field) steps back;
+    a held key does not, so Backspace held to clear a query stays on the page.
     A row swaps the page without touching focus; the search field takes focus
     a frame and a tick after the swap. Focusing it
     from the row's click closes the menu: the row re-takes focus on click,
@@ -3664,14 +3665,18 @@
     the thread or not ready stay listed but disabled, with the reason as a
     tooltip; a provider needing setup opens a page with its status and an
     "Open provider setup" item. The popup stamps [data-model-picker-content]
-    (shortcut arbitration, wheel lock). Model rows never close the menu
+    (shortcut arbitration, wheel lock) on the pages and on the traits panel
+    under them. Model rows never close the menu
     themselves; ProviderModelPicker closes it on a pick unless it is `combined`
     (the composer's menu, at one width whether or not the model has traits).
     In the composer, model and reasoning are one control. ComposerModelPicker
     wraps ProviderModelPicker and fills its `traits` slot from the same input
     the composer used to hand upstream's TraitsPicker: the trigger reads
     "Opus 5.5 High" (fast-mode bolt included), and under the pages a panel
-    shows the selected model's traits. Effort (`effort`, `reasoningEffort`,
+    shows the selected model's traits. The traits label truncates inside the
+    trigger's max width, and in the resting strip it collapses with the model
+    name below 640px (the bolt too), where upstream moved the traits picker
+    into the ⋯ menu. Effort (`effort`, `reasoningEffort`,
     `reasoning` or `variant`, when it has two or more levels) is a slider over
     the model's own levels, Ultrathink included as the top stop for Claude;
     dragging previews and writes once on release. It is a 24px bar with a block
@@ -3687,14 +3692,19 @@
     focus there: ChatComposer's focusAtEnd stands down while its picker is
     open (ChatView refocuses the editor after every pick), and
     ComposerPromptEditor skips placing the DOM selection when it rewrites an
-    unfocused editor while focus sits in a model picker (a provider switch changes
-    the skills and rewrites it), which would otherwise pull focus into the
-    editor and, for a keyboard pick, close the menu. The composer's
+    unfocused editor while focus sits in a model picker, pages or panel (a
+    provider switch changes the skills and rewrites it; an Ultrathink stop
+    rewrites the prompt), which would otherwise pull focus into the
+    editor and, for a keyboard pick, close the menu. The focus that stood
+    down is paid when the picker closes, so typing lands in the editor after
+    a pick as it does upstream, unless the close itself moved focus to
+    another control. The composer's
     popup aligns to the trigger's right edge (Settings stays start-aligned), so
     it holds still as the label changes length. Both
     composer placements (footer and resting strip) render it; the separate
-    traits picker, its resting "traits" block and the ⋯ menu's traits section
-    are gone. Settings keeps upstream's separate traits pickers. The exported
+    traits picker, its resting "traits" block and the ⋯ menus' traits section
+    (upstream's providerTraitsMenuContent, in both the footer and the strip
+    tree) are gone. Settings keeps upstream's separate traits pickers. The exported
     helpers of ModelPickerContent stay upstream's
     verbatim and both shadows keep upstream's relative imports. Reaches every
     entry point through ProviderModelPicker (composer and Settings).

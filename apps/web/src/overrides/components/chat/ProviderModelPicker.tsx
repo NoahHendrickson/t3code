@@ -260,6 +260,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               Unavailable
             </Badge>
           ) : null}
+          {/* The resting strip (size xs) sizes this trigger down to its icon
+              below 640px, so the bolt and the traits label collapse there with
+              the model name. Elsewhere the traits label truncates rather than
+              spill past the trigger's max width. */}
           {props.traits?.fastMode ? (
             <>
               <ComposerControlIcon
@@ -270,6 +274,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                   size !== "xs" && activeEntry?.driverKind === "claudeAgent"
                     ? "text-[#d97757]"
                     : "text-current",
+                  size === "xs" && "@max-[640px]/composer-surface:hidden",
                 )}
               />
               <span className="sr-only">Fast mode on</span>
@@ -277,7 +282,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           ) : null}
           {props.traits?.label ? (
             <span
-              className="shrink-0 text-muted-foreground"
+              className={cn(
+                "min-w-0 truncate text-muted-foreground",
+                size === "xs" && "@max-[640px]/composer-surface:hidden",
+              )}
               data-chat-provider-model-picker-traits="true"
             >
               {props.traits.label}
@@ -314,7 +322,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         {props.traits ? (
           <>
             <MenuSeparator className="mx-0 my-0" />
-            {props.traits.panel}
+            {/* Stamped like the pages above, so the wheel lock lets the popup
+                scroll from here and modelPickerHoldsFocus counts the panel's
+                controls as inside the picker. */}
+            <div data-model-picker-content="true">{props.traits.panel}</div>
           </>
         ) : null}
       </MenuPopup>

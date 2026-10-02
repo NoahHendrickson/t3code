@@ -481,14 +481,17 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   // Typing anywhere in the menu — a provider row, a model row — goes to the
   // search field instead of the menu's type-ahead. Capture phase, so it runs
   // before the menu's own key handling on the focused row.
-  const redirectTypingToSearch = (event: TypedKeyEvent) => {
-    if (event.target === searchInputRef.current || !isTypedCharacter(event)) return;
-    if (event.key === " " && !isSearching) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setSearchQuery((query) => query + event.key);
-    focusSearchInput();
-  };
+  const redirectTypingToSearch = useCallback(
+    (event: TypedKeyEvent) => {
+      if (event.target === searchInputRef.current || !isTypedCharacter(event)) return;
+      if (event.key === " " && !isSearching) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setSearchQuery((query) => query + event.key);
+      focusSearchInput();
+    },
+    [focusSearchInput, isSearching],
+  );
 
   // When a page swap removes the focused row, the menu parks focus on the
   // popup itself, outside this content's own capture; catch typing there too.
@@ -500,7 +503,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     };
     popup.addEventListener("keydown", onPopupKeyDown, true);
     return () => popup.removeEventListener("keydown", onPopupKeyDown, true);
-  });
+  }, [redirectTypingToSearch]);
 
   const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape" && searchQuery) {
@@ -518,7 +521,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       if (first) chooseModel(first);
       return;
     }
-    // With nothing typed, Backspace and ArrowLeft step back a page.
+    // With nothing typed, Backspace and ArrowLeft step back a page. A held
+    // key stops there: Backspace held to clear a query must not also leave
+    // the page once the field is empty.
     if (
       (event.key === "Backspace" || event.key === "ArrowLeft") &&
       !searchQuery &&
@@ -526,7 +531,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     ) {
       event.preventDefault();
       event.stopPropagation();
-      openPage(parentPage(page));
+      if (!event.repeat) openPage(parentPage(page));
       return;
     }
     // Arrows, Escape (with nothing typed) and Tab drive the menu; everything
