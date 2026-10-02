@@ -11,6 +11,10 @@
  * label collapses; Settings keeps it. And an optional `traits` slot (the
  * composer's ComposerModelPicker fills it) adds the reasoning label to the
  * trigger and its panel under the pages, keeping the menu open on a pick.
+ *
+ * The fork also keeps the `compact` prop upstream dropped (#11002): the fork's
+ * footer caps the trigger's width itself (custom/composerModelSlotCompact.ts)
+ * instead of letting the composer's controls layout size it.
  */
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
@@ -19,15 +23,15 @@ import {
   type ResolvedKeybindingsConfig,
 } from "@t3tools/contracts";
 import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { VariantProps } from "class-variance-authority";
 import { ZapIcon } from "lucide-react";
+import { UltrafastIcon } from "../Icons";
 import { Badge } from "../ui/badge";
-import { buttonVariants } from "../ui/button";
 import { Menu, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 import { stripProviderName } from "~/custom/modelPickerDisplayName";
 import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
+import { ChatGptSharingControl } from "./ChatGptSharingControl";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import {
   ModelEsque,
@@ -41,7 +45,8 @@ import {
   ComposerControlIcon,
   type ComposerControlSize,
 } from "./ComposerControl";
-import { composerFloatingLayerProps } from "./composerEventScope";
+import { useComposerMenuProps } from "./composerEventScope";
+import { shortcutLabelForCommand } from "../../keybindings";
 
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   /**
@@ -50,6 +55,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
    */
   activeInstanceId: ProviderInstanceId;
   model: string;
+  selectedModels?: ReadonlyArray<{ instanceId: ProviderInstanceId; model: string }>;
+  onToggleModel?: (instanceId: ProviderInstanceId, model: string) => void;
   lockedProvider: ProviderDriverKind | null;
   lockedContinuationGroupKey?: string | null;
   /** Instance entries rendered in the sidebar + used to resolve display name. */
@@ -59,26 +66,29 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   activeProviderIconClassName?: string;
   instanceIndicatorBackground?: string;
   size?: ComposerControlSize;
+  /** Fork-only (see the header): the composer's narrow-footer width cap. */
   compact?: boolean;
   isComposerOwned?: boolean;
   disabled?: boolean;
   terminalOpen?: boolean;
   open?: boolean;
-  triggerVariant?: VariantProps<typeof buttonVariants>["variant"];
   triggerClassName?: string;
+  /** Aggregate settings can show a neutral value without claiming one provider is selected. */
+  triggerLabel?: string;
   triggerAriaLabel?: string;
   onOpenChange?: (open: boolean) => void;
   onOpenProviderSetup?: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason?: (instanceId: ProviderInstanceId, model: string) => string | null;
   onInstanceModelChange: (instanceId: ProviderInstanceId, model: string) => void;
   /** The selected model's reasoning: a trigger label plus a panel under the model pages. */
-  traits?: { label: string; fastMode: boolean; panel: ReactNode };
+  traits?: { label: string; speedIcon: "fast" | "ultrafast" | null; panel: ReactNode };
   /**
    * The composer's combined menu: a pick keeps it open (effort usually
    * follows a new model) at one width, whether or not the model has traits.
    */
   combined?: boolean;
 }) {
+  const composerFloatingLayerProps = useComposerMenuProps();
   const [uncontrolledIsMenuOpen, setUncontrolledIsMenuOpen] = useState(false);
   const isMenuOpen = props.open ?? uncontrolledIsMenuOpen;
   const size = props.size ?? "sm";
@@ -182,6 +192,55 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     if (!props.combined) setIsMenuOpen(false);
   };
 
+  const shortcutLabel = props.keybindings
+    ? shortcutLabelForCommand(props.keybindings, "modelPicker.toggle")
+    : null;
+  const selectedEntries = props.selectedModels?.map((selection) => {
+    const entry = props.instanceEntries.find(
+      (candidate) => candidate.instanceId === selection.instanceId,
+    );
+    const model = resolveModelPickerSelectedModel({
+      driverKind: entry?.driverKind,
+      model: selection.model,
+      options: props.modelOptionsByInstance.get(selection.instanceId) ?? [],
+    });
+    // Same provider-name strip as the single trigger title; the tooltip
+    // keeps the full names.
+    const modelName = model
+      ? entry
+        ? stripProviderName(getTriggerDisplayModelName(model), entry)
+        : getTriggerDisplayModelName(model)
+      : selection.model;
+    return {
+      ...selection,
+      entry,
+      label: model ? `${modelName}${model.isUnavailable ? " (Unavailable)" : ""}` : modelName,
+      fullLabel: model
+        ? `${getTriggerDisplayModelName(model)}${model.isUnavailable ? " (Unavailable)" : ""}`
+        : selection.model,
+    };
+  });
+  const multipleLabel = selectedEntries
+    ? selectedEntries.length === 0
+      ? "Choose models"
+      : `${selectedEntries
+          .slice(0, 2)
+          .map((selection) => selection.label)
+          .join(", ")}${selectedEntries.length > 2 ? `, ${selectedEntries.length - 2} more` : ""}`
+    : undefined;
+  const allModelNames = selectedEntries
+    ? selectedEntries.map((selection) => selection.fullLabel).join(", ") || "Choose models"
+    : undefined;
+  const triggerTooltipContent = shortcutLabel
+    ? `${props.triggerLabel ?? allModelNames ?? triggerLabel} · ${shortcutLabel}`
+    : (props.triggerLabel ?? allModelNames ?? triggerLabel);
+  // The composer shows the model name alone. Its resting strip (size xs)
+  // collapses that name to nothing below 640px, so the icon comes back there
+  // rather than leave a bare chevron.
+  const composerIconClassName =
+    props.isComposerOwned &&
+    (size === "xs" ? "hidden @max-[640px]/composer-surface:inline-flex" : "hidden");
+
   return (
     <Menu
       modal={false}
@@ -197,8 +256,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
       <MenuTrigger
         render={
           <ComposerControl
-            aria-label={props.triggerAriaLabel}
-            variant={props.triggerVariant ?? "ghost"}
+            aria-label={props.triggerAriaLabel ?? allModelNames}
             size={size}
             data-chat-provider-model-picker="true"
             className={cn(
@@ -213,28 +271,52 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         <span
           className={cn("flex min-w-0 flex-1 items-center", size === "xs" ? "gap-1" : "gap-1.5")}
         >
-          {activeEntry ? (
-            <ProviderInstanceIcon
-              driverKind={activeEntry.driverKind}
-              displayName={activeEntry.displayName}
-              accentColor={activeEntry.accentColor}
-              showBadge={showInstanceBadge}
-              // The composer shows the model name alone. Its resting strip
-              // (size xs) collapses that name to nothing below 640px, so the
-              // icon comes back there rather than leave a bare chevron.
-              className={cn(
-                "size-4",
-                props.isComposerOwned &&
-                  (size === "xs" ? "hidden @max-[640px]/composer-surface:inline-flex" : "hidden"),
-              )}
-              iconClassName={cn("size-4", props.activeProviderIconClassName)}
-              indicatorBackground={props.instanceIndicatorBackground ?? "var(--contrast-input)"}
-              badgeClassName={cn(
-                "right-[-0.125rem] bottom-[-0.125rem] h-3 min-w-3 px-0.5 text-[7px]",
-                size === "xs" && "shadow-none",
-              )}
-            />
-          ) : null}
+          {/* An aggregate label claims no provider; several selected models
+              stack their glyphs (hidden in the composer like the single icon). */}
+          {props.triggerLabel !== undefined ? null : selectedEntries ? (
+            <span
+              className={cn("flex shrink-0 items-center -space-x-1", composerIconClassName)}
+              aria-hidden="true"
+            >
+              {selectedEntries
+                .slice(0, 3)
+                .map((selection) =>
+                  selection.entry ? (
+                    <ProviderInstanceIcon
+                      key={`${selection.instanceId}:${selection.model}`}
+                      driverKind={selection.entry.driverKind}
+                      displayName={selection.entry.displayName}
+                      accentColor={selection.entry.accentColor}
+                      className="size-4 rounded-full bg-(--chat-composer-glass-surface,var(--background)) ring-2 ring-(--chat-composer-glass-surface,var(--background))"
+                      iconClassName="size-4"
+                    />
+                  ) : null,
+                )}
+              {selectedEntries.length > 3 ? (
+                <span className="relative z-30 flex size-4 items-center justify-center rounded-full bg-(--chat-composer-glass-surface,var(--background)) text-3xs ring-2 ring-(--chat-composer-glass-surface,var(--background))">
+                  +{selectedEntries.length - 3}
+                </span>
+              ) : null}
+            </span>
+          ) : (
+            <>
+              {activeEntry ? (
+                <ProviderInstanceIcon
+                  driverKind={activeEntry.driverKind}
+                  displayName={activeEntry.displayName}
+                  accentColor={activeEntry.accentColor}
+                  showBadge={showInstanceBadge}
+                  className={cn("size-4", composerIconClassName)}
+                  iconClassName={cn("size-4", props.activeProviderIconClassName)}
+                  indicatorBackground={props.instanceIndicatorBackground ?? "var(--contrast-input)"}
+                  badgeClassName={cn(
+                    "right-[-0.125rem] bottom-[-0.125rem] h-3 min-w-3 px-0.5 text-5xs",
+                    size === "xs" && "shadow-none",
+                  )}
+                />
+              ) : null}
+            </>
+          )}
           <Tooltip>
             <TooltipTrigger
               render={
@@ -244,10 +326,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 />
               }
             >
-              {triggerTitle}
+              {props.triggerLabel ?? multipleLabel ?? triggerTitle}
             </TooltipTrigger>
             <TooltipPopup side="top">
-              {triggerLabel}
+              {triggerTooltipContent}
               {/* The composer hides the provider icon, so the tooltip names
                   the instance serving the model. */}
               {activeEntry ? (
@@ -255,7 +337,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               ) : null}
             </TooltipPopup>
           </Tooltip>
-          {selectedModel?.isUnavailable ? (
+          {selectedModel?.isUnavailable && !selectedEntries && props.triggerLabel === undefined ? (
             <Badge variant="outline" size="sm">
               Unavailable
             </Badge>
@@ -264,10 +346,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               below 640px, so the bolt and the traits label collapse there with
               the model name. Elsewhere the traits label truncates rather than
               spill past the trigger's max width. */}
-          {props.traits?.fastMode ? (
+          {props.traits?.speedIcon ? (
             <>
               <ComposerControlIcon
-                icon={ZapIcon}
+                icon={props.traits.speedIcon === "ultrafast" ? UltrafastIcon : ZapIcon}
                 size={size}
                 className={cn(
                   "fill-current opacity-80",
@@ -306,6 +388,14 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         <ModelPickerContent
           activeInstanceId={activeInstanceId}
           model={props.model}
+          {...(props.selectedModels !== undefined ? { selectedModels: props.selectedModels } : {})}
+          {...(props.onToggleModel
+            ? {
+                onToggleModel: (instanceId: ProviderInstanceId, model: string) => {
+                  if (!props.disabled) props.onToggleModel?.(instanceId, model);
+                },
+              }
+            : {})}
           lockedProvider={props.lockedProvider}
           lockedContinuationGroupKey={props.lockedContinuationGroupKey ?? null}
           instanceEntries={props.instanceEntries}
@@ -327,6 +417,9 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 controls as inside the picker. */}
             <div data-model-picker-content="true">{props.traits.panel}</div>
           </>
+        ) : null}
+        {props.selectedModels === undefined ? (
+          <ChatGptSharingControl provider={activeEntry?.snapshot ?? null} />
         ) : null}
       </MenuPopup>
     </Menu>

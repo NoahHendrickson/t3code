@@ -126,64 +126,71 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
         ) : null}
       </div>
 
-      <div className="flex flex-col text-sm">
-        <p className="font-medium text-foreground">{activeQuestion.question}</p>
-        <p className="font-normal text-muted-foreground">
-          {multiSelect ? "Select one or more" : "Select one"}
-        </p>
-      </div>
+      {/* Upstream #12166: a long question scrolls inside the banner's bound
+          instead of growing the drawer, and unbroken words wrap. The header
+          above stays put, as upstream's disclosure row does. */}
+      <ComposerBanner.Scroll>
+        <div className="flex flex-col gap-6 wrap-anywhere">
+          <div className="flex flex-col text-sm">
+            <p className="font-medium text-foreground">{activeQuestion.question}</p>
+            <p className="font-normal text-muted-foreground">
+              {multiSelect ? "Select one or more" : "Select one"}
+            </p>
+          </div>
 
-      <div className="flex flex-col gap-4" role={multiSelect ? "group" : "radiogroup"}>
-        {activeQuestion.options.map((option, index) => {
-          const optionValue = option.value ?? option.label;
-          const isOptimisticallySelected =
-            optimisticSingleSelect?.questionId === activeQuestion.id &&
-            optimisticSingleSelect.optionValue === optionValue;
-          const isSelected =
-            isOptimisticallySelected ||
-            (!customAnswerActive && progress.selectedOptionValues.includes(optionValue));
-          const digitShortcut = index < 9 ? String(index + 1) : undefined;
+          <div className="flex flex-col gap-4" role={multiSelect ? "group" : "radiogroup"}>
+            {activeQuestion.options.map((option, index) => {
+              const optionValue = option.value ?? option.label;
+              const isOptimisticallySelected =
+                optimisticSingleSelect?.questionId === activeQuestion.id &&
+                optimisticSingleSelect.optionValue === optionValue;
+              const isSelected =
+                isOptimisticallySelected ||
+                (!customAnswerActive && progress.selectedOptionValues.includes(optionValue));
+              const digitShortcut = index < 9 ? String(index + 1) : undefined;
 
-          return (
-            <button
-              key={`${activeQuestion.id}:${optionValue}`}
-              type="button"
-              role={multiSelect ? "checkbox" : "radio"}
-              aria-checked={isSelected}
-              aria-keyshortcuts={digitShortcut}
-              disabled={isResponding}
-              onClick={() => {
-                handleOptionSelection(activeQuestion.id, optionValue);
-              }}
-              className={cn(
-                "group flex w-full flex-col gap-1 rounded-lg border p-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-ring/40",
-                isSelected
-                  ? "border-foreground/24 bg-foreground/8 text-foreground"
-                  : "border-transparent hover:bg-foreground/4",
-                isResponding && "cursor-not-allowed opacity-50",
-                !isResponding && "cursor-pointer",
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <OptionControl multiSelect={multiSelect} selected={isSelected} />
-                <span className="text-sm font-medium text-foreground">{option.label}</span>
-              </div>
-              {option.description && option.description !== option.label ? (
-                <div className="flex w-full items-center pl-6">
-                  <span
-                    className={cn(
-                      "flex-1 text-sm font-normal",
-                      isSelected ? "text-foreground/80" : "text-muted-foreground",
-                    )}
-                  >
-                    {option.description}
-                  </span>
-                </div>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+              return (
+                <button
+                  key={`${activeQuestion.id}:${optionValue}`}
+                  type="button"
+                  role={multiSelect ? "checkbox" : "radio"}
+                  aria-checked={isSelected}
+                  aria-keyshortcuts={digitShortcut}
+                  disabled={isResponding}
+                  onClick={() => {
+                    handleOptionSelection(activeQuestion.id, optionValue);
+                  }}
+                  className={cn(
+                    "group flex w-full flex-col gap-1 rounded-lg border p-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-ring/40",
+                    isSelected
+                      ? "border-foreground/24 bg-foreground/8 text-foreground"
+                      : "border-transparent hover:bg-foreground/4",
+                    isResponding && "cursor-not-allowed opacity-50",
+                    !isResponding && "cursor-pointer",
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <OptionControl multiSelect={multiSelect} selected={isSelected} />
+                    <span className="text-sm font-medium text-foreground">{option.label}</span>
+                  </div>
+                  {option.description && option.description !== option.label ? (
+                    <div className="flex w-full items-center pl-6">
+                      <span
+                        className={cn(
+                          "flex-1 text-sm font-normal",
+                          isSelected ? "text-foreground/80" : "text-muted-foreground",
+                        )}
+                      >
+                        {option.description}
+                      </span>
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </ComposerBanner.Scroll>
     </div>
   );
 });

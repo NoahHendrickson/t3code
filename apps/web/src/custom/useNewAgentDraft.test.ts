@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   DEFAULT_RUNTIME_MODE,
+  DEFAULT_SERVER_SETTINGS,
   EnvironmentId,
   type ModelSelection,
   ProjectId,
   ProviderInstanceId,
+  type T3ProjectFile,
   ThreadId,
   type ThreadEnvMode,
 } from "@t3tools/contracts";
@@ -15,7 +17,7 @@ import {
   markPromotedDraftThreadByRef,
   useComposerDraftStore,
 } from "../composerDraftStore";
-import { readT3ProjectFileDefaultThreadEnvMode } from "../lib/t3ProjectFileDefaults";
+import { readT3ProjectFile } from "../lib/t3ProjectFileDefaults";
 import { NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY, newAgentDraftProjectRef } from "./newAgentDraft";
 import {
   assignDraftProject,
@@ -26,16 +28,18 @@ import {
 // The t3.json lookup is the only await on the assignment path; holding it
 // is how a test orders two picks' completions.
 vi.mock("../lib/t3ProjectFileDefaults", () => ({
-  readT3ProjectFileDefaultThreadEnvMode: vi.fn(),
+  readT3ProjectFile: vi.fn(),
 }));
-const readProjectFileEnvMode = vi.mocked(readT3ProjectFileDefaultThreadEnvMode);
+const readProjectFile = vi.mocked(readT3ProjectFile);
+/** The t3.json the lookup resolves to for a given default (null = no file). */
+const projectFileWith = (mode: ThreadEnvMode | null): T3ProjectFile | null =>
+  mode === null ? null : { defaultThreadEnvMode: mode };
+// The environment tier stays unset so t3.json decides: upstream's resolver
+// ranks environment > file > built-in ("local").
+const settings = { ...DEFAULT_SERVER_SETTINGS, defaultThreadEnvMode: null };
 
 const environmentId = EnvironmentId.make("env-local");
 const draftId = DraftId.make("draft-new-agent");
-const settings = {
-  defaultThreadEnvMode: "local" as const,
-  newWorktreesStartFromOrigin: false,
-};
 
 const target = (
   name: string,
@@ -85,7 +89,7 @@ beforeEach(() => {
         runtimeMode: DEFAULT_RUNTIME_MODE,
       },
     );
-  readProjectFileEnvMode.mockReset();
+  readProjectFile.mockReset();
 });
 
 afterEach(() => {
@@ -94,7 +98,7 @@ afterEach(() => {
 
 describe("assignDraftProject", () => {
   it("moves the draft under the chosen project with that project's defaults", async () => {
-    readProjectFileEnvMode.mockResolvedValue("worktree");
+    readProjectFile.mockResolvedValue(projectFileWith("worktree"));
     await assignDraftProject(draftId, target("a"), settings);
     expect(session()).toMatchObject({
       logicalProjectKey: "proj-a",
@@ -112,12 +116,12 @@ describe("assignDraftProject", () => {
 
   it("lets the latest pick win when an earlier pick's lookup settles later", async () => {
     let releaseA!: (mode: ThreadEnvMode | null) => void;
-    readProjectFileEnvMode.mockImplementation((_environmentId, workspaceRoot) =>
+    readProjectFile.mockImplementation((_environmentId, workspaceRoot) =>
       workspaceRoot === "/repo/a"
         ? new Promise((resolve) => {
-            releaseA = resolve;
+            releaseA = (mode) => resolve(projectFileWith(mode));
           })
-        : Promise.resolve("worktree"),
+        : Promise.resolve(projectFileWith("worktree")),
     );
 
     const pickA = assignDraftProject(draftId, target("a"), settings);
@@ -138,10 +142,10 @@ describe("assignDraftProject", () => {
 
   it("reports the pick as pending until its lookup settles", async () => {
     const release = new Map<string, (mode: ThreadEnvMode | null) => void>();
-    readProjectFileEnvMode.mockImplementation(
+    readProjectFile.mockImplementation(
       (_environmentId, workspaceRoot) =>
         new Promise((resolve) => {
-          release.set(workspaceRoot, resolve);
+          release.set(workspaceRoot, (mode) => resolve(projectFileWith(mode)));
         }),
     );
 
@@ -168,7 +172,7 @@ describe("assignDraftProject", () => {
   });
 
   it("keeps the carried model unless the project has its own default", async () => {
-    readProjectFileEnvMode.mockResolvedValue(null);
+    readProjectFile.mockResolvedValue(null);
     const store = useComposerDraftStore.getState();
     store.setModelSelection(draftId, model("carried"), { replaceOptions: true });
 
@@ -180,7 +184,7 @@ describe("assignDraftProject", () => {
   });
 
   it("leaves an explicit model pick alone", async () => {
-    readProjectFileEnvMode.mockResolvedValue(null);
+    readProjectFile.mockResolvedValue(null);
     useComposerDraftStore
       .getState()
       .setModelSelection(draftId, model("picked"), { replaceOptions: true, explicit: true });
@@ -191,10 +195,10 @@ describe("assignDraftProject", () => {
 
   it("does not re-register a draft that was promoted while its lookup was pending", async () => {
     let release!: (mode: ThreadEnvMode | null) => void;
-    readProjectFileEnvMode.mockImplementation(
+    readProjectFile.mockImplementation(
       () =>
         new Promise((resolve) => {
-          release = resolve;
+          release = (mode) => resolve(projectFileWith(mode));
         }),
     );
     const pick = assignDraftProject(draftId, target("a"), settings);

@@ -83,13 +83,23 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
  * gate; every other rule still does. Each entry carries the count measured at
  * deferral, and the gate fails on growth and nags when it can shrink, so the
  * baseline only ever ratchets down. Remove entries as they reach zero.
+ *
+ * The vite-plus 1.0.0 bump (upstream sync 2026-10-02) widened the React
+ * Compiler rule set again (preserve-manual-memoization, hooks, immutability)
+ * and the counts below were re-measured then. Nearly all of the growth is
+ * upstream-authored lines in ChatView.tsx and Sidebar.tsx, which are in scope
+ * only because fork customizations list them; upstream carries the same
+ * warnings on those lines.
  */
 export const DEFERRED_RULES = new Map([
-  ["react(exhaustive-effect-dependencies)", 3],
-  ["react(memo-dependencies)", 13],
+  ["react(exhaustive-effect-dependencies)", 17],
+  ["react(hooks)", 1],
+  ["react(immutability)", 1],
+  ["react(memo-dependencies)", 22],
+  ["react(preserve-manual-memoization)", 13],
   ["react(purity)", 1],
-  ["react(refs)", 18],
-  ["react(set-state-in-effect)", 23],
+  ["react(refs)", 31],
+  ["react(set-state-in-effect)", 26],
   ["react(static-components)", 2],
 ]);
 

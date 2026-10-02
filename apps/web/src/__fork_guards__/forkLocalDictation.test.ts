@@ -199,7 +199,7 @@ describe("fork local dictation", () => {
       /const sendButton = forkDictation \? \(\s*<ForkDictationPrimaryButton/u,
     );
     expect(primary).toMatch(
-      /\{forkDictation \? sendButton : null\}[\s\S]{0,120}?\{renderStopGenerationButton\(false\)\}[\s\S]{0,200}?\{!forkDictation && showSendWhileRunning && hasSendableContent \? sendButton : null\}/u,
+      /\{forkDictation \? sendButton : null\}[\s\S]{0,120}?\{renderStopGenerationButton\(false\)\}[\s\S]{0,200}?\{!forkDictation && hasSendableContent \? sendButton : null\}/u,
     );
     // The mic and check are the send button in every respect but glyph and
     // click: they wear its class list and its fork tone attribute, so the flat

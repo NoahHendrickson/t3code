@@ -278,9 +278,11 @@ describe("fork guard: narrow-workspace-layout", () => {
       readSibling("../components/chat/MessagesTimeline.tsx"),
       "group/minimap",
     );
+    // The lightbox is DialogPopup's media variant since upstream sync
+    // 2026-10-02; its z-index lives on the shared primitive.
     const lightbox = zIndexIn(
-      readSibling("../components/chat/ExpandedImageDialog.tsx"),
-      "fixed inset-0",
+      readSibling("../components/ui/dialog.tsx"),
+      '"z-[60] grid-rows-1 place-items-center',
     );
     const panel = overlayRule('[data-slot="sidebar-container"]', {
       without: '[data-state="expanded"]',

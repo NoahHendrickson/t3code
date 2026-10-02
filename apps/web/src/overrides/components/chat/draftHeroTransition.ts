@@ -2,7 +2,7 @@
 // `.fork/customizations.yaml#fork-new-agent-draft`.
 //
 // Everything upstream exports passes through untouched except the two timing
-// constants below. Upstream slides the composer from the hero position to the
+// constants below. Upstream slid the composer from the hero position to the
 // dock in 180ms, which was tuned for a composer that only travelled. The fork's
 // draft composer also folds from the drawn 80px box to the compact row and, on
 // Westworld, the stage art fades under it, all on the first send — at 180ms
@@ -10,6 +10,13 @@
 // the fold (theme.custom.css, `transition: … 400ms`) and the fade
 // (theme.custom.palettes.css) one shared clock, so the composer moves as one
 // thing. The three must agree; the fork-new-agent-draft guard pins them.
+//
+// Since upstream #11064 the slide's clock is the panel-motion setting
+// (`usePanelAnimationSettings`, default 0 = no slide) and upstream exports no
+// duration constant at all; DRAFT_HERO_TRANSITION_DURATION_MS below is the
+// fork's own, for ChatView to hand its hero transition in place of that
+// setting. The mobile morph (`runMobileComposerTransition`) takes its
+// duration from the caller too.
 import { DRAFT_HERO_TRANSITION_ANIMATION_ID } from "~upstream/components/chat/draftHeroTransition";
 
 export * from "~upstream/components/chat/draftHeroTransition";

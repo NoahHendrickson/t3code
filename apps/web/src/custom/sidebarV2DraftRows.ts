@@ -69,6 +69,7 @@ export function buildSidebarDraftShell(input: {
     hasPendingApprovals: false,
     hasPendingUserInput: false,
     hasActionableProposedPlan: false,
+    pullRequests: [],
   };
 }
 

@@ -187,7 +187,7 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(chatComposer).not.toContain("bg-primary/90 text-primary-foreground");
     expect(chatComposer).toContain(
-      "items-center justify-center px-1 text-center text-[10px] text-secondary-label",
+      "items-center justify-center px-1 text-center text-3xs text-secondary-label",
     );
   });
 
@@ -509,7 +509,7 @@ describe("fork guard: fork-composer-shell", () => {
     // chips' glass — only the mark and #N carry the state.
     const branchSelector = readSibling("../components/BranchToolbarBranchSelector.tsx");
     expect(branchSelector).toContain("data-fork-pr-chip");
-    expect(branchSelector).toContain("branchPrStatus.colorClass");
+    expect(branchSelector).toContain("status={displayedPrStatus}");
     const chipInk = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&

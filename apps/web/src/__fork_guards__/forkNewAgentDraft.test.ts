@@ -124,7 +124,8 @@ describe("fork guard: fork-new-agent-draft", () => {
       "setLogicalProjectDraftThreadId(entry.group.projectKey, projectRef, draftId, {",
     );
     expect(hooks).toContain("createdAt: new Date().toISOString()");
-    expect(hooks).toContain("resolveDefaultThreadEnvMode({");
+    // Upstream's shared resolver owns the env-mode priority order (#12954).
+    expect(hooks).toContain("resolveProjectSettings(settings, project.id, project, projectFile)");
     expect(hooks).toContain("resolveNewDraftStartFromOrigin({");
     expect(hooks).toContain("if (!session || session.promotedTo != null) return;");
     expect(hooks).toContain("hasExplicitComposerModelSelection(getComposerDraft(draftId))");
@@ -144,7 +145,7 @@ describe("fork guard: fork-new-agent-draft", () => {
       "const draftProjectAssignmentPending = useDraftProjectAssignmentPending(draftId) !== null;",
     );
     expect(chatView).toMatch(
-      /sendDisabledReason=\{[\s\S]{0,400}?draftProjectAssignmentPending\s*\?\s*"Preparing project"/u,
+      /sendDisabledReason=\{[\s\S]{0,600}?draftProjectAssignmentPending\s*\?\s*"Preparing project"/u,
     );
     const pill = readSibling("../custom/DraftProjectPill.tsx");
     expect(pill).toContain(

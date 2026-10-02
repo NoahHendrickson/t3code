@@ -26,7 +26,6 @@ const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
 describe("fork guard: fork-transcript-hover", () => {
   it("keeps the utilities and scroller class the rule keys on", () => {
     expect(timeline).toContain("hover:bg-accent/20");
-    expect(timeline).toContain("hover:bg-muted/55");
     expect(timeline).toContain('"fork-timeline-cutoff"');
   });
 
@@ -40,7 +39,6 @@ describe("fork guard: fork-transcript-hover", () => {
     expect(rule?.selector).toContain(MARKER);
     expect(rule?.selector).toContain(".dark");
     expect(rule?.selector).toContain(".hover\\:bg-accent\\/20");
-    expect(rule?.selector).toContain(".hover\\:bg-muted\\/55");
     // The filled tile keeps its own hover; a white-only lift would darken it.
     expect(rule?.selector).not.toContain("accent\\/50");
     expect(rule?.body).toMatch(/background-color:\s*var\(--fork-outline-hover-bg\)/u);

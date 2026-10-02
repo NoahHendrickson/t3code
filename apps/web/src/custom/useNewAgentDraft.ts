@@ -19,7 +19,7 @@ import {
   type ScopedProjectRef,
   type ServerSettings,
 } from "@t3tools/contracts";
-import { resolveDefaultThreadEnvMode } from "@t3tools/shared/threadEnvMode";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useSyncExternalStore } from "react";
 
@@ -28,7 +28,7 @@ import {
   hasExplicitComposerModelSelection,
   resolveNewDraftStartFromOrigin,
 } from "../lib/chatThreadActions";
-import { readT3ProjectFileDefaultThreadEnvMode } from "../lib/t3ProjectFileDefaults";
+import { readT3ProjectFile } from "../lib/t3ProjectFileDefaults";
 import { newDraftId, newThreadId } from "../lib/utils";
 import type { SidebarProjectGroupMember, SidebarProjectSnapshot } from "../sidebarProjectGrouping";
 import { readThreadShell } from "../state/entities";
@@ -206,7 +206,7 @@ export function useDraftProjectAssignmentPending(draftId: DraftId | null): strin
 export async function assignDraftProject(
   draftId: DraftId,
   entry: DraftProjectTarget,
-  settings: Pick<ServerSettings, "defaultThreadEnvMode" | "newWorktreesStartFromOrigin">,
+  settings: ServerSettings,
 ): Promise<void> {
   const request = { entry };
   latestAssignmentByDraftId.set(draftId, request);
@@ -219,17 +219,15 @@ export async function assignDraftProject(
   let envMode;
   let superseded = false;
   try {
-    envMode = await resolveDefaultThreadEnvMode({
-      projectSetting: project.defaultThreadEnvMode,
-      projectFile:
-        project.defaultThreadEnvMode == null
-          ? await readT3ProjectFileDefaultThreadEnvMode(
-              project.environmentId,
-              project.workspaceRoot,
-            )
-          : null,
-      globalDefault: settings.defaultThreadEnvMode,
-    });
+    // Same resolver and priority order as upstream's useHandleNewThread: the
+    // t3.json read is skipped when the project's own setting decides.
+    const consultProjectFile =
+      resolveProjectSettings(settings, project.id, project).settings.defaultThreadEnvMode === null;
+    const projectFile = consultProjectFile
+      ? await readT3ProjectFile(project.environmentId, project.workspaceRoot)
+      : null;
+    envMode = resolveProjectSettings(settings, project.id, project, projectFile).settings
+      .defaultThreadEnvMode;
   } finally {
     // The await yielded: a later pick may have superseded this one, in which
     // case the in-flight entry is that pick's and stays until it settles.

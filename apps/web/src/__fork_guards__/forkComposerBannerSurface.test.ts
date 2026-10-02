@@ -119,8 +119,10 @@ describe("fork guard: fork-composer-banner-surface", () => {
     const surface = componentSource("Surface");
     expect(surface).toContain("data-composer-banner-surface={placement}");
     expect(surface).toContain("before:border-(--chat-composer-attached-outline)");
-    expect(surface).toContain("var(--chat-composer-attached-tint)");
-    expect(surface).toContain("var(--chat-composer-attached-surface)_var(--glass-opacity)");
+    // Tailwind's variable shorthand since upstream sync 2026-10-02; the same
+    // two variables the fork rules override.
+    expect(surface).toContain("from-(--chat-composer-attached-tint)");
+    expect(surface).toContain("bg-(--chat-composer-attached-surface)/(--glass-opacity)");
     // The severity tints the rule overrides are still expressed through the
     // same variables; a sync that paints them another way slips past this rule.
     // Since upstream #10437-era banner work, info and success share the
@@ -141,7 +143,7 @@ describe("fork guard: fork-composer-banner-surface", () => {
     // is why the rule also sets border-color rather than only the variable.
     const peek = componentSource("Peek");
     expect(peek).toContain('data-slot="composer-banner-peek"');
-    expect(peek).toContain("var(--chat-composer-attached-surface)_var(--glass-opacity)");
+    expect(peek).toContain("bg-(--chat-composer-attached-surface)/(--glass-opacity)");
     expect(peek).toContain("peekBorder[variant]");
     for (const [variant, token] of [
       ["error", "destructive"],

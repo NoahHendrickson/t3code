@@ -2843,13 +2843,10 @@
    Upstream draws them in --border, an opaque palette grey, which on the
    fork's frosted and Glass popups lands as a dark bar of another
    material. A contrast alpha at the hairline's own 12% reads as a light
-   rule lifted off whatever the popup paints, on every palette. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-slot="menu-separator"],
-    [data-slot="select-separator"],
-    [data-slot="combobox-separator"]
-  ) {
+   rule lifted off whatever the popup paints, on every palette. (The select
+   and combobox separator primitives were unused and left upstream in
+   #9917, so the menu's is the one slot.) */
+:root[data-fork="noahhendrickson-t3code"].dark [data-slot="menu-separator"] {
   background: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
 }
 
@@ -2942,18 +2939,17 @@
 }
 
 /* ── Transcript row hovers (fork-transcript-hover) ───────────────────────────
-   The collapsed tool-call toggles, log-entry rows and the "+N previous" line
-   hover with `hover:bg-accent/20` (and one `hover:bg-muted/55`): a 20% wash
-   of an opaque cool --accent over a stage that, on the fork palettes and
-   especially under glass, is already close to it in lightness — so the row
-   turns a cool smudge rather than lifting. Same answer as the changed-files
-   card: a hover is a 4% white lift. Keyed on the two utilities rather than
-   every button, because `hover:bg-accent/50` in the same file sits on a
-   `bg-card/50` tile and a white-only hover there would darken it. Scoped to
-   the fork-stamped transcript scroller, dark only. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  .fork-timeline-cutoff
-  :is(.hover\:bg-accent\/20, .hover\:bg-muted\/55):hover {
+   The collapsed tool-call toggles and log-entry rows hover with
+   `hover:bg-accent/20`: a 20% wash of an opaque cool --accent over a stage
+   that, on the fork palettes and especially under glass, is already close to
+   it in lightness — so the row turns a cool smudge rather than lifting. Same
+   answer as the changed-files card: a hover is a 4% white lift. Keyed on the
+   utility rather than every button, because `hover:bg-accent/50` in the same
+   file sits on a `bg-card/50` tile and a white-only hover there would darken
+   it. (The "Show full message" line that once carried `hover:bg-muted/55` is
+   a ghost-muted Button since upstream sync 2026-10-02 and hovers as one.)
+   Scoped to the fork-stamped transcript scroller, dark only. */
+:root[data-fork="noahhendrickson-t3code"].dark .fork-timeline-cutoff .hover\:bg-accent\/20:hover {
   background-color: var(--fork-outline-hover-bg);
 }
 

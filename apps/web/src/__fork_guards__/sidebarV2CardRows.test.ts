@@ -123,11 +123,13 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
     expect(meta).toContain("readonly prSlot: ReactNode;");
     expect(meta).toContain("{props.prSlot ?? null}");
-    // Glyph first, no hash, on the card only; the slim shelves keep upstream's
-    // #N. Explicit 12px so the panel's --text-xs → 13px remap cannot grow it.
-    expect(sidebarV2).toContain('<GitPullRequestIcon aria-hidden className="size-3 shrink-0" />');
+    // Upstream's badge control draws glyph then number with no hash, which is
+    // the card's own shape; the card only pins an explicit 12px on its inner
+    // span so the panel's --text-xs → 13px remap cannot grow it. The slim
+    // shelves keep upstream's text-xs.
+    expect(sidebarV2).toContain("<ThreadPullRequestBadgeControl");
     expect(sidebarV2).toContain(
-      'variant === "card" ? "flex items-center gap-1 text-[0.75rem] leading-4" : "text-xs"',
+      'variant === "card" &&\n                "flex items-center gap-1 [&>span]:text-[0.75rem] [&>span]:leading-4"',
     );
     expect(sidebarV2).not.toContain("{prBadge || hasHoverActions");
   });

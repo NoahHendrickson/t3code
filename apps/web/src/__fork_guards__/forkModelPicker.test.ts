@@ -117,8 +117,9 @@ describe("fork guard: fork-model-picker", () => {
       "stripProviderName(getTriggerDisplayModelName(selectedModel), activeEntry)",
     );
     expect(picker).toMatch(/\{activeEntry \? \(\s*<ProviderInstanceIcon/u);
+    // One class for the single icon and the multi-model avatar stack alike.
     expect(picker).toContain(
-      'props.isComposerOwned &&\n                  (size === "xs" ? "hidden @max-[640px]/composer-surface:inline-flex" : "hidden")',
+      'const composerIconClassName =\n    props.isComposerOwned &&\n    (size === "xs" ? "hidden @max-[640px]/composer-surface:inline-flex" : "hidden")',
     );
     expect(picker).toMatch(
       /\{activeEntry \? \(\s*<span[^>]*>\{activeEntry\.displayName\}<\/span>/u,
@@ -254,9 +255,23 @@ describe("fork guard: fork-model-picker", () => {
     expect(composer).toMatch(
       /if \(isComposerModelPickerOpen \|\| !composerFocusOwedRef\.current\) return;\s*composerFocusOwedRef\.current = false;[\s\S]*?modelPickerHoldsFocus\(\)\s*\) \{\s*composerEditorRef\.current\?\.focusAtEnd\(\);/u,
     );
-    expect(readSibling("../components/ComposerPromptEditor.tsx")).toMatch(
-      /!isFocused && modelPickerHoldsFocus\(\)\s*\?\s*\{ tag: SKIP_DOM_SELECTION_TAG \}/u,
+    // The editor is Tiptap now (upstream sync 2026-10-02): ProseMirror's
+    // selectionToDOM returns unless editorOwnsSelection(view), so an unfocused
+    // editor's rewrite never pulls the DOM selection — the Lexical-era
+    // SKIP_DOM_SELECTION_TAG hunk has no host and no job. Pin the condition
+    // the controlled-update effect keys on so a rewrite that starts focusing
+    // the view unconditionally turns this red.
+    const tiptap = readSibling("../components/ComposerPromptEditorTiptap.tsx");
+    expect(tiptap).toContain(
+      "const isFocused = Boolean(rootElement && document.activeElement === rootElement);",
     );
+    // Nothing between that read and the effect's dependency list may focus
+    // the view; focusAt (the explicit, caller-driven focus) sits after it.
+    const effectStart = tiptap.indexOf("const isFocused = Boolean(rootElement");
+    const effectEnd = tiptap.indexOf("}, [cursor, editor, richText, skillLabelFor, value]);");
+    expect(effectStart).toBeGreaterThan(0);
+    expect(effectEnd).toBeGreaterThan(effectStart);
+    expect(tiptap.slice(effectStart, effectEnd)).not.toMatch(/\.focus\(/u);
     // Effort is a slider over the model's own levels; its keys stay out of
     // the menu's navigation.
     expect(composerPicker).toContain("<Slider.Root");
