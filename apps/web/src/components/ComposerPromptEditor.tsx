@@ -88,6 +88,9 @@ import { formatProviderSkillDisplayName } from "@t3tools/client-runtime/provider
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { registerComposerInlineTokenPaste } from "./composerInlineTokenPaste";
 import { didComposerSelectionChangeVisibly } from "./composerSelection";
+/* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker */
+import { modelPickerHoldsFocus } from "../custom/modelPickerFocus";
+/* fork:end fork-model-picker */
 import {
   $consumeComposerCitationCommentRequest,
   $createComposerCitationNode,
@@ -1769,7 +1772,18 @@ function ComposerPromptEditorInner({
         citationToOpen = $consumeComposerCitationCommentRequest(citationCommentRequestRef);
       },
       {
-        ...(isCiteInsertion ? { tag: [HISTORY_PUSH_TAG, SKIP_DOM_SELECTION_TAG] } : {}),
+        /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
+           Upstream: ...(isCiteInsertion ? { tag: [HISTORY_PUSH_TAG, SKIP_DOM_SELECTION_TAG] } : {}),
+           A model pick can rewrite an unfocused editor (the provider's skills
+           change) while the picker, open across picks, holds focus; placing the
+           DOM selection then pulls focus into the editor (and, for a keyboard
+           pick, closes the menu). */
+        ...(isCiteInsertion
+          ? { tag: [HISTORY_PUSH_TAG, SKIP_DOM_SELECTION_TAG] }
+          : !isFocused && modelPickerHoldsFocus()
+            ? { tag: SKIP_DOM_SELECTION_TAG }
+            : {}),
+        /* fork:end fork-model-picker */
         onUpdate: () => {
           if (citationToOpen) setOpenCitationComment(citationToOpen);
         },

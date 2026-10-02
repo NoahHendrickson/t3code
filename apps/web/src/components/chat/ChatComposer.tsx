@@ -198,7 +198,10 @@ import {
   ComposerShell,
 } from "../../custom/ComposerShell";
 /* fork:end fork-composer-shell */
-import { ProviderModelPicker } from "./ProviderModelPicker";
+/* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
+   One menu carries model and reasoning; upstream imports ProviderModelPicker here. */
+import { ComposerModelPicker } from "../../custom/ComposerModelPicker";
+/* fork:end fork-model-picker */
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
 import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
@@ -2375,7 +2378,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     planModeEnabled: settings.planModeEnabled,
     isComposerOwned: true,
   } satisfies Parameters<typeof renderProviderTraitsPicker>[0];
-  const providerTraitsPicker = renderProviderTraitsPicker(providerTraitsPickerInput);
+  /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
+     No standalone traits picker: ComposerModelPicker takes providerTraitsPickerInput.
+     Upstream: const providerTraitsPicker = renderProviderTraitsPicker(providerTraitsPickerInput); */
+  /* fork:end fork-model-picker */
   const {
     controlsRef: restingComposerControlsRef,
     hiddenBlockCount: restingControlsHiddenBlockCount,
@@ -4237,25 +4243,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const restingHiddenBlockCount = composerControlsInStrip ? restingControlsHiddenBlockCount : 0;
   const composerControlsCompact = !composerControlsInStrip && isComposerFooterCompact;
-  const restingProviderTraitsPicker = renderProviderTraitsPicker({
-    ...providerTraitsPickerInput,
-    size: "xs",
-    hidden: composerControlsHidden || restingHiddenBlockCount > 1,
-  });
   const restingBlockDefs = [
-    ...(providerTraitsPicker
-      ? [
-          {
-            id: "traits",
-            content: (
-              <>
-                <ComposerControlSeparator size={composerControlsInStrip ? "xs" : "sm"} />
-                {composerControlsInStrip ? restingProviderTraitsPicker : providerTraitsPicker}
-              </>
-            ),
-          },
-        ]
-      : []),
+    /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
+       Upstream leads with a "traits" block (restingProviderTraitsPicker); the
+       model picker carries the traits instead, so only the mode block remains. */
+    /* fork:end fork-model-picker */
     {
       id: "mode",
       content: (
@@ -4300,7 +4292,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           data-resting-controls-separator="true"
         />
       ) : null}
-      <ProviderModelPicker
+      {/* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
+          Upstream renders ProviderModelPicker; this one also carries the traits. */}
+      <ComposerModelPicker
+        traitsInput={providerTraitsPickerInput}
+        /* fork:end fork-model-picker */
         isComposerOwned
         compact={composerControlsCompact}
         activeInstanceId={selectedInstanceId}
@@ -4891,6 +4887,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerRef,
     () => ({
       focusAtEnd: () => {
+        /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
+           The picker stays open across a model pick, and ChatView refocuses the
+           editor after every pick; while it is open the picker keeps focus. */
+        if (isComposerModelPickerOpen) return;
+        /* fork:end fork-model-picker */
         composerEditorRef.current?.focusAtEnd();
       },
       focusAt: (cursor: number) => {
@@ -5065,35 +5066,32 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
   // The footer's three clusters, split by where the designs put them.
-  // Model compact uses upstream widths; traits stay with the mode-row ⋯ gate
-  // so they are never stranded when modes expand before the model slot does.
+  // Model compact uses upstream widths. The model picker carries the traits
+  // (fork-model-picker), so no width ever strands them in a second control.
   const composerModelControls = noProviderAvailable ? null : (
-    <>
-      <ProviderModelPicker
-        isComposerOwned
-        compact={isComposerModelSlotCompact}
-        activeInstanceId={selectedInstanceId}
-        model={selectedModelForPickerWithCustomFallback}
-        lockedProvider={lockedProvider}
-        lockedContinuationGroupKey={lockedContinuationGroupKey}
-        instanceEntries={providerInstanceEntries}
-        keybindings={keybindings}
-        modelOptionsByInstance={modelOptionsByInstance}
-        size="sm"
-        terminalOpen={terminalOpen}
-        open={isComposerModelPickerOpen}
-        instanceIndicatorBackground="var(--contrast-input)"
-        {...(composerProviderState.modelPickerIconClassName
-          ? { activeProviderIconClassName: composerProviderState.modelPickerIconClassName }
-          : {})}
-        onOpenChange={setIsComposerModelPickerOpen}
-        getModelDisabledReason={getModelDisabledReason}
-        onInstanceModelChange={onProviderModelSelect}
-        onOpenProviderSetup={onOpenProviderSetup}
-      />
-      {/* At compact mode-row widths the traits fold into CompactComposerControlsMenu. */}
-      {!isComposerFooterCompact && providerTraitsPicker ? providerTraitsPicker : null}
-    </>
+    <ComposerModelPicker
+      traitsInput={providerTraitsPickerInput}
+      isComposerOwned
+      compact={isComposerModelSlotCompact}
+      activeInstanceId={selectedInstanceId}
+      model={selectedModelForPickerWithCustomFallback}
+      lockedProvider={lockedProvider}
+      lockedContinuationGroupKey={lockedContinuationGroupKey}
+      instanceEntries={providerInstanceEntries}
+      keybindings={keybindings}
+      modelOptionsByInstance={modelOptionsByInstance}
+      size="sm"
+      terminalOpen={terminalOpen}
+      open={isComposerModelPickerOpen}
+      instanceIndicatorBackground="var(--contrast-input)"
+      {...(composerProviderState.modelPickerIconClassName
+        ? { activeProviderIconClassName: composerProviderState.modelPickerIconClassName }
+        : {})}
+      onOpenChange={setIsComposerModelPickerOpen}
+      getModelDisabledReason={getModelDisabledReason}
+      onInstanceModelChange={onProviderModelSelect}
+      onOpenProviderSetup={onOpenProviderSetup}
+    />
   );
 
   const composerModeControls = (
@@ -5121,7 +5119,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           interactionMode={interactionMode}
           runtimeMode={runtimeMode}
           showInteractionModeToggle={planModeUiEnabled}
-          traitsMenuContent={providerTraitsMenuContent}
           onToggleInteractionMode={toggleInteractionMode}
           onRuntimeModeChange={handleRuntimeModeChange}
         />

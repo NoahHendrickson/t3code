@@ -4,12 +4,13 @@
  *
  * Same export, same props as upstream, so ProviderModelPicker's import is
  * untouched; the three exported helpers are upstream's verbatim. The render
- * is the fork's: a cascade menu. ProviderModelPicker's shadow hosts this in a
- * Base UI Menu; the root lists a search field, Favorites and one row per
- * provider instance, and each row opens that provider's models in a submenu on
- * hover (legacy models one level deeper). Typing anywhere in the cascade lands
- * in the search field, and a query swaps the providers for one flat,
- * provider-agnostic list of matching models.
+ * is the fork's: a paged menu. ProviderModelPicker's shadow hosts this in a
+ * Base UI Menu; the first page lists a search field, Favorites and one row per
+ * provider instance, and clicking a row swaps the page for that provider's
+ * models (legacy models one page deeper), led by a back row. Typing anywhere
+ * lands in the search field, and a query swaps the page for one flat,
+ * provider-agnostic list of matching models. Picking a model never closes the
+ * menu from here; the host decides, since it may render more below the pages.
  */
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
@@ -19,25 +20,15 @@ import {
 } from "@t3tools/contracts";
 import { resolveSelectableModel } from "@t3tools/shared/model";
 import { useAtomValue } from "@effect/atom-react";
-import {
-  Fragment,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { Heart } from "@phosphor-icons/react";
-import { CheckIcon, SearchIcon, StarIcon } from "lucide-react";
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { getProviderStatusMessage, hasProviderSetup } from "./ProviderStatusBanner";
 import { buildModelPickerSearchText, scoreModelPickerSearch } from "./modelPickerSearch";
 import { getDisplayModelName, ModelEsque, PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
-import { MenuItem, MenuSub, MenuSubPopup, MenuSubTrigger } from "../ui/menu";
+import { MenuItem, MenuSeparator } from "../ui/menu";
 import { Badge } from "../ui/badge";
 import { Kbd } from "../ui/kbd";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -51,7 +42,6 @@ import {
 } from "../../keybindings";
 import { useClientSettings, useUpdateClientSettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
-import { ModelPickerFloatingLayerContext } from "~/custom/modelPickerFloatingLayer";
 import { stripProviderName } from "~/custom/modelPickerDisplayName";
 import {
   isProviderInstancePickerReady,
@@ -145,67 +135,36 @@ function describeUnavailableInstance(entry: ProviderInstanceEntry): string {
 }
 
 /** Keys the search field must see itself rather than the menu's navigation. */
-function isTypedCharacter(event: KeyboardEvent): boolean {
+/** A key press as both React and the popup's native listener see it. */
+type TypedKeyEvent = Pick<
+  globalThis.KeyboardEvent,
+  "key" | "metaKey" | "ctrlKey" | "altKey" | "target" | "preventDefault" | "stopPropagation"
+>;
+
+function isTypedCharacter(event: TypedKeyEvent): boolean {
   return event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
 }
 
 const EMPTY_MODEL_JUMP_LABELS = new Map<string, string>();
 
-/** Every level of the cascade shares one row: 32px, 4px corners, 12px medium label. */
-const ROW_CLASS =
-  "h-8 min-h-8 rounded-[4px] px-2 py-0 text-xs font-medium sm:min-h-8 sm:text-xs data-popup-open:bg-accent";
+/** Every page shares one row: 32px, 4px corners, 12px medium label. */
+const ROW_CLASS = "h-8 min-h-8 rounded-[4px] px-2 py-0 text-xs font-medium sm:min-h-8 sm:text-xs";
 /** Hidden at rest, shown while the row is hovered or keyboard-highlighted. */
 const HOVER_REVEAL_CLASS =
   "opacity-0 transition-opacity group-hover:opacity-100 group-data-highlighted:opacity-100";
-const SUBMENU_CLASS = "w-64";
-/**
- * Submenus anchor to their row, which sits 9px inside the popup edge (1px
- * border, then 4px padding twice). This leaves a 4px gap between the two
- * popups, so their hairlines and shadows never stack where they meet.
- */
-const SUBMENU_SIDE_OFFSET = 13;
 
-type SubmenuSide = "inline-start" | "inline-end";
+/** Which list the menu shows when no query is typed. */
+type ModelPickerPage =
+  | { readonly kind: "providers" }
+  | { readonly kind: "favorites" }
+  | { readonly kind: "models"; readonly instanceId: ProviderInstanceId; readonly legacy: boolean };
 
-/**
- * One level of the cascade. Each popup flips on its own collisions, and a
- * parent popup is not one of them, so a third level asked to open inline-end
- * lands on the root menu once the second level has flipped inline-start.
- * Every level therefore opens toward the side its parent opened to (read off
- * the parent's data-side as it opens).
- */
-function ModelPickerSubmenu(props: { trigger: ReactNode; disabled: boolean; children: ReactNode }) {
-  const floatingLayerProps = useContext(ModelPickerFloatingLayerContext);
-  const [side, setSide] = useState<SubmenuSide>("inline-end");
-  return (
-    <MenuSub
-      onOpenChange={(open, details) => {
-        if (!open) return;
-        const from =
-          details.trigger ??
-          (details.event.target instanceof Element ? details.event.target : null);
-        const parentSide = from
-          ?.closest('[data-slot="menu-sub-content"]')
-          ?.getAttribute("data-side");
-        setSide(parentSide === "inline-start" ? "inline-start" : "inline-end");
-      }}
-    >
-      {props.trigger}
-      {props.disabled ? null : (
-        <MenuSubPopup
-          className={SUBMENU_CLASS}
-          side={side}
-          sideOffset={SUBMENU_SIDE_OFFSET}
-          {...floatingLayerProps}
-        >
-          <div data-model-picker-content="true" data-fork-model-picker="true">
-            {props.children}
-          </div>
-        </MenuSubPopup>
-      )}
-    </MenuSub>
-  );
+const PROVIDERS_PAGE: ModelPickerPage = { kind: "providers" };
+
+function parentPage(page: ModelPickerPage): ModelPickerPage {
+  return page.kind === "models" && page.legacy ? { ...page, legacy: false } : PROVIDERS_PAGE;
 }
+
 const TOOLTIP_CLASS = "max-w-64 text-balance font-normal leading-snug";
 
 export const ModelPickerContent = memo(function ModelPickerContent(props: {
@@ -240,7 +199,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onInstanceModelChange,
   } = props;
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState<ModelPickerPage>(PROVIDERS_PAGE);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const favorites = useClientSettings((s) => s.favorites ?? []);
   const serverKeybindings = useAtomValue(primaryServerKeybindingsAtom);
   const keybindings = providedKeybindings ?? serverKeybindings;
@@ -420,6 +381,32 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     [entryByInstanceId, getModelDisabledReason, modelOptionsByInstance, onInstanceModelChange],
   );
 
+  // Swap first, focus later. Focusing the search field from the row's click
+  // closes the menu: the row re-takes focus on click, and the field's focusout
+  // is checked a microtask later against a row the swap already removed,
+  // which the menu reads as focus leaving. A frame and a tick later, the swap
+  // and that check have both run.
+  const openPage = useCallback(
+    (next: ModelPickerPage) => {
+      setPage(next);
+      window.requestAnimationFrame(focusSearchInput);
+      window.setTimeout(focusSearchInput, 0);
+    },
+    [focusSearchInput],
+  );
+
+  // A pick from search results clears the query onto the model's own page,
+  // so the menu (if the host keeps it open) shows the check on the new pick.
+  const chooseModel = useCallback(
+    (model: ModelPickerItem) => {
+      handleModelSelect(model.slug, model.instanceId);
+      if (!isSearching) return;
+      setSearchQuery("");
+      openPage({ kind: "models", instanceId: model.instanceId, legacy: model.isLegacy === true });
+    },
+    [handleModelSelect, isSearching, openPage],
+  );
+
   const toggleFavorite = useCallback(
     (instanceId: ProviderInstanceId, model: string) => {
       const next = [...favorites];
@@ -435,12 +422,18 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   );
 
   // ⌘1–9 jump through the list the user is most likely choosing from: the
-  // search results while searching, else Favorites, else the active provider.
+  // search results while searching, else the open page's models; the
+  // providers page falls back to Favorites, else the active provider.
   const jumpModels = useMemo(() => {
     if (isSearching) return searchResults;
+    if (page.kind === "favorites") return favoriteModels;
+    if (page.kind === "models") {
+      const { current, legacy } = modelsForInstance(page.instanceId);
+      return page.legacy ? legacy : current;
+    }
     if (favoriteModels.length > 0) return favoriteModels;
     return modelsForInstance(props.activeInstanceId).current;
-  }, [favoriteModels, isSearching, modelsForInstance, props.activeInstanceId, searchResults]);
+  }, [favoriteModels, isSearching, modelsForInstance, page, props.activeInstanceId, searchResults]);
   const jumpTargets = useMemo(() => {
     const targets: ModelPickerItem[] = [];
     for (const model of jumpModels) {
@@ -479,16 +472,16 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       event.preventDefault();
       event.stopPropagation();
       const target = jumpTargets[jumpIndex];
-      if (target) handleModelSelect(target.slug, target.instanceId);
+      if (target) chooseModel(target);
     };
     window.addEventListener("keydown", onWindowKeyDown, true);
     return () => window.removeEventListener("keydown", onWindowKeyDown, true);
-  }, [handleModelSelect, jumpTargets, keybindings, modelJumpShortcutContext]);
+  }, [chooseModel, jumpTargets, keybindings, modelJumpShortcutContext]);
 
-  // Typing anywhere in the cascade — a provider row, an open submenu — goes to
-  // the search field instead of the menu's type-ahead. Capture phase, so it
-  // runs before the menu's own key handling on the focused row.
-  const redirectTypingToSearch = (event: KeyboardEvent<HTMLDivElement>) => {
+  // Typing anywhere in the menu — a provider row, a model row — goes to the
+  // search field instead of the menu's type-ahead. Capture phase, so it runs
+  // before the menu's own key handling on the focused row.
+  const redirectTypingToSearch = (event: TypedKeyEvent) => {
     if (event.target === searchInputRef.current || !isTypedCharacter(event)) return;
     if (event.key === " " && !isSearching) return;
     event.preventDefault();
@@ -496,6 +489,18 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     setSearchQuery((query) => query + event.key);
     focusSearchInput();
   };
+
+  // When a page swap removes the focused row, the menu parks focus on the
+  // popup itself, outside this content's own capture; catch typing there too.
+  useEffect(() => {
+    const popup = contentRef.current?.closest<HTMLElement>('[data-slot="menu-popup"]');
+    if (!popup) return;
+    const onPopupKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.target === popup) redirectTypingToSearch(event);
+    };
+    popup.addEventListener("keydown", onPopupKeyDown, true);
+    return () => popup.removeEventListener("keydown", onPopupKeyDown, true);
+  });
 
   const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape" && searchQuery) {
@@ -510,7 +515,18 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       const first = searchResults.find(
         (model) => !getModelDisabledReason?.(model.instanceId, model.slug),
       );
-      if (first) handleModelSelect(first.slug, first.instanceId);
+      if (first) chooseModel(first);
+      return;
+    }
+    // With nothing typed, Backspace and ArrowLeft step back a page.
+    if (
+      (event.key === "Backspace" || event.key === "ArrowLeft") &&
+      !searchQuery &&
+      page.kind !== "providers"
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      openPage(parentPage(page));
       return;
     }
     // Arrows, Escape (with nothing typed) and Tab drive the menu; everything
@@ -567,8 +583,11 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       <MenuItem
         key={modelKey}
         disabled={Boolean(disabledReason)}
+        // The host closes the menu on a pick, or keeps it open for what it
+        // renders below the pages.
+        closeOnClick={false}
         className={cn(ROW_CLASS, "group", disabledReason && "data-disabled:pointer-events-auto")}
-        onClick={() => handleModelSelect(model.slug, model.instanceId)}
+        onClick={() => chooseModel(model)}
       >
         {disabledReason ? (
           <Tooltip>
@@ -623,10 +642,71 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     );
   };
 
-  const renderSubmenu = (trigger: ReactNode, body: ReactNode, disabled = false) => (
-    <ModelPickerSubmenu trigger={trigger} disabled={disabled}>
-      {body}
-    </ModelPickerSubmenu>
+  /** Leads every page past the first: the way back, titled with where you are. */
+  const renderBackRow = (title: ReactNode) => (
+    <>
+      <MenuItem
+        closeOnClick={false}
+        data-model-picker-back="true"
+        className={cn(ROW_CLASS, "gap-2")}
+        onClick={() => openPage(parentPage(page))}
+      >
+        <ChevronLeftIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="flex min-w-0 flex-1 items-center gap-2">{title}</span>
+      </MenuItem>
+      <MenuSeparator className="mx-0" />
+    </>
+  );
+
+  /** A row that swaps the menu to another page rather than choosing anything. */
+  const renderPageLink = (input: {
+    key: string;
+    label: ReactNode;
+    target: ModelPickerPage;
+    disabled?: boolean;
+    tooltip?: string;
+    trailing?: ReactNode;
+    providerId: string;
+  }) => (
+    <MenuItem
+      key={input.key}
+      disabled={input.disabled}
+      closeOnClick={false}
+      data-model-picker-provider={input.providerId}
+      data-model-picker-page-link="true"
+      className={cn(ROW_CLASS, input.disabled && "data-disabled:pointer-events-auto")}
+      onClick={() => openPage(input.target)}
+    >
+      {input.disabled && input.tooltip ? (
+        <Tooltip>
+          <TooltipTrigger render={<span className="flex min-w-0 flex-1 items-center gap-2" />}>
+            {input.label}
+          </TooltipTrigger>
+          <TooltipPopup side="right" sideOffset={8} align="center" className={TOOLTIP_CLASS}>
+            {input.tooltip}
+          </TooltipPopup>
+        </Tooltip>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-2">{input.label}</span>
+      )}
+      {input.trailing}
+      {input.disabled ? null : (
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      )}
+    </MenuItem>
+  );
+
+  const renderInstanceIcon = (entry: ProviderInstanceEntry) => (
+    <ProviderInstanceIcon
+      driverKind={entry.driverKind}
+      displayName={entry.displayName}
+      accentColor={entry.accentColor}
+      showBadge={shouldShowInstanceBadge(entry, instanceEntries)}
+      className="size-4"
+      iconClassName="size-4"
+      indicatorBackground="var(--popover)"
+      badgeClassName="right-[-0.25rem] bottom-[-0.25rem] h-3 min-w-3 px-0.5 text-[7px]"
+    />
   );
 
   const renderProviderRow = (entry: ProviderInstanceEntry) => {
@@ -645,59 +725,61 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       ? `${entry.displayName} is unavailable in this thread. Start a new thread to switch providers.`
       : describeUnavailableInstance(entry);
 
-    const label = (
-      <>
-        <ProviderInstanceIcon
-          driverKind={entry.driverKind}
-          displayName={entry.displayName}
-          accentColor={entry.accentColor}
-          showBadge={shouldShowInstanceBadge(entry, instanceEntries)}
-          className="size-4"
-          iconClassName="size-4"
-          indicatorBackground="var(--popover)"
-          badgeClassName="right-[-0.25rem] bottom-[-0.25rem] h-3 min-w-3 px-0.5 text-[7px]"
-        />
-        <span className="min-w-0 flex-1 truncate">{entry.displayName}</span>
-        {entry.instanceId === props.activeInstanceId ? (
+    return renderPageLink({
+      key: entry.instanceId,
+      providerId: entry.instanceId,
+      target: { kind: "models", instanceId: entry.instanceId, legacy: false },
+      disabled: isDisabled,
+      tooltip,
+      label: (
+        <>
+          {renderInstanceIcon(entry)}
+          <span className="min-w-0 flex-1 truncate">{entry.displayName}</span>
+        </>
+      ),
+      trailing:
+        entry.instanceId === props.activeInstanceId ? (
           <span className="size-1.5 shrink-0 rounded-full bg-foreground/60" aria-label="Current" />
-        ) : null}
-      </>
-    );
+        ) : null,
+    });
+  };
 
-    const trigger = (
-      <MenuSubTrigger
-        disabled={isDisabled}
-        data-model-picker-provider={entry.instanceId}
-        className={cn(ROW_CLASS, isDisabled && "data-disabled:pointer-events-auto")}
-      >
-        {isDisabled ? (
-          <Tooltip>
-            <TooltipTrigger render={<span className="flex min-w-0 flex-1 items-center gap-2" />}>
-              {label}
-            </TooltipTrigger>
-            <TooltipPopup side="right" sideOffset={8} align="center" className={TOOLTIP_CLASS}>
-              {tooltip}
-            </TooltipPopup>
-          </Tooltip>
-        ) : (
-          <span className="flex min-w-0 flex-1 items-center gap-2">{label}</span>
-        )}
-      </MenuSubTrigger>
-    );
-
-    const body = (
+  const renderModelsPage = (instanceId: ProviderInstanceId, showLegacy: boolean) => {
+    const entry = entryByInstanceId.get(instanceId);
+    if (!entry) return null;
+    const { current, legacy } = modelsForInstance(instanceId);
+    if (showLegacy) {
+      return (
+        <>
+          {renderBackRow(<span className="min-w-0 flex-1 truncate">Legacy models</span>)}
+          {legacy.map((model) => renderModelItem(model, false))}
+        </>
+      );
+    }
+    const needsSetup =
+      props.onOpenProviderSetup !== undefined &&
+      shouldOfferModelPickerSetup(entry, modelOptionsByInstance.get(instanceId) ?? []);
+    return (
       <>
+        {renderBackRow(
+          <>
+            {renderInstanceIcon(entry)}
+            <span className="min-w-0 flex-1 truncate">{entry.displayName}</span>
+          </>,
+        )}
         {current.map((model) => renderModelItem(model, false))}
         {legacy.length > 0
-          ? renderSubmenu(
-              <MenuSubTrigger className={ROW_CLASS}>
-                <span className="min-w-0 flex-1 truncate">Legacy models</span>
+          ? renderPageLink({
+              key: "legacy",
+              providerId: `${instanceId}:legacy`,
+              target: { kind: "models", instanceId, legacy: true },
+              label: <span className="min-w-0 flex-1 truncate">Legacy models</span>,
+              trailing: (
                 <span className="shrink-0 font-normal text-muted-foreground/70">
                   {legacy.length}
                 </span>
-              </MenuSubTrigger>,
-              legacy.map((model) => renderModelItem(model, false)),
-            )
+              ),
+            })
           : null}
         {needsSetup ? (
           <div className="px-2 py-1.5 text-xs leading-snug">
@@ -708,7 +790,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
               className={cn(ROW_CLASS, "mt-1 -mx-2")}
               onClick={() => {
                 props.onRequestClose?.();
-                props.onOpenProviderSetup?.(entry.instanceId);
+                props.onOpenProviderSetup?.(instanceId);
               }}
             >
               Open provider setup
@@ -720,17 +802,76 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         ) : null}
       </>
     );
+  };
 
-    return <Fragment key={entry.instanceId}>{renderSubmenu(trigger, body, isDisabled)}</Fragment>;
+  const favoritesIcon = <Heart weight="duotone" className="size-4 shrink-0" aria-hidden />;
+
+  const renderPage = () => {
+    if (isSearching) {
+      return searchResults.length > 0 ? (
+        searchResults.map((model) => renderModelItem(model, true))
+      ) : (
+        <p className="px-2 py-2 text-xs text-muted-foreground">No models found</p>
+      );
+    }
+    if (page.kind === "models") return renderModelsPage(page.instanceId, page.legacy);
+    if (page.kind === "favorites") {
+      return (
+        <>
+          {renderBackRow(
+            <>
+              {favoritesIcon}
+              <span className="min-w-0 flex-1 truncate">Favorites</span>
+            </>,
+          )}
+          {favoriteModels.map((model) => renderModelItem(model, true))}
+        </>
+      );
+    }
+    return (
+      <>
+        {favoriteModels.length > 0
+          ? renderPageLink({
+              key: "favorites",
+              providerId: "favorites",
+              target: { kind: "favorites" },
+              label: (
+                <>
+                  {favoritesIcon}
+                  <span className="min-w-0 flex-1 truncate">Favorites</span>
+                </>
+              ),
+            })
+          : null}
+        {providerEntries.map(renderProviderRow)}
+      </>
+    );
+  };
+
+  // Rows keep the keys the old submenus answered to: ArrowRight opens a
+  // row's page, ArrowLeft steps back. The search field handles its own.
+  const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target === searchInputRef.current || !(event.target instanceof HTMLElement)) return;
+    if (event.key === "ArrowLeft" && page.kind !== "providers") {
+      event.preventDefault();
+      openPage(parentPage(page));
+    } else if (event.key === "ArrowRight") {
+      const link = event.target.closest<HTMLElement>("[data-model-picker-page-link]");
+      if (!link) return;
+      event.preventDefault();
+      link.click();
+    }
   };
 
   return (
     <TooltipProvider delay={0}>
       <div
-        className="flex flex-col gap-1 p-1"
+        ref={contentRef}
+        className="flex min-h-0 flex-col gap-1 p-1"
         data-model-picker-content="true"
         data-fork-model-picker="true"
         onKeyDownCapture={redirectTypingToSearch}
+        onKeyDown={handleRowKeyDown}
       >
         <label className="flex h-8 shrink-0 items-center gap-2 rounded-[4px] border border-foreground/12 bg-foreground/4 px-2">
           <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -744,31 +885,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
             onKeyDown={handleSearchKeyDown}
           />
         </label>
-
-        {isSearching ? (
-          searchResults.length > 0 ? (
-            <div className="flex flex-col">
-              {searchResults.map((model) => renderModelItem(model, true))}
-            </div>
-          ) : (
-            <p className="px-2 py-2 text-xs text-muted-foreground">No models found</p>
-          )
-        ) : (
-          <div className="flex flex-col">
-            {favoriteModels.length > 0
-              ? renderSubmenu(
-                  <MenuSubTrigger data-model-picker-provider="favorites" className={ROW_CLASS}>
-                    <span className="flex min-w-0 flex-1 items-center gap-2">
-                      <Heart weight="duotone" className="size-4 shrink-0" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate">Favorites</span>
-                    </span>
-                  </MenuSubTrigger>,
-                  favoriteModels.map((model) => renderModelItem(model, true)),
-                )
-              : null}
-            {providerEntries.map(renderProviderRow)}
-          </div>
-        )}
+        {/* Scrolls on its own so whatever the host renders below stays put. */}
+        <div className="flex max-h-80 min-h-0 flex-col overflow-y-auto">{renderPage()}</div>
       </div>
     </TooltipProvider>
   );
