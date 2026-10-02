@@ -2,13 +2,15 @@
  * Fork shadow of upstream's ProviderModelPicker — see
  * `.fork/customizations.yaml#fork-model-picker`.
  *
- * Upstream's file with two changes. The Popover shell becomes a Base UI Menu, so
- * the picker can cascade — providers in the root menu, each opening its models
- * in a submenu on hover (ModelPickerContent's shadow renders both levels).
- * Non-modal like the popover it replaces; upstream's own wheel/touch lock below
- * still guards the page. And the trigger label drops the provider name
- * ("Opus 5.5", not "Claude Opus 5.5"). The composer's trigger hides the
- * provider icon too, except where its label collapses; Settings keeps it.
+ * Upstream's file with three changes. The Popover shell becomes a Base UI
+ * Menu, so the picker can page — providers first, then a provider's models
+ * (ModelPickerContent's shadow renders the pages). Non-modal like the popover
+ * it replaces; upstream's own wheel/touch lock below still guards the page.
+ * The trigger label drops the provider name ("Opus 5.5", not "Claude Opus
+ * 5.5"). The composer's trigger hides the provider icon too, except where its
+ * label collapses; Settings keeps it. And an optional `traits` slot (the
+ * composer's ComposerModelPicker fills it) adds the reasoning label to the
+ * trigger and its panel under the pages, keeping the menu open on a pick.
  */
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
@@ -16,14 +18,14 @@ import {
   type ProviderDriverKind,
   type ResolvedKeybindingsConfig,
 } from "@t3tools/contracts";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { VariantProps } from "class-variance-authority";
+import { ZapIcon } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { buttonVariants } from "../ui/button";
-import { Menu, MenuPopup, MenuTrigger } from "../ui/menu";
+import { Menu, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
-import { ModelPickerFloatingLayerContext } from "~/custom/modelPickerFloatingLayer";
 import { stripProviderName } from "~/custom/modelPickerDisplayName";
 import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
@@ -36,6 +38,7 @@ import { shouldShowInstanceBadge, type ProviderInstanceEntry } from "../../provi
 import {
   ComposerControl,
   ComposerControlChevron,
+  ComposerControlIcon,
   type ComposerControlSize,
 } from "./ComposerControl";
 import { composerFloatingLayerProps } from "./composerEventScope";
@@ -68,6 +71,13 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   onOpenProviderSetup?: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason?: (instanceId: ProviderInstanceId, model: string) => string | null;
   onInstanceModelChange: (instanceId: ProviderInstanceId, model: string) => void;
+  /** The selected model's reasoning: a trigger label plus a panel under the model pages. */
+  traits?: { label: string; fastMode: boolean; panel: ReactNode };
+  /**
+   * The composer's combined menu: a pick keeps it open (effort usually
+   * follows a new model) at one width, whether or not the model has traits.
+   */
+  combined?: boolean;
 }) {
   const [uncontrolledIsMenuOpen, setUncontrolledIsMenuOpen] = useState(false);
   const isMenuOpen = props.open ?? uncontrolledIsMenuOpen;
@@ -169,7 +179,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const handleInstanceModelChange = (instanceId: ProviderInstanceId, model: string) => {
     if (props.disabled) return;
     props.onInstanceModelChange(instanceId, model);
-    setIsMenuOpen(false);
+    if (!props.combined) setIsMenuOpen(false);
   };
 
   return (
@@ -250,33 +260,74 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               Unavailable
             </Badge>
           ) : null}
+          {/* The resting strip (size xs) sizes this trigger down to its icon
+              below 640px, so the bolt and the traits label collapse there with
+              the model name. Elsewhere the traits label truncates rather than
+              spill past the trigger's max width. */}
+          {props.traits?.fastMode ? (
+            <>
+              <ComposerControlIcon
+                icon={ZapIcon}
+                size={size}
+                className={cn(
+                  "fill-current opacity-80",
+                  size !== "xs" && activeEntry?.driverKind === "claudeAgent"
+                    ? "text-[#d97757]"
+                    : "text-current",
+                  size === "xs" && "@max-[640px]/composer-surface:hidden",
+                )}
+              />
+              <span className="sr-only">Fast mode on</span>
+            </>
+          ) : null}
+          {props.traits?.label ? (
+            <span
+              className={cn(
+                "min-w-0 truncate text-muted-foreground",
+                size === "xs" && "@max-[640px]/composer-surface:hidden",
+              )}
+              data-chat-provider-model-picker-traits="true"
+            >
+              {props.traits.label}
+            </span>
+          ) : null}
         </span>
         <span aria-hidden="true" className="flex items-center">
           <ComposerControlChevron size={size} />
         </span>
       </MenuTrigger>
-      <MenuPopup {...floatingLayerProps} align="start" className="w-56">
-        {/* Submenus portal out of this popup and restamp these themselves. */}
-        <ModelPickerFloatingLayerContext value={floatingLayerProps}>
-          <ModelPickerContent
-            activeInstanceId={activeInstanceId}
-            model={props.model}
-            lockedProvider={props.lockedProvider}
-            lockedContinuationGroupKey={props.lockedContinuationGroupKey ?? null}
-            instanceEntries={props.instanceEntries}
-            {...(props.keybindings ? { keybindings: props.keybindings } : {})}
-            modelOptionsByInstance={props.modelOptionsByInstance}
-            terminalOpen={props.terminalOpen ?? false}
-            onRequestClose={() => setIsMenuOpen(false)}
-            {...(props.onOpenProviderSetup
-              ? { onOpenProviderSetup: props.onOpenProviderSetup }
-              : {})}
-            {...(props.getModelDisabledReason
-              ? { getModelDisabledReason: props.getModelDisabledReason }
-              : {})}
-            onInstanceModelChange={handleInstanceModelChange}
-          />
-        </ModelPickerFloatingLayerContext>
+      {/* The composer's trigger ends the row, so its right edge holds still
+          while the label's length changes; anchor the menu there. */}
+      <MenuPopup
+        {...floatingLayerProps}
+        align={props.isComposerOwned ? "end" : "start"}
+        className={props.combined ? "w-64" : "w-56"}
+      >
+        <ModelPickerContent
+          activeInstanceId={activeInstanceId}
+          model={props.model}
+          lockedProvider={props.lockedProvider}
+          lockedContinuationGroupKey={props.lockedContinuationGroupKey ?? null}
+          instanceEntries={props.instanceEntries}
+          {...(props.keybindings ? { keybindings: props.keybindings } : {})}
+          modelOptionsByInstance={props.modelOptionsByInstance}
+          terminalOpen={props.terminalOpen ?? false}
+          onRequestClose={() => setIsMenuOpen(false)}
+          {...(props.onOpenProviderSetup ? { onOpenProviderSetup: props.onOpenProviderSetup } : {})}
+          {...(props.getModelDisabledReason
+            ? { getModelDisabledReason: props.getModelDisabledReason }
+            : {})}
+          onInstanceModelChange={handleInstanceModelChange}
+        />
+        {props.traits ? (
+          <>
+            <MenuSeparator className="mx-0 my-0" />
+            {/* Stamped like the pages above, so the wheel lock lets the popup
+                scroll from here and modelPickerHoldsFocus counts the panel's
+                controls as inside the picker. */}
+            <div data-model-picker-content="true">{props.traits.panel}</div>
+          </>
+        ) : null}
       </MenuPopup>
     </Menu>
   );

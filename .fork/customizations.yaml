@@ -2559,6 +2559,9 @@
     - apps/web/src/components/chat/TraitsPicker.tsx
     # Passes the composer-only label separator through to TraitsPicker.
     - apps/web/src/components/chat/composerProviderState.tsx
+    # Fenced: the controlled-value rewrite skips placing the DOM selection while
+    # focus sits in a model picker, so a provider switch cannot pull it out.
+    - apps/web/src/components/ComposerPromptEditor.tsx
     # Workspace select opens above the context chips (side top, no
     # align-item-with-trigger) so the glass menu clears the branch pill.
     # Locked checkout/env spans carry data-fork-context-chip so they keep the
@@ -3624,10 +3627,10 @@
 
 - id: fork-model-picker
   intent: >
-    The model picker is a cascade menu in the style of Figma t3-fork
-    342:8038 (8px inset, 32px rows with a 12px medium label and a check on
-    the selected model), squared off a step from upstream's menus: 8px
-    corners on every popup level, 4px on the rows and search field. ProviderModelPicker's shadow
+    The model picker is a paged menu in the style of Figma t3-fork 342:8038
+    (8px inset, 32px rows with a 12px medium label and a check on the
+    selected model), squared off a step from upstream's menus: 8px corners on
+    the popup, 4px on the rows and search field. ProviderModelPicker's shadow
     swaps upstream's Popover for a non-modal Base UI Menu and keeps the rest
     of the file (trigger, wheel/touch lock) upstream's, except that the
     trigger label drops the provider name its icon already shows ("Opus 5.5",
@@ -3640,50 +3643,108 @@
     the "Claude" family name they are resold under. The strip is a per-provider
     list of family words, not the provider's display name: Grok's "Grok Build"
     keeps its name because "Build" alone is nothing. Picker rows drop the name
-    too, since the provider submenu or the row's provider label names it.
-    The root menu holds a
-    search field, then Favorites (heart, only when favorites exist), then one
-    row per enabled provider instance with its glyph, name and a dot on the
-    current provider; hovering a row opens that provider's current models in
-    a submenu, with legacy models one submenu deeper. Each level opens
-    toward the side its parent opened to, 4px clear of it, so a flipped
-    cascade never stacks Legacy on the root menu. Typing anywhere in the
-    cascade lands in the search field (capture-phase redirect, ahead of the
-    menu's type-ahead), and any query swaps the providers for one flat,
+    too, since the page's back row or the row's provider label names it.
+    The first page holds a search field, then Favorites (heart, only when
+    favorites exist), then one row per enabled provider instance with its
+    glyph, name and a dot on the current provider. Clicking a row swaps the
+    menu in place to that provider's current models, led by a back row;
+    legacy models are one page deeper. ArrowRight opens a row's page, and
+    ArrowLeft (or Backspace / ArrowLeft in an empty search field) steps back;
+    a held key does not, so Backspace held to clear a query stays on the page.
+    A row swaps the page without touching focus; the search field takes focus
+    a frame and a tick after the swap. Focusing it
+    from the row's click closes the menu: the row re-takes focus on click,
+    and the menu's focus-out check, a microtask later, sees focus heading to
+    a row the swap already removed. Typing anywhere lands in the search field
+    (capture-phase redirect, ahead of the menu's type-ahead, also on the
+    popup itself, where the menu parks focus after a swap), and any query
+    swaps the page for one flat,
     provider-agnostic list of every matching model — glyph and instance name
     inline, ranked like upstream's search, locked provider still respected;
     Enter picks the first result and Escape clears the query before it
     closes the menu. Rows reveal the favorites star and ⌘1–9 badge on hover;
     the star toggles without choosing the row. ⌘1–9 map to the search
-    results, else Favorites, else the current provider's models. Providers
-    locked out of the thread or not ready stay listed but disabled, with the
-    reason as a tooltip; a provider needing setup opens a submenu with its
-    status and an "Open provider setup" item. Every popup level stamps
-    [data-model-picker-content] (shortcut arbitration, wheel lock) and the
-    submenus restamp the composer floating-layer marker, since each portals
-    out on its own — only when the composer owns the picker (the root passes
-    it down by context; Settings mounts the picker too). The exported helpers of ModelPickerContent stay upstream's
+    results, else the open page's models, else (on the providers page)
+    Favorites, else the current provider's models. Providers locked out of
+    the thread or not ready stay listed but disabled, with the reason as a
+    tooltip; a provider needing setup opens a page with its status and an
+    "Open provider setup" item. The popup stamps [data-model-picker-content]
+    (shortcut arbitration, wheel lock) on the pages and on the traits panel
+    under them. Model rows never close the menu
+    themselves; ProviderModelPicker closes it on a pick unless it is `combined`
+    (the composer's menu, at one width whether or not the model has traits).
+    In the composer, model and reasoning are one control. ComposerModelPicker
+    wraps ProviderModelPicker and fills its `traits` slot from the same input
+    the composer used to hand upstream's TraitsPicker: the trigger reads
+    "Opus 5.5 High" (fast-mode bolt included), and under the pages a panel
+    shows the selected model's traits. The traits label truncates inside the
+    trigger's max width, and in the resting strip it collapses with the model
+    name below 640px (the bolt too), where upstream moved the traits picker
+    into the ⋯ menu. Effort (`effort`, `reasoningEffort`,
+    `reasoning` or `variant`, when it has two or more levels) is a slider over
+    the model's own levels, Ultrathink included as the top stop for Claude;
+    dragging previews and writes once on release. It is a 24px bar with a block
+    thumb, dot stops and a short bar at the default level. On/off traits are
+    checkboxes and other selects are segments. Rows keep one order for every
+    provider: the rest in the provider's order, then Fast Mode, then Context
+    Window last. Writes match upstream's traits
+    menu exactly: same draft-store options with persistSticky, same implicit
+    fast-mode default, and Ultrathink as a prompt prefix that is stripped when
+    leaving it (the slider locks while the prompt body says "ultrathink").
+    The panel keeps every key but Escape and Tab out of the menu's
+    navigation. A pick keeps the menu open so effort can follow, and keeps
+    focus there: ChatComposer's focusAtEnd stands down while its picker is
+    open (ChatView refocuses the editor after every pick), and
+    ComposerPromptEditor skips placing the DOM selection when it rewrites an
+    unfocused editor while focus sits in a model picker, pages or panel (a
+    provider switch changes the skills and rewrites it; an Ultrathink stop
+    rewrites the prompt), which would otherwise pull focus into the
+    editor and, for a keyboard pick, close the menu. The focus that stood
+    down is paid when the picker closes, so typing lands in the editor after
+    a pick as it does upstream, unless the close itself moved focus to
+    another control. The composer's
+    popup aligns to the trigger's right edge (Settings stays start-aligned), so
+    it holds still as the label changes length. Both
+    composer placements (footer and resting strip) render it; the separate
+    traits picker, its resting "traits" block and the ⋯ menus' traits section
+    (upstream's providerTraitsMenuContent, in both the footer and the strip
+    tree) are gone. Settings keeps upstream's separate traits pickers. The exported
+    helpers of ModelPickerContent stay upstream's
     verbatim and both shadows keep upstream's relative imports. Reaches every
     entry point through ProviderModelPicker (composer and Settings).
   tier: 2
   files:
     - apps/web/src/overrides/components/chat/ProviderModelPicker.tsx
     - apps/web/src/overrides/components/chat/ModelPickerContent.tsx
+    - apps/web/src/custom/ComposerModelPicker.tsx
+    - apps/web/src/custom/composerModelTraits.ts
+    - apps/web/src/custom/composerModelTraits.test.ts
+    - apps/web/src/custom/modelPickerFocus.ts
     - apps/web/src/custom/modelPickerDisplayName.ts
-    - apps/web/src/custom/modelPickerFloatingLayer.ts
     - apps/web/src/custom/modelPickerDisplayName.test.ts
     - apps/web/src/theme.custom.css
   shadows:
     - apps/web/src/components/chat/ProviderModelPicker.tsx
     - apps/web/src/components/chat/ModelPickerContent.tsx
   watch:
-    # Supplies the Menu, submenu and item primitives both levels render.
+    # Supplies the Menu, item and separator primitives the pages render.
     - apps/web/src/components/ui/menu.tsx
-    # Reads [data-model-picker-content]; every popup level must keep stamping it.
+    # Reads [data-model-picker-content]; the popup must keep stamping it.
     - apps/web/src/modelPickerVisibility.ts
+    # Fenced: renders ComposerModelPicker in place of ProviderModelPicker plus
+    # the traits picker, in the footer and the resting strip.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # The panel mirrors these traits semantics and reuses their exported
+    # helpers (trigger label, unavailable descriptors, fast-mode default).
+    - apps/web/src/components/chat/TraitsPicker.tsx
+    - apps/web/src/components/chat/composerProviderState.tsx
+    # Fenced: the controlled-value rewrite skips placing the DOM selection while
+    # a model picker holds focus, so a provider switch cannot pull focus out.
+    - apps/web/src/components/ComposerPromptEditor.tsx
   verify:
     - apps/web/src/__fork_guards__/forkModelPicker.test.ts
     - apps/web/src/custom/modelPickerDisplayName.test.ts
+    - apps/web/src/custom/composerModelTraits.test.ts
 
 - id: fork-changed-files-card
   intent: >
