@@ -3294,9 +3294,13 @@
     # multi-model send detach them from the composer instead (restored on
     # failure or when the queue hands its messages back); a re-minted draft
     # thread re-keys them; rewind strips the trailing run before recall.
+    # Accepted limitation: a multi-model send mints no sent-preview record, so
+    # it gets no "did it land?" prompt — preview tabs belong to the draft's
+    # thread, and none of the started threads can answer for it.
     - apps/web/src/components/ChatView.tsx
     # Fenced pill slot on QueuedComposerMessage, and its send: the blocks are
     # appended at dispatch and the send recorded for the resolution prompt.
+    # MessagesTimeline's queued row (watched above) counts them in its summary.
     - apps/web/src/queuedMessageStore.ts
     - apps/web/src/components/chat/sendQueuedMessage.ts
     - apps/web/src/components/QueuedMessageSender.test.tsx

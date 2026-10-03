@@ -1807,6 +1807,11 @@ function QueuedMessageTimelineRow({
     queuedMessage.terminalContexts.length +
     queuedMessage.previewAnnotations.length +
     queuedMessage.reviewComments.length;
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+     Design-change pills ride the queued message; the row names them like any
+     other attachment, or a design-only message would show no content at all. */
+  const forkDesignChangeCount = queuedMessage.forkDesignChanges?.length ?? 0;
+  /* fork:end fork-design-mode */
   const text = queuedMessage.prompt.trim();
   const sending = queuedMessage.sending !== undefined;
   const statusLabel = sending
@@ -1822,7 +1827,11 @@ function QueuedMessageTimelineRow({
         {text.length > 0 ? (
           <UserMessageBody text={text} skills={ctx.skills} markdownCwd={ctx.markdownCwd} />
         ) : null}
-        {attachmentCount > 0 || contextCount > 0 ? (
+        {attachmentCount > 0 ||
+        contextCount > 0 ||
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        forkDesignChangeCount > 0 ? (
+          /* fork:end fork-design-mode */
           <div className={cn("text-secondary-label text-xs", text.length > 0 && "mt-1.5")}>
             {[
               attachmentCount > 0
@@ -1831,6 +1840,11 @@ function QueuedMessageTimelineRow({
               contextCount > 0
                 ? `${contextCount} context item${contextCount === 1 ? "" : "s"}`
                 : null,
+              /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+              forkDesignChangeCount > 0
+                ? `${forkDesignChangeCount} design change${forkDesignChangeCount === 1 ? "" : "s"}`
+                : null,
+              /* fork:end fork-design-mode */
             ]
               .filter(Boolean)
               .join(", ")}
