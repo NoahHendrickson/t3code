@@ -139,6 +139,17 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     );
   });
 
+  it("keeps the folder mark over upstream's title monogram where the fork names one", () => {
+    // Upstream #11572 draws a monogram for any titled project before it looks
+    // at fallbackIcon, which would hide the card's folder mark entirely.
+    const favicon = readSibling("../components/ProjectFavicon.tsx");
+    expect(favicon).toContain(
+      "const fallbackProjectName = input.fallbackIcon ? undefined : project.title;",
+    );
+    expect(favicon).toContain("projectName={fallbackProjectName}");
+    expect(favicon).toContain("fallbackProjectName={fallbackProjectName}");
+  });
+
   it("keeps upstream's terminal-status glyph on the card's repo line", () => {
     // Ported from upstream #4712: the slim row renders `terminalStatusIcon`
     // directly, the card hands it to the fork-owned meta component as a slot.

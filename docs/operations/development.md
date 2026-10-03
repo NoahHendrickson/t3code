@@ -72,6 +72,12 @@ openssl rand -hex 32
 
 Put that value in the main checkout's gitignored `.env`:
 
+<!-- fork:begin t3-connect-official-config — see .fork/customizations.yaml#t3-connect-official-config -->
+
+> **This fork tracks `.env`** (public T3 Connect config), so use the main checkout's `.env.local` here instead. It is gitignored, overrides `.env`, and the Setup Worktree action links it into each worktree too.
+
+<!-- fork:end t3-connect-official-config -->
+
 ```dotenv
 T3CODE_DEV_AUTH_TOKEN=<the value generated above>
 ```

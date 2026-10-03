@@ -23,7 +23,12 @@
   color: var(--fork-mode-fg-dark);
 }
 
-:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-mode-chip] [data-slot="select-icon"] {
+/* Label only, no caret. Upstream's ComposerSelectControl renders a bare
+   Select.Icon (no data-slot), so the caret is reached as the trigger child
+   that holds the composer chevron. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-mode-chip]
+  > :has(> [data-composer-control-chevron]) {
   display: none;
 }
 

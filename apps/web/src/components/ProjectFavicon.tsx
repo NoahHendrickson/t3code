@@ -81,13 +81,21 @@ export function ProjectFavicon(input: {
     );
   }
   const FallbackIcon = input.fallbackIcon ?? FolderCodeIcon;
+  /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+     A caller that names its own fallback mark (the fork's card and project chip
+     folder marks) gets that mark, not upstream's automatic title monogram. An
+     icon the user chose in project settings still wins above. */
+  const fallbackProjectName = input.fallbackIcon ? undefined : project.title;
+  /* fork:end sidebar-v2-card-rows */
 
   if (!src || isProjectFaviconFallbackUrl(src)) {
     return (
       <ProjectFaviconFallback
         className={input.className}
         icon={FallbackIcon}
-        projectName={project.title}
+        /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+        projectName={fallbackProjectName}
+        /* fork:end sidebar-v2-card-rows */
       />
     );
   }
@@ -104,7 +112,9 @@ export function ProjectFavicon(input: {
       src={src}
       className={input.className}
       fallbackIcon={FallbackIcon}
-      fallbackProjectName={project.title}
+      /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+      fallbackProjectName={fallbackProjectName}
+      /* fork:end sidebar-v2-card-rows */
     />
   );
 }

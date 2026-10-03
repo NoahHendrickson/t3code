@@ -203,11 +203,7 @@ export const forkDesignChanges = {
       useDesignChangeDraftStore.getState().byThreadKey,
       threadRef,
     );
-    if (sent.length === 0) return { text, sent };
-    const blocks = sent
-      .map((entry) => `<design_change_request>\n${entry.markdown}\n</design_change_request>`)
-      .join("\n\n");
-    return { text: text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks, sent };
+    return { text: withDesignChangeBlocks(text, sent), sent };
   },
   /**
    * The send succeeded: remember which preview tabs contributed drafts to it, then drop the
@@ -222,10 +218,6 @@ export const forkDesignChanges = {
    * later knows the thread's projected turn covers this send. `messageId` is the same
    * message's id, the transcript chip's correlation key (designSentPreviews.ts).
    *
-   * `sentThreadRef` is the thread the request actually rode, when that is not the one the
-   * pills were keyed under: a multi-model draft starts fresh threads and never gets a turn
-   * of its own, so a record keyed on the draft could never resolve.
-   *
    * The drafts themselves stay applied in the guest. They are the user's, and the tool never
    * commits them; what changes is that the panel now has grounds to ask about them.
    */
@@ -234,12 +226,72 @@ export const forkDesignChanges = {
     sent: readonly PendingDesignChange[],
     sentAt: string,
     messageId: string,
-    sentThreadRef: ScopedThreadRef = threadRef,
   ): void {
-    const threadKey = scopedThreadKey(sentThreadRef);
+    const threadKey = scopedThreadKey(threadRef);
     for (const runtimeTabId of new Set(sent.map((entry) => entry.runtimeTabId))) {
       useDesignSentPreviews.getState().markSent(runtimeTabId, threadKey, sentAt, messageId);
     }
     useDesignChangeDraftStore.getState().clear(threadRef, sent);
   },
+  /**
+   * Takes `entries` out of the composer for a send that finishes somewhere else: a queued
+   * message carries them until it dispatches, and a multi-model send holds them while its
+   * threads start. Not a completion verb — the caller either hands them to `markSent` once
+   * the turn is real, or gives them back with `restore`. Taking them out at once is what
+   * stops a second send in the meantime from carrying the same request again.
+   */
+  detach(threadRef: ScopedThreadRef, entries: readonly PendingDesignChange[]): void {
+    useDesignChangeDraftStore.getState().clear(threadRef, entries);
+  },
+  /**
+   * Puts detached entries back in front of the composer's current pills, except where the
+   * panel has since sent a replacement for the same tab and document (`add`'s key) — the
+   * newer request supersedes the returned one, exactly as it would have in place.
+   */
+  restore(threadRef: ScopedThreadRef, entries: readonly PendingDesignChange[]): void {
+    if (entries.length === 0) return;
+    useDesignChangeDraftStore.setState((state) => {
+      const key = scopedThreadKey(threadRef);
+      const pending = state.byThreadKey[key] ?? [];
+      const returned = entries.filter(
+        (entry) =>
+          !pending.some(
+            (candidate) =>
+              candidate === entry ||
+              (candidate.runtimeTabId === entry.runtimeTabId &&
+                (candidate.documentId === entry.documentId || candidate.pageUrl === entry.pageUrl)),
+          ),
+      );
+      if (returned.length === 0) return state;
+      return { byThreadKey: { ...state.byThreadKey, [key]: [...returned, ...pending] } };
+    });
+  },
+  /** A draft re-minted its thread id (its bootstrap thread was deleted): its unsent pills
+      follow it, or the composer — which resolves pills by the draft's current thread — would
+      lose them. */
+  rekey(from: ScopedThreadRef, to: ScopedThreadRef): void {
+    const fromKey = scopedThreadKey(from);
+    const toKey = scopedThreadKey(to);
+    if (fromKey === toKey) return;
+    useDesignChangeDraftStore.setState((state) => {
+      const moving = state.byThreadKey[fromKey];
+      if (!moving) return state;
+      const { [fromKey]: _moved, ...rest } = state.byThreadKey;
+      return { byThreadKey: { ...rest, [toKey]: [...moving, ...(rest[toKey] ?? [])] } };
+    });
+  },
 };
+
+/** `text` with each request appended as a `<design_change_request>` block, or untouched when
+    there are none. The one formatter for every send path, so the transcript extractor always
+    sees the same shape. */
+export function withDesignChangeBlocks(
+  text: string,
+  entries: readonly PendingDesignChange[],
+): string {
+  if (entries.length === 0) return text;
+  const blocks = entries
+    .map((entry) => `<design_change_request>\n${entry.markdown}\n</design_change_request>`)
+    .join("\n\n");
+  return text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks;
+}

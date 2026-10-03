@@ -320,6 +320,13 @@ describe("fork guard: fork-app-identity", () => {
     expect(environment).not.toMatch(/:\s*"com\.t3tools\.t3code",/u);
   });
 
+  it("points SSH remotes at the upstream release the fork is synced to", () => {
+    // The fork's own app version names no upstream release archive.
+    const main = read("apps/desktop/src/main.ts");
+    expect(main).toContain("return { archiveVersion: serverPackageJson.version };");
+    expect(main).not.toContain("archiveVersion: environment.appVersion");
+  });
+
   it("keeps the packaged compile cache out of upstream's cache directory", () => {
     const compileCache = read("apps/desktop/src/compileCache.ts");
     expect(compileCache).toContain('"t3code-fork", "compile-cache"');

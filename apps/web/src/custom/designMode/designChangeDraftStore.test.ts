@@ -254,18 +254,28 @@ describe("designChangeDraftStore", () => {
     expect(pendingFor(THREAD)).toHaveLength(1);
   });
 
-  it("markSent records the thread the request rode while clearing the draft's pills", () => {
+  it("detach takes the pills out and restore puts back only what was not superseded", () => {
     const { add } = useDesignChangeDraftStore.getState();
-    add(THREAD, "tab-a", payload());
-    const taken = forkDesignChanges.takeForSend(THREAD, "");
-    const started = { ...THREAD, threadId: ThreadId.make("thread-started") };
+    add(THREAD, "tab-a", payload({ markdown: "a", pageUrl: "http://localhost/a" }));
+    add(THREAD, "tab-b", payload({ markdown: "b", pageUrl: "http://localhost/b" }));
+    const taken = forkDesignChanges.takeForSend(THREAD, "").sent;
 
-    forkDesignChanges.markSent(THREAD, taken.sent, SENT_AT, "msg-1", started);
-
-    expect(useDesignSentPreviews.getState().byTabId["tab-a"]?.threadKey).toBe(
-      scopedThreadKey(started),
-    );
+    forkDesignChanges.detach(THREAD, taken);
     expect(pendingFor(THREAD)).toHaveLength(0);
+    // A second send in the meantime carries nothing.
+    expect(forkDesignChanges.takeForSend(THREAD, "next").text).toBe("next");
+
+    // The panel re-sends tab-b's document while the first send is out.
+    add(THREAD, "tab-b", payload({ markdown: "b, revised", pageUrl: "http://localhost/b" }));
+    forkDesignChanges.restore(THREAD, taken);
+    expect(pendingFor(THREAD).map((entry) => entry.markdown)).toEqual(["a", "b, revised"]);
+  });
+
+  it("rekey moves a draft's pills to its new thread", () => {
+    useDesignChangeDraftStore.getState().add(THREAD, "tab-a", payload());
+    forkDesignChanges.rekey(THREAD, OTHER_THREAD);
+    expect(pendingFor(THREAD)).toHaveLength(0);
+    expect(pendingFor(OTHER_THREAD)).toHaveLength(1);
   });
 
   it("drops the thread's whole entry once a targeted clear empties it", () => {

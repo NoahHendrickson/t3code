@@ -359,6 +359,9 @@
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
     app's own internal origin, not just a deep-link handler — two installed
     apps contend for it, untidy but not destructive).
+    SSH remotes run upstream's release archive for the version this fork is
+    synced to (the source package version), since the fork's own 0.1.x app
+    version names no upstream release; the remote side is upstream's server.
     Known carve-out: the WSL backend bootstrap deliberately omits t3Home, so
     WSL-side state is not isolated by this customization.
     Known carve-out: hosted web (`apps/web/vercel.ts`) still runs
@@ -687,7 +690,9 @@
     hover pin action to the card (owned by sidebar-v2-row-action-hit-area).
     Since the 2026-09-08 sync the favicon slot is built from the project
     record upstream hands down (ProjectFavicon's `project` prop, #10714), a
-    null project falling through to the meta's folder mark. Upstream's
+    null project falling through to the meta's folder mark. Upstream's title
+    monogram (#11572) stands down wherever the fork passes its own
+    fallbackIcon, so a favicon-less project keeps the folder mark. Upstream's
     unsent-draft row tint and its "Discard draft" hover action are refused on
     purpose — the surface encodes interaction and nothing else, and the hover
     cell is fork-owned — while its pen marker is kept.
@@ -704,6 +709,9 @@
     # The fork customizes upstream's canonical Sidebar V2 implementation in place.
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/index.css
+    # Fenced: an explicit fallbackIcon (the card's folder mark, the draft
+    # project chip's) suppresses upstream's automatic title monogram (#11572).
+    - apps/web/src/components/ProjectFavicon.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
     - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
@@ -2701,6 +2709,13 @@
     # against the tracked file. See the decisions note.
     - infra/relay/src/clientConfig.ts
     - .github/workflows/deploy-relay.yml
+    # Fenced: upstream's docs tell developers to keep the admin-scoped
+    # T3CODE_DEV_AUTH_TOKEN in the main checkout's "gitignored" .env, which this
+    # fork tracks — following them commits the credential. The fenced notes
+    # redirect it to .env.local, and setup-worktree links that file too.
+    - AGENTS.md
+    - docs/operations/development.md
+    - scripts/setup-worktree.ts
   verify:
     - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts
 
@@ -3273,10 +3288,18 @@
     # Fenced attachment-pill row (ForkComposerDesignChanges) beside the
     # element-context chips. Also fenced under fork-composer-shell.
     - apps/web/src/components/chat/ChatComposer.tsx
-    # Three fenced hunks in onSend: pending design changes count toward
+    # Fenced hunks in onSend: pending design changes count toward
     # sendability, their markdown is appended to the outgoing message text,
-    # and they clear only once the turn start succeeds.
+    # and they clear only once the turn start succeeds. A queued send and a
+    # multi-model send detach them from the composer instead (restored on
+    # failure or when the queue hands its messages back); a re-minted draft
+    # thread re-keys them; rewind strips the trailing run before recall.
     - apps/web/src/components/ChatView.tsx
+    # Fenced pill slot on QueuedComposerMessage, and its send: the blocks are
+    # appended at dispatch and the send recorded for the resolution prompt.
+    - apps/web/src/queuedMessageStore.ts
+    - apps/web/src/components/chat/sendQueuedMessage.ts
+    - apps/web/src/components/QueuedMessageSender.test.tsx
     # Fenced strip-first extraction + transcript chip render in
     # UserTimelineRow, so sent design blocks show as chips.
     - apps/web/src/components/chat/MessagesTimeline.tsx

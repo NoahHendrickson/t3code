@@ -1135,10 +1135,10 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           }
         >
           {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-          {/* Text-only, per the designs: the label is the whole control. */}
-          <span data-composer-control-label>
-            {props.interactionMode === "plan" ? "Plan" : "Build"}
-          </span>
+          {/* Text-only, per the designs: the label is the whole control, so it
+              carries no data-composer-control-label — upstream's icon-only
+              collapse would hide it and leave an empty pill. */}
+          <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
           {/* fork:end fork-composer-shell */}
         </TooltipTrigger>
         <TooltipPopup side="top">{interactionModeTooltip}</TooltipPopup>
@@ -1170,8 +1170,10 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
             }
           >
             {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
-                Label only: no RuntimeModeIcon on the mode chip. */}
-            <SelectValue data-composer-control-label>{runtimeModeOption.label}</SelectValue>
+                Label only: no RuntimeModeIcon on the mode chip, and no
+                data-composer-control-label, which upstream's icon-only collapse
+                hides — with no icon that left a bare chevron. */}
+            <SelectValue>{runtimeModeOption.label}</SelectValue>
             {/* fork:end fork-composer-shell */}
           </TooltipTrigger>
           <SelectPopup alignItemWithTrigger={false} {...composerFloatingLayerProps}>

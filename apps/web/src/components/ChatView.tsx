@@ -257,7 +257,10 @@ import {
 import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
-import { withDesignChangesTrailing } from "~/custom/designMode/designChangeTranscript";
+import {
+  extractTrailingDesignChanges,
+  withDesignChangesTrailing,
+} from "~/custom/designMode/designChangeTranscript";
 /* fork:end fork-design-mode */
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import {
@@ -7187,7 +7190,14 @@ export default function ChatView(props: ChatViewProps) {
           if (result._tag === "Failure") throw squashAtomCommandFailure(result);
         });
         const currentPrompt = store.getComposerDraft(composerDraftTarget)?.prompt ?? "";
-        const restoredPrompt = recallableComposerPrompt(message.text);
+        const restoredPrompt = recallableComposerPrompt(
+          /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+             The design-change run trails the message (after any legacy context
+             blocks), so it comes off first or upstream's stripper stops at it. The
+             request itself is not recalled: its drafts are still in the page. */
+          extractTrailingDesignChanges(message.text).promptText,
+          /* fork:end fork-design-mode */
+        );
         const nextPrompt =
           restoredPrompt.length === 0
             ? currentPrompt
@@ -7413,6 +7423,14 @@ export default function ChatView(props: ChatViewProps) {
       ...(draft?.reviewComments ?? []),
       ...messages.flatMap((message) => message.reviewComments),
     ]);
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+    if (activeThread) {
+      forkDesignChanges.restore(
+        { environmentId, threadId: activeThread.id },
+        messages.flatMap((message) => message.forkDesignChanges ?? []),
+      );
+    }
+    /* fork:end fork-design-mode */
     composerRef.current?.resetCursorState({
       cursor: collapseExpandedComposerCursor(nextPrompt, nextPrompt.length),
       prompt: nextPrompt,
@@ -7778,11 +7796,6 @@ export default function ChatView(props: ChatViewProps) {
     if (
       !directAnnotation &&
       activeThreadKey &&
-      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
-         The queue carries no design-change pills, so a send that has them goes straight
-         out with the blocks appended, as it did before the queue existed. */
-      forkDesignChanges.count({ environmentId, threadId: activeThread.id }) === 0 &&
-      /* fork:end fork-design-mode */
       (queueStillSending ||
         (phase === "running" &&
           (settings.followUpBehavior === "queue") !== (submissionIntent === "alternate")))
@@ -7795,6 +7808,11 @@ export default function ChatView(props: ChatViewProps) {
       ) {
         return;
       }
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      const forkQueuedDesignRef = { environmentId, threadId: activeThread.id };
+      const forkQueuedDesignChanges = forkDesignChanges.takeForSend(forkQueuedDesignRef, "").sent;
+      forkDesignChanges.detach(forkQueuedDesignRef, forkQueuedDesignChanges);
+      /* fork:end fork-design-mode */
       useQueuedMessageStore.getState().enqueue(activeThreadKey, {
         prompt: promptForSend,
         images: [...composerImages],
@@ -7802,6 +7820,9 @@ export default function ChatView(props: ChatViewProps) {
         terminalContexts: [...composerTerminalContexts],
         previewAnnotations: [...composerPreviewAnnotations],
         reviewComments: [...composerReviewComments],
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        forkDesignChanges: forkQueuedDesignChanges,
+        /* fork:end fork-design-mode */
         sendSettings,
         queuedAfterToolActivityId: latestCompletedToolActivityId(threadActivities),
         createdAt: new Date().toISOString(),
@@ -8064,12 +8085,6 @@ export default function ChatView(props: ChatViewProps) {
       let releasedComposer = false;
       let canRestoreDraft = () => false;
       let startedCount = 0;
-      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-      // A holder, not a let: it is written inside the per-target closures.
-      const forkFirstStarted: { current: { messageId: string; threadId: ThreadId } | null } = {
-        current: null,
-      };
-      /* fork:end fork-design-mode */
       try {
         const attachments = await turnAttachmentsPromise;
         const fileBlockReason = readLiveAttachmentCapabilities().fileBlockReason;
@@ -8090,6 +8105,13 @@ export default function ChatView(props: ChatViewProps) {
         clearComposerDraftContent(composerDraftTarget);
         composerRef.current?.resetCursorState();
         clearedDraft = true;
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+           The pills leave with the rest of the draft, so a prompt sent while these
+           threads start cannot carry the same request again; a failed target puts
+           them back with the text. No sent-preview record: preview tabs belong to the
+           draft's thread, and none of the started threads can answer for it. */
+        forkDesignChanges.detach(forkDesignChangeRef, forkDesignSend.sent);
+        /* fork:end fork-design-mode */
         const clearedDraftSnapshot = useComposerDraftStore
           .getState()
           .getComposerDraft(composerDraftTarget);
@@ -8121,13 +8143,12 @@ export default function ChatView(props: ChatViewProps) {
                 appAtomRegistry.get(environmentServerConfigsAtom).get(environmentId)?.environment
                   .capabilities.inlineMessageContext === true;
               requestMayHaveStarted = true;
-              const targetMessageId = newMessageId();
               const result = await startThreadTurn({
                 environmentId,
                 input: {
                   threadId: targetThreadId,
                   message: {
-                    messageId: targetMessageId,
+                    messageId: newMessageId(),
                     role: "user",
                     text:
                       context && !supportsInlineMessageContext
@@ -8178,9 +8199,6 @@ export default function ChatView(props: ChatViewProps) {
                 throw error;
               }
               startedCount += 1;
-              /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-              forkFirstStarted.current ??= { messageId: targetMessageId, threadId: targetThreadId };
-              /* fork:end fork-design-mode */
             } catch (error) {
               if (requestMayHaveStarted && !uncertainMultipleSubmissionsRef.current.has(retryKey)) {
                 uncertainMultipleSubmissionsRef.current.set(retryKey, targetThreadId);
@@ -8251,22 +8269,6 @@ export default function ChatView(props: ChatViewProps) {
             }),
           );
         }
-        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
-           The pills clear only once every target carried them: a failed target
-           restores the draft text without the pills, so they have to stay for the
-           retry to send the design request again. The sent record keys on the first
-           started thread and message, since the draft itself never gets a turn. */
-        const forkStarted = forkFirstStarted.current;
-        if (forkStarted !== null && failedSelections.length === 0) {
-          forkDesignChanges.markSent(
-            forkDesignChangeRef,
-            forkDesignSend.sent,
-            messageCreatedAt,
-            forkStarted.messageId,
-            { environmentId, threadId: forkStarted.threadId },
-          );
-        }
-        /* fork:end fork-design-mode */
         if (failedSelections.length === 0 && turnUsesAttachmentUploads) {
           releaseDraftAttachments(composerAttachmentsSnapshot);
         }
@@ -8292,6 +8294,9 @@ export default function ChatView(props: ChatViewProps) {
               composerPreviewAnnotationsSnapshot,
             );
             setComposerDraftReviewComments(composerDraftTarget, composerReviewCommentsSnapshot);
+            /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+            forkDesignChanges.restore(forkDesignChangeRef, forkDesignSend.sent);
+            /* fork:end fork-design-mode */
             if (composerRef.current && currentRouteThreadKeyRef.current === routeThreadKey) {
               promptRef.current = messageTextForSend;
               composerRef.current.resetCursorState({
@@ -8656,6 +8661,16 @@ export default function ChatView(props: ChatViewProps) {
             ? newThreadId()
             : threadIdForSend,
         );
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+           Unsent pills follow the draft to its re-minted thread id. */
+        const forkRethreadedDraft = getDraftSession(draftId);
+        if (forkRethreadedDraft) {
+          forkDesignChanges.rekey(forkDesignChangeRef, {
+            environmentId,
+            threadId: forkRethreadedDraft.threadId,
+          });
+        }
+        /* fork:end fork-design-mode */
         clearBackgroundDraftSubmissionByRef(scopeThreadRef(environmentId, threadIdForSend));
       }
       if (
@@ -8716,6 +8731,16 @@ export default function ChatView(props: ChatViewProps) {
                 createdAt: new Date().toISOString(),
               },
             );
+            /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+               Unsent pills follow the draft to its re-minted thread id. */
+            const forkRethreadedDraft = getDraftSession(draftId);
+            if (forkRethreadedDraft) {
+              forkDesignChanges.rekey(forkDesignChangeRef, {
+                environmentId,
+                threadId: forkRethreadedDraft.threadId,
+              });
+            }
+            /* fork:end fork-design-mode */
           }
         }
         setThreadError(

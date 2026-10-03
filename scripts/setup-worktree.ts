@@ -10,7 +10,15 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
-const ENV_FILES = [".env", NodePath.join("infra", "relay", ".env")];
+const ENV_FILES = [
+  ".env",
+  NodePath.join("infra", "relay", ".env"),
+  // fork:begin t3-connect-official-config — see .fork/customizations.yaml#t3-connect-official-config
+  // This fork tracks .env, so personal values (the reusable dev auth token)
+  // live in the gitignored .env.local, and worktrees need it linked too.
+  ".env.local",
+  // fork:end t3-connect-official-config
+];
 
 const projectRoot = process.env.T3CODE_PROJECT_ROOT;
 if (!projectRoot) {

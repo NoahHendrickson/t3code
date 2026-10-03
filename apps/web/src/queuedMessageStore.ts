@@ -7,6 +7,9 @@ import type {
 import { create } from "zustand";
 
 import type { LocalDispatchSnapshot } from "./components/ChatView.logic";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import type { PendingDesignChange } from "./custom/designMode/designChangeDraftStore";
+/* fork:end fork-design-mode */
 import type { ComposerFileAttachment, ComposerImageAttachment } from "./composerDraftStore";
 import type { TerminalContextDraft } from "./lib/terminalContext";
 import { randomUUID } from "./lib/utils";
@@ -38,6 +41,12 @@ export interface QueuedComposerMessage {
   terminalContexts: TerminalContextDraft[];
   previewAnnotations: PreviewAnnotationPayload[];
   reviewComments: ReviewCommentContext[];
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+     Design-change pills ride the message like its attachments: taken out of the
+     composer at queue time, appended as blocks when it dispatches, and handed back
+     to the composer when the message is. */
+  forkDesignChanges?: readonly PendingDesignChange[];
+  /* fork:end fork-design-mode */
   sendSettings: QueuedMessageSendSettings;
   /**
    * The newest completed tool activity at queue time. A different id later

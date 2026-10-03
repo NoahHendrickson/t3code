@@ -139,7 +139,14 @@ const resolveDesktopSshCliRunner = (
       nodeEngineRange: serverPackageJson.engines.node,
     };
   }
-  return { archiveVersion: environment.appVersion };
+  /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+     A packaged fork build carries its own 0.1.x app version, which names no
+     pingdotgg/t3code release, so the archive download 404s and the launch aborts.
+     The remote runs the upstream release this fork is synced to instead: the
+     source tree's package version, which tracks upstream and is bundled here at
+     build time (fork-release.yml only stamps its version into the staged app). */
+  return { archiveVersion: serverPackageJson.version };
+  /* fork:end fork-app-identity */
 };
 
 const desktopSshEnvironmentLayer = Layer.unwrap(

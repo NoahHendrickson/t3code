@@ -215,6 +215,30 @@ describe("sendQueuedMessage", () => {
     expect(queue()).toBeUndefined();
   });
 
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+  it("sends a queued design-change request as trailing blocks, even with no prose", async () => {
+    const designChange = {
+      id: "design-change-1",
+      runtimeTabId: "tab-a",
+      markdown: "# Make it pop",
+      elementCount: 1,
+      elements: [],
+      documentId: "doc-1",
+      pageUrl: "http://localhost:5173/",
+    };
+    const message = enqueue({ prompt: "", forkDesignChanges: [designChange] });
+
+    await sendQueuedMessage(threadRef, message.id);
+
+    expect(io.run.mock.calls.at(-1)?.[2]).toMatchObject({
+      input: {
+        message: { text: "<design_change_request>\n# Make it pop\n</design_change_request>" },
+      },
+    });
+    expect(queue()).toBeUndefined();
+  });
+  /* fork:end fork-design-mode */
+
   it("holds a message at the head when the turn start fails", async () => {
     io.run.mockResolvedValue({ _tag: "Failure", cause: Cause.fail(new Error("offline")) });
     enqueue({ prompt: "first" });

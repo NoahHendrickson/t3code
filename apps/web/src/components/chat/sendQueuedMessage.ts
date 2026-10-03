@@ -8,6 +8,13 @@ import type { ScopedThreadRef } from "@t3tools/contracts";
 import { serializeLegacyContextMessage } from "@t3tools/shared/composerContextLegacySend";
 import { applyClaudePromptEffortPrefix } from "@t3tools/shared/model";
 
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import {
+  forkDesignChanges,
+  withDesignChangeBlocks,
+} from "../../custom/designMode/designChangeDraftStore";
+import { withDesignChangesTrailing } from "../../custom/designMode/designChangeTranscript";
+/* fork:end fork-design-mode */
 import { buildMessageContext, terminalContextReference } from "../../lib/composerContextRecords";
 import { removeInlineContextReference } from "../../lib/composerContextReferences";
 import {
@@ -77,7 +84,12 @@ export async function sendQueuedMessage(
       prompt: message.prompt,
       imageCount: attachments.length,
       terminalContexts: message.terminalContexts,
-      elementContextCount: message.previewAnnotations.length + message.reviewComments.length,
+      elementContextCount:
+        message.previewAnnotations.length +
+        message.reviewComments.length +
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        (message.forkDesignChanges?.length ?? 0),
+      /* fork:end fork-design-mode */
     });
     // Only expired terminal context was left. Retrying would block the queue
     // on every boundary, so drop it and let the queue move on.
@@ -95,7 +107,10 @@ export async function sendQueuedMessage(
       )
       .trim();
     const text = applyClaudePromptEffortPrefix(
-      prompt || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      withDesignChangeBlocks(prompt, message.forkDesignChanges ?? []) ||
+        /* fork:end fork-design-mode */
+        ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
       sendSettings.promptEffort,
     );
 
@@ -176,17 +191,22 @@ export async function sendQueuedMessage(
     // Servers from before inline context drop the records, so their turns
     // carry the payload in the text instead.
     const inlineContext = readConfig()?.environment.capabilities.inlineMessageContext === true;
+    const turnMessageId = newMessageId();
     await run(threadEnvironment.startTurn, {
       environmentId,
       input: {
         threadId,
         message: {
-          messageId: newMessageId(),
+          messageId: turnMessageId,
           role: "user",
           text:
             context !== undefined && !inlineContext
-              ? serializeLegacyContextMessage({ text, records: context.records })
-              : text,
+              ? /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+                withDesignChangesTrailing(text, (promptText) =>
+                  serializeLegacyContextMessage({ text: promptText, records: context.records }),
+                )
+              : /* fork:end fork-design-mode */
+                text,
           attachments: wireAttachments,
           ...(context !== undefined && inlineContext ? { context } : {}),
         },
@@ -197,6 +217,16 @@ export async function sendQueuedMessage(
       },
     });
     queue.finishSend(threadKey, message.id);
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+       The pills left the composer at queue time, so this only records the send for
+       the panel's resolution prompt. */
+    forkDesignChanges.markSent(
+      threadRef,
+      message.forkDesignChanges ?? [],
+      createdAt,
+      turnMessageId,
+    );
+    /* fork:end fork-design-mode */
     if (useUploads) releaseDraftAttachments(attachments);
     for (const image of message.images) revokeBlobPreviewUrl(image.previewUrl);
   } catch (error) {

@@ -507,11 +507,12 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   // A pick from search results clears the query onto the model's own page,
   // so the menu (if the host keeps it open) shows the check on the new pick.
-  // Shift (`additive`) toggles the model into a multi-model draft instead.
+  // Shift (`additive`) toggles the model into a multi-model draft and keeps
+  // the query, so one search can collect several models, as upstream's does.
   const chooseModel = useCallback(
     (model: ModelPickerItem, additive = false) => {
       handleModelSelect(model.slug, model.instanceId, additive);
-      if (!isSearching) return;
+      if (!isSearching || additive) return;
       setSearchQuery("");
       openPage({ kind: "models", instanceId: model.instanceId, legacy: model.isLegacy === true });
     },
