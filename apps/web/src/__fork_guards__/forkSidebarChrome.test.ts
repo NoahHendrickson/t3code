@@ -38,7 +38,8 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // Order matters, not just presence: an early return placed before the
     // effect would make the shortcut itself conditional on the sidebar being
     // open — the one state in which you need it most.
-    const effect = layout.indexOf('!== "sidebar.toggle"');
+    // Formatting may break the comparison across lines; match the token pair.
+    const effect = layout.search(/!==\s*"sidebar\.toggle"/u);
     const earlyReturn = layout.indexOf("if (isSidebarVisible) return null;");
     expect(effect).toBeGreaterThanOrEqual(0);
     expect(earlyReturn).toBeGreaterThan(effect);
@@ -57,14 +58,24 @@ describe("fork guard: fork-sidebar-chrome", () => {
 
   it("matches the macOS control geometry from the header design", () => {
     expect(chrome).toContain("pl-[var(--workspace-controls-left)]");
-    expect(layout).toContain('MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px"');
+    // 80 native points: 8/9 of upstream's zoom-corrected 90.
+    expect(layout).toContain(
+      'MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "calc(var(--desktop-window-controls-inset, 90px) * 8 / 9)"',
+    );
     // y=19 centres the 14pt lights at 26pt, the 52px header's axis the
     // toggle, brand, and workspace title share; y=18 sat 1pt high.
     // The fence stays even if the number matches upstream — unfenced, a sync
     // retune lands silently and the value assert only fails after the fact.
     expect(desktopWindow).toContain("fork:begin fork-sidebar-chrome");
     expect(desktopWindow).toContain("fork:end fork-sidebar-chrome");
-    expect(desktopWindow).toContain("trafficLightPosition: { x: 16, y: 19 }");
+    // Upstream derives the position from its topbar constants; assert the
+    // resolved number so a retune of either constant still turns this red.
+    const topbarHeight = Number(/MACOS_WORKSPACE_TOPBAR_HEIGHT = (\d+)/u.exec(desktopWindow)?.[1]);
+    const buttonRadius = Number(/MACOS_WINDOW_BUTTON_RADIUS = (\d+)/u.exec(desktopWindow)?.[1]);
+    expect(topbarHeight / 2 - buttonRadius).toBe(19);
+    expect(desktopWindow).toContain(
+      "y: MACOS_WORKSPACE_TOPBAR_HEIGHT / 2 - MACOS_WINDOW_BUTTON_RADIUS",
+    );
     const start = chrome.indexOf("<SidebarTrigger");
     const trigger = chrome.slice(start, chrome.indexOf("/>", start));
     expect(trigger).toContain("[&_svg]:size-4!");

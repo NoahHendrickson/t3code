@@ -187,7 +187,7 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(chatComposer).not.toContain("bg-primary/90 text-primary-foreground");
     expect(chatComposer).toContain(
-      "items-center justify-center px-1 text-center text-[10px] text-secondary-label",
+      "items-center justify-center px-1 text-center text-3xs text-secondary-label",
     );
   });
 
@@ -315,7 +315,7 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes("[data-fork-composer-prompt]") &&
         !rule.selector.includes('[data-testid="composer-editor"]'),
     );
-    expect(scrollport?.body).toMatch(/max-height:\s*12\.5rem/u);
+    expect(scrollport?.body).toMatch(/max-height:\s*calc\(12\.5rem \+ 8px\)/u);
     expect(scrollport?.body).toMatch(/overflow-y:\s*auto/u);
 
     const editor = rules.find(
@@ -331,7 +331,7 @@ describe("fork guard: fork-composer-shell", () => {
     const placeholder = rules.find(
       (rule) =>
         isDesktop(rule) &&
-        /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector) &&
+        /:has\(>\s*\[data-testid="composer-editor"\]\)\s*~\s*div/u.test(rule.selector) &&
         rule.body.includes("overflow"),
     );
     expect(placeholder?.body).toMatch(/overflow:\s*clip/u);
@@ -354,7 +354,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(promptType?.body).toMatch(/line-height:\s*23px/u);
     const placeholderColor = rules.find(
       (rule) =>
-        /\[data-testid="composer-editor"\]\s*~\s*div/u.test(rule.selector) &&
+        /:has\(>\s*\[data-testid="composer-editor"\]\)\s*~\s*div/u.test(rule.selector) &&
         rule.body.includes("color"),
     );
     expect(placeholderColor?.body).toMatch(/color:\s*var\(--muted-foreground\)/u);
@@ -509,7 +509,7 @@ describe("fork guard: fork-composer-shell", () => {
     // chips' glass — only the mark and #N carry the state.
     const branchSelector = readSibling("../components/BranchToolbarBranchSelector.tsx");
     expect(branchSelector).toContain("data-fork-pr-chip");
-    expect(branchSelector).toContain("branchPrStatus.colorClass");
+    expect(branchSelector).toContain("status={displayedPrStatus}");
     const chipInk = rules.find(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&
@@ -531,7 +531,16 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes("[data-fork-composer-context-row]") &&
         rule.body.includes("var(--fork-context-chip-bg-hover)"),
     );
-    expect(chipHover?.selector).not.toContain("[data-fork-pr-chip]");
+    // A single linked PR renders the chip as an anchor (upstream's badge
+    // control), so the shared hover and fill rules have to name it; the
+    // button-only selector left it with no pill at all.
+    expect(chipHover?.selector).toContain("[data-fork-pr-chip]");
+    const chipFill = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-composer-context-row]") &&
+        rule.body.includes("background: var(--fork-context-chip-bg)"),
+    );
+    expect(chipFill?.selector).toContain("[data-fork-pr-chip]");
     const prFill = [...rules, ...paletteRules].filter(
       (rule) =>
         rule.selector.includes("[data-fork-composer-context-row]") &&

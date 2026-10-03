@@ -37,7 +37,11 @@ describe("fork guard: server-local-thread-branch", () => {
     expect(hunks).toContain("yield* resolveBootstrapThreadBranch(");
     expect(hunks).toContain("localStatus: gitWorkflow.localStatus");
     expect(hunks).toContain("getProjectShellById: projectionSnapshotQuery.getProjectShellById");
-    expect(hunks).toContain("preparingWorktree: bootstrap.prepareWorktree !== undefined");
+    // Only a worktree actually being made names its own branch; a request
+    // that falls back to the project checkout still gets the live branch.
+    expect(hunks).toMatch(
+      /preparingWorktree:\s*bootstrap\.prepareWorktree !== undefined && shouldPrepareWorktree,/u,
+    );
     expect(hunks).not.toContain("listRefs(");
     // The policy stays out of ws.ts: the fence carries the import and the
     // call, not a resolver of its own.

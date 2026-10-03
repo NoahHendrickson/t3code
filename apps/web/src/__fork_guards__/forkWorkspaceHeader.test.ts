@@ -124,7 +124,9 @@ describe("fork guard: fork-workspace-header", () => {
     expect(chatHeader).toMatch(
       /aria-label=\{`New thread in \$\{activeProjectName\}`\}[\s\S]{0,400}text-muted-foreground/u,
     );
-    expect(chatHeader).toMatch(/truncate text-sm font-normal text-foreground/u);
+    // Upstream's WorkspaceBreadcrumbText owns the truncation now; the fork's
+    // regular weight sits on the h2 around it.
+    expect(chatHeader).toMatch(/text-sm font-normal text-foreground/u);
     expect(chatHeader).not.toContain("ProjectFavicon");
   });
 

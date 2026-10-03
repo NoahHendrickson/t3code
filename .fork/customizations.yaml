@@ -171,11 +171,13 @@
     timeout to fail deterministically on the slower hosted runners; those get
     a fenced per-test timeout raise rather than a product change, because the
     underlying cost is upstream's to fix and diverging in hot upstream logic
-    buys a conflict on every sync. Current carrier: imageCompression.test.ts's
+    buys a conflict on every sync. Current carriers: imageCompression.test.ts's
     give-up path (~15 encodes of an 8 MB stub through chunked base64 —
-    deterministic work, not flake). session-logic.test.ts's 20,000-entry
-    work-log benchmark carried one until upstream #8585 dropped its timing
-    assertion. No guard asserts these hunks; losing one turns CI red by
+    deterministic work, not flake) and client-runtime's persistence.test.ts
+    snapshot-encoding property (two 1,000-sample arbitraries, past the
+    package's 5 s default under the parallel Test job since the 2026-10-02
+    sync). session-logic.test.ts's 20,000-entry work-log benchmark carried
+    one until upstream #8585 dropped its timing assertion. No guard asserts these hunks; losing one turns CI red by
     itself, which is the enforcement.
   tier: 4
   files: []
@@ -184,6 +186,7 @@
     - .github/workflows/ci.yml
     - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
+    - packages/client-runtime/src/platform/persistence.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
@@ -239,8 +242,10 @@
   shadows: []
   watch:
     - .github/workflows/release.yml
-    # PR-label macOS preview builds (#8182): gated at build and cleanup.
+    # PR-label macOS preview builds (#8182): the untrusted build half is gated
+    # at build, the trusted publish half at its resolve and cleanup entry jobs.
     - .github/workflows/desktop-macos-preview.yml
+    - .github/workflows/desktop-macos-preview-publish.yml
   verify:
     - apps/web/src/__fork_guards__/releaseUpstreamOnly.test.ts
 
@@ -354,6 +359,9 @@
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
     app's own internal origin, not just a deep-link handler — two installed
     apps contend for it, untidy but not destructive).
+    SSH remotes run upstream's release archive for the version this fork is
+    synced to (the source package version), since the fork's own 0.1.x app
+    version names no upstream release; the remote side is upstream's server.
     Known carve-out: the WSL backend bootstrap deliberately omits t3Home, so
     WSL-side state is not isolated by this customization.
     Known carve-out: hosted web (`apps/web/vercel.ts`) still runs
@@ -415,6 +423,9 @@
     # packaged Linux fork release.
     - apps/desktop/src/app/DesktopLinuxUrlHandler.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
+    # The packaged V8 compile cache lives outside $HOME on macOS/Windows, so
+    # launch-isolation-check.sh cannot see it sharing upstream's directory.
+    - apps/desktop/src/compileCache.ts
     - apps/desktop/scripts/electron-launcher.mjs
     # Fenced icon-path assertions matching the launcher's fork art.
     - apps/desktop/scripts/electron-launcher.test.mjs
@@ -679,7 +690,9 @@
     hover pin action to the card (owned by sidebar-v2-row-action-hit-area).
     Since the 2026-09-08 sync the favicon slot is built from the project
     record upstream hands down (ProjectFavicon's `project` prop, #10714), a
-    null project falling through to the meta's folder mark. Upstream's
+    null project falling through to the meta's folder mark. Upstream's title
+    monogram (#11572) stands down wherever the fork passes its own
+    fallbackIcon, so a favicon-less project keeps the folder mark. Upstream's
     unsent-draft row tint and its "Discard draft" hover action are refused on
     purpose — the surface encodes interaction and nothing else, and the hover
     cell is fork-owned — while its pen marker is kept.
@@ -696,6 +709,9 @@
     # The fork customizes upstream's canonical Sidebar V2 implementation in place.
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/index.css
+    # Fenced: an explicit fallbackIcon (the card's folder mark, the draft
+    # project chip's) suppresses upstream's automatic title monogram (#11572).
+    - apps/web/src/components/ProjectFavicon.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
     - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
@@ -1937,6 +1953,9 @@
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
   shadows: []
   watch:
+    # Fenced knip ignore: upstream's SidebarThreadHeader has no caller behind
+    # the fork chrome rows.
+    - knip.jsonc
     - apps/desktop/src/window/DesktopWindow.ts
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx
@@ -2463,9 +2482,11 @@
     on a 23px line at >=40rem with a full muted-foreground placeholder (16px
     mobile type stays, avoiding iOS focus zoom) — and the ghost controls,
     mode chip, model, and effort are 12px medium on 16px with 12px glyphs.
-    The prompt wrapper owns the 12.5rem scroll cap so a one-line Lexical
-    editor never paints a phantom scrollbar, and the placeholder/spacer
-    overflow containment remains in place. Attachment and pending-state
+    The prompt wrapper owns the 12.5rem scroll cap so a one-line Tiptap
+    editor never paints a phantom scrollbar, absorbs the editor's 4px
+    overhang in its own padding so that cap never scrolls sideways, and the
+    placeholder overflow containment remains in place (the placeholder is a
+    sibling of Tiptap's editor wrapper, reached through :has). Attachment and pending-state
     content may add height above the base row inside the surface, but ordinary
     composer height changes only when prompt content wraps. Pill styling stays
     narrowly scoped so pending-state primary actions retain their upstream
@@ -2559,9 +2580,6 @@
     - apps/web/src/components/chat/TraitsPicker.tsx
     # Passes the composer-only label separator through to TraitsPicker.
     - apps/web/src/components/chat/composerProviderState.tsx
-    # Fenced: the controlled-value rewrite skips placing the DOM selection while
-    # focus sits in a model picker, so a provider switch cannot pull it out.
-    - apps/web/src/components/ComposerPromptEditor.tsx
     # Workspace select opens above the context chips (side top, no
     # align-item-with-trigger) so the glass menu clears the branch pill.
     # Locked checkout/env spans carry data-fork-context-chip so they keep the
@@ -2588,8 +2606,9 @@
     # min-h-17.5 on the prompt editor, the placeholder that has to track the
     # prompt's type ramp, and the max-h-50 / overflow-y-auto cap the fork
     # re-homes on the prompt wrapper at >=40rem by overriding — the classes
-    # themselves stay on the editor here.
-    - apps/web/src/components/ComposerPromptEditor.tsx
+    # themselves stay on the editor here. (Tiptap since upstream sync
+    # 2026-10-02; ComposerPromptEditor.tsx is a thin wrapper around it.)
+    - apps/web/src/components/ComposerPromptEditorTiptap.tsx
     # Upstream's own layout tests resolve through the alias to the shadow, so
     # the one resting-layout assertion is fenced there to expect the fork's
     # neutralized answer; every other assertion is upstream's.
@@ -2683,12 +2702,22 @@
     # "unconfigured clone" by not stubbing the variable, which stopped being
     # the ambient default once the tracked .env keyed every build.
     - apps/web/src/cloud/connectCliAuth.test.ts
-    # reconcileRootEnv writes relay public config — OTLP tracing tokens
-    # included — into the repo-root .env, which this customization made
-    # committable. Unfenced (the fork never runs relay deploys), but any
-    # upstream rework of where that write lands must be re-checked against
-    # the tracked file. See the decisions note.
-    - infra/relay/scripts/deploy.ts
+    # Relay public config — OTLP tracing tokens included — used to be written
+    # into the repo-root .env by the deploy script, which this customization
+    # made committable. Upstream #12401 moved that write to
+    # T3CODE_RELAY_CLIENT_CONFIG_ENV (a runner temp file) and nothing reads
+    # the tracked .env there now. Unfenced (the fork never runs relay
+    # deploys), but any rework of where that write lands must be re-checked
+    # against the tracked file. See the decisions note.
+    - infra/relay/src/clientConfig.ts
+    - .github/workflows/deploy-relay.yml
+    # Fenced: upstream's docs tell developers to keep the admin-scoped
+    # T3CODE_DEV_AUTH_TOKEN in the main checkout's "gitignored" .env, which this
+    # fork tracks — following them commits the credential. The fenced notes
+    # redirect it to .env.local, and setup-worktree links that file too.
+    - AGENTS.md
+    - docs/operations/development.md
+    - scripts/setup-worktree.ts
   verify:
     - apps/web/src/__fork_guards__/t3ConnectOfficialConfig.test.ts
 
@@ -3261,10 +3290,22 @@
     # Fenced attachment-pill row (ForkComposerDesignChanges) beside the
     # element-context chips. Also fenced under fork-composer-shell.
     - apps/web/src/components/chat/ChatComposer.tsx
-    # Three fenced hunks in onSend: pending design changes count toward
+    # Fenced hunks in onSend: pending design changes count toward
     # sendability, their markdown is appended to the outgoing message text,
-    # and they clear only once the turn start succeeds.
+    # and they clear only once the turn start succeeds. A queued send and a
+    # multi-model send detach them from the composer instead (restored on
+    # failure or when the queue hands its messages back); a re-minted draft
+    # thread re-keys them; rewind strips the trailing run before recall.
+    # Accepted limitation: a multi-model send mints no sent-preview record, so
+    # it gets no "did it land?" prompt — preview tabs belong to the draft's
+    # thread, and none of the started threads can answer for it.
     - apps/web/src/components/ChatView.tsx
+    # Fenced pill slot on QueuedComposerMessage, and its send: the blocks are
+    # appended at dispatch and the send recorded for the resolution prompt.
+    # MessagesTimeline's queued row (watched above) counts them in its summary.
+    - apps/web/src/queuedMessageStore.ts
+    - apps/web/src/components/chat/sendQueuedMessage.ts
+    - apps/web/src/components/QueuedMessageSender.test.tsx
     # Fenced strip-first extraction + transcript chip render in
     # UserTimelineRow, so sent design blocks show as chips.
     - apps/web/src/components/chat/MessagesTimeline.tsx
@@ -3694,12 +3735,15 @@
     The panel keeps every key but Escape and Tab out of the menu's
     navigation. A pick keeps the menu open so effort can follow, and keeps
     focus there: ChatComposer's focusAtEnd stands down while its picker is
-    open (ChatView refocuses the editor after every pick), and
-    ComposerPromptEditor skips placing the DOM selection when it rewrites an
-    unfocused editor while focus sits in a model picker, pages or panel (a
-    provider switch changes the skills and rewrites it; an Ultrathink stop
-    rewrites the prompt), which would otherwise pull focus into the
-    editor and, for a keyboard pick, close the menu. The focus that stood
+    open (ChatView refocuses the editor after every pick), and the prompt
+    editor never places the DOM selection into an unfocused editor while
+    focus sits in a model picker, pages or panel (a provider switch changes
+    the skills and rewrites it; an Ultrathink stop rewrites the prompt),
+    which would otherwise pull focus into the editor and, for a keyboard
+    pick, close the menu — the Lexical editor needed a fenced skip tag for
+    this; upstream's Tiptap editor (sync 2026-10-02) only writes the DOM
+    selection when ProseMirror owns focus, so the guard pins that
+    condition instead of a fork hunk. The focus that stood
     down is paid when the picker closes, so typing lands in the editor after
     a pick as it does upstream, unless the close itself moved focus to
     another control. The composer's
@@ -3738,9 +3782,9 @@
     # helpers (trigger label, unavailable descriptors, fast-mode default).
     - apps/web/src/components/chat/TraitsPicker.tsx
     - apps/web/src/components/chat/composerProviderState.tsx
-    # Fenced: the controlled-value rewrite skips placing the DOM selection while
-    # a model picker holds focus, so a provider switch cannot pull focus out.
-    - apps/web/src/components/ComposerPromptEditor.tsx
+    # Unfenced: the controlled-update effect must keep reading focus before it
+    # rewrites and never focus the view itself (guard-pinned).
+    - apps/web/src/components/ComposerPromptEditorTiptap.tsx
   verify:
     - apps/web/src/__fork_guards__/forkModelPicker.test.ts
     - apps/web/src/custom/modelPickerDisplayName.test.ts
@@ -3784,17 +3828,22 @@
     Transparent transcript rows — collapsed tool-call group toggles, log
     entry rows, the "+N previous tool calls" line — hover as a 4% white lift
     (--fork-outline-hover-bg) under the fork dark marker instead of
-    upstream's hover:bg-accent/20 and hover:bg-muted/55 washes, which are
-    cool opaque tokens at low alpha and read as a smudge on the fork stages
-    (worst under glass). Keyed on those two utilities inside the fork's
-    .fork-timeline-cutoff scroller; hover:bg-accent/50 on the filled
-    bg-card/50 tile is deliberately left alone.
+    upstream's hover:bg-accent/20 wash, a cool opaque token at low alpha
+    that reads as a smudge on the fork stages (worst under glass). The
+    "Show full message" line under a long user message is a ghost-muted
+    Button since upstream sync 2026-10-02, hovering and pressing with the
+    opaque --accent outright; it takes the same lift through the
+    data-user-message-footer row upstream stamps around it. Keyed on that
+    utility and that footer inside the fork's .fork-timeline-cutoff
+    scroller; hover:bg-accent/50 on the filled bg-card/50 tile is
+    deliberately left alone.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
-    # Carries the two hover utilities and the fork-stamped scroller class.
+    # Carries the hover utility, the user-message footer and the fork-stamped
+    # scroller class.
     - apps/web/src/components/chat/MessagesTimeline.tsx
   verify:
     - apps/web/src/__fork_guards__/forkTranscriptHover.test.ts

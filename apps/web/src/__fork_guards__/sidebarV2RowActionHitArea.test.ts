@@ -107,11 +107,11 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
 
   it("leads the card's hover cell with pin, ahead of snooze", () => {
     // The manifest claims placement, so the guard has to see sibling order:
-    // both pin branches render before the SnoozePopoverButton in the same
+    // both pin branches render before the SnoozeMenuButton in the same
     // actions cell. Source order is render order inside one flex row.
     const pin = sidebarV2.indexOf('aria-label="Pin thread"');
     const unpin = sidebarV2.indexOf('aria-label="Unpin thread"');
-    const snooze = sidebarV2.indexOf("<SnoozePopoverButton");
+    const snooze = sidebarV2.indexOf("<SnoozeMenuButton");
     expect(pin).toBeGreaterThanOrEqual(0);
     expect(unpin).toBeGreaterThanOrEqual(0);
     expect(snooze).toBeGreaterThan(pin);
@@ -170,8 +170,10 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     expect(trailingColumn).toContain("SIDEBAR_V2_TRAILING_OFFSET.slimActions");
     expect(groupHeader).toContain("SIDEBAR_V2_TRAILING_OFFSET.headerPlus");
     expect(chromeRows).toContain("SIDEBAR_V2_TRAILING_OFFSET.chromeRow");
+    // Working (upstream #13926, ported in the 2026-10-02 sync), Snoozed and
+    // Settled shelves each carry the chevron.
     const shelfChevrons = [...sidebarV2.matchAll(/SIDEBAR_V2_TRAILING_OFFSET\.shelfChevron/gu)];
-    expect(shelfChevrons.length).toBe(2);
+    expect(shelfChevrons.length).toBe(3);
     // Positioned, so the card's actions share a paint layer with the elapsed
     // span the crossfade turns into a stacking context — see the call site.
     // Matched on w-0, which is the actions wrapper's own collapse and not
@@ -207,8 +209,9 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     expect(chromeRows).toMatch(/<ArrowUpDownIcon[\s\S]{0,120}?\bsize-4\b/u);
     // The shelf headers' chevrons, 4px the other way: their row is px-2.5,
     // so a flush 12px glyph centres 6px in where a card's trailing box takes 8.
+    // Working, Snoozed and Settled shelves since the 2026-10-02 sync.
     const chevrons = [...sidebarV2.matchAll(/"size-3 ([^"]*transition-transform[^"]*)"/gu)];
-    expect(chevrons.length).toBe(2);
+    expect(chevrons.length).toBe(3);
   });
 
   it("keeps status out of the trailing actions cell", () => {

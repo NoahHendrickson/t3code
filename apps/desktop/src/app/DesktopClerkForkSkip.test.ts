@@ -44,6 +44,7 @@ vi.mock("@clerk/electron/storage", () => ({
 }));
 
 import * as ElectronApp from "../electron/ElectronApp.ts";
+import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopClerk from "./DesktopClerk.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
@@ -85,6 +86,13 @@ const makeDesktopClerkLayer = (electronApp: ElectronApp.ElectronApp["Service"]) 
       Layer.mergeAll(
         Layer.succeed(DesktopEnvironment.DesktopEnvironment, environment),
         Layer.succeed(ElectronApp.ElectronApp, electronApp),
+        // The layer reads the shell for sign-in hand-offs; the skip path never
+        // opens anything, so an inert stub is enough.
+        Layer.succeed(ElectronShell.ElectronShell, {
+          openExternal: () => Effect.succeed(true),
+          openSystemSettings: () => Effect.succeed(false),
+          copyText: () => Effect.void,
+        }),
         FileSystem.layerNoop({ exists: () => Effect.succeed(false) }),
       ),
     ),
@@ -155,8 +163,8 @@ describe("DesktopClerk keyless-build skip", () => {
       assert.isTrue(Exit.isSuccess(exit));
       assert.equal(probe.quits(), 0);
       // Deep-link forwarding survives the degraded path: the primary still
-      // listens for second instances.
-      assert.deepEqual(probe.registeredEvents, ["second-instance"]);
+      // listens for provider auth hand-offs and second instances.
+      assert.deepEqual(probe.registeredEvents, ["open-url", "second-instance"]);
     }),
   );
 

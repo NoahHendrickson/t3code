@@ -173,7 +173,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]) {
   -webkit-backdrop-filter: blur(var(--fork-westworld-chip-blur));
   backdrop-filter: blur(var(--fork-westworld-chip-blur));
 }
@@ -193,12 +193,12 @@
    is #8a8a8a here and sank into the blue behind it. 447:16789 draws it white
    70%. Scoped to the draft overlay — a started thread's well is opaque, so the
    muted ink still reads there. The selector is the placeholder rule's own
-   (Lexical renders it as a sibling of the editor, after a zero-height spacer;
-   the spacer has no text to ink). */
+   (Tiptap wraps the editor in a div; the placeholder is that wrapper's
+   sibling). */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-dark"]
   [data-chat-composer-overlay="true"][data-draft-hero]
   [data-fork-composer-box]
-  [data-testid="composer-editor"]
+  :has(> [data-testid="composer-editor"])
   ~ div {
   color: rgb(255 255 255 / 70%);
 }

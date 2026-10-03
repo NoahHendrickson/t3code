@@ -13,6 +13,7 @@ export interface ComposerBannerStackItem {
   readonly id: string;
   readonly variant: ComposerBannerVariant;
   readonly priority?: "urgent" | "activity" | "notice";
+  readonly compact?: boolean;
   /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
   readonly icon?: ReactNode;
   readonly noticeCard?: boolean;
@@ -125,7 +126,7 @@ export function ComposerBannerStack({ className, items }: ComposerBannerStackPro
         <div
           key={frontItem.id}
           className={cn(
-            "relative z-10 transition-[translate,opacity] duration-220 ease-in",
+            "relative z-10 transition-[opacity,translate] duration-220 ease-in",
             exitingItemId === frontItem.id
               ? "pointer-events-none translate-y-16 opacity-0"
               : "opacity-100",
@@ -220,7 +221,7 @@ export function ComposerBannerStack({ className, items }: ComposerBannerStackPro
                     <div
                       key={item.id}
                       className={cn(
-                        "transition-[translate,opacity] duration-220 ease-in",
+                        "transition-[opacity,translate] duration-220 ease-in",
                         exitingItemId === item.id
                           ? "pointer-events-none translate-y-28 opacity-0"
                           : "opacity-100",
@@ -241,6 +242,82 @@ export function ComposerBannerStack({ className, items }: ComposerBannerStackPro
         ) : null}
       </div>
     </ComposerBanner.Attachment>
+  );
+}
+
+/** Keep full descriptions reachable only when their inline copy is clipped. */
+function NoticeDescription({ children, compact }: { children: ReactNode; compact?: boolean }) {
+  const descriptionRef = useRef<HTMLSpanElement>(null);
+  const detailsRef = useRef<HTMLButtonElement>(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  useLayoutEffect(() => {
+    const description = descriptionRef.current;
+    if (!description) return;
+    const measure = () => {
+      // Ignore the space taken by the details button itself so it cannot
+      // sustain its own overflow after the description would otherwise fit.
+      const recoveredWidth = detailsRef.current ? detailsRef.current.offsetWidth + 4 : 0;
+      const hidden = getComputedStyle(description).position === "absolute";
+      setShowDetails(
+        hidden ||
+          [description, ...description.querySelectorAll("*")].some(
+            (element) => element.scrollWidth > element.clientWidth + recoveredWidth,
+          ),
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(description);
+    // A child can reveal new text without resizing its clipped box.
+    const mutations = new MutationObserver(measure);
+    mutations.observe(description, { childList: true, subtree: true, characterData: true });
+    return () => {
+      observer.disconnect();
+      mutations.disconnect();
+    };
+  }, []);
+
+  return (
+    <span className={compact ? "contents" : "flex min-w-8 flex-1 items-center gap-1"}>
+      <span
+        ref={descriptionRef}
+        className={cn(
+          "min-w-0 truncate text-muted-foreground",
+          compact && "shrink-[9999] @max-[400px]:sr-only",
+        )}
+      >
+        {children}
+      </span>
+      {showDetails ? (
+        <Popover>
+          <PopoverTrigger
+            openOnHover
+            render={
+              <Button
+                ref={detailsRef}
+                size="icon-xs"
+                variant="ghost-muted"
+                aria-label="Show notice details"
+                className="flex-none"
+              />
+            }
+          >
+            <InfoIcon />
+          </PopoverTrigger>
+          <PopoverPopup
+            aria-label="Notice details"
+            tooltipStyle
+            side="top"
+            className="max-w-80 whitespace-normal wrap-anywhere"
+          >
+            <ComposerBanner.Scroll className="max-h-[min(var(--available-height),24rem,40dvh)]">
+              {children}
+            </ComposerBanner.Scroll>
+          </PopoverPopup>
+        </Popover>
+      ) : null}
+    </span>
   );
 }
 
@@ -281,7 +358,7 @@ function ComposerBannerStackAlert({
       {...(item.noticeCard ? { "data-fork-composer-notice": "true" } : {})}
       /* fork:end fork-composer-banner-surface */
     >
-      <ComposerBanner.Row layout="wrap-actions-narrow">
+      <ComposerBanner.Row layout={item.compact ? "wrap-actions-narrow" : "wrap-actions"}>
         {/* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */}
         {item.icon != null ? (
           <ComposerBanner.Icon className="h-(--composer-banner-icon-column) self-start">
@@ -292,59 +369,30 @@ function ComposerBannerStackAlert({
         <ComposerBanner.Content className="whitespace-nowrap">
           <span
             className={cn(
-              "min-w-0",
+              "min-w-0 truncate",
               /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
               item.noticeCard
-                ? "w-full truncate font-normal leading-4"
-                : cn(
-                    "font-medium leading-7 sm:leading-6",
-                    typeof item.title === "string" && "truncate",
-                  ),
+                ? "w-full font-normal leading-4"
+                : "font-medium leading-7 sm:leading-6",
               /* fork:end fork-composer-banner-surface */
             )}
           >
             {item.title}
           </span>
           {item.description ? (
-            <>
-              <span
-                className={cn(
-                  "min-w-0 text-muted-foreground",
-                  /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
-                  item.noticeCard ? "w-full" : "shrink-[9999] truncate @max-[400px]:sr-only",
-                  /* fork:end fork-composer-banner-surface */
-                )}
-              >
+            /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface
+               Notice cards stack the description under the title at full width
+               and never clip it, so they skip upstream's clipped-copy details
+               popover. */
+            item.noticeCard ? (
+              <span className="w-full min-w-0 text-muted-foreground">{item.description}</span>
+            ) : (
+              <NoticeDescription compact={item.compact ?? false}>
                 {item.description}
-              </span>
-              {/* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */}
-              {item.noticeCard ? null : (
-                <Popover>
-                  <PopoverTrigger
-                    openOnHover
-                    render={
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        aria-label="Show notice details"
-                        className="hidden flex-none text-muted-foreground hover:text-foreground @max-[400px]:inline-flex"
-                      />
-                    }
-                  >
-                    <InfoIcon className="size-3.5" />
-                  </PopoverTrigger>
-                  <PopoverPopup
-                    tooltipStyle
-                    side="top"
-                    className="max-w-72 whitespace-normal text-pretty"
-                  >
-                    {item.description}
-                  </PopoverPopup>
-                </Popover>
-              )}
-              {/* fork:end fork-composer-banner-surface */}
-            </>
-          ) : null}
+              </NoticeDescription>
+            )
+          ) : /* fork:end fork-composer-banner-surface */
+          null}
         </ComposerBanner.Content>
         {item.actions || item.onDismiss ? (
           <ComposerBanner.Actions>

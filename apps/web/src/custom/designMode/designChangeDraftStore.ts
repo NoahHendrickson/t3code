@@ -203,11 +203,7 @@ export const forkDesignChanges = {
       useDesignChangeDraftStore.getState().byThreadKey,
       threadRef,
     );
-    if (sent.length === 0) return { text, sent };
-    const blocks = sent
-      .map((entry) => `<design_change_request>\n${entry.markdown}\n</design_change_request>`)
-      .join("\n\n");
-    return { text: text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks, sent };
+    return { text: withDesignChangeBlocks(text, sent), sent };
   },
   /**
    * The send succeeded: remember which preview tabs contributed drafts to it, then drop the
@@ -237,4 +233,65 @@ export const forkDesignChanges = {
     }
     useDesignChangeDraftStore.getState().clear(threadRef, sent);
   },
+  /**
+   * Takes `entries` out of the composer for a send that finishes somewhere else: a queued
+   * message carries them until it dispatches, and a multi-model send holds them while its
+   * threads start. Not a completion verb — the caller either hands them to `markSent` once
+   * the turn is real, or gives them back with `restore`. Taking them out at once is what
+   * stops a second send in the meantime from carrying the same request again.
+   */
+  detach(threadRef: ScopedThreadRef, entries: readonly PendingDesignChange[]): void {
+    useDesignChangeDraftStore.getState().clear(threadRef, entries);
+  },
+  /**
+   * Puts detached entries back in front of the composer's current pills, except where the
+   * panel has since sent a replacement for the same tab and document (`add`'s key) — the
+   * newer request supersedes the returned one, exactly as it would have in place.
+   */
+  restore(threadRef: ScopedThreadRef, entries: readonly PendingDesignChange[]): void {
+    if (entries.length === 0) return;
+    useDesignChangeDraftStore.setState((state) => {
+      const key = scopedThreadKey(threadRef);
+      const pending = state.byThreadKey[key] ?? [];
+      const returned = entries.filter(
+        (entry) =>
+          !pending.some(
+            (candidate) =>
+              candidate === entry ||
+              (candidate.runtimeTabId === entry.runtimeTabId &&
+                (candidate.documentId === entry.documentId || candidate.pageUrl === entry.pageUrl)),
+          ),
+      );
+      if (returned.length === 0) return state;
+      return { byThreadKey: { ...state.byThreadKey, [key]: [...returned, ...pending] } };
+    });
+  },
+  /** A draft re-minted its thread id (its bootstrap thread was deleted): its unsent pills
+      follow it, or the composer — which resolves pills by the draft's current thread — would
+      lose them. */
+  rekey(from: ScopedThreadRef, to: ScopedThreadRef): void {
+    const fromKey = scopedThreadKey(from);
+    const toKey = scopedThreadKey(to);
+    if (fromKey === toKey) return;
+    useDesignChangeDraftStore.setState((state) => {
+      const moving = state.byThreadKey[fromKey];
+      if (!moving) return state;
+      const { [fromKey]: _moved, ...rest } = state.byThreadKey;
+      return { byThreadKey: { ...rest, [toKey]: [...moving, ...(rest[toKey] ?? [])] } };
+    });
+  },
 };
+
+/** `text` with each request appended as a `<design_change_request>` block, or untouched when
+    there are none. The one formatter for every send path, so the transcript extractor always
+    sees the same shape. */
+export function withDesignChangeBlocks(
+  text: string,
+  entries: readonly PendingDesignChange[],
+): string {
+  if (entries.length === 0) return text;
+  const blocks = entries
+    .map((entry) => `<design_change_request>\n${entry.markdown}\n</design_change_request>`)
+    .join("\n\n");
+  return text.trim().length > 0 ? `${text}\n\n${blocks}` : blocks;
+}

@@ -123,13 +123,31 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
     expect(meta).toContain("readonly prSlot: ReactNode;");
     expect(meta).toContain("{props.prSlot ?? null}");
-    // Glyph first, no hash, on the card only; the slim shelves keep upstream's
-    // #N. Explicit 12px so the panel's --text-xs → 13px remap cannot grow it.
-    expect(sidebarV2).toContain('<GitPullRequestIcon aria-hidden className="size-3 shrink-0" />');
-    expect(sidebarV2).toContain(
-      'variant === "card" ? "flex items-center gap-1 text-[0.75rem] leading-4" : "text-xs"',
+    // Upstream's badge control draws glyph then number with no hash, which is
+    // the card's own shape; the card only pins an explicit 12px on its inner
+    // span so the panel's --text-xs → 13px remap cannot grow it. The slim
+    // shelves keep upstream's text-xs.
+    expect(sidebarV2).toContain("<ThreadPullRequestBadgeControl");
+    expect(sidebarV2).toMatch(
+      /variant === "card" &&\n(?:\s*\/\/ oxlint-disable-next-line [^\n]*\n)?\s*"flex items-center gap-1 \[&>span\]:text-\[0\.75rem\] \[&>span\]:leading-4"/u,
     );
     expect(sidebarV2).not.toContain("{prBadge || hasHoverActions");
+    // Settled slim rows mute the badge's state colour at rest; upstream's own
+    // muting sat on a row surface the fork replaces.
+    expect(sidebarV2).toContain(
+      '"not-group-hover/v2-row:not-group-focus-within/v2-row:[&>span]:text-secondary-label"',
+    );
+  });
+
+  it("keeps the folder mark over upstream's title monogram where the fork names one", () => {
+    // Upstream #11572 draws a monogram for any titled project before it looks
+    // at fallbackIcon, which would hide the card's folder mark entirely.
+    const favicon = readSibling("../components/ProjectFavicon.tsx");
+    expect(favicon).toContain(
+      "const fallbackProjectName = input.fallbackIcon ? undefined : project.title;",
+    );
+    expect(favicon).toContain("projectName={fallbackProjectName}");
+    expect(favicon).toContain("fallbackProjectName={fallbackProjectName}");
   });
 
   it("keeps upstream's terminal-status glyph on the card's repo line", () => {
