@@ -84,6 +84,8 @@ describe("fork guard: fork-changed-files-card", () => {
     );
     expect(label?.selector).toContain(MARKER);
     expect(label?.body).toMatch(/color:\s*var\(--foreground\)/u);
+    // MiddleTruncate's tail half takes the same ink as its truncating head.
+    expect(label?.selector).toContain("span.truncate + span.shrink-0");
 
     const button = cssRules(theme).find(
       (rule) =>

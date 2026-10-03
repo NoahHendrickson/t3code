@@ -2986,10 +2986,12 @@
 }
 
 /* File/folder path labels — not the header's deliberately-receded Show/Hide
-   hint (that span is also `.truncate`). Scope to siblings of the header. */
+   hint (that span is also `.truncate`). Scope to siblings of the header.
+   A long name renders through MiddleTruncate as a truncating head plus a
+   shrink-0 tail; both halves take the ink, or the name reads in two tones. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-changed-files-state]
   > :not([data-changed-files-header])
-  span.truncate {
+  :is(span.truncate, span.truncate + span.shrink-0) {
   color: var(--foreground);
 }
