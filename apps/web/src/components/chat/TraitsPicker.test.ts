@@ -170,7 +170,7 @@ describe("buildTraitsTriggerDisplay", () => {
         ultrathinkPromptControlled: false,
         labelSeparator: " ",
       }),
-    ).toEqual({ label: "High 1M", showFastModeIcon: false });
+    ).toEqual({ label: "High 1M", speedIcon: null });
   });
 
   it("falls back to a text label when fast mode is the only trait", () => {

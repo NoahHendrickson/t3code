@@ -257,6 +257,7 @@ import {
 import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
+import { withDesignChangesTrailing } from "~/custom/designMode/designChangeTranscript";
 /* fork:end fork-design-mode */
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import {
@@ -7924,7 +7925,10 @@ export default function ChatView(props: ChatViewProps) {
         model: selection.model,
         models: provider.models,
         effort: providerState.promptEffort,
-        text: messageTextForSend || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+           Every model gets the design request the pill holds, same as a single send. */
+        text: forkDesignSend.text || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
+        /* fork:end fork-design-mode */
       });
       if (composerRef.current?.validateProviderInput(text) === false) return;
       multipleTargets.push({
@@ -8054,6 +8058,9 @@ export default function ChatView(props: ChatViewProps) {
       let releasedComposer = false;
       let canRestoreDraft = () => false;
       let startedCount = 0;
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+      let forkFirstStartedMessageId: string | null = null;
+      /* fork:end fork-design-mode */
       try {
         const attachments = await turnAttachmentsPromise;
         const fileBlockReason = readLiveAttachmentCapabilities().fileBlockReason;
@@ -8105,20 +8112,25 @@ export default function ChatView(props: ChatViewProps) {
                 appAtomRegistry.get(environmentServerConfigsAtom).get(environmentId)?.environment
                   .capabilities.inlineMessageContext === true;
               requestMayHaveStarted = true;
+              const targetMessageId = newMessageId();
               const result = await startThreadTurn({
                 environmentId,
                 input: {
                   threadId: targetThreadId,
                   message: {
-                    messageId: newMessageId(),
+                    messageId: targetMessageId,
                     role: "user",
                     text:
                       context && !supportsInlineMessageContext
-                        ? serializeLegacyContextMessage({
-                            text: target.text,
-                            records: context.records,
-                          })
-                        : target.text,
+                        ? /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+                          withDesignChangesTrailing(target.text, (promptText) =>
+                            serializeLegacyContextMessage({
+                              text: promptText,
+                              records: context.records,
+                            }),
+                          )
+                        : /* fork:end fork-design-mode */
+                          target.text,
                     attachments,
                     ...(context && supportsInlineMessageContext ? { context } : {}),
                   },
@@ -8157,6 +8169,9 @@ export default function ChatView(props: ChatViewProps) {
                 throw error;
               }
               startedCount += 1;
+              /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+              forkFirstStartedMessageId ??= targetMessageId;
+              /* fork:end fork-design-mode */
             } catch (error) {
               if (requestMayHaveStarted && !uncertainMultipleSubmissionsRef.current.has(retryKey)) {
                 uncertainMultipleSubmissionsRef.current.set(retryKey, targetThreadId);
@@ -8226,6 +8241,19 @@ export default function ChatView(props: ChatViewProps) {
               title: `Started ${startedCount} ${startedCount === 1 ? "thread" : "threads"} in background`,
             }),
           );
+          /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+             The design request rode every started thread, so the pills clear as they do
+             for a single send (see markSent below); a failed target restores the draft
+             text, not the pills, which the next send reads again. The sent record keys
+             on the first started message: the draft's own transcript never shows it, but
+             the panel's resolution prompt only needs the thread ref and the moment. */
+          forkDesignChanges.markSent(
+            forkDesignChangeRef,
+            forkDesignSend.sent,
+            messageCreatedAt,
+            forkFirstStartedMessageId ?? messageIdForSend,
+          );
+          /* fork:end fork-design-mode */
         }
         if (failedSelections.length === 0 && turnUsesAttachmentUploads) {
           releaseDraftAttachments(composerAttachmentsSnapshot);
@@ -8521,10 +8549,14 @@ export default function ChatView(props: ChatViewProps) {
                   .capabilities.inlineMessageContext === true;
               if (!supportsInlineMessageContext) {
                 return {
-                  text: serializeLegacyContextMessage({
-                    text: outgoingMessageText,
-                    records: context.records,
-                  }),
+                  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+                  text: withDesignChangesTrailing(outgoingMessageText, (promptText) =>
+                    serializeLegacyContextMessage({
+                      text: promptText,
+                      records: context.records,
+                    }),
+                  ),
+                  /* fork:end fork-design-mode */
                 };
               }
               return { context };

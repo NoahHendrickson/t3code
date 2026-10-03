@@ -2,7 +2,7 @@ import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environ
 import { type EnvironmentId, type ScopedThreadRef, ThreadId } from "@t3tools/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { extractTrailingDesignChanges } from "./designChangeTranscript";
+import { extractTrailingDesignChanges, withDesignChangesTrailing } from "./designChangeTranscript";
 import { forkDesignChanges, useDesignChangeDraftStore } from "./designChangeDraftStore";
 import { useDesignSentPreviews } from "./designSentPreviews";
 import type { DesignChangeRequestPayload } from "./protocol";
@@ -291,5 +291,23 @@ describe("extractTrailingDesignChanges", () => {
     const notTrailing =
       "<design_change_request>\n# body\n</design_change_request>\n\ntrailing text";
     expect(extractTrailingDesignChanges(notTrailing).blocks).toEqual([]);
+  });
+
+  it("stays trailing when legacy context blocks are serialized after the prompt", () => {
+    // A server without inline message context appends its context blocks to the text; the
+    // design run must still be the outermost trailing run for the transcript to find it.
+    const legacy = (promptText: string) =>
+      `${promptText}\n\n<terminal_context>\n- Build line 7:\n  output\n</terminal_context>`;
+    const run = "<design_change_request>\n# body\n</design_change_request>";
+    const serialized = withDesignChangesTrailing(`See @build:7\n\n${run}`, legacy);
+    expect(serialized).toBe(`${legacy("See @build:7")}\n\n${run}`);
+    expect(extractTrailingDesignChanges(serialized)).toEqual({
+      promptText: legacy("See @build:7"),
+      blocks: ["# body"],
+    });
+    // A design-only send has no prose to serialize; the run is the whole message.
+    expect(withDesignChangesTrailing(run, () => "")).toBe(run);
+    // Nothing pending: the serializer sees the text untouched.
+    expect(withDesignChangesTrailing("plain", legacy)).toBe(legacy("plain"));
   });
 });

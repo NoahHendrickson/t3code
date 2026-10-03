@@ -1939,6 +1939,9 @@
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
   shadows: []
   watch:
+    # Fenced knip ignore: upstream's SidebarThreadHeader has no caller behind
+    # the fork chrome rows.
+    - knip.jsonc
     - apps/desktop/src/window/DesktopWindow.ts
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx

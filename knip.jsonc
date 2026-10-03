@@ -63,6 +63,12 @@
       // they are entries; the custom/ files they import follow from there.
       "entry": ["scripts/warm-dep-cache.ts", "src/overrides/**/*.{ts,tsx}"],
       // fork:end fork-overrides
+      // fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+      // The fork's chrome rows replace upstream's sidebar header (#13029), so
+      // nothing imports it here; it stays in the tree so the next sync merges
+      // cleanly instead of re-resolving a deleted file.
+      "ignore": ["src/components/sidebar/SidebarThreadHeader.tsx"],
+      // fork:end fork-sidebar-chrome
       // UI component modules are copied and adapted as cohesive sets. Keep their
       // named subcomponents even before they have callers; the file audit still
       // reports an entire component module when nothing imports it.

@@ -93,7 +93,9 @@ describe("DesktopPreReadyPlatform", () => {
         let desktopEntry = previousEntry;
         let iconInstalled = false;
         copyFileSyncMock.mockImplementation((_source: string, destination: string) => {
-          iconInstalled = destination === "/xdg/icons/com.t3tools.T3Code.desktop.png";
+          // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+          iconInstalled = destination === "/xdg/icons/com.t3tools.T3Code.Fork.desktop.png";
+          // fork:end fork-app-identity
         });
         setDesktopNameMock.mockImplementation((name: string) => {
           desktopName = name;
@@ -125,10 +127,12 @@ describe("DesktopPreReadyPlatform", () => {
             assert.include(identity.desktopEntry ?? "", "Name=no3y Code (Alpha)");
             // fork:end fork-app-identity
             assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/t3code;");
+            // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
             assert.include(
               identity.desktopEntry ?? "",
-              "Icon=/xdg/icons/com.t3tools.T3Code.desktop.png",
+              "Icon=/xdg/icons/com.t3tools.T3Code.Fork.desktop.png",
             );
+            // fork:end fork-app-identity
             assert.isTrue(identity.iconInstalled);
           }),
         ).pipe(Effect.ensuring(Effect.sync(() => vi.unstubAllEnvs())));

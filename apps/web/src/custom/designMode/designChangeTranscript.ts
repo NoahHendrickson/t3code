@@ -28,6 +28,23 @@ export function extractTrailingDesignChanges(prompt: string): ExtractedDesignCha
   return { promptText: prompt.slice(0, match.index).trimEnd(), blocks };
 }
 
+/**
+ * Servers without inline message context get their context records serialized as trailing
+ * blocks (`serializeLegacyContextMessage`), which would land AFTER the design run and hide it
+ * from the extractor above. Serialize the prompt without the run, then put the run back last.
+ */
+export function withDesignChangesTrailing(
+  text: string,
+  serialize: (promptText: string) => string,
+): string {
+  const { promptText, blocks } = extractTrailingDesignChanges(text);
+  if (blocks.length === 0) return serialize(text);
+  // promptText is a trimmed prefix of text, so the rest is the raw wrapped run.
+  const run = text.slice(promptText.length).trimStart();
+  const serialized = serialize(promptText);
+  return serialized.length > 0 ? `${serialized}\n\n${run}` : run;
+}
+
 export interface DesignChangeBlockSummary {
   readonly elementCount: number;
   /** The first element header ("<button> — src/App.tsx:42:5"), or null. */
