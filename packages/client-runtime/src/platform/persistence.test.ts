@@ -30,26 +30,38 @@ const sampleDecoded = <S extends Schema.Constraint>(schema: S) =>
 const encodeSnapshot = Schema.encodeEffect(OrchestrationShellSnapshot);
 
 describe("encodeShellSnapshotForCache", () => {
-  it.effect("matches the Schema encoding of a generated snapshot", () =>
-    Effect.gen(function* () {
-      const threads = yield* sampleDecoded(OrchestrationThreadShell);
-      const projects = yield* sampleDecoded(OrchestrationProjectShell);
-      const snapshot: OrchestrationShellSnapshot = {
-        snapshotSequence: 1,
-        // The generator rarely makes monogram icons, and they are the one
-        // project field whose encoding differs from the decoded value.
-        projects: projects.map((project, index) =>
-          index % 2 === 0
-            ? { ...project, projectIcon: { kind: "monogram", text: "T3", color: "blue" } }
-            : project,
-        ),
-        threads,
-        updatedAt: "2026-09-25T00:00:00.000Z",
-      };
+  // fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+  // Two 1,000-sample arbitraries at size 30, each encoded and decoded back,
+  // run ~0.5 s on a laptop and past this package's default 5 s on
+  // GitHub-hosted runners with the other packages' suites alongside (CI
+  // timed out twice in a row on the same commit). Deterministic work, so a
+  // per-test raise rather than a smaller sample.
+  it.effect(
+    "matches the Schema encoding of a generated snapshot",
+    () =>
+      Effect.gen(function* () {
+        const threads = yield* sampleDecoded(OrchestrationThreadShell);
+        const projects = yield* sampleDecoded(OrchestrationProjectShell);
+        const snapshot: OrchestrationShellSnapshot = {
+          snapshotSequence: 1,
+          // The generator rarely makes monogram icons, and they are the one
+          // project field whose encoding differs from the decoded value.
+          projects: projects.map((project, index) =>
+            index % 2 === 0
+              ? { ...project, projectIcon: { kind: "monogram", text: "T3", color: "blue" } }
+              : project,
+          ),
+          threads,
+          updatedAt: "2026-09-25T00:00:00.000Z",
+        };
 
-      expect(threads.length).toBeGreaterThan(0);
-      expect(projects.length).toBeGreaterThan(0);
-      expect(yield* encodeShellSnapshotForCache(snapshot)).toEqual(yield* encodeSnapshot(snapshot));
-    }),
+        expect(threads.length).toBeGreaterThan(0);
+        expect(projects.length).toBeGreaterThan(0);
+        expect(yield* encodeShellSnapshotForCache(snapshot)).toEqual(
+          yield* encodeSnapshot(snapshot),
+        );
+      }),
+    60_000,
   );
+  // fork:end ci-runners
 });
