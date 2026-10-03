@@ -222,6 +222,10 @@ export const forkDesignChanges = {
    * later knows the thread's projected turn covers this send. `messageId` is the same
    * message's id, the transcript chip's correlation key (designSentPreviews.ts).
    *
+   * `sentThreadRef` is the thread the request actually rode, when that is not the one the
+   * pills were keyed under: a multi-model draft starts fresh threads and never gets a turn
+   * of its own, so a record keyed on the draft could never resolve.
+   *
    * The drafts themselves stay applied in the guest. They are the user's, and the tool never
    * commits them; what changes is that the panel now has grounds to ask about them.
    */
@@ -230,8 +234,9 @@ export const forkDesignChanges = {
     sent: readonly PendingDesignChange[],
     sentAt: string,
     messageId: string,
+    sentThreadRef: ScopedThreadRef = threadRef,
   ): void {
-    const threadKey = scopedThreadKey(threadRef);
+    const threadKey = scopedThreadKey(sentThreadRef);
     for (const runtimeTabId of new Set(sent.map((entry) => entry.runtimeTabId))) {
       useDesignSentPreviews.getState().markSent(runtimeTabId, threadKey, sentAt, messageId);
     }

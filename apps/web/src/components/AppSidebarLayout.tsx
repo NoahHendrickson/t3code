@@ -59,11 +59,11 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
    A 28px trigger starting at x=80 centers its 16px glyph at x=94, clear of
-   the native traffic-light group. Upstream reads this from
-   --desktop-window-controls-inset, which its preload sets to 90 native points
-   divided by the zoom factor; the fork keeps its own 80px literal until that
-   preload emits the fork's figure. */
-const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "80px";
+   the native traffic-light group. Upstream's preload sets
+   --desktop-window-controls-inset to 90 native points divided by the zoom
+   factor, since the native buttons do not zoom; 8/9 of it is the fork's 80
+   points at any zoom (90px, so 80px, where the preload has not run). */
+const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "calc(var(--desktop-window-controls-inset, 90px) * 8 / 9)";
 /* fork:end fork-sidebar-chrome */
 
 function subscribeToViewportWidth(onChange: () => void): () => void {

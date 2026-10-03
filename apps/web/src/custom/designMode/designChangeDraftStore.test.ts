@@ -254,6 +254,20 @@ describe("designChangeDraftStore", () => {
     expect(pendingFor(THREAD)).toHaveLength(1);
   });
 
+  it("markSent records the thread the request rode while clearing the draft's pills", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload());
+    const taken = forkDesignChanges.takeForSend(THREAD, "");
+    const started = { ...THREAD, threadId: ThreadId.make("thread-started") };
+
+    forkDesignChanges.markSent(THREAD, taken.sent, SENT_AT, "msg-1", started);
+
+    expect(useDesignSentPreviews.getState().byTabId["tab-a"]?.threadKey).toBe(
+      scopedThreadKey(started),
+    );
+    expect(pendingFor(THREAD)).toHaveLength(0);
+  });
+
   it("drops the thread's whole entry once a targeted clear empties it", () => {
     const { add } = useDesignChangeDraftStore.getState();
     add(THREAD, "tab-a", payload());

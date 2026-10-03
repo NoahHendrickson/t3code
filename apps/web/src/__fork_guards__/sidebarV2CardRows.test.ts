@@ -128,10 +128,15 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // span so the panel's --text-xs → 13px remap cannot grow it. The slim
     // shelves keep upstream's text-xs.
     expect(sidebarV2).toContain("<ThreadPullRequestBadgeControl");
-    expect(sidebarV2).toContain(
-      'variant === "card" &&\n                "flex items-center gap-1 [&>span]:text-[0.75rem] [&>span]:leading-4"',
+    expect(sidebarV2).toMatch(
+      /variant === "card" &&\n(?:\s*\/\/ oxlint-disable-next-line [^\n]*\n)?\s*"flex items-center gap-1 \[&>span\]:text-\[0\.75rem\] \[&>span\]:leading-4"/u,
     );
     expect(sidebarV2).not.toContain("{prBadge || hasHoverActions");
+    // Settled slim rows mute the badge's state colour at rest; upstream's own
+    // muting sat on a row surface the fork replaces.
+    expect(sidebarV2).toContain(
+      '"not-group-hover/v2-row:not-group-focus-within/v2-row:[&>span]:text-secondary-label"',
+    );
   });
 
   it("keeps upstream's terminal-status glyph on the card's repo line", () => {

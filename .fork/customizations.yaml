@@ -420,6 +420,9 @@
     # packaged Linux fork release.
     - apps/desktop/src/app/DesktopLinuxUrlHandler.ts
     - apps/desktop/src/backend/DesktopBackendConfiguration.ts
+    # The packaged V8 compile cache lives outside $HOME on macOS/Windows, so
+    # launch-isolation-check.sh cannot see it sharing upstream's directory.
+    - apps/desktop/src/compileCache.ts
     - apps/desktop/scripts/electron-launcher.mjs
     # Fenced icon-path assertions matching the launcher's fork art.
     - apps/desktop/scripts/electron-launcher.test.mjs

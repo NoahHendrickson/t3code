@@ -1344,6 +1344,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               // has to hold whether or not a banner is suppressing the top
               // fade. The fork rule owns the whole mask and folds the top layer
               // in when the class above is present.
+              // oxlint-disable-next-line shadcn/no-unknown-classes -- declared in theme.custom.css
               "fork-timeline-cutoff",
               /* fork:end fork-composer-shell */
             )}
@@ -4562,8 +4563,9 @@ const AgentSpawnRow = memo(function AgentSpawnRow(props: {
   }
   /* fork:begin fork-subagent-spawn-card — see .fork/customizations.yaml#fork-subagent-spawn-card
      The fork card renders the member list itself, so upstream's per-row
-     expansion state (expandedSpawnEntryIds / onToggleSpawnRow) goes unused
-     here; the context still carries it for upstream's AgentSpawnMemberRow. */
+     expansion state (expandedSpawnEntryIds / onToggleSpawnRow) goes unused.
+     Upstream's AgentSpawnMemberRow and AGENT_MEMBER_STATUS_LABEL below lost
+     their only caller with it; they stay, unedited, so syncs merge cleanly. */
   void expandedSpawnEntryIds;
   void onToggleSpawnRow;
   return (

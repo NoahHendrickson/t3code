@@ -21,7 +21,11 @@ try {
       process.platform === "linux"
         ? process.env.XDG_CACHE_HOME || NodePath.join(NodeOS.homedir(), ".cache")
         : NodeOS.tmpdir();
-    NodeModule.enableCompileCache(NodePath.join(cacheRoot, "t3code", "compile-cache"));
+    NodeModule.enableCompileCache(
+      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
+      NodePath.join(cacheRoot, "t3code-fork", "compile-cache"),
+      /* fork:end fork-app-identity */
+    );
   }
 } catch {
   // The cache is only a speedup. Never let it stop the app from starting.

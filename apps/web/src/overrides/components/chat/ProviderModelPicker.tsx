@@ -259,6 +259,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             aria-label={props.triggerAriaLabel ?? allModelNames}
             size={size}
             data-chat-provider-model-picker="true"
+            // Effort lives in this menu, so Mod+Shift+E opens it like upstream's TraitsPicker.
+            data-composer-shortcut={
+              props.isComposerOwned && props.traits ? "composer.effort" : undefined
+            }
             className={cn(
               "min-w-0 justify-between whitespace-nowrap",
               props.compact ? "max-w-42 shrink-0" : "max-w-48 shrink sm:max-w-56",
@@ -359,7 +363,9 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                   size === "xs" && "@max-[640px]/composer-surface:hidden",
                 )}
               />
-              <span className="sr-only">Fast mode on</span>
+              <span className="sr-only">
+                {props.traits.speedIcon === "ultrafast" ? "Ultrafast mode on" : "Fast mode on"}
+              </span>
             </>
           ) : null}
           {props.traits?.label ? (

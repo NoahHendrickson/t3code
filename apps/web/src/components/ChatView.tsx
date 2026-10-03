@@ -6393,13 +6393,10 @@ export default function ChatView(props: ChatViewProps) {
     );
   }, [
     activeBackgroundLiveness,
-    activeRightPanelSurface?.kind,
     activeThread,
-    addAgentsSurface,
     agentPanelModel.liveCount,
     handleStopBackgroundWork,
     isStoppingBackgroundWork,
-    rightPanelOpen,
   ]);
   /* fork:end fork-composer-shell */
   // A woken thread announces itself in the open view, not just the sidebar
@@ -7781,6 +7778,11 @@ export default function ChatView(props: ChatViewProps) {
     if (
       !directAnnotation &&
       activeThreadKey &&
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+         The queue carries no design-change pills, so a send that has them goes straight
+         out with the blocks appended, as it did before the queue existed. */
+      forkDesignChanges.count({ environmentId, threadId: activeThread.id }) === 0 &&
+      /* fork:end fork-design-mode */
       (queueStillSending ||
         (phase === "running" &&
           (settings.followUpBehavior === "queue") !== (submissionIntent === "alternate")))
@@ -8004,10 +8006,14 @@ export default function ChatView(props: ChatViewProps) {
           });
           resolveDockStarted?.();
         },
+        /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+           Same clock as the hero slide above: the fork's fold rides 400ms on
+           every viewport, so the mobile morph cannot wait on panel motion. */
         {
-          active: panelAnimationsActive,
-          durationMs: panelAnimationDurationMs,
+          active: !prefersReducedMotion,
+          durationMs: DRAFT_HERO_TRANSITION_DURATION_MS,
         },
+        /* fork:end fork-new-agent-draft */
       );
       void dockTransition.catch(() => resolveDockStarted?.());
       await dockStarted;
@@ -8059,7 +8065,10 @@ export default function ChatView(props: ChatViewProps) {
       let canRestoreDraft = () => false;
       let startedCount = 0;
       /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-      let forkFirstStartedMessageId: string | null = null;
+      // A holder, not a let: it is written inside the per-target closures.
+      const forkFirstStarted: { current: { messageId: string; threadId: ThreadId } | null } = {
+        current: null,
+      };
       /* fork:end fork-design-mode */
       try {
         const attachments = await turnAttachmentsPromise;
@@ -8170,7 +8179,7 @@ export default function ChatView(props: ChatViewProps) {
               }
               startedCount += 1;
               /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-              forkFirstStartedMessageId ??= targetMessageId;
+              forkFirstStarted.current ??= { messageId: targetMessageId, threadId: targetThreadId };
               /* fork:end fork-design-mode */
             } catch (error) {
               if (requestMayHaveStarted && !uncertainMultipleSubmissionsRef.current.has(retryKey)) {
@@ -8241,20 +8250,23 @@ export default function ChatView(props: ChatViewProps) {
               title: `Started ${startedCount} ${startedCount === 1 ? "thread" : "threads"} in background`,
             }),
           );
-          /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
-             The design request rode every started thread, so the pills clear as they do
-             for a single send (see markSent below); a failed target restores the draft
-             text, not the pills, which the next send reads again. The sent record keys
-             on the first started message: the draft's own transcript never shows it, but
-             the panel's resolution prompt only needs the thread ref and the moment. */
+        }
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+           The pills clear only once every target carried them: a failed target
+           restores the draft text without the pills, so they have to stay for the
+           retry to send the design request again. The sent record keys on the first
+           started thread and message, since the draft itself never gets a turn. */
+        const forkStarted = forkFirstStarted.current;
+        if (forkStarted !== null && failedSelections.length === 0) {
           forkDesignChanges.markSent(
             forkDesignChangeRef,
             forkDesignSend.sent,
             messageCreatedAt,
-            forkFirstStartedMessageId ?? messageIdForSend,
+            forkStarted.messageId,
+            { environmentId, threadId: forkStarted.threadId },
           );
-          /* fork:end fork-design-mode */
         }
+        /* fork:end fork-design-mode */
         if (failedSelections.length === 0 && turnUsesAttachmentUploads) {
           releaseDraftAttachments(composerAttachmentsSnapshot);
         }
@@ -9666,6 +9678,142 @@ export default function ChatView(props: ChatViewProps) {
     pendingSidebarFileDrops,
   ]);
 
+  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+  // A draft chooses (or changes) its project from the first chip in the
+  // composer's context row. Memoised for the same reason as the strip below:
+  // it is handed to BranchToolbar as a prop and to ChatComposer inside the
+  // memoised strip. A started thread's project is pinned, so it renders none.
+  const draftProjectPill = useMemo(
+    () =>
+      isLocalDraftThread ? (
+        <DraftProjectPill
+          draftId={draftId}
+          activeProjectRef={activeProjectRef}
+          activeProjectTitle={activeProject?.title ?? null}
+        />
+      ) : null,
+    [activeProject?.title, activeProjectRef, draftId, isLocalDraftThread],
+  );
+  /* fork:end fork-new-agent-draft */
+  /**
+   * The worktree/branch strip, as an element rather than a render site.
+   *
+   * This is memoised because it has to be, not as a micro-optimisation.
+   * `ChatComposer` is `memo`'d, and every other prop it receives is a stable
+   * reference or a primitive — so an inline `<BranchToolbar/>` here would be the
+   * single new object identity per render, defeating that memo entirely on a
+   * ~2900-line component that re-renders throughout a streaming turn.
+   */
+  const composerContextStrip = useMemo(() => {
+    if (!activeThread) {
+      return null;
+    }
+    if (mountComposerContextStrip) {
+      const toolbar = (
+        <BranchToolbar
+          forceNewWorktree={multipleModelSelections !== null}
+          ref={branchToolbarRef}
+          environmentId={activeThread.environmentId}
+          threadId={activeThread.id}
+          showGitControls={isGitRepo}
+          {...(routeKind === "draft" && draftId ? { draftId } : {})}
+          onEnvModeChange={onEnvModeChange}
+          startFromOrigin={startFromOrigin}
+          onStartFromOriginChange={onStartFromOriginChange}
+          envMode={envMode}
+          {...(canOverrideServerThreadEnvMode
+            ? {
+                activeThreadBranchOverride: activeThreadBranch,
+                onActiveThreadBranchOverrideChange: setPendingServerThreadBranch,
+              }
+            : {})}
+          envLocked={envLocked}
+          onComposerFocusRequest={scheduleComposerFocus}
+          {...(canCheckoutPullRequestIntoThread
+            ? { onCheckoutPullRequestRequest: openPullRequestDialog }
+            : {})}
+          {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
+          autoEnvironmentLabel={autoEnvironmentLabel}
+          onAutoEnvironment={
+            draftId &&
+            !envLocked &&
+            hasMultipleEnvironments &&
+            loadBalancingSettings.loadBalancingEnabled
+              ? onAutoEnvironment
+              : undefined
+          }
+          availableEnvironments={logicalProjectEnvironments}
+          {...(hostsRestingComposerControls
+            ? { composerControlsHostRef: setRestingComposerControlsHost }
+            : {})}
+          contextStripVisible={showComposerContextStrip}
+          {...(composerLivenessPill ? { trailing: composerLivenessPill } : {})}
+          /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
+          // Only into a visible strip: the hidden measuring strip below hands
+          // the chip to the fallback instead, so it never renders twice.
+          {...(draftProjectPill && showComposerContextStrip ? { leading: draftProjectPill } : {})}
+          /* fork:end fork-new-agent-draft */
+        />
+      );
+      if (showComposerContextStrip) {
+        return toolbar;
+      }
+      // Mounted but hidden (upstream's off-flow measuring strip): it takes no
+      // space, so the fallback strip still carries the chips on its own.
+      return (
+        <>
+          {toolbar}
+          {renderComposerContextStripFallback({
+            leading: draftProjectPill,
+            trailing: composerLivenessPill,
+          })}
+        </>
+      );
+    }
+    return renderComposerContextStripFallback({
+      leading: draftProjectPill,
+      trailing: composerLivenessPill,
+    });
+  }, [
+    draftProjectPill,
+    mountComposerContextStrip,
+    showComposerContextStrip,
+    activeThread,
+    isGitRepo,
+    routeKind,
+    draftId,
+    onEnvModeChange,
+    startFromOrigin,
+    onStartFromOriginChange,
+    canOverrideServerThreadEnvMode,
+    envMode,
+    activeThreadBranch,
+    setPendingServerThreadBranch,
+    envLocked,
+    scheduleComposerFocus,
+    canCheckoutPullRequestIntoThread,
+    openPullRequestDialog,
+    hasMultipleEnvironments,
+    onEnvironmentChange,
+    autoEnvironmentLabel,
+    loadBalancingSettings.loadBalancingEnabled,
+    onAutoEnvironment,
+    logicalProjectEnvironments,
+    hostsRestingComposerControls,
+    setRestingComposerControlsHost,
+    composerLivenessPill,
+    multipleModelSelections,
+  ]);
+  /* fork:end fork-composer-shell */
+
+  /* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
+  // Upstream's column handlers below own attaching; this window-level guard
+  // only swallows file drops they (or any nested target) did not claim, so a
+  // missed drop over the sidebar or header cannot navigate the app away.
+  useStrayFileDropGuard();
+  /* fork:end fork-chat-file-drop */
+
   // Empty state: no active thread
   if (!activeThread) {
     return <NoActiveThreadState />;
@@ -9886,146 +10034,11 @@ export default function ChatView(props: ChatViewProps) {
     ) : null
   ) : null;
 
-  /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
-  // A draft chooses (or changes) its project from the first chip in the
-  // composer's context row. Memoised for the same reason as the strip below:
-  // it is handed to BranchToolbar as a prop and to ChatComposer inside the
-  // memoised strip. A started thread's project is pinned, so it renders none.
-  const draftProjectPill = useMemo(
-    () =>
-      isLocalDraftThread ? (
-        <DraftProjectPill
-          draftId={draftId}
-          activeProjectRef={activeProjectRef}
-          activeProjectTitle={activeProject?.title ?? null}
-        />
-      ) : null,
-    [activeProject?.title, activeProjectRef, draftId, isLocalDraftThread],
-  );
-  /* fork:end fork-new-agent-draft */
-  /**
-   * The worktree/branch strip, as an element rather than a render site.
-   *
-   * This is memoised because it has to be, not as a micro-optimisation.
-   * `ChatComposer` is `memo`'d, and every other prop it receives is a stable
-   * reference or a primitive — so an inline `<BranchToolbar/>` here would be the
-   * single new object identity per render, defeating that memo entirely on a
-   * ~2900-line component that re-renders throughout a streaming turn.
-   */
-  const composerContextStrip = useMemo(() => {
-    if (!activeThread) {
-      return null;
-    }
-    if (mountComposerContextStrip) {
-      const toolbar = (
-        <BranchToolbar
-          forceNewWorktree={multipleModelSelections !== null}
-          ref={branchToolbarRef}
-          environmentId={activeThread.environmentId}
-          threadId={activeThread.id}
-          showGitControls={isGitRepo}
-          {...(routeKind === "draft" && draftId ? { draftId } : {})}
-          onEnvModeChange={onEnvModeChange}
-          startFromOrigin={startFromOrigin}
-          onStartFromOriginChange={onStartFromOriginChange}
-          envMode={envMode}
-          {...(canOverrideServerThreadEnvMode
-            ? {
-                activeThreadBranchOverride: activeThreadBranch,
-                onActiveThreadBranchOverrideChange: setPendingServerThreadBranch,
-              }
-            : {})}
-          envLocked={envLocked}
-          onComposerFocusRequest={scheduleComposerFocus}
-          {...(canCheckoutPullRequestIntoThread
-            ? { onCheckoutPullRequestRequest: openPullRequestDialog }
-            : {})}
-          {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
-          autoEnvironmentLabel={autoEnvironmentLabel}
-          onAutoEnvironment={
-            draftId &&
-            !envLocked &&
-            hasMultipleEnvironments &&
-            loadBalancingSettings.loadBalancingEnabled
-              ? onAutoEnvironment
-              : undefined
-          }
-          availableEnvironments={logicalProjectEnvironments}
-          {...(hostsRestingComposerControls
-            ? { composerControlsHostRef: setRestingComposerControlsHost }
-            : {})}
-          contextStripVisible={showComposerContextStrip}
-          {...(composerLivenessPill ? { trailing: composerLivenessPill } : {})}
-          /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
-          // Only into a visible strip: the hidden measuring strip below hands
-          // the chip to the fallback instead, so it never renders twice.
-          {...(draftProjectPill && showComposerContextStrip ? { leading: draftProjectPill } : {})}
-          /* fork:end fork-new-agent-draft */
-        />
-      );
-      if (showComposerContextStrip) {
-        return toolbar;
-      }
-      // Mounted but hidden (upstream's off-flow measuring strip): it takes no
-      // space, so the fallback strip still carries the chips on its own.
-      return (
-        <>
-          {toolbar}
-          {renderComposerContextStripFallback({
-            leading: draftProjectPill,
-            trailing: composerLivenessPill,
-          })}
-        </>
-      );
-    }
-    return renderComposerContextStripFallback({
-      leading: draftProjectPill,
-      trailing: composerLivenessPill,
-    });
-  }, [
-    draftProjectPill,
-    mountComposerContextStrip,
-    showComposerContextStrip,
-    activeThread,
-    isGitRepo,
-    routeKind,
-    draftId,
-    onEnvModeChange,
-    startFromOrigin,
-    onStartFromOriginChange,
-    canOverrideServerThreadEnvMode,
-    envMode,
-    activeThreadBranch,
-    setPendingServerThreadBranch,
-    envLocked,
-    scheduleComposerFocus,
-    canCheckoutPullRequestIntoThread,
-    openPullRequestDialog,
-    hasMultipleEnvironments,
-    onEnvironmentChange,
-    autoEnvironmentLabel,
-    loadBalancingSettings.loadBalancingEnabled,
-    onAutoEnvironment,
-    logicalProjectEnvironments,
-    hostsRestingComposerControls,
-    setRestingComposerControlsHost,
-    composerLivenessPill,
-    multipleModelSelections,
-  ]);
-  /* fork:end fork-composer-shell */
-
   const workspaceFileDropHandlers = makeWorkspaceFileDropHandlers({
     setDragActive: setIsWorkspaceFileDragActive,
     addFiles: (files) => composerRef.current?.addDroppedFiles(files),
     addFolders: (folders) => composerRef.current?.addDroppedFolders(folders),
   });
-  /* fork:begin fork-chat-file-drop — see .fork/customizations.yaml#fork-chat-file-drop */
-  // Upstream's column handlers above own attaching; this window-level guard
-  // only swallows file drops they (or any nested target) did not claim, so a
-  // missed drop over the sidebar or header cannot navigate the app away.
-  useStrayFileDropGuard();
-  /* fork:end fork-chat-file-drop */
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background">

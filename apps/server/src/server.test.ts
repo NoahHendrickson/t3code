@@ -12159,6 +12159,104 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       assert.equal(created?.branch, "feature/from-phone");
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
+  it.effect(
+    "fills in the checked-out branch when a worktree request falls back to the checkout",
+    () =>
+      Effect.gen(function* () {
+        const dispatchedCommands: Array<OrchestrationCommand> = [];
+        yield* buildAppUnderTest({
+          layers: {
+            vcsDriver: {
+              isInsideWorkTree: () => Effect.succeed(true),
+            },
+            gitVcsDriver: {
+              // The base has no commit, so no worktree is made.
+              execute: () =>
+                Effect.succeed({
+                  ...SUCCESSFUL_GIT_EXECUTION,
+                  exitCode: ChildProcessSpawner.ExitCode(128),
+                  stderr: "fatal: Needed a single revision",
+                }),
+              createWorktree: () => Effect.die(new Error("createWorktree must not run")),
+            },
+            gitManager: {
+              localStatus: () =>
+                Effect.succeed({
+                  isRepo: true,
+                  hasPrimaryRemote: true,
+                  isDefaultRef: false,
+                  refName: "feature/checkout",
+                  hasWorkingTreeChanges: false,
+                  workingTree: { files: [], insertions: 0, deletions: 0 },
+                }),
+            },
+            projectionSnapshotQuery: {
+              getProjectShellById: () =>
+                Effect.succeed(
+                  Option.some({
+                    id: defaultProjectId,
+                    title: "Project",
+                    workspaceRoot: "/tmp/project",
+                    defaultModelSelection: null,
+                    scripts: [],
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    updatedAt: "2026-01-01T00:00:00.000Z",
+                  }),
+                ),
+            },
+            orchestrationEngine: {
+              dispatch: (command) =>
+                Effect.sync(() => {
+                  dispatchedCommands.push(command);
+                  return { sequence: dispatchedCommands.length };
+                }),
+              readEvents: () => Stream.empty,
+            },
+          },
+        });
+
+        const createdAt = "2026-01-01T00:00:00.000Z";
+        const wsUrl = yield* getWsServerUrl("/ws");
+        yield* Effect.scoped(
+          withWsRpcClient(wsUrl, (client) =>
+            client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
+              type: "thread.turn.start",
+              commandId: CommandId.make("cmd-bootstrap-fallback-branch"),
+              threadId: ThreadId.make("thread-bootstrap-fallback-branch"),
+              message: {
+                messageId: MessageId.make("msg-bootstrap-fallback-branch"),
+                role: "user",
+                text: "hello",
+                attachments: [],
+              },
+              modelSelection: defaultModelSelection,
+              runtimeMode: "full-access",
+              interactionMode: "default",
+              bootstrap: {
+                createThread: {
+                  projectId: defaultProjectId,
+                  title: "Bootstrap Thread",
+                  modelSelection: defaultModelSelection,
+                  runtimeMode: "full-access",
+                  interactionMode: "default",
+                  branch: null,
+                  worktreePath: null,
+                  createdAt,
+                },
+                prepareWorktree: {
+                  projectCwd: "/tmp/project",
+                  baseBranch: "main",
+                },
+              },
+              createdAt,
+            }),
+          ),
+        );
+
+        const created = dispatchedCommands.find((command) => command.type === "thread.create");
+        assert.equal(created?.branch, "feature/checkout");
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
   /* fork:end server-local-thread-branch */
 
   it.effect.each([

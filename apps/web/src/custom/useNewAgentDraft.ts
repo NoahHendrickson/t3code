@@ -10,12 +10,13 @@
  * workspace context upstream's new-thread handler would have resolved had
  * the project been known up front, and the model selection the draft hero
  * already re-seeds on a project change. The hooks exist to read the router
- * and the primary server's settings; the draft-store writes themselves are
- * the same calls upstream makes.
+ * and the project's environment settings; the draft-store writes themselves
+ * are the same calls upstream makes.
  */
 import { useAtomValue } from "@effect/atom-react";
 import {
   DEFAULT_RUNTIME_MODE,
+  DEFAULT_SERVER_SETTINGS,
   type ScopedProjectRef,
   type ServerSettings,
 } from "@t3tools/contracts";
@@ -33,8 +34,7 @@ import { newDraftId, newThreadId } from "../lib/utils";
 import type { SidebarProjectGroupMember, SidebarProjectSnapshot } from "../sidebarProjectGrouping";
 import { readThreadShell } from "../state/entities";
 import { usePrimaryEnvironmentId } from "../state/environments";
-import { appAtomRegistry } from "../rpc/atomRegistry";
-import { primaryServerSettingsAtom, serverEnvironment } from "../state/server";
+import { environmentServerConfigsAtom } from "../state/server";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY, newAgentDraftProjectRef } from "./newAgentDraft";
 
@@ -200,9 +200,11 @@ export function useDraftProjectAssignmentPending(draftId: DraftId | null): strin
     project's checkout). createdAt is restamped to now so the sidebar card
     leads that project's active list the way a plus-icon draft does, instead
     of keeping the unassigned draft's older stamp and sinking under newer
-    threads. Model selection: an explicit pick stands, and a seeded one —
-    the model carried from the thread the draft was started from — is
-    replaced only by the project's own default, when it has one. */
+    threads. Permissions reset to the project's default the same way.
+    Model selection: an explicit pick stands, and a seeded one — the model
+    carried from the thread the draft was started from — is replaced only by
+    the project's (or its environment's) default, when it has one.
+    `settings` are the project's own environment's. */
 export async function assignDraftProject(
   draftId: DraftId,
   entry: DraftProjectTarget,
@@ -216,7 +218,7 @@ export async function assignDraftProject(
     environmentId: project.environmentId,
     projectId: project.id,
   };
-  let envMode;
+  let projectSettings;
   let superseded = false;
   try {
     // Same resolver and priority order as upstream's useHandleNewThread: the
@@ -226,8 +228,7 @@ export async function assignDraftProject(
     const projectFile = consultProjectFile
       ? await readT3ProjectFile(project.environmentId, project.workspaceRoot)
       : null;
-    envMode = resolveProjectSettings(settings, project.id, project, projectFile).settings
-      .defaultThreadEnvMode;
+    projectSettings = resolveProjectSettings(settings, project.id, project, projectFile).settings;
   } finally {
     // The await yielded: a later pick may have superseded this one, in which
     // case the in-flight entry is that pick's and stays until it settles.
@@ -244,6 +245,7 @@ export async function assignDraftProject(
   // it would resurrect it.
   const session = getDraftSession(draftId);
   if (!session || session.promotedTo != null) return;
+  const envMode = projectSettings.defaultThreadEnvMode;
   setLogicalProjectDraftThreadId(entry.group.projectKey, projectRef, draftId, {
     branch: null,
     worktreePath: null,
@@ -256,30 +258,33 @@ export async function assignDraftProject(
     createdAt: new Date().toISOString(),
     startFromOrigin: resolveNewDraftStartFromOrigin({
       envMode,
-      newWorktreesStartFromOrigin: settings.newWorktreesStartFromOrigin,
+      newWorktreesStartFromOrigin: projectSettings.newWorktreesStartFromOrigin,
     }),
+    runtimeMode: projectSettings.defaultRuntimeMode,
   });
-  // Same fallback as upstream's DraftHeroHeadline: a project without its own
-  // default model inherits the default of the environment it lives in.
-  const defaultModelSelection =
-    project.defaultModelSelection ??
-    appAtomRegistry.get(serverEnvironment.configValueAtom(project.environmentId))?.settings
-      .defaultModelSelection;
+  // The resolved value already falls back to the environment's default when
+  // the project has none of its own.
+  const defaultModelSelection = projectSettings.defaultModelSelection;
   if (defaultModelSelection && !hasExplicitComposerModelSelection(getComposerDraft(draftId))) {
     setModelSelection(draftId, defaultModelSelection, { replaceOptions: true });
   }
 }
 
-/** `assignDraftProject` with the primary server's settings read in, for the
-    pill. New-thread defaults are a user preference edited on the primary
-    environment only, the same reading upstream's handler makes. */
+/** `assignDraftProject` with the target project's environment settings read
+    in, for the pill — the same reading upstream's handler makes. */
 export function useAssignDraftProject(): (
   draftId: DraftId,
   entry: DraftProjectTarget,
 ) => Promise<void> {
-  const primaryServerSettings = useAtomValue(primaryServerSettingsAtom);
+  const environmentServerConfigs = useAtomValue(environmentServerConfigsAtom);
   return useCallback(
-    (draftId, entry) => assignDraftProject(draftId, entry, primaryServerSettings),
-    [primaryServerSettings],
+    (draftId, entry) =>
+      assignDraftProject(
+        draftId,
+        entry,
+        environmentServerConfigs.get(entry.targetProject.environmentId)?.settings ??
+          DEFAULT_SERVER_SETTINGS,
+      ),
+    [environmentServerConfigs],
   );
 }

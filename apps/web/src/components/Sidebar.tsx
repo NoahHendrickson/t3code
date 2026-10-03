@@ -1301,7 +1301,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             className={cn(
               "shrink-0",
               variant === "card" &&
+                // oxlint-disable-next-line shadcn/no-restyle, shadcn/no-arbitrary-values -- the card's 12px meta
                 "flex items-center gap-1 [&>span]:text-[0.75rem] [&>span]:leading-4",
+              // Settled history mutes its PR state at rest, like the favicon
+              // beside it; hovering or focusing the row brings the color back.
+              variant === "slim" &&
+                variantAction === "unsettle" &&
+                // oxlint-disable-next-line shadcn/no-restyle -- mutes the badge's state colour
+                "not-group-hover/v2-row:not-group-focus-within/v2-row:[&>span]:text-secondary-label",
             )}
             /* fork:end sidebar-v2-card-rows */
           />
@@ -1671,6 +1678,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                       >
                         <span
                           aria-hidden
+                          // oxlint-disable-next-line shadcn/no-arbitrary-values -- the drawn 11/15 duration
                           className="text-[11px] leading-[15px] text-foreground tabular-nums"
                         >
                           <WorkingDuration startedAt={resolveWorkingStartedAt(thread)} />
@@ -3958,6 +3966,7 @@ export default function Sidebar() {
   return (
     <>
       <SidebarChromeHeader isElectron={isElectron} />
+      {/* oxlint-disable-next-line shadcn/no-restyle -- the fork's list owns its own spacing */}
       <SidebarContent className="gap-0">
         {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
             Control rows are fork-owned; only these call sites live here.
@@ -4021,6 +4030,7 @@ export default function Sidebar() {
             applies — see custom/useScrollGutterWidth. */}
         <SidebarGroup
           ref={listScrollGutterRef}
+          // oxlint-disable-next-line shadcn/no-restyle, shadcn/no-arbitrary-values -- measured scroll gutter
           className="min-h-0 flex-1 overflow-y-auto pb-1 [--sidebar-list-pad:--spacing(2)] ps-(--sidebar-list-pad) pe-[calc(var(--sidebar-list-pad)-var(--sidebar-list-gutter,0px))] [scrollbar-gutter:stable]"
         >
           {/* fork:end fork-sidebar-chrome */}

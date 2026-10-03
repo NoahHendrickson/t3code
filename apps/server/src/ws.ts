@@ -1437,7 +1437,10 @@ const makeWsRpcLayer = (
                   projectId: bootstrap.createThread.projectId,
                   branch: bootstrap.createThread.branch,
                   worktreePath: bootstrap.createThread.worktreePath,
-                  preparingWorktree: bootstrap.prepareWorktree !== undefined,
+                  // A worktree names its own branch only when one is actually made; a
+                  // fallback to the project checkout still needs the live branch.
+                  preparingWorktree:
+                    bootstrap.prepareWorktree !== undefined && shouldPrepareWorktree,
                 },
                 {
                   getProjectShellById: projectionSnapshotQuery.getProjectShellById,

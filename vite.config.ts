@@ -373,15 +373,12 @@ export default defineConfig({
         // declares the fork-* classes these rules cannot see. Upstream's
         // `@shadcn/lint` policy therefore does not describe fork-owned files;
         // it stays on everywhere else so upstream-authored code keeps its gate.
+        // Fork lines inside upstream files carry an `oxlint-disable-next-line`
+        // instead, which reportUnusedDisableDirectives keeps honest.
         files: [
           "apps/web/src/custom/**",
           "apps/web/src/overrides/**",
           "apps/web/src/__fork_guards__/**",
-          // Upstream paths whose restyled hunks are fork-owned (the lint-owned
-          // gate's FORK_ADOPTED_FILES, plus the timeline's fenced cutoff class).
-          "apps/web/src/components/Sidebar.tsx",
-          "apps/web/src/components/sidebar/SidebarChrome.tsx",
-          "apps/web/src/components/chat/MessagesTimeline.tsx",
         ],
         rules: {
           "shadcn/no-restyle": "off",

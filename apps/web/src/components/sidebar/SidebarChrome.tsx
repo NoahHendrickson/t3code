@@ -65,9 +65,11 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           The left inset clears native traffic lights on macOS and centres the
           16px glyph at x=94. Everywhere else it reduces to the
           safe-area gutter. */}
+      {/* oxlint-disable-next-line shadcn/no-arbitrary-values -- the inset is a runtime variable, not a scale value */}
       <div className="flex items-center pl-[var(--workspace-controls-left)]">
         <SidebarTrigger
           aria-label="Toggle main sidebar"
+          // oxlint-disable-next-line shadcn/no-restyle -- the fork's chrome restyles the trigger
           className="[:hover,[data-pressed]]:bg-sidebar-row-hover focus-visible:ring-ring focus-visible:ring-offset-sidebar [&_svg]:size-4! [&_svg]:text-sidebar-muted-foreground/80! [&_svg]:opacity-100!"
         />
       </div>
@@ -75,6 +77,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           default header: only the explicit pill mode adds this badge. */}
       {pillLabel ? (
         <Badge
+          // oxlint-disable-next-line shadcn/no-restyle -- the fork's chrome pill
           className="ml-1 hidden rounded-full border-0 bg-sidebar-control-surface px-1.5 text-sidebar-foreground @[15rem]/sidebar-header:inline-flex"
           data-environment-identification="pill"
           size="sm"
@@ -98,6 +101,7 @@ function SidebarBrand() {
        overflow the header. */
     <Link
       aria-label="Go to threads"
+      // oxlint-disable-next-line shadcn/no-unknown-classes -- a theme.custom.css hook
       className="sidebar-brand ml-auto hidden h-4 w-fit min-w-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
       to="/"
     >

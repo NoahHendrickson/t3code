@@ -101,13 +101,21 @@ function isUsageWindowDays(value: number): value is UsagePagePreferences["window
   return WINDOW_OPTIONS.some((option) => option.days === value);
 }
 
+/* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
+/** Mounted only on the routed page, so the popover never attaches the
+    window-level Escape → history.back() handler. */
+function UsagePageEscapeToGoBack() {
+  useEscapeToGoBack();
+  return null;
+}
+/* fork:end fork-usage-popover */
+
 export function UsagePage(
   /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
   { chrome = "page" }: { readonly chrome?: "page" | "panel" } = {},
   /* fork:end fork-usage-popover */
 ) {
   const [preferences, setPreferences] = useState(readUsagePagePreferences);
-  useEscapeToGoBack();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const shortcutTitle = (
     option: (typeof METRIC_OPTIONS)[number] | (typeof WINDOW_OPTIONS)[number],
@@ -837,6 +845,9 @@ export function UsagePage(
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
+      {/* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */}
+      <UsagePageEscapeToGoBack />
+      {/* fork:end fork-usage-popover */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
         {usageBody}
       </div>

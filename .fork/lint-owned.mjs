@@ -85,7 +85,7 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
  * baseline only ever ratchets down. Remove entries as they reach zero.
  *
  * The vite-plus 1.0.0 bump (upstream sync 2026-10-02) widened the React
- * Compiler rule set again (preserve-manual-memoization, hooks, immutability)
+ * Compiler rule set again (preserve-manual-memoization, immutability)
  * and the counts below were re-measured then. Nearly all of the growth is
  * upstream-authored lines in ChatView.tsx and Sidebar.tsx, which are in scope
  * only because fork customizations list them; upstream carries the same
@@ -93,9 +93,8 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
  */
 export const DEFERRED_RULES = new Map([
   ["react(exhaustive-effect-dependencies)", 17],
-  ["react(hooks)", 1],
   ["react(immutability)", 1],
-  ["react(memo-dependencies)", 22],
+  ["react(memo-dependencies)", 21],
   ["react(preserve-manual-memoization)", 13],
   ["react(purity)", 1],
   ["react(refs)", 31],

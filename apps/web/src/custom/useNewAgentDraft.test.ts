@@ -114,6 +114,32 @@ describe("assignDraftProject", () => {
     );
   });
 
+  it("applies the project's own permissions, worktree origin and model", async () => {
+    readProjectFile.mockResolvedValue(null);
+    useComposerDraftStore
+      .getState()
+      .setModelSelection(draftId, model("carried"), { replaceOptions: true });
+    const projectId = ProjectId.make("proj-a");
+    await assignDraftProject(draftId, target("a"), {
+      ...settings,
+      projectSettingsFolded: true,
+      projectSettingsOverrides: {
+        [projectId]: {
+          defaultThreadEnvMode: "worktree",
+          defaultRuntimeMode: "approval-required",
+          newWorktreesStartFromOrigin: true,
+          defaultModelSelection: model("project-override"),
+        },
+      },
+    });
+    expect(session()).toMatchObject({
+      envMode: "worktree",
+      runtimeMode: "approval-required",
+      startFromOrigin: true,
+    });
+    expect(selectedModel()).toBe("project-override");
+  });
+
   it("lets the latest pick win when an earlier pick's lookup settles later", async () => {
     let releaseA!: (mode: ThreadEnvMode | null) => void;
     readProjectFile.mockImplementation((_environmentId, workspaceRoot) =>

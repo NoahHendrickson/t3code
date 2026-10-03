@@ -196,6 +196,10 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(pill).toContain("toastManager.add({");
     // Same project list and member rule as the palette and the grouped header.
     expect(pill).toContain("buildSidebarProjectPickerEntries({");
+    // Upstream's scratch folder ("No project") is not an assignable project.
+    expect(pill).toContain(
+      "!isScratchProject(project, scratchWorkspaceRootFor(project.environmentId))",
+    );
   });
 
   it("centers the draft composer and grows its prompt until the thread starts", () => {
