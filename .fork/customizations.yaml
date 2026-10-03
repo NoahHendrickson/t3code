@@ -2482,9 +2482,11 @@
     on a 23px line at >=40rem with a full muted-foreground placeholder (16px
     mobile type stays, avoiding iOS focus zoom) — and the ghost controls,
     mode chip, model, and effort are 12px medium on 16px with 12px glyphs.
-    The prompt wrapper owns the 12.5rem scroll cap so a one-line Lexical
-    editor never paints a phantom scrollbar, and the placeholder/spacer
-    overflow containment remains in place. Attachment and pending-state
+    The prompt wrapper owns the 12.5rem scroll cap so a one-line Tiptap
+    editor never paints a phantom scrollbar, absorbs the editor's 4px
+    overhang in its own padding so that cap never scrolls sideways, and the
+    placeholder overflow containment remains in place (the placeholder is a
+    sibling of Tiptap's editor wrapper, reached through :has). Attachment and pending-state
     content may add height above the base row inside the surface, but ordinary
     composer height changes only when prompt content wraps. Pill styling stays
     narrowly scoped so pending-state primary actions retain their upstream
@@ -3826,17 +3828,22 @@
     Transparent transcript rows — collapsed tool-call group toggles, log
     entry rows, the "+N previous tool calls" line — hover as a 4% white lift
     (--fork-outline-hover-bg) under the fork dark marker instead of
-    upstream's hover:bg-accent/20 and hover:bg-muted/55 washes, which are
-    cool opaque tokens at low alpha and read as a smudge on the fork stages
-    (worst under glass). Keyed on those two utilities inside the fork's
-    .fork-timeline-cutoff scroller; hover:bg-accent/50 on the filled
-    bg-card/50 tile is deliberately left alone.
+    upstream's hover:bg-accent/20 wash, a cool opaque token at low alpha
+    that reads as a smudge on the fork stages (worst under glass). The
+    "Show full message" line under a long user message is a ghost-muted
+    Button since upstream sync 2026-10-02, hovering and pressing with the
+    opaque --accent outright; it takes the same lift through the
+    data-user-message-footer row upstream stamps around it. Keyed on that
+    utility and that footer inside the fork's .fork-timeline-cutoff
+    scroller; hover:bg-accent/50 on the filled bg-card/50 tile is
+    deliberately left alone.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
-    # Carries the two hover utilities and the fork-stamped scroller class.
+    # Carries the hover utility, the user-message footer and the fork-stamped
+    # scroller class.
     - apps/web/src/components/chat/MessagesTimeline.tsx
   verify:
     - apps/web/src/__fork_guards__/forkTranscriptHover.test.ts
