@@ -84,6 +84,20 @@ describe("fork guard: t3-connect-official-config", () => {
     expect(example).toContain(".env.local");
   });
 
+  it("steers the reusable dev auth token into .env.local, not the tracked .env", () => {
+    // Upstream's guidance keeps T3CODE_DEV_AUTH_TOKEN in a "gitignored" .env;
+    // here that file is tracked, so following it would publish the credential.
+    const agents = NodeFS.readFileSync(NodePath.join(repoRoot, "AGENTS.md"), "utf8");
+    expect(agents).toContain("**In this fork, `.env` is tracked**");
+    const development = NodeFS.readFileSync(
+      NodePath.join(repoRoot, "docs/operations/development.md"),
+      "utf8",
+    );
+    expect(development).toContain("**This fork tracks `.env`**");
+    const setup = NodeFS.readFileSync(NodePath.join(repoRoot, "scripts/setup-worktree.ts"), "utf8");
+    expect(setup).toContain('  ".env.local",');
+  });
+
   it("resolves through the build loader for every client surface", () => {
     // baseEnv: {} isolates from ambient CI variables; a developer's local
     // .env.local may override individual values, so this asserts presence

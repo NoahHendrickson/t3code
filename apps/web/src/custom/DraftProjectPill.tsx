@@ -21,6 +21,7 @@
  * upstream wove into its headline.
  */
 import { scopedProjectKey } from "@t3tools/client-runtime/environment";
+import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import type { ScopedProjectRef } from "@t3tools/contracts";
 import { useCallback, useMemo, type ReactNode } from "react";
 
@@ -39,6 +40,7 @@ import {
 } from "~/components/ui/menu";
 import { toastManager } from "~/components/ui/toast";
 import type { DraftId } from "~/composerDraftStore";
+import { useScratchProject } from "~/hooks/useScratchProject";
 import { useClientSettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
 import { selectProjectGroupingSettings } from "~/logicalProject";
@@ -87,7 +89,17 @@ export function DraftProjectPill(props: {
       an unassigned "New agent" draft, or a project since removed. */
   readonly activeProjectTitle: string | null;
 }) {
-  const projects = useProjects();
+  const allProjects = useProjects();
+  const { scratchWorkspaceRootFor } = useScratchProject();
+  // The environment's scratch folder is upstream's "No project" home, not a
+  // project to assign; upstream's own pickers leave it out the same way.
+  const projects = useMemo(
+    () =>
+      allProjects.filter(
+        (project) => !isScratchProject(project, scratchWorkspaceRootFor(project.environmentId)),
+      ),
+    [allProjects, scratchWorkspaceRootFor],
+  );
   const threads = useThreadShells();
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();

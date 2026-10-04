@@ -308,7 +308,7 @@ export function ComposerModelPicker({
         ? {
             traits: {
               label: traits.trigger.label,
-              fastMode: traits.trigger.showFastModeIcon,
+              speedIcon: traits.trigger.speedIcon,
               panel: <ComposerModelTraitsPanel input={traitsInput} traits={traits} />,
             },
           }

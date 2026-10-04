@@ -226,12 +226,13 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       ":where() is what drops the marker to zero specificity so state variants still win",
     ).toContain(":where(");
 
-    // The utility it must not beat is real. Upstream's v0.0.33 restyle split
-    // the tile into a shared bg-card surface constant plus a per-tile
-    // hover:bg-accent/60 className, so the two classes are asserted apart.
+    // The utility it must not beat is real: the "Open a surface" chooser's
+    // rows still hover with bg-accent/60 (upstream's 2026-10 restyle turned
+    // the bg-card tiles into list rows, so the wash's precedence case is now
+    // the settings groups and the chooser's hover rather than one tile).
     const tabs = readSibling("../components/RightPanelTabs.tsx");
-    expect(tabs, "the surface tiles are the case this protects").toContain("bg-card");
-    expect(tabs, "the surface tiles are the case this protects").toContain("hover:bg-accent/60");
+    expect(tabs, "the surface chooser is the case this protects").toContain("hover:bg-accent/60");
+    expect(readSibling("../components/settings/SettingsGroup.tsx")).toContain("bg-card");
 
     // Redefining --card instead would look tidier and take the transcript's code
     // blocks with it, because index.css derives from that token.
@@ -433,7 +434,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     );
     expect(miniPlayer?.body).toContain("var(--fork-popup-glass-floor)");
     expect(readSibling("../components/preview/ThreadPreviewMiniPlayer.tsx")).toContain(
-      "data-preview-mini-player={tabId}",
+      "data-preview-mini-player={sourceKey}",
     );
   });
 

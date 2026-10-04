@@ -3,7 +3,7 @@
  * `.fork/customizations.yaml#fork-model-picker`.
  *
  * Same export, same props as upstream, so ProviderModelPicker's import is
- * untouched; the three exported helpers are upstream's verbatim. The render
+ * untouched; the four exported helpers are upstream's verbatim. The render
  * is the fork's: a paged menu. ProviderModelPicker's shadow hosts this in a
  * Base UI Menu; the first page lists a search field, Favorites and one row per
  * provider instance, and clicking a row swaps the page for that provider's
@@ -11,6 +11,9 @@
  * lands in the search field, and a query swaps the page for one flat,
  * provider-agnostic list of matching models. Picking a model never closes the
  * menu from here; the host decides, since it may render more below the pages.
+ * Upstream's multi-model draft (Shift-click or Shift+Enter toggles a model
+ * into `selectedModels`) and its provider-cycling shortcuts page the same
+ * way: the next provider's models replace the page in place.
  */
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
@@ -116,6 +119,34 @@ export function shouldOfferModelPickerSetup(
   );
 }
 
+export function adjacentModelPickerProvider(input: {
+  entries: ReadonlyArray<ProviderInstanceEntry>;
+  selectedInstanceId: ProviderInstanceId | "favorites";
+  direction: 1 | -1;
+  disabledInstanceIds: ReadonlySet<ProviderInstanceId> | undefined;
+  selectableUnavailableInstanceIds: ReadonlySet<ProviderInstanceId> | undefined;
+}) {
+  const providers: Array<ProviderInstanceId | "favorites"> = [
+    "favorites",
+    ...input.entries
+      .filter(
+        (entry) =>
+          !input.disabledInstanceIds?.has(entry.instanceId) &&
+          (isProviderInstancePickerReady(entry) ||
+            input.selectableUnavailableInstanceIds?.has(entry.instanceId)),
+      )
+      .map((entry) => entry.instanceId),
+  ];
+  const index = providers.indexOf(input.selectedInstanceId);
+  return providers[
+    index < 0
+      ? input.direction === 1
+        ? 0
+        : providers.length - 1
+      : (index + input.direction + providers.length) % providers.length
+  ]!;
+}
+
 /**
  * Build the hover tooltip for a provider row that cannot be opened, using
  * the entry's configured `displayName` so custom instances read as authored.
@@ -171,6 +202,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   /** The instance currently selected in the composer. */
   activeInstanceId: ProviderInstanceId;
   model: string;
+  selectedModels?: ReadonlyArray<{ instanceId: ProviderInstanceId; model: string }>;
+  onToggleModel?: (instanceId: ProviderInstanceId, model: string) => void;
   /**
    * When set, the picker is locked to the given driver kind — typically
    * because the user is editing a previously-sent message and can't change
@@ -197,6 +230,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     instanceEntries,
     getModelDisabledReason,
     onInstanceModelChange,
+    onToggleModel,
   } = props;
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState<ModelPickerPage>(PROVIDERS_PAGE);
@@ -215,6 +249,38 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   });
   const activeModelSlug =
     activeModel?.slug ?? (props.model === ANTIGRAVITY_DEFAULT_MODEL ? "" : props.model);
+  // A multi-model draft checks every selected row; otherwise just the active one.
+  const activeModelKey = activeModelSlug
+    ? providerModelKey(props.activeInstanceId, activeModelSlug)
+    : null;
+  const selectedModelKeys = useMemo(
+    () =>
+      props.selectedModels?.map((selection) => {
+        const entry = instanceEntries.find((entry) => entry.instanceId === selection.instanceId);
+        const model = resolveModelPickerSelectedModel({
+          driverKind: entry?.driverKind,
+          model: selection.model,
+          options: modelOptionsByInstance.get(selection.instanceId) ?? [],
+        });
+        return providerModelKey(selection.instanceId, model?.slug ?? selection.model);
+      }),
+    [instanceEntries, modelOptionsByInstance, props.selectedModels],
+  );
+  const selectedModelKeySet = useMemo(
+    () => new Set(selectedModelKeys ?? (activeModelKey ? [activeModelKey] : [])),
+    [selectedModelKeys, activeModelKey],
+  );
+  const activeInstanceHasSelectableUnavailableModel =
+    activeEntry !== undefined &&
+    (modelOptionsByInstance.get(props.activeInstanceId) ?? []).some((option) =>
+      shouldIncludeModelPickerOption({
+        entry: activeEntry,
+        option,
+        activeInstanceId: props.activeInstanceId,
+        activeModel: activeModelSlug,
+      }),
+    ) &&
+    !isProviderInstancePickerReady(activeEntry);
 
   const focusSearchInput = useCallback(() => {
     searchInputRef.current?.focus({ preventScroll: true });
@@ -365,8 +431,42 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     ];
   }, [instanceEntries, matchesLockedProvider, props.lockedProvider]);
 
+  // The providers the cycling shortcuts may land on: locked-out instances
+  // never, unready ones only while they hold the selected model or can offer
+  // setup — the same rows the providers page leaves enabled.
+  const lockedDisabledInstanceIds = useMemo(() => {
+    if (props.lockedProvider === null) return undefined;
+    const disabled = new Set<ProviderInstanceId>();
+    for (const entry of instanceEntries) {
+      if (!matchesLockedProvider(entry)) disabled.add(entry.instanceId);
+    }
+    return disabled;
+  }, [instanceEntries, matchesLockedProvider, props.lockedProvider]);
+  const selectableUnavailableInstanceIds = useMemo(() => {
+    const instanceIds = new Set<ProviderInstanceId>();
+    if (activeInstanceHasSelectableUnavailableModel) {
+      instanceIds.add(props.activeInstanceId);
+    }
+    if (props.onOpenProviderSetup) {
+      for (const entry of instanceEntries) {
+        if (
+          shouldOfferModelPickerSetup(entry, modelOptionsByInstance.get(entry.instanceId) ?? [])
+        ) {
+          instanceIds.add(entry.instanceId);
+        }
+      }
+    }
+    return instanceIds.size > 0 ? instanceIds : undefined;
+  }, [
+    activeInstanceHasSelectableUnavailableModel,
+    instanceEntries,
+    modelOptionsByInstance,
+    props.activeInstanceId,
+    props.onOpenProviderSetup,
+  ]);
+
   const handleModelSelect = useCallback(
-    (modelSlug: string, instanceId: ProviderInstanceId) => {
+    (modelSlug: string, instanceId: ProviderInstanceId, additive = false) => {
       if (getModelDisabledReason?.(instanceId, modelSlug)) return;
       const options = modelOptionsByInstance.get(instanceId);
       const entry = entryByInstanceId.get(instanceId);
@@ -375,10 +475,20 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       // share their driver's rules.
       const resolvedModel = resolveSelectableModel(entry.driverKind, modelSlug, options);
       if (resolvedModel) {
-        onInstanceModelChange(instanceId, resolvedModel);
+        if (additive && onToggleModel) {
+          onToggleModel(instanceId, resolvedModel);
+        } else {
+          onInstanceModelChange(instanceId, resolvedModel);
+        }
       }
     },
-    [entryByInstanceId, getModelDisabledReason, modelOptionsByInstance, onInstanceModelChange],
+    [
+      entryByInstanceId,
+      getModelDisabledReason,
+      modelOptionsByInstance,
+      onInstanceModelChange,
+      onToggleModel,
+    ],
   );
 
   // Swap first, focus later. Focusing the search field from the row's click
@@ -397,14 +507,55 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   // A pick from search results clears the query onto the model's own page,
   // so the menu (if the host keeps it open) shows the check on the new pick.
+  // Shift (`additive`) toggles the model into a multi-model draft and keeps
+  // the query, so one search can collect several models, as upstream's does.
   const chooseModel = useCallback(
-    (model: ModelPickerItem) => {
-      handleModelSelect(model.slug, model.instanceId);
-      if (!isSearching) return;
+    (model: ModelPickerItem, additive = false) => {
+      handleModelSelect(model.slug, model.instanceId, additive);
+      if (!isSearching || additive) return;
       setSearchQuery("");
       openPage({ kind: "models", instanceId: model.instanceId, legacy: model.isLegacy === true });
     },
     [handleModelSelect, isSearching, openPage],
+  );
+
+  // The page the cycling shortcuts step from: the open provider page, else
+  // the current provider. Favorites is skipped while there are none to show.
+  const cycleProvider = useCallback(
+    (direction: 1 | -1) => {
+      const from =
+        page.kind === "models"
+          ? page.instanceId
+          : page.kind === "favorites"
+            ? "favorites"
+            : props.activeInstanceId;
+      const step = (selectedInstanceId: ProviderInstanceId | "favorites") =>
+        adjacentModelPickerProvider({
+          entries: providerEntries,
+          selectedInstanceId,
+          direction,
+          disabledInstanceIds: lockedDisabledInstanceIds,
+          selectableUnavailableInstanceIds,
+        });
+      let next = step(from);
+      if (next === "favorites" && favoriteModels.length === 0) next = step("favorites");
+      if (next === "favorites" && favoriteModels.length === 0) return;
+      setSearchQuery("");
+      openPage(
+        next === "favorites"
+          ? { kind: "favorites" }
+          : { kind: "models", instanceId: next, legacy: false },
+      );
+    },
+    [
+      favoriteModels.length,
+      lockedDisabledInstanceIds,
+      openPage,
+      page,
+      props.activeInstanceId,
+      providerEntries,
+      selectableUnavailableInstanceIds,
+    ],
   );
 
   const toggleFavorite = useCallback(
@@ -467,6 +618,12 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         platform: navigator.platform,
         context: modelJumpShortcutContext,
       });
+      if (command === "modelPicker.previousProvider" || command === "modelPicker.nextProvider") {
+        event.preventDefault();
+        event.stopPropagation();
+        cycleProvider(command === "modelPicker.nextProvider" ? 1 : -1);
+        return;
+      }
       const jumpIndex = modelPickerJumpIndexFromCommand(command ?? "");
       if (jumpIndex === null) return;
       event.preventDefault();
@@ -476,7 +633,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     };
     window.addEventListener("keydown", onWindowKeyDown, true);
     return () => window.removeEventListener("keydown", onWindowKeyDown, true);
-  }, [chooseModel, jumpTargets, keybindings, modelJumpShortcutContext]);
+  }, [chooseModel, cycleProvider, jumpTargets, keybindings, modelJumpShortcutContext]);
 
   // Typing anywhere in the menu — a provider row, a model row — goes to the
   // search field instead of the menu's type-ahead. Capture phase, so it runs
@@ -518,7 +675,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       const first = searchResults.find(
         (model) => !getModelDisabledReason?.(model.instanceId, model.slug),
       );
-      if (first) chooseModel(first);
+      if (first) chooseModel(first, event.shiftKey);
       return;
     }
     // With nothing typed, Backspace and ArrowLeft step back a page. A held
@@ -545,8 +702,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     const modelKey = providerModelKey(model.instanceId, model.slug);
     const disabledReason = getModelDisabledReason?.(model.instanceId, model.slug) ?? null;
     const isFavorite = favoritesSet.has(modelKey);
-    const isSelected =
-      model.instanceId === props.activeInstanceId && model.slug === activeModelSlug;
+    const isSelected = selectedModelKeySet.has(modelKey);
     const jumpLabel = modelJumpLabelByKey.get(modelKey);
     const ProviderIcon = showProvider
       ? (PROVIDER_ICON_BY_PROVIDER[model.driverKind] ?? null)
@@ -592,7 +748,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         // renders below the pages.
         closeOnClick={false}
         className={cn(ROW_CLASS, "group", disabledReason && "data-disabled:pointer-events-auto")}
-        onClick={() => chooseModel(model)}
+        onClick={(event) => chooseModel(model, event.shiftKey)}
       >
         {disabledReason ? (
           <Tooltip>

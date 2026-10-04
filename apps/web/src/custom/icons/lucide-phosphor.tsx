@@ -228,6 +228,20 @@ import {
   TrendDown as PhTrendDown,
   TrendUp as PhTrendUp,
   VideoCamera as PhVideoCamera,
+  // Upstream sync 2026-10-02 (through 024d49520).
+  CalendarBlank as PhCalendarBlank,
+  ChatCenteredDots as PhChatCenteredDots,
+  Cube as PhCube,
+  FilmStrip as PhFilmStrip,
+  House as PhHouse,
+  Plug as PhPlug,
+  Power as PhPower,
+  Shield as PhShield,
+  ShieldWarning as PhShieldWarning,
+  Table as PhTable,
+  UserCheck as PhUserCheck,
+  UserFocus as PhUserFocus,
+  UserMinus as PhUserMinus,
 } from "@phosphor-icons/react";
 import type { FC, ReactElement, SVGProps } from "react";
 import { createElement } from "react";
@@ -584,6 +598,34 @@ export const TicketIcon = icon("ticket", PhTicket, "duotone");
 export const SlidersHorizontalIcon = icon("sliders-horizontal", PhSlidersHorizontal, "duotone");
 export const RocketIcon = icon("rocket", PhRocket, "duotone");
 export const WorkflowIcon = icon("workflow", PhFlowArrow, "duotone");
+// Upstream sync 2026-10-02 (through 024d49520): the device panel, scratch
+// drafts, provider auth and the pull-request views.
+export const MessageSquareDashedIcon = icon("message-square-dashed", PhChatCenteredDots, "duotone");
+export const CalendarIcon = icon("calendar", PhCalendarBlank, "duotone");
+export const Smartphone = SmartphoneIcon;
+export const CircleArrowUpIcon = ArrowUpCircleIcon;
+export const ShieldIcon = icon("shield", PhShield, "duotone");
+export const ShieldQuestionIcon = icon("shield-question", PhShieldWarning, "duotone");
+export const SquareArrowOutUpRightIcon = ExternalLinkIcon;
+export const FilmIcon = icon("film", PhFilmStrip, "duotone");
+export const Home = icon("home", PhHouse, "duotone");
+export const Keyboard = KeyboardIcon;
+export const Box = icon("box", PhCube, "duotone");
+export const Maximize = icon("maximize", PhCornersOut, "bold");
+export const Moon = MoonIcon;
+export const MoreHorizontal = MoreHorizontalIcon;
+export const Power = icon("power", PhPower, "bold");
+export const SlidersHorizontal = SlidersHorizontalIcon;
+export const Sun = SunIcon;
+export const Type = icon("type", PhTextT, "duotone");
+export const CircleAlert = CircleAlertIcon;
+export const Table2 = icon("table-2", PhTable, "duotone");
+export const GitPullRequestArrowIcon = GitPullRequestIcon;
+export const Unlink2Icon = Unlink2;
+export const UserCheckIcon = icon("user-check", PhUserCheck, "duotone");
+export const UserRoundXIcon = icon("user-round-x", PhUserMinus, "duotone");
+export const Plug2Icon = icon("plug-2", PhPlug, "duotone");
+export const UserLockIcon = icon("user-lock", PhUserFocus, "duotone");
 
 /**
  * lucide's escape hatch for one-off glyphs drawn from path data (upstream's

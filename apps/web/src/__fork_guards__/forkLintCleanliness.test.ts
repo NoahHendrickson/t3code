@@ -148,7 +148,7 @@ describe("fork guard: fork-lint-cleanliness", () => {
     expect(new Set(files).size).toBe(files.length);
   });
 
-  it("runs the gate as an unconditional step of the check job", () => {
+  it("runs the gate as an unconditional step of the lint job", () => {
     const ci = NodeFS.readFileSync(NodePath.join(repoRoot, ".github/workflows/ci.yml"), "utf8");
     expect(ci).toContain("fork:begin fork-lint-cleanliness");
 
@@ -156,10 +156,13 @@ describe("fork guard: fork-lint-cleanliness", () => {
     // true if the step were commented out, given `if: false`, or moved to a
     // job that does not run on pull_request — the same unfalsifiable shape as
     // the CLAUDE.md guard whose `.trim()` made it unable to fail. Slice the
-    // check job out and assert the step lives inside it.
-    const checkJob = /\n {2}check:\n([\s\S]*?)(?=\n {2}\w[\w-]*:\n)/u.exec(ci);
-    expect(checkJob).not.toBeNull();
-    const body = checkJob?.[1] ?? "";
+    // lint job out (upstream split `check` into lint/typecheck/build jobs in
+    // the 2026-10-02 sync; `vp check` and this step live in `lint`) and
+    // assert the step lives inside it, right after `vp check`.
+    const lintJob = /\n {2}lint:\n([\s\S]*?)(?=\n {2}\w[\w-]*:\n)/u.exec(ci);
+    expect(lintJob).not.toBeNull();
+    const body = lintJob?.[1] ?? "";
+    expect(body).toMatch(/run: vp check\n/u);
     expect(body).toMatch(/- name: Lint fork-owned code\n\s+run: node \.fork\/lint-owned\.mjs\n/u);
 
     // And unconditional: a step carrying `if:` can be switched off without

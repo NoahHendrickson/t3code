@@ -1,11 +1,7 @@
 import { PencilRulerIcon } from "lucide-react";
 
-import {
-  CHAT_INLINE_CHIP_CLASS_NAME,
-  CHAT_INLINE_CHIP_LABEL_CLASS_NAME,
-} from "~/components/composerInlineChip";
+import { ContextChipShell } from "~/components/contextChipParts";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { cn } from "~/lib/utils";
 
 import { summarizeDesignChangeBlock } from "./designChangeTranscript";
 import { selectVerifySummaryLineForMessage, useDesignSentPreviews } from "./designSentPreviews";
@@ -75,13 +71,11 @@ export function ForkTranscriptDesignChanges({
           <Tooltip key={key}>
             <TooltipTrigger
               render={
-                <span className={cn(CHAT_INLINE_CHIP_CLASS_NAME)}>
-                  <PencilRulerIcon className="size-3.5 shrink-0 opacity-85" />
-                  <span className="select-none text-[10px] font-normal text-muted-foreground">
-                    Design change
-                  </span>
-                  <span className={CHAT_INLINE_CHIP_LABEL_CLASS_NAME}>{label}</span>
-                </span>
+                <ContextChipShell
+                  kind="element"
+                  icon={<PencilRulerIcon className="opacity-85" />}
+                  label={label}
+                />
               }
             />
             <TooltipPopup className="max-w-96 whitespace-pre-wrap font-mono text-[11px]">

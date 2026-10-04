@@ -54,14 +54,9 @@ describe("fork guard: release-upstream-only", () => {
   it("gates both release entry points on the upstream repository", () => {
     const jobs = readReleaseJobs();
     const gated = jobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id);
-    // relay_public_config and build_wsl_node_pty run alongside preflight since
-    // upstream #7975, so they carry the gate themselves instead of inheriting it.
-    expect(gated).toEqual([
-      "resolve_commit",
-      "preflight",
-      "relay_public_config",
-      "build_wsl_node_pty",
-    ]);
+    // relay_public_config runs alongside preflight since upstream #7975, so
+    // it carries the gate itself instead of inheriting it.
+    expect(gated).toEqual(["resolve_commit", "preflight", "relay_public_config"]);
   });
 
   it("leaves no job able to run without the gate", () => {
@@ -78,15 +73,26 @@ describe("fork guard: release-upstream-only", () => {
     expect(ungated).toEqual([]);
   });
 
-  it("gates the macOS preview workflow at its two entry jobs", () => {
+  it("gates both macOS preview workflows at their entry jobs", () => {
     // desktop-macos-preview.yml (upstream #8182) builds from a PR label on
-    // Blacksmith runners and publishes to a rolling prerelease. Neither can
-    // happen here: the label would queue forever, and the fork has its own
-    // release path (fork-desktop-release). publish only runs after build.
-    const jobs = readWorkflowJobs("desktop-macos-preview.yml");
-    const gated = jobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id);
-    expect(gated).toEqual(["build", "cleanup"]);
-    expect(jobs.find((job) => job.id === "publish")?.body).toContain("needs: build");
+    // Blacksmith runners; desktop-macos-preview-publish.yml signs and publishes
+    // the bundle to a rolling prerelease from workflow_run and cleans up on
+    // pull_request_target. Neither can happen here: the label would queue
+    // forever, and the fork has its own release path (fork-desktop-release).
+    // build and publish in the trusted half only run after resolve.
+    const buildJobs = readWorkflowJobs("desktop-macos-preview.yml");
+    expect(
+      buildJobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id),
+    ).toEqual(["build"]);
+    const publishJobs = readWorkflowJobs("desktop-macos-preview-publish.yml");
+    expect(
+      publishJobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id),
+    ).toEqual(["resolve", "cleanup"]);
+    for (const id of ["build", "publish"]) {
+      expect(publishJobs.find((job) => job.id === id)?.body).toContain(
+        "needs.resolve.outputs.eligible == 'true'",
+      );
+    }
   });
 
   it("reads every job in the workflow", () => {

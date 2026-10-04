@@ -378,12 +378,15 @@
   translate: 0 -1px;
 }
 
-/* 8px + 40px puts the action row at y=48, matching the drawn frame. */
+/* 8px + 40px puts the action row at y=48, matching the drawn frame. 48px
+   border-box: the wrapper wears 4px of padding on every side (the editor's
+   overhang, see the base prompt rule), so its 40px margin box is the drawn
+   height. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"][data-draft-hero]
   [data-fork-composer-prompt] {
   grid-area: prompt;
-  min-height: 40px;
+  min-height: 48px;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
@@ -414,6 +417,19 @@
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
   min-height: 0;
   transition: min-height 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Tiptap's editor wears -m-1/p-1 so chip outlines and glyph ink land inside
+   its own clip without moving the text. The wrapper takes the inverse — 4px
+   of padding and the matching negative margin — so that overhang lands
+   inside its padding box. Layout-neutral: the text stays where it was and
+   the margin box is what the row and the draft grid lay out. Without it the
+   editor's border box overhangs the wrapper by 4px on every side, and the
+   desktop scrollport below turns that into a horizontal scrollbar thumb
+   under the prompt and a 4px vertical one beside it. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
+  margin: -4px;
+  padding: 4px;
 }
 
 /* The draft composer is narrower than the docked one: Figma 418:11501 draws
@@ -695,12 +711,14 @@
   min-height: 0;
 }
 
-/* The drawn placeholder is full muted-foreground, not upstream's /35 tint. The
-   sibling selector only ever matches Lexical's placeholder (and its empty
-   spacer, which has no text) — typed text lives inside the editor itself. */
+/* The drawn placeholder is full muted-foreground, not upstream's /35 tint.
+   Tiptap's EditorContent wraps the contenteditable in a div of its own, and
+   the placeholder is that wrapper's sibling — so the selector reaches it
+   through the wrapper (`:has(> editor) ~ div`), never from the editor itself.
+   Typed text lives inside the editor, so nothing else matches. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-box]
-  [data-testid="composer-editor"]
+  :has(> [data-testid="composer-editor"])
   ~ div {
   color: var(--muted-foreground);
 }
@@ -709,22 +727,19 @@
    size and leading and the caret sits a couple of pixels off the text it is
    supposed to be sitting in front of.
 
-   A general sibling combinator, not an adjacent one: Lexical renders the
-   placeholder as the editor's *third* child, with an empty zero-height div
-   between them, so `+ div` matches the spacer and never reaches the
-   placeholder. `~ div` catches both; the spacer has no text to resize.
-
    Desktop also moves the max-height scrollport off the contenteditable. The
    14/16 line box lets Geist ink inflate scrollHeight on the editor itself, so
    upstream's max-h + overflow-y:auto paints a phantom thumb on a single line.
    The wrapper owns the cap; the editor stays unclamped and clips its ink so
    the parent does not inherit the same false overflow. Below 40rem the prompt
    stays on leading-relaxed and upstream's editor scroll behaviour is left
-   alone. 12.5rem matches upstream's max-h-50. */
+   alone. 12.5rem matches upstream's max-h-52 less the editor's own 4px
+   padding; the extra 8px is the wrapper's compensating padding, so the
+   border-box cap holds the same 12.5rem of prompt. */
 @media (width >= 40rem) {
   :root[data-fork="noahhendrickson-t3code"]
     [data-fork-composer-box]
-    :is([data-testid="composer-editor"], [data-testid="composer-editor"] ~ div) {
+    :is([data-testid="composer-editor"], :has(> [data-testid="composer-editor"]) ~ div) {
     /* The design's body/md: 14px Geist on a 23px line. The 24px action is
        what sets the 44px base row (10 + 24 + 10); the one-line 23px prompt
        sits centred beside it, and each wrapped line adds 23px. Below sm the
@@ -734,7 +749,7 @@
   }
 
   :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-prompt] {
-    max-height: 12.5rem;
+    max-height: calc(12.5rem + 8px);
     overflow-y: auto;
   }
 
@@ -745,12 +760,12 @@
     overflow-y: hidden;
   }
 
-  /* The placeholder (and Lexical's zero-height spacer) are the editor's
-     siblings, outside its clip. At 14/16 the placeholder's line box is a pixel
-     taller than its inset-0 box, and that pixel propagates through the
-     absolutely-positioned box into the wrapper's scrollable overflow — a
-     phantom thumb that shows only while the prompt is empty, because typing
-     unmounts the placeholder. Typed text already paints without that pixel.
+  /* The placeholder sits beside the editor's wrapper, outside the editor's
+     clip. At 14/16 the placeholder's line box is a pixel taller than its
+     inset-0 box, and that pixel propagates through the absolutely-positioned
+     box into the wrapper's scrollable overflow — a phantom thumb that shows
+     only while the prompt is empty, because typing unmounts the placeholder.
+     Typed text already paints without that pixel.
 
      `clip`, not `hidden`: setting an axis to hidden computes the other
      axis's `visible` to `auto`, which turns this pure-paint element into a
@@ -765,7 +780,7 @@
      wrap-break-word means it can never overflow horizontally. */
   :root[data-fork="noahhendrickson-t3code"]
     [data-fork-composer-prompt]
-    [data-testid="composer-editor"]
+    :has(> [data-testid="composer-editor"])
     ~ div {
     overflow: clip;
   }
@@ -1020,10 +1035,12 @@
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip]) {
+  :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]) {
   /* 24px tall, 6px radius. Inline padding is refined per trigger below so
      workspace and branch match; [data-fork-context-chip] is the locked
-     workspace/env span — same pill when there is no interactive trigger. */
+     workspace/env span — same pill when there is no interactive trigger.
+     [data-fork-pr-chip] is named because upstream's badge control renders
+     a single linked PR as an anchor, not a button, and stamps no data-slot. */
   height: 24px;
   min-height: 24px;
   gap: 6px;
@@ -1046,7 +1063,11 @@
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"]):is(:hover, [data-pressed], [data-popup-open]):not(:disabled) {
+  :is(button, [data-slot="button"], [data-fork-pr-chip]):is(
+    :hover,
+    [data-pressed],
+    [data-popup-open]
+  ):not(:disabled) {
   background: var(--fork-context-chip-bg-hover);
 }
 
@@ -1097,7 +1118,7 @@
    full ink so white chip labels don't wash back to gray. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip])
+  :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip])
   svg {
   opacity: 1;
 }
@@ -1136,7 +1157,7 @@
 
 :root[data-fork="noahhendrickson-t3code"]
   [data-fork-composer-context-row]
-  :is(button, [data-slot="button"], [data-fork-context-chip])
+  :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip])
   svg {
   width: 12px;
   height: 12px;
@@ -2843,13 +2864,10 @@
    Upstream draws them in --border, an opaque palette grey, which on the
    fork's frosted and Glass popups lands as a dark bar of another
    material. A contrast alpha at the hairline's own 12% reads as a light
-   rule lifted off whatever the popup paints, on every palette. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-slot="menu-separator"],
-    [data-slot="select-separator"],
-    [data-slot="combobox-separator"]
-  ) {
+   rule lifted off whatever the popup paints, on every palette. (The select
+   and combobox separator primitives were unused and left upstream in
+   #9917, so the menu's is the one slot.) */
+:root[data-fork="noahhendrickson-t3code"].dark [data-slot="menu-separator"] {
   background: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
 }
 
@@ -2942,26 +2960,38 @@
 }
 
 /* ── Transcript row hovers (fork-transcript-hover) ───────────────────────────
-   The collapsed tool-call toggles, log-entry rows and the "+N previous" line
-   hover with `hover:bg-accent/20` (and one `hover:bg-muted/55`): a 20% wash
-   of an opaque cool --accent over a stage that, on the fork palettes and
-   especially under glass, is already close to it in lightness — so the row
-   turns a cool smudge rather than lifting. Same answer as the changed-files
-   card: a hover is a 4% white lift. Keyed on the two utilities rather than
-   every button, because `hover:bg-accent/50` in the same file sits on a
-   `bg-card/50` tile and a white-only hover there would darken it. Scoped to
-   the fork-stamped transcript scroller, dark only. */
+   The collapsed tool-call toggles and log-entry rows hover with
+   `hover:bg-accent/20`: a 20% wash of an opaque cool --accent over a stage
+   that, on the fork palettes and especially under glass, is already close to
+   it in lightness — so the row turns a cool smudge rather than lifting. Same
+   answer as the changed-files card: a hover is a 4% white lift. Keyed on the
+   utility rather than every button, because `hover:bg-accent/50` in the same
+   file sits on a `bg-card/50` tile and a white-only hover there would darken
+   it. Scoped to the fork-stamped transcript scroller, dark only. */
+:root[data-fork="noahhendrickson-t3code"].dark .fork-timeline-cutoff .hover\:bg-accent\/20:hover {
+  background-color: var(--fork-outline-hover-bg);
+}
+
+/* The "Show full message" line under a long user message once carried
+   `hover:bg-muted/55`; since upstream sync 2026-10-02 it is a ghost-muted
+   Button, whose hover and pressed fill is the opaque --accent itself — the
+   full-strength version of the smudge above. It has no utility to key on,
+   so this reaches it through the footer upstream stamps on that row. The
+   same 4% lift, hover and pressed alike so the press does not snap dark. */
 :root[data-fork="noahhendrickson-t3code"].dark
   .fork-timeline-cutoff
-  :is(.hover\:bg-accent\/20, .hover\:bg-muted\/55):hover {
+  [data-user-message-footer]
+  > button:is(:hover, [data-pressed]) {
   background-color: var(--fork-outline-hover-bg);
 }
 
 /* File/folder path labels — not the header's deliberately-receded Show/Hide
-   hint (that span is also `.truncate`). Scope to siblings of the header. */
+   hint (that span is also `.truncate`). Scope to siblings of the header.
+   A long name renders through MiddleTruncate as a truncating head plus a
+   shrink-0 tail; both halves take the ink, or the name reads in two tones. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-changed-files-state]
   > :not([data-changed-files-header])
-  span.truncate {
+  :is(span.truncate, span.truncate + span.shrink-0) {
   color: var(--foreground);
 }

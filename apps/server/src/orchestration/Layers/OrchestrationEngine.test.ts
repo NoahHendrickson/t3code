@@ -27,7 +27,7 @@ import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 import { TestClock } from "effect/testing";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { PersistenceSqlError } from "../../persistence/Errors.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
@@ -60,7 +60,10 @@ const asMessageId = (value: string): MessageId => MessageId.make(value);
 const asTurnId = (value: string): TurnId => TurnId.make(value);
 const asCheckpointRef = (value: string): CheckpointRef => CheckpointRef.make(value);
 
-function makeOrchestrationLayer(databasePath?: string) {
+function makeOrchestrationLayer(
+  databasePath?: string,
+  repositoryIdentityResolver?: RepositoryIdentityResolver.RepositoryIdentityResolver["Service"],
+) {
   const persistence = databasePath
     ? makeSqlitePersistenceLive(databasePath)
     : SqlitePersistenceMemory;
@@ -78,15 +81,27 @@ function makeOrchestrationLayer(databasePath?: string) {
     Layer.provide(ThreadPlanProgress.layer),
     Layer.provide(OrchestrationEventStoreLive),
     Layer.provideMerge(OrchestrationCommandReceiptRepositoryLive),
-    Layer.provide(RepositoryIdentityResolver.layer),
+    Layer.provide(
+      repositoryIdentityResolver
+        ? Layer.succeed(
+            RepositoryIdentityResolver.RepositoryIdentityResolver,
+            repositoryIdentityResolver,
+          )
+        : RepositoryIdentityResolver.layer,
+    ),
     Layer.provide(persistence),
     Layer.provideMerge(ServerConfigLayer),
     Layer.provideMerge(NodeServices.layer),
   );
 }
 
-async function createOrchestrationSystem(databasePath?: string) {
-  const runtime = ManagedRuntime.make(makeOrchestrationLayer(databasePath));
+async function createOrchestrationSystem(
+  databasePath?: string,
+  repositoryIdentityResolver?: RepositoryIdentityResolver.RepositoryIdentityResolver["Service"],
+) {
+  const runtime = ManagedRuntime.make(
+    makeOrchestrationLayer(databasePath, repositoryIdentityResolver),
+  );
   const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
   const snapshotQuery = await runtime.runPromise(Effect.service(ProjectionSnapshotQuery));
   return {
@@ -373,6 +388,7 @@ describe("OrchestrationEngine", () => {
           runtimeMode: "full-access" as const,
           branch: null,
           worktreePath: null,
+          pullRequests: [],
           latestTurn: null,
           createdAt: "2026-03-03T00:00:02.000Z",
           updatedAt: "2026-03-03T00:00:03.000Z",
@@ -404,6 +420,7 @@ describe("OrchestrationEngine", () => {
       Layer.provide(
         Layer.succeed(ProjectionSnapshotQuery, {
           getUserInputActivity: () => Effect.die("unused"),
+          listActivitiesByKind: () => Effect.die("unused"),
           getCommandReadModel: () => Effect.succeed(commandReadModel),
           getSnapshot: () =>
             Effect.sync(() => {
@@ -417,6 +434,8 @@ describe("OrchestrationEngine", () => {
               threads: [],
               updatedAt: projectionSnapshot.updatedAt,
             }),
+          getDeletedWorktreeThreads: () => Effect.die("unused"),
+          listThreadsWithPullRequests: () => Effect.die("unused"),
           getArchivedShellSnapshot: () =>
             Effect.succeed({
               snapshotSequence: projectionSnapshot.snapshotSequence,
@@ -428,17 +447,18 @@ describe("OrchestrationEngine", () => {
             Effect.succeed({ snapshotSequence: projectionSnapshot.snapshotSequence }),
           getCounts: () => Effect.succeed({ projectCount: 1, threadCount: 1 }),
           getEventReplayStats: () => Effect.die("unused"),
-          getActiveProjectByWorkspaceRoot: () => Effect.succeed(Option.none()),
-          getProjectShellById: () => Effect.succeed(Option.none()),
-          getFirstActiveThreadIdByProjectId: () => Effect.succeed(Option.none()),
+          getActiveProjectByWorkspaceRoot: () => Effect.succeedNone,
+          getProjectShellById: () => Effect.succeedNone,
+          getProjectShells: () => Effect.succeed([]),
+          getFirstActiveThreadIdByProjectId: () => Effect.succeedNone,
           getImportedAgentSessionSources: () => Effect.die("unused"),
-          getThreadCheckpointContext: () => Effect.succeed(Option.none()),
-          getFullThreadDiffContext: () => Effect.succeed(Option.none()),
+          getThreadCheckpointContext: () => Effect.succeedNone,
+          getFullThreadDiffContext: () => Effect.succeedNone,
           getThreadRuntimeContext: () => Effect.die("unused"),
           getTurnStartMessage: () => Effect.die("unused"),
-          getThreadShellById: () => Effect.succeed(Option.none()),
-          getThreadDetailById: () => Effect.succeed(Option.none()),
-          getThreadDetailSnapshot: () => Effect.succeed(Option.none()),
+          getThreadShellById: () => Effect.succeedNone,
+          getThreadDetailById: () => Effect.succeedNone,
+          getThreadDetailSnapshot: () => Effect.succeedNone,
           searchThreads: () => Effect.succeed({ matches: [] }),
         }),
       ),
@@ -1009,7 +1029,22 @@ describe("OrchestrationEngine", () => {
   it.each(["unlink", "relink", "branch", "worktree", "project", "delete"] as const)(
     "rejects PR discovery completed after a newer %s command",
     async (change) => {
-      const system = await createOrchestrationSystem();
+      const system = await createOrchestrationSystem(undefined, {
+        resolve: (workspaceRoot) =>
+          Effect.succeed({
+            canonicalKey: "example.test/owner/repository",
+            provider: "github",
+            displayName: "owner/repository",
+            rootPath: workspaceRoot,
+            locator: {
+              source: "git-remote",
+              remoteName: "origin",
+              remoteUrl: "https://example.test/owner/repository.git",
+            },
+          }),
+      });
+      // Same-tick links must replace the old PR, not rely on timestamp ordering.
+      const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(now()));
       try {
         const projectId = ProjectId.make("pr-race-project");
         const threadId = ThreadId.make("pr-race-thread");
@@ -1058,6 +1093,7 @@ describe("OrchestrationEngine", () => {
             linkedPullRequest: previous,
           }),
         );
+        expect((await system.readModel()).threads[0]?.linkedPullRequest).toEqual(previous);
         const metadataChanges = {
           unlink: { linkedPullRequest: null },
           relink: {
@@ -1111,6 +1147,9 @@ describe("OrchestrationEngine", () => {
         if (change === "delete") return;
         const current = (await system.readModel()).threads[0];
         expect(current?.branchPullRequest ?? null).toBeNull();
+        expect(current?.pullRequests.map((link) => link.number)).toEqual(
+          change === "unlink" ? [] : change === "relink" ? [3] : [1],
+        );
         expect(current?.linkedPullRequest ?? null).toEqual(
           change === "unlink"
             ? null
@@ -1119,6 +1158,7 @@ describe("OrchestrationEngine", () => {
               : previous,
         );
       } finally {
+        clock.mockRestore();
         await system.dispose();
       }
     },
@@ -1797,6 +1837,89 @@ describe("OrchestrationEngine", () => {
     ).rejects.toThrow("already archived");
 
     await runtime.dispose();
+  });
+
+  it("does not republish another server's turn when a local dispatch fails", async () => {
+    const directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "t3-shared-db-"));
+    const databasePath = NodePath.join(directory, "state.sqlite");
+    const serverA = await createOrchestrationSystem(databasePath);
+    const serverB = await createOrchestrationSystem(databasePath);
+    const threadId = ThreadId.make("thread-shared");
+    const createdAt = now();
+    const sentinelCommandId = CommandId.make("cmd-shared-rename");
+    try {
+      await serverA.run(
+        serverA.engine.dispatch({
+          type: "project.create",
+          commandId: CommandId.make("cmd-shared-project-create"),
+          projectId: asProjectId("project-shared"),
+          title: "Shared Project",
+          workspaceRoot: "/tmp/project-shared",
+          createdAt,
+        }),
+      );
+      await serverA.run(
+        serverA.engine.dispatch({
+          type: "thread.create",
+          commandId: CommandId.make("cmd-shared-thread-create"),
+          threadId,
+          projectId: asProjectId("project-shared"),
+          title: "shared",
+          modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5-codex" },
+          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+          runtimeMode: "approval-required",
+          branch: null,
+          worktreePath: null,
+          createdAt,
+        }),
+      );
+      await serverA.run(
+        serverA.engine.dispatch({
+          type: "thread.turn.start",
+          commandId: CommandId.make("cmd-shared-turn-start"),
+          threadId,
+          message: {
+            messageId: asMessageId("msg-shared"),
+            role: "user",
+            text: "hello",
+            attachments: [],
+          },
+          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+          runtimeMode: "approval-required",
+          createdAt,
+        }),
+      );
+
+      const published = await serverB.run(
+        Effect.gen(function* () {
+          const events = yield* serverB.engine.subscribeDomainEvents;
+          // B's command model is still empty, so this fails and reconciles.
+          yield* serverB.engine
+            .dispatch({
+              type: "thread.meta.update",
+              commandId: CommandId.make("cmd-shared-stale-rename"),
+              threadId,
+              title: "stale",
+            })
+            .pipe(Effect.flip);
+          yield* serverB.engine.dispatch({
+            type: "thread.meta.update",
+            commandId: sentinelCommandId,
+            threadId,
+            title: "renamed on B",
+          });
+          return yield* Stream.runCollect(
+            Stream.takeUntil(events, (event) => event.commandId === sentinelCommandId),
+          );
+        }).pipe(Effect.scoped),
+      );
+
+      expect(Array.from(published).map((event) => event.type)).toEqual(["thread.meta-updated"]);
+    } finally {
+      await serverA.dispose();
+      await serverB.dispose();
+      await NodeFSP.rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("fails command dispatch when command invariants are violated", async () => {

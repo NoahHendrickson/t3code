@@ -453,9 +453,7 @@ describe("fork guard: design mode", () => {
     expect(timeline).toContain(
       'import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript"',
     );
-    expect(timeline).toContain(
-      "const forkDesignChanges = extractTrailingDesignChanges(row.message.text)",
-    );
+    expect(timeline).toContain("() => extractTrailingDesignChanges(row.message.text),");
     expect(timeline).toContain("<ForkTranscriptDesignChanges");
     expect(timeline).toContain("blocks={forkDesignChanges.blocks}");
     // The verdict line's correlation key: the message's own id — the one stable identity

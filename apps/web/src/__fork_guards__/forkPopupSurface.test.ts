@@ -228,10 +228,9 @@ describe("fork guard: fork-popup-surface", () => {
     // Upstream's --border is an opaque palette grey that reads as a dark bar
     // on the frosted and measured-floor popups; a 12% contrast alpha lifts
     // off whatever the popup paints instead.
-    for (const slot of ["menu-separator", "select-separator", "combobox-separator"] as const) {
-      const source = slot.startsWith("menu") ? menu : slot.startsWith("select") ? select : combobox;
-      expect(source, slot).toContain(`data-slot="${slot}"`);
-    }
+    // Upstream #9917 removed the unused select and combobox separators, so the
+    // menu's is the one slot a popup divider renders through.
+    expect(menu).toContain('data-slot="menu-separator"');
     const separator = cssRules(theme).find(
       (candidate) =>
         flat(candidate.selector).includes('[data-slot="menu-separator"]') &&
@@ -239,8 +238,6 @@ describe("fork guard: fork-popup-surface", () => {
     );
     expect(separator?.selector).toContain(MARKER);
     expect(separator?.selector).toContain(".dark");
-    expect(separator?.selector).toContain('[data-slot="select-separator"]');
-    expect(separator?.selector).toContain('[data-slot="combobox-separator"]');
 
     // The branch picker's footer divides itself with a border-t on its own
     // label, not a slot. Sliced to that label: the rule below reaches every

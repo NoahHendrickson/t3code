@@ -2,7 +2,7 @@ import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environ
 import { type EnvironmentId, type ScopedThreadRef, ThreadId } from "@t3tools/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
-import { extractTrailingDesignChanges } from "./designChangeTranscript";
+import { extractTrailingDesignChanges, withDesignChangesTrailing } from "./designChangeTranscript";
 import { forkDesignChanges, useDesignChangeDraftStore } from "./designChangeDraftStore";
 import { useDesignSentPreviews } from "./designSentPreviews";
 import type { DesignChangeRequestPayload } from "./protocol";
@@ -254,6 +254,30 @@ describe("designChangeDraftStore", () => {
     expect(pendingFor(THREAD)).toHaveLength(1);
   });
 
+  it("detach takes the pills out and restore puts back only what was not superseded", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload({ markdown: "a", pageUrl: "http://localhost/a" }));
+    add(THREAD, "tab-b", payload({ markdown: "b", pageUrl: "http://localhost/b" }));
+    const taken = forkDesignChanges.takeForSend(THREAD, "").sent;
+
+    forkDesignChanges.detach(THREAD, taken);
+    expect(pendingFor(THREAD)).toHaveLength(0);
+    // A second send in the meantime carries nothing.
+    expect(forkDesignChanges.takeForSend(THREAD, "next").text).toBe("next");
+
+    // The panel re-sends tab-b's document while the first send is out.
+    add(THREAD, "tab-b", payload({ markdown: "b, revised", pageUrl: "http://localhost/b" }));
+    forkDesignChanges.restore(THREAD, taken);
+    expect(pendingFor(THREAD).map((entry) => entry.markdown)).toEqual(["a", "b, revised"]);
+  });
+
+  it("rekey moves a draft's pills to its new thread", () => {
+    useDesignChangeDraftStore.getState().add(THREAD, "tab-a", payload());
+    forkDesignChanges.rekey(THREAD, OTHER_THREAD);
+    expect(pendingFor(THREAD)).toHaveLength(0);
+    expect(pendingFor(OTHER_THREAD)).toHaveLength(1);
+  });
+
   it("drops the thread's whole entry once a targeted clear empties it", () => {
     const { add } = useDesignChangeDraftStore.getState();
     add(THREAD, "tab-a", payload());
@@ -291,5 +315,23 @@ describe("extractTrailingDesignChanges", () => {
     const notTrailing =
       "<design_change_request>\n# body\n</design_change_request>\n\ntrailing text";
     expect(extractTrailingDesignChanges(notTrailing).blocks).toEqual([]);
+  });
+
+  it("stays trailing when legacy context blocks are serialized after the prompt", () => {
+    // A server without inline message context appends its context blocks to the text; the
+    // design run must still be the outermost trailing run for the transcript to find it.
+    const legacy = (promptText: string) =>
+      `${promptText}\n\n<terminal_context>\n- Build line 7:\n  output\n</terminal_context>`;
+    const run = "<design_change_request>\n# body\n</design_change_request>";
+    const serialized = withDesignChangesTrailing(`See @build:7\n\n${run}`, legacy);
+    expect(serialized).toBe(`${legacy("See @build:7")}\n\n${run}`);
+    expect(extractTrailingDesignChanges(serialized)).toEqual({
+      promptText: legacy("See @build:7"),
+      blocks: ["# body"],
+    });
+    // A design-only send has no prose to serialize; the run is the whole message.
+    expect(withDesignChangesTrailing(run, () => "")).toBe(run);
+    // Nothing pending: the serializer sees the text untouched.
+    expect(withDesignChangesTrailing("plain", legacy)).toBe(legacy("plain"));
   });
 });

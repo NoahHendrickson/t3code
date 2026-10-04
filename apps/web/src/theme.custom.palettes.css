@@ -847,7 +847,8 @@
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     [data-fork-composer-vessel],
-    [data-fork-composer-context-row] :is(button, [data-slot="button"], [data-fork-context-chip])
+    [data-fork-composer-context-row]
+      :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip])
   ) {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
