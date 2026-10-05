@@ -4240,3 +4240,20 @@
   verify:
     - apps/web/src/__fork_guards__/serverRepositoryIdentityBaseRemote.test.ts
     - apps/server/src/project/RepositoryIdentityResolver.test.ts
+
+- id: fork-queued-message-frost
+  intent: >
+    A queued message in the transcript wears a frosted fill — a 4% white
+    wash over a 12px backdrop blur — under the fork dark marker, instead of
+    upstream's unfilled dashed outline, which reads as a hole on the fork's
+    dark stages. The dashed border stays as the "not sent yet" mark. Keyed
+    on the data-queued-message-id row and its border-dashed bubble child.
+  tier: 1
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Stamps data-queued-message-id on the row around the dashed bubble.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkQueuedMessageFrost.test.ts

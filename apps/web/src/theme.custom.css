@@ -2995,3 +2995,16 @@
   :is(span.truncate, span.truncate + span.shrink-0) {
   color: var(--foreground);
 }
+
+/* ── Queued message frost (fork-queued-message-frost) ───────────────────────
+   A queued message is upstream's dashed outline with no fill, so on the
+   fork's dark stages it reads as a hole in the transcript. It takes a low
+   white wash over a blur instead: a frosted card that still sits a step
+   quieter than a sent message, the dashed border kept as the "not sent yet"
+   mark. Keyed on the row upstream stamps with data-queued-message-id and its
+   dashed bubble child. Dark only. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-queued-message-id] > .border-dashed {
+  background-color: rgb(255 255 255 / 4%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
