@@ -47,9 +47,11 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // reads as woke, and there is no client auto-settle predicate to forward.
     expect(sidebarV2).toContain('thread.settledOverride !== "settled";');
     expect(sidebarV2).toMatch(
-      /status === "ready" \|\| status === "working" \|\| status === "monitoring"/u,
+      /status === "ready" \|\| status === "working" \|\| status === "waiting"/u,
     );
-    expect(sidebarV2).toContain('? { label: "Monitoring", mark: "monitoring" }');
+    // Upstream renamed the calm background status monitoring -> waiting; the
+    // fork keeps drawing it with the breathing monitoring mark.
+    expect(sidebarV2).toContain('? { label: "Waiting", mark: "monitoring" }');
     // Monitoring is a pulsing dot via the shared mark renderer, not a sky
     // text label — and both card and slim draw it in the same 14px-tall slot.
     expect(sidebarV2).toContain("<SidebarV2StatusMark");

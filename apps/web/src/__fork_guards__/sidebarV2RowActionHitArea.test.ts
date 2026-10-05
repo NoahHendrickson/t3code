@@ -260,6 +260,8 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
         sidebarV2,
       )?.[1];
     expect(elapsedSpanClass).toBeDefined();
-    expect(sidebarV2).toContain("transition-opacity group-hover/v2-row:opacity-0");
+    // group-any-hover (upstream #15536): a secondary hovering pointer on a
+    // touch-primary device reveals the actions too.
+    expect(sidebarV2).toContain("transition-opacity group-any-hover/v2-row:opacity-0");
   });
 });

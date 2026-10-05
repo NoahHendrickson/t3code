@@ -26,7 +26,9 @@ const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
 
 describe("fork guard: fork-transcript-hover", () => {
   it("keeps the utilities and scroller class the rule keys on", () => {
-    expect(timeline).toContain("hover:bg-accent/20");
+    // Upstream's V2 tool rows dropped their hover wash (#15506); the utility
+    // rule stays for any row that regains it, the footer is the live carrier.
+    expect(timeline).not.toContain("hover:bg-accent/20");
     expect(timeline).toContain('"fork-timeline-cutoff"');
     expect(timeline).toContain('data-user-message-footer="true"');
   });

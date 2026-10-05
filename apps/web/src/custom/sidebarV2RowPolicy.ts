@@ -113,7 +113,7 @@ export function threadCardTitleClassName(input: { readonly recedes: boolean }): 
     // end centres in the same box, so neither hangs against the other.
     "truncate text-[0.875rem] leading-[18px] font-normal",
     input.recedes
-      ? "text-[color:var(--fork-sidebar-card-title-receded,var(--muted-foreground))] group-hover/v2-row:text-foreground"
+      ? "text-[color:var(--fork-sidebar-card-title-receded,var(--muted-foreground))] group-any-hover/v2-row:text-foreground"
       : "text-foreground",
   );
 }

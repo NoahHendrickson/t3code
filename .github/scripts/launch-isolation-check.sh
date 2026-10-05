@@ -174,11 +174,14 @@ if [ -n "$strays" ]; then
   violated "upstream-named paths under the scratch HOME" "$scratch"
 fi
 support="$scratch/Library/Application Support"
-if [ ! -d "$support/t3code-fork" ]; then
-  echo "Expected Electron user-data directory missing: t3code-fork" >&2
+# V2 profile (orchestrator-V2 sync): the fork's Electron user data is
+# t3code-fork-v2; t3code-fork is only read as the V1 import source and is
+# never created on a fresh HOME.
+if [ ! -d "$support/t3code-fork-v2" ]; then
+  echo "Expected Electron user-data directory missing: t3code-fork-v2" >&2
   ls "$support" >&2 || true
   dump_diagnostics
   exit 1
 fi
-echo "Isolation verified: state under ~/.t3-fork and t3code-fork only."
+echo "Isolation verified: state under ~/.t3-fork and t3code-fork-v2 only."
 find "$scratch/.t3-fork" -maxdepth 2

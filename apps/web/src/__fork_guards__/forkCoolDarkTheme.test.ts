@@ -358,10 +358,12 @@ describe("fork guard: fork-cool-dark-theme", () => {
     // 452:17308, baked) anchored to its left edge. The wrapper it paints on must already be
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
+    // Since the orchestrator-V2 sync the positioned wrapper is upstream's
+    // ChatCanvas; ChatView stamps the drop-target attribute onto it.
+    const chatCanvas = readSibling("../components/chat/ChatCanvas.tsx");
+    expect(chatCanvas).toContain('className="relative flex min-h-0 min-w-0 flex-1 flex-col"');
     const chatView = readSibling("../components/ChatView.tsx");
-    expect(chatView).toMatch(
-      /className="relative flex min-h-0 min-w-0 flex-1 flex-col"[\s\S]{0,900}data-chat-workspace-drop-target="true"/u,
-    );
+    expect(chatView).toMatch(/<ChatCanvas[\s\S]{0,300}data-chat-workspace-drop-target="true"/u);
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-thread.png", import.meta.url)),

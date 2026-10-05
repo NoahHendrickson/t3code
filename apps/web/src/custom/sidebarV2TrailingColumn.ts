@@ -130,6 +130,6 @@ export const SIDEBAR_V2_TRAILING_OFFSET = {
  */
 export const SIDEBAR_V2_SLIM_ROW_ACTION_CLASS = cn(
   SIDEBAR_V2_ICON_BUTTON_CLASS,
-  "absolute inset-y-0 right-0 opacity-0 focus-visible:opacity-100 group-hover/v2-row:opacity-100",
+  "absolute inset-y-0 right-0 opacity-0 focus-visible:opacity-100 group-any-hover/v2-row:opacity-100",
   SIDEBAR_V2_TRAILING_OFFSET.slimActions,
 );

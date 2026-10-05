@@ -4,7 +4,7 @@ import {
   selectVerifySummaryLineForMessage,
   shouldOfferPreviewResolution,
   useDesignSentPreviews,
-  type SentPreviewLatestTurn,
+  type SentPreviewLatestRun,
   type SentPreviewRecord,
 } from "./designSentPreviews";
 import type { DesignVerifyReport } from "./protocol";
@@ -64,10 +64,11 @@ const measuredReport = (applied: number, unchanged = 0): DesignVerifyReport => (
   ],
 });
 
-const turnId = (value: string) => value as SentPreviewLatestTurn["turnId"];
+const runId = (value: string) => value as SentPreviewLatestRun["runId"];
 
-const turn = (overrides: Partial<SentPreviewLatestTurn> = {}): SentPreviewLatestTurn => ({
-  turnId: turnId("turn-1"),
+const run = (overrides: Partial<SentPreviewLatestRun> = {}): SentPreviewLatestRun => ({
+  runId: runId("run-1"),
+  status: "completed",
   requestedAt: SENT_AT,
   startedAt: SENT_AT,
   completedAt: AFTER_SEND,
@@ -77,17 +78,17 @@ const turn = (overrides: Partial<SentPreviewLatestTurn> = {}): SentPreviewLatest
 const offer = (input: {
   record?: SentPreviewRecord | null;
   threadKey?: string;
-  latestTurn?: SentPreviewLatestTurn | null;
-  session?: { status: string; activeTurnId: string | null } | null;
+  latestRun?: SentPreviewLatestRun | null;
+  runtime?: { status: string; activeRunId: string | null } | null;
   draftCount?: number;
 }) =>
   shouldOfferPreviewResolution({
     record: input.record === undefined ? record() : input.record,
     threadKey: input.threadKey ?? THREAD,
-    latestTurn: input.latestTurn === undefined ? turn() : input.latestTurn,
-    session: (input.session === undefined ? null : input.session) as Parameters<
+    latestRun: input.latestRun === undefined ? run() : input.latestRun,
+    runtime: (input.runtime === undefined ? null : input.runtime) as Parameters<
       typeof shouldOfferPreviewResolution
-    >[0]["session"],
+    >[0]["runtime"],
     draftCount: input.draftCount ?? 2,
   });
 
@@ -183,26 +184,29 @@ describe("shouldOfferPreviewResolution", () => {
   });
 
   it("stays quiet while the projection still shows a turn from before the send", () => {
-    // The flash window: right after markSent, latestTurn is still the PREVIOUS (settled)
-    // turn. Offering here would drop previews the agent has not even seen yet.
-    expect(
-      offer({ latestTurn: turn({ requestedAt: BEFORE_SEND, completedAt: BEFORE_SEND }) }),
-    ).toBe(false);
+    // The flash window: right after markSent, latestRun is still the PREVIOUS (settled)
+    // run. Offering here would drop previews the agent has not even seen yet.
+    expect(offer({ latestRun: run({ requestedAt: BEFORE_SEND, completedAt: BEFORE_SEND }) })).toBe(
+      false,
+    );
   });
 
-  it("stays quiet while no turn has projected at all", () => {
-    expect(offer({ latestTurn: null })).toBe(false);
+  it("stays quiet while no run has projected at all", () => {
+    expect(offer({ latestRun: null })).toBe(false);
+    expect(offer({ latestRun: run({ requestedAt: null }) })).toBe(false);
   });
 
-  it("stays quiet while the turn is open, even with a null session", () => {
+  it("stays quiet while the run is open, even with a null runtime", () => {
     // The adoption window: turn.start emits its events and the session arrives minutes later
     // (worktree checkout + cold provider boot). A wall-clock fallback armed here — that is
     // the destructive-prompt-under-a-running-turn bug this predicate exists to prevent.
-    expect(offer({ latestTurn: turn({ completedAt: null }), session: null })).toBe(false);
+    expect(offer({ latestRun: run({ status: "running", completedAt: null }), runtime: null })).toBe(
+      false,
+    );
   });
 
-  it("stays quiet while a session reports the turn running", () => {
-    expect(offer({ session: { status: "running", activeTurnId: "turn-1" } })).toBe(false);
+  it("stays quiet while the runtime still names the run as active", () => {
+    expect(offer({ runtime: { status: "running", activeRunId: "run-1" } })).toBe(false);
   });
 
   it("offers when a LATER turn than the send has settled", () => {
@@ -210,8 +214,8 @@ describe("shouldOfferPreviewResolution", () => {
     // changed; the ignored prompt must come back, not vanish forever.
     expect(
       offer({
-        latestTurn: turn({
-          turnId: turnId("turn-2"),
+        latestRun: run({
+          runId: runId("run-2"),
           requestedAt: AFTER_SEND,
           completedAt: AFTER_SEND,
         }),

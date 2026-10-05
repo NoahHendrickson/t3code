@@ -1,3 +1,4 @@
+import { ThreadHoverCard, ThreadHoverCardPopup } from "./ThreadHoverCard";
 import { requestCustomSnooze } from "./CustomSnoozeDialog";
 import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
 import { resolveThreadCurrentPullRequestLink } from "@t3tools/shared/threadPullRequests";
@@ -36,6 +37,7 @@ import {
   effectiveSnoozed,
   threadWokeAt,
 } from "@t3tools/client-runtime/state/thread-settled";
+import { createInboxReturnTracker } from "@t3tools/client-runtime/state/thread-inbox";
 import {
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping
      The pinned block's own drop planner. Upstream moved it out of
@@ -46,7 +48,10 @@ import {
   resolveSettledThreadTimestamp,
   sortSettledThreads,
 } from "@t3tools/client-runtime/state/thread-sort";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
+import {
+  threadRuntimeCanArchive,
+  type EnvironmentThreadShell,
+} from "@t3tools/client-runtime/state/models";
 import {
   parseScopedThreadKey,
   scopeProjectRef,
@@ -54,17 +59,17 @@ import {
   scopedThreadKey,
 } from "@t3tools/client-runtime/environment";
 import {
-  resolveEnvironmentMachineKind,
   type EnvironmentMachineKind,
   type ScopedThreadRef,
   type ThreadId,
 } from "@t3tools/contracts";
+
 import type { TimestampFormat } from "@t3tools/contracts/settings";
 import {
   AlarmClockIcon,
   AlarmClockOffIcon,
+  ArrowRightLeftIcon,
   CheckIcon,
-  ChevronDownIcon,
   CircleAlertIcon,
   ClockIcon,
   GitBranchIcon,
@@ -80,6 +85,12 @@ import {
 // binding by phosphorIcons.test.ts (same reason Globe2Icon sits out here).
 import { XIcon } from "lucide-react";
 /* fork:end sidebar-v2-draft-rows */
+/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+// Upstream's shelf headers moved into ui/collapsible-section-header and took
+// this glyph out of its list; the fork's three shelf headers still draw it,
+// on a statement of their own for the phosphor-guard reason XIcon is.
+import { ChevronDownIcon } from "lucide-react";
+/* fork:end sidebar-v2-card-rows */
 /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
 // A statement of its own rather than a name in upstream's list: the phosphor
 // guard parses that list's braces, and a fence comment inside them reads as a
@@ -109,6 +120,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { useParams, useRouter } from "@tanstack/react-router";
@@ -129,13 +141,17 @@ import {
   threadTraversalDirectionFromCommand,
 } from "../keybindings";
 import { useShortcutModifierState } from "../shortcutModifierState";
-import { useTerminalFocus } from "../hooks/useTerminalFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { isModelPickerOpen } from "../modelPickerVisibility";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { isMacPlatform } from "~/lib/utils";
 import { useOpenPrLink } from "../lib/openPullRequestLink";
+/* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows
+   Upstream's draft rows discard through lib/discardComposerDraft (an undo
+   notice over clearDraftThread, which returns early for a draft with no
+   composer entry); the fork's draft cards keep the direct release + clear. */
 import { releaseComposerDraftUploads } from "../lib/composerDraftUploads";
+/* fork:end sidebar-v2-draft-rows */
 import { readLocalApi } from "../localApi";
 import { useSidebarPendingFileDropStore } from "../sidebarPendingFileDropStore";
 import { getProjectOrderKey, selectProjectGroupingSettings } from "../logicalProject";
@@ -151,8 +167,9 @@ import {
   getThreadKeysToDeselectAfterDelete,
   useThreadSelectionStore,
 } from "../threadSelectionStore";
-import { useThreadActions } from "../hooks/useThreadActions";
+import { useAcknowledgeThreadWoke, useThreadActions } from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
+import { useTerminalFocus } from "../hooks/useTerminalFocus";
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
 import { snapshotVisibleProjectOrderAsManual } from "~/custom/sidebarV2ProjectSort";
 import { useScrollGutterWidth } from "~/custom/useScrollGutterWidth";
@@ -182,7 +199,11 @@ import { useClientSettings, useUpdateClientSettings } from "../hooks/useSettings
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useNowMinute } from "../hooks/useNowMinute";
-import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
+import {
+  useEnvironmentIdentities,
+  useEnvironmentMachines,
+  usePrimaryEnvironmentId,
+} from "../state/environments";
 import {
   readThreadShell,
   useAllEnvironmentProjectSnapshotsReady,
@@ -207,9 +228,10 @@ import type { SidebarThreadSummary } from "../types";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { cn } from "~/lib/utils";
 import { EnvironmentMachineIcon } from "./EnvironmentMachineIcon";
-import { buildThreadActionMenuItems } from "./threadActionMenu.logic";
+import { buildDraftActionMenuItems, buildThreadActionMenuItems } from "./threadActionMenu.logic";
 import {
   animateSidebarLayoutChanges,
+  filterSidebarV2VisibleThreads,
   buildBulkTitleRegenerationContextMenuItem,
   buildBulkUnpinContextMenuItem,
   deleteSelectedThreadEntries,
@@ -222,19 +244,25 @@ import {
   orderItemsByPreferredIds,
   reduceSidebarProjectScopeMenuState,
   resolveAdjacentThreadId,
+  resolveSidebarSweepKeys,
+  resolveSidebarThreadSection,
   resolveSidebarRowAccessibility,
   resolveSidebarThreadStatus,
+  resolveThreadLastVisitedAt,
   resolveWorkingStartedAt,
   shouldNavigateAfterThreadPark,
+  sidebarThreadKeyAtY,
   sortInboxThreadsByReturn,
-  sortLogicalProjectsForSidebar,
   sortPinnedThreadsForSidebar,
+  sortSidebarV2ProjectGroups,
   sortThreadsForSidebar,
+  sortWorkingThreadsBySend,
   useRetainedValue,
   useSidebarRowSubscriptionLease,
   useThreadJumpHintVisibility,
   type SidebarSection,
 } from "./Sidebar.logic";
+import { SidebarPointerSensor } from "./Sidebar.pointer";
 import { resolveLocalCheckoutBranchMismatch } from "./BranchToolbar.logic";
 import {
   ThreadPullRequestBadgeControl,
@@ -316,6 +344,11 @@ import { useComposerDraftStore, useThreadHasUnsentDraft } from "../composerDraft
 
 // Settled-tail paging: recent history is the common lookup; the deep tail
 // stays behind an explicit Show more.
+const EMPTY_PROVIDER_ENTRIES: ReadonlyMap<string, ProviderInstanceEntry> = new Map();
+// Collapsed shelves share one empty list so a route change alone does not
+// give the sidebar list a new identity.
+const EMPTY_THREADS: readonly EnvironmentThreadShell[] = [];
+
 const SETTLED_TAIL_INITIAL_COUNT = 10;
 const SETTLED_TAIL_PAGE_COUNT = 25;
 // Fresh keys deliberately reset both shelves to collapsed for existing users.
@@ -330,35 +363,7 @@ const WORKING_SHELF_EXPANDED_KEY = "t3code:sidebar:working-expanded";
 
 // Working beta: when this client saw each thread leave the Working shelf.
 // Module scope keeps the inbox order across routes that unmount the sidebar.
-let lastWorkingThreadKeys: ReadonlySet<string> | null = null;
-const observedInboxReturns = new Map<string, number>();
-
-/** Stamps threads that stopped working since the last call. The first call
-    only takes a baseline, so mounting never reshuffles the inbox. Pass null
-    to reset when the beta is off. */
-function observeInboxReturns(threads: readonly EnvironmentThreadShell[] | null): void {
-  if (threads === null) {
-    lastWorkingThreadKeys = null;
-    observedInboxReturns.clear();
-    return;
-  }
-  const working = new Set<string>();
-  const present = new Set<string>();
-  for (const thread of threads) {
-    const key = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
-    present.add(key);
-    if (isSidebarThreadWorking(thread)) working.add(key);
-  }
-  // Drop deleted threads so the map stays bounded by the live thread list.
-  for (const key of observedInboxReturns.keys()) {
-    if (!present.has(key)) observedInboxReturns.delete(key);
-  }
-  const now = Date.now();
-  for (const key of lastWorkingThreadKeys ?? []) {
-    if (present.has(key) && !working.has(key)) observedInboxReturns.set(key, now);
-  }
-  lastWorkingThreadKeys = working;
-}
+const inboxReturns = createInboxReturnTracker();
 
 function compactSidebarTimeLabel(label: string): string {
   if (label === "just now") return "now";
@@ -408,11 +413,6 @@ function WorkingDuration(props: { startedAt: string | null }) {
   return <span className="tabular-nums">{formatWorkingDurationLabel(Date.now() - startedMs)}</span>;
 }
 
-const EMPTY_PROVIDER_ENTRIES: ReadonlyMap<string, ProviderInstanceEntry> = new Map();
-// Collapsed shelves share one empty list so a route change alone does not
-// give the sidebar list a new identity.
-const EMPTY_THREADS: readonly EnvironmentThreadShell[] = [];
-
 function terminalProcessLabel(count: number): string {
   return `${count} terminal ${count === 1 ? "process" : "processes"} running`;
 }
@@ -424,6 +424,7 @@ function SidebarThreadTooltip({
   environmentLabel,
   environmentMachine,
   providerEntry,
+  providerEntryByInstanceId,
   showInstanceBadge,
   modelInstanceId,
   modelLabel,
@@ -440,6 +441,7 @@ function SidebarThreadTooltip({
   environmentLabel: string | null;
   environmentMachine: EnvironmentMachineKind;
   providerEntry: ProviderInstanceEntry | null;
+  providerEntryByInstanceId: ReadonlyMap<string, ProviderInstanceEntry>;
   showInstanceBadge: boolean;
   modelInstanceId: string;
   modelLabel: string;
@@ -457,108 +459,126 @@ function SidebarThreadTooltip({
   terminalProcessCount: number;
 }) {
   const driverKind = providerEntry?.driverKind ?? null;
+  const previousProviderNames = thread.providerInstanceHistory
+    .filter((instanceId) => instanceId !== modelInstanceId)
+    .map((instanceId) => providerEntryByInstanceId.get(instanceId)?.displayName ?? instanceId);
   const supportsMultiplePullRequests = useSupportsMultiplePullRequests(thread.environmentId);
   return (
-    <TooltipPopup side="right" align="start" sideOffset={4} variant="glass">
-      {/* The viewport's own inset (py-1 px-2) plus this one make the floating inset. */}
-      <div className="flex min-w-0 max-w-80 flex-col gap-2 px-1 py-2">
-        <div className="min-w-0 truncate text-xs leading-tight font-medium text-foreground">
-          {thread.title}
-        </div>
-        <div className="grid gap-1.5 pl-0.5 text-xs text-muted-foreground">
-          {projectDisplayName ? (
-            <div className="flex min-w-0 items-center gap-2">
-              {project ? <ProjectFavicon project={project} className="size-3 shrink-0" /> : null}
-              <div className="min-w-0 truncate text-foreground/75">{projectDisplayName}</div>
+    <ThreadHoverCardPopup side="right" align="start" sideOffset={4}>
+      <ThreadHoverCard
+        title={thread.title}
+        footer={
+          supportsMultiplePullRequests && thread.pullRequests.length > 0 ? (
+            <div className="border-t border-border/60 pt-2 pl-0.5 text-xs text-muted-foreground">
+              <ThreadPullRequestsMiniList pullRequests={thread.pullRequests} />
             </div>
-          ) : null}
-          {environmentLabel ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <EnvironmentMachineIcon
-                kind={environmentMachine}
-                className="size-3 shrink-0 stroke-muted-foreground"
-              />
-              <div className="min-w-0 truncate text-foreground/75">{environmentLabel}</div>
-            </div>
-          ) : null}
-          {thread.branch ? (
-            <div className="flex min-w-0 items-center gap-2 text-foreground/75">
-              <GitBranchIcon className="size-3 shrink-0 stroke-muted-foreground" />
-              <MiddleTruncate value={thread.branch} className="flex" />
-            </div>
-          ) : null}
-          {/* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */}
-          {devServerLabel ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <Globe2Icon className="size-4 shrink-0 stroke-muted-foreground" />
-              <div className="min-w-0 wrap-break-word text-foreground/90">{devServerLabel}</div>
-            </div>
-          ) : null}
-          {/* fork:end sidebar-v2-dev-server-pulse */}
-          {branchMismatch ? (
-            <div className="flex min-w-0 items-start gap-2 text-warning">
-              <CircleAlertIcon aria-hidden className="mt-0.5 size-3 shrink-0 stroke-current" />
-              <div className="min-w-0 flex-1 wrap-break-word leading-5">
-                You're currently checked out on another branch.
-              </div>
-            </div>
-          ) : null}
-          {driverKind ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <ProviderInstanceIcon
-                driverKind={driverKind}
-                displayName={
-                  providerEntry?.displayName ?? thread.session?.providerName ?? modelInstanceId
-                }
-                accentColor={providerEntry?.accentColor}
-                // Initials would swallow a size-3 glyph: accent dot, name in label.
-                showBadge={showInstanceBadge && providerEntry?.accentColor !== undefined}
-                badgeContent="none"
-                badgeClassName="h-2 min-w-2 px-0"
-                iconClassName="size-3 shrink-0 grayscale opacity-60"
-              />
-              <div className="min-w-0 truncate text-foreground/75">
-                {showInstanceBadge && providerEntry
-                  ? `${modelLabel} · ${providerEntry.displayName}`
-                  : modelLabel}
-              </div>
-            </div>
-          ) : null}
-          {terminalStatus ? (
-            <div className="flex min-w-0 items-center gap-2">
-              <TerminalIcon
-                aria-hidden
-                className={cn("size-3 shrink-0", terminalStatus.colorClass)}
-              />
-              <div className="min-w-0 truncate text-foreground/75">
-                {terminalProcessLabel(terminalProcessCount)}
-              </div>
-            </div>
-          ) : null}
-          {thread.session?.lastError ? (
-            <div className="flex min-w-0 items-start gap-2 text-destructive-foreground">
-              <CircleAlertIcon className="mt-0.5 size-3 shrink-0 stroke-current" />
-              {/* fork:begin sidebar-v2-error-tooltip — see .fork/customizations.yaml#sidebar-v2-error-tooltip
-                  Upstream's restyle flattened this to the literal "Error
-                  occurred", which removed the only place the sidebar surfaced
-                  what actually failed — diagnosing a dead session meant opening
-                  it. The message returns, wrapping rather than truncating: an
-                  error's tail (exit codes, file paths) is routinely the useful
-                  half, and this tooltip is already the row's overflow surface. */}
-              <div className="min-w-0 flex-1 wrap-break-word leading-5">
-                {thread.session.lastError}
-              </div>
-              {/* fork:end sidebar-v2-error-tooltip */}
-            </div>
-          ) : null}
-        </div>
-        {supportsMultiplePullRequests && thread.pullRequests.length > 0 ? (
-          <div className="border-t border-border/60 pt-2 pl-0.5 text-xs text-muted-foreground">
-            <ThreadPullRequestsMiniList pullRequests={thread.pullRequests} />
+          ) : null
+        }
+      >
+        {projectDisplayName ? (
+          <div className="flex min-w-0 items-center gap-2">
+            {project ? <ProjectFavicon project={project} className="size-3 shrink-0" /> : null}
+            <div className="min-w-0 truncate text-foreground/75">{projectDisplayName}</div>
           </div>
         ) : null}
-      </div>
-    </TooltipPopup>
+        {environmentLabel ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <EnvironmentMachineIcon
+              kind={environmentMachine}
+              className="size-3 shrink-0 stroke-muted-foreground"
+            />
+            <div className="min-w-0 truncate text-foreground/75">{environmentLabel}</div>
+          </div>
+        ) : null}
+        {thread.branch ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <GitBranchIcon className="size-3 shrink-0 stroke-muted-foreground" />
+            <MiddleTruncate value={thread.branch} className="flex" />
+          </div>
+        ) : null}
+        {/* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */}
+        {devServerLabel ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <Globe2Icon className="size-4 shrink-0 stroke-muted-foreground" />
+            <div className="min-w-0 wrap-break-word text-foreground/90">{devServerLabel}</div>
+          </div>
+        ) : null}
+        {/* fork:end sidebar-v2-dev-server-pulse */}
+        {branchMismatch ? (
+          <div className="flex min-w-0 items-start gap-2 text-warning">
+            <CircleAlertIcon aria-hidden className="mt-0.5 size-3 shrink-0 stroke-current" />
+            <div className="min-w-0 flex-1 wrap-break-word leading-5">
+              You're currently checked out on another branch.
+            </div>
+          </div>
+        ) : null}
+        {driverKind ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <ProviderInstanceIcon
+              driverKind={driverKind}
+              displayName={
+                providerEntry?.displayName ?? thread.runtime?.providerName ?? modelInstanceId
+              }
+              accentColor={providerEntry?.accentColor}
+              acpRegistryAgentId={providerEntry?.acpRegistryAgentId}
+              acpRegistryIconUrl={providerEntry?.acpRegistryIconUrl}
+              // Initials would swallow a size-3 glyph: accent dot, name in label.
+              showBadge={showInstanceBadge && providerEntry?.accentColor !== undefined}
+              badgeContent="none"
+              badgeClassName="h-2 min-w-2 px-0"
+              iconClassName="size-3 shrink-0 grayscale opacity-60"
+            />
+            <div className="min-w-0 truncate text-foreground/75">
+              {showInstanceBadge && providerEntry
+                ? `${modelLabel} · ${providerEntry.displayName}`
+                : modelLabel}
+            </div>
+          </div>
+        ) : null}
+        {previousProviderNames.length > 0 ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <ArrowRightLeftIcon className="size-3 shrink-0 stroke-muted-foreground" />
+            <div className="min-w-0 truncate text-foreground/75">
+              Handed off from {previousProviderNames.join(", ")}
+            </div>
+          </div>
+        ) : null}
+        {terminalStatus ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <TerminalIcon
+              aria-hidden
+              className={cn("size-3 shrink-0", terminalStatus.colorClass)}
+            />
+            <div className="min-w-0 truncate text-foreground/75">
+              {terminalProcessLabel(terminalProcessCount)}
+            </div>
+          </div>
+        ) : null}
+        {thread.runtime?.lastError ? (
+          <div
+            className={cn(
+              "flex min-w-0 items-start gap-2",
+              thread.runtime.lastErrorClass === "usage_limit" ? "text-warning" : "text-error",
+            )}
+          >
+            <CircleAlertIcon className="mt-0.5 size-3 shrink-0 stroke-current" />
+            {/* fork:begin sidebar-v2-error-tooltip — see .fork/customizations.yaml#sidebar-v2-error-tooltip
+                Upstream's restyle flattened this to the literal "Error
+                occurred" (or "Usage limit reached"), which removed the only
+                place the sidebar surfaced what actually failed — diagnosing a
+                dead session meant opening it. The message returns, wrapping
+                rather than truncating: an error's tail (exit codes, file
+                paths) is routinely the useful half, and this tooltip is
+                already the row's overflow surface. Upstream's class-keyed
+                colour is kept: a usage limit reads as a warning, not an error. */}
+            <div className="min-w-0 flex-1 wrap-break-word leading-5">
+              {thread.runtime.lastError}
+            </div>
+            {/* fork:end sidebar-v2-error-tooltip */}
+          </div>
+        ) : null}
+      </ThreadHoverCard>
+    </ThreadHoverCardPopup>
   );
 }
 
@@ -677,12 +697,42 @@ const draftPenClassName = "size-3 shrink-0 text-warning-foreground";
    they are not carried; the drag they belong to is the thing to port. */
 /* fork:end sidebar-v2-project-grouping */
 
+// Pointer travel before a press on a row action starts a sweep. Shorter
+// presses stay clicks.
+const SIDEBAR_DRAG_DISTANCE = 6;
+
+type SidebarSweepAction = "settle" | "unsettle" | "unsnooze";
+
+// Verb and icon on a row while a sweep will apply its action on release.
+// Upstream's dropVerbBadge reduced to the three sweep verbs — the fork's list
+// has no drop verbs — drawn with the row actions' own glyphs so the badge
+// reads as the action it performs.
+const sweepVerbBadge: Record<SidebarSweepAction, ReactNode> = {
+  settle: (
+    <>
+      <CheckIcon aria-hidden className="size-3" />
+      Settle
+    </>
+  ),
+  unsettle: (
+    <>
+      <Undo2Icon aria-hidden className="size-3" />
+      Un-settle
+    </>
+  ),
+  unsnooze: (
+    <>
+      <AlarmClockOffIcon aria-hidden className="size-3" />
+      Wake
+    </>
+  ),
+};
+
 const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   thread: SidebarThreadSummary;
   variant: "card" | "slim";
-  // Slim rows are either settled (action: un-settle) or merely quiet
-  // (seen Ready threads — action: settle).
-  variantAction: "settle" | "unsettle" | "unsnooze";
+  // Settled rows un-settle, snoozed rows wake, and cards settle.
+  variantAction: SidebarSweepAction;
   // False on environments whose server predates thread.settle/unsettle:
   // the lifecycle affordances hide entirely rather than fail on click.
   settlementSupported: boolean;
@@ -698,6 +748,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   onUnpin: (threadRef: ScopedThreadRef) => void;
   /* fork:end sidebar-v2-row-action-hit-area */
   sortable?: SortableThreadRowBag | undefined;
+  // The action this row will take when the sweep is released.
+  sweepAction: SidebarSweepAction | null;
   // Compact wake countdown ("2h") for rows in the snoozed shelf.
   snoozeWakeLabelText: string | null;
   // When a snooze ended (timer or early wake); drives the Woke pill until
@@ -726,6 +778,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   renamingTitle: string;
   onContextMenu: (threadRef: ScopedThreadRef, position: { x: number; y: number }) => void;
   onSettle: (threadRef: ScopedThreadRef) => void;
+  onActionSweepStart: (
+    threadRef: ScopedThreadRef,
+    action: SidebarSweepAction,
+    event: PointerEvent,
+  ) => void;
   onUnsettle: (threadRef: ScopedThreadRef) => void;
   onSnooze: (threadRef: ScopedThreadRef, preset: Pick<SnoozePreset, "snoozedUntil">) => void;
   onUnsnooze: (threadRef: ScopedThreadRef) => void;
@@ -757,6 +814,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     /* fork:end sidebar-v2-row-action-hit-area */
     onRenameTitleChange,
     onSettle,
+    onActionSweepStart,
     onSnooze,
     onStartRename,
     onThreadActivate,
@@ -779,7 +837,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   const threadKey = scopedThreadKey(threadRef);
   const { leaseLiveStatus, rowRef } = useSidebarRowSubscriptionLease(props.isActive);
   const isRegeneratingTitle = thread.titleRegeneration != null;
-  const lastVisitedAt = useUiStateStore((state) => state.threadLastVisitedAtById[threadKey]);
+  const localLastVisitedAt = useUiStateStore((state) => state.threadLastVisitedAtById[threadKey]);
+  const lastVisitedAt = resolveThreadLastVisitedAt(thread.lastVisitedAt, localLastVisitedAt);
   const isSelected = useThreadSelectionStore((state) => state.selectedThreadKeys.has(threadKey));
   const openPrLink = useOpenPrLink();
   const runningTerminalIds = useThreadRunningTerminalIds({
@@ -859,7 +918,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
      fork's card path (cardRecedes) owns everywhere it actually occurs. */
   /* fork:end sidebar-v2-card-rows */
   const shouldRecede =
-    (status === "ready" || status === "working" || status === "monitoring") &&
+    (status === "ready" || status === "working" || status === "waiting") &&
     !isUnread &&
     !isWoke &&
     !props.isActive &&
@@ -877,30 +936,36 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // stopped and the row is waiting on something, `woke` keeps its own glyph.
   // Labels are no longer painted — every status is a leading mark (rain, dot,
   // woke clock, idle ring, or the slow monitoring pulse). The label strings
-  // survive only as accessible names for aria-hidden marks.
+  // survive only as accessible names for aria-hidden marks. Upstream renamed
+  // its calm background status from monitoring to waiting (the post-settle
+  // roster) and added limited (a usage limit); waiting keeps the breathing
+  // mark, and limited takes the amber dot — it is waiting on you the way
+  // approval and input are.
   //
   // Discriminated on `mark` so the dot branch cannot be handed the `working`
   // tone, which has no dot rendering.
   const topStatus:
     | { label: string; tone: "working"; mark: "rain" }
     | { label: string; tone: SidebarV2DotTone; mark: "dot" | "woke" }
-    | { label: "Monitoring"; mark: "monitoring" }
+    | { label: "Waiting"; mark: "monitoring" }
     | null =
     status === "working"
       ? { label: "Working", tone: "working", mark: "rain" }
-      : status === "monitoring"
-        ? { label: "Monitoring", mark: "monitoring" }
+      : status === "waiting"
+        ? { label: "Waiting", mark: "monitoring" }
         : status === "approval"
           ? { label: "Needs approval", tone: "approval", mark: "dot" }
           : status === "input"
             ? { label: "Needs input", tone: "input", mark: "dot" }
-            : status === "failed"
-              ? { label: "Failed", tone: "failed", mark: "dot" }
-              : isWoke
-                ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
-                : isUnread
-                  ? { label: "Done", tone: "done", mark: "dot" }
-                  : null;
+            : status === "limited"
+              ? { label: "Usage limit reached", tone: "approval", mark: "dot" }
+              : status === "failed"
+                ? { label: "Failed", tone: "failed", mark: "dot" }
+                : isWoke
+                  ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
+                  : isUnread
+                    ? { label: "Done", tone: "done", mark: "dot" }
+                    : null;
 
   /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
   // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
@@ -923,7 +988,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   });
   const prStatus = prStatusIndicator(pr, linkedPullRequestStatus?.sourceControlProvider);
 
-  const modelInstanceId = thread.session?.providerInstanceId ?? thread.modelSelection.instanceId;
+  const modelInstanceId = thread.runtime?.providerInstanceId ?? thread.modelSelection.instanceId;
   const providerEntry = props.providerEntryByInstanceId.get(modelInstanceId) ?? null;
   const showInstanceBadge =
     providerEntry !== null &&
@@ -982,6 +1047,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       environmentLabel={props.environmentLabel}
       environmentMachine={props.environmentMachine}
       providerEntry={providerEntry}
+      providerEntryByInstanceId={props.providerEntryByInstanceId}
       showInstanceBadge={showInstanceBadge}
       modelInstanceId={modelInstanceId}
       modelLabel={modelLabel}
@@ -1050,8 +1116,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
         : null,
     [onFileDropThreads, threadRef],
   );
-  // A drop lands on a child or outside the window entirely, so dragend is
-  // the reset of last resort for the row's highlight.
   useEffect(() => {
     if (!isFileDragOver) return;
     const clearFileDrag = () => setIsFileDragOver(false);
@@ -1120,6 +1184,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   );
   const showDiscardDraft = onDiscardDraft !== null;
   /* fork:end sidebar-v2-draft-rows */
+  const handleActionPointerDown = useCallback(
+    (event: ReactPointerEvent) => {
+      if (!event.isPrimary || event.button !== 0) return;
+      // Action buttons sweep their section rather than picking up the row.
+      event.stopPropagation();
+      onActionSweepStart(threadRef, variantAction, event.nativeEvent);
+    },
+    [onActionSweepStart, threadRef, variantAction],
+  );
   const handleUnsettleClick = useCallback(
     (event: ReactMouseEvent) => {
       event.preventDefault();
@@ -1165,15 +1238,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     if (!showSnoozeButton) setSnoozeMenuOpen(false);
   }, [showSnoozeButton]);
   const handlePrClick = useCallback(
-    (event: ReactMouseEvent<HTMLElement>) => {
-      const url = pr?.url ?? currentLinkedPr?.url;
+    (event: ReactMouseEvent<HTMLElement>, targetUrl?: string) => {
+      const url = targetUrl ?? pr?.url ?? currentLinkedPr?.url;
       if (!url) return;
-      const openedInRightPanel = openPrLink(
-        event,
-        url,
-        openPullRequestsInRightPanel ? threadRef : undefined,
-      );
-      if (openedInRightPanel && openPullRequestsInRightPanel && !props.isActive) {
+      const showInRightPanel = targetUrl !== undefined || openPullRequestsInRightPanel;
+      const openedInRightPanel = openPrLink(event, url, showInRightPanel ? threadRef : undefined);
+      if (openedInRightPanel && showInRightPanel && !props.isActive) {
         onThreadActivate(threadRef);
       }
     },
@@ -1191,10 +1261,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // Hoisted above the slim return: the drag bag reaches both variants (the
   // slim shelves only read isDragging, to suppress their tooltip).
   const sortable = props.sortable;
+  // Rows a sweep will apply to take the selected fill, like upstream's.
+  const isSwept = props.sweepAction !== null;
   const rowSurfaceClassName = cn(
     threadRowSurfaceClassName({
       isActive: props.isActive,
-      isSelected,
+      isSelected: isSelected || isSwept,
       /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
       // One definition of "receded" per row: the card's surface reads the same
       // Done/Idle predicate as its title, or a Working card dims its inherited
@@ -1215,7 +1287,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     // fork's surface policy rather than folded into it — the highlight is
     // interaction, which is the only thing that policy lets fill a row.
     isFileDragOver && "ring-1 ring-inset ring-primary/70",
-    // The hover tint must not clobber an active/selected row's own surface.
     isFileDragOver && !props.isActive && !isSelected && "bg-sidebar-row-hover",
   );
 
@@ -1253,7 +1324,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           : cn(
               "text-sm",
               shouldRecede ? "font-normal" : "font-medium",
-              "truncate group-focus-within/v2-row:text-foreground group-hover/v2-row:text-foreground",
+              "truncate group-focus-within/v2-row:text-foreground group-any-hover/v2-row:text-foreground",
               // Upstream #9759 puts recede ahead of unread/woke here. Under the
               // fork's predicate above the two orders agree (receding already
               // requires read-and-unwoken); upstream's is kept so the branch
@@ -1314,6 +1385,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           />
         }
         badge={prBadgeShape}
+        pullRequests={thread.pullRequests}
         number={pr?.number ?? currentLinkedPr?.number}
         url={pr?.url ?? currentLinkedPr?.url}
         status={prStatus}
@@ -1383,11 +1455,24 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     <PinIcon aria-label="Pinned" role="img" className="size-3 shrink-0 text-muted-foreground/65" />
   ) : null;
   /* fork:end sidebar-v2-row-action-hit-area */
+  // A sweep shows the action it will apply on release where the status and
+  // hover actions otherwise sit; those cells hide rather than unmount so the
+  // pressed action button stays connected and a cancelled sweep's release
+  // click still fires and is consumed.
+  const sweepBadge =
+    props.sweepAction !== null ? (
+      <span
+        role="status"
+        className="pointer-events-none ml-auto inline-flex h-5 shrink-0 items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 text-2xs font-medium text-primary"
+      >
+        {sweepVerbBadge[props.sweepAction]}
+      </span>
+    ) : null;
 
   if (variant === "slim") {
     return (
       <li
-        data-thread-item
+        data-thread-item={threadKey}
         {...(fileDropHandlers ?? {})}
         className="list-none [content-visibility:auto] [contain-intrinsic-size:auto_36px]"
       >
@@ -1417,7 +1502,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               className={cn(
                 "shrink-0 transition-opacity",
                 (!props.isActive || variantAction === "unsettle") &&
-                  "opacity-40 grayscale group-focus-within/v2-row:opacity-100 group-focus-within/v2-row:grayscale-0 group-hover/v2-row:opacity-100 group-hover/v2-row:grayscale-0",
+                  "opacity-40 grayscale group-focus-within/v2-row:opacity-100 group-focus-within/v2-row:grayscale-0 group-any-hover/v2-row:opacity-100 group-any-hover/v2-row:grayscale-0",
               )}
             >
               {props.project ? <ProjectFavicon project={props.project} className="size-4" /> : null}
@@ -1446,11 +1531,16 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               remain visible AND clickable while the row is hovered. Only
               the time/jump label yields to the settle affordance. */}
             {prBadge}
-            <span className="relative ml-auto flex h-6 min-w-8 shrink-0 items-center justify-end">
+            <span
+              className={cn(
+                "relative ml-auto flex h-6 min-w-8 shrink-0 items-center justify-end",
+                isSwept && "hidden",
+              )}
+            >
               <span
                 className={cn(
                   "inline-flex justify-end tabular-nums text-secondary-label transition-opacity",
-                  !isWoke && "group-hover/v2-row:opacity-0",
+                  !isWoke && "group-any-hover/v2-row:opacity-0",
                 )}
               >
                 {variantAction === "unsnooze" && props.snoozeWakeLabelText !== null ? (
@@ -1492,6 +1582,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                     type="button"
                     aria-label="Wake thread now"
                     onClick={handleUnsnoozeClick}
+                    onPointerDown={handleActionPointerDown}
                     /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
                     className={SIDEBAR_V2_SLIM_ROW_ACTION_CLASS}
                     /* fork:end sidebar-v2-row-action-hit-area */
@@ -1507,6 +1598,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                         type="button"
                         aria-label="Un-settle thread"
                         onClick={handleUnsettleClick}
+                        onPointerDown={handleActionPointerDown}
                         /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
                         className={SIDEBAR_V2_SLIM_ROW_ACTION_CLASS}
                         /* fork:end sidebar-v2-row-action-hit-area */
@@ -1522,6 +1614,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   type="button"
                   aria-label="Settle thread"
                   onClick={handleSettleClick}
+                  onPointerDown={handleActionPointerDown}
                   /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
                   className={SIDEBAR_V2_SLIM_ROW_ACTION_CLASS}
                   /* fork:end sidebar-v2-row-action-hit-area */
@@ -1530,6 +1623,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 </button>
               )}
             </span>
+            {isSwept ? sweepBadge : null}
             {props.jumpLabel ? <JumpHintBadge label={props.jumpLabel} /> : null}
           </TooltipTrigger>
           {detailsTooltip}
@@ -1540,7 +1634,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
 
   return (
     <li
-      data-thread-item
+      data-thread-item={threadKey}
       /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping
          The section marker the header's hover-reveal rule reads
          (theme.custom.css): present exactly when the card sits under a
@@ -1659,7 +1753,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 {hasHoverActions ||
                 /* fork:end sidebar-v2-draft-rows */
                 status === "working" ? (
-                  <span className="grid h-6 shrink-0 grid-cols-1 items-center justify-items-end">
+                  <span
+                    className={cn(
+                      "grid h-6 shrink-0 grid-cols-1 items-center justify-items-end",
+                      isSwept && "hidden",
+                    )}
+                  >
                     {/* fork:end sidebar-v2-row-action-hit-area */}
                     {status === "working" ? (
                       <span
@@ -1672,7 +1771,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                           /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
                           hasHoverActions &&
                             /* fork:end sidebar-v2-draft-rows */
-                            "transition-opacity group-hover/v2-row:opacity-0",
+                            "transition-opacity group-any-hover/v2-row:opacity-0",
                           snoozeMenuOpen && "opacity-0",
                         )}
                       >
@@ -1709,7 +1808,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                           // crossfade sibling (elapsed) that shares this cell.
                           // fork:end sidebar-v2-row-action-hit-area
                           SIDEBAR_V2_TRAILING_OFFSET.cardActions,
-                          "relative col-start-1 row-start-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100 group-hover/v2-row:w-auto group-hover/v2-row:opacity-100",
+                          "relative col-start-1 row-start-1 flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100 group-any-hover/v2-row:w-auto group-any-hover/v2-row:opacity-100",
                           snoozeMenuOpen && "w-auto opacity-100",
                         )}
                       >
@@ -1752,6 +1851,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                             type="button"
                             aria-label="Settle thread"
                             onClick={handleSettleClick}
+                            onPointerDown={handleActionPointerDown}
                             /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
                             className={SIDEBAR_V2_ICON_BUTTON_CLASS}
                             /* fork:end sidebar-v2-row-action-hit-area */
@@ -1796,6 +1896,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                     "pointer-events-none flex shrink-0 items-center justify-center overflow-hidden",
                     SIDEBAR_V2_CARD_ALIGNMENT.statusBox,
                     SIDEBAR_V2_TRAILING_OFFSET.cardStatus,
+                    isSwept && "hidden",
                   )}
                 >
                   <SidebarV2StatusMark
@@ -1805,6 +1906,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   />
                 </span>
                 {/* fork:end sidebar-v2-card-rows */}
+                {isSwept ? sweepBadge : null}
               </span>
             </div>
             <SidebarV2ThreadCardMeta
@@ -1889,8 +1991,9 @@ export default function Sidebar() {
     unsnoozeThread,
     pinThread,
     confirmAndUnpinThread,
-    reorderPinnedThread,
     setThreadAutoSettle,
+    reorderPinnedThread,
+    markThreadUnread,
     archiveThread,
     deleteThread,
   } = useThreadActions();
@@ -1960,20 +2063,14 @@ export default function Sidebar() {
     () => openCommandPalette({ open: "add-project" }),
     [],
   );
-  const { environments } = useEnvironments();
+  const environments = useEnvironmentIdentities();
+  const serverConfigs = useAtomValue(environmentServerConfigsAtom);
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const clearSelection = useThreadSelectionStore((s) => s.clearSelection);
   const setSelectionAnchor = useThreadSelectionStore((s) => s.setAnchor);
   const toggleThreadSelection = useThreadSelectionStore((s) => s.toggleThread);
   const rangeSelectTo = useThreadSelectionStore((s) => s.rangeSelectTo);
-  const markThreadUnread = useUiStateStore((s) => s.markThreadUnread);
-  const markThreadVisited = useUiStateStore((s) => s.markThreadVisited);
-  const acknowledgeWoke = useCallback(
-    (threadRef: ScopedThreadRef, visitedAt: string) => {
-      markThreadVisited(scopedThreadKey(threadRef), visitedAt);
-    },
-    [markThreadVisited],
-  );
+  const acknowledgeWoke = useAcknowledgeThreadWoke();
   const routeTarget = useParams({
     strict: false,
     select: (params) => resolveThreadRouteTarget(params),
@@ -2010,19 +2107,7 @@ export default function Sidebar() {
       ),
     [environments],
   );
-  const environmentMachineById = useMemo(
-    () =>
-      new Map(
-        environments.map(
-          (environment) =>
-            [
-              environment.environmentId,
-              resolveEnvironmentMachineKind(environment.serverConfig),
-            ] as const,
-        ),
-      ),
-    [environments],
-  );
+  const environmentMachineById = useEnvironmentMachines();
   const orderedProjects = useMemo(
     () =>
       orderItemsByPreferredIds({
@@ -2054,7 +2139,7 @@ export default function Sidebar() {
     ],
   );
   const projectGroups = useMemo(
-    () => sortLogicalProjectsForSidebar(unsortedProjectGroups, threads, sidebarProjectSortOrder),
+    () => sortSidebarV2ProjectGroups(unsortedProjectGroups, threads, sidebarProjectSortOrder),
     [sidebarProjectSortOrder, threads, unsortedProjectGroups],
   );
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
@@ -2066,7 +2151,6 @@ export default function Sidebar() {
   /* fork:end sidebar-v2-project-grouping */
   const projectGroupsRef = useRef(projectGroups);
   projectGroupsRef.current = projectGroups;
-  const serverConfigs = useAtomValue(environmentServerConfigsAtom);
   // Threads on non-primary environments (T3 Connect, hosted) resolve their
   // provider entry from their own environment's config: default instance ids
   // are driver slugs, so a flat map would collide across environments.
@@ -2074,7 +2158,7 @@ export default function Sidebar() {
     () =>
       deriveProviderEntriesByEnvironment(
         [...serverConfigs].map(
-          ([environmentId, config]) => [environmentId, config.providers] as const,
+          ([environmentId, config]) => [environmentId, config.providers, config.settings] as const,
         ),
       ),
     [serverConfigs],
@@ -2263,13 +2347,10 @@ export default function Sidebar() {
     // memo exactly at the next wake boundary.
     void snoozeWakeTick;
     const preciseNow = new Date().toISOString();
-    const visible = threads.filter(
-      (thread) =>
-        thread.archivedAt === null &&
-        (scopedProjectKeys === null ||
-          scopedProjectKeys.has(`${thread.environmentId}:${thread.projectId}`)),
-    );
-    observeInboxReturns(workingShelfEnabled ? threads : null);
+    // Subagent child threads live in the parent's Agents surface, not the
+    // sidebar roster (v2 models them as real threads with lineage).
+    const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys);
+    inboxReturns.observe(workingShelfEnabled ? threads : null);
     const pinned: EnvironmentThreadShell[] = [];
     const active: EnvironmentThreadShell[] = [];
     const working: EnvironmentThreadShell[] = [];
@@ -2289,15 +2370,19 @@ export default function Sidebar() {
       const supportsSnooze =
         serverConfigs.get(thread.environmentId)?.environment.capabilities.threadSnooze === true;
       // Snooze outranks settlement and pinning until the thread wakes.
-      if (supportsSnooze && effectiveSnoozed(thread, { now: preciseNow })) {
-        snoozed.push(thread);
-      } else if (supportsSettlement && thread.settledOverride === "settled") {
-        settled.push(thread);
-      } else if (thread.pinnedAt != null) {
-        pinned.push(thread);
-      } else {
-        inbox(thread).push(thread);
-      }
+      const section = resolveSidebarThreadSection({
+        snoozed: supportsSnooze && effectiveSnoozed(thread, { now: preciseNow }),
+        settled: supportsSettlement && thread.settledOverride === "settled",
+        pinned: thread.pinnedAt != null,
+      });
+      (section === "snoozed"
+        ? snoozed
+        : section === "settled"
+          ? settled
+          : section === "pinned"
+            ? pinned
+            : inbox(thread)
+      ).push(thread);
     }
     /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
     // Client-only drafts (plus → /draft/$id) never enter the shell stream
@@ -2333,14 +2418,10 @@ export default function Sidebar() {
       // Working beta: the inbox is ordered by when each thread last came back
       // to the user, so a thread leaving the Working shelf lands on top.
       activeThreads: workingShelfEnabled
-        ? sortInboxThreadsByReturn(active, (thread) =>
-            observedInboxReturns.get(
-              scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
-            ),
-          )
+        ? sortInboxThreadsByReturn(active, inboxReturns.returnedAt)
         : sortThreadsForSidebar(active),
-      // Newest work first, by the same clock as the inbox.
-      workingThreads: sortInboxThreadsByReturn(working),
+      // Newest send first; finishing and waking again do not move a row.
+      workingThreads: sortWorkingThreadsBySend(working),
       // Soonest wake first: "what comes back next" is the shelf's question.
       snoozedThreads: snoozed.toSorted(
         (left, right) =>
@@ -2635,7 +2716,8 @@ export default function Sidebar() {
     }
     return mapping;
   }, [keybindings, orderedThreadKeys]);
-  const { showThreadJumpHints, updateThreadJumpHintsVisibility } = useThreadJumpHintVisibility();
+  const { showThreadJumpHints: showJumpHints, updateThreadJumpHintsVisibility } =
+    useThreadJumpHintVisibility();
 
   // Settled threads are live shells, so opening one is plain navigation:
   // history stays readable without un-settling, and sending a message or
@@ -2669,42 +2751,27 @@ export default function Sidebar() {
     [clearSelection, isMobile, router, setOpenMobile, setSelectionAnchor],
   );
 
-  // Dropping files on a row opens that thread and attaches the files there.
-  // The composer only accepts drops for its OWN thread, so when the row is
-  // not the open thread we stash the files and let ChatView hand them over
-  // once the navigation actually lands; if the route bounced (thread gone),
-  // nothing will consume them, so clear instead of surprising the user later.
   const queuePendingFileDrop = useSidebarPendingFileDropStore((s) => s.queuePendingFileDrop);
   const clearPendingFileDrop = useSidebarPendingFileDropStore((s) => s.clearPendingFileDrop);
   const handleThreadFileDrop = useCallback(
     async (threadRef: ScopedThreadRef, files: File[]) => {
-      // Queued, not replaced: a second drop before the thread opens keeps
-      // both files, and the id lets cleanup below touch only this drop.
       const dropId = queuePendingFileDrop({ threadRef, files });
-      // Key match alone is not "already there": during draft promotion the
-      // resolved route key is the server thread while the URL is still the
-      // draft route, and its composer would swallow the drop then discard it.
       const landedBefore =
         router.buildLocation({
           to: "/$environmentId/$threadId",
           params: buildThreadRouteParams(threadRef),
         }).pathname === router.state.location.pathname;
       if (landedBefore) return;
+
       try {
         await navigateToThread(threadRef);
-        // A newer drop may have arrived while the navigation was in flight;
-        // clearing by id leaves those files untouched.
         const landed =
           router.buildLocation({
             to: "/$environmentId/$threadId",
             params: buildThreadRouteParams(threadRef),
           }).pathname === router.state.location.pathname;
-        if (!landed) {
-          clearPendingFileDrop(dropId);
-        }
+        if (!landed) clearPendingFileDrop(dropId);
       } catch {
-        // Navigation failed outright; nothing will consume this drop, but a
-        // newer drop for the same thread may still be deliverable.
         clearPendingFileDrop(dropId);
       }
     },
@@ -2891,6 +2958,22 @@ export default function Sidebar() {
     },
     [planForwardNavigation, settleThread],
   );
+  // Post-settle navigation must skip threads settling in this same batch —
+  // they are all leaving the card block together. Rows that are already
+  // explicitly settled are skipped: nothing to do on a valid mixed selection.
+  // Pinned rows ARE included: the decider clears the pin as part of settling,
+  // so they park like the rest.
+  const settleThreads = useCallback(
+    (threadKeys: readonly string[]) => {
+      const coSettlingKeys = new Set(threadKeys);
+      for (const threadKey of threadKeys) {
+        const thread = threadByKeyRef.current.get(threadKey);
+        if (!thread || thread.settledOverride === "settled") continue;
+        attemptSettle(scopeThreadRef(thread.environmentId, thread.id), { coSettlingKeys });
+      }
+    },
+    [attemptSettle],
+  );
   const attemptUnsettle = useCallback(
     (threadRef: ScopedThreadRef) => {
       void (async () => {
@@ -2927,6 +3010,101 @@ export default function Sidebar() {
     },
     [unsnoozeThread],
   );
+  const threadListRef = useRef<HTMLUListElement | null>(null);
+  const sweepSensorRef = useRef<SidebarPointerSensor | null>(null);
+  const sectionByThreadKey = useMemo(() => {
+    const map = new Map<string, SidebarSection>();
+    const add = (list: readonly EnvironmentThreadShell[], section: SidebarSection) => {
+      for (const thread of list) {
+        map.set(scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)), section);
+      }
+    };
+    add(pinnedThreads, "pinned");
+    add(activeThreads, "active");
+    add(workingThreads, "working");
+    add(snoozedThreads, "snoozed");
+    add(settledThreads, "settled");
+    return map;
+  }, [activeThreads, pinnedThreads, settledThreads, snoozedThreads, workingThreads]);
+  const sectionByThreadKeyRef = useRef(sectionByThreadKey);
+  sectionByThreadKeyRef.current = sectionByThreadKey;
+  // Drag a row action to apply it to the armed rows in the same section.
+  // Staying in one section keeps an overshoot from changing neighboring
+  // sections, whose boundaries may be hidden outside a row drag. The sweep
+  // runs on upstream's pointer sensor against the fork's painted order
+  // (orderedThreadKeys), so unmounting the list cancels it.
+  const [actionSweep, setActionSweep] = useState<{
+    action: SidebarSweepAction;
+    keys: ReadonlySet<string>;
+  } | null>(null);
+  const startActionSweep = useCallback(
+    (threadRef: ScopedThreadRef, action: SidebarSweepAction, event: PointerEvent) => {
+      const originKey = scopedThreadKey(threadRef);
+      const originSection = sectionByThreadKeyRef.current.get(originKey);
+      const canApply = (key: string) => {
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+        // Draft cards are not on the server yet; a sweep passes over them.
+        if (draftIdByThreadKeyRef.current.has(key)) return false;
+        /* fork:end sidebar-v2-draft-rows */
+        const thread = threadByKeyRef.current.get(key);
+        const capabilities =
+          thread && serverConfigs.get(thread.environmentId)?.environment.capabilities;
+        return (
+          thread !== undefined &&
+          sectionByThreadKeyRef.current.get(key) === originSection &&
+          (action === "unsnooze"
+            ? capabilities?.threadSnooze === true
+            : capabilities?.threadSettlement === true)
+        );
+      };
+      let targetKey: string | null = null;
+      let sweptKeys: string[] = [];
+      const sweepTo = (key: string | null) => {
+        if (key === null || key === targetKey) return;
+        targetKey = key;
+        sweptKeys = resolveSidebarSweepKeys(orderedThreadKeysRef.current, originKey, key, canApply);
+        setActionSweep({ action, keys: new Set(sweptKeys) });
+      };
+      sweepSensorRef.current = new SidebarPointerSensor({
+        active: originKey,
+        event,
+        options: {
+          distance: SIDEBAR_DRAG_DISTANCE,
+          onAttach: () => {},
+          onFinish: () => {
+            sweepSensorRef.current = null;
+            setActionSweep(null);
+          },
+        },
+        onPending: () => {},
+        onStart: () => sweepTo(originKey),
+        onMove: ({ y }) =>
+          sweepTo(threadListRef.current && sidebarThreadKeyAtY(threadListRef.current, y)),
+        // Also runs after a press that never moved. Nothing is swept then,
+        // and the button's own click applies its action. Rows that changed
+        // section mid-gesture, say pinned from another device, are skipped.
+        onEnd: () => {
+          const keys = sweptKeys.filter(canApply);
+          if (action === "settle") {
+            settleThreads(keys);
+            return;
+          }
+          for (const key of keys) {
+            const ref = parseScopedThreadKey(key);
+            if (ref === null) continue;
+            if (action === "unsettle") attemptUnsettle(ref);
+            else attemptUnsnooze(ref);
+          }
+        },
+        onCancel: () => {},
+        onAbort: () => {},
+      });
+    },
+    [attemptUnsettle, attemptUnsnooze, serverConfigs, settleThreads],
+  );
+  // Unmounting the sidebar mid-sweep cancels it, the way upstream's
+  // SidebarDragLifecycle does for the row drag the fork does not render.
+  useEffect(() => () => sweepSensorRef.current?.cancel(), []);
   // Drag-to-reorder for the pinned block. A drop computes ONE fractional key
   // for the moved thread and sends it to that thread's own server (see
   // planPinnedReorder for the keyless-neighbor materialization case, which
@@ -3339,24 +3517,14 @@ export default function Sidebar() {
         return;
       }
       if (clicked.value === "settle") {
-        // Post-settle navigation must skip threads settling in this same
-        // batch — they are all leaving the card block together. Rows that
-        // are already explicitly settled are skipped: nothing to do on a
-        // valid mixed selection. Pinned rows ARE included: the decider
-        // clears the pin as part of settling, so they park like the rest.
-        const coSettlingKeys = new Set(threadKeys);
-        for (const threadKey of threadKeys) {
-          const thread = threadByKeyRef.current.get(threadKey);
-          if (!thread || thread.settledOverride === "settled") continue;
-          attemptSettle(scopeThreadRef(thread.environmentId, thread.id), { coSettlingKeys });
-        }
+        settleThreads(threadKeys);
         clearSelection();
         return;
       }
       if (clicked.value === "mark-unread") {
         for (const threadKey of threadKeys) {
           const thread = threadByKeyRef.current.get(threadKey);
-          markThreadUnread(threadKey, thread?.latestTurn?.completedAt);
+          if (thread) markThreadUnread(scopeThreadRef(thread.environmentId, thread.id));
         }
         clearSelection();
         return;
@@ -3402,7 +3570,6 @@ export default function Sidebar() {
       );
     },
     [
-      attemptSettle,
       attemptUnpin,
       clearSelection,
       confirmThreadDelete,
@@ -3411,6 +3578,7 @@ export default function Sidebar() {
       performSnooze,
       removeFromSelection,
       serverConfigs,
+      settleThreads,
       updateThreadMetadata,
       timestampFormat,
     ],
@@ -3422,17 +3590,54 @@ export default function Sidebar() {
         const api = readLocalApi();
         if (!api) return;
         const threadKey = scopedThreadKey(threadRef);
-        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-        if (draftIdByThreadKeyRef.current.has(threadKey)) {
+        /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows
+           Upstream's draft rows get this menu (#10637) from its own
+           SidebarDraftRow; the fork's draft cards reach it here, and discard
+           goes through the fork's own discardDraftThread. */
+        const draftId = draftIdByThreadKeyRef.current.get(threadKey);
+        if (draftId !== undefined) {
+          const session = useComposerDraftStore.getState().getDraftSession(draftId);
+          if (!session || session.promotedTo) return;
+          const projectGroup = projectGroupsRef.current.find((group) =>
+            group.memberProjectRefs.some(
+              (ref) =>
+                ref.environmentId === session.environmentId && ref.projectId === session.projectId,
+            ),
+          );
+          const workspacePath =
+            session.worktreePath ??
+            projectByKey.get(`${session.environmentId}:${session.projectId}`)?.workspaceRoot;
           const clicked = await settlePromise(() =>
             api.contextMenu.show(
-              [{ id: "discard-draft", label: "Discard draft", destructive: true, icon: "trash" }],
+              buildDraftActionMenuItems({
+                hasPath: Boolean(workspacePath),
+                hasBranch: Boolean(session.branch),
+                hasProject: projectGroup != null,
+              }),
               position,
             ),
           );
-          if (clicked._tag === "Failure" || clicked.value !== "discard-draft") return;
-          discardDraftThread(threadRef);
-          return;
+          if (clicked._tag === "Failure") return;
+          switch (clicked.value) {
+            case "project-settings":
+              if (projectGroup) openProjectSettings(projectGroup);
+              return;
+            case "copy-path":
+              if (workspacePath) copyPathToClipboard(workspacePath, { path: workspacePath });
+              return;
+            case "copy-branch":
+              if (session.branch) copyBranchToClipboard(session.branch, { branch: session.branch });
+              return;
+            case "discard": {
+              // The menu can stay open while the draft sends; discarding a
+              // promoting draft would strand the send.
+              const current = useComposerDraftStore.getState().getDraftSession(draftId);
+              if (current && !current.promotedTo) discardDraftThread(threadRef);
+              return;
+            }
+            default:
+              return;
+          }
         }
         /* fork:end sidebar-v2-draft-rows */
         const selectionState = useThreadSelectionStore.getState();
@@ -3498,8 +3703,7 @@ export default function Sidebar() {
               isSnoozed,
               canSnoozeNow: canSnooze(thread, { now: new Date().toISOString() }),
               isRegeneratingTitle,
-              isRunning:
-                thread.session?.status === "running" && thread.session.activeTurnId != null,
+              isRunning: !threadRuntimeCanArchive(thread.runtime),
               supports: {
                 settlement: supportsSettlement,
                 autoSettleOptOut: supportsAutoSettleOptOut,
@@ -3618,7 +3822,7 @@ export default function Sidebar() {
             return;
           }
           case "mark-unread":
-            markThreadUnread(threadKey, thread.latestTurn?.completedAt);
+            markThreadUnread(threadRef);
             return;
           case "copy-path":
             if (!threadWorkspacePath) {
@@ -3749,6 +3953,8 @@ export default function Sidebar() {
           terminalFocus: isTerminalFocused(),
           terminalOpen: routeTerminalOpen,
           modelPickerOpen: isModelPickerOpen(),
+          isWeb: !isElectron,
+          isDesktop: isElectron,
         },
       });
       const navigateToThreadKey = (targetThreadKey: string | null) => {
@@ -3800,6 +4006,8 @@ export default function Sidebar() {
         terminalFocus: terminalFocused,
         terminalOpen: routeTerminalOpen,
         modelPickerOpen: isModelPickerOpen(),
+        isWeb: !isElectron,
+        isDesktop: isElectron,
       },
     },
   );
@@ -3808,6 +4016,7 @@ export default function Sidebar() {
   }, [shouldShowJumpHintsNow, updateThreadJumpHintsVisibility]);
 
   const attachListAutoAnimateRef = useCallback((node: HTMLUListElement | null) => {
+    threadListRef.current = node;
     if (!node) return;
     /* fork:begin sidebar-v2-list-animation — see .fork/customizations.yaml#sidebar-v2-list-animation */
     // Default AutoAnimate inserts hold at opacity 0 for half of a 1.5×
@@ -3898,16 +4107,9 @@ export default function Sidebar() {
     (projectKey: string) => {
       const threadKeys = settleAllKeysByProjectKey.get(projectKey) ?? [];
       if (threadKeys.length === 0) return;
-      // Post-settle navigation must skip threads settling in this same batch
-      // — they are all leaving the card block together.
-      const coSettlingKeys = new Set(threadKeys);
-      for (const threadKey of threadKeys) {
-        const thread = threadByKeyRef.current.get(threadKey);
-        if (!thread) continue;
-        attemptSettle(scopeThreadRef(thread.environmentId, thread.id), { coSettlingKeys });
-      }
+      settleThreads(threadKeys);
     },
-    [attemptSettle, settleAllKeysByProjectKey],
+    [settleThreads, settleAllKeysByProjectKey],
   );
   // The header's plus. The chrome row's "New thread" has to ask which project
   // when there are several — that is the "new-thread-in" palette above. A
@@ -4070,7 +4272,14 @@ export default function Sidebar() {
                   // presentational list also makes its implicit listitems
                   // presentational while preserving every descendant control.
                   role="presentation"
-                  className={cn("flex flex-col", SIDEBAR_V2_CARD_ALIGNMENT.listGap)}
+                  className={cn(
+                    "flex flex-col",
+                    SIDEBAR_V2_CARD_ALIGNMENT.listGap,
+                    // An action sweep owns the pointer: rows it passes over
+                    // neither show hover actions nor open tooltips, even
+                    // controls that opt back in, like the Woke pill.
+                    actionSweep !== null && "**:pointer-events-none",
+                  )}
                 >
                   {/* fork:end sidebar-v2-card-rows */}
                   {(() => {
@@ -4136,6 +4345,7 @@ export default function Sidebar() {
                           }
                           isPinned={thread.pinnedAt != null}
                           sortable={sortable}
+                          sweepAction={actionSweep?.keys.has(threadKey) ? actionSweep.action : null}
                           /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
                           pinningSupported={
                             /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
@@ -4162,9 +4372,7 @@ export default function Sidebar() {
                           wokeAt={threadWokeAt(thread, { now: snoozeNow })}
                           isActive={routeThreadKey === threadKey}
                           openPullRequestsInRightPanel={routeThreadRef !== null}
-                          jumpLabel={
-                            showThreadJumpHints ? (jumpLabelByKey.get(threadKey) ?? null) : null
-                          }
+                          jumpLabel={showJumpHints ? (jumpLabelByKey.get(threadKey) ?? null) : null}
                           currentEnvironmentId={primaryEnvironmentId}
                           environmentLabel={environmentLabelById.get(thread.environmentId) ?? null}
                           environmentMachine={
@@ -4204,6 +4412,7 @@ export default function Sidebar() {
                           onDiscardDraft={draftCaps.showDiscard ? discardDraftThread : null}
                           /* fork:end sidebar-v2-draft-rows */
                           onSettle={attemptSettle}
+                          onActionSweepStart={startActionSweep}
                           onUnsettle={attemptUnsettle}
                           onSnooze={attemptSnooze}
                           onUnsnooze={attemptUnsnooze}

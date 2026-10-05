@@ -1,4 +1,4 @@
-import { type ApprovalRequestId } from "@t3tools/contracts";
+import { type RuntimeRequestId } from "@t3tools/contracts";
 import { memo } from "react";
 import { CheckIcon } from "lucide-react";
 
@@ -10,12 +10,12 @@ import { type PendingUserInput } from "~/session-logic";
 
 interface PendingUserInputPanelProps {
   pendingUserInputs: PendingUserInput[];
-  respondingRequestIds: ApprovalRequestId[];
+  respondingRequestIds: RuntimeRequestId[];
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
   onToggleOption: (questionId: string, optionValue: string) => void;
   onAdvance: () => void;
-  onDismiss: (requestId: ApprovalRequestId) => void;
+  onDismiss: (requestId: RuntimeRequestId) => void;
 }
 
 export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserInputPanel({
@@ -81,7 +81,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   questionIndex: number;
   onToggleOption: (questionId: string, optionValue: string) => void;
   onAdvance: () => void;
-  onDismiss: (requestId: ApprovalRequestId) => void;
+  onDismiss: (requestId: RuntimeRequestId) => void;
 }) {
   const { progress, activeQuestion, optimisticSingleSelect, handleOptionSelection } =
     useComposerPendingUserInputCard({

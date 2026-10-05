@@ -197,6 +197,13 @@
   gap: 6px;
 }
 
+/* Upstream's git progress / success readouts (ThreadDetailsControl `multiline`,
+   class h-auto) grow a second output row while an action runs; the pin above
+   would clip it to one. Let that one button size to its content. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button.h-auto {
+  height: auto;
+}
+
 /* The `::before` overlay carries the variant's inset highlight and its own
    radius. With the fill gone it has nothing left to draw, and leaving it would
    trace a rounded-md ghost inside a pill. */

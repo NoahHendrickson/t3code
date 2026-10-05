@@ -9,9 +9,13 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const reactor = readSibling("../../../server/src/orchestration/Layers/CheckpointReactor.ts");
-const reactorTest = readSibling(
-  "../../../server/src/orchestration/Layers/CheckpointReactor.test.ts",
+const finalization = readSibling("../../../server/src/orchestration-v2/RunFinalizationService.ts");
+const runtimeLayer = readSibling("../../../server/src/orchestration-v2/runtimeLayer.ts");
+const follower = readSibling(
+  "../../../server/src/orchestration-v2/forkLocalCheckoutBranchFollow.ts",
+);
+const followerTest = readSibling(
+  "../../../server/src/orchestration-v2/forkLocalCheckoutBranchFollow.test.ts",
 );
 
 function readCustomizationHunks(source: string): string {
@@ -31,36 +35,46 @@ function readCustomizationHunks(source: string): string {
 }
 
 describe("fork guard: server-local-checkout-branch-follow", () => {
-  it("lets a local-checkout thread follow the branch its turn ran on", () => {
-    const hunks = readCustomizationHunks(reactor);
-    // The shared-cwd refusal is scoped to worktree threads. A local thread
-    // (worktreePath null) reaches the adoption dispatch below the fence,
-    // except when the checkout rests on the default branch.
-    expect(hunks).toContain("if (thread.worktreePath === null && input.local.isDefaultRef) {");
-    expect(hunks).toContain("if (thread.worktreePath !== null) {");
-    expect(hunks).toContain("worktreeIsShared");
-    // Upstream's original early return, which refused every local thread,
-    // must not come back with a sync.
-    expect(reactor).not.toMatch(
-      /thread\.worktreePath === null \|\|\s*thread\.worktreePath !== input\.cwd/u,
+  it("hands the finalization's checkout status to the follower", () => {
+    const hunks = readCustomizationHunks(finalization);
+    // The observer returns the status it already read instead of void, and
+    // finalize feeds it to the follower; no second git status per turn.
+    expect(hunks).toContain(
+      "Effect.Effect<VcsStatusLocalResult | null, RunFinalizationRefreshError>",
     );
-    // The adoption itself is upstream's compare-and-swap dispatch, unchanged.
-    expect(reactor).toContain('commandId: yield* serverCommandId("worktree-branch-drift")');
-    expect(reactor).toContain("expectedBranch: thread.branch");
+    expect(hunks).toContain("const follower = yield* LocalCheckoutBranchFollower;");
+    expect(hunks).toContain(
+      "yield* follower.follow({ cwd, threadId: input.threadId, runId: input.runId, local });",
+    );
+    expect(hunks).toContain("return local;");
+    expect(finalization).not.toMatch(/local\.isDefaultRef\) return;/u);
   });
 
-  it("keeps the local-checkout case covered by the reactor's own test", () => {
-    const hunks = readCustomizationHunks(reactorTest);
+  it("wires the real follower into production only", () => {
+    const hunks = readCustomizationHunks(runtimeLayer);
     expect(hunks).toContain(
-      "adopts a drifted checkout for a local thread even though other local threads share it",
+      "forkLocalCheckoutBranchFollowerLayer.pipe(Layer.provide(threadManagementProvided))",
     );
-    expect(hunks).toContain(
-      "keeps a local thread's branch when the checkout rests on the default branch",
+    // Elsewhere the reference keeps its no-op default.
+    expect(follower).toContain("defaultValue: () => ({ follow: () => Effect.void })");
+  });
+
+  it("keeps the policy's outcomes in the follower", () => {
+    // Local threads only, never the default branch, a placeholder, or a
+    // thread whose record already matches; a worktree thread is left alone.
+    expect(follower).toContain(
+      "if (checkedOut === null || input.local.isDefaultRef || isTemporaryWorktreeBranch(checkedOut))",
     );
-    expect(hunks).toContain("threadWorktreePath: null");
-    // The isolation half is only proven if the other local thread has a
-    // branch it could have lost.
-    expect(hunks).toContain("secondThreadSharingWorktree: true");
-    expect(hunks).toContain("secondThreadBranch: ");
+    expect(follower).toContain("thread.worktreePath !== null ||");
+    expect(follower).toContain(
+      "if (thread.activeRunId !== null && thread.activeRunId !== input.runId)",
+    );
+    expect(follower).toContain("expectedWorktreePath: null");
+    expect(follower).toContain("Cause.hasInterruptsOnly(cause)");
+    expect(followerTest).toContain(
+      "adopts the drifted checkout for the local thread whose turn ran there",
+    );
+    expect(followerTest).toContain("the thread owns a worktree");
+    expect(followerTest).toContain("a failed dispatch is a warning, never a finalization failure");
   });
 });

@@ -83,6 +83,17 @@ import {
   CloudArrowDown as PhCloudArrowDown,
   CloudArrowUp as PhCloudArrowUp,
   Code as PhCode,
+  ArrowBendUpRight as PhArrowBendUpRight,
+  ArrowUUpRight as PhArrowUUpRight,
+  ArrowUpLeft as PhArrowUpLeft,
+  ArrowsLeftRight as PhArrowsLeftRight,
+  CalendarDots as PhCalendarDots,
+  ChatsCircle as PhChatsCircle,
+  DotsSixVertical as PhDotsSixVertical,
+  ListDashes as PhListDashes,
+  ListNumbers as PhListNumbers,
+  Path as PhPath,
+  Plugs as PhPlugs,
   Columns as PhColumns,
   Copy as PhCopy,
   CornersOut as PhCornersOut,
@@ -343,6 +354,22 @@ export const ArrowUpRightIcon = icon("arrow-up-right", PhArrowUpRight, "bold");
 export const ArrowUpCircleIcon = icon("arrow-up-circle", PhArrowCircleUp, "duotone");
 export const CornerLeftUpIcon = icon("corner-left-up", PhArrowElbowLeftUp, "bold");
 export const Undo2Icon = icon("undo-2", PhArrowUUpLeft, "bold");
+// Added by the 2026-10-05 sync (orchestrator V2 UI): queued-run controls, the
+// thread details panel, routes settings, automations and lineage rows.
+export const Redo2Icon = icon("redo-2", PhArrowUUpRight, "bold");
+export const CornerUpRightIcon = icon("corner-up-right", PhArrowBendUpRight, "bold");
+export const ArrowUpLeftIcon = icon("arrow-up-left", PhArrowUpLeft, "bold");
+export const ArrowRightLeftIcon = icon("arrow-right-left", PhArrowsLeftRight, "bold");
+export const CodeIcon = icon("code", PhCode, "bold");
+export const GitForkIcon = icon("git-fork", PhGitFork, "bold");
+export const MessagesSquareIcon = icon("messages-square", PhChatsCircle, "duotone");
+export const Clock3Icon = icon("clock-3", PhClock, "bold");
+export const CalendarClockIcon = icon("calendar-clock", PhCalendarDots, "duotone");
+export const GripVerticalIcon = icon("grip-vertical", PhDotsSixVertical, "bold");
+export const ListOrderedIcon = icon("list-ordered", PhListNumbers, "bold");
+export const SquareMenuIcon = icon("square-menu", PhListDashes, "bold");
+export const UnplugIcon = icon("unplug", PhPlugs, "bold");
+export const RouteIcon = icon("route", PhPath, "bold");
 export const RotateCcwIcon = icon("rotate-ccw", PhArrowCounterClockwise, "bold");
 export const RotateCcw = icon("rotate-ccw", PhArrowCounterClockwise, "bold");
 export const RotateCwIcon = icon("rotate-cw", PhArrowClockwise, "bold");

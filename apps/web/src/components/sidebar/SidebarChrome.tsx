@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
-import { useEnvironments } from "../../state/environments";
+import { usePullRequestsSupported } from "../../state/environments";
 import {
   resolveEnvironmentIdentificationPillLabel,
   useEnvironmentStageLabel,
@@ -92,6 +92,48 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   );
 });
 
+// Measures the header's fixed content, so the sidebar minimum follows zoom and
+// macOS window controls (upstream measures its brand at the titlebar inset).
+export function SidebarBrandWidthProbe({
+  onWidthChange,
+}: {
+  onWidthChange: (width: number) => void;
+}) {
+  const observeWidth = useCallback(
+    (probe: HTMLDivElement) => {
+      const observer = new ResizeObserver(([entry]) => {
+        if (entry) onWidthChange(entry.borderBoxSize[0]?.inlineSize ?? probe.offsetWidth);
+      });
+      observer.observe(probe);
+      return () => observer.disconnect();
+    },
+    [onWidthChange],
+  );
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none invisible fixed top-0 left-0 flex w-max border-r border-transparent"
+      ref={observeWidth}
+    >
+      {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+          The fork header is [toggle] … [brand]: the controls inset, the trigger's
+          box, the gap-2, then the trailing lockup with its pr-4. The pill is not
+          counted — it hides under the 15rem container query before it could
+          clip, and the header ends on the brand's pr-4, not a px-3. */}
+      {/* oxlint-disable-next-line shadcn/no-arbitrary-values -- the inset is a runtime variable, not a scale value */}
+      <div className="flex items-center gap-2 pl-[var(--workspace-controls-left)]">
+        <span className="size-[var(--workspace-titlebar-control-size)] shrink-0" />
+        <span className="flex h-4 items-center gap-1 pr-4">
+          <SidebarBrandMark className="size-4 shrink-0" />
+          <SidebarBrandWordmark />
+        </span>
+      </div>
+      {/* fork:end fork-sidebar-chrome */}
+    </div>
+  );
+}
+
 function SidebarBrand() {
   return (
     /* The link carries its own display gate (hidden below md, flex row above)
@@ -159,12 +201,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
   const isOnUtilityPage = useLocation({
     select: (location) => isSidebarUtilityPage(location.pathname),
   });
-  const { environments } = useEnvironments();
-  // The page reads every connected server, so one of them offering pull requests is enough for
-  // the link to lead somewhere.
-  const pullRequestsSupported = environments.some(
-    (environment) => environment.serverConfig?.environment.capabilities.pullRequests === true,
-  );
+  const pullRequestsSupported = usePullRequestsSupported();
   const closeMobileSidebar = useCallback(() => {
     if (isMobile) {
       setOpenMobile(false);

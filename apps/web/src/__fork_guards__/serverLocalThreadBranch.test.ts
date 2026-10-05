@@ -9,7 +9,8 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const ws = readSibling("../../../server/src/ws.ts");
+const launch = readSibling("../../../server/src/orchestration-v2/ThreadLaunchService.ts");
+const launchTest = readSibling("../../../server/src/orchestration-v2/ThreadLaunchService.test.ts");
 const resolver = readSibling("../../../server/src/git/resolveBootstrapThreadBranch.ts");
 
 function readCustomizationHunks(source: string): string {
@@ -29,23 +30,23 @@ function readCustomizationHunks(source: string): string {
 }
 
 describe("fork guard: server-local-thread-branch", () => {
-  it("wires the resolver into the bootstrap create with the live status source", () => {
-    const hunks = readCustomizationHunks(ws);
-    // The call site: the bootstrap create's branch comes from the resolver,
+  it("wires the resolver into the launch create with the live status source", () => {
+    const hunks = readCustomizationHunks(launch);
+    // The call site: the created thread's branch comes from the resolver,
     // fed by the status service — the same live value the sidebar and PR
     // badge compare against — never listRefs' cache-served flag.
-    expect(hunks).toContain("yield* resolveBootstrapThreadBranch(");
-    expect(hunks).toContain("localStatus: gitWorkflow.localStatus");
-    expect(hunks).toContain("getProjectShellById: projectionSnapshotQuery.getProjectShellById");
-    // Only a worktree actually being made names its own branch; a request
-    // that falls back to the project checkout still gets the live branch.
-    expect(hunks).toMatch(
-      /preparingWorktree:\s*bootstrap\.prepareWorktree !== undefined && shouldPrepareWorktree,/u,
-    );
+    expect(hunks).toContain("const initialBranch = yield* resolveBootstrapThreadBranch(");
+    expect(hunks).toContain("localStatus: git.localStatus");
+    expect(hunks).toContain("getProjectShellById: projects.getById");
+    // Only a worktree actually being made names its own branch; a root or
+    // existing-folder launch still gets the live branch.
+    expect(hunks).toContain('preparingWorktree: workspaceStrategy.type === "worktree"');
     expect(hunks).not.toContain("listRefs(");
-    // The policy stays out of ws.ts: the fence carries the import and the
-    // call, not a resolver of its own.
+    // The policy stays out of the launch service: the fence carries the
+    // import and the call, not a resolver of its own.
     expect(hunks).not.toContain("Effect.gen");
+    // Upstream's own assignment must not come back with a sync and shadow it.
+    expect(launch).not.toContain("const initialBranch = workspaceStrategy.branch ?? null;");
   });
 
   it("keeps the policy's outcomes in the resolver", () => {
@@ -55,5 +56,12 @@ describe("fork guard: server-local-thread-branch", () => {
     expect(resolver).toContain("Effect.as(null)");
     expect(resolver).toContain("Cause.hasInterruptsOnly(cause)");
     expect(resolver).not.toContain("listRefs(");
+  });
+
+  it("keeps the seam covered by the launch service's own test", () => {
+    const hunks = readCustomizationHunks(launchTest);
+    expect(hunks).toContain("fills in the checked-out branch when a root launch names none");
+    expect(hunks).toContain("keeps an explicit branch over the checked-out one");
+    expect(hunks).toContain("leaves a worktree launch to name its own branch");
   });
 });

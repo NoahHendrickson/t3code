@@ -1,3 +1,4 @@
+import { ThreadDetailsControl } from "./chat/ThreadDetailsControl";
 import type {
   ProjectScript,
   ResolvedKeybindingsConfig,
@@ -7,8 +8,8 @@ import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
-import { ChevronDownIcon, DownloadIcon, PlusIcon, SettingsIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { ChevronDownIcon, DownloadIcon, PlusIcon, SettingsIcon, WrenchIcon } from "lucide-react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { commandForProjectScript, primaryProjectScript } from "~/projectScripts";
 import { shortcutLabelForCommand } from "~/keybindings";
@@ -38,12 +39,20 @@ import {
   MenuSubPopup,
 } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
+import { cn } from "~/lib/utils";
+import {
+  THREAD_DETAILS_PANEL_CHEVRON_CLASS,
+  THREAD_DETAILS_PANEL_ICON_CLASS,
+  THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS,
+  THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS,
+} from "./chat/threadDetailsPanelStyles";
 
 export type { NewProjectScriptInput, ProjectScriptActionResult };
 
 const NO_FILE_SCRIPTS: ReadonlyArray<T3ProjectFileScript> = [];
 
 interface ProjectScriptsControlProps {
+  displayMode?: "toolbar" | "panel";
   presentation?: "toolbar" | "menu";
   onRequestMenuClose?: () => void;
   scripts: ReadonlyArray<ProjectScript>;
@@ -61,6 +70,7 @@ interface ProjectScriptsControlProps {
 }
 
 export default function ProjectScriptsControl({
+  displayMode = "toolbar",
   presentation = "toolbar",
   onRequestMenuClose,
   scripts,
@@ -72,6 +82,9 @@ export default function ProjectScriptsControl({
   onUpdateScript,
   onDeleteScript,
 }: ProjectScriptsControlProps) {
+  const isPanel = displayMode === "panel";
+  const ActionGroup = isPanel ? "div" : Group;
+  const panelAnchorRef = React.useRef<HTMLDivElement | null>(null);
   const [actionsMenuOpen, setActionsMenuOpen] = useState({
     presentation,
     scripts: false,
@@ -221,7 +234,7 @@ export default function ProjectScriptsControl({
       {importMenuItems}
       <MenuItem density={presentation === "menu" ? "touch" : "default"} onClick={openAddDialog}>
         <PlusIcon className="size-4" />
-        <MenuItemLabel>Add action</MenuItemLabel>
+        <MenuItemLabel>{isPanel ? "Add project script" : "Add action"}</MenuItemLabel>
       </MenuItem>
     </>
   );
@@ -269,17 +282,28 @@ export default function ProjectScriptsControl({
         /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
            `data-fork-pill` is the only hook the fork adds here: it marks this
            control as one of the workspace header's split pills, and
-           theme.custom.css does the rest. Both branches carry it — the split
-           Group when a primary script exists, and the lone "Add action" button
-           when one does not. fork:end fork-workspace-header */
-        <Group aria-label="Project scripts" data-fork-pill>
+           theme.custom.css does the rest. Every toolbar branch carries it — the
+           split Group when a primary script exists, the "Project actions"
+           trigger when only importable scripts exist, and the lone "Add action"
+           button otherwise. Toolbar only: the thread details panel (isPanel) is
+           upstream's surface. fork:end fork-workspace-header */
+        <ActionGroup
+          role="group"
+          aria-label="Project scripts"
+          data-fork-pill={isPanel ? undefined : true}
+          {...(isPanel
+            ? { className: THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS, ref: panelAnchorRef }
+            : {})}
+        >
           <Tooltip>
             <TooltipTrigger
               render={
-                <Button
+                <ThreadDetailsControl
                   size="xs"
-                  variant="outline"
-                  className="w-7 sm:w-6 @3xl/header-actions:w-auto!"
+                  variant={isPanel ? "ghost" : "outline"}
+                  part="primary"
+                  panel={isPanel}
+                  className={isPanel ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"}
                   aria-label={`Run ${primaryScript.name}`}
                   // The tooltip wrapper replaces data-slot="button", so themed
                   // toolbar styling needs its own hook.
@@ -288,14 +312,26 @@ export default function ProjectScriptsControl({
                 />
               }
             >
-              <ScriptIcon icon={primaryScript.icon} />
-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+              <ScriptIcon
+                icon={primaryScript.icon}
+                {...(isPanel ? { className: THREAD_DETAILS_PANEL_ICON_CLASS } : {})}
+              />
+              <span
+                className={cn(
+                  "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
+                  isPanel && "not-sr-only ml-0 truncate",
+                )}
+              >
                 {primaryScript.name}
               </span>
             </TooltipTrigger>
             <TooltipPopup side="top">Run {primaryScript.name}</TooltipPopup>
           </Tooltip>
-          <GroupSeparator className="hidden @3xl/header-actions:block" />
+          {isPanel ? (
+            <span aria-hidden="true" className={THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS} />
+          ) : (
+            <GroupSeparator className="hidden @3xl/header-actions:block" />
+          )}
           <Menu
             open={actionsMenuOpen.scripts}
             onOpenChange={(open) =>
@@ -303,39 +339,113 @@ export default function ProjectScriptsControl({
             }
           >
             <MenuTrigger
-              render={<Button size="icon-xs" variant="outline" aria-label="Script actions" />}
+              render={
+                <ThreadDetailsControl
+                  size={isPanel ? "sm" : "icon-xs"}
+                  variant={isPanel ? "ghost" : "outline"}
+                  part="secondary"
+                  panel={isPanel}
+                  aria-label="Script actions"
+                />
+              }
             >
-              <ChevronDownIcon className="size-4" />
+              <ChevronDownIcon
+                className={isPanel ? THREAD_DETAILS_PANEL_CHEVRON_CLASS : "size-4"}
+              />
             </MenuTrigger>
-            <MenuPopup align="end">{scriptItems}</MenuPopup>
+            <MenuPopup
+              align="end"
+              {...(isPanel ? { anchor: panelAnchorRef } : {})}
+              className={isPanel ? "w-(--anchor-width)" : undefined}
+            >
+              {scriptItems}
+            </MenuPopup>
           </Menu>
-        </Group>
+        </ActionGroup>
       ) : importableScripts.length > 0 ? (
-        <Menu
-          open={actionsMenuOpen.imports}
-          onOpenChange={(open) =>
-            setActionsMenuOpen({ presentation, scripts: false, imports: open })
-          }
-        >
-          <MenuTrigger
-            render={
-              <Button size="xs" variant="outline" aria-label="Project actions" data-fork-pill />
+        isPanel ? (
+          <div
+            role="group"
+            aria-label="Project actions"
+            className={THREAD_DETAILS_PANEL_SPLIT_GROUP_CLASS}
+            ref={panelAnchorRef}
+          >
+            <ThreadDetailsControl
+              size="sm"
+              variant="ghost"
+              part="primary"
+              aria-label="Project actions"
+              onClick={() => setActionsMenuOpen({ presentation, scripts: false, imports: true })}
+            >
+              <WrenchIcon className={THREAD_DETAILS_PANEL_ICON_CLASS} />
+              <span className="min-w-0 truncate">Actions</span>
+            </ThreadDetailsControl>
+            <span aria-hidden="true" className={THREAD_DETAILS_PANEL_SPLIT_SEPARATOR_CLASS} />
+            <Menu
+              highlightItemOnHover={false}
+              open={actionsMenuOpen.imports}
+              onOpenChange={(open) =>
+                setActionsMenuOpen({ presentation, scripts: false, imports: open })
+              }
+            >
+              <MenuTrigger
+                render={
+                  <ThreadDetailsControl
+                    size="sm"
+                    variant="ghost"
+                    part="secondary"
+                    aria-label="Choose project action"
+                  />
+                }
+              >
+                <ChevronDownIcon className={THREAD_DETAILS_PANEL_CHEVRON_CLASS} />
+              </MenuTrigger>
+              <MenuPopup align="end" anchor={panelAnchorRef} className="w-(--anchor-width)">
+                {importMenuItems}
+                <MenuItem onClick={openAddDialog}>
+                  <PlusIcon className="size-4" />
+                  Add action
+                </MenuItem>
+              </MenuPopup>
+            </Menu>
+          </div>
+        ) : (
+          <Menu
+            highlightItemOnHover={false}
+            open={actionsMenuOpen.imports}
+            onOpenChange={(open) =>
+              setActionsMenuOpen({ presentation, scripts: false, imports: open })
             }
           >
-            <PlusIcon className="size-3.5" />
-            <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
-              Add action
-            </span>
-            <ChevronDownIcon className="size-3.5" />
-          </MenuTrigger>
-          <MenuPopup align="end">
-            {importMenuItems}
-            <MenuItem onClick={openAddDialog}>
-              <PlusIcon className="size-4" />
-              Add action
-            </MenuItem>
-          </MenuPopup>
-        </Menu>
+            <MenuTrigger
+              render={
+                <Button
+                  size="xs"
+                  variant="outline"
+                  aria-label="Project actions"
+                  /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+                     Lone toolbar trigger (importable scripts, none added yet): same
+                     pill mark as the split Group above. */
+                  data-fork-pill
+                  /* fork:end fork-workspace-header */
+                />
+              }
+            >
+              <WrenchIcon className="size-3.5" />
+              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+                Actions
+              </span>
+              <ChevronDownIcon className="size-3.5" />
+            </MenuTrigger>
+            <MenuPopup align="end">
+              {importMenuItems}
+              <MenuItem onClick={openAddDialog}>
+                <PlusIcon className="size-4" />
+                Add action
+              </MenuItem>
+            </MenuPopup>
+          </Menu>
+        )
       ) : (
         /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
            Lone "Add action" (no scripts yet) still needs the pill mark — without it this
@@ -344,12 +454,14 @@ export default function ProjectScriptsControl({
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button
+              <ThreadDetailsControl
                 size="xs"
-                variant="outline"
-                className="w-7 sm:w-6 @3xl/header-actions:w-auto!"
-                aria-label="Add action"
-                data-fork-pill
+                variant={isPanel ? "ghost" : "outline"}
+                part="row"
+                panel={isPanel}
+                className={isPanel ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"}
+                aria-label={isPanel ? "Add project script" : "Add action"}
+                data-fork-pill={isPanel ? undefined : true}
                 // The tooltip wrapper replaces data-slot="button", so themed
                 // toolbar styling needs its own hook.
                 data-toolbar-control=""
@@ -358,11 +470,16 @@ export default function ProjectScriptsControl({
             }
           >
             <PlusIcon className="size-3.5" />
-            <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
-              Add action
+            <span
+              className={cn(
+                "sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5",
+                isPanel && "not-sr-only ml-0.5",
+              )}
+            >
+              {isPanel ? "Add project script" : "Add action"}
             </span>
           </TooltipTrigger>
-          <TooltipPopup side="top">Add action</TooltipPopup>
+          <TooltipPopup side="top">{isPanel ? "Add project script" : "Add action"}</TooltipPopup>
         </Tooltip>
       )}
 

@@ -1,5 +1,7 @@
-import { memo, type PointerEventHandler } from "react";
-import { ChevronDownIcon, ChevronLeftIcon } from "lucide-react";
+import { memo, type MouseEventHandler, type PointerEventHandler } from "react";
+import { CheckIcon, ChevronDownIcon, ChevronLeftIcon, PlayIcon } from "lucide-react";
+import { CornerUpRight, ListPlus } from "lucide";
+import { MorphIcon } from "~/components/MorphIcon";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import { StopSquareIcon } from "~/custom/StopSquareIcon";
 /* fork:end fork-composer-shell */
@@ -11,11 +13,17 @@ import {
 /* fork:end fork-local-dictation */
 import { useEnvironmentIdentificationMode } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
+import { useShortcutModifierState } from "../../shortcutModifierState";
 import { StageBackdropButtonArt, useSidebarStageBackdropVariant } from "../SidebarStageBackdrop";
 import { Button } from "../ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Spinner } from "../ui/spinner";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { composerFloatingLayerProps } from "./composerEventScope";
+import {
+  alternateComposerDispatchAction,
+  resolveComposerDispatchMode,
+} from "@t3tools/client-runtime/state/composer-dispatch";
 
 interface PendingActionState {
   questionIndex: number;
@@ -28,7 +36,12 @@ interface PendingActionState {
 interface ComposerPrimaryActionsProps {
   compact: boolean;
   pendingAction: PendingActionState | null;
+  /** The turn is running: sending steers or queues instead of starting a turn. */
   isRunning: boolean;
+  /** Stop can reach a run, including one still preparing or starting. */
+  canInterrupt: boolean;
+  followUpBehavior?: "queue" | "steer";
+  alternateShortcutLabel?: string | null;
   showPlanFollowUpPrompt: boolean;
   promptHasText: boolean;
   isSendBusy: boolean;
@@ -37,12 +50,16 @@ interface ComposerPrimaryActionsProps {
   isEnvironmentUnavailable: boolean;
   isPreparingWorktree: boolean;
   hasSendableContent: boolean;
+  canResume?: boolean;
   preserveComposerFocusOnPointerDown?: boolean;
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
   /** Set when dictation takes the send slot: the mic with nothing to send, the
    * check (and a cancel X beside it) while a session is live. */
   forkDictation?: ForkDictationPrimary | null;
   /* fork:end fork-local-dictation */
+  isEditingQueuedMessage?: boolean;
+  onSubmitMessage?: MouseEventHandler<HTMLButtonElement>;
+  onResume?: () => void;
   onPreviousPendingQuestion: () => void;
   onInterrupt: () => void;
   onImplementPlanInNewThread: () => void;
@@ -79,6 +96,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   compact,
   pendingAction,
   isRunning,
+  canInterrupt,
+  followUpBehavior = "steer",
+  alternateShortcutLabel = null,
   showPlanFollowUpPrompt,
   promptHasText,
   isSendBusy,
@@ -87,10 +107,14 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   isEnvironmentUnavailable,
   isPreparingWorktree,
   hasSendableContent,
+  canResume = false,
   preserveComposerFocusOnPointerDown = false,
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
   forkDictation = null,
   /* fork:end fork-local-dictation */
+  isEditingQueuedMessage = false,
+  onSubmitMessage,
+  onResume,
   onPreviousPendingQuestion,
   onInterrupt,
   onImplementPlanInNewThread,
@@ -99,39 +123,51 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     ? { onPointerDown: preventPointerFocus }
     : undefined;
   const environmentIdentificationMode = useEnvironmentIdentificationMode();
+  const shortcutModifiers = useShortcutModifierState();
+  const isQueuing =
+    !isEditingQueuedMessage &&
+    resolveComposerDispatchMode({
+      running: isRunning,
+      activeTurnDefault: followUpBehavior,
+      alternateModifier: shortcutModifiers.metaKey || shortcutModifiers.ctrlKey,
+    }) === "queue";
+  const alternateAction = alternateComposerDispatchAction(followUpBehavior);
   const isSendDisabled = sendDisabledReason !== null;
   const stageBackdropVariant = useSidebarStageBackdropVariant(
     environmentIdentificationMode === "artwork",
   );
 
   const renderStopGenerationButton = (insidePendingAction: boolean) => (
-    <button
-      type="button"
-      /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-      data-fork-composer-action="stop"
-      /* fork:end fork-composer-shell */
-      className={cn(
-        "flex cursor-pointer items-center justify-center rounded-full bg-destructive/90 text-white shadow-xs shadow-destructive/24 inset-shadow-2xs inset-shadow-white/16 transition-all duration-150 hover:bg-destructive hover:scale-105 active:inset-shadow-black/8 active:shadow-none",
-        insidePendingAction
-          ? "size-8 sm:size-7"
-          : hasSendableContent
-            ? "size-9 sm:size-8"
-            : "size-8 sm:h-8 sm:w-8",
-      )}
-      {...pointerFocusProps}
-      onClick={onInterrupt}
-      aria-label="Stop generation"
-    >
-      {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
-      <StopSquareIcon />
-      {/* fork:end fork-composer-shell */}
-    </button>
+    <Tooltip key="interrupt">
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+            data-fork-composer-action="stop"
+            /* fork:end fork-composer-shell */
+            className={cn(
+              "flex cursor-pointer items-center justify-center rounded-full bg-destructive/90 text-white shadow-xs shadow-destructive/24 inset-shadow-control-highlight transition-all duration-150 hover:bg-destructive hover:scale-105 active:inset-shadow-control-pressed active:shadow-none [&_svg]:pointer-events-none",
+              insidePendingAction ? "size-8 sm:size-7" : "size-8 sm:h-8 sm:w-8",
+            )}
+            {...pointerFocusProps}
+            onClick={onInterrupt}
+            aria-label="Stop generation"
+          />
+        }
+      >
+        {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
+        <StopSquareIcon />
+        {/* fork:end fork-composer-shell */}
+      </TooltipTrigger>
+      <TooltipPopup>Interrupt</TooltipPopup>
+    </Tooltip>
   );
 
   if (pendingAction) {
     return (
       <div className={cn("flex items-center justify-end", compact ? "gap-1.5" : "gap-2")}>
-        {isRunning ? renderStopGenerationButton(true) : null}
+        {canInterrupt ? renderStopGenerationButton(true) : null}
         {pendingAction.questionIndex > 0 ? (
           compact ? (
             <Button
@@ -186,7 +222,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     );
   }
 
-  if (showPlanFollowUpPrompt) {
+  if (showPlanFollowUpPrompt && (promptHasText || !canResume)) {
     if (promptHasText) {
       return (
         <button
@@ -246,19 +282,68 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
      shows the check with a cancel X beside it. Always the filled variant: the
      fork's send is its normal button on every build (fork-composer-shell hides
      the Dev/Nightly stage art below), so the transparent art variant would
-     leave a white glyph on nothing. */
+     leave a white glyph on nothing. ChatComposer decides when dictation owns
+     the slot (an idle mic yields to upstream's resume action; a live session
+     never does), so a non-null forkDictation always wins here. */
   const sendButtonClassName =
-    "relative isolate flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-message-action text-message-action-foreground shadow-xs transition-all duration-150 enabled:cursor-pointer enabled:inset-shadow-2xs enabled:inset-shadow-white/16 enabled:shadow-message-action/24 hover:scale-105 hover:bg-message-action-hover active:inset-shadow-black/8 active:shadow-none disabled:pointer-events-none disabled:opacity-64 disabled:shadow-none disabled:hover:scale-100 sm:h-8 sm:w-8";
-  const sendButton = forkDictation ? (
+    "relative isolate flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-message-action text-message-action-foreground shadow-xs transition-all duration-150 enabled:cursor-pointer enabled:inset-shadow-control-highlight enabled:shadow-message-action/24 hover:scale-105 hover:bg-message-action-hover active:inset-shadow-control-pressed active:shadow-none disabled:pointer-events-none disabled:opacity-64 disabled:shadow-none disabled:hover:scale-100 sm:h-8 sm:w-8 [&_svg]:pointer-events-none";
+  const forkDictationButton = forkDictation ? (
     <ForkDictationPrimaryButton
       dictation={forkDictation.dictation}
       disabled={forkDictation.disabled}
       className={sendButtonClassName}
     />
-  ) : (
+  ) : null;
+  /* fork:end fork-local-dictation */
+
+  if (canInterrupt && !hasSendableContent && !isEditingQueuedMessage) {
+    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+       Dictation sits to stop's left, as the ghost mic does over typed text,
+       so stop keeps the right edge: the mic beside it, and a live session's
+       timeline, X and check growing leftward without moving it. */
+    if (forkDictationButton) {
+      return (
+        <>
+          {forkDictationButton}
+          {renderStopGenerationButton(false)}
+        </>
+      );
+    }
     /* fork:end fork-local-dictation */
+    return renderStopGenerationButton(false);
+  }
+
+  const showResume = canResume && !hasSendableContent && !isEditingQueuedMessage;
+  const submitLabel = showResume
+    ? "Resume thread"
+    : isEditingQueuedMessage
+      ? "Update queued message"
+      : isQueuing
+        ? "Queue message"
+        : isRunning
+          ? "Steer message"
+          : "Submit message";
+  const submitStatus = isEnvironmentUnavailable
+    ? "Environment disconnected"
+    : (sendDisabledReason ??
+      (isConnecting
+        ? "Connecting"
+        : isPreparingWorktree
+          ? "Preparing worktree"
+          : isSendBusy
+            ? isEditingQueuedMessage
+              ? "Updating queued message"
+              : "Submitting message"
+            : null));
+  const submitTooltip =
+    submitStatus ??
+    (isRunning && !isEditingQueuedMessage
+      ? `Click to ${followUpBehavior}, Ctrl/⌘-click${alternateShortcutLabel ? ` or ${alternateShortcutLabel}` : ""} to ${alternateAction}`
+      : submitLabel);
+
+  const sendButton = (
     <button
-      type="submit"
+      type={showResume ? "button" : "submit"}
       /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
          Always "flat": the fork's send is its normal button on every build. */
       data-fork-composer-action="send"
@@ -268,32 +353,19 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
       className={sendButtonClassName}
       /* fork:end fork-local-dictation */
       {...pointerFocusProps}
+      onClick={showResume ? onResume : onSubmitMessage}
       disabled={
         isSendBusy ||
         isSendDisabled ||
         isConnecting ||
         isEnvironmentUnavailable ||
-        !hasSendableContent
+        (!hasSendableContent && !showResume)
       }
-      aria-label={
-        isEnvironmentUnavailable
-          ? "Environment disconnected"
-          : sendDisabledReason
-            ? sendDisabledReason
-            : isConnecting
-              ? "Connecting"
-              : isPreparingWorktree
-                ? "Preparing worktree"
-                : isSendBusy
-                  ? "Sending"
-                  : isRunning
-                    ? "Queue message"
-                    : "Send message"
-      }
+      aria-label={submitStatus ?? submitLabel}
     >
       {stageBackdropVariant ? (
         <span
-          className="absolute inset-0 -z-10"
+          className="pointer-events-none absolute inset-0 -z-10"
           aria-hidden="true"
           /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
              theme.custom.css hides the Dev/Nightly stage art off this: the
@@ -307,6 +379,12 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
       ) : null}
       {isConnecting || isSendBusy ? (
         <Spinner size="sm" aria-hidden="true" />
+      ) : showResume ? (
+        <PlayIcon className="size-4 fill-current" aria-hidden="true" />
+      ) : isEditingQueuedMessage ? (
+        <CheckIcon className="size-4" aria-hidden="true" />
+      ) : isRunning ? (
+        <MorphIcon className="size-4" icon={isQueuing ? ListPlus : CornerUpRight} />
       ) : (
         /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
         /* The return arrow from the designs, replacing upstream's up arrow. Kept
@@ -333,25 +411,17 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
     </button>
   );
 
-  if (!isRunning) {
-    return sendButton;
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+     The dictation button carries its own labels, so it takes the slot bare
+     rather than under the send tooltip. */
+  if (forkDictationButton) {
+    return forkDictationButton;
   }
-
-  // While a turn runs, a sendable draft queues for the next tool boundary, so
-  // the send button stays next to Stop on every viewport.
+  /* fork:end fork-local-dictation */
   return (
-    <>
-      {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-          Dictation sits to stop's left, as the ghost mic does over typed text,
-          so stop keeps the right edge: the mic beside it, and a live session's
-          timeline, X and check growing leftward without moving it. Upstream's
-          queued send while running keeps its place after stop. */}
-      {forkDictation ? sendButton : null}
-      {/* fork:end fork-local-dictation */}
-      {renderStopGenerationButton(false)}
-      {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
-      {!forkDictation && hasSendableContent ? sendButton : null}
-      {/* fork:end fork-local-dictation */}
-    </>
+    <Tooltip key="submit">
+      <TooltipTrigger render={<span className="inline-flex" />}>{sendButton}</TooltipTrigger>
+      <TooltipPopup>{submitTooltip}</TooltipPopup>
+    </Tooltip>
   );
 });

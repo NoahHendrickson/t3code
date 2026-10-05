@@ -2,6 +2,8 @@ import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environ
 import { type EnvironmentId, type ScopedThreadRef, ThreadId } from "@t3tools/contracts";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
+import { deriveComposerSendState } from "../../components/ChatView.logic";
+import { ATTACHMENT_ONLY_BOOTSTRAP_PROMPT } from "../../components/chat/composerPromptHistory";
 import { extractTrailingDesignChanges, withDesignChangesTrailing } from "./designChangeTranscript";
 import { forkDesignChanges, useDesignChangeDraftStore } from "./designChangeDraftStore";
 import { useDesignSentPreviews } from "./designSentPreviews";
@@ -182,6 +184,30 @@ describe("designChangeDraftStore", () => {
     const taken = forkDesignChanges.takeForSend(THREAD, "just a message");
     expect(taken.text).toBe("just a message");
     expect(taken.sent).toHaveLength(0);
+  });
+
+  // Upstream queues runs on the server now, so a send queued behind the active
+  // turn takes ChatView's one send path. This pins what the client-side queued
+  // sender used to prove: pills alone are sendable content, and the outgoing
+  // text is exactly the trailing blocks, never the attachment-only bootstrap
+  // prompt ChatView falls back to for an empty message.
+  it("sends a pill-only request as trailing blocks, even with no prose", () => {
+    const { add } = useDesignChangeDraftStore.getState();
+    add(THREAD, "tab-a", payload({ markdown: "# Make it pop" }));
+
+    const sendState = deriveComposerSendState({
+      prompt: "",
+      imageCount: 0,
+      terminalContexts: [],
+      elementContextCount: forkDesignChanges.count(THREAD),
+    });
+    expect(sendState.hasSendableContent).toBe(true);
+
+    const taken = forkDesignChanges.takeForSend(THREAD, "");
+    expect(taken.text || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT).toBe(
+      "<design_change_request>\n# Make it pop\n</design_change_request>",
+    );
+    expect(taken.sent).toHaveLength(1);
   });
 
   it("clears only what the send carried, so a Send from another tab mid-flight survives", () => {
