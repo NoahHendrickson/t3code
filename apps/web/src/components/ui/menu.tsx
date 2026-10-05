@@ -25,6 +25,9 @@ function MenuPopup({
   alignOffset,
   side = "bottom",
   anchor,
+  /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker */
+  collisionAvoidance,
+  /* fork:end fork-model-picker */
   keepMounted = false,
   ...props
 }: MenuPrimitive.Popup.Props & {
@@ -33,6 +36,9 @@ function MenuPopup({
   alignOffset?: MenuPrimitive.Positioner.Props["alignOffset"];
   side?: MenuPrimitive.Positioner.Props["side"];
   anchor?: MenuPrimitive.Positioner.Props["anchor"];
+  /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker */
+  collisionAvoidance?: MenuPrimitive.Positioner.Props["collisionAvoidance"];
+  /* fork:end fork-model-picker */
   keepMounted?: boolean;
 }) {
   return (
@@ -41,6 +47,9 @@ function MenuPopup({
         align={align}
         alignOffset={alignOffset}
         anchor={anchor}
+        /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker */
+        collisionAvoidance={collisionAvoidance}
+        /* fork:end fork-model-picker */
         className="z-[130]"
         data-slot="menu-positioner"
         side={side}

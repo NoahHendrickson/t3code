@@ -3748,7 +3748,10 @@
     a pick as it does upstream, unless the close itself moved focus to
     another control. The composer's
     popup aligns to the trigger's right edge (Settings stays start-aligned), so
-    it holds still as the label changes length. Both
+    it holds still as the label changes length. It always opens above the
+    trigger and never flips (a short space scrolls it): the draft composer
+    sits mid-screen, and paging to a taller provider used to flip it from
+    below to above mid-pick. Both
     composer placements (footer and resting strip) render it; the separate
     traits picker, its resting "traits" block and the ⋯ menus' traits section
     (upstream's providerTraitsMenuContent, in both the footer and the strip
@@ -3772,6 +3775,8 @@
     - apps/web/src/components/chat/ModelPickerContent.tsx
   watch:
     # Supplies the Menu, item and separator primitives the pages render.
+    # Fenced: MenuPopup passes collisionAvoidance to its Positioner, so the
+    # composer's menu can turn flipping off.
     - apps/web/src/components/ui/menu.tsx
     # Reads [data-model-picker-content]; the popup must keep stamping it.
     - apps/web/src/modelPickerVisibility.ts
