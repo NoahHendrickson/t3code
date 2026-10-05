@@ -5,6 +5,7 @@ import { ComposerSurface } from "~/components/chat/ComposerSurface";
 import {
   ComposerBackgroundLivenessPill,
   type ComposerBackgroundLivenessPillProps,
+  type ComposerBackgroundLivenessTask,
 } from "./ComposerMonitoringPill";
 
 export type ComposerBackgroundLiveness =
@@ -19,24 +20,21 @@ export function resolveComposerLivenessPillProps(input: {
   readonly stopping: boolean;
   readonly canStop: boolean;
   readonly onStop: () => void;
+  readonly tasks?: ReadonlyArray<ComposerBackgroundLivenessTask>;
+  readonly onOpenThread?: ComposerBackgroundLivenessPillProps["onOpenThread"];
 }): ComposerBackgroundLivenessPillProps | null {
+  const shared = {
+    stopping: input.stopping,
+    canStop: input.canStop,
+    onStop: input.onStop,
+    ...(input.tasks === undefined ? {} : { tasks: input.tasks }),
+    ...(input.onOpenThread === undefined ? {} : { onOpenThread: input.onOpenThread }),
+  };
   if (input.liveness === "monitoring") {
-    return {
-      kind: "monitoring",
-      stopping: input.stopping,
-      canStop: input.canStop,
-      onStop: input.onStop,
-    };
+    return { kind: "monitoring", ...shared };
   }
   if (input.liveness === "working") {
-    return {
-      kind: "working",
-      rainSeed: input.rainSeed,
-      liveCount: input.liveCount,
-      stopping: input.stopping,
-      canStop: input.canStop,
-      onStop: input.onStop,
-    };
+    return { kind: "working", rainSeed: input.rainSeed, liveCount: input.liveCount, ...shared };
   }
   return null;
 }

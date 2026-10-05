@@ -7517,6 +7517,15 @@ export default function ChatView(props: ChatViewProps) {
         stopping: isStoppingBackgroundWork,
         canStop: canOperateThread,
         onStop: () => void handleStopBackgroundWork(),
+        // The tasks behind the count, for the pill's list: a subagent's row
+        // opens its thread (what upstream's dropped banner linked to).
+        tasks: presentation.items.map((item) => ({
+          id: item.taskId,
+          label: item.label,
+          kind: item.kind,
+          childThreadId: item.childThreadId ?? null,
+        })),
+        onOpenThread: onOpenRelatedThread,
       }),
     );
   }, [
@@ -7525,6 +7534,7 @@ export default function ChatView(props: ChatViewProps) {
     canOperateThread,
     handleStopBackgroundWork,
     isStoppingBackgroundWork,
+    onOpenRelatedThread,
   ]);
   /* fork:end fork-composer-shell */
   // Commands such as /compact and /goal clear run as their own turn. The draft
