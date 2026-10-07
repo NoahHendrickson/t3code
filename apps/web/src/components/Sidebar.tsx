@@ -4209,7 +4209,9 @@ export default function Sidebar() {
   // The header menu's "Settle all threads": which keys it would touch, per
   // section, derived once from the unfiltered sections so the menu's count
   // and the click agree. A key qualifies when its row can settle at all —
-  // the same three gates the card's own settle button has.
+  // the same gates the card's own settle button has, including the operate
+  // scope (upstream #9786), so a read-only connection sees a disabled item
+  // instead of one rejection toast per thread.
   const settleAllKeysByProjectKey = useMemo(() => {
     const byProjectKey = new Map<string, string[]>();
     for (const section of activeSections) {
@@ -4219,6 +4221,7 @@ export default function Sidebar() {
         const threadKey = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
         if (draftIdByThreadKey.has(threadKey)) continue;
         if (thread.settledOverride === "settled") continue;
+        if (!readEnvironmentScope(thread.environmentId, AuthOrchestrationOperateScope)) continue;
         if (
           serverConfigs.get(thread.environmentId)?.environment.capabilities.threadSettlement !==
           true

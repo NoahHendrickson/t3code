@@ -11,8 +11,8 @@
  * checkout.
  *
  * Excluded: the default branch (the shared checkout's resting state after a
- * merge, not the thread's work), a detached HEAD, a temporary `t3code/…`
- * placeholder, a thread with no recorded branch, a worktree thread (its
+ * merge, not the thread's work), a detached HEAD, a temporary `t3/…`
+ * placeholder (`isTemporaryWorktreeBranch` also knows the older `t3code/…`), a thread with no recorded branch, a worktree thread (its
  * checkout is its own; upstream V2 records branch changes there through its
  * own flows), and a thread whose newer run is already active. The adoption is
  * `thread.metadata.update` guarded by `expectedWorktreePath: null`, so a

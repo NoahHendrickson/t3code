@@ -229,7 +229,7 @@ describe("fork guard: fork-model-picker", () => {
     // pick keeps the menu open so effort can follow.
     expect(picker).toContain("data-chat-provider-model-picker-traits");
     // The traits label truncates inside the trigger's max width, and the
-    // resting strip collapses it (and the bolt) with the model name.
+    // resting strip collapses it with the model name.
     expect(picker).toContain('"min-w-0 truncate text-muted-foreground"');
     // One carrier since upstream #16069 folded fast mode into the label text;
     // the bolt that used to collapse alongside it is gone.

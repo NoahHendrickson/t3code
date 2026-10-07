@@ -17,12 +17,14 @@ export function resolveComposerLivenessPillProps(input: {
   readonly rainSeed: string;
   readonly liveCount: number;
   readonly stopping: boolean;
+  readonly canStop: boolean;
   readonly onStop: () => void;
 }): ComposerBackgroundLivenessPillProps | null {
   if (input.liveness === "monitoring") {
     return {
       kind: "monitoring",
       stopping: input.stopping,
+      canStop: input.canStop,
       onStop: input.onStop,
     };
   }
@@ -32,6 +34,7 @@ export function resolveComposerLivenessPillProps(input: {
       rainSeed: input.rainSeed,
       liveCount: input.liveCount,
       stopping: input.stopping,
+      canStop: input.canStop,
       onStop: input.onStop,
     };
   }

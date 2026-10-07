@@ -89,13 +89,14 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   onDismiss: (requestId: RuntimeRequestId) => void;
 }) {
   // Upstream #9786: a client without the operate scope sees the questions but
-  // cannot answer. The card hook takes one "cannot respond now" flag, so
-  // `disabled` folds into it here and its number-key guard follows.
+  // cannot answer. The hook owns the click, number-key and auto-advance guards
+  // from the same two inputs; the option buttons mirror them visually.
   const interactionDisabled = disabled || isResponding;
   const { progress, activeQuestion, optimisticSingleSelect, handleOptionSelection } =
     useComposerPendingUserInputCard({
       prompt,
-      isResponding: interactionDisabled,
+      disabled,
+      isResponding,
       answers,
       questionIndex,
       onToggleOption,

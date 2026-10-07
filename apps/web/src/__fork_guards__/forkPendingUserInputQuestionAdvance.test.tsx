@@ -49,11 +49,18 @@ let mountToken: object;
 let toggled: Array<[string, string]>;
 let advances: number;
 
-const Host = memo(function Host({ questionIndex }: { questionIndex: number }) {
+const Host = memo(function Host({
+  questionIndex,
+  disabled = false,
+}: {
+  questionIndex: number;
+  disabled?: boolean;
+}) {
   // Survives a re-render, not a remount — the harness's own invariant.
   const token = useRef({});
   const value = useComposerPendingUserInputCard({
     prompt: PROMPT,
+    disabled,
     isResponding: false,
     answers: {},
     questionIndex,
@@ -71,11 +78,11 @@ const Host = memo(function Host({ questionIndex }: { questionIndex: number }) {
   return null;
 });
 
-async function renderQuestion(questionIndex: number) {
+async function renderQuestion(questionIndex: number, disabled = false) {
   await act(() => {
     root.render(
       <StrictMode>
-        <Host questionIndex={questionIndex} />
+        <Host questionIndex={questionIndex} disabled={disabled} />
       </StrictMode>,
     );
   });
@@ -174,6 +181,46 @@ describe("fork guard: pending user input question advance", () => {
         vi.advanceTimersByTime(200);
       });
       expect(advances).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Upstream #9786: a client without the operate scope sees the questions but
+  // cannot answer. The compact mobile mount and the expanded one share this
+  // hook, so the guard holds for both.
+  it("ignores option selection while the card is disabled", async () => {
+    vi.useFakeTimers();
+    try {
+      await renderQuestion(0, true);
+      expect(card.responseDisabled).toBe(true);
+      await act(async () => {
+        card.handleOptionSelection("q1", "zod");
+      });
+      expect(toggled).toEqual([]);
+      expect(card.optimisticSingleSelect).toBeNull();
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(advances).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("cancels a pending auto-advance when the scope is withdrawn mid-timer", async () => {
+    vi.useFakeTimers();
+    try {
+      await renderQuestion(0);
+      await act(async () => {
+        card.handleOptionSelection("q1", "zod");
+      });
+      expect(toggled).toEqual([["q1", "zod"]]);
+      await renderQuestion(0, true);
+      await act(async () => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(advances).toBe(0);
     } finally {
       vi.useRealTimers();
     }

@@ -7501,10 +7501,17 @@ export default function ChatView(props: ChatViewProps) {
         rainSeed: `${activeThread.environmentId}:${activeThread.id}`,
         liveCount: presentation.items.filter((item) => item.kind === "subagent").length,
         stopping: isStoppingBackgroundWork,
+        canStop: canOperateThread,
         onStop: () => void handleStopBackgroundWork(),
       }),
     );
-  }, [activeBackgroundTasks, activeThread, handleStopBackgroundWork, isStoppingBackgroundWork]);
+  }, [
+    activeBackgroundTasks,
+    activeThread,
+    canOperateThread,
+    handleStopBackgroundWork,
+    isStoppingBackgroundWork,
+  ]);
   /* fork:end fork-composer-shell */
   // Commands such as /compact and /goal clear run as their own turn. The draft
   // and its attachments stay local.
@@ -7800,11 +7807,11 @@ export default function ChatView(props: ChatViewProps) {
       : null;
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
     const limitRecoveryItems = limitRecoveryBanner === null ? [] : [limitRecoveryBanner];
-    const backgroundWorkItems = [goalBannerItem].filter((item) => item !== null);
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
        Both returns below omit background-liveness banner items — Monitoring /
        Working ride the context-strip pill (`composerLivenessPill`) instead. The
        native /goal row (#15592) is thread state, not liveness, so it stays. */
+    const backgroundWorkItems = [goalBannerItem].filter((item) => item !== null);
     /* fork:end fork-composer-shell */
     // The user asked for this one, so it leads the notice tier instead of trailing it.
     const usageLimitsItems = usageLimitsBanner === null ? [] : [usageLimitsBanner];

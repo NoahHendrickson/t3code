@@ -16,6 +16,7 @@ import { type PendingUserInput } from "~/session-logic";
 
 export function useComposerPendingUserInputCard({
   prompt,
+  disabled = false,
   isResponding,
   answers,
   questionIndex,
@@ -23,6 +24,8 @@ export function useComposerPendingUserInputCard({
   onAdvance,
 }: {
   prompt: PendingUserInput;
+  /** Upstream #9786: the client lacks the operate scope, so the card is read-only. */
+  disabled?: boolean;
   isResponding: boolean;
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
@@ -33,7 +36,7 @@ export function useComposerPendingUserInputCard({
   const activeQuestion = progress.activeQuestion;
   // Message-mode requests remain answerable after their provider turn ends.
   const canRespond = prompt.responseCapability !== "not_resumable";
-  const responseDisabled = isResponding || !canRespond;
+  const responseDisabled = disabled || isResponding || !canRespond;
   const autoAdvanceTimerRef = useRef<number | null>(null);
   const [optimisticSingleSelect, setOptimisticSingleSelect] = useState<{
     questionId: string;
@@ -84,8 +87,8 @@ export function useComposerPendingUserInputCard({
     };
   }, []);
 
-  // A pending auto-advance must not fire once responding is disabled (upstream
-  // #9786: the operate scope can be withdrawn mid-timer).
+  // A pending auto-advance must not fire once responding is disabled: the
+  // operate scope can be withdrawn mid-timer (upstream #9786).
   useEffect(() => {
     if (responseDisabled && autoAdvanceTimerRef.current !== null) {
       window.clearTimeout(autoAdvanceTimerRef.current);
@@ -147,6 +150,7 @@ export function useComposerPendingUserInputCard({
     progress,
     activeQuestion,
     optimisticSingleSelect,
+    responseDisabled,
     handleOptionSelection,
   } as const;
 }
