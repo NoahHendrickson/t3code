@@ -1436,6 +1436,8 @@
     - apps/web/src/main.tsx
     - apps/web/src/hooks/useTheme.ts
     - apps/web/src/components/settings/SettingsPanels.tsx
+    # Runs useSettingsRestore outside React; fenced to mock the fork palette hook.
+    - apps/web/src/components/settings/SettingsPanels.restore.test.tsx
     - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
   verify:
@@ -2230,6 +2232,9 @@
     - apps/web/src/components/WorkspacePageHeader.tsx
     # Defines .drag-region itself — the class the release rule overrides.
     - apps/web/src/index.css
+    # Upstream states the maximum-width case in literal viewports; fenced to
+    # read them relative to the reserve the shadow lowers.
+    - apps/web/src/components/threadSidebarWidth.test.ts
   verify:
     - apps/web/src/__fork_guards__/narrowWorkspaceLayout.test.ts
 

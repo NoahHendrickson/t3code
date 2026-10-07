@@ -285,10 +285,7 @@ export const forkDesignChanges = {
 /** `text` with each request appended as a `<design_change_request>` block, or untouched when
     there are none. The one formatter for every send path, so the transcript extractor always
     sees the same shape. */
-export function withDesignChangeBlocks(
-  text: string,
-  entries: readonly PendingDesignChange[],
-): string {
+function withDesignChangeBlocks(text: string, entries: readonly PendingDesignChange[]): string {
   if (entries.length === 0) return text;
   const blocks = entries
     .map((entry) => `<design_change_request>\n${entry.markdown}\n</design_change_request>`)

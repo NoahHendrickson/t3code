@@ -46,6 +46,19 @@ vi.mock("./useScopedSettings", async (importOriginal) => ({
   useUpdateScopedSettings: () => state.update,
 }));
 
+/* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
+// useSettingsRestore also reads the fork palette through useSyncExternalStore,
+// which the hook harness does not provide; answer with upstream's theme as-is.
+vi.mock("../../custom/forkTheme", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../custom/forkTheme")>()),
+  useForkAppearance: (theme: string) => ({
+    appearance: theme,
+    setAppearance: vi.fn(),
+    palette: null,
+  }),
+}));
+/* fork:end fork-cool-dark-theme */
+
 vi.mock("../../localApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../localApi")>()),
   readLocalApi: () => ({ dialogs: { confirm: state.confirm } }),

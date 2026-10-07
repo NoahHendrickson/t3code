@@ -3,6 +3,9 @@ import {
   clampThreadSidebarWidth,
   resolveThreadSidebarMaximumWidth,
   resolveThreadSidebarMinimumWidth,
+  /* fork:begin narrow-workspace-layout — see .fork/customizations.yaml#narrow-workspace-layout */
+  THREAD_MAIN_CONTENT_MIN_WIDTH,
+  /* fork:end narrow-workspace-layout */
   THREAD_SIDEBAR_MIN_WIDTH,
 } from "./threadSidebarWidth";
 
@@ -19,8 +22,12 @@ describe("resolveThreadSidebarMinimumWidth", () => {
 
 describe("resolveThreadSidebarMaximumWidth", () => {
   it("never drops below a raised minimum on a narrow viewport", () => {
-    expect(resolveThreadSidebarMaximumWidth(800, 238)).toBe(238);
-    expect(resolveThreadSidebarMaximumWidth(1200, 238)).toBe(560);
+    /* fork:begin narrow-workspace-layout — see .fork/customizations.yaml#narrow-workspace-layout */
+    // The shadow lowers the main-content reserve, so the viewports are stated
+    // relative to it rather than as upstream's literal 800 and 1200.
+    expect(resolveThreadSidebarMaximumWidth(THREAD_MAIN_CONTENT_MIN_WIDTH + 160, 238)).toBe(238);
+    expect(resolveThreadSidebarMaximumWidth(THREAD_MAIN_CONTENT_MIN_WIDTH + 560, 238)).toBe(560);
+    /* fork:end narrow-workspace-layout */
   });
 });
 
