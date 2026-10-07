@@ -24,8 +24,6 @@ import {
   type ResolvedKeybindingsConfig,
 } from "@t3tools/contracts";
 import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ZapIcon } from "lucide-react";
-import { UltrafastIcon } from "../Icons";
 import { Badge } from "../ui/badge";
 import { Menu, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -43,7 +41,6 @@ import { shouldShowInstanceBadge, type ProviderInstanceEntry } from "../../provi
 import {
   ComposerControl,
   ComposerControlChevron,
-  ComposerControlIcon,
   type ComposerControlSize,
 } from "./ComposerControl";
 import { useComposerMenuProps } from "./composerEventScope";
@@ -82,7 +79,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   getModelDisabledReason?: (instanceId: ProviderInstanceId, model: string) => string | null;
   onInstanceModelChange: (instanceId: ProviderInstanceId, model: string) => void;
   /** The selected model's reasoning: a trigger label plus a panel under the model pages. */
-  traits?: { label: string; speedIcon: "fast" | "ultrafast" | null; panel: ReactNode };
+  traits?: { label: string; panel: ReactNode };
   /**
    * The composer's combined menu: a pick keeps it open (effort usually
    * follows a new model) at one width, whether or not the model has traits.
@@ -350,27 +347,9 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             </Badge>
           ) : null}
           {/* The resting strip (size xs) sizes this trigger down to its icon
-              below 640px, so the bolt and the traits label collapse there with
-              the model name. Elsewhere the traits label truncates rather than
-              spill past the trigger's max width. */}
-          {props.traits?.speedIcon ? (
-            <>
-              <ComposerControlIcon
-                icon={props.traits.speedIcon === "ultrafast" ? UltrafastIcon : ZapIcon}
-                size={size}
-                className={cn(
-                  "fill-current opacity-80",
-                  size !== "xs" && activeEntry?.driverKind === "claudeAgent"
-                    ? "text-[#d97757]"
-                    : "text-current",
-                  size === "xs" && "@max-[640px]/composer-surface:hidden",
-                )}
-              />
-              <span className="sr-only">
-                {props.traits.speedIcon === "ultrafast" ? "Ultrafast mode on" : "Fast mode on"}
-              </span>
-            </>
-          ) : null}
+              below 640px, so the traits label collapses there with the model
+              name. Elsewhere it truncates rather than spill past the trigger's
+              max width. Fast mode is part of the label text (upstream #16069). */}
           {props.traits?.label ? (
             <span
               className={cn(

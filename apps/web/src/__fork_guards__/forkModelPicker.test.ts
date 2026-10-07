@@ -231,9 +231,11 @@ describe("fork guard: fork-model-picker", () => {
     // The traits label truncates inside the trigger's max width, and the
     // resting strip collapses it (and the bolt) with the model name.
     expect(picker).toContain('"min-w-0 truncate text-muted-foreground"');
+    // One carrier since upstream #16069 folded fast mode into the label text;
+    // the bolt that used to collapse alongside it is gone.
     expect(
       picker.match(/size === "xs" && "@max-\[640px\]\/composer-surface:hidden"/gu),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     // The panel is stamped like the pages, so the wheel lock and
     // modelPickerHoldsFocus both count its controls as inside the picker.
     expect(picker).toContain('<div data-model-picker-content="true">{props.traits.panel}</div>');

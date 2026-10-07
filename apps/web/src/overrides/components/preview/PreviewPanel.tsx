@@ -1,15 +1,21 @@
 "use client";
 
-import type { PreviewAnnotationPayload, ScopedThreadRef } from "@t3tools/contracts";
+import {
+  AuthPreviewOperateScope,
+  type PreviewAnnotationPayload,
+  type ScopedThreadRef,
+} from "@t3tools/contracts";
 
 import type { ComposerImageAttachment } from "~/composerDraftStore";
 
+import { usePreviewAvailable } from "~/browser/previewRuntime";
 import { previewRuntimeTabId } from "~/browser/previewRuntimeTabId";
 import { PreviewPanelShell, type PreviewPanelMode } from "~/components/preview/PreviewPanelShell";
 import { PreviewView } from "~/components/preview/PreviewView";
 import { ForkLayersTree } from "~/custom/designMode/ForkLayersTree";
 import { ForkDesignPanel } from "~/custom/designMode/panel/ForkDesignPanel";
-import { isPreviewSupportedInRuntime, useThreadPreviewState } from "~/previewStateStore";
+import { useThreadPreviewState } from "~/previewStateStore";
+import { useEnvironmentScope } from "~/state/session";
 
 interface Props {
   mode: PreviewPanelMode;
@@ -37,12 +43,16 @@ export function PreviewPanel({
   const runtimeTabId = activeTabId
     ? previewRuntimeTabId(threadRef, previewState.serverEpoch, activeTabId)
     : null;
-  if (!isPreviewSupportedInRuntime()) {
+  const available = usePreviewAvailable(threadRef.environmentId);
+  const canOperatePreview = useEnvironmentScope(threadRef.environmentId, AuthPreviewOperateScope);
+  if (!canOperatePreview || !available) {
     return (
       <PreviewPanelShell mode={mode}>
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
           <p className="max-w-sm text-sm text-muted-foreground">
-            Preview is only available in the T3 Code desktop app.
+            {canOperatePreview
+              ? "Preview is only available in the T3 Code desktop app."
+              : "Pair this client again with preview access to control browser previews."}
           </p>
         </div>
       </PreviewPanelShell>

@@ -51,7 +51,7 @@ describe("fork guard: fork-workspace-header", () => {
     // is toolbar-only: the thread details panel (isPanel) is upstream's surface.
     const git = readSibling("../components/GitActionsControl.tsx");
     expect(git).toMatch(
-      /<ThreadDetailsControl\s+size="xs"\s+variant=\{isPanel \? "ghost" : "outline"\}\s+part="row"\s+panel=\{isPanel\}\s+data-fork-pill=\{isPanel \? undefined : true\}\s+disabled=\{initAction\.isPending\}/u,
+      /<ThreadDetailsControl\s+size="xs"\s+variant=\{isPanel \? "ghost" : "outline"\}\s+part="row"\s+panel=\{isPanel\}\s+data-fork-pill=\{isPanel \? undefined : true\}\s+disabled=\{!canWriteSourceControl \|\| initAction\.isPending\}/u,
     );
   });
 
