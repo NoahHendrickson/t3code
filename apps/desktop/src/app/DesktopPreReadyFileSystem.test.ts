@@ -22,12 +22,15 @@ it.layer(NodeServices.layer)("DesktopPreReadyFileSystem", (it) => {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const root = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-pre-ready-fs-" });
-      yield* fileSystem.makeDirectory(path.join(root, "T3 Code (Alpha)"));
-      yield* fileSystem.writeFileString(path.join(root, "T3 Code (Alpha)", "Local State"), "keys");
+      // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+      // The fork's packaged profile pair is "T3 Code (Fork)" -> "t3code-fork-v2".
+      yield* fileSystem.makeDirectory(path.join(root, "T3 Code (Fork)"));
+      yield* fileSystem.writeFileString(path.join(root, "T3 Code (Fork)", "Local State"), "keys");
 
       const userData = yield* resolveWindowsUserData(root);
 
-      assert.equal(userData, path.join(root, "t3code-v2"));
+      assert.equal(userData, path.join(root, "t3code-fork-v2"));
+      // fork:end fork-app-identity
       assert.equal(yield* fileSystem.readFileString(path.join(userData, "Local State")), "keys");
     }),
   );

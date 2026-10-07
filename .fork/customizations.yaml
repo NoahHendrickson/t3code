@@ -427,6 +427,9 @@
     # Upstream asserts its own V2 profile name on the packaged-Windows bridge
     # path; fenced to the fork's.
     - apps/desktop/src/app/DesktopClerk.test.ts
+    # Upstream's Windows profile migration test names its own legacy and V2
+    # directories; fenced to the fork's pair.
+    - apps/desktop/src/app/DesktopPreReadyFileSystem.test.ts
     - apps/desktop/src/app/DesktopLegacyLocalStorage.ts
     - apps/desktop/src/legacyLocalStorageMerge.ts
     # The v0.0.32 pre-ready refactor: identity and state-dir logic that never
