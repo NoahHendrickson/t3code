@@ -2123,7 +2123,9 @@
     ThreadDetailsControl, which also render a "panel" presentation inside the
     new thread details panel. The data-fork-pill mark is toolbar-only; the
     panel is upstream's surface and stays unmarked. Upstream's multiline git
-    progress readout is let out of the 28px pin so its output row shows.
+    progress readout carries a second fenced stamp, data-fork-pill-multiline,
+    that lets it out of the 28px pin so its output row shows; the toolbar path
+    is Button size="sm-multiline", which has no class the CSS could key on.
   tier: 4
   files:
     - apps/web/src/theme.custom.css
@@ -3375,7 +3377,11 @@
     # run carries text, attachments and context records only: pills stay
     # pending for the next real send, and the composer does not count them
     # toward an empty "Update" (the edit path has no client createdAt for the
-    # preview correlation markSent needs).
+    # preview correlation markSent needs). The blocks already in the queued
+    # text are split off before the draft is seeded and re-appended verbatim
+    # on save (forkDesignChangeRun), so the editor never shows the markup; an
+    # edit that empties the prose but keeps the run still saves. A recovered
+    # edit (run started or removed mid-edit) keeps the prose only.
     # Accepted limitation: a multi-model send mints no sent-preview record, so
     # it gets no "did it land?" prompt — preview tabs belong to the draft's
     # thread, and none of the started threads can answer for it.
@@ -3383,6 +3389,11 @@
     # Fenced strip-first extraction + transcript chip render in
     # UserTimelineRow, so sent design blocks show as chips.
     - apps/web/src/components/chat/MessagesTimeline.tsx
+    # Fenced strip-first extraction in the queued-runs rows: the summary and
+    # tooltip show the prose and a "N design changes" count beside the
+    # attachment thumbnails, never the raw blocks (replaces the pre-V2
+    # client queue row's count, d3ef0f0e6b).
+    - apps/web/src/components/chat/QueuedRunsControl.tsx
     # Fenced plugin import + registration of fork:design-mode-engine.
     - apps/web/vite.config.ts
     # Fenced exclude of the engine TS island.

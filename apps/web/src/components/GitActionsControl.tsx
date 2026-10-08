@@ -1853,6 +1853,11 @@ export default function GitActionsControl({
               part="primary"
               panel={isPanel}
               multiline
+              /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
+                 Button spreads this through. The pill CSS pins height to 28px; this
+                 stamp is what lets the two-row progress readout grow past it. */
+              data-fork-pill-multiline={isPanel ? undefined : true}
+              /* fork:end fork-workspace-header */
               className={isPanel ? undefined : "max-w-72"}
               disabled
               size="xs"

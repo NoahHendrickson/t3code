@@ -93,6 +93,23 @@ describe("fork guard: fork-workspace-header", () => {
     expect(pill?.body).toMatch(/(?:^|;)\s*min-height:\s*28px\s*(?:;|$)/u);
   });
 
+  it("lets the toolbar git-progress readout grow past the 28px pin", () => {
+    // The two-row progress readout is ThreadDetailsControl `multiline`, whose
+    // toolbar path is Button size="sm-multiline" (min-h-8, never h-auto). The
+    // exception has to key on the fork's own stamp; a utility-class selector
+    // matched nothing and left the output row clipped.
+    const git = readSibling("../components/GitActionsControl.tsx");
+    expect(git).toMatch(
+      /panel=\{isPanel\}\s+multiline\s+(?:\/\*[\s\S]*?\*\/\s+)?data-fork-pill-multiline=\{isPanel \? undefined : true\}/u,
+    );
+    const grow = cssRules(theme).find((rule) =>
+      rule.selector.includes("[data-fork-pill] > button[data-fork-pill-multiline]"),
+    );
+    expect(grow?.selector).toContain(MARKER);
+    expect(grow?.body).toMatch(/(?:^|;)\s*height:\s*auto\s*(?:;|$)/u);
+    expect(theme).not.toContain("button.h-auto");
+  });
+
   it("takes the drawn pill colours in dark and defers to upstream in light", () => {
     // Dark-only design. The light build must fall through to --border /
     // --foreground / --accent rather than inherit a hardcoded dark border.

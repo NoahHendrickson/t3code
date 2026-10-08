@@ -27,6 +27,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   extractTrailingDesignChanges,
+  splitTrailingDesignChangeRun,
   summarizeDesignChangeBlock,
 } from "../custom/designMode/designChangeTranscript";
 import { resolveBrowserDeviceViewportArea } from "../browser/browserViewportLayout";
@@ -472,6 +473,40 @@ describe("fork guard: design mode", () => {
       firstLabel: "<button> — src/App.tsx:5:3",
     });
     expect(extractTrailingDesignChanges("no blocks here").blocks).toEqual([]);
+  });
+
+  it("names queued design changes in the queue row and keeps them out of the edit draft", () => {
+    // V2 queues are server runs whose text already carries the blocks (the send
+    // path appends them). Without the strip the queue row's summary and tooltip
+    // are the raw <design_change_request> markup, and a design-only message is
+    // the tag alone.
+    const queue = read("src/components/chat/QueuedRunsControl.tsx");
+    expect(queue).toContain(
+      'import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript"',
+    );
+    expect(queue).toContain("const forkDesignChanges = extractTrailingDesignChanges(item.text);");
+    expect(queue).toMatch(
+      /replaceComposerContextReferences\(\s*(?:\/\*[\s\S]*?\*\/\s*)?forkDesignChanges\.promptText,/u,
+    );
+    expect(queue).toContain("{forkDesignChangeLabel}");
+    // Editing a queued run seeds the composer with the prose only and re-appends
+    // the held run on save, so the markup is never an editable string.
+    const chatView = read("src/components/ChatView.tsx");
+    expect(chatView).toContain(
+      "const forkQueuedEdit = splitTrailingDesignChangeRun(request.text);",
+    );
+    expect(chatView).toContain("setComposerDraftPrompt(target, forkQueuedEdit.promptText);");
+    expect(chatView).toContain("originalText: forkQueuedEdit.promptText,");
+    expect(chatView).toContain("forkDesignChangeRun: forkQueuedEdit.run,");
+    expect(chatView).toMatch(
+      /text:\s*forkQueuedEditText\.length === 0\s*\?\s*ATTACHMENT_ONLY_BOOTSTRAP_PROMPT\s*:\s*forkQueuedEditText,/u,
+    );
+    // Split round-trip: the run is the raw wrapped tail, re-joinable verbatim.
+    const markdown = "# Design change request\n\n## 1. <a> — src/x.tsx:1:1\n- y";
+    const run = `<design_change_request>\n${markdown}\n</design_change_request>`;
+    expect(splitTrailingDesignChangeRun(`fix it\n\n${run}`)).toEqual({ promptText: "fix it", run });
+    expect(splitTrailingDesignChangeRun(run)).toEqual({ promptText: "", run });
+    expect(splitTrailingDesignChangeRun("plain")).toEqual({ promptText: "plain", run: "" });
   });
 
   it("registers the engine bundler plugin and serves the virtual module", () => {

@@ -330,6 +330,7 @@ import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
 import {
   extractTrailingDesignChanges,
+  splitTrailingDesignChangeRun,
   withDesignChangesTrailing,
 } from "~/custom/designMode/designChangeTranscript";
 /* fork:end fork-design-mode */
@@ -1724,6 +1725,10 @@ export default function ChatView(props: ChatViewProps) {
     readonly runId: RunId;
     readonly messageId: MessageId;
     readonly originalText: string;
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+       The raw <design_change_request> run split off the editable prose; re-appended on save. */
+    readonly forkDesignChangeRun: string;
+    /* fork:end fork-design-mode */
     readonly existingAttachments: ReadonlyArray<ContractChatAttachment>;
     readonly context?: import("@t3tools/contracts").OrchestrationMessageContext | undefined;
   } | null>(null);
@@ -4715,12 +4720,21 @@ export default function ChatView(props: ChatViewProps) {
       }
       const target = queuedEditDraftTargetFor(request.runId);
       clearComposerDraftContent(target);
-      setComposerDraftPrompt(target, request.text);
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+         A queued run carries its design blocks in its text. The editor gets the
+         prose only; the run is held here and re-appended on save, so the markup
+         is never an editable string in the composer. */
+      const forkQueuedEdit = splitTrailingDesignChangeRun(request.text);
+      setComposerDraftPrompt(target, forkQueuedEdit.promptText);
+      /* fork:end fork-design-mode */
       setEditingQueuedRun({
         threadId: activeThread.id,
         runId: request.runId,
         messageId: request.messageId,
-        originalText: request.text,
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        originalText: forkQueuedEdit.promptText,
+        forkDesignChangeRun: forkQueuedEdit.run,
+        /* fork:end fork-design-mode */
         existingAttachments: request.attachments,
         context: serverProjection?.messages.find((message) => message.id === request.messageId)
           ?.context,
@@ -8901,6 +8915,16 @@ export default function ChatView(props: ChatViewProps) {
       // in place instead of dispatching a new turn.
       if (queuedEditSaveInFlightRef.current) return;
       const editText = promptForSend.trim();
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+         Put the held design run back last, where the transcript's strip-first
+         extraction expects it. */
+      const forkQueuedEditText =
+        editingQueuedRun.forkDesignChangeRun.length === 0
+          ? editText
+          : editText.length === 0
+            ? editingQueuedRun.forkDesignChangeRun
+            : `${editText}\n\n${editingQueuedRun.forkDesignChangeRun}`;
+      /* fork:end fork-design-mode */
       const newEditImages = [...composerImages];
       const newEditFiles = [...composerFiles];
       const newEditAttachments = [...newEditImages, ...newEditFiles];
@@ -8915,7 +8939,9 @@ export default function ChatView(props: ChatViewProps) {
         return;
       }
       if (
-        editText.length === 0 &&
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        forkQueuedEditText.length === 0 &&
+        /* fork:end fork-design-mode */
         editingQueuedRun.existingAttachments.length === 0 &&
         newEditImages.length === 0 &&
         newEditFiles.length === 0
@@ -8963,7 +8989,12 @@ export default function ChatView(props: ChatViewProps) {
           input: {
             threadId: editingQueuedRun.threadId,
             runId: editingQueuedRun.runId,
-            text: editText.length === 0 ? ATTACHMENT_ONLY_BOOTSTRAP_PROMPT : editText,
+            /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+            text:
+              forkQueuedEditText.length === 0
+                ? ATTACHMENT_ONLY_BOOTSTRAP_PROMPT
+                : forkQueuedEditText,
+            /* fork:end fork-design-mode */
             edit: {
               messageId: editingQueuedRun.messageId,
               attachments: uploads,

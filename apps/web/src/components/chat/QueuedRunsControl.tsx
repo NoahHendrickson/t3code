@@ -25,6 +25,9 @@ import { isImageAttachment, type ChatMessage } from "../../types";
 import { cn } from "~/lib/utils";
 import { ComposerBanner } from "./ComposerBanner";
 import { Button } from "../ui/button";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript";
+/* fork:end fork-design-mode */
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 export interface EditQueuedRunRequest {
@@ -272,8 +275,22 @@ export function QueuedRunsControl({
         <ComposerBanner.Scroll className={cn("max-h-32", !expanded && "hidden")}>
           <ComposerBanner.Children render={<ol />} id={queueListId}>
             {items.map((item) => {
-              const previewText = replaceComposerContextReferences(item.text, (reference) =>
-                reference.kind === "image" && item.thumbnails.length > 0 ? "" : reference.label,
+              /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+                 Design-change blocks ride the queued text (the send path appends them).
+                 The row names them like attachments instead of showing the markup —
+                 or, for a design-only message, nothing at all. */
+              const forkDesignChanges = extractTrailingDesignChanges(item.text);
+              const forkDesignChangeLabel =
+                forkDesignChanges.blocks.length > 0
+                  ? `${forkDesignChanges.blocks.length} design change${forkDesignChanges.blocks.length === 1 ? "" : "s"}`
+                  : null;
+              /* fork:end fork-design-mode */
+              const previewText = replaceComposerContextReferences(
+                /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+                forkDesignChanges.promptText,
+                /* fork:end fork-design-mode */
+                (reference) =>
+                  reference.kind === "image" && item.thumbnails.length > 0 ? "" : reference.label,
               ).trim();
               const rowRunId = item.runId;
               const rowServerIndex = item.serverIndex;
@@ -394,6 +411,13 @@ export function QueuedRunsControl({
                         ))}
                       </span>
                     ) : null}
+                    {/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */}
+                    {forkDesignChangeLabel !== null ? (
+                      <span className="shrink-0 text-muted-foreground">
+                        {forkDesignChangeLabel}
+                      </span>
+                    ) : null}
+                    {/* fork:end fork-design-mode */}
                     <Tooltip>
                       <TooltipTrigger render={<span className="min-w-0 flex-1 truncate" />}>
                         {previewText}
