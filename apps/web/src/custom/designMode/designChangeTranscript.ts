@@ -33,14 +33,27 @@ export function extractTrailingDesignChanges(prompt: string): ExtractedDesignCha
  * blocks (`serializeLegacyContextMessage`), which would land AFTER the design run and hide it
  * from the extractor above. Serialize the prompt without the run, then put the run back last.
  */
+/**
+ * The prose and the raw wrapped run, separately. `run` is the verbatim trailing blocks
+ * (empty when there are none), so a caller can hold it aside and re-append it unchanged —
+ * the queued-run edit does exactly that to keep the markup out of the composer.
+ */
+export function splitTrailingDesignChangeRun(text: string): {
+  readonly promptText: string;
+  readonly run: string;
+} {
+  const { promptText, blocks } = extractTrailingDesignChanges(text);
+  if (blocks.length === 0) return { promptText: text, run: "" };
+  // promptText is a trimmed prefix of text, so the rest is the raw wrapped run.
+  return { promptText, run: text.slice(promptText.length).trimStart() };
+}
+
 export function withDesignChangesTrailing(
   text: string,
   serialize: (promptText: string) => string,
 ): string {
-  const { promptText, blocks } = extractTrailingDesignChanges(text);
-  if (blocks.length === 0) return serialize(text);
-  // promptText is a trimmed prefix of text, so the rest is the raw wrapped run.
-  const run = text.slice(promptText.length).trimStart();
+  const { promptText, run } = splitTrailingDesignChangeRun(text);
+  if (run.length === 0) return serialize(text);
   const serialized = serialize(promptText);
   return serialized.length > 0 ? `${serialized}\n\n${run}` : run;
 }

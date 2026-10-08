@@ -197,10 +197,12 @@
   gap: 6px;
 }
 
-/* Upstream's git progress / success readouts (ThreadDetailsControl `multiline`,
-   class h-auto) grow a second output row while an action runs; the pin above
-   would clip it to one. Let that one button size to its content. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button.h-auto {
+/* Upstream's git progress readout (ThreadDetailsControl `multiline`) grows a
+   second output row while an action runs; the pin above would clip it to one.
+   Keyed on the fork's own stamp from GitActionsControl, not on a utility class:
+   the toolbar path renders Button size="sm-multiline", which carries min-h-8
+   and never h-auto, so a class selector matches nothing there. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button[data-fork-pill-multiline] {
   height: auto;
 }
 
