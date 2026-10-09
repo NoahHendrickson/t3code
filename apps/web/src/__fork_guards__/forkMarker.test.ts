@@ -54,7 +54,11 @@ describe("fork guard: fork-marker", () => {
     // build, so every leaf rule is checked, per file — a single `toContain`
     // over the pair would be satisfied by one file and say nothing about the
     // other. Nested @media / @layer rules are leaves too and are covered.
-    for (const file of ["../theme.custom.palettes.css", "../theme.custom.westworld.css"]) {
+    for (const file of [
+      "../theme.custom.palettes.css",
+      "../theme.custom.westworld.css",
+      "../theme.custom.glass.css",
+    ]) {
       const rules = cssRules(readSibling(file));
       expect(rules.length, `${file} parsed no rules`).toBeGreaterThan(0);
       for (const rule of rules) {

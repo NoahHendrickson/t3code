@@ -39,6 +39,7 @@ const theme = [
   readSibling("../theme.custom.css"),
   readSibling("../theme.custom.palettes.css"),
   readSibling("../theme.custom.westworld.css"),
+  readSibling("../theme.custom.glass.css"),
 ].join("\n");
 const indexHtml = readSibling("../../index.html");
 const main = readSibling("../main.tsx");

@@ -1,4 +1,5 @@
 @import "./theme.custom.westworld.css";
+@import "./theme.custom.glass.css";
 
 /* Fork dark palette overlays — see .fork/customizations.yaml#fork-cool-dark-theme
    (and sibling palette ids). Kept out of theme.custom.css so a new sibling is a
@@ -843,7 +844,12 @@
    amplifying.
 
    If a future palette wants frosted glass here, it has to give up the native
-   material for the whole window — the two are alternatives, not layers. */
+   material for the whole window — the two are alternatives, not layers.
+   Glass's own new-agent draft wanted frosted glass over its picture and
+   confirmed all of this again (2026-10-08): with blur(40px) on the vessel the
+   renderer's capturePage showed the picture blurred and the screen showed it
+   sharp. It bakes the blur instead — theme.custom.glass.css,
+   fork-glass-new-agent-stage. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     [data-fork-composer-vessel],

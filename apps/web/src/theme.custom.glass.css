@@ -1,0 +1,415 @@
+/* Glass new-agent stage — see
+   `.fork/customizations.yaml#fork-glass-new-agent-stage`.
+
+   Figma 517:18256: while a new agent's draft has no messages, the chat view
+   is a rounded card 8px inside the stage, the header's breadcrumb and
+   controls inside it, the dithered portrait behind the centred composer and
+   the composer frosted over the picture. Around the card the stage takes the
+   sidebar's own colour and the seam between them goes, so the panel and the
+   gutter read as one surface with the card set into it. A started thread is
+   untouched — every rule below but the first two is keyed on the draft, and
+   those two only give the chat view a stacking context to paint under and a
+   name the frost can anchor to.
+
+   Same structure as Westworld's stage (theme.custom.westworld.css) and kept
+   apart from it for the same reason that file is apart from the palettes
+   sheet: the palettes sheet is a token table, and these are rules. Imported
+   from the top of that sheet, so these land BEFORE the palette rules in
+   source order and every rule here that overrides one of them wins on
+   specificity alone — the draft stamp's two attributes are what carry that.
+   Every selector is marker- and palette-scoped, so no other palette sees any
+   of it. */
+
+/* The card paints on ChatView's own root (upstream stamps it
+   data-chat-column-maximized-away): the header and the chat column are its
+   children and the right panel and terminal drawers are its siblings, so the
+   picture spans exactly the header plus the column and the panel, when open,
+   sits beside the card. The pseudo-element at z-index -1 only lands above
+   the stage's fill when the root is a stacking context, and `inset` needs a
+   containing block. The anchor name is what the draft composer's frost reads
+   the card's box from (below), and the fade token is what the picture and
+   its frost copies mask with. These four declarations are all a started
+   thread sees: no margin, no clip and no fill, so the thread's column is
+   laid out and painted exactly as before. The root's one fixed child (the
+   title-bar no-drag spacer) is unaffected by a relative ancestor. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away] {
+  position: relative;
+  isolation: isolate;
+  anchor-name: --fork-glass-card;
+  --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%);
+  /* A scrim down from the top edge, so the header's crumbs and controls
+     read over the sky. On the picture and on every frost copy, so the
+     header pills keep matching their surroundings. */
+  --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px);
+  /* What the frost copies composite onto: the stage as it reads on screen.
+     On the chat view, not the draft overlay, because the header's pills
+     take the frost too and sit outside the overlay. An opaque client's
+     stage is the palette's own fill; the desktop glass overrides it below. */
+  /* The frost copies' image, a token so one declaration names the asset. */
+  --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png");
+  /* A veil of the floor over the frost copies, 0% to 100%: how far the glass
+     dims the picture beyond the baked alpha. Relative colour syntax so the
+     veil follows whatever floor is in force. */
+  --fork-glass-frost-veil: 10%;
+  --fork-glass-frost-floor: var(--background);
+}
+
+/* Under the desktop glass the stage is the wallpaper through the tint, and
+   fork-glass-floor-color already measures that colour for the opaque
+   surface-glass overlays; the frost stands on the same estimate, so the
+   composer and the header pills carry the wallpaper's cast like the stage
+   around them instead of reading as neutral slabs. A token only — the
+   started thread paints nothing from it. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away] {
+  --fork-glass-frost-floor: var(--fork-popup-glass-floor);
+}
+
+/* The box is the picture: Frame 558 draws no fill or hairline of its own,
+   just an 8px inset, an 8px radius and the clipped image. Insetting the
+   pseudo-element rather than the root keeps the layout constant across the
+   two states, so the first send is an opacity fade and nothing else, and the
+   composer's centre line never moves.
+
+   The design renders the picture at 30% over the stage, so the asset is the
+   dither at full strength and the opacity is here — under the desktop glass
+   (fork-cool-darker-sidebar-vibrancy) that lets the wallpaper cast reach
+   through the portrait as drawn. `cover` at 51% top is the drawn crop: the
+   frame places the 1582px picture 310px left of a 945px box, top-aligned,
+   which lands the figure on the box's right third behind the composer.
+
+   Always painted and only its opacity moves — a pseudo-element that appears
+   cannot fade — so the first send fades it on the same 400ms clock and curve
+   as the composer's slide and fold (fork-new-agent-draft's draftHeroTransition
+   shadow, theme.custom.css). Static image, static opacity at rest.
+
+   glass-hero.png is Figma's "Dither" effect (Bayer 16x16, 3 levels per
+   channel, 2px cells, no contrast or brightness change) re-run over the
+   frame's source picture scaled to the 1582×1054 the frame renders it at, so
+   each 2px dot lands where the design draws it. 27 colours, stored as a
+   palette PNG: 101 KB. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: -1;
+  border-radius: 8px;
+  pointer-events: none;
+  background:
+    var(--fork-glass-card-scrim),
+    url("./custom/assets/glass-hero.png") 51% top / cover no-repeat;
+  /* Fades toward the bottom of the card, to a third rather than to nothing,
+     so the foot keeps the picture. The frost copies in the composer carry
+     the same mask on the same box, so they keep matching what is behind
+     them down the fade. */
+  mask-image: var(--fork-glass-card-fade);
+  opacity: 0;
+  transition: opacity 400ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The draft state is read off the overlay's own data-draft-hero stamp
+   (fork-new-agent-draft, the same isDraftHeroState that centres the composer)
+   through `:has()`, so nothing in ChatView is stamped for the theme. The
+   argument names two attributes no message node carries, so streaming a turn
+   never puts these rules in the invalidation path. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has(
+    [data-chat-composer-overlay="true"][data-draft-hero]
+  )::after {
+  opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]::after {
+    transition: none;
+  }
+}
+
+/* The header rides inside the card. It carries an opaque bg-background that
+   a web client would paint straight over the picture's top strip (the
+   desktop glass already clears it by class); `none` resets the colour too,
+   and the breadcrumb and controls keep their place over the art. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+  [data-chat-header] {
+  background: none;
+}
+
+/* The crumbs in full white with a soft shadow, draft-only: upstream mutes
+   the project crumb to 50% and the title sits at the foreground, and both
+   sank into the dithered sky even over the scrim. Every descendant, because
+   the crumbs carry text-foreground utilities of their own. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+  [data-chat-header]
+  :is(
+    ol:has([data-slot="workspace-breadcrumb-text"]),
+    ol:has([data-slot="workspace-breadcrumb-text"]) *
+  ) {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 45%);
+}
+
+/* Around the card, the stage is the sidebar's own colour, so the panel and
+   the gutter read as one surface the card is set into. Two rules because the
+   two clients paint the panel differently: an opaque client paints the v2
+   panel's #181b1e (theme.custom.palettes.css), and the desktop glass paints
+   the panel's rgb(22 22 22 / 73%) tint — a draft has no transcript to keep
+   legible, which is the whole reason the stage's 82% reading value exists,
+   so meeting the panel's 73% here costs nothing the vibrancy guard protects.
+   The opaque rule steps aside under the glass marker, since an opaque fill
+   there would cover the material. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:not(
+    [data-fork-sidebar-vibrancy="true"]
+  )
+  [data-slot="sidebar-inset"]:has([data-chat-composer-overlay="true"][data-draft-hero]) {
+  background-color: #181b1e;
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-inset"]:has([data-chat-composer-overlay="true"][data-draft-hero]) {
+  background-image: linear-gradient(to bottom, rgb(22 22 22 / 73%) 0 100%);
+}
+
+/* No seam while the gutter matches the panel: the card's edge is the only
+   line the frame draws. Same container rule Westworld and the glass seam
+   target, read through :root:has() because the panel is the inset's sibling,
+   not the draft's ancestor. The panel's own colour, not transparent: the
+   panel tint paints inside the container, so under the desktop glass a
+   transparent border is a 1px strip of raw wallpaper down the seam (it read
+   orange against a sunset). --sidebar is the panel's fill on both clients —
+   #181b1e opaque, the 73% tint under glass — so the border disappears into
+   the panel beside it. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:has(
+    [data-chat-composer-overlay="true"][data-draft-hero]
+  )
+  [data-slot="sidebar-container"][data-sidebar-version="v2"] {
+  border-color: var(--sidebar);
+}
+
+/* The composer frosts the picture under it, so the prompt reads over the
+   dither. The look is the context pill's — a white 8% wash over the stage,
+   which is what reads as glass — carried onto the vessel and the well, so
+   the fills the frame draws heavier (vessel white 16%, 517:18680; well
+   rgb(30 30 30) at 50%, 517:18681) are set aside for the pill's own: vessel
+   8%, well white 4% (one quiet step up, the glass thickening), pills 8%,
+   hairline 24%. Restated on the overlay every composer element descends
+   from, the way Westworld's draft does. The two frost tokens below are what
+   the baked blur composites onto and what the pills lift it with. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-composer-overlay="true"][data-draft-hero] {
+  --fork-composer-vessel-bg: rgb(255 255 255 / 5%);
+  --fork-composer-bg: rgb(0 0 0 / 41%);
+  --fork-composer-border: rgb(255 255 255 / 24%);
+  --fork-composer-border-focus: rgb(255 255 255 / 38%);
+  --fork-context-chip-bg: rgb(255 255 255 / 0%);
+  --fork-context-chip-bg-hover: rgb(255 255 255 / 8%);
+  --fork-glass-chip-wash: var(--fork-context-chip-bg);
+  /* The control row's ghost ink, a step up from the stage's 65% so the
+     model trigger reads over the picture. */
+  --fork-composer-control-ink: rgb(255 255 255 / 80%);
+}
+
+/* The effort label beside it is upstream's muted ink (white 50% under
+   glass); lifted to 65% for the same reason, draft-only. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-composer-overlay="true"][data-draft-hero]
+  [data-chat-provider-model-picker-traits] {
+  color: rgb(255 255 255 / 65%);
+}
+
+/* The blur is baked, not filtered. A backdrop-filter cannot do this job
+   under the desktop glass: the renderer blurs the picture in its own
+   composite and the screen shows it sharp (the "NO backdrop-filter" note in
+   theme.custom.palettes.css, re-confirmed here with blur(40px) on the
+   vessel — capturePage blurred, the window did not). So the vessel and each
+   pill carry a second copy of the picture, pre-blurred, and the trick is
+   only to put it exactly where the stage's copy is: a `position: fixed`
+   pseudo-element whose four insets come from the chat view's anchor
+   (anchor() against --fork-glass-card, plus the card's 8px) takes the
+   card's box wherever the sidebar, the right panel and the window put it,
+   and the same `cover` crop on the same box lands every pixel of the
+   blurred copy on its sharp twin. The element clips it to its own rounded
+   shape with clip-path, which clips a fixed descendant where overflow would
+   not, and z-index -1 under the element's own stacking context keeps the
+   prompt, the control row, the well's hairline and the pill's label above
+   it. The draft stamp's two attributes and the stack's stamp are what
+   outweigh the base rules.
+
+   This is why the draft overlay centres on auto margins rather than a
+   translate (theme.custom.css, fork-new-agent-draft): a transformed
+   ancestor would become the pseudo-element's containing block and the
+   anchor would resolve against the overlay instead of the viewport. During
+   the first send upstream's slide does transform the composer, but the
+   stamp leaves the overlay at the flip and the frost with it.
+
+   glass-hero-frost.png is glass-hero.png Gaussian-blurred at σ=8px and
+   stored at a quarter of the size (396×264, RGBA, 131 KB) with a baked 45%
+   alpha — under the stage's 80%, so the glass reads as dimming the picture
+   as well as blurring it — so the frost is the stage's layers
+   blurred: the floor the stage reads as, the picture at 30% over it, the
+   element's wash on top. Nothing sharp survives an 8px blur over 2px dots and `cover`
+   scales it back up smooth. Gated on anchor support so a browser without it
+   keeps the wash and nothing else. */
+@supports (anchor-name: --fork-glass-card) {
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-composer-overlay="true"][data-draft-hero]
+    [data-fork-composer-stack="true"]
+    [data-fork-composer-vessel] {
+    isolation: isolate;
+    clip-path: inset(0 round var(--fork-composer-radius));
+    /* The floor sits on the element, unmasked, so where the fade thins the
+       frost copy the element shows the stage's colour rather than the sharp
+       picture behind it. */
+    background: var(--fork-glass-frost-floor);
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-composer-overlay="true"][data-draft-hero]
+    [data-fork-composer-stack="true"]
+    [data-fork-composer-vessel]::before {
+    content: "";
+    position: fixed;
+    top: calc(anchor(--fork-glass-card top) + 8px);
+    right: calc(anchor(--fork-glass-card right) + 8px);
+    bottom: calc(anchor(--fork-glass-card bottom) + 8px);
+    left: calc(anchor(--fork-glass-card left) + 8px);
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
+      linear-gradient(
+        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
+        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
+      ),
+      var(--fork-glass-card-scrim),
+      var(--fork-glass-frost-image) 51% top / cover no-repeat;
+    mask-image: var(--fork-glass-card-fade);
+  }
+
+  /* The pills, the same way, at their own 6px radius; the wash on top
+     follows the chip's hover lift through the token so the pointer still
+     reads, since the frost covers the chip's own fill. */
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-composer-overlay="true"][data-draft-hero]
+    [data-fork-composer-stack="true"]
+    [data-fork-composer-context-row]
+    :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]) {
+    isolation: isolate;
+    clip-path: inset(0 round 6px);
+    background: var(--fork-glass-frost-floor);
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-composer-overlay="true"][data-draft-hero]
+    [data-fork-composer-stack="true"]
+    [data-fork-composer-context-row]
+    :is(button, [data-slot="button"], [data-fork-pr-chip]):is(
+      :hover,
+      [data-pressed],
+      [data-popup-open]
+    ):not(:disabled) {
+    --fork-glass-chip-wash: var(--fork-context-chip-bg-hover);
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-composer-overlay="true"][data-draft-hero]
+    [data-fork-composer-stack="true"]
+    [data-fork-composer-context-row]
+    :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip])::before {
+    content: "";
+    position: fixed;
+    top: calc(anchor(--fork-glass-card top) + 8px);
+    right: calc(anchor(--fork-glass-card right) + 8px);
+    bottom: calc(anchor(--fork-glass-card bottom) + 8px);
+    left: calc(anchor(--fork-glass-card left) + 8px);
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(var(--fork-glass-chip-wash), var(--fork-glass-chip-wash)),
+      linear-gradient(
+        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
+        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
+      ),
+      var(--fork-glass-card-scrim),
+      var(--fork-glass-frost-image) 51% top / cover no-repeat;
+    mask-image: var(--fork-glass-card-fade);
+  }
+}
+
+/* The header's controls take the same glass while the draft is open: the
+   split pills (fork-sidebar-chrome's data-fork-pill — "Add action" is a lone
+   button, "Open" and "View PR" are Groups) and the two panel toggles, which
+   are ghost Toggles inside tooltip-trigger spans with no pseudo-elements of
+   their own, so the span is the host. A white 10% wash over the frost, the
+   "white background" the pills read as; the lone pill's hover lifts through
+   the token since the floor covers its own fill, while a Group's halves and
+   the toggles paint their hover on the children, above the frost.
+
+   The single pill's ::before is upstream's variant overlay, which the fork
+   already empties (theme.custom.css) — it is repurposed here rather than
+   fought; the Group's and the spans' are free. The toggles are scoped to the
+   header, not the at-root titlebar layout: there the controls precede the
+   chat view in the tree and the anchor would not resolve. Clipping the
+   toggle span would clip the live-agent badge that hangs off its corner,
+   but a draft has no agents, so on a draft there is none to clip. */
+@supports (anchor-name: --fork-glass-card) {
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+    [data-chat-header]
+    :is([data-fork-pill], [data-workspace-titlebar-controls] span:has(> button)) {
+    --fork-glass-header-wash: rgb(255 255 255 / 18%);
+    isolation: isolate;
+    background: var(--fork-glass-frost-floor);
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+    [data-chat-header]
+    [data-fork-pill] {
+    clip-path: inset(0 round var(--fork-pill-radius));
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+    [data-chat-header]
+    [data-workspace-titlebar-controls]
+    span:has(> button) {
+    clip-path: inset(0 round 6px);
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+    [data-chat-header]
+    button[data-fork-pill]:is(:hover, [data-pressed]) {
+    --fork-glass-header-wash: rgb(255 255 255 / 26%);
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+    [data-chat-header]
+    :is([data-fork-pill], [data-workspace-titlebar-controls] span:has(> button))::before {
+    content: "";
+    position: fixed;
+    top: calc(anchor(--fork-glass-card top) + 8px);
+    right: calc(anchor(--fork-glass-card right) + 8px);
+    bottom: calc(anchor(--fork-glass-card bottom) + 8px);
+    left: calc(anchor(--fork-glass-card left) + 8px);
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 0;
+    box-shadow: none;
+    background:
+      linear-gradient(var(--fork-glass-header-wash), var(--fork-glass-header-wash)),
+      linear-gradient(
+        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
+        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
+      ),
+      var(--fork-glass-card-scrim),
+      var(--fork-glass-frost-image) 51% top / cover no-repeat;
+    mask-image: var(--fork-glass-card-fade);
+  }
+}
