@@ -5,12 +5,13 @@
  *
  * Glass's new-agent draft is a card 8px inside the stage (Figma 517:18256):
  * the dithered portrait behind the centred composer, the header inside the
- * card, the composer frosted over the picture, the gutter in the sidebar's
- * colour with no seam. Losing the import silently drops the whole stage;
- * losing the `:has()` lift leaves the art painted at opacity 0; a rule that
- * reaches the root with a margin, clip or fill changes a started thread,
- * which this customization promises not to touch; and a blur that escapes
- * the draft stamp flattens the native material under every thread's composer.
+ * card, the composer and the header's controls frosted over the picture,
+ * the gutter in the sidebar's colour with no seam. Losing the import
+ * silently drops the whole stage; losing the `:has()` lift leaves the art
+ * painted at opacity 0; a rule that reaches the root with a margin, clip or
+ * fill changes a started thread, which this customization promises not to
+ * touch; and a backdrop-filter anywhere flattens the native material and
+ * blurs nothing on screen.
  */
 
 import * as NodeFS from "node:fs";
@@ -30,6 +31,11 @@ const GLASS = `${MARKER}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 const VIBRANCY = '[data-fork-sidebar-vibrancy="true"]';
 const ROOT = "[data-chat-column-maximized-away]";
 const HERO = '[data-chat-composer-overlay="true"][data-draft-hero]';
+const DRAFT = `${ROOT}:has(${HERO})`;
+const SUPPORTS = ["@supports (anchor-name: --fork-glass-card)"];
+// The four frost hosts, as the sheet lists them inside one :is().
+const HOSTS =
+  ':is([data-fork-composer-stack="true"][data-fork-composer-vessel],[data-fork-composer-stack="true"][data-fork-composer-context-row]:is(button,[data-slot="button"],[data-fork-context-chip],[data-fork-pr-chip]),[data-chat-header]:is([data-fork-pill],[data-fork-frost-host]))';
 
 const sheet = readSibling("../theme.custom.glass.css");
 const rules = cssRules(sheet);
@@ -37,24 +43,32 @@ const palettes = readSibling("../theme.custom.palettes.css");
 const chatView = readSibling("../components/ChatView.tsx");
 const customizations = readSibling("../../../../.fork/customizations.yaml");
 
-// The formatter wraps `:has(` and `:not(` across lines; compare without whitespace.
+// The formatter wraps selectors across lines; compare without whitespace.
 const compact = (value: string) => value.replace(/\s+/gu, "");
+const flat = (value: string | undefined) => (value ?? "").replace(/\s+/gu, " ").trim();
+const find = (selector: string) =>
+  rules.find((rule) => compact(rule.selector) === compact(selector));
 
 describe("fork guard: fork-glass-new-agent-stage", () => {
   it("registers the stage and loads its sheet from the palettes sheet", () => {
     expect(customizations).toContain("id: fork-glass-new-agent-stage");
     expect(customizations).toContain("apps/web/src/theme.custom.glass.css");
     expect(customizations).toContain("apps/web/src/custom/assets/glass-hero.png");
+    expect(customizations).toContain("apps/web/src/custom/assets/glass-hero-frost.png");
+    expect(customizations).toContain("apps/web/src/components/chat/PanelLayoutControls.tsx");
     // Both sheets @import before any rule; Westworld's stays first.
     const westworld = palettes.indexOf('@import "./theme.custom.westworld.css";');
     const glass = palettes.indexOf('@import "./theme.custom.glass.css";');
     expect(westworld).toBeGreaterThanOrEqual(0);
     expect(glass).toBeGreaterThan(westworld);
-    expect(
-      NodeFS.existsSync(
-        NodeURL.fileURLToPath(new URL("../custom/assets/glass-hero.png", import.meta.url)),
-      ),
-    ).toBe(true);
+    for (const asset of ["glass-hero.png", "glass-hero-frost.png"]) {
+      expect(
+        NodeFS.existsSync(
+          NodeURL.fileURLToPath(new URL(`../custom/assets/${asset}`, import.meta.url)),
+        ),
+        asset,
+      ).toBe(true);
+    }
   });
 
   it("scopes every rule to Glass and leaves a started thread alone", () => {
@@ -64,18 +78,27 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       expect(rule.selector, `rule not scoped to Glass "${rule.selector}"`).toContain(
         `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`,
       );
+      // No filter anywhere: under the desktop glass a backdrop-filter blurs
+      // the picture in the renderer's composite and not on screen (the
+      // vibrancy entry's standing rule, re-confirmed 2026-10-08 at blur(40px)).
+      expect(rule.body, `filter in ${rule.selector}`).not.toMatch(/backdrop-filter/u);
+      // Never transparent: under the desktop glass that is a hole to the
+      // raw wallpaper (the seam read orange against a sunset).
+      expect(rule.body, `went transparent: ${rule.selector}`).not.toContain("transparent");
     }
-    // The one rule that reaches the root element itself declares the
-    // containing block and the stacking context and nothing else — no
+    // The two rules that reach the root element itself declare the
+    // containing block, the stacking context, the anchor and tokens — no
     // margin, clip, fill or border — so a started Glass thread is laid out
     // and painted exactly as before. Everything else is keyed on the draft.
-    const root = rules.filter(
-      (rule) => compact(rule.selector).endsWith(ROOT) && !rule.selector.includes(VIBRANCY),
+    const root = rules.filter((rule) => compact(rule.selector).endsWith(ROOT));
+    expect(root.map((rule) => compact(rule.selector))).toEqual([
+      `${compact(GLASS)}${ROOT}`,
+      `${compact(MARKER)}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]${ROOT}`,
+    ]);
+    expect(flat(root[0]?.body)).toBe(
+      'position: relative; isolation: isolate; anchor-name: --fork-glass-card; --fork-glass-card-inset: 8px; --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
     );
-    expect(root).toHaveLength(1);
-    expect(root[0]?.body.replace(/\s+/gu, " ").trim()).toBe(
-      'position: relative; isolation: isolate; anchor-name: --fork-glass-card; --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--background);',
-    );
+    expect(flat(root[1]?.body)).toBe("--fork-glass-frost-floor: var(--fork-popup-glass-floor);");
     const unkeyed = rules.filter(
       (rule) => !compact(rule.selector).includes(HERO) && !compact(rule.selector).endsWith(ROOT),
     );
@@ -84,12 +107,16 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       `${compact(GLASS)}${ROOT}::after`,
       `${compact(GLASS)}${ROOT}::after`,
     ]);
-    // The glass floor override is a token on the root too, and paints nothing.
-    const rootRules = rules.filter((rule) => compact(rule.selector).endsWith(ROOT));
-    expect(rootRules).toHaveLength(2);
-    expect(rootRules[1]?.body.replace(/\s+/gu, " ").trim()).toBe(
-      "--fork-glass-frost-floor: var(--fork-popup-glass-floor);",
-    );
+    // Every :has() that reads the stamp sits on the chat view, the inset or
+    // the sidebar wrapper — never on :root, which would widen invalidation
+    // to the whole document while a thread streams.
+    for (const rule of rules) {
+      // The raw selector: a :has() chained straight onto the :root compound,
+      // before any descendant combinator.
+      expect(rule.selector, `:root:has() in ${rule.selector}`).not.toMatch(
+        /^:root(?:\[[^\]]*\]|\.[\w-]+)*:has\(/u,
+      );
+    }
     // The root is upstream's own stamp, and the overlay's stamp is the fork's
     // layout mode: nothing in ChatView is stamped for the theme.
     expect(chatView).not.toContain("data-fork-glass");
@@ -101,19 +128,22 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
   it("paints the dithered portrait as the card, 8px inside the chat view and faded at rest", () => {
     // Frame 558 draws no fill or hairline: the box is the picture, so it is
     // the pseudo-element that is inset and rounded, not the root.
-    const art = rules.find(
-      (rule) =>
-        compact(rule.selector) === `${compact(GLASS)}${ROOT}::after` &&
-        rule.body.includes("content:"),
-    );
-    expect(art?.body).toMatch(/inset:\s*8px/u);
+    const art = find(`${GLASS}${ROOT}::after`);
+    expect(art?.body).toMatch(/inset:\s*var\(--fork-glass-card-inset\)/u);
     expect(art?.body).toMatch(/border-radius:\s*8px/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toContain("pointer-events: none");
-    expect(art?.body).toContain('url("./custom/assets/glass-hero.png") 51% top / cover no-repeat');
+    // A scrim from the top edge so the header reads over the sky, the fade
+    // toward the foot; the frost copies carry both so they keep matching.
+    expect(flat(art?.body)).toContain(
+      'background: var(--fork-glass-card-scrim), url("./custom/assets/glass-hero.png") 51% top / cover no-repeat;',
+    );
+    expect(art?.body).toContain("mask-image: var(--fork-glass-card-fade)");
     // Always painted, lifted by opacity alone, on the composer's own clock.
     expect(art?.body).toMatch(/opacity:\s*0;/u);
     expect(art?.body).toMatch(/transition:\s*opacity 400ms cubic-bezier\(0\.32, 0\.72, 0, 1\)/u);
+    const lift = find(`${GLASS}${DRAFT}::after`);
+    expect(lift?.body).toMatch(/opacity:\s*0\.8;/u);
     const reduced = rules.find(
       (rule) =>
         rule.atRules.some((atRule) => atRule.includes("prefers-reduced-motion")) &&
@@ -134,181 +164,168 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(takers.every((rule) => rule.selector.includes(GLASS))).toBe(true);
   });
 
-  it("lifts the art to the drawn 30% and clears the header only while the draft is empty", () => {
-    const lift = rules.find(
-      (rule) => compact(rule.selector) === `${compact(GLASS)}${ROOT}:has(${HERO})::after`,
-    );
-    expect(lift?.body).toMatch(/opacity:\s*0\.8;/u);
-    // The header rides inside the card: its opaque bg-background paints
-    // nothing on a draft, via the shorthand so the colour resets too.
-    const header = rules.find(
-      (rule) =>
-        compact(rule.selector) === `${compact(GLASS)}${ROOT}:has(${HERO})[data-chat-header]`,
-    );
-    expect(header?.body).toMatch(/background:\s*none/u);
+  it("clears every opaque fill in the chat view and lifts the crumbs while the draft is empty", () => {
+    // By class, like the vibrancy block: the header and the column's
+    // messages wrapper both carry bg-background and both sit above the
+    // root's picture, so an opaque client would otherwise show the picture
+    // only in the header strip. The switch thumb is a foreground fill.
+    const clear = find(`${GLASS}${DRAFT}.bg-background:not([data-slot="switch-thumb"])`);
+    expect(flat(clear?.body)).toBe("background: none;");
+    expect(chatView).toMatch(/className="relative flex min-h-0 flex-1 flex-col bg-background"/u);
     // The crumbs in full white with a soft shadow, on every descendant since
     // the crumbs carry text-foreground themselves.
     const crumb = rules.find(
       (rule) =>
         compact(rule.selector).startsWith(
-          `${compact(GLASS)}${ROOT}:has(${HERO})[data-chat-header]:is(ol:has([data-slot="workspace-breadcrumb-text"])`,
+          `${compact(GLASS)}${DRAFT}[data-chat-header]:is(ol:has([data-slot="workspace-breadcrumb-text"])`,
         ) && compact(rule.selector).includes('ol:has([data-slot="workspace-breadcrumb-text"])*)'),
     );
     expect(crumb?.body).toMatch(/color:\s*#ffffff/u);
     expect(crumb?.body).toMatch(/text-shadow:\s*0 1px 2px rgb\(0 0 0 \/ 45%\)/u);
   });
 
-  it("colours the gutter like the sidebar on both clients and drops the seam", () => {
-    // An opaque client meets the v2 panel's own fill; the glass client meets
-    // the panel's tint. Both values are read back from the palettes sheet so
-    // a retuned panel fails here instead of leaving a two-tone gutter.
-    const panelHex = /\[data-sidebar-version="v2"\]\s*\{[^}]*--sidebar:\s*(#[0-9a-f]{6})/iu.exec(
-      palettes.slice(palettes.indexOf(`[data-fork-theme="${COOL_DARKER_THEME}"]`)),
-    )?.[1];
-    expect(panelHex).toBeDefined();
-    const opaque = rules.find(
+  it("colours the gutter like the sidebar on both clients through one shared token", () => {
+    // --fork-glass-panel is declared beside the panel's own --sidebar in the
+    // palettes sheet, once per client, with the same value — so a retuned
+    // panel moves the gutter and the frost floor with it.
+    const paletteRules = cssRules(palettes);
+    const glassScope = `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
+    const panelHex = paletteRules.find(
       (rule) =>
-        compact(rule.selector) ===
-        `${compact(GLASS)}:not(${VIBRANCY})[data-slot="sidebar-inset"]:has(${HERO})`,
+        rule.selector.includes(glassScope) &&
+        !rule.selector.includes(VIBRANCY) &&
+        rule.selector.includes('[data-sidebar-version="v2"]') &&
+        rule.body.includes("--sidebar:"),
     );
-    expect(opaque?.body.replace(/\s+/gu, " ").trim()).toBe(`background-color: ${panelHex};`);
+    const opaqueToken = paletteRules.find(
+      (rule) =>
+        rule.selector.includes(glassScope) &&
+        !rule.selector.includes(VIBRANCY) &&
+        rule.body.includes("--fork-glass-panel:"),
+    );
+    const sidebarHex = /--sidebar:\s*(#[0-9a-f]{6})/iu.exec(panelHex?.body ?? "")?.[1];
+    expect(sidebarHex).toBeDefined();
+    expect(opaqueToken?.body).toContain(`--fork-glass-panel: ${sidebarHex};`);
 
-    const panelTint = /--sidebar:\s*rgb\((\d+ \d+ \d+) \/ (\d+)%\)/u.exec(palettes);
-    expect(panelTint, "the glass panel must declare an explicit tint").not.toBeNull();
-    // Gated ON the marker, not merely mentioning it: the opaque rule names
-    // the same attribute inside its :not().
-    const glassGutter = rules.find(
+    const panelTint = paletteRules.find(
       (rule) =>
-        compact(rule.selector).startsWith(`${compact(MARKER)}${VIBRANCY}`) &&
-        compact(rule.selector).endsWith(`[data-slot="sidebar-inset"]:has(${HERO})`),
+        rule.selector.includes(VIBRANCY) &&
+        /--sidebar:\s*rgb\(\d+ \d+ \d+ \/ \d+%\)/u.test(rule.body),
     );
-    expect(glassGutter?.body).toMatch(/background-image:\s*linear-gradient\(/u);
-    const stop = /rgb\((\d+ \d+ \d+) \/ (\d+)%\)/u.exec(glassGutter?.body ?? "");
-    expect(stop?.[1]).toBe(panelTint?.[1]);
-    expect(stop?.[2]).toBe(panelTint?.[2]);
-    expect(Number(stop?.[2])).toBeGreaterThanOrEqual(70);
+    const glassToken = paletteRules.find(
+      (rule) => rule.selector.includes(VIBRANCY) && rule.body.includes("--fork-glass-panel:"),
+    );
+    const tint = /--sidebar:\s*(rgb\(\d+ \d+ \d+ \/ (\d+)%\))/u.exec(panelTint?.body ?? "");
+    expect(tint?.[1]).toBeDefined();
+    expect(Number(tint?.[2])).toBeGreaterThanOrEqual(70);
+    expect(glassToken?.body).toContain(`--fork-glass-panel: ${tint?.[1]};`);
+
+    const opaque = find(`${GLASS}:not(${VIBRANCY})[data-slot="sidebar-inset"]:has(${HERO})`);
+    expect(flat(opaque?.body)).toBe("background-color: var(--fork-glass-panel);");
+    const glassGutter = find(
+      `${MARKER}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"][data-slot="sidebar-inset"]:has(${HERO})`,
+    );
+    expect(flat(glassGutter?.body)).toBe(
+      "background-image: linear-gradient(var(--fork-glass-panel) 0 100%);",
+    );
     // Only these two rules paint the inset, and the opaque one never reaches
     // the glass client — an opaque fill there covers the material.
-    const insetRules = rules.filter((rule) =>
-      rule.selector.includes('[data-slot="sidebar-inset"]'),
-    );
-    expect(insetRules).toHaveLength(2);
+    expect(
+      rules.filter((rule) => rule.selector.includes('[data-slot="sidebar-inset"]')),
+    ).toHaveLength(2);
 
-    const seam = rules.find((rule) =>
-      compact(rule.selector).endsWith('[data-slot="sidebar-container"][data-sidebar-version="v2"]'),
+    // No seam: the panel's own fill on the container's border, read through
+    // the sidebar wrapper, the nearest ancestor of both the panel and the draft.
+    const seam = find(
+      `${GLASS}[data-slot="sidebar-wrapper"]:has(${HERO})[data-slot="sidebar-container"][data-sidebar-version="v2"]`,
     );
-    expect(compact(seam?.selector ?? "")).toContain(`:has(${HERO})`);
-    // The panel's own fill, never transparent: under the desktop glass a
-    // transparent border is a 1px strip of raw wallpaper down the seam.
-    expect(seam?.body).toMatch(/border-color:\s*var\(--sidebar\)/u);
-    for (const rule of rules) {
-      expect(rule.body, `went transparent: ${rule.selector}`).not.toContain("transparent");
-    }
+    expect(flat(seam?.body)).toBe("border-color: var(--sidebar);");
   });
 
-  it("frosts the composer and pills with a baked, anchored copy of the picture, only on the draft", () => {
-    // The pill's look — a white 8% wash over the stage — carried onto the
-    // vessel and the well, restated on the draft overlay.
-    const fills = rules.find(
-      (rule) =>
-        compact(rule.selector) === `${compact(GLASS)}${HERO}` && rule.body.includes("--fork-"),
+  it("restates the draft composer's fills and ink on the overlay", () => {
+    const fills = find(`${GLASS}${HERO}`);
+    expect(flat(fills?.body)).toBe(
+      "--fork-composer-vessel-bg: rgb(255 255 255 / 5%); --fork-composer-bg: rgb(0 0 0 / 41%); --fork-composer-border: rgb(255 255 255 / 24%); --fork-composer-border-focus: rgb(255 255 255 / 38%); --fork-context-chip-bg: rgb(255 255 255 / 0%); --fork-context-chip-bg-hover: rgb(255 255 255 / 8%); --fork-composer-control-ink: rgb(255 255 255 / 80%);",
     );
-    expect(fills?.body).toContain("--fork-composer-vessel-bg: rgb(255 255 255 / 5%)");
-    expect(fills?.body).toContain("--fork-composer-bg: rgb(0 0 0 / 41%)");
-    expect(fills?.body).toContain("--fork-composer-border: rgb(255 255 255 / 24%)");
-    expect(fills?.body).toContain("--fork-context-chip-bg: rgb(255 255 255 / 0%)");
-    // The control row's ink and the effort label, lifted over the picture.
-    expect(fills?.body).toContain("--fork-composer-control-ink: rgb(255 255 255 / 80%)");
-    const traits = rules.find((rule) =>
-      compact(rule.selector).endsWith(`${HERO}[data-chat-provider-model-picker-traits]`),
-    );
-    expect(traits?.body).toMatch(/color:\s*rgb\(255 255 255 \/ 65%\)/u);
-    // The frost composites onto the stage as it reads on screen: the
-    // palette's fill on an opaque client, the measured glass floor under the
-    // desktop glass (fork-glass-floor-color's token, never a literal).
-    // Declared on the chat view, not the overlay: the header's pills take the
-    // frost too and sit outside the overlay.
-    expect(fills?.body).not.toContain("--fork-glass-frost-floor");
-    const glassFloor = rules.find(
-      (rule) =>
-        compact(rule.selector) ===
-        `${compact(MARKER)}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]${ROOT}`,
-    );
-    expect(glassFloor?.body.replace(/\s+/gu, " ").trim()).toBe(
-      "--fork-glass-frost-floor: var(--fork-popup-glass-floor);",
-    );
+    const traits = find(`${GLASS}${HERO}[data-chat-provider-model-picker-traits]`);
+    expect(flat(traits?.body)).toBe("color: rgb(255 255 255 / 65%);");
+  });
 
-    // No filter anywhere: under the desktop glass a backdrop-filter blurs the
-    // picture in the renderer's composite and not on screen (the vibrancy
-    // entry's standing rule, re-confirmed 2026-10-08 at blur(40px)).
-    for (const rule of rules) {
-      expect(rule.body, `filter in ${rule.selector}`).not.toMatch(/backdrop-filter/u);
-    }
-
-    // The blur is baked: a pre-blurred, translucent twin of the picture on a
-    // fixed pseudo-element whose insets are anchor() reads of the chat view's
-    // box plus the card's 8px, so it lands on the stage picture wherever the
-    // sidebar, panel and window put it. Same crop as the sharp copy; the
-    // element's own wash on top, the floor beneath.
-    const STACK = `${HERO}[data-fork-composer-stack="true"]`;
-    const VESSEL = `${STACK}[data-fork-composer-vessel]`;
-    const PILL = `${STACK}[data-fork-composer-context-row]:is(button,[data-slot="button"],[data-fork-context-chip],[data-fork-pr-chip])`;
-    const SUPPORTS = ["@supports (anchor-name: --fork-glass-card)"];
-    const art = rules.find((rule) => rule.body.includes("glass-hero.png"));
-    expect(art?.body).toContain('url("./custom/assets/glass-hero.png") 51% top / cover');
-    // A scrim from the top edge, so the header reads over the sky; the frost
-    // copies carry it too (below) so the header pills keep matching.
-    expect(art?.body.replace(/\s+/gu, " ")).toContain(
-      'background: var(--fork-glass-card-scrim), url("./custom/assets/glass-hero.png") 51% top / cover no-repeat;',
+  it("frosts the composer, its pills and the header's controls with one anchored copy each", () => {
+    // One host rule, one ::before, one focus rule — the hosts differ only in
+    // the three tokens they state. The copy's box is the whole card, placed
+    // by anchor() reads of the chat view plus the card's inset, so it lands
+    // on the stage picture wherever the sidebar, panel and window put it.
+    const host = find(`${GLASS}${DRAFT}${HOSTS}`);
+    expect(host?.atRules).toEqual(SUPPORTS);
+    expect(flat(host?.body)).toBe(
+      "isolation: isolate; clip-path: inset(0 round var(--fork-glass-frost-radius)); background: var(--fork-glass-frost-floor); scale: none;",
     );
-    // The picture fades out toward the bottom of the card; the frost copies
-    // carry the same mask on the same box so they keep matching it.
-    expect(art?.body).toContain("mask-image: var(--fork-glass-card-fade)");
-    for (const [target, wash, radius] of [
-      [VESSEL, "--fork-composer-vessel-bg", "var(--fork-composer-radius)"],
-      [PILL, "--fork-glass-chip-wash", "6px"],
-    ] as const) {
-      const host = rules.find((rule) => compact(rule.selector) === `${compact(GLASS)}${target}`);
-      expect(host?.atRules, target).toEqual(SUPPORTS);
-      // clip-path, not overflow: overflow cannot clip a fixed descendant.
-      expect(host?.body, target).toMatch(/isolation:\s*isolate/u);
-      expect(host?.body, target).toContain(`clip-path: inset(0 round ${radius})`);
-      // The floor sits on the host, unmasked, so the fade thins the copy to
-      // the stage colour and never to the sharp picture behind.
-      expect(host?.body, target).toContain("background: var(--fork-glass-frost-floor)");
-      const frost = rules.find(
-        (rule) => compact(rule.selector) === `${compact(GLASS)}${target}::before`,
+    // The clip steps out for the focus ring, on the host or anything in it.
+    const focus = find(`${GLASS}${DRAFT}${HOSTS}:is(:focus-visible,:has(:focus-visible))`);
+    expect(flat(focus?.body)).toBe(
+      "clip-path: inset(-4px round calc(var(--fork-glass-frost-radius) + 4px));",
+    );
+    const frost = find(`${GLASS}${DRAFT}${HOSTS}::before`);
+    expect(frost?.atRules).toEqual(SUPPORTS);
+    expect(frost?.body).toMatch(/position:\s*fixed/u);
+    for (const edge of ["top", "right", "bottom", "left"]) {
+      expect(frost?.body).toMatch(
+        new RegExp(
+          `${edge}:\\s*calc\\(anchor\\(--fork-glass-card ${edge}\\) \\+ var\\(--fork-glass-card-inset\\)\\)`,
+          "u",
+        ),
       );
-      expect(frost?.atRules, target).toEqual(SUPPORTS);
-      expect(frost?.body, target).toMatch(/position:\s*fixed/u);
-      for (const edge of ["top", "right", "bottom", "left"]) {
-        expect(frost?.body, target).toMatch(
-          new RegExp(`${edge}:\\s*calc\\(anchor\\(--fork-glass-card ${edge}\\) \\+ 8px\\)`, "u"),
-        );
-      }
-      expect(frost?.body, target).toContain("z-index: -1");
-      expect(frost?.body, target).toContain("pointer-events: none");
-      expect(frost?.body.replace(/\s+/gu, " "), target).toContain(
-        `background: linear-gradient(var(${wash}), var(${wash})), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;`,
-      );
-      expect(frost?.body, target).toContain("mask-image: var(--fork-glass-card-fade)");
     }
-    // The pill's wash follows its hover lift through the token, since the
-    // frost covers the chip's own fill.
-    const hover = rules.find(
+    expect(frost?.body).toContain("z-index: -1");
+    expect(frost?.body).toContain("pointer-events: none");
+    expect(flat(frost?.body)).toContain(
+      "background: linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
+    );
+    expect(frost?.body).toContain("mask-image: var(--fork-glass-frost-mask)");
+    // Exactly one fixed pseudo-element recipe in the sheet.
+    expect(rules.filter((rule) => /position:\s*fixed/u.test(rule.body))).toHaveLength(1);
+
+    // Each host's tokens.
+    const STACK = `${DRAFT}[data-fork-composer-stack="true"]`;
+    const CHIPS = `${STACK}[data-fork-composer-context-row]:is(button,[data-slot="button"],[data-fork-context-chip],[data-fork-pr-chip])`;
+    expect(flat(find(`${GLASS}${STACK}[data-fork-composer-vessel]`)?.body)).toBe(
+      "--fork-glass-frost-wash: var(--fork-composer-vessel-bg); --fork-glass-frost-radius: var(--fork-composer-radius);",
+    );
+    expect(flat(find(`${GLASS}${CHIPS}`)?.body)).toBe(
+      "--fork-glass-frost-wash: var(--fork-context-chip-bg); --fork-glass-frost-radius: 6px;",
+    );
+    const chipHover = rules.find(
       (rule) =>
         compact(rule.selector).startsWith(
           `${compact(GLASS)}${STACK}[data-fork-composer-context-row]`,
         ) && rule.selector.includes(":hover"),
     );
-    expect(hover?.body.replace(/\s+/gu, " ").trim()).toBe(
-      "--fork-glass-chip-wash: var(--fork-context-chip-bg-hover);",
+    expect(flat(chipHover?.body)).toBe(
+      "--fork-glass-frost-wash: var(--fork-context-chip-bg-hover);",
+    );
+    const HEADER = `${DRAFT}[data-chat-header]`;
+    expect(flat(find(`${GLASS}${HEADER}:is([data-fork-pill],[data-fork-frost-host])`)?.body)).toBe(
+      "--fork-glass-frost-wash: rgb(255 255 255 / 18%); --fork-glass-frost-radius: 6px; --fork-glass-frost-mask: none;",
+    );
+    expect(flat(find(`${GLASS}${HEADER}[data-fork-pill]`)?.body)).toBe(
+      "--fork-glass-frost-radius: var(--fork-pill-radius);",
     );
     expect(
-      NodeFS.existsSync(
-        NodeURL.fileURLToPath(new URL("../custom/assets/glass-hero-frost.png", import.meta.url)),
-      ),
-    ).toBe(true);
+      flat(find(`${GLASS}${HEADER}button[data-fork-pill]:is(:hover,[data-pressed])`)?.body),
+    ).toBe("--fork-glass-frost-wash: rgb(255 255 255 / 26%);");
+    // Every frost rule is gated on anchor support.
+    for (const rule of rules) {
+      if (rule.body.includes("--fork-glass-frost-wash") || rule.body.includes("clip-path")) {
+        expect(rule.atRules, rule.selector).toEqual(SUPPORTS);
+      }
+    }
+
+    // The toggle hosts are a real hook, not the TooltipTrigger's wrapper shape.
+    const controls = readSibling("../components/chat/PanelLayoutControls.tsx");
+    expect(controls.match(/data-fork-frost-host/gu)).toHaveLength(2);
+    expect(controls).toContain("fork:begin fork-glass-new-agent-stage");
+    expect(sheet).not.toContain("span:has(> button)");
 
     // The anchor only resolves against the viewport if no ancestor of the
     // pseudo-element is transformed, so the draft overlay must centre
@@ -320,66 +337,5 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     );
     expect(overlayRule?.body).toMatch(/height:\s*fit-content/u);
     expect(overlayRule?.body).not.toMatch(/translate|transform/u);
-  });
-
-  it("frosts the header's pills and panel toggles the same way, only on the draft", () => {
-    const HEADER = `${ROOT}:has(${HERO})[data-chat-header]`;
-    const HOSTS = `${HEADER}:is([data-fork-pill],[data-workspace-titlebar-controls]span:has(>button))`;
-    const SUPPORTS = ["@supports (anchor-name: --fork-glass-card)"];
-    const host = rules.find((rule) => compact(rule.selector) === `${compact(GLASS)}${HOSTS}`);
-    expect(host?.atRules).toEqual(SUPPORTS);
-    expect(host?.body).toContain("--fork-glass-header-wash: rgb(255 255 255 / 18%)");
-    expect(host?.body).toMatch(/isolation:\s*isolate/u);
-    expect(host?.body).toContain("background: var(--fork-glass-frost-floor)");
-    // Pills clip at the pill radius, toggles at the Toggle's 6px.
-    const pillClip = rules.find(
-      (rule) => compact(rule.selector) === `${compact(GLASS)}${HEADER}[data-fork-pill]`,
-    );
-    expect(pillClip?.body).toContain("clip-path: inset(0 round var(--fork-pill-radius))");
-    const toggleClip = rules.find(
-      (rule) =>
-        compact(rule.selector) ===
-        `${compact(GLASS)}${HEADER}[data-workspace-titlebar-controls]span:has(>button)`,
-    );
-    expect(toggleClip?.body).toContain("clip-path: inset(0 round 6px)");
-    // The lone pill's hover lifts through the token: the floor covers its fill.
-    const hover = rules.find(
-      (rule) =>
-        compact(rule.selector) ===
-        `${compact(GLASS)}${HEADER}button[data-fork-pill]:is(:hover,[data-pressed])`,
-    );
-    expect(hover?.body.replace(/\s+/gu, " ").trim()).toBe(
-      "--fork-glass-header-wash: rgb(255 255 255 / 26%);",
-    );
-    const frost = rules.find(
-      (rule) => compact(rule.selector) === `${compact(GLASS)}${HOSTS}::before`,
-    );
-    expect(frost?.atRules).toEqual(SUPPORTS);
-    expect(frost?.body).toMatch(/position:\s*fixed/u);
-    for (const edge of ["top", "right", "bottom", "left"]) {
-      expect(frost?.body).toMatch(
-        new RegExp(`${edge}:\\s*calc\\(anchor\\(--fork-glass-card ${edge}\\) \\+ 8px\\)`, "u"),
-      );
-    }
-    expect(frost?.body).toContain("z-index: -1");
-    expect(frost?.body.replace(/\s+/gu, " ")).toContain(
-      "background: linear-gradient(var(--fork-glass-header-wash), var(--fork-glass-header-wash)), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
-    );
-    expect(frost?.body).toContain("mask-image: var(--fork-glass-card-fade)");
-    // The toggles are scoped to the header: at the root titlebar layout they
-    // precede the chat view in the tree and the anchor could not resolve.
-    const toggleRules = rules.filter((rule) =>
-      rule.selector.includes("[data-workspace-titlebar-controls]"),
-    );
-    expect(toggleRules.length).toBeGreaterThan(0);
-    for (const rule of toggleRules) {
-      expect(compact(rule.selector)).toContain(`${HEADER}`);
-    }
-    // The header hooks this leans on.
-    const chatHeaderFile = readSibling("../components/chat/PanelLayoutControls.tsx");
-    expect(chatHeaderFile).toContain(
-      '<TooltipTrigger render={<span className="flex shrink-0" />}>',
-    );
-    expect(chatView).toContain("data-workspace-titlebar-controls");
   });
 });

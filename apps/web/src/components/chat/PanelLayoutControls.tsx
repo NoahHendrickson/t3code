@@ -93,7 +93,10 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
         : null}
       {showTerminalControl ? (
         <Tooltip>
-          <TooltipTrigger render={<span className="flex shrink-0" />}>
+          {/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage
+              The span hosts the Glass draft's frost copy; the Toggle inside carries pseudo-elements of its own. */}
+          <TooltipTrigger render={<span className="flex shrink-0" data-fork-frost-host />}>
+            {/* fork:end fork-glass-new-agent-stage */}
             <Toggle
               className="shrink-0 [-webkit-app-region:no-drag]"
               pressed={terminalOpen}
@@ -115,7 +118,10 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
       ) : null}
       {showRightPanelControl ? (
         <Tooltip>
-          <TooltipTrigger render={<span className="flex shrink-0" />}>
+          {/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage
+              The span hosts the Glass draft's frost copy; the Toggle inside carries pseudo-elements of its own. */}
+          <TooltipTrigger render={<span className="flex shrink-0" data-fork-frost-host />}>
+            {/* fork:end fork-glass-new-agent-stage */}
             <Toggle
               className="shrink-0 [-webkit-app-region:no-drag]"
               pressed={rightPanelOpen}

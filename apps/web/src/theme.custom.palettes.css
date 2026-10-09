@@ -196,6 +196,11 @@
   --fork-composer-border-focus: #444a4f;
   --fork-context-chip-bg: #282d30;
   --fork-context-chip-bg-hover: #2f3437;
+  /* The v2 panel's fill (--sidebar in the panel block below), restated at
+     the root so the new-agent draft's gutter and frost floor
+     (theme.custom.glass.css, fork-glass-new-agent-stage) read one token;
+     the panel block keeps the literal. Retune both together. */
+  --fork-glass-panel: #181b1e;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
@@ -543,6 +548,10 @@
   --muted-foreground: rgb(255 255 255 / 50%);
   /* theme.custom.css's #a6a6a6 is this alpha flattened onto black. */
   --fork-composer-control-ink: rgb(255 255 255 / 65%);
+  /* The docked panel's tint (--sidebar in the v2 glass block below),
+     restated at the root for the new-agent draft's gutter and frost floor
+     (theme.custom.glass.css). Retune both together. */
+  --fork-glass-panel: rgb(22 22 22 / 73%);
 }
 
 /* The floating preview's placeholder floats over the transcript, so it is
