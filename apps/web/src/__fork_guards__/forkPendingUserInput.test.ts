@@ -27,6 +27,7 @@ const override = readSibling("../overrides/components/chat/ComposerPendingUserIn
 const hook = readSibling("../custom/useComposerPendingUserInputCard.ts");
 const upstream = readSibling("../components/chat/ComposerPendingUserInputPanel.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
+const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 
 describe("fork guard: fork-pending-user-input", () => {
   it("keeps a thin shadow that owns the Questions chrome", () => {
@@ -54,6 +55,24 @@ describe("fork guard: fork-pending-user-input", () => {
     // The card is memoized, which is what makes a frozen selection closure
     // reachable across questions — see forkPendingUserInputQuestionAdvance.
     expect(override).toContain("memo(function ComposerPendingUserInputCard(");
+  });
+
+  it("gates both Questions mounts and the card hook on the operate scope (upstream #9786)", () => {
+    // ChatComposer mounts the panel twice: expanded, and inside the collapsed
+    // mobile controls. A sync that keeps only the first gate leaves a read-only
+    // phone client walking through answers it can never submit.
+    const mounts = chatComposer.match(/<ComposerPendingUserInputPanel\b[\s\S]*?\/>/gu) ?? [];
+    expect(mounts).toHaveLength(2);
+    for (const mount of mounts) {
+      expect(mount).toContain("disabled={!canOperateThread}");
+    }
+    // The shadow hands `disabled` to the hook as its own input rather than
+    // folding it into `isResponding`, so the click, number-key and auto-advance
+    // guards derive from one flag.
+    expect(override).toMatch(
+      /useComposerPendingUserInputCard\(\{\s*prompt,\s*disabled,\s*isResponding,/u,
+    );
+    expect(hook).toContain("const responseDisabled = disabled || isResponding || !canRespond;");
   });
 
   it("uses checkboxes for multi-select and radios for single-select", () => {

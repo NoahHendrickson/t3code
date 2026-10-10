@@ -49,7 +49,7 @@ function readSourceFile(value: unknown): string | null {
   if (typeof value !== "object" || value === null) return null;
   const file = (value as { file?: unknown }).file;
   if (typeof file !== "string" || file.length === 0 || file.length > MAX_FILE_LENGTH) return null;
-  // eslint-disable-next-line no-control-regex
+  // eslint-disable-next-line no-control-regex -- the class deliberately rejects control characters
   return /[\u0000-\u001f\u007f]/.test(file) ? null : file;
 }
 
@@ -109,7 +109,7 @@ function normalizeNativeSource(value: unknown): string | null {
   if (typeof v.file !== "string" || v.file.length === 0 || v.file.length > MAX_FILE_LENGTH) {
     return null;
   }
-  // eslint-disable-next-line no-control-regex
+  // eslint-disable-next-line no-control-regex -- the class deliberately rejects control characters
   if (/[\u0000-\u001f\u007f]/.test(v.file)) return null;
   if (typeof v.line !== "number" || !Number.isInteger(v.line) || v.line < 1) return null;
   if (typeof v.column !== "number" || !Number.isInteger(v.column) || v.column < 0) return null;

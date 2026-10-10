@@ -98,10 +98,10 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
 export const DEFERRED_RULES = new Map([
   ["react(exhaustive-effect-dependencies)", 17],
   ["react(immutability)", 0],
-  ["react(memo-dependencies)", 22],
-  ["react(preserve-manual-memoization)", 21],
+  ["react(memo-dependencies)", 24],
+  ["react(preserve-manual-memoization)", 20],
   ["react(purity)", 1],
-  ["react(refs)", 36],
+  ["react(refs)", 37],
   ["react(set-state-in-effect)", 26],
   ["react(static-components)", 2],
 ]);

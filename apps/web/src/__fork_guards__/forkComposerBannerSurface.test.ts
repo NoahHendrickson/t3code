@@ -22,7 +22,6 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
-import { visibleComposerBannerItems } from "../custom/composerBannerVisibility";
 import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
@@ -67,28 +66,6 @@ function componentSource(name: string): string {
 }
 
 describe("fork guard: fork-composer-banner-surface", () => {
-  it("shows only Un-settle while settled, without leaving another notice behind it", () => {
-    const compact = { id: "resume-compaction:thread:snapshot" };
-    const settled = { id: "thread-settled:thread" };
-    const activity = { id: "composer-activity" };
-    expect(visibleComposerBannerItems([activity, compact, settled])).toEqual([settled]);
-    expect(visibleComposerBannerItems([settled, compact])).toEqual([settled]);
-    expect(chatComposer).toContain("items={visibleComposerBannerItems(bannerStackItems)}");
-  });
-
-  it("restores compaction after un-settling and preserves ordinary notice order", () => {
-    const compact = { id: "resume-compaction:thread:snapshot" };
-    const settled = { id: "thread-settled:thread" };
-    const notices = [compact, settled];
-    visibleComposerBannerItems(notices);
-    expect(notices).toEqual([compact, settled]);
-    const activeNotices = notices.filter((notice) => notice !== settled);
-    expect(visibleComposerBannerItems(activeNotices)).toBe(activeNotices);
-    const snoozedNotices = [compact, { id: "thread-snoozed:thread" }];
-    expect(visibleComposerBannerItems(snoozedNotices)).toBe(snoozedNotices);
-    expect(visibleComposerBannerItems([])).toEqual([]);
-  });
-
   it("re-points every banner's outline, tint and edge at the composer hairline", () => {
     const rule = rules.find(
       (candidate) =>
@@ -282,14 +259,14 @@ describe("fork guard: fork-composer-banner-surface", () => {
 
   it("keeps the notice primary action on the fork's white Primary", () => {
     const stamped = [...chatView.matchAll(/data-fork-composer-notice-action="primary"/gu)];
-    expect(stamped).toHaveLength(3);
+    expect(stamped).toHaveLength(1);
     const fenced = chatView.matchAll(
       /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
     );
     const primaries = [...fenced].filter(([body]) =>
       body.includes('data-fork-composer-notice-action="primary"'),
     );
-    expect(primaries).toHaveLength(3);
+    expect(primaries).toHaveLength(1);
     for (const [body] of primaries) {
       expect(body).toContain('variant="default"');
     }
@@ -298,11 +275,11 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(rules.some((candidate) => candidate.selector.includes(":has(svg)"))).toBe(false);
   });
 
-  it("stamps the three Figma notice cards and leaves other drawer banners alone", () => {
-    expect(chatView).toContain("Sending a message moves it back to Active in the sidebar.");
-    expect(chatView).toContain("Unsettle");
-    expect(chatView).toContain("ChevronsDownUpIcon");
-    expect(chatView).toContain("tokens from an older session.");
+  it("stamps the branch-changed notice card and leaves other drawer banners alone", () => {
+    // Upstream #16782 moved the settled notice into the timeline-footer status
+    // line (the fork keeps its "Unsettle" wording there) and #16631 replaced the
+    // resume-compaction card with compact-on-send, so one Figma card remains.
+    expect(chatView).toContain('actionLabel={isUnsettling ? "Unsettling..." : "Unsettle"}');
     expect(chatView).toContain("Branch changed to");
     expect(bannerStack).toContain('"data-fork-composer-notice": "true"');
     expect(bannerStack).toContain("readonly icon?:");

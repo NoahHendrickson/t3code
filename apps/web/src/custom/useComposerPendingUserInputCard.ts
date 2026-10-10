@@ -16,6 +16,7 @@ import { type PendingUserInput } from "~/session-logic";
 
 export function useComposerPendingUserInputCard({
   prompt,
+  disabled = false,
   isResponding,
   answers,
   questionIndex,
@@ -23,6 +24,8 @@ export function useComposerPendingUserInputCard({
   onAdvance,
 }: {
   prompt: PendingUserInput;
+  /** Upstream #9786: the client lacks the operate scope, so the card is read-only. */
+  disabled?: boolean;
   isResponding: boolean;
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
@@ -33,7 +36,7 @@ export function useComposerPendingUserInputCard({
   const activeQuestion = progress.activeQuestion;
   // Message-mode requests remain answerable after their provider turn ends.
   const canRespond = prompt.responseCapability !== "not_resumable";
-  const responseDisabled = isResponding || !canRespond;
+  const responseDisabled = disabled || isResponding || !canRespond;
   const autoAdvanceTimerRef = useRef<number | null>(null);
   const [optimisticSingleSelect, setOptimisticSingleSelect] = useState<{
     questionId: string;
@@ -49,9 +52,9 @@ export function useComposerPendingUserInputCard({
   // A layout-phase mirror instead, the same shape and reasoning as
   // useForkDictationController. Audit on a React bump: grep useEffectEvent,
   // check whether the host component is memoized or a forwardRef.
-  const latestRef = useRef({ activeQuestion, onToggleOption, onAdvance });
+  const latestRef = useRef({ activeQuestion, onToggleOption, onAdvance, responseDisabled });
   useLayoutEffect(() => {
-    latestRef.current = { activeQuestion, onToggleOption, onAdvance };
+    latestRef.current = { activeQuestion, onToggleOption, onAdvance, responseDisabled };
   });
 
   useEffect(() => {
@@ -84,10 +87,20 @@ export function useComposerPendingUserInputCard({
     };
   }, []);
 
+  // A pending auto-advance must not fire once responding is disabled: the
+  // operate scope can be withdrawn mid-timer (upstream #9786).
+  useEffect(() => {
+    if (responseDisabled && autoAdvanceTimerRef.current !== null) {
+      window.clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, [responseDisabled]);
+
   // Stable so the number-key listener below is not torn down and rebuilt on
   // every render; everything it reads comes from the mirror or a setState.
   const handleOptionSelection = useCallback((questionId: string, optionValue: string) => {
     const { activeQuestion: question, onToggleOption: toggle } = latestRef.current;
+    if (latestRef.current.responseDisabled) return;
     if (question?.multiSelect) {
       toggle(questionId, optionValue);
       return;
@@ -137,6 +150,7 @@ export function useComposerPendingUserInputCard({
     progress,
     activeQuestion,
     optimisticSingleSelect,
+    responseDisabled,
     handleOptionSelection,
   } as const;
 }

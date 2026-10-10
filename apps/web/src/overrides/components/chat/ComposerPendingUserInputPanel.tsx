@@ -10,6 +10,7 @@ import { type PendingUserInput } from "~/session-logic";
 
 interface PendingUserInputPanelProps {
   pendingUserInputs: PendingUserInput[];
+  disabled?: boolean;
   respondingRequestIds: RuntimeRequestId[];
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
@@ -20,6 +21,7 @@ interface PendingUserInputPanelProps {
 
 export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserInputPanel({
   pendingUserInputs,
+  disabled = false,
   respondingRequestIds,
   answers,
   questionIndex,
@@ -35,6 +37,7 @@ export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserIn
     <ComposerPendingUserInputCard
       key={activePrompt.requestId}
       prompt={activePrompt}
+      disabled={disabled}
       isResponding={respondingRequestIds.includes(activePrompt.requestId)}
       answers={answers}
       questionIndex={questionIndex}
@@ -68,6 +71,7 @@ function OptionControl({ multiSelect, selected }: { multiSelect: boolean; select
 
 const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard({
   prompt,
+  disabled,
   isResponding,
   answers,
   questionIndex,
@@ -76,6 +80,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   onDismiss,
 }: {
   prompt: PendingUserInput;
+  disabled: boolean;
   isResponding: boolean;
   answers: Record<string, PendingUserInputDraftAnswer>;
   questionIndex: number;
@@ -83,9 +88,14 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   onAdvance: () => void;
   onDismiss: (requestId: RuntimeRequestId) => void;
 }) {
+  // Upstream #9786: a client without the operate scope sees the questions but
+  // cannot answer. The hook owns the click, number-key and auto-advance guards
+  // from the same two inputs; the option buttons mirror them visually.
+  const interactionDisabled = disabled || isResponding;
   const { progress, activeQuestion, optimisticSingleSelect, handleOptionSelection } =
     useComposerPendingUserInputCard({
       prompt,
+      disabled,
       isResponding,
       answers,
       questionIndex,
@@ -156,7 +166,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   role={multiSelect ? "checkbox" : "radio"}
                   aria-checked={isSelected}
                   aria-keyshortcuts={digitShortcut}
-                  disabled={isResponding}
+                  disabled={interactionDisabled}
                   onClick={() => {
                     handleOptionSelection(activeQuestion.id, optionValue);
                   }}
@@ -165,8 +175,8 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                     isSelected
                       ? "border-foreground/24 bg-foreground/8 text-foreground"
                       : "border-transparent hover:bg-foreground/4",
-                    isResponding && "cursor-not-allowed opacity-50",
-                    !isResponding && "cursor-pointer",
+                    interactionDisabled && "cursor-not-allowed opacity-50",
+                    !interactionDisabled && "cursor-pointer",
                   )}
                 >
                   <div className="flex items-center gap-2">

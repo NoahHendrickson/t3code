@@ -7,6 +7,8 @@ export type ComposerBackgroundLivenessKind = "monitoring" | "working";
 
 type ComposerBackgroundLivenessPillBase = {
   readonly stopping: boolean;
+  /** False when the client lacks the operate scope (upstream #9786): the square stays visible but inert. */
+  readonly canStop: boolean;
   readonly onStop: () => void;
 };
 
@@ -66,7 +68,7 @@ export function ComposerBackgroundLivenessPill(props: ComposerBackgroundLiveness
         type="button"
         data-fork-monitoring-stop
         aria-label={props.stopping ? "Stopping background work" : "Stop background work"}
-        disabled={props.stopping}
+        disabled={props.stopping || !props.canStop}
         onClick={props.onStop}
       >
         <StopSquareIcon size={10} />

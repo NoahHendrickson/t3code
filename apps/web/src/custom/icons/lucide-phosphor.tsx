@@ -195,9 +195,11 @@ import {
   SquareSplitVertical as PhSquareSplitVertical,
   Star as PhStar,
   Sun as PhSun,
+  Target as PhTarget,
   Terminal as PhTerminal,
   TerminalWindow as PhTerminalWindow,
   Trash as PhTrash,
+  Tray as PhTray,
   TreeStructure as PhTreeStructure,
   UserCircle as PhUserCircle,
   Warning as PhWarning,
@@ -575,6 +577,12 @@ export const UserRoundIcon = icon("user-round", PhUserCircle, "duotone");
 export const Volume2 = icon("volume-2", PhSpeakerHigh, "duotone");
 export const VolumeOff = icon("volume-off", PhSpeakerSlash, "duotone");
 export const Square = icon("square", PhSquare, "duotone");
+
+// Added by the 2026-10-07 sync for upstream imports new in that range.
+export const TargetIcon = icon("target", PhTarget, "duotone");
+export const MessageSquareTextIcon = icon("message-square-text", PhChatText, "duotone");
+export const SquareIcon = icon("square", PhSquare, "duotone");
+export const InboxIcon = icon("inbox", PhTray, "duotone");
 
 // Added at the 2026-09-01 sync: GitHub reference links in markdown (#8812) draw
 // document / sheet / slide / mail / image glyphs, the thinking row (#9062/#9098)

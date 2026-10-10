@@ -58,7 +58,7 @@ export function normalizeForkDesignProps(value: unknown): ForkDesignProps | null
     if (typeof raw === "boolean") out[name] = raw;
     else if (typeof raw === "number" && Number.isFinite(raw)) out[name] = raw;
     else if (typeof raw === "string") {
-      // eslint-disable-next-line no-control-regex
+      // eslint-disable-next-line no-control-regex -- the class deliberately rejects control characters
       if (/[\u0000-\u001f\u007f]/.test(raw)) continue;
       out[name] = raw.slice(0, MAX_DESIGN_PROP_VALUE_LENGTH);
     } else continue;

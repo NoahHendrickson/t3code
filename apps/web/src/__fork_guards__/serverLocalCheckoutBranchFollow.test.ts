@@ -53,7 +53,7 @@ describe("fork guard: server-local-checkout-branch-follow", () => {
   it("wires the real follower into production only", () => {
     const hunks = readCustomizationHunks(runtimeLayer);
     expect(hunks).toContain(
-      "forkLocalCheckoutBranchFollowerLayer.pipe(Layer.provide(threadManagementProvided))",
+      "ForkLocalCheckoutBranchFollow.layer.pipe(Layer.provide(layerThreadManagementProvided))",
     );
     // Elsewhere the reference keeps its no-op default.
     expect(follower).toContain("defaultValue: () => ({ follow: () => Effect.void })");

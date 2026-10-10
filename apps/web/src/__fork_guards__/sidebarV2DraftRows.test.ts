@@ -99,7 +99,7 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
     // Anchored to the declaration so a matching expression elsewhere can
     // never satisfy this on its own; whitespace-tolerant for the formatter.
     expect(sidebar).toMatch(
-      /const hasHoverActions =\s*props\.settlementSupported \|\| props\.pinningSupported \|\| showSnoozeButton \|\| showDiscardDraft;/u,
+      /const hasHoverActions =\s*\(canOperateThread && \(props\.settlementSupported \|\| props\.pinningSupported\)\) \|\|\s*showSnoozeButton \|\|\s*showDiscardDraft;/u,
     );
     expect(sidebar).toContain("hasHoverActions ||");
     expect(sidebar).toContain("hasHoverActions &&");

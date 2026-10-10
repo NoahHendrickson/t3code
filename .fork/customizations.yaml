@@ -2067,6 +2067,7 @@
   shadows: []
   watch:
     - apps/web/src/components/usage/UsagePage.tsx
+    - apps/web/src/components/usage/UsagePage.test.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/components/Sidebar.tsx
     - docs/user/usage.md
@@ -3610,16 +3611,16 @@
 
 - id: fork-composer-banner-surface
   intent: >
-    Composer banners (the settled / snoozed / woke notices, resume-with-less-
-    context, provider and environment warnings, the inline activity strip) are
-    the top section of the composer card, not a card floating behind it.
+    Composer banners (the branch-changed notice, provider and environment
+    warnings, the inline activity strip) are the top section of the composer
+    card, not a card floating behind it.
 
-    A settled thread shows only its Un-settle notice, with no stacked notice
-    peeking behind it. Other notices, including resume compaction, are hidden
-    without being dismissed and become available once the thread is unsettled.
-    The final stack selection includes activity notices so they cannot push
-    Un-settle behind another card. Snoozed and active threads keep their normal
-    notice ordering.
+    Upstream #16782 moved the settled / snoozed / woke notices out of the
+    banner stack into the timeline-footer status line, where the fork keeps
+    its "Unsettle" / "Unsettling..." action wording, and #16631 replaced the
+    resume-with-less-context card with compact-on-send. The fork's settled-only
+    stack filter (custom/composerBannerVisibility.ts) went with them in the
+    2026-10-07 sync.
 
     Colour: instead of upstream's severity tint — a --info / --success /
     --warning / --error outline plus a wash of the same hue over the glass,
@@ -3646,13 +3647,12 @@
     prompt into one bordered box on the composer fill, is the deliberate
     exception and keeps that construction — including its own top edge under
     a notice, since the notice above it paints no outline to share. Shoulder tabs (stash, tasks) are
-    excluded by name and keep riding the card's shoulder. The three Figma
-    467:33308 cards (settled, resume compaction, branch changed) are stamped
-    data-fork-composer-notice so drawer density stays on Reconnect / Update /
-    tasks. Those cards drop font-medium / leading-7 at the source, stack
-    title over description, and stamp primary / dismiss actions by name
-    (data-fork-composer-notice-action) so Compact still matches when a
-    tooltip wraps it. Compaction uses ChevronsDownUpIcon. The activity strip
+    excluded by name and keep riding the card's shoulder. The remaining Figma
+    467:33308 card (branch changed) is stamped data-fork-composer-notice so
+    drawer density stays on Reconnect / Update / tasks. It drops font-medium /
+    leading-7 at the source, stacks title over description, and stamps its
+    primary / dismiss actions by name (data-fork-composer-notice-action). The
+    activity strip
     stays a single row at 16px padding, including when folded into the stack
     (the in-drawer activity Root is stamped data-chat-composer-activity-strip).
     A notice's primary action is the design's white Primary button, which the
@@ -3664,7 +3664,6 @@
   files:
     - apps/web/src/theme.custom.css
     - apps/web/src/components/ChatView.tsx
-    - apps/web/src/custom/composerBannerVisibility.ts
   shadows: []
   watch:
     # Owns data-composer-banner-surface, data-slot="composer-banner",
@@ -3801,10 +3800,11 @@
     In the composer, model and reasoning are one control. ComposerModelPicker
     wraps ProviderModelPicker and fills its `traits` slot from the same input
     the composer used to hand upstream's TraitsPicker: the trigger reads
-    "Opus 5.5 High" (fast-mode bolt included), and under the pages a panel
+    "Opus 5.5 High Fast" (fast mode rides in the label text since upstream
+    #16069), and under the pages a panel
     shows the selected model's traits. The traits label truncates inside the
     trigger's max width, and in the resting strip it collapses with the model
-    name below 640px (the bolt too), where upstream moved the traits picker
+    name below 640px, where upstream moved the traits picker
     into the ⋯ menu. Effort (`effort`, `reasoningEffort`,
     `reasoning` or `variant`, when it has two or more levels) is a slider over
     the model's own levels, Ultrathink included as the top stop for Claude;
