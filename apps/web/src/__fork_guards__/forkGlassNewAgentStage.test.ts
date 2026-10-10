@@ -116,12 +116,18 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       '--fork-glass-card-inset: 8px; --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
     );
     expect(flat(root[2]?.body)).toBe("--fork-glass-frost-floor: var(--fork-popup-glass-floor);");
+    // A floating preview's chrome must out-stack its root-level webview, so
+    // the stacking context steps aside while one is open.
+    expect(flat(find(`${GLASS} ${ROOT}:has([data-preview-mini-player])`)?.body)).toBe(
+      "isolation: auto;",
+    );
     const unkeyed = rules.filter(
       (rule) => !compact(rule.selector).includes(HERO) && !root.includes(rule),
     );
     // Only the at-rest art and its reduced-motion twin paint without the
     // stamp, beside the frosted popups, which only exist over the draft.
     expect(unkeyed.map((rule) => compact(rule.selector))).toEqual([
+      `${compact(GLASS)}${ROOT}:has([data-preview-mini-player])`,
       `${compact(GLASS)}${ROOT}::after`,
       `${compact(GLASS)}${ROOT}::after`,
       `${VIBRANT_GLASS}${POPUP}`,
@@ -369,7 +375,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // lengths the cutout writes: a popup's positioner is transformed, which
     // would break an anchor. overflow, not clip-path, keeps the shadow.
     expect(flat(find(`${VIBRANT}${POPUP}`)?.body)).toBe(
-      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 8%);",
+      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 5%); --fork-glass-frost-veil: 45%;",
     );
     const popupFrost = find(`${VIBRANT}${POPUP}::after`)?.body;
     expect(popupFrost).toMatch(/position:\s*absolute/u);
