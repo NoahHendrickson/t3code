@@ -37,6 +37,30 @@
   anchor-name: --fork-glass-card;
 }
 
+/* Except while a desktop tab floats over the chat. Its webview is a fixed
+   element at the app root (ElectronBrowserHost) at z-index 48, and its
+   chrome — the corner dot, the hover pill with the close button, the edge
+   ring — sits in the chat view at 49 to paint over it. Inside the chat
+   view's stacking context that 49 only counts within the chat view, which
+   as a whole sits under the root-level webview, so the chrome vanished
+   behind the page. Server tabs and device streams render inside the player
+   beside their chrome, so only the slot BrowserSurfaceSlot leaves in the
+   player marks the case; the right panel's slot is the chat view's sibling.
+
+   A started thread loses nothing: its picture is already at opacity 0. On
+   a draft the picture's z-index -1 falls into the outer context, under the
+   inset's fill — gone on an opaque client, dimmed behind the 73% panel tint
+   under the desktop glass — so the frost copies drop their image with it,
+   leaving the hosts floor, veil, scrim and wash rather than patches of a
+   picture the card no longer shows. The popup cutout's draft-card selector
+   skips this state too, so popups cut to the material as in a started
+   thread. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-preview-mini-player] [data-browser-surface-slot]) {
+  isolation: auto;
+  --fork-glass-frost-image: none;
+}
+
 /* The tokens the draft rules read, on the chat view and on any popup frosted
    over the card (data-fork-glass-frost, below), which portals out of the
    chat view and cannot inherit them. Tokens only. */
@@ -459,9 +483,12 @@
    popup sits in a positioner Floating UI moves with a transform, which
    would be the copy's containing block and break the anchor; overflow
    clips it to the popup's radius and, unlike clip-path, keeps the popup's
-   shadow. ::after, because popover and tooltip already use ::before. Its
-   wash is the general popup frost's white 8% (fork-popup-surface), a step
-   over the vessel so the menu reads as raised. No stamp, no change: an
+   shadow. ::after, because popover and tooltip already use ::before. It
+   wears the composer control row's material rather than the general popup
+   frost's: the vessel's white 5% wash, and a heavier veil of the floor so
+   the picture reads as subdued through it the way it does through the row,
+   instead of the menu reading as a lighter, warmer cut-out of the picture
+   wherever it opens high on the card. No stamp, no change: an
    opaque client keeps the blurred popup material, which sees the picture
    on its own. `body` only outranks the palettes sheet's popup rule, which
    comes later in source order. */
@@ -471,7 +498,8 @@
   isolation: isolate;
   overflow: clip;
   background: var(--fork-glass-frost-floor);
-  --fork-glass-frost-wash: rgb(255 255 255 / 8%);
+  --fork-glass-frost-wash: rgb(255 255 255 / 5%);
+  --fork-glass-frost-veil: 45%;
 }
 
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]

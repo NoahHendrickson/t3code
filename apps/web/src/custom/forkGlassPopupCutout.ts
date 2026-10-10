@@ -41,9 +41,13 @@ export const FORK_GLASS_POPUP_SELECTOR = [
   '[data-thread-details-panel="popover"][data-fork-popup] > [data-thread-details-card].dropdown-glass',
 ].join(", ");
 
-/** ChatView's root while its composer is a new-agent draft: the picture card's host. */
+/**
+ * ChatView's root while its composer is a new-agent draft: the picture card's
+ * host. Not while a desktop tab floats over it, when the card drops its
+ * stacking context and with it the picture (theme.custom.glass.css).
+ */
 const DRAFT_CARD_SELECTOR =
-  '[data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])';
+  '[data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero]):not(:has([data-preview-mini-player] [data-browser-surface-slot]))';
 
 /** Stamped on a popup that frosts over the draft card instead of cutting it. */
 const FORK_GLASS_FROST_ATTRIBUTE = "data-fork-glass-frost";
