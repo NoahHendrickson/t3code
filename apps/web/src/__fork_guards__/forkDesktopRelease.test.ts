@@ -121,7 +121,7 @@ describe("fork guard: fork-desktop-release", () => {
     expect(script).toContain("trap cleanup EXIT");
     expect(script).toContain("pwd -P");
     expect(script).toContain('hdiutil attach "$dmg" -nobrowse -readonly');
-    expect(script).toContain('"$scratch/.t3-fork/userdata/state.sqlite"');
+    expect(script).toContain('"$scratch/.t3-fork/userdata/statev2.sqlite"');
     expect(script).toContain('violated "the build created ~/.t3"');
     expect(script).toContain('-name ".t3" -o -name "t3code" -o -name "com.t3tools.t3code"');
     expect(script).toContain('"$support/t3code-fork-v2"');
