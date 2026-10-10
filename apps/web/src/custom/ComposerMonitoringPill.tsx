@@ -1,4 +1,9 @@
+import type { PendingBackgroundWorkItem } from "@t3tools/client-runtime/state/thread-execution";
+import type { ThreadId } from "@t3tools/contracts";
+import { ChevronRightIcon } from "lucide-react";
 import { type ReactNode } from "react";
+
+import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 
 import { SidebarV2MonitoringMark, SidebarV2WorkingRain } from "./SidebarV2StatusIndicator";
 import { StopSquareIcon } from "./StopSquareIcon";
@@ -10,6 +15,14 @@ type ComposerBackgroundLivenessPillBase = {
   /** False when the client lacks the operate scope (upstream #9786): the square stays visible but inert. */
   readonly canStop: boolean;
   readonly onStop: () => void;
+  /**
+   * The work behind the count: upstream's pending roster, never empty while
+   * the pill shows. The label opens a popover that names each task and opens
+   * a subagent's thread — what upstream's dropped background-work banner
+   * listed inline, without the banner.
+   */
+  readonly tasks: ReadonlyArray<PendingBackgroundWorkItem>;
+  readonly onOpenThread: (threadId: ThreadId) => void;
 };
 
 export type ComposerBackgroundLivenessPillProps = ComposerBackgroundLivenessPillBase &
@@ -61,9 +74,60 @@ export function ComposerBackgroundLivenessPill(props: ComposerBackgroundLiveness
       >
         {mark}
       </span>
-      <span role="status" className="min-w-0 truncate">
+      {/* The live region sits beside the trigger, not inside it: a button's
+          children are presentational, so "Stopping..." would never be announced
+          from there. The visible label is the button's text. */}
+      <span role="status" className="sr-only">
         {label}
       </span>
+      <Popover>
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              data-fork-monitoring-list
+              aria-label={`${label}: show background work`}
+            />
+          }
+        >
+          <span aria-hidden className="min-w-0 truncate">
+            {label}
+          </span>
+        </PopoverTrigger>
+        <PopoverPopup side="top" align="start" sideOffset={6} width="sm" padding="compact">
+          <ul data-fork-monitoring-tasks className="flex flex-col">
+            {props.tasks.map((task) => {
+              const childThreadId = task.childThreadId;
+              const row = (
+                <>
+                  <span className="min-w-0 flex-1 truncate">{task.label}</span>
+                  {childThreadId !== undefined ? (
+                    <ChevronRightIcon aria-hidden className="size-3.5 shrink-0 opacity-60" />
+                  ) : null}
+                </>
+              );
+              return (
+                <li key={task.taskId} className="flex">
+                  {childThreadId !== undefined ? (
+                    <button
+                      type="button"
+                      data-fork-monitoring-task
+                      aria-label={`Open ${task.label}`}
+                      onClick={() => props.onOpenThread(childThreadId)}
+                    >
+                      {row}
+                    </button>
+                  ) : (
+                    <span data-fork-monitoring-task aria-description={task.kind}>
+                      {row}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </PopoverPopup>
+      </Popover>
       <button
         type="button"
         data-fork-monitoring-stop

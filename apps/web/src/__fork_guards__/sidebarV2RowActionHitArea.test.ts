@@ -28,6 +28,7 @@ const sidebarV2 = readSibling("../components/Sidebar.tsx");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 const trailingColumn = readSibling("../custom/sidebarV2TrailingColumn.ts");
 const groupHeader = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
+const theme = readSibling("../theme.custom.css");
 
 /** Every row action, and how many times each is rendered: "Settle thread" twice
  * because the card and the slim row both offer it. A label that stops appearing
@@ -56,6 +57,16 @@ function openingTags(label: string): string[] {
 }
 
 describe("fork guard: sidebar-v2-row-action-hit-area", () => {
+  it("dresses the sweep verb badge in the card's chip recipe", () => {
+    // Upstream's badge is a --primary tint, the white action tone on the fork
+    // palettes; the stamp is what theme.custom.css keys the chip fill on. A
+    // sync that drops it lights the badge up like a button with CI green.
+    expect(sidebarV2).toMatch(/role="status"\s+(?:\/\*[\s\S]*?\*\/\s+)?data-fork-sweep-badge=""/u);
+    expect(theme).toMatch(
+      /\[data-fork-sweep-badge\]\s*\{[^}]*background: var\(--fork-context-chip-bg\);/u,
+    );
+  });
+
   it("sizes the shared action box at 24px with a visible hover surface", () => {
     // Fork-owned, and in a module of its own rather than in sidebarV2RowPolicy,
     // whose subject is title-recede and row surface. The upstream file carries

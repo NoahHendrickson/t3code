@@ -5,8 +5,13 @@
  */
 const THREAD_DETAILS_PANEL_RESTING_BUTTON_SURFACE_CLASS = "bg-transparent shadow-none";
 
+/* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface
+   `fork-thread-details-lift` is the hook theme.custom.css keys the fork's 4%
+   row lift on: every panel row, split half and icon action composes this
+   string, so the one class reaches exactly those and nothing else in the card. */
 const THREAD_DETAILS_PANEL_HOVER_SURFACE_CLASS =
-  "hover:!bg-black/[0.055] data-pressed:!bg-black/[0.055] dark:hover:!bg-white/[0.075] dark:data-pressed:!bg-white/[0.075]";
+  "fork-thread-details-lift hover:!bg-black/[0.055] data-pressed:!bg-black/[0.055] dark:hover:!bg-white/[0.075] dark:data-pressed:!bg-white/[0.075]";
+/* fork:end fork-popup-surface */
 
 const THREAD_DETAILS_PANEL_ROW_SURFACE_CLASS = `${THREAD_DETAILS_PANEL_RESTING_BUTTON_SURFACE_CLASS} ${THREAD_DETAILS_PANEL_HOVER_SURFACE_CLASS}`;
 

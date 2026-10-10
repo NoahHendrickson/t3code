@@ -2,49 +2,46 @@ import type { ReactNode } from "react";
 
 import { ComposerSurface } from "~/components/chat/ComposerSurface";
 
+import type { PendingBackgroundWorkPresentation } from "@t3tools/client-runtime/state/thread-execution";
+import type { ThreadId } from "@t3tools/contracts";
+
 import {
   ComposerBackgroundLivenessPill,
   type ComposerBackgroundLivenessPillProps,
 } from "./ComposerMonitoringPill";
 
-export type ComposerBackgroundLiveness =
-  | { readonly kind: "monitoring" }
-  | { readonly kind: "working"; readonly liveCount: number; readonly rainSeed: string };
-
-/** Build pill props from shell liveness, or null when nothing is live. */
+/** Build pill props from upstream's pending-work presentation. `waiting` is
+ * upstream's "this work will wake the agent" (subagents, monitors); a dev
+ * server that merely outlives the turn is monitoring-only, so it does not
+ * rain. The roster rides along as is for the pill's list. */
 export function resolveComposerLivenessPillProps(input: {
-  readonly liveness: "monitoring" | "working" | null;
+  readonly presentation: PendingBackgroundWorkPresentation;
   readonly rainSeed: string;
-  readonly liveCount: number;
   readonly stopping: boolean;
   readonly canStop: boolean;
   readonly onStop: () => void;
-}): ComposerBackgroundLivenessPillProps | null {
-  if (input.liveness === "monitoring") {
-    return {
-      kind: "monitoring",
-      stopping: input.stopping,
-      canStop: input.canStop,
-      onStop: input.onStop,
-    };
+  readonly onOpenThread: (threadId: ThreadId) => void;
+}): ComposerBackgroundLivenessPillProps {
+  const shared = {
+    stopping: input.stopping,
+    canStop: input.canStop,
+    onStop: input.onStop,
+    tasks: input.presentation.items,
+    onOpenThread: input.onOpenThread,
+  };
+  if (!input.presentation.waiting) {
+    return { kind: "monitoring", ...shared };
   }
-  if (input.liveness === "working") {
-    return {
-      kind: "working",
-      rainSeed: input.rainSeed,
-      liveCount: input.liveCount,
-      stopping: input.stopping,
-      canStop: input.canStop,
-      onStop: input.onStop,
-    };
-  }
-  return null;
+  return {
+    kind: "working",
+    rainSeed: input.rainSeed,
+    liveCount: input.presentation.items.filter((item) => item.kind === "subagent").length,
+    ...shared,
+  };
 }
 
-export function renderComposerLivenessPill(
-  props: ComposerBackgroundLivenessPillProps | null,
-): ReactNode {
-  return props ? <ComposerBackgroundLivenessPill {...props} /> : null;
+export function renderComposerLivenessPill(props: ComposerBackgroundLivenessPillProps): ReactNode {
+  return <ComposerBackgroundLivenessPill {...props} />;
 }
 
 /** The chips that must still show when BranchToolbar is not painting a visible

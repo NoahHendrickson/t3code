@@ -2597,12 +2597,72 @@
       [data-slot="dialog-popup"]
     ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
-    .dropdown-glass:has(> [data-slot="combobox-popup"])
+    .dropdown-glass:has(> [data-slot="combobox-popup"]),
+    [data-thread-details-card].dropdown-glass
   ) {
   background: var(--fork-popup-fill);
   border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);
+}
+
+/* ── Thread details panel (fork-popup-surface) ──────────────────────────────
+   Upstream's thread details card (orchestrator-V2 cycle) is a popover whose
+   `variant="panel"` popup carries no glass; the `dropdown-glass` sits on an
+   inner card (`data-thread-details-card`), which is why that card is a
+   branch of the one frost rule above rather than a surface of its own —
+   without it the panel opened on upstream's 16px glass beside the fork's
+   frosted menus. The inline (docked) presentation renders the same card
+   without a popup and takes the same branch. What is the panel's own here
+   is the radius: the composer vessel's, because the panel docks under the
+   header the way the composer sits under the transcript, and both are
+   cards on the stage; upstream's 22px read as a different object. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-thread-details-card].dropdown-glass {
+  border-radius: var(--fork-composer-radius);
+}
+
+/* Rows and split groups inside the card hover as the fork's 4% white lift
+   (--fork-outline-hover-bg), not upstream's black/white tints — the same
+   lift every outline action and changed-files row already takes. Upstream
+   composes every panel row, split half and icon action from one hover
+   surface string (threadDetailsPanelStyles.ts), and the fork appends its
+   hook to that string (fenced there): the lift keys on the hook, so it
+   reaches exactly those surfaces and never, say, the automations Switch
+   in the same card, and no Tailwind group name is a contract. Upstream
+   stacks a group tint under a segment tint so the hovered half of a split
+   control reads darker; the lift stacks the same way (4% + 4%). Upstream's
+   utilities are `!important` (`hover:!bg-…`), so this is too. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-thread-details-card]
+  .fork-thread-details-lift:is(:hover, [data-pressed], [data-popup-open], :has([data-popup-open])) {
+  background-color: var(--fork-outline-hover-bg) !important;
+}
+
+/* Section dividers take the vessel hairline, so the card's inner lines match
+   its own edge per palette instead of --border/65. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-thread-details-card] section {
+  border-color: var(--fork-composer-border);
+}
+
+/* ── Subagent spawn tree (fork-subagent-spawn-card) ─────────────────────────
+   Member rows are plain text on the stage, no card; a row that opens its
+   subagent's thread takes the same 4% lift every outline action does. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-subagent-tree]
+  button[data-fork-subagent-member]:hover {
+  background-color: var(--fork-outline-hover-bg);
+}
+
+/* ── Sidebar sweep badge (sidebar-v2-row-action-hit-area) ───────────────────
+   Upstream's sweep-to-settle badge is a --primary tint with a --primary/40
+   hairline: on the fork palettes --primary is the white action tone, so the
+   badge lit up like a button beside the card's muted chips. It takes the
+   context chip's fill and the pill hairline instead, in the card's ink. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-sweep-badge] {
+  border-color: var(--fork-pill-border);
+  border-radius: var(--fork-pill-radius);
+  background: var(--fork-context-chip-bg);
+  color: var(--fork-pill-fg, var(--foreground));
 }
 
 /* ── Project drop edge (sidebar-v2-project-grouping) ────────────────────────

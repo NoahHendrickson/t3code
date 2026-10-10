@@ -102,6 +102,63 @@
   height: 10px;
 }
 
+/* The label is a button when the pill has tasks to list: same ink, no chrome
+   of its own; the popover it opens is a popover-popup and so takes the one
+   frost recipe (fork-popup-surface). Rows inside hover as the 4% lift. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-list] {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* theme.custom.css lifts any hovered, pressed or open button in the context
+   row to the chip-hover fill, at a specificity the reset above loses to; the
+   label is text, not a chip, so it holds transparent in those states — the
+   stop button's own hover rule keeps its square the same way. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-list]:is(:hover, [data-pressed], [data-popup-open]):not(:disabled) {
+  background: transparent;
+}
+
+:root[data-fork="noahhendrickson-t3code"] button[data-fork-monitoring-list]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+:root[data-fork="noahhendrickson-t3code"] [data-fork-monitoring-task] {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  text-align: left;
+}
+
+:root[data-fork="noahhendrickson-t3code"] button[data-fork-monitoring-task] {
+  cursor: pointer;
+}
+
+:root[data-fork="noahhendrickson-t3code"] button[data-fork-monitoring-task]:hover {
+  background: var(--fork-outline-hover-bg, rgb(255 255 255 / 4%));
+}
+
 /* Working rain inside the liveness pill keeps its native 14px mark size —
    the context-row chip SVG rule only targets button/chip triggers, but pin
    the mark box so a future broader glyph rule cannot squash the grid. */

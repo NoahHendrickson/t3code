@@ -7507,16 +7507,14 @@ export default function ChatView(props: ChatViewProps) {
     if (presentation === null || !activeThread) {
       return null;
     }
-    // `waiting` is upstream's "this work will wake the agent" (subagents); a dev
-    // server that merely outlives the turn is monitoring-only, so it does not rain.
     return renderComposerLivenessPill(
       resolveComposerLivenessPillProps({
-        liveness: presentation.waiting ? "working" : "monitoring",
+        presentation,
         rainSeed: `${activeThread.environmentId}:${activeThread.id}`,
-        liveCount: presentation.items.filter((item) => item.kind === "subagent").length,
         stopping: isStoppingBackgroundWork,
         canStop: canOperateThread,
         onStop: () => void handleStopBackgroundWork(),
+        onOpenThread: onOpenRelatedThread,
       }),
     );
   }, [
@@ -7525,6 +7523,7 @@ export default function ChatView(props: ChatViewProps) {
     canOperateThread,
     handleStopBackgroundWork,
     isStoppingBackgroundWork,
+    onOpenRelatedThread,
   ]);
   /* fork:end fork-composer-shell */
   // Commands such as /compact and /goal clear run as their own turn. The draft

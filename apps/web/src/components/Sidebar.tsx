@@ -1515,6 +1515,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     props.sweepAction !== null ? (
       <span
         role="status"
+        /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+           The sweep's verb badge wears the card's own chip recipe (theme.custom.css
+           keys on this stamp) rather than upstream's primary tint. */
+        data-fork-sweep-badge=""
+        /* fork:end sidebar-v2-row-action-hit-area */
         className="pointer-events-none ml-auto inline-flex h-5 shrink-0 items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 text-2xs font-medium text-primary"
       >
         {sweepVerbBadge[props.sweepAction]}

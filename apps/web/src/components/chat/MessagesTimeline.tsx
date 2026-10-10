@@ -1,6 +1,9 @@
 import { ComputerUseAppIcon } from "~/components/Icons";
 import { useChatCanvas } from "./ChatCanvasContext";
 import { WorkLogBlock, WorkLogButton, WorkLogDetails, WorkLogList, WorkLogRow } from "./WorkLog";
+/* fork:begin fork-subagent-spawn-card — see .fork/customizations.yaml#fork-subagent-spawn-card */
+import { ForkSubagentGroup } from "~/custom/ForkSubagentGroup";
+/* fork:end fork-subagent-spawn-card */
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import type { WorktreeSetupSnapshot } from "@t3tools/contracts";
 import { ReadOnlySourcePreview } from "../files/AttachmentFilePreview";
@@ -2855,7 +2858,18 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
   const ctx = use(TimelineRowCtx);
   const { item, visibility, sourceThreadId } = row.projectedItem;
   if (item.type === "subagent" && (row.subagents?.length ?? 1) > 1) {
-    return <V2SubagentGroup key={row.id} row={row} />;
+    /* fork:begin fork-subagent-spawn-card — see .fork/customizations.yaml#fork-subagent-spawn-card
+       The batch renders as the fork's Figma tree instead of upstream's
+       avatar-stack group; V2SubagentGroup below stays for the next sync. */
+    return (
+      <ForkSubagentGroup
+        key={row.id}
+        row={row}
+        environmentId={ctx.activeThreadEnvironmentId}
+        onOpenThread={ctx.onOpenThread}
+      />
+    );
+    /* fork:end fork-subagent-spawn-card */
   }
   if (item.type === "secret_request") {
     return (
@@ -3076,6 +3090,7 @@ function subagentGroupTiming(
   };
 }
 
+// oxlint-disable-next-line no-unused-vars -- fork:begin fork-subagent-spawn-card: the fork renders ForkSubagentGroup at the one call site and keeps upstream's group verbatim for the next sync (see .fork/customizations.yaml#fork-subagent-spawn-card) fork:end fork-subagent-spawn-card
 const V2SubagentGroup = memo(function V2SubagentGroup({
   row,
 }: {

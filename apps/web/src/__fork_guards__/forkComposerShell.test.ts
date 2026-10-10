@@ -802,6 +802,25 @@ describe("fork guard: fork-composer-shell", () => {
     expect(pill).toContain("data-fork-monitoring-pill");
     expect(pill).toContain("data-fork-monitoring-stop");
     expect(pill).toContain("Stop background work");
+    // The count opens the list of what is running; a subagent's row opens its
+    // thread. The popup is a popover-popup, so it takes the one frost recipe.
+    expect(pill).toContain("data-fork-monitoring-list");
+    expect(pill).toContain("data-fork-monitoring-tasks");
+    expect(pill).toContain("onClick={() => props.onOpenThread(childThreadId)}");
+    // The pill takes upstream's pending-work roster as is; ChatView hands the
+    // presentation over and the strip derives liveness and the list from it.
+    expect(pill).toContain("readonly tasks: ReadonlyArray<PendingBackgroundWorkItem>;");
+    expect(strip).toContain("readonly presentation: PendingBackgroundWorkPresentation;");
+    expect(strip).toContain("tasks: input.presentation.items,");
+    expect(chatView).toContain("onOpenThread: onOpenRelatedThread,");
+    // The live region sits beside the trigger: inside it, "Stopping..." is
+    // presentational and never announced.
+    expect(pill).toMatch(/<span role="status" className="sr-only">[\s\S]{0,80}<Popover>/u);
+    expect(shellCss).toContain("button[data-fork-monitoring-list]");
+    expect(shellCss).toContain(
+      "button[data-fork-monitoring-list]:is(:hover, [data-pressed], [data-popup-open]):not(:disabled)",
+    );
+    expect(shellCss).toContain("button[data-fork-monitoring-task]:hover");
     expect(strip).toContain("resolveComposerLivenessPillProps");
     expect(strip).toContain("<ComposerSurface.ContextStrip>");
     expect(strip).toContain("export function renderComposerContextStripFallback({");
