@@ -173,6 +173,16 @@ describe("fork guard: fork-popup-surface", () => {
     for (const arm of SELECTOR_ARMS) {
       expect(tight(FORK_GLASS_POPUP_SELECTOR), arm).toContain(tight(arm));
     }
+    // The thread details card is a dropdown too once a thread has started:
+    // painted, cut out and opened at full strength like the rest. A new
+    // agent's draft keeps it frosted over the picture.
+    const NOT_DRAFT = ':root:not(:has([data-chat-composer-overlay="true"][data-draft-hero]))';
+    const detailsArm = `${NOT_DRAFT} [data-thread-details-panel="popover"] > [data-thread-details-card].dropdown-glass`;
+    expect(flat(glassPopup?.selector ?? "")).toContain(detailsArm);
+    expect(tight(FORK_GLASS_POPUP_SELECTOR)).toContain(tight(detailsArm));
+    expect(flat(opening?.selector ?? "")).toContain(
+      `${NOT_DRAFT} [data-slot="popover-popup"][data-starting-style]:has([data-thread-details-panel="popover"])`,
+    );
     // No list-side blur, no page surface, no clone: those were tried and read
     // as a modal dim rather than a frost.
     for (const candidate of cssRules(palettes)) {

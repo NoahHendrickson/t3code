@@ -29,6 +29,8 @@ export const FORK_GLASS_POPUP_SELECTOR = [
   ':is([data-slot="menu-popup"], [data-slot="menu-sub-content"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"]).dropdown-glass',
   '[data-slot="select-popup"] > .dropdown-glass',
   '.dropdown-glass:has(> [data-slot="combobox-popup"])',
+  // The thread details card, popover-presented in a started thread only.
+  ':root:not(:has([data-chat-composer-overlay="true"][data-draft-hero])) [data-thread-details-panel="popover"] > [data-thread-details-card].dropdown-glass',
 ].join(", ");
 
 /** The attributes Base UI moves on a popup's subtree when it closes or repositions. */

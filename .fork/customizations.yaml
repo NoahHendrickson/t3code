@@ -3647,7 +3647,13 @@
     flashes. A backdrop-filter still cannot help there: over the native
     material it never blurs the rows on screen (tested with plain squares
     in the root and in a body surface, with stacked layers, and with the
-    list composited on its own). The dialog
+    list composited on its own). The thread details card joins that recipe
+    and the cutout once a thread has started, as a popover only (its popup
+    is upstream's bare panel variant, so the arm names the card inside
+    it); docked inline it lives inside #root, where no hole can open
+    beneath it, and on a new agent's draft it stays frosted over the
+    picture, which the header's panel toggles match
+    (fork-glass-new-agent-stage). The dialog
     arm of the clear skips the one dialog that carries dropdown-glass.
     Generic surface-glass overlays still
     use the context-chip fill over --fork-popup-glass-floor — the stage as
@@ -3735,8 +3741,9 @@
 
 - id: fork-glass-popup-cutout
   intent: >
-    Under Glass, popups (menu, select, combobox, popover, glass tooltip and
-    the Usage dialog — the fork-popup-surface arms) read as the same live
+    Under Glass, popups (menu, select, combobox, popover, glass tooltip,
+    the Usage dialog — the fork-popup-surface arms — and, in a started
+    thread, the thread details card opened as a popover) read as the same live
     glass as the sidebar and the composer's control row, not as an
     estimated solid. While one is open, custom/forkGlassPopupCutout.ts masks
     a popup-shaped hole out of everything painted beneath it, so its own

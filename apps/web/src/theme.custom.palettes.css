@@ -752,7 +752,14 @@
    blurs the rows on screen (tested with plain squares drawn into the root
    and into a body surface, with stacked filter layers, and with the list
    composited on its own). Same arms as the base rule; the palette gate
-   outranks it. */
+   outranks it.
+
+   The thread details card joins them when it opens as a popover in a
+   started thread. Its popup is upstream's bare "panel" variant and the
+   glass sits on the card inside it, hence an arm of its own. On a new
+   agent's draft it keeps the base recipe, frosted over the picture, which
+   the header's panel toggles match (fork-glass-new-agent-stage); docked
+   inline it lives inside #root, where no hole can open beneath it. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     :is(
@@ -763,7 +770,10 @@
       [data-slot="dialog-popup"]
     ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
-    .dropdown-glass:has(> [data-slot="combobox-popup"])
+    .dropdown-glass:has(> [data-slot="combobox-popup"]),
+    :root:not(:has([data-chat-composer-overlay="true"][data-draft-hero]))
+      [data-thread-details-panel="popover"]
+      > [data-thread-details-card].dropdown-glass
   ) {
   background:
     linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
@@ -806,7 +816,9 @@
         [data-slot="dialog-popup"]
       ).dropdown-glass[data-starting-style],
     [data-slot="select-popup"][data-starting-style]:has(> .dropdown-glass),
-    .dropdown-glass > [data-slot="combobox-popup"][data-starting-style]
+    .dropdown-glass > [data-slot="combobox-popup"][data-starting-style],
+    :root:not(:has([data-chat-composer-overlay="true"][data-draft-hero]))
+      [data-slot="popover-popup"][data-starting-style]:has([data-thread-details-panel="popover"])
   ) {
   opacity: 1;
   scale: none;
