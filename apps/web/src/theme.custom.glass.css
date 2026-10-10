@@ -37,6 +37,19 @@
   anchor-name: --fork-glass-card;
 }
 
+/* Except while a floating preview is open. Its webview is a fixed element at
+   the app root (ElectronBrowserHost) at z-index 48, and its chrome — the
+   corner dot, the hover pill with the close button, the edge ring — sits in
+   the chat view at 49 to paint over it. Inside the chat view's stacking
+   context that 49 only counts within the chat view, which as a whole sits
+   under the root-level webview, so the chrome vanished behind the page.
+   The picture only shows on a draft, so a started thread loses nothing; a
+   draft with a floating preview open trades the picture for the controls. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-preview-mini-player]) {
+  isolation: auto;
+}
+
 /* The tokens the draft rules read, on the chat view and on any popup frosted
    over the card (data-fork-glass-frost, below), which portals out of the
    chat view and cannot inherit them. Tokens only. */
