@@ -124,7 +124,7 @@ describe("fork guard: fork-desktop-release", () => {
     expect(script).toContain('"$scratch/.t3-fork/userdata/state.sqlite"');
     expect(script).toContain('violated "the build created ~/.t3"');
     expect(script).toContain('-name ".t3" -o -name "t3code" -o -name "com.t3tools.t3code"');
-    expect(script).toContain('"$support/t3code-fork"');
+    expect(script).toContain('"$support/t3code-fork-v2"');
     expect(script).toContain('pkill -TERM -f "$app/Contents"');
     expect(script).toContain('cmp -s "$app/Contents/Resources/app.asar"');
   });

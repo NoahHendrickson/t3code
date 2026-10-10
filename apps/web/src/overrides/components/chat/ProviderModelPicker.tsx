@@ -12,9 +12,10 @@
  * composer's ComposerModelPicker fills it) adds the reasoning label to the
  * trigger and its panel under the pages, keeping the menu open on a pick.
  *
- * The fork also keeps the `compact` prop upstream dropped (#11002): the fork's
- * footer caps the trigger's width itself (custom/composerModelSlotCompact.ts)
- * instead of letting the composer's controls layout size it.
+ * The `compact` prop (dropped upstream in #11002, since restored) caps the
+ * trigger's width from the fork's footer (custom/composerModelSlotCompact.ts)
+ * instead of letting the composer's controls layout size it; the fork keeps
+ * the max width on the composer's trigger too, where upstream lifts it.
  */
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
@@ -309,6 +310,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                   driverKind={activeEntry.driverKind}
                   displayName={activeEntry.displayName}
                   accentColor={activeEntry.accentColor}
+                  acpRegistryAgentId={activeEntry.acpRegistryAgentId}
+                  acpRegistryIconUrl={activeEntry.acpRegistryIconUrl}
                   showBadge={showInstanceBadge}
                   className={cn("size-4", composerIconClassName)}
                   iconClassName={cn("size-4", props.activeProviderIconClassName)}

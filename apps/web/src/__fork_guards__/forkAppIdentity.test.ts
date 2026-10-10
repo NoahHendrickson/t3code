@@ -41,6 +41,8 @@ const read = (relativePath: string): string =>
   NodeFS.readFileSync(NodePath.join(repoRoot, relativePath), "utf8");
 
 const DESKTOP_ENVIRONMENT = "apps/desktop/src/app/DesktopEnvironment.ts";
+const DESKTOP_USER_DATA = "apps/desktop/src/app/DesktopUserData.ts";
+const DESKTOP_LEGACY_LOCAL_STORAGE = "apps/desktop/src/app/DesktopLegacyLocalStorage.ts";
 const DESKTOP_STATE_PATHS = "apps/desktop/src/app/DesktopStatePaths.ts";
 const DESKTOP_EARLY_STARTUP = "apps/desktop/src/app/DesktopEarlyElectronStartup.ts";
 const DESKTOP_PRE_READY = "apps/desktop/src/app/DesktopPreReadyPlatform.ts";
@@ -273,9 +275,22 @@ describe("fork guard: fork-app-identity", () => {
   });
 
   it("keeps production user data out of the shared electron directory", () => {
-    const environment = read(DESKTOP_ENVIRONMENT);
-    expect(environment).toContain('isDevelopment ? "t3code-dev" : "t3code-fork"');
-    expect(environment).not.toContain('isDevelopment ? "t3code-dev" : "t3code"');
+    // Since upstream's orchestrator V2 the Electron profile is chosen in
+    // DesktopUserData, not DesktopEnvironment. Upstream stepped "t3code" to
+    // "t3code-v2"; the fork steps "t3code-fork" to "t3code-fork-v2".
+    const userData = read(DESKTOP_USER_DATA);
+    expect(userData).toContain('{ current: "t3code-fork-v2", legacy: "T3 Code (Fork)" }');
+    expect(userData).not.toContain('current: "t3code-v2"');
+    // The Windows Local State copy sources the fork's own V1 profile.
+    expect(userData).toContain('"t3code-fork", "Local State"');
+    expect(userData).not.toContain('"t3code", "Local State"');
+    expect(read(DESKTOP_ENVIRONMENT)).not.toContain('"t3code-v2"');
+  });
+
+  it("imports V1 localStorage from the fork's own previous profile only", () => {
+    const legacy = read(DESKTOP_LEGACY_LOCAL_STORAGE);
+    expect(legacy).toContain('const V1_PROFILE_NAMES = ["t3code-fork"];');
+    expect(legacy).not.toContain('"T3 Code (Alpha)", "t3code"');
   });
 
   it("keeps the pre-ready early resolver on the fork's identity, agreeing with DesktopEnvironment", () => {
@@ -304,14 +319,15 @@ describe("fork guard: fork-app-identity", () => {
   });
 
   it("never adopts upstream's legacy user data directory", () => {
-    // resolveUserDataPath prefers the legacy directory whenever it exists, so
-    // leaving this pointed at "T3 Code (Alpha)" would hand the fork the real
-    // app's data even with every name above separated.
-    // Matched as the whole ternary rather than a bare name, so the surrounding
-    // comment explaining the hazard doesn't read as the hazard itself.
-    const environment = read(DESKTOP_ENVIRONMENT);
-    expect(environment).toContain('isDevelopment ? "T3 Code (Dev)" : "T3 Code (Fork)"');
-    expect(environment).not.toContain('isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)"');
+    // resolveUserDataPath reads the legacy slot (on Windows it copies that
+    // profile's credential keys), so leaving it pointed at "T3 Code (Alpha)"
+    // would hand the fork the real app's data even with every name above
+    // separated. Matched as the whole names object rather than a bare name,
+    // so the surrounding comment explaining the hazard doesn't read as the
+    // hazard itself.
+    const userData = read(DESKTOP_USER_DATA);
+    expect(userData).toContain('{ current: "t3code-fork-v2", legacy: "T3 Code (Fork)" }');
+    expect(userData).not.toContain('legacy: "T3 Code (Alpha)"');
   });
 
   it("registers a fork-owned app user model id", () => {
@@ -338,7 +354,8 @@ describe("fork guard: fork-app-identity", () => {
     // in this repo is already the fork — there is nothing to collide with.
     const environment = read(DESKTOP_ENVIRONMENT);
     expect(environment).toContain('"t3code-dev"');
-    expect(environment).toContain('"T3 Code (Dev)"');
     expect(environment).toContain('"com.t3tools.t3code.dev"');
+    // The Electron profile pair moved to DesktopUserData with upstream's V2.
+    expect(read(DESKTOP_USER_DATA)).toContain('{ current: "t3code-dev", legacy: "T3 Code (Dev)" }');
   });
 });

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { isLatestTurnSettled } from "~/session-logic";
+import { isLatestRunSettled } from "~/session-logic";
 
 import {
   summarizeVerifyReport,
@@ -198,14 +198,14 @@ export function selectSentPreview(
   return (runtimeTabId ? byTabId[runtimeTabId] : undefined) ?? null;
 }
 
-/** The session slice the readiness question consults — isLatestTurnSettled's own, so the two
+/** The runtime slice the readiness question consults — isLatestRunSettled's own, so the two
  * can never drift apart. */
-export type SentPreviewSession = Parameters<typeof isLatestTurnSettled>[1];
+export type SentPreviewRuntime = Parameters<typeof isLatestRunSettled>[1];
 
-/** The projected-turn slice the readiness question consults: isLatestTurnSettled's own plus
- * `requestedAt`, the correlation to the send. */
-export type SentPreviewLatestTurn = NonNullable<Parameters<typeof isLatestTurnSettled>[0]> & {
-  readonly requestedAt: string;
+/** The projected-run slice the readiness question consults: isLatestRunSettled's own plus
+ * `requestedAt`, the correlation to the send (null until the run has been requested). */
+export type SentPreviewLatestRun = NonNullable<Parameters<typeof isLatestRunSettled>[0]> & {
+  readonly requestedAt: string | null;
 };
 
 /**
@@ -220,16 +220,16 @@ export type SentPreviewLatestTurn = NonNullable<Parameters<typeof isLatestTurnSe
  *
  * So readiness is read off the thread's own projection instead of guessed at:
  *
- * - `latestTurn.requestedAt < record.sentAt` — the projection still shows a turn from BEFORE
- *   this send (the send's own turn hasn't projected yet, or is still queued for adoption).
+ * - `latestRun.requestedAt < record.sentAt` — the projection still shows a run from BEFORE
+ *   this send (the send's own run hasn't projected yet, or is still queued for adoption).
  *   Quiet. The two timestamps share one origin — adoption stamps `requestedAt` from the sent
  *   message's client-minted time — so the comparison never mixes clocks.
  * - `requestedAt >= sentAt` — the projection covers this send: its own turn, or any later one,
  *   whose completion equally means the page underneath may have changed. Now
- *   `isLatestTurnSettled` — the app's one shared answer to "is the turn actually over", the
- *   same predicate the sidebar trusts — decides. It stays false while `completedAt` is unset
- *   and while a session reports running, so both the adoption window and a live turn keep the
- *   prompt away without any timer.
+ *   `isLatestRunSettled` — the app's one shared answer to "is the run actually over", the
+ *   same predicate the sidebar trusts — decides. It stays false while the run's status is
+ *   still live and while the runtime names it as the active run, so both the adoption window
+ *   and a live turn keep the prompt away without any timer.
  * - A turn that began AND ended while the panel was unmounted needs no special case: on
  *   remount the projection already satisfies both checks and the prompt appears at once.
  *
@@ -240,12 +240,18 @@ export type SentPreviewLatestTurn = NonNullable<Parameters<typeof isLatestTurnSe
 export function shouldOfferPreviewResolution(input: {
   readonly record: SentPreviewRecord | null;
   readonly threadKey: string;
-  readonly latestTurn: SentPreviewLatestTurn | null;
-  readonly session: SentPreviewSession;
+  readonly latestRun: SentPreviewLatestRun | null;
+  readonly runtime: SentPreviewRuntime;
   readonly draftCount: number;
 }): boolean {
-  const { record, threadKey, latestTurn, session, draftCount } = input;
+  const { record, threadKey, latestRun, runtime, draftCount } = input;
   if (!record || record.threadKey !== threadKey || draftCount === 0) return false;
-  if (!latestTurn || Date.parse(latestTurn.requestedAt) < Date.parse(record.sentAt)) return false;
-  return isLatestTurnSettled(latestTurn, session);
+  if (
+    !latestRun ||
+    latestRun.requestedAt === null ||
+    Date.parse(latestRun.requestedAt) < Date.parse(record.sentAt)
+  ) {
+    return false;
+  }
+  return isLatestRunSettled(latestRun, runtime);
 }

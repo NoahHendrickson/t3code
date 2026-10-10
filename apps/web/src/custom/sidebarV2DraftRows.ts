@@ -9,9 +9,13 @@
  * the right project.
  */
 import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
+import {
+  presentThreadShell,
+  type EnvironmentThreadShell,
+} from "@t3tools/client-runtime/state/models";
 import type { ModelSelection, ScopedThreadRef } from "@t3tools/contracts";
 import { truncate } from "@t3tools/shared/String";
+import * as DateTime from "effect/DateTime";
 
 import type { ComposerThreadDraftState, DraftId, DraftSessionState } from "../composerDraftStore";
 import { isUnassignedDraft } from "./newAgentDraft";
@@ -42,35 +46,46 @@ export function sidebarDraftModelSelection(input: {
     : input.fallback;
 }
 
-/** Builds the list shell for a pre-promotion draft. */
+/** Builds the list shell for a pre-promotion draft — the same idle server
+    shape ChatView's `buildLocalDraftThread` presents, with the draft's title. */
 export function buildSidebarDraftShell(input: {
   readonly draft: DraftSessionState;
   readonly modelSelection: ModelSelection;
   readonly prompt?: string | null;
 }): EnvironmentThreadShell {
-  return {
-    id: input.draft.threadId,
-    environmentId: input.draft.environmentId,
+  const timestamp = DateTime.makeUnsafe(input.draft.createdAt);
+  const threadId = input.draft.threadId;
+  return presentThreadShell(input.draft.environmentId, {
+    id: threadId,
     projectId: input.draft.projectId,
     title: sidebarDraftTitleFromPrompt(input.prompt),
+    providerInstanceId: input.modelSelection.instanceId,
     modelSelection: input.modelSelection,
     runtimeMode: input.draft.runtimeMode,
     interactionMode: input.draft.interactionMode,
     branch: input.draft.branch,
     worktreePath: input.draft.worktreePath,
-    latestTurn: null,
-    createdAt: input.draft.createdAt,
-    updatedAt: input.draft.createdAt,
+    activeProviderThreadId: null,
+    lineage: { rootThreadId: threadId, parentThreadId: null, relationshipToParent: null },
+    forkedFrom: null,
+    createdBy: "user",
+    creationSource: "web",
+    latestRunId: null,
+    activeRunId: null,
+    status: "idle",
+    pendingRuntimeRequest: null,
+    latestVisibleMessage: null,
+    latestUserMessageAt: null,
+    hasActionableProposedPlan: false,
+    itemCount: 0,
+    visibleItemCount: 0,
+    createdAt: timestamp,
+    updatedAt: timestamp,
     archivedAt: null,
     settledOverride: null,
     settledAt: null,
-    session: null,
-    latestUserMessageAt: null,
-    hasPendingApprovals: false,
-    hasPendingUserInput: false,
-    hasActionableProposedPlan: false,
-    pullRequests: [],
-  };
+    deletedAt: null,
+  });
 }
 
 /**

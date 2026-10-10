@@ -56,7 +56,8 @@ describe("buildSidebarDraftShell", () => {
     expect(shell.title).toBe("New thread");
     expect(shell.id).toBe("thread-draft");
     expect(shell.hasPendingApprovals).toBe(false);
-    expect(shell.session).toBeNull();
+    expect(shell.runtime).toBeNull();
+    expect(shell.latestRun).toBeNull();
   });
 
   it("uses the unsaved composer prompt as the card title", () => {

@@ -91,13 +91,17 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
  * only because fork customizations list them; upstream carries the same
  * warnings on those lines.
  */
+// Re-measured at the 2026-10-05 sync (orchestrator V2): upstream's own
+// ChatView.tsx — a fork-owned file by manifest — went from 9/13/13 to 10/20/16
+// on memo-dependencies / preserve-manual-memoization / refs between the two
+// sync points; the fork's hunks add one preserve and one refs on top.
 export const DEFERRED_RULES = new Map([
   ["react(exhaustive-effect-dependencies)", 17],
-  ["react(immutability)", 1],
-  ["react(memo-dependencies)", 21],
-  ["react(preserve-manual-memoization)", 13],
+  ["react(immutability)", 0],
+  ["react(memo-dependencies)", 22],
+  ["react(preserve-manual-memoization)", 21],
   ["react(purity)", 1],
-  ["react(refs)", 31],
+  ["react(refs)", 36],
   ["react(set-state-in-effect)", 26],
   ["react(static-components)", 2],
 ]);

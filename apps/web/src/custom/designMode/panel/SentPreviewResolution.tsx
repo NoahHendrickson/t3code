@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
-import { environmentThreadDetails } from "~/state/threads";
+import { environmentThreadShells } from "~/state/threads";
 
 import { designModeBridge } from "../designModeBridge";
 import {
@@ -106,16 +106,17 @@ export function SentPreviewResolution({
   onDiscard: () => void;
 }) {
   const record = useDesignSentPreviews((state) => selectSentPreview(state.byTabId, runtimeTabId));
-  // Upstream dropped the useThreadSession wrapper (#9129); read the atom it wrapped.
-  const session = useAtomValue(environmentThreadDetails.sessionAtom(threadRef));
-  const latestTurn = useAtomValue(environmentThreadDetails.latestTurnAtom(threadRef));
+  // The shell carries the projected latest run and the runtime summary — the
+  // same two the sidebar's settled check reads (orchestrator V2 folded the
+  // session and turn atoms into it).
+  const shell = useAtomValue(environmentThreadShells.threadShellAtom(threadRef));
   const threadKey = scopedThreadKey(threadRef);
 
   const offer = shouldOfferPreviewResolution({
     record,
     threadKey,
-    latestTurn,
-    session,
+    latestRun: shell?.latestRun ?? null,
+    runtime: shell?.runtime ?? null,
     draftCount,
   });
 

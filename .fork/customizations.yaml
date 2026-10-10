@@ -63,6 +63,11 @@
     field leaves the editor or the action cluster unmounts, the recording is
     transcribed on the spot rather than left running with no control to end it.
     Dictation borrows the send button rather than adding controls beside it.
+    Since the orchestrator-V2 sync (2026-10-05) an idle mic also yields the
+    slot to upstream's resume action (a settled thread offering "Resume
+    thread"); a live session never does. Upstream now renders stop alone
+    while a turn runs, so the mic sits to stop's left on that branch and
+    otherwise takes the slot bare, without send's tooltip.
     With nothing to send, the slot shows an enabled filled microphone in
     place of a disabled send (never over a sending or connecting spinner,
     and a send in flight also blocks starting a session from the ghost mic
@@ -119,6 +124,11 @@
     - apps/web/src/custom/voice/forkDictationSession.ts
     - apps/web/src/custom/voice/forkVoiceInputBridge.ts
     - apps/web/src/custom/voice/useForkDictationController.ts
+    # Declares Promise.withResolvers for the web project: client-runtime's
+    # voice-input controller (upstream #15502) uses it, upstream's web never
+    # reaches that file, and the web lib is ES2023. Only the fork's dictation
+    # imports it from web.
+    - apps/web/src/custom/voice/promiseWithResolvers.d.ts
     - apps/web/src/custom/ComposerShell.tsx
     - apps/web/src/theme.custom.css
     - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
@@ -171,13 +181,13 @@
     timeout to fail deterministically on the slower hosted runners; those get
     a fenced per-test timeout raise rather than a product change, because the
     underlying cost is upstream's to fix and diverging in hot upstream logic
-    buys a conflict on every sync. Current carriers: imageCompression.test.ts's
+    buys a conflict on every sync. Current carrier: imageCompression.test.ts's
     give-up path (~15 encodes of an 8 MB stub through chunked base64 —
-    deterministic work, not flake) and client-runtime's persistence.test.ts
-    snapshot-encoding property (two 1,000-sample arbitraries, past the
-    package's 5 s default under the parallel Test job since the 2026-10-02
-    sync). session-logic.test.ts's 20,000-entry work-log benchmark carried
-    one until upstream #8585 dropped its timing assertion. No guard asserts these hunks; losing one turns CI red by
+    deterministic work, not flake). session-logic.test.ts's 20,000-entry
+    work-log benchmark carried one until upstream #8585 dropped its timing
+    assertion, and client-runtime's persistence.test.ts snapshot-encoding
+    property carried one until the orchestrator-V2 sync (2026-10-05) deleted
+    the file. No guard asserts these hunks; losing one turns CI red by
     itself, which is the enforcement.
   tier: 4
   files: []
@@ -186,7 +196,6 @@
     - .github/workflows/ci.yml
     - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
-    - packages/client-runtime/src/platform/persistence.test.ts
   verify:
     - apps/web/src/__fork_guards__/ciRunners.test.ts
 
@@ -305,8 +314,14 @@
     collapses onto the same value for both — bundle id, /Applications path,
     the ~/.t3 state tree, and the Electron user data directory — and a fork
     build would otherwise offer to replace the real app and adopt its live
-    database. legacyUserDataDirName is redirected too, so a fork build never
-    adopts the legacy directory upstream migrates from.
+    database. The Electron profile follows upstream's V2 scheme slot for
+    slot (DesktopUserData.ts): the fork's current profile is t3code-fork-v2
+    where upstream's is t3code-v2; the legacy slot upstream fills with
+    "T3 Code (Alpha)" is the never-matching sentinel "T3 Code (Fork)", so a
+    fork build never adopts or copies credentials from upstream's legacy
+    directory; and the V1 profile upstream imports localStorage and Windows
+    safeStorage keys from ("t3code") is the fork's own t3code-fork, so the
+    first V2 launch carries the fork's drafts over and never upstream's.
     The fork presents as "no3y Code": bundle id com.t3tools.t3code.fork,
     installs as "no3y Code.app", ships no3y-Code-* artifacts, packages the
     green-grid mark from assets/fork on all three platforms (plus web splash
@@ -405,6 +420,18 @@
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/app/DesktopEnvironment.test.ts
+    # Orchestrator V2 moved profile selection here: the fork's V2 profile,
+    # its never-matching legacy sentinel, and the V1 profile it imports from.
+    - apps/desktop/src/app/DesktopUserData.ts
+    - apps/desktop/src/app/DesktopUserData.test.ts
+    # Upstream asserts its own V2 profile name on the packaged-Windows bridge
+    # path; fenced to the fork's.
+    - apps/desktop/src/app/DesktopClerk.test.ts
+    # Upstream's Windows profile migration test names its own legacy and V2
+    # directories; fenced to the fork's pair.
+    - apps/desktop/src/app/DesktopPreReadyFileSystem.test.ts
+    - apps/desktop/src/app/DesktopLegacyLocalStorage.ts
+    - apps/desktop/src/legacyLocalStorageMerge.ts
     # The v0.0.32 pre-ready refactor: identity and state-dir logic that never
     # reads DesktopEnvironment, so fork values are restated there under
     # fences. The sync that introduced these files shipped WM class "t3code"
@@ -696,6 +723,14 @@
     unsent-draft row tint and its "Discard draft" hover action are refused on
     purpose — the surface encodes interaction and nothing else, and the hover
     cell is fork-owned — while its pen marker is kept.
+    Since the 2026-10-05 sync (orchestrator V2): upstream's "monitoring"
+    status is "waiting" and keeps the fork's breathing mark; the new "limited"
+    status (usage limit reached) draws the amber approval-tone dot, because
+    it is waiting on the user. Both <li> variants carry
+    data-thread-item={threadKey} so upstream's sweep can find rows under the
+    pointer, and the sweep's verb badge draws with the fork's glyphs. The
+    shelf headers keep their chevron (upstream moved its own headers to
+    CollapsibleSectionHeader and dropped the glyph).
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
@@ -727,6 +762,9 @@
     paths) is routinely the useful half, and the tooltip is already the
     row's overflow surface. A sync that reintroduces the literal is a
     regression even though it renders fine.
+    The message reads thread.runtime.lastError since orchestrator V2 renamed
+    the session summary; upstream's class-keyed colour (usage_limit warns,
+    everything else errors) is kept around the fork's real message.
   tier: 4
   files: []
   shadows: []
@@ -972,6 +1010,11 @@
     flat sortable list with section-marker drop verbs (#9731, #9750, #10378,
     #10453, #10464); Sidebar.drag.ts / Sidebar.pointer.ts / Sidebar.motion.ts
     stay on disk untouched as the landing pad if that is ever ported.
+    Since the 2026-10-05 sync Sidebar.pointer.ts is imported for one thing:
+    its SidebarPointerSensor drives upstream's sweep-to-settle/un-settle/wake
+    (#14768) over the fork's own ordered row keys. The single-list drag and
+    the context-drag-to-composer still ride that sensor upstream and remain
+    unadopted.
   tier: 4
   files:
     - apps/web/src/custom/sidebarV2ProjectGrouping.ts
@@ -1079,6 +1122,12 @@
     instead of the idle ring. A draft is inert by construction, so the ring
     read as "nothing happening" when the truth is "nothing sent yet"; the
     pencil is the draft-specific idle glyph.
+    Since the 2026-10-05 sync the draft shell is built through
+    presentThreadShell from the same idle server shape ChatView's
+    buildLocalDraftThread uses, the draft card's context menu is upstream's
+    buildDraftActionMenuItems (copy path/branch, project settings, discard
+    through discardDraftThread), sweeps skip draft cards, and the fenced
+    releaseComposerDraftUploads import outlives upstream's own use of it.
   tier: 4
   files:
     - apps/web/src/custom/sidebarV2DraftRows.ts
@@ -1178,6 +1227,10 @@
     chrome rows, whose buttons re-assert the /80 tint at full opacity —
     parent-level [&>svg] outweighs the icon's own class, so without that the
     fork tint is silently dead and the duotone glyphs double-fade.
+    Since the 2026-10-05 sync the reveal is group-any-hover (#15536, so a
+    secondary pointer such as a pen reveals the actions too), and upstream's
+    sweep (#14768) starts from these same buttons: a press-and-drag on
+    Settle, Un-settle or Wake applies that verb to every row swept over.
   tier: 4
   files:
     # Owned by fork-sidebar-chrome, which sets these rows' metrics; this entry
@@ -1386,6 +1439,8 @@
     - apps/web/src/main.tsx
     - apps/web/src/hooks/useTheme.ts
     - apps/web/src/components/settings/SettingsPanels.tsx
+    # Runs useSettingsRestore outside React; fenced to mock the fork palette hook.
+    - apps/web/src/components/settings/SettingsPanels.restore.test.tsx
     - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
   verify:
@@ -1942,6 +1997,13 @@
     The multi-project scope set is session-scoped on purpose: upstream
     persists a single scope key (#9416) in the UI state store, and the set
     needs a store field of its own shape before it can follow.
+    Since the 2026-10-05 sync upstream's SidebarBrandWidthProbe (which
+    AppSidebarLayout uses to size the collapsed rail) is re-implemented under
+    the fence to measure the fork's header geometry — the
+    --workspace-controls-left inset, the trigger box and the mark/wordmark —
+    not upstream's. Upstream's brand/pill wrap-and-clip fix and the MorphIcon
+    trigger morph are declined: the fork's pill hides under its own container
+    query and its trigger draws one glyph.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
@@ -1995,6 +2057,8 @@
     only dialog on that recipe, so under Glass the utility clear skips
     dialogs that carry dropdown-glass. The panel chrome does not paint
     bg-background, which would cover the frost from inside.
+    Upstream's model-detail dialog and price-override dialog (#15108) ride in
+    the shared body so they mount from the popover as well as the page.
   tier: 4
   files:
     - apps/web/src/custom/UsagePopover.tsx
@@ -2054,6 +2118,13 @@
     phosphor-duotone-icons. Upstream's framed-panel glyphs were hard to tell
     apart from the sidebar toggle three controls to the left; a filled half
     reads as "this edge" at a glance.
+    Since the 2026-10-05 sync the pills are upstream's ActionGroup and
+    ThreadDetailsControl, which also render a "panel" presentation inside the
+    new thread details panel. The data-fork-pill mark is toolbar-only; the
+    panel is upstream's surface and stays unmarked. Upstream's multiline git
+    progress readout carries a second fenced stamp, data-fork-pill-multiline,
+    that lets it out of the 28px pin so its output row shows; the toolbar path
+    is Button size="sm-multiline", which has no class the CSS could key on.
   tier: 4
   files:
     - apps/web/src/theme.custom.css
@@ -2166,6 +2237,9 @@
     - apps/web/src/components/WorkspacePageHeader.tsx
     # Defines .drag-region itself — the class the release rule overrides.
     - apps/web/src/index.css
+    # Upstream states the maximum-width case in literal viewports; fenced to
+    # read them relative to the reserve the shadow lowers.
+    - apps/web/src/components/threadSidebarWidth.test.ts
   verify:
     - apps/web/src/__fork_guards__/narrowWorkspaceLayout.test.ts
 
@@ -3292,23 +3366,33 @@
     - apps/web/src/components/chat/ChatComposer.tsx
     # Fenced hunks in onSend: pending design changes count toward
     # sendability, their markdown is appended to the outgoing message text,
-    # and they clear only once the turn start succeeds. A queued send and a
-    # multi-model send detach them from the composer instead (restored on
-    # failure or when the queue hands its messages back); a re-minted draft
-    # thread re-keys them; rewind strips the trailing run before recall.
+    # and they clear only once the turn start succeeds. Since the
+    # orchestrator-V2 sync (2026-10-05) queued sends are server-side runs that
+    # take the same single send path, so the pills ride every send; the
+    # client queue store and its hand-back are gone with upstream's. A
+    # multi-model send detaches them from the composer instead (restored on
+    # failure); a re-minted draft thread re-keys them on the background path;
+    # rewind strips the trailing run before recall. Editing an already queued
+    # run carries text, attachments and context records only: pills stay
+    # pending for the next real send, and the composer does not count them
+    # toward an empty "Update" (the edit path has no client createdAt for the
+    # preview correlation markSent needs). The blocks already in the queued
+    # text are split off before the draft is seeded and re-appended verbatim
+    # on save (forkDesignChangeRun), so the editor never shows the markup; an
+    # edit that empties the prose but keeps the run still saves. A recovered
+    # edit (run started or removed mid-edit) keeps the prose only.
     # Accepted limitation: a multi-model send mints no sent-preview record, so
     # it gets no "did it land?" prompt — preview tabs belong to the draft's
     # thread, and none of the started threads can answer for it.
     - apps/web/src/components/ChatView.tsx
-    # Fenced pill slot on QueuedComposerMessage, and its send: the blocks are
-    # appended at dispatch and the send recorded for the resolution prompt.
-    # MessagesTimeline's queued row (watched above) counts them in its summary.
-    - apps/web/src/queuedMessageStore.ts
-    - apps/web/src/components/chat/sendQueuedMessage.ts
-    - apps/web/src/components/QueuedMessageSender.test.tsx
     # Fenced strip-first extraction + transcript chip render in
     # UserTimelineRow, so sent design blocks show as chips.
     - apps/web/src/components/chat/MessagesTimeline.tsx
+    # Fenced strip-first extraction in the queued-runs rows: the summary and
+    # tooltip show the prose and a "N design changes" count beside the
+    # attachment thumbnails, never the raw blocks (replaces the pre-V2
+    # client queue row's count, d3ef0f0e6b).
+    - apps/web/src/components/chat/QueuedRunsControl.tsx
     # Fenced plugin import + registration of fork:design-mode-engine.
     - apps/web/vite.config.ts
     # Fenced exclude of the engine TS island.
@@ -3837,6 +3921,10 @@
     utility and that footer inside the fork's .fork-timeline-cutoff
     scroller; hover:bg-accent/50 on the filled bg-card/50 tile is
     deliberately left alone.
+    Since the orchestrator-V2 sync (2026-10-05) upstream's tool-call rows
+    carry no hover wash at all (#15506 dropped the cards), so the utility
+    rule has no carrier in MessagesTimeline and sits idle for any upstream
+    row that regains it; the user-message footer is the live carrier.
   tier: 1
   files:
     - apps/web/src/theme.custom.css
@@ -3956,12 +4044,24 @@
     the panel model has them. A sync that restores the bordered bar, drops
     the member list, or unhooks onOpenAgents is a silent visual and
     functional regression.
+
+    PARKED since the orchestrator-V2 sync (2026-10-05): upstream's
+    orchestrator V2 removed the spawn CTA row and the agent-panel model the
+    tree was built on (AgentSpawnRow, workEntry.agentSpawn, AgentPanelModel,
+    formatSubagentModelLabel); spawn batches now render through
+    MessagesTimeline's V2SubagentGroup — a collapsible group with avatars, a
+    status summary, elapsed time and member rows, fed from projected V2
+    subagent items. The fork tree (AgentSpawnCtaRow.tsx, git history before
+    this sync) needs a redesign against that model, not a port, so upstream's
+    group renders meanwhile. The guard pins the parked state: no stale
+    import, no bordered bar, and the V2 group as the renderer. Re-open with a
+    V2-shaped implementation of the Figma tree.
   tier: 1
-  files:
-    - apps/web/src/custom/AgentSpawnCtaRow.tsx
+  files: []
   shadows: []
   watch:
-    # Fenced import plus the thin AgentSpawnCtaRow wrapper.
+    # Upstream's V2SubagentGroup renders spawn batches here while the fork
+    # tree is parked.
     - apps/web/src/components/chat/MessagesTimeline.tsx
   verify:
     - apps/web/src/__fork_guards__/forkSubagentSpawnCard.test.ts
@@ -4147,24 +4247,29 @@
     race that is rare in practice.
 
     The policy lives in its own server file (resolveBootstrapThreadBranch),
-    unit-tested next to it; ws.ts carries only the import and the call at the
-    bootstrap create. Only that call site is wired: a bare thread.create
-    (web's own new-thread path, which already names its branch) stays as the
-    client sent it by product choice, not because the resolver could not run
-    there — the command carries projectId and worktreePath, so wiring it is
-    one more call if a future client needs it.
+    unit-tested next to it. Since the orchestrator-V2 sync (2026-10-05) the
+    create is ThreadLaunchService's: the fence there carries the import and
+    the call that computes the thread.create branch from the launch's
+    workspace strategy (root or an existing folder reads the checkout; a
+    worktree launch names its own branch through provisioning and is left
+    alone). A launch that reuses a client-created thread
+    (reuseExistingThread) keeps the branch the client recorded, by product
+    choice. Upstream mobile now also sends the live checkout at send time
+    (currentCheckoutBranch), but only when it starts rather than queues, and
+    only once a store build carries it; the server fill-in still covers every
+    client.
   tier: 4
   files:
     - apps/server/src/git/resolveBootstrapThreadBranch.ts
     - apps/server/src/git/resolveBootstrapThreadBranch.test.ts
   shadows: []
   watch:
-    - apps/server/src/ws.ts
-    - apps/server/src/server.test.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
   verify:
     - apps/web/src/__fork_guards__/serverLocalThreadBranch.test.ts
     - apps/server/src/git/resolveBootstrapThreadBranch.test.ts
-    - apps/server/src/server.test.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
 
 - id: server-local-checkout-branch-follow
   intent: >
@@ -4174,14 +4279,16 @@
     as its recorded branch, so the sidebar card, the PR badge and the
     composer chip all agree for the thread whose agent did the work.
 
-    Upstream (#5159) follows this drift only inside a worktree owned by
-    exactly one thread and refuses every shared cwd, because a shared
+    Upstream V1 (#5159) followed this drift only inside a worktree owned by
+    exactly one thread and refused every shared cwd, because a shared
     checkout belongs to many threads and following it for all of them would
-    hand one PR to every card in the project. The fork keeps that refusal
-    for worktree threads and lifts it for local threads, but only ever for
-    the thread whose turn completed: the other local threads keep their
-    record and the composer's "Branch changed" banner, since nothing they
-    did moved the checkout.
+    hand one PR to every card in the project. Upstream's orchestrator V2
+    (#2829) carries no drift follow at all: run finalization only refreshes
+    the PR cache when the checkout already matches the record. The fork adds
+    the local-thread follow on its own, and only ever for the thread whose
+    turn completed: the other local threads keep their record and the
+    composer's "Branch changed" banner, since nothing they did moved the
+    checkout. Worktree threads are left alone, as upstream V2 leaves them.
 
     Accepted consequence: a thread that runs a casual turn on a branch some
     other thread's agent left checked out adopts that branch and its PR,
@@ -4192,21 +4299,38 @@
     fix. The default branch is excluded: it is the shared checkout's resting
     state after a merge, not the thread's work, so a follow-up turn there
     keeps the recorded branch and its PR instead of adopting `main` (the
-    line refreshPullRequestAfterTurn already draws). Detached HEAD,
-    temporary placeholder checkouts, threads with no recorded branch, and
-    the decider's expectedBranch compare-and-swap are all upstream's guards
-    and stay as they are. The record still updates only at turn completion;
-    a checkout switched without a turn shows on the composer's live chip
-    until the next turn, as before.
+    line upstream's PR refresh already draws). Detached HEAD, temporary
+    placeholder checkouts, threads with no recorded branch, and a newer run
+    already active are refused the same way. V2's thread.metadata.update has
+    no expectedBranch compare-and-swap; the adoption is guarded by
+    expectedWorktreePath null (a thread that moved into a worktree meanwhile
+    is left alone) and the rare rename-vs-follow race is accepted. The record
+    still updates only at turn completion; a checkout switched without a turn
+    shows on the composer's live chip until the next turn, as before.
+
+    Shape: the policy and its Context.Reference live in the fork's own
+    forkLocalCheckoutBranchFollow.ts. RunFinalizationService's observer hands
+    back the checkout status it already read (no second git status per turn)
+    and finalize passes it to the follower; runtimeLayer provides the real
+    follower, backed by ThreadManagementService, to production only — thread
+    management sits above the orchestrator and finalization below the effect
+    executor, so this closes no layer cycle, and the replay harness and unit
+    tests keep the no-op default. The follower never fails a finalization.
   tier: 4
-  files: []
+  files:
+    - apps/server/src/orchestration-v2/forkLocalCheckoutBranchFollow.ts
+    - apps/server/src/orchestration-v2/forkLocalCheckoutBranchFollow.test.ts
   shadows: []
   watch:
-    - apps/server/src/orchestration/Layers/CheckpointReactor.ts
-    - apps/server/src/orchestration/Layers/CheckpointReactor.test.ts
+    - apps/server/src/orchestration-v2/RunFinalizationService.ts
+    - apps/server/src/orchestration-v2/RunFinalizationService.test.ts
+    # Fenced observer mocks: refresh now returns the status, not void.
+    - apps/server/src/orchestration-v2/RunExecutionService.test.ts
+    - apps/server/src/orchestration-v2/runtimeLayer.ts
   verify:
     - apps/web/src/__fork_guards__/serverLocalCheckoutBranchFollow.test.ts
-    - apps/server/src/orchestration/Layers/CheckpointReactor.test.ts
+    - apps/server/src/orchestration-v2/forkLocalCheckoutBranchFollow.test.ts
+    - apps/server/src/orchestration-v2/RunFinalizationService.test.ts
 
 - id: server-repository-identity-base-remote
   intent: >

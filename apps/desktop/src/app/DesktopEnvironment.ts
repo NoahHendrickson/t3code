@@ -87,8 +87,6 @@ export class DesktopEnvironment extends Context.Service<
     readonly linuxWmClass: string;
     readonly linuxApplicationsDir: string;
     readonly appImagePath: Option.Option<string>;
-    readonly userDataDirName: string;
-    readonly legacyUserDataDirName: string;
     readonly defaultDesktopSettings: DesktopAppSettings.DesktopSettings;
     readonly runtimeInfo: DesktopRuntimeInfo;
     readonly resolvePickFolderDefaultPath: (rawOptions: unknown) => Option.Option<string>;
@@ -259,20 +257,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
     joinPath: path.join,
     t3Home: config.t3Home,
   });
-  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-  // Electron-side identity stays forked: both builds are non-development, so
-  // without these overrides they share the same Electron user data directory —
-  // and the legacy directory upstream migrates from, which is why
-  // legacyUserDataDirName is redirected too rather than left pointing at
-  // upstream's "T3 Code (Alpha)".
-  const userDataDirName = isDevelopment ? "t3code-dev" : "t3code-fork";
-  // "T3 Code (Fork)" is a deliberate sentinel: it has never named a real
-  // directory and must never start to. resolveUserDataPath prefers the legacy
-  // directory whenever one exists, so its only job is to never match anything
-  // — in particular, do NOT "fix" it to upstream's "T3 Code (Alpha)" (hands
-  // the fork the real app's data) or to a name a fork build once shipped.
-  const legacyUserDataDirName = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Fork)";
-  // fork:end fork-app-identity
   const linuxApplicationsDir = path.join(
     Option.getOrElse(config.xdgDataHome, () => path.join(homeDirectory, ".local", "share")),
     "applications",
@@ -331,8 +315,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
     // fork:end fork-app-identity
     linuxApplicationsDir,
     appImagePath: config.appImagePath,
-    userDataDirName,
-    legacyUserDataDirName,
     defaultDesktopSettings: DesktopAppSettings.resolveDefaultDesktopSettings(input.appVersion),
     runtimeInfo: resolveDesktopRuntimeInfo({
       platform: input.platform,

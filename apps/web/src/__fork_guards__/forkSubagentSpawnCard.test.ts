@@ -2,9 +2,11 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-subagent-spawn-card`.
  *
- * The transcript spawn CTA is a thin wrapper over the fork-owned tree. A
- * sync that drops the import, restores the bordered bar, or unhooks
- * onOpenAgents compiles and ships the old one-line card.
+ * The customization is parked since the orchestrator-V2 sync: upstream
+ * removed the spawn CTA row and the agent-panel model the fork tree drew
+ * from, and spawn batches render through V2SubagentGroup. This pins that
+ * parked state so a sync neither resurrects a dangling import of the removed
+ * tree nor brings back the bordered one-line bar the tree replaced.
  */
 
 import * as NodeFS from "node:fs";
@@ -16,41 +18,18 @@ function readSibling(relativePath: string): string {
 }
 
 const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
-const card = readSibling("../custom/AgentSpawnCtaRow.tsx");
 
-describe("fork guard: fork-subagent-spawn-card", () => {
-  it("routes the spawn CTA through the fork tree", () => {
-    expect(timeline).toContain('from "~/custom/AgentSpawnCtaRow"');
-    expect(timeline).toContain("<ForkAgentSpawnCtaRow");
-    expect(timeline).toContain("onOpenAgents={onOpenAgents}");
+describe("fork guard: fork-subagent-spawn-card (parked)", () => {
+  it("renders spawn batches through upstream's V2 group while the tree is parked", () => {
+    expect(timeline).toContain("<V2SubagentGroup key={row.id} row={row} />");
+    expect(timeline).not.toContain('from "~/custom/AgentSpawnCtaRow"');
+    expect(timeline).not.toContain("<ForkAgentSpawnCtaRow");
     expect(timeline).not.toContain("Open Agents ▸");
     expect(timeline).not.toContain("border-border/60 bg-card/50");
-  });
-
-  it("keeps the Figma header, member rows, and open-agents action", () => {
-    expect(card).toContain('from "@phosphor-icons/react"');
-    expect(card).toContain("TreeView");
-    expect(card).toContain('weight="regular"');
-    // Lead/status wording comes from upstream's summary helper since the
-    // 2026-09-08 sync; the card only strips its check glyph.
-    expect(card).toContain("deriveAgentSpawnSummary({");
-    expect(card).toContain('summary.status.replace(/^✓ /u, "")');
-    // The coordinator's own status keeps a workflow live between dynamic
-    // member launches; without it `live` falls back to member counts.
-    expect(card).toContain("coordinatorStatus: workflowGroup?.workflow.status,");
-    expect(card).toContain("View agents");
-    expect(card).toContain("onClick={props.onOpenAgents}");
-    expect(card).toContain("SidebarV2WorkingRain");
-    expect(card).toContain("SidebarV2IdleMark");
-    expect(card).toContain("formatSubagentTokenCount");
-    expect(card).toContain("formatSubagentModelLabel");
-    expect(card).toContain("resolveSpawnCta");
-    expect(card).toContain("coordinatorTokens");
-    expect(card).toContain("w-full min-w-0");
-    expect(card).toContain("SPAWN_MEMBER_VISUAL");
-    expect(card).toContain("data-fork-subagent-spawn-card");
-    expect(card).not.toContain('tone="input"');
-    expect(card).not.toContain("border-border/60");
-    expect(card).not.toContain("bg-card/50");
+    expect(
+      NodeFS.existsSync(
+        NodeURL.fileURLToPath(new URL("../custom/AgentSpawnCtaRow.tsx", import.meta.url)),
+      ),
+    ).toBe(false);
   });
 });

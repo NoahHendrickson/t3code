@@ -308,7 +308,9 @@ describe("fork guard: narrow-workspace-layout", () => {
     // Upstream #7153 moved the strip out of ChatView into the shared header.
     const pageHeader = readSibling("../components/WorkspacePageHeader.tsx");
     expect(pageHeader).toContain('electron && "drag-region"');
-    expect(chatView).toContain("<WorkspacePageHeader");
+    // The orchestrator-V2 sync inlined ChatView's header again; it still draws
+    // the strip through the same drag-region class.
+    expect(chatView).toContain('"drag-region flex h-[var(--workspace-topbar-height)]');
   });
 
   it("shows the floating layer's shadow only while the panel is open", () => {

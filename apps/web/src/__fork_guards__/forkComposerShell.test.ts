@@ -453,7 +453,10 @@ describe("fork guard: fork-composer-shell", () => {
   it("opens the workspace select above the context chip row", () => {
     // Assert independently — prop order must not matter to the guard.
     expect(envModeSelector).toMatch(/SelectPopup[^>]*alignItemWithTrigger=\{false\}/u);
-    expect(envModeSelector).toMatch(/SelectPopup[^>]*side="top"/u);
+    // Toolbar only: in the thread details panel the select keeps upstream's side.
+    expect(envModeSelector).toMatch(
+      /SelectPopup[^>]*side=\{displayMode === "panel" \? undefined : "top"\}/u,
+    );
   });
 
   it("keeps context chips at 24px and the meter outside ghost geometry", () => {
@@ -853,10 +856,13 @@ describe("fork guard: fork-composer-shell", () => {
     expect(cutoff?.body).toMatch(/(?<!-webkit-)mask-image:/u);
     expect(cutoff?.body).toContain("-webkit-mask-image:");
 
-    // ChatView stamps the value the mask reads.
+    // ChatView stamps the value the mask reads, from the composer overlay's
+    // published height. Upstream's ChatCanvas owns the chat column and takes no
+    // ref, so the stamp reaches it from the overlay element.
     const chatView = readSibling("../components/ChatView.tsx");
     expect(chatView).toContain('"--fork-composer-inset"');
-    expect(chatView).toContain("composerOverlayHeight");
+    expect(chatView).toContain('?.closest<HTMLElement>("[data-chat-canvas]")');
+    expect(chatView).toContain("publishComposerOverlayHeight");
 
     // The class is unconditional. Upstream's top fade drops out whenever a
     // banner sits above the timeline, and if the cutoff rode on that class the

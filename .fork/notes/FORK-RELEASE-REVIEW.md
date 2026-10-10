@@ -121,13 +121,13 @@ app's data.
 
 ### The fix
 
-|                      | After #6                                        |
-| -------------------- | ----------------------------------------------- |
-| Bundle id            | `com.t3tools.t3code.fork`                       |
-| Installed path       | `/Applications/T3 Code Fork.app`                |
-| State dir            | `~/.t3/userdata-fork`                           |
-| Electron user data   | `t3code-fork`                                   |
-| Legacy migration dir | `T3 Code (Fork)` (a name that will never exist) |
+|                      | After #6                                                                    |
+| -------------------- | --------------------------------------------------------------------------- |
+| Bundle id            | `com.t3tools.t3code.fork`                                                   |
+| Installed path       | `/Applications/T3 Code Fork.app`                                            |
+| State dir            | `~/.t3/userdata-fork`                                                       |
+| Electron user data   | `t3code-fork-v2` (V1 profile `t3code-fork` is imported once, never adopted) |
+| Legacy migration dir | `T3 Code (Fork)` (a name that will never exist)                             |
 
 Touched, all fenced `fork:begin fork-app-identity` / `fork:end`:
 
@@ -168,17 +168,17 @@ there was never a window where the only available build was the bad one.
 
 Everything here was actually run, not inferred.
 
-| Claim                           | How                                                                                                              |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Unsigned build needs no secrets | Built a DMG locally with none present; exit 0, 226 MB                                                            |
-| Fork build ships fork code      | Mounted DMG; found fork marker `noahhendrickson-t3code` and Phosphor icons in bundle                             |
-| Published v0.1.1 is safe        | Downloaded the **published** DMG, mounted it: `T3 Code Fork.app`, `CFBundleIdentifier = com.t3tools.t3code.fork` |
-| Fork state paths are packaged   | `grep -a` inside `app.asar`: `userdata-fork` ×2, `t3code-fork` ×4, `T3 Code (Fork)` ×2                           |
-| Real app undamaged              | `codesign -dvvv` → `T3 Tools, Inc. (ARK85ZXQ4Z)`; `spctl` → `accepted / Notarized Developer ID`; mtime Jun 29    |
-| #4 gate cascades                | Parsed `release.yml` as YAML: 10 jobs, `ungated jobs: []`, triggers intact                                       |
-| Guards are non-vacuous          | Reverted each customization in turn and confirmed its guard goes red                                             |
-| Test suites                     | desktop 364 passed (50 files); scripts 147 passed (16); fork guards 44 passed (10)                               |
-| Typecheck                       | exit 0 across desktop/web/scripts                                                                                |
+| Claim                           | How                                                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Unsigned build needs no secrets | Built a DMG locally with none present; exit 0, 226 MB                                                                   |
+| Fork build ships fork code      | Mounted DMG; found fork marker `noahhendrickson-t3code` and Phosphor icons in bundle                                    |
+| Published v0.1.1 is safe        | Downloaded the **published** DMG, mounted it: `T3 Code Fork.app`, `CFBundleIdentifier = com.t3tools.t3code.fork`        |
+| Fork state paths are packaged   | `grep -a` inside `app.asar`: `userdata-fork`, `t3code-fork-v2`, `t3code-fork` (V1 import source only), `T3 Code (Fork)` |
+| Real app undamaged              | `codesign -dvvv` → `T3 Tools, Inc. (ARK85ZXQ4Z)`; `spctl` → `accepted / Notarized Developer ID`; mtime Jun 29           |
+| #4 gate cascades                | Parsed `release.yml` as YAML: 10 jobs, `ungated jobs: []`, triggers intact                                              |
+| Guards are non-vacuous          | Reverted each customization in turn and confirmed its guard goes red                                                    |
+| Test suites                     | desktop 364 passed (50 files); scripts 147 passed (16); fork guards 44 passed (10)                                      |
+| Typecheck                       | exit 0 across desktop/web/scripts                                                                                       |
 
 A backup of the live state was taken before any of this:
 `~/t3-userdata-backup-20260725-1815` (93 MB).

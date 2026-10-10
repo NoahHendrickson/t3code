@@ -164,8 +164,13 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     expect(sidebar).toMatch(
       /for \(const section of activeSections\)[\s\S]{0,600}?draftIdByThreadKey\.has\(threadKey\)[\s\S]{0,200}?settledOverride === "settled"[\s\S]{0,300}?threadSettlement/u,
     );
+    // The batch itself is the hoisted settleThreads (shared with multi-select
+    // and upstream's sweep); the header's callback only looks up its keys.
     expect(sidebar).toMatch(
-      /const settleAllThreadsInProject = useCallback\([\s\S]{0,600}?const coSettlingKeys = new Set\(threadKeys\);[\s\S]{0,300}?attemptSettle\(scopeThreadRef\(thread\.environmentId, thread\.id\), \{ coSettlingKeys \}\);/u,
+      /const settleThreads = useCallback\([\s\S]{0,200}?const coSettlingKeys = new Set\(threadKeys\);[\s\S]{0,300}?attemptSettle\(scopeThreadRef\(thread\.environmentId, thread\.id\), \{ coSettlingKeys \}\);/u,
+    );
+    expect(sidebar).toMatch(
+      /const settleAllThreadsInProject = useCallback\([\s\S]{0,300}?settleThreads\(threadKeys\);/u,
     );
     const theme = readSibling("../theme.custom.css");
     expect(theme).toContain("[data-fork-section-actions][data-fork-menu-open]");

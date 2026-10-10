@@ -30,7 +30,7 @@ import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, StarIcon } fr
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { getProviderStatusMessage, hasProviderSetup } from "./ProviderStatusBanner";
 import { buildModelPickerSearchText, scoreModelPickerSearch } from "./modelPickerSearch";
-import { getDisplayModelName, ModelEsque, PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
+import { getDisplayModelName, ModelEsque } from "./providerIconUtils";
 import { MenuItem, MenuSeparator } from "../ui/menu";
 import { Badge } from "../ui/badge";
 import { Kbd } from "../ui/kbd";
@@ -63,6 +63,8 @@ type ModelPickerItem = {
   driverKind: ProviderDriverKind;
   instanceDisplayName: string;
   instanceAccentColor?: string | undefined;
+  acpRegistryAgentId?: string | undefined;
+  acpRegistryIconUrl?: string | undefined;
   continuationGroupKey?: string | undefined;
   isLegacy?: boolean | undefined;
   isUnavailable?: boolean | undefined;
@@ -351,6 +353,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           driverKind: entry.driverKind,
           instanceDisplayName: entry.displayName,
           ...(entry.accentColor ? { instanceAccentColor: entry.accentColor } : {}),
+          ...(entry.acpRegistryAgentId ? { acpRegistryAgentId: entry.acpRegistryAgentId } : {}),
+          ...(entry.acpRegistryIconUrl ? { acpRegistryIconUrl: entry.acpRegistryIconUrl } : {}),
           ...(entry.continuationGroupKey
             ? { continuationGroupKey: entry.continuationGroupKey }
             : {}),
@@ -704,9 +708,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     const isFavorite = favoritesSet.has(modelKey);
     const isSelected = selectedModelKeySet.has(modelKey);
     const jumpLabel = modelJumpLabelByKey.get(modelKey);
-    const ProviderIcon = showProvider
-      ? (PROVIDER_ICON_BY_PROVIDER[model.driverKind] ?? null)
-      : null;
+    // Upstream retired its driver-keyed glyph table; the instance icon carries
+    // the ACP registry art and accent the row's provider actually has.
+    const providerEntry = showProvider ? entryByInstanceId.get(model.instanceId) : undefined;
     const providerLabel = model.subProvider
       ? `${model.instanceDisplayName} · ${model.subProvider}`
       : model.instanceDisplayName;
@@ -723,8 +727,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
     const label = (
       <>
-        {ProviderIcon ? (
-          <ProviderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        {providerEntry ? (
+          <span className="shrink-0 text-muted-foreground" aria-hidden>
+            {renderInstanceIcon(providerEntry)}
+          </span>
         ) : null}
         <span className="min-w-0 truncate">{modelName}</span>
         {showProvider ? (
@@ -862,6 +868,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       driverKind={entry.driverKind}
       displayName={entry.displayName}
       accentColor={entry.accentColor}
+      acpRegistryAgentId={entry.acpRegistryAgentId}
+      acpRegistryIconUrl={entry.acpRegistryIconUrl}
       showBadge={shouldShowInstanceBadge(entry, instanceEntries)}
       className="size-4"
       iconClassName="size-4"

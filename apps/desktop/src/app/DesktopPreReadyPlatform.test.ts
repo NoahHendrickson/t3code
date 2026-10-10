@@ -81,64 +81,62 @@ describe("DesktopPreReadyPlatform", () => {
     );
   });
 
-  for (const previousEntry of [undefined, 'Exec="/Applications/deleted-previous.AppImage" %U']) {
-    it.effect(
-      `prepares a ${previousEntry ? "stale" : "missing"} Linux desktop entry before startup yields`,
-      () => {
-        vi.stubEnv("VITE_DEV_SERVER_URL", "");
-        vi.stubEnv("XDG_DATA_HOME", "/xdg");
-        vi.stubEnv("APPIMAGE", "/Applications/current.AppImage");
-        getSwitchValueMock.mockReturnValue("");
-        let desktopName = "t3code.desktop";
-        let desktopEntry = previousEntry;
-        let iconInstalled = false;
-        copyFileSyncMock.mockImplementation((_source: string, destination: string) => {
-          // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-          iconInstalled = destination === "/xdg/icons/com.t3tools.T3Code.Fork.desktop.png";
-          // fork:end fork-app-identity
-        });
-        setDesktopNameMock.mockImplementation((name: string) => {
-          desktopName = name;
-        });
-        writeFileSyncMock.mockImplementation((path: string, contents: string) => {
-          // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-          if (path === "/xdg/applications/com.t3tools.T3Code.Fork.desktop") desktopEntry = contents;
-          // fork:end fork-app-identity
-        });
+  it.effect.each([
+    { previousEntry: undefined, label: "missing" },
+    { previousEntry: 'Exec="/Applications/deleted-previous.AppImage" %U', label: "stale" },
+  ])("prepares a $label Linux desktop entry before startup yields", ({ previousEntry }) => {
+    vi.stubEnv("VITE_DEV_SERVER_URL", "");
+    vi.stubEnv("XDG_DATA_HOME", "/xdg");
+    vi.stubEnv("APPIMAGE", "/Applications/current.AppImage");
+    getSwitchValueMock.mockReturnValue("");
+    let desktopName = "t3code.desktop";
+    let desktopEntry = previousEntry;
+    let iconInstalled = false;
+    copyFileSyncMock.mockImplementation((_source: string, destination: string) => {
+      // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+      iconInstalled = destination === "/xdg/icons/com.t3tools.T3Code.Fork.desktop.png";
+      // fork:end fork-app-identity
+    });
+    setDesktopNameMock.mockImplementation((name: string) => {
+      desktopName = name;
+    });
+    writeFileSyncMock.mockImplementation((path: string, contents: string) => {
+      // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+      if (path === "/xdg/applications/com.t3tools.T3Code.Fork.desktop") desktopEntry = contents;
+      // fork:end fork-app-identity
+    });
 
-        return Effect.scoped(
-          Effect.gen(function* () {
-            const portalIdentity = Promise.resolve().then(() => ({
-              desktopName,
-              desktopEntry,
-              iconInstalled,
-            }));
-            yield* Layer.build(
-              DesktopPreReadyPlatform.layer.pipe(
-                Layer.provide(Layer.succeed(HostProcessPlatform, "linux")),
-              ),
-            );
-            const identity = yield* Effect.promise(() => portalIdentity);
-            // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-            assert.equal(identity.desktopName, "com.t3tools.T3Code.Fork.desktop");
-            // fork:end fork-app-identity
-            assert.include(identity.desktopEntry ?? "", 'Exec="/Applications/current.AppImage" %U');
-            // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-            assert.include(identity.desktopEntry ?? "", "Name=no3y Code (Alpha)");
-            // fork:end fork-app-identity
-            assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/t3code;");
-            // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-            assert.include(
-              identity.desktopEntry ?? "",
-              "Icon=/xdg/icons/com.t3tools.T3Code.Fork.desktop.png",
-            );
-            // fork:end fork-app-identity
-            assert.isTrue(identity.iconInstalled);
-          }),
-        ).pipe(Effect.ensuring(Effect.sync(() => vi.unstubAllEnvs())));
-      },
-    );
-  }
+    return Effect.scoped(
+      Effect.gen(function* () {
+        const portalIdentity = Promise.resolve().then(() => ({
+          desktopName,
+          desktopEntry,
+          iconInstalled,
+        }));
+        yield* Layer.build(
+          DesktopPreReadyPlatform.layer.pipe(
+            Layer.provide(Layer.succeed(HostProcessPlatform, "linux")),
+          ),
+        );
+        const identity = yield* Effect.promise(() => portalIdentity);
+        // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+        assert.equal(identity.desktopName, "com.t3tools.T3Code.Fork.desktop");
+        // fork:end fork-app-identity
+        assert.include(identity.desktopEntry ?? "", 'Exec="/Applications/current.AppImage" %U');
+        // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+        assert.include(identity.desktopEntry ?? "", "Name=no3y Code (Alpha)");
+        // fork:end fork-app-identity
+        assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/t3code;");
+        // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+        assert.include(
+          identity.desktopEntry ?? "",
+          "Icon=/xdg/icons/com.t3tools.T3Code.Fork.desktop.png",
+        );
+        // fork:end fork-app-identity
+        assert.isTrue(identity.iconInstalled);
+      }),
+    ).pipe(Effect.ensuring(Effect.sync(() => vi.unstubAllEnvs())));
+  });
 
   it.effect("keeps startup available when the early desktop entry cannot be written", () => {
     getSwitchValueMock.mockReturnValue("");

@@ -29,6 +29,7 @@ function renderPendingActions(isRunning: boolean) {
         isComplete: true,
       },
       isRunning,
+      canInterrupt: isRunning,
       showPlanFollowUpPrompt: false,
       promptHasText: false,
       isSendBusy: false,
@@ -44,33 +45,13 @@ function renderPendingActions(isRunning: boolean) {
   );
 }
 
-function renderRunningActions(hasSendableContent: boolean) {
-  return renderToStaticMarkup(
-    createElement(ComposerPrimaryActions, {
-      compact: true,
-      pendingAction: null,
-      isRunning: true,
-      showPlanFollowUpPrompt: false,
-      promptHasText: hasSendableContent,
-      isSendBusy: false,
-      sendDisabledReason: null,
-      isConnecting: false,
-      isEnvironmentUnavailable: false,
-      isPreparingWorktree: false,
-      hasSendableContent,
-      onPreviousPendingQuestion: () => {},
-      onInterrupt: () => {},
-      onImplementPlanInNewThread: () => {},
-    }),
-  );
-}
-
 function renderSendButton(sendDisabledReason: string | null = null) {
   return renderToStaticMarkup(
     createElement(ComposerPrimaryActions, {
       compact: true,
       pendingAction: null,
       isRunning: false,
+      canInterrupt: false,
       showPlanFollowUpPrompt: false,
       promptHasText: true,
       isSendBusy: false,
@@ -124,21 +105,6 @@ describe("ComposerPrimaryActions", () => {
     expect(markup).not.toContain("stage-nightly");
   });
 
-  it("renders a queue action alongside stop while running with a sendable draft", () => {
-    const markup = renderRunningActions(true);
-
-    expect(markup).toContain('aria-label="Stop generation"');
-    expect(markup).toContain('aria-label="Queue message"');
-    expect(markup).toContain('type="submit"');
-  });
-
-  it("keeps stop as the only action while running with an empty composer", () => {
-    const markup = renderRunningActions(false);
-
-    expect(markup).toContain('aria-label="Stop generation"');
-    expect(markup).not.toContain('aria-label="Queue message"');
-  });
-
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
   it("keeps stop at the right edge with dictation beside it while running", () => {
     const markup = renderToStaticMarkup(
@@ -146,6 +112,7 @@ describe("ComposerPrimaryActions", () => {
         compact: true,
         pendingAction: null,
         isRunning: true,
+        canInterrupt: true,
         showPlanFollowUpPrompt: false,
         promptHasText: false,
         isSendBusy: false,
@@ -181,7 +148,7 @@ describe("ComposerPrimaryActions", () => {
     const stop = markup.indexOf('aria-label="Stop generation"');
     expect(dictate).toBeGreaterThan(-1);
     expect(stop).toBeGreaterThan(dictate);
-    expect(markup).not.toContain('aria-label="Send message"');
+    expect(markup).not.toContain('aria-label="Submit message"');
   });
   /* fork:end fork-local-dictation */
 });

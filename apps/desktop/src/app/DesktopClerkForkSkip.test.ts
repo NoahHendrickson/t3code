@@ -17,6 +17,7 @@
  */
 
 import { assert, describe, it } from "@effect/vitest";
+import * as NodePath from "@effect/platform-node/NodePath";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -76,14 +77,13 @@ const makeDesktopClerkLayer = (electronApp: ElectronApp.ElectronApp["Service"]) 
     stateDir: "/tmp/t3-state",
     isDevelopment: false,
     appDataDirectory: "/tmp/app-data",
-    userDataDirName: "t3code",
-    legacyUserDataDirName: "T3 Code (Alpha)",
-    path: { join: (...parts: ReadonlyArray<string>) => parts.join("/") },
+    platform: "darwin",
   } as unknown as DesktopEnvironment.DesktopEnvironment["Service"]);
 
   return DesktopClerk.layer.pipe(
     Layer.provide(
       Layer.mergeAll(
+        NodePath.layerPosix,
         Layer.succeed(DesktopEnvironment.DesktopEnvironment, environment),
         Layer.succeed(ElectronApp.ElectronApp, electronApp),
         // The layer reads the shell for sign-in hand-offs; the skip path never

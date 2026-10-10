@@ -197,6 +197,15 @@
   gap: 6px;
 }
 
+/* Upstream's git progress readout (ThreadDetailsControl `multiline`) grows a
+   second output row while an action runs; the pin above would clip it to one.
+   Keyed on the fork's own stamp from GitActionsControl, not on a utility class:
+   the toolbar path renders Button size="sm-multiline", which carries min-h-8
+   and never h-auto, so a class selector matches nothing there. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button[data-fork-pill-multiline] {
+  height: auto;
+}
+
 /* The `::before` overlay carries the variant's inset highlight and its own
    radius. With the fill gone it has nothing left to draw, and leaving it would
    trace a rounded-md ghost inside a pill. */

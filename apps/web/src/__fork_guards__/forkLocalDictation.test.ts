@@ -182,7 +182,7 @@ describe("fork local dictation", () => {
     // running (mobile viewports) keeps its place after stop.
     const primary = read("../components/chat/ComposerPrimaryActions.tsx");
     expect(composer).toMatch(
-      /const dictationOwnsPrimaryAction =\s*dictation\.isAvailable &&\s*\(dictation\.blocksSubmission \|\|\s*\(pendingPrimaryAction === null &&\s*!composerSendState\.hasSendableContent &&\s*!isSendBusy &&\s*!isConnecting\)\)/u,
+      /const dictationOwnsPrimaryAction =\s*dictation\.isAvailable &&\s*\(dictation\.blocksSubmission \|\|\s*\(pendingPrimaryAction === null &&\s*!showResumeAction &&\s*!composerSendState\.hasSendableContent &&\s*!isSendBusy &&\s*!isConnecting\)\)/u,
     );
     // A question keeps Next/Submit until a session starts, then the live
     // session holds the slot like send's. ChatComposer decides that where it
@@ -195,12 +195,16 @@ describe("fork local dictation", () => {
     expect(composer).toContain(
       "dictationOwnsPrimaryAction ? { dictation, disabled: dictationDisabled } : null",
     );
+    // Since the orchestrator-V2 sync upstream renders stop alone (no send
+    // beside it); the fork keeps the mic to stop's left on that branch and
+    // otherwise hands the whole slot to the dictation button, bare.
     expect(primary).toMatch(
-      /const sendButton = forkDictation \? \(\s*<ForkDictationPrimaryButton/u,
+      /const forkDictationButton = forkDictation \? \(\s*<ForkDictationPrimaryButton/u,
     );
     expect(primary).toMatch(
-      /\{forkDictation \? sendButton : null\}[\s\S]{0,120}?\{renderStopGenerationButton\(false\)\}[\s\S]{0,200}?\{!forkDictation && hasSendableContent \? sendButton : null\}/u,
+      /if \(forkDictationButton\) \{\s*return \(\s*<>\s*\{forkDictationButton\}\s*\{renderStopGenerationButton\(false\)\}\s*<\/>/u,
     );
+    expect(primary).toMatch(/if \(forkDictationButton\) \{\s*return forkDictationButton;\s*\}/u);
     // The mic and check are the send button in every respect but glyph and
     // click: they wear its class list and its fork tone attribute, so the flat
     // white fill in dark applies to them as it does to send. That look is the
@@ -211,7 +215,10 @@ describe("fork local dictation", () => {
     expect(primary).toMatch(/const sendButtonClassName =\s*"[^"]*bg-message-action[^"]*";/u);
     expect(primary).toContain('data-fork-composer-send-art=""');
     expect(theme).toMatch(/\[data-fork-composer-send-art\]\s*\{\s*display:\s*none;\s*\}/u);
-    expect(primary).toMatch(/<button\s+type="submit"[^>]*className=\{sendButtonClassName\}/su);
+    // Upstream's send doubles as the resume action since the V2 sync.
+    expect(primary).toMatch(
+      /<button\s+type=\{showResume \? "button" : "submit"\}[^>]*className=\{sendButtonClassName\}/su,
+    );
     expect(control).toContain('className={cn(className, transcribing && "pointer-events-none")}');
     expect(control).toContain('data-fork-composer-action="send"');
     expect(control).toContain('data-fork-composer-send-tone="flat"');

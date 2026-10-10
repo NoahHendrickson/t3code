@@ -25,7 +25,9 @@
         "scripts/cli.ts",
         "scripts/evaluate-thread-titles.ts",
         "scripts/measure-pr-preview.ts",
+        "scripts/probe-claude-fork-local-rollback-replay.ts",
         "scripts/update-test-shard-weights.ts",
+        "scripts/verify-background-live.ts",
         "src/provider/testFixtures/*.mjs",
       ],
       // Keep the transitive Effect runtime pinned for standalone npm installs.
@@ -67,13 +69,34 @@
       // The fork's chrome rows replace upstream's sidebar header (#13029), so
       // nothing imports it here; it stays in the tree so the next sync merges
       // cleanly instead of re-resolving a deleted file.
-      "ignore": ["src/components/sidebar/SidebarThreadHeader.tsx"],
+      "ignore": [
+        "src/components/sidebar/SidebarThreadHeader.tsx",
+        // fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping
+        // The fork's sidebar keeps its two DndContexts and never adopted
+        // upstream's context-drag-to-composer, so nothing mounts the drag
+        // ghost; it stays on disk as the landing pad for that port.
+        "src/components/chat/ThreadContextDragGhost.tsx",
+        // fork:end sidebar-v2-project-grouping
+      ],
       // fork:end fork-sidebar-chrome
       // UI component modules are copied and adapted as cohesive sets. Keep their
       // named subcomponents even before they have callers; the file audit still
       // reports an entire component module when nothing imports it.
       "ignoreIssues": {
         "src/components/ui/*.tsx": ["exports", "nsExports", "duplicates"],
+        // fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping
+        // Upstream's single-list thread drag and context-drag-to-composer are
+        // unadopted; only upstream's Sidebar.tsx calls these.
+        "src/components/chat/threadContextDrag.ts": ["exports"],
+        "src/components/Sidebar.logic.ts": ["exports"],
+        // fork:end sidebar-v2-project-grouping
+        // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+        // The fork's card rows do not carry upstream's change-request snapshot
+        // or its connected-environment thread search; only upstream's
+        // Sidebar.tsx calls these.
+        "src/components/ThreadStatusIndicators.tsx": ["exports"],
+        "src/state/environments.ts": ["exports"],
+        // fork:end sidebar-v2-card-rows
         // fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
         // Vendored verbatim from NoahHendrickson/the-forge and kept whole so
         // re-syncs diff cleanly, the same standing upstream gives _generated/.
@@ -82,9 +105,10 @@
       },
     },
     "apps/mobile": {
-      // Expo loads plugins by string; Metro embeds the browser entry in the native WebView.
+      // Expo loads plugins and the fingerprint config by string; Metro embeds the browser entry in the native WebView.
       "entry": [
         "index.ts!",
+        "fingerprint.config.js",
         "plugins/*.cjs",
         "scripts/generate-device-stream.mts",
         "src/features/devices/device-stream.browser.ts!",

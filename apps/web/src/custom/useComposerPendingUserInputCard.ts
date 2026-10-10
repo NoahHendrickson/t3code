@@ -31,6 +31,9 @@ export function useComposerPendingUserInputCard({
 }) {
   const progress = derivePendingUserInputProgress(prompt.questions, answers, questionIndex);
   const activeQuestion = progress.activeQuestion;
+  // Message-mode requests remain answerable after their provider turn ends.
+  const canRespond = prompt.responseCapability !== "not_resumable";
+  const responseDisabled = isResponding || !canRespond;
   const autoAdvanceTimerRef = useRef<number | null>(null);
   const [optimisticSingleSelect, setOptimisticSingleSelect] = useState<{
     questionId: string;
@@ -104,7 +107,7 @@ export function useComposerPendingUserInputCard({
   // outside editable fields. Multi-select prompts toggle options in place; single-
   // select prompts keep the existing auto-advance behavior.
   useEffect(() => {
-    if (!activeQuestion || isResponding) return;
+    if (!activeQuestion || responseDisabled) return;
     const handler = (event: globalThis.KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target;
@@ -128,7 +131,7 @@ export function useComposerPendingUserInputCard({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activeQuestion, isResponding, handleOptionSelection]);
+  }, [activeQuestion, responseDisabled, handleOptionSelection]);
 
   return {
     progress,

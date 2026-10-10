@@ -231,7 +231,7 @@ export function SidebarV2WorkingRain({ seed }: { seed: string }) {
     from "finished" and "broke" by form. The glyphs are 12px because Phosphor
     inks a circle on ~81% of its grid: that is the design's 9.75px, and the
     same visual weight as the 10px dot beside it. */
-export function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
+function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
   return (
     <span aria-hidden className={cn(MARK_SLOT_CLASS, TONE_TEXT_CLASS[tone])}>
       {tone === "approval" || tone === "input" ? (

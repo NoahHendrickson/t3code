@@ -242,7 +242,8 @@ describe("fork guard: fork-popup-surface", () => {
     // The branch picker's footer divides itself with a border-t on its own
     // label, not a slot. Sliced to that label: the rule below reaches every
     // top border inside a combobox popup, and this is the one that exists.
-    const selector = readSibling("../components/BranchToolbarBranchSelector.tsx");
+    // Upstream's orchestrator-V2 sync moved the picker popup into BranchPicker.
+    const selector = readSibling("../components/BranchPicker.tsx");
     const footerText = selector.indexOf("Start from origin");
     const footerLabel = selector.slice(selector.lastIndexOf("<label", footerText), footerText);
     expect(footerLabel).toMatch(/className="[^"]*\bborder-t\b[^"]*"/u);

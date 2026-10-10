@@ -54,7 +54,11 @@ describe("fork guard: sidebar-v2-draft-rows", () => {
     // helper stays green.
     expect(sidebar).toContain("draftCaps.canPin &&");
     expect(sidebar).toContain("onDiscardDraft={draftCaps.showDiscard ? discardDraftThread : null}");
-    expect(sidebar).toContain('id: "discard-draft"');
+    // The draft card's context menu is upstream's draft menu (#10637); its
+    // discard item must still route through the fork's discardDraftThread.
+    expect(sidebar).toContain("buildDraftActionMenuItems({");
+    expect(sidebar).toContain('case "discard": {');
+    expect(sidebar).toContain("if (current && !current.promotedTo) discardDraftThread(threadRef);");
     expect(sidebar).toContain("discardDraftThread");
     expect(sidebar).toContain('aria-label="Discard draft"');
     expect(sidebar).toContain(

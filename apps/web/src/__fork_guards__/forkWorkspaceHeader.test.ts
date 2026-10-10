@@ -41,14 +41,17 @@ describe("fork guard: fork-workspace-header", () => {
     // The empty-scripts "Add action" branch is a lone button (no Group). Dropping the
     // mark there leaves it on the raised outline while Open / Commit & push stay pills.
     const scripts = readSibling("../components/ProjectScriptsControl.tsx");
-    expect(scripts).toMatch(/aria-label="Add action"[\s\S]{0,80}data-fork-pill/u);
+    expect(scripts).toMatch(
+      /aria-label=\{isPanel \? "Add project script" : "Add action"\}[\s\S]{0,80}data-fork-pill/u,
+    );
     // Same story for the not-yet-a-repo "Initialize Git" button in GitActionsControl:
     // the Group already checked above covers only the isRepo branch. Anchored on the
     // button's own attributes (initAction is unique to it) so the assertion says the
-    // mark is on this Button, not merely somewhere in the preceding lines.
+    // mark is on this control, not merely somewhere in the preceding lines. The mark
+    // is toolbar-only: the thread details panel (isPanel) is upstream's surface.
     const git = readSibling("../components/GitActionsControl.tsx");
     expect(git).toMatch(
-      /<Button\s+variant="outline"\s+size="xs"\s+data-fork-pill\s+disabled=\{initAction\.isPending\}/u,
+      /<ThreadDetailsControl\s+size="xs"\s+variant=\{isPanel \? "ghost" : "outline"\}\s+part="row"\s+panel=\{isPanel\}\s+data-fork-pill=\{isPanel \? undefined : true\}\s+disabled=\{initAction\.isPending\}/u,
     );
   });
 
@@ -90,6 +93,23 @@ describe("fork guard: fork-workspace-header", () => {
     expect(pill?.body).toMatch(/(?:^|;)\s*min-height:\s*28px\s*(?:;|$)/u);
   });
 
+  it("lets the toolbar git-progress readout grow past the 28px pin", () => {
+    // The two-row progress readout is ThreadDetailsControl `multiline`, whose
+    // toolbar path is Button size="sm-multiline" (min-h-8, never h-auto). The
+    // exception has to key on the fork's own stamp; a utility-class selector
+    // matched nothing and left the output row clipped.
+    const git = readSibling("../components/GitActionsControl.tsx");
+    expect(git).toMatch(
+      /panel=\{isPanel\}\s+multiline\s+(?:\/\*[\s\S]*?\*\/\s+)?data-fork-pill-multiline=\{isPanel \? undefined : true\}/u,
+    );
+    const grow = cssRules(theme).find((rule) =>
+      rule.selector.includes("[data-fork-pill] > button[data-fork-pill-multiline]"),
+    );
+    expect(grow?.selector).toContain(MARKER);
+    expect(grow?.body).toMatch(/(?:^|;)\s*height:\s*auto\s*(?:;|$)/u);
+    expect(theme).not.toContain("button.h-auto");
+  });
+
   it("takes the drawn pill colours in dark and defers to upstream in light", () => {
     // Dark-only design. The light build must fall through to --border /
     // --foreground / --accent rather than inherit a hardcoded dark border.
@@ -104,8 +124,10 @@ describe("fork guard: fork-workspace-header", () => {
     // two misaligns the seam. Missing the WCO fallback leaves Windows Controls
     // Overlay builds on a different height than every other platform.
     expect(upstreamCss).toMatch(/--workspace-topbar-height:\s*52px/u);
+    // Upstream's max(40px, …) floor (#15496) keeps the WCO height usable at
+    // high zoom; the 52px fallback inside it is what this guard pins.
     expect(upstreamCss).toMatch(
-      /--workspace-topbar-height:\s*env\(titlebar-area-height,\s*52px\)/u,
+      /--workspace-topbar-height:\s*max\(40px,\s*env\(titlebar-area-height,\s*52px\)\)/u,
     );
   });
 
