@@ -2154,8 +2154,9 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Shared dark outline chrome for pending Previous and changed-files actions.
-   White-alpha only under `.dark` — Light keeps upstream outline fills. */
+/* Dark outline chrome for pending Previous; the hover lift is shared with the
+   changed-files card. White-alpha only under `.dark` — Light keeps upstream
+   outline fills. */
 :root[data-fork="noahhendrickson-t3code"].dark {
   --fork-outline-border: rgb(255 255 255 / 24%);
   --fork-outline-border-hover: rgb(255 255 255 / 32%);
@@ -2185,11 +2186,8 @@
   padding-inline: 10px;
 }
 
-/* True outline (dark only): upstream outline still paints dark:bg-input/32.
-   Selected as `button`, not `[data-slot="button"]` — see fork-workspace-header
-   note: TooltipTrigger stamps data-slot="tooltip-trigger" over Button. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  :is([data-fork-pending-user-input-action="previous"], [data-changed-files-header] > div button) {
+/* True outline (dark only): upstream outline still paints dark:bg-input/32. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-pending-user-input-action="previous"] {
   background: transparent;
   border-color: var(--fork-outline-border);
   color: var(--foreground);
@@ -2197,20 +2195,25 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-fork-pending-user-input-action="previous"],
-    [data-changed-files-header] > div button
-  )::before {
+  [data-fork-pending-user-input-action="previous"]::before {
   display: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-fork-pending-user-input-action="previous"],
-    [data-changed-files-header] > div button
-  ):is(:hover, [data-pressed]) {
+  [data-fork-pending-user-input-action="previous"]:is(:hover, [data-pressed]) {
   background: var(--fork-outline-hover-bg);
   border-color: var(--fork-outline-border-hover);
+}
+
+/* The changed-files header actions (fold toggle, Open diff) are ghost-muted
+   Buttons upstream and draw no border; they used to ride the outline rule
+   above, which recoloured their transparent border into a visible one. What
+   they keep is the foreground ink; their hover is the card-wide lift
+   (fork-changed-files-card). Selected as `button`, not `[data-slot="button"]`
+   — see fork-workspace-header note: TooltipTrigger stamps
+   data-slot="tooltip-trigger" over Button. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-changed-files-header] > div button {
+  color: var(--foreground);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark

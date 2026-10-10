@@ -41,6 +41,9 @@ const select = readSibling("../components/ui/select.tsx");
 const combobox = readSibling("../components/ui/combobox.tsx");
 const popover = readSibling("../components/ui/popover.tsx");
 const tooltip = readSibling("../components/ui/tooltip.tsx");
+const detailsCard = readSibling("../components/chat/ThreadDetailsCard.tsx");
+const detailsPanel = readSibling("../components/chat/ThreadDetailsPanel.tsx");
+const chatView = readSibling("../components/ChatView.tsx");
 
 /** One arm per primitive, keyed to where it stamps `dropdown-glass`. */
 const SELECTOR_ARMS = [
@@ -173,6 +176,29 @@ describe("fork guard: fork-popup-surface", () => {
     for (const arm of SELECTOR_ARMS) {
       expect(tight(FORK_GLASS_POPUP_SELECTOR), arm).toContain(tight(arm));
     }
+    // The thread details card is a dropdown too once a thread has started:
+    // painted, cut out and opened at full strength like the rest. A new
+    // agent's draft keeps it frosted over the picture. The gate is a stamp on
+    // the portaled wrapper, never a :has() on :root, which would widen style
+    // invalidation to the whole document while a thread streams.
+    const detailsArm =
+      '[data-thread-details-panel="popover"][data-fork-popup] > [data-thread-details-card].dropdown-glass';
+    expect(flat(glassPopup?.selector ?? "")).toContain(detailsArm);
+    expect(tight(FORK_GLASS_POPUP_SELECTOR)).toContain(tight(detailsArm));
+    expect(flat(opening?.selector ?? "")).toContain(
+      '[data-slot="popover-popup"][data-starting-style]:has([data-fork-popup])',
+    );
+    for (const selector of [
+      flat(glassPopup?.selector ?? ""),
+      flat(opening?.selector ?? ""),
+      FORK_GLASS_POPUP_SELECTOR,
+    ]) {
+      expect(selector).not.toContain(":root:not(:has(");
+    }
+    expect(detailsCard).toContain('data-thread-details-panel="popover"');
+    expect(detailsCard).toContain("data-fork-popup={forkGlassPopup || undefined}");
+    expect(detailsPanel).toContain("forkGlassPopup={props.forkGlassPopup ?? false}");
+    expect(chatView).toContain("forkGlassPopup: !isDraftHeroState,");
     // No list-side blur, no page surface, no clone: those were tried and read
     // as a modal dim rather than a frost.
     for (const candidate of cssRules(palettes)) {

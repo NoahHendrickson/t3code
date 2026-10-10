@@ -72,6 +72,19 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(chatRoute).not.toContain("buildSidebarProjectSnapshots(");
   });
 
+  it("hides the header's title, panel toggles and details card until a project is picked", () => {
+    expect(chatView).toContain(
+      "const forkProjectlessDraft = isLocalDraftThread && activeProject === null;",
+    );
+    expect(chatView).toMatch(
+      /!rightPanelControlsAtRoot && !rightPanelControlsInPanel && !forkProjectlessDraft\s*\?\s*panelLayoutControls/u,
+    );
+    expect(chatView).toMatch(/\{forkProjectlessDraft \? null : \(\s*<ChatHeader/u);
+    expect(chatView).toContain(
+      "{forkProjectlessDraft ? null : <ThreadDetailsPanel {...threadDetailsPanelProps} />}",
+    );
+  });
+
   it("keeps the prompt editable while the draft has no project", () => {
     // ChatView flags an unassigned draft as projectSelectionRequired, the
     // same path a deleted project takes. Send stays blocked either way; the

@@ -233,9 +233,9 @@
    its own composite and the screen shows it sharp (the "NO backdrop-filter"
    note in theme.custom.palettes.css, re-confirmed here with blur(40px) on
    the vessel — capturePage blurred, the window did not). So every frosted
-   element — the composer vessel, each context pill, each header pill and
-   each panel toggle — carries a second copy of the picture, pre-blurred,
-   and the trick is only to put it exactly where the stage's copy is: a
+   element — the composer vessel, each context pill and each header pill —
+   carries a second copy of the picture, pre-blurred, and the trick is only
+   to put it exactly where the stage's copy is: a
    `position: fixed` pseudo-element whose four insets come from the chat
    view's anchor (anchor() against --fork-glass-card, plus the card's inset)
    takes the card's box wherever the sidebar, the right panel and the window
@@ -248,7 +248,7 @@
    One recipe, one rule: the hosts differ only in the wash on top, the
    radius they clip at and whether they carry the fade mask, and each host
    states those three as tokens below. The copy's box is the whole card and
-   nine hosts paint one each, but the host's clip-path is the cull rect
+   each host paints one, but the host's clip-path is the cull rect
    Chromium rasterises within, so each copy costs its own chip-sized area
    and a hover repaints that, not the card.
 
@@ -265,16 +265,16 @@
    - The clip would also cut the focus-visible ring, which is drawn outside
      the border box; while a host or anything inside it is focus-visible the
      clip steps 4px out, enough for ring-2 plus its 1px offset, at the cost
-     of a 4px halo of frost that only shows under keyboard focus.
+     of a 4px halo of frost that only shows under keyboard focus. The prompt
+     editor is left out of that test: an editing host matches :focus-visible
+     on every click, not only from the keyboard, and it draws no ring, so
+     counting it haloed the whole vessel whenever the caret sat in the prompt.
 
    The hosts' floor sits on the host itself, unmasked, so where the fade
    thins the copy the host shows the stage's colour and never the sharp
    picture behind. The lone header pill's ::before is upstream's variant
    overlay, which the fork already empties (theme.custom.css) — repurposed
-   rather than fought; the Groups', the chips' and the toggle spans' are
-   free. The toggle spans are stamped data-fork-frost-host in
-   PanelLayoutControls (a fenced hunk), the one hook this adds, because
-   their Toggles carry pseudo-elements of their own.
+   rather than fought; the Groups' and the chips' are free.
 
    glass-hero-frost.png is glass-hero.png Gaussian-blurred at σ=8px and
    stored at a quarter of the size (396×264, RGBA, 131 KB) with a baked 45%
@@ -290,7 +290,7 @@
       [data-fork-composer-stack="true"]
         [data-fork-composer-context-row]
         :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]),
-      [data-chat-header] :is([data-fork-pill], [data-fork-frost-host])
+      [data-chat-header] [data-fork-pill]
     ) {
     isolation: isolate;
     clip-path: inset(0 round var(--fork-glass-frost-radius));
@@ -305,8 +305,8 @@
       [data-fork-composer-stack="true"]
         [data-fork-composer-context-row]
         :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]),
-      [data-chat-header] :is([data-fork-pill], [data-fork-frost-host])
-    ):is(:focus-visible, :has(:focus-visible)) {
+      [data-chat-header] [data-fork-pill]
+    ):is(:focus-visible, :has(:focus-visible:not([data-testid="composer-editor"]))) {
     clip-path: inset(-4px round calc(var(--fork-glass-frost-radius) + 4px));
   }
 
@@ -317,7 +317,7 @@
       [data-fork-composer-stack="true"]
         [data-fork-composer-context-row]
         :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]),
-      [data-chat-header] :is([data-fork-pill], [data-fork-frost-host])
+      [data-chat-header] [data-fork-pill]
     )::before {
     content: "";
     position: fixed;
@@ -342,8 +342,8 @@
 
   /* Each host's wash, radius and mask. The washes follow the hover lifts
      through the token, since the floor covers the host's own fill; a
-     Group's halves and the toggles paint their hover on their children,
-     above the frost, so only the lone header pill needs the token moved. */
+     Group's halves paint their hover on their children, above the frost,
+     so only the lone header pill needs the token moved. */
   :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-fork-composer-stack="true"]
@@ -375,25 +375,18 @@
 
   /* The header's controls: the split pills (fork-sidebar-chrome's
      data-fork-pill — "Add action" is a lone button, "Open" and "View PR" are
-     Groups) at the pill radius and the two panel toggles at the Toggle's
-     6px. A white 18% wash, the "white background" they read as. Scoped to
-     the header rather than the at-root titlebar layout: there the controls
-     precede the chat view in the tree and the anchor would not resolve. The
-     fade mask is solid up here, so they skip it. */
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-    [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
-    [data-chat-header]
-    :is([data-fork-pill], [data-fork-frost-host]) {
-    --fork-glass-frost-wash: rgb(255 255 255 / 18%);
-    --fork-glass-frost-radius: 6px;
-    --fork-glass-frost-mask: none;
-  }
-
+     Groups) at the pill radius. A white 18% wash, the "white background"
+     they read as. Scoped to the header rather than the at-root titlebar
+     layout: there the controls precede the chat view in the tree and the
+     anchor would not resolve. The fade mask is solid up here, so they skip
+     it. */
   :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-chat-header]
     [data-fork-pill] {
+    --fork-glass-frost-wash: rgb(255 255 255 / 18%);
     --fork-glass-frost-radius: var(--fork-pill-radius);
+    --fork-glass-frost-mask: none;
   }
 
   :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
@@ -402,4 +395,26 @@
     button[data-fork-pill]:is(:hover, [data-pressed]) {
     --fork-glass-frost-wash: rgb(255 255 255 / 26%);
   }
+}
+
+/* The panel toggles wear the thread details menu's material instead of the
+   frost: the popup fill, the 12% hairline and the same backdrop blur
+   (theme.custom.css, fork-popup-surface), so the button that opens the menu
+   and its two neighbours read as the card that hangs under them. Unlike
+   the vessel's, this blur does land on screen under the desktop glass: a
+   native capture of the window (2026-10-10) showed the toggles as smooth
+   as the menu, with no dots through them. The hosts are the spans
+   PanelLayoutControls stamps data-fork-panel-toggle (fenced hunks); the
+   Toggle inside paints its hover and pressed tints above the fill. The
+   hairline is an inset outline so the box keeps the Toggle's size. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+  [data-chat-header]
+  [data-fork-panel-toggle] {
+  border-radius: 6px;
+  outline: 1px solid rgb(from var(--contrast-foreground) r g b / 12%);
+  outline-offset: -1px;
+  background: var(--fork-popup-fill);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
 }

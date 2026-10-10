@@ -300,10 +300,11 @@ import { isEditableFocused } from "../lib/editableFocus";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { resolveChatShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
+/* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+   AlarmClockIcon and CheckCircle2Icon left the lucide import below with upstream's status line. */
+/* fork:end fork-thread-state-cards */
 import {
-  AlarmClockIcon,
   PaperclipIcon,
-  CheckCircle2Icon,
   ChevronDownIcon,
   DownloadIcon,
   GitBranchIcon,
@@ -345,6 +346,9 @@ import {
 import { DraftProjectPill } from "~/custom/DraftProjectPill";
 import { useDraftProjectAssignmentPending } from "~/custom/useNewAgentDraft";
 /* fork:end fork-new-agent-draft */
+/* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+import { useResumeCompactionBanner } from "~/custom/useResumeCompactionBanner";
+/* fork:end fork-resume-compaction-banner */
 import { registerFaviconProjectForThread } from "~/browserFaviconStore";
 import { getProviderModelCapabilities } from "../providerModels";
 import {
@@ -512,14 +516,18 @@ import {
 } from "./chat/QueuedRunsControl";
 import { useLinkedThreadPullRequest } from "./ThreadStatusIndicators";
 import type { ComposerBannerStackItem } from "./chat/ComposerBannerStack";
-import { ThreadStatusLine } from "./chat/ThreadStatusLine";
-import { formatRelativeTimeLabel, formatRelativeTimeUntilLabel } from "../timestampFormat";
+/* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+   Thread state rides the composer cards, not upstream's ThreadStatusLine. */
+import { useThreadStateBanners } from "~/custom/useThreadStateBanners";
+/* fork:end fork-thread-state-cards */
 import { ComposerSurface } from "./chat/ComposerSurface";
 import { resolveThreadSyncPhase } from "../threadSync";
 import {
   hasAvailableCompactionProvider,
   hasDismissedResumeCompaction,
-  shouldOfferResumeCompaction,
+  /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner
+     shouldOfferResumeCompaction moved to custom/useResumeCompactionBanner. */
+  /* fork:end fork-resume-compaction-banner */
 } from "./chat/ContextWindowMeter.logic";
 import { deriveLatestContextWindowSnapshot } from "../lib/contextWindow";
 import {
@@ -7654,63 +7662,22 @@ export default function ChatView(props: ChatViewProps) {
   // Background liveness (working / monitoring) lives on the context-strip
   // pill, not in this stack.
   /* fork:end fork-composer-shell */
-  // Settled, snoozed, and woke are thread state, not composer actions: each
-  // gets one quiet line after the last message instead of a banner. A woken
-  // thread announces itself here, not just in the sidebar pill. Dismissing
-  // marks the wake as seen (same acknowledgment as the pill); sending a
-  // message clears it as a side effect of the send path.
-  // Memoized: it is the timeline's list footer, and a new element re-renders that footer.
-  // nowMinute keeps the relative time fresh.
-  const threadStatusLine = useMemo(() => {
-    void nowMinute;
-    return activeThreadSnoozed ? (
-      <ThreadStatusLine
-        icon={<AlarmClockIcon />}
-        label={
-          activeThreadShell?.snoozedUntil
-            ? `Snoozed, ${formatRelativeTimeUntilLabel(activeThreadShell.snoozedUntil)}`
-            : "Snoozed"
-        }
-        actionLabel={isUnsnoozing ? "Waking..." : "Wake now"}
-        actionDisabled={!canOperateThread || isUnsnoozing}
-        onAction={() => void handleUnsnoozeActiveThread()}
-      />
-    ) : activeThreadSettled ? (
-      <ThreadStatusLine
-        icon={<CheckCircle2Icon />}
-        label={
-          activeThreadShell?.settledAt
-            ? `Settled ${formatRelativeTimeLabel(activeThreadShell.settledAt)}`
-            : "Settled"
-        }
-        /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
-        actionLabel={isUnsettling ? "Unsettling..." : "Unsettle"}
-        /* fork:end fork-composer-banner-surface */
-        actionDisabled={!canOperateThread || isUnsettling}
-        onAction={() => void handleUnsettleActiveThread()}
-      />
-    ) : activeThreadWokeVisible ? (
-      <ThreadStatusLine
-        icon={<AlarmClockIcon />}
-        label="Woke from snooze"
-        actionLabel="Dismiss"
-        onAction={acknowledgeActiveThreadWoke}
-      />
-    ) : null;
-  }, [
-    acknowledgeActiveThreadWoke,
-    activeThreadSettled,
-    activeThreadShell?.settledAt,
-    activeThreadShell?.snoozedUntil,
-    activeThreadSnoozed,
-    activeThreadWokeVisible,
+  /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+     Settled, snoozed and woke stay notice cards above the composer, as before
+     upstream moved them into a status line after the last message. */
+  const { woke: wokeThreadBannerItem, parked: parkedThreadBannerItem } = useThreadStateBanners({
+    threadId: activeThread?.id ?? null,
+    settled: activeThreadSettled,
+    snoozed: activeThreadSnoozed,
+    wokeVisible: activeThreadWokeVisible,
     canOperateThread,
-    handleUnsettleActiveThread,
-    handleUnsnoozeActiveThread,
-    isUnsettling,
     isUnsnoozing,
-    nowMinute,
-  ]);
+    isUnsettling,
+    onUnsnooze: handleUnsnoozeActiveThread,
+    onUnsettle: handleUnsettleActiveThread,
+    onAcknowledgeWoke: acknowledgeActiveThreadWoke,
+  });
+  /* fork:end fork-thread-state-cards */
   const activeThreadHasCompactableConversation = serverVisibleTurnItems.some(
     ({ item }) =>
       item.type === "user_message" &&
@@ -7742,25 +7709,22 @@ export default function ChatView(props: ChatViewProps) {
           ? "Compaction is unavailable for this provider"
           : "Compacting is unavailable right now"
     : null;
-  // Tokens a stale Claude session would re-read on its next turn. While set,
-  // Enter compacts first and the composer's send button says so; "Send with
-  // full history" in its menu skips that once. Held queues and multi-model
-  // sends never compact first, so the offer hides for them.
-  const resumeCompactionTokens =
-    activeContextWindow &&
-    !resumeCompactionPermanentlyDismissed &&
-    !nativeResumeCompactionDismissed &&
-    !compactDisabled &&
-    !hasHeldQueuedRuns &&
-    multipleModelSelections === null &&
-    shouldOfferResumeCompaction({
-      provider: selectedProvider,
-      usedTokens: activeContextWindow.usedTokens,
-      updatedAt: activeContextWindow.updatedAt,
-      now: `${nowMinute}:00.000Z`,
-    })
-      ? activeContextWindow.usedTokens
-      : null;
+  /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner
+     The fork keeps the "Resume with less context" card instead of compact-on-send:
+     the card offers Compact, the send button stays the plain send (dictation keeps
+     its slot), and Enter sends as typed, so the send path sees null below. */
+  const resumeCompactionBannerItem = useResumeCompactionBanner({
+    threadId: activeThread?.id ?? null,
+    contextWindow: activeContextWindow,
+    dismissed: resumeCompactionPermanentlyDismissed || nativeResumeCompactionDismissed,
+    hidden: pendingUserInputs.length > 0 || phase === "running",
+    provider: selectedProvider,
+    nowMinute,
+    compactDisabledReason,
+    composerRef,
+  });
+  const resumeCompactionTokens: number | null = null;
+  /* fork:end fork-resume-compaction-banner */
   // Set only for the synchronous span of a "Send with full history" submit;
   // onSend reads it before its first await.
   const keepFullHistoryOnceRef = useRef(false);
@@ -7819,6 +7783,13 @@ export default function ChatView(props: ChatViewProps) {
         })
       : null;
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
+    /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+       A settled thread shows only its Unsettle card; the other notices come
+       back, undismissed, once it is unsettled. */
+    if (activeThreadSettled && parkedThreadBannerItem) return [parkedThreadBannerItem];
+    const wokeThreadItems = wokeThreadBannerItem === null ? [] : [wokeThreadBannerItem];
+    const parkedThreadItems = parkedThreadBannerItem === null ? [] : [parkedThreadBannerItem];
+    /* fork:end fork-thread-state-cards */
     const limitRecoveryItems = limitRecoveryBanner === null ? [] : [limitRecoveryBanner];
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
        Both returns below omit background-liveness banner items — Monitoring /
@@ -7829,6 +7800,10 @@ export default function ChatView(props: ChatViewProps) {
     // The user asked for this one, so it leads the notice tier instead of trailing it.
     const usageLimitsItems = usageLimitsBanner === null ? [] : [usageLimitsBanner];
     const projectCloneItems = projectCloneBannerItem === null ? [] : [projectCloneBannerItem];
+    /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+    const resumeCompactionItems =
+      resumeCompactionBannerItem === null ? [] : [resumeCompactionBannerItem];
+    /* fork:end fork-resume-compaction-banner */
     if (!localCheckoutBranchMismatch || !showBranchMismatchBanner || !activeBranchMismatchKey) {
       return [
         ...feedbackBannerItems,
@@ -7837,6 +7812,13 @@ export default function ChatView(props: ChatViewProps) {
         ...projectCloneItems,
         ...systemComposerBannerItems,
         ...backgroundWorkItems,
+        /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+        ...resumeCompactionItems,
+        /* fork:end fork-resume-compaction-banner */
+        /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+        ...wokeThreadItems,
+        ...parkedThreadItems,
+        /* fork:end fork-thread-state-cards */
       ];
     }
     return [
@@ -7846,6 +7828,12 @@ export default function ChatView(props: ChatViewProps) {
       ...projectCloneItems,
       ...systemComposerBannerItems,
       ...backgroundWorkItems,
+      /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+      ...resumeCompactionItems,
+      /* fork:end fork-resume-compaction-banner */
+      /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+      ...wokeThreadItems,
+      /* fork:end fork-thread-state-cards */
       {
         id: `branch-mismatch:${activeBranchMismatchKey}`,
         variant: "info",
@@ -7900,6 +7888,9 @@ export default function ChatView(props: ChatViewProps) {
           setBranchMismatchDismissTick((tick) => tick + 1);
         },
       },
+      /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+      ...parkedThreadItems,
+      /* fork:end fork-thread-state-cards */
     ];
   }, [
     activeBranchMismatchKey,
@@ -7913,6 +7904,14 @@ export default function ChatView(props: ChatViewProps) {
     goalBannerItem,
     localCheckoutBranchMismatch,
     projectCloneBannerItem,
+    /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+    resumeCompactionBannerItem,
+    /* fork:end fork-resume-compaction-banner */
+    /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+    activeThreadSettled,
+    parkedThreadBannerItem,
+    wokeThreadBannerItem,
+    /* fork:end fork-thread-state-cards */
     showBranchMismatchBanner,
     systemComposerBannerItems,
     usageLimitsBanner,
@@ -11363,6 +11362,9 @@ export default function ChatView(props: ChatViewProps) {
     ) : null
   ) : null;
   const threadDetailsPanelProps: ThreadDetailsPanelProps = {
+    /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
+    forkGlassPopup: !isDraftHeroState,
+    /* fork:end fork-popup-surface */
     anchor: threadPanelPopoverAnchorRef,
     handle: threadPanelPopoverHandle,
     onPresentationChange: setThreadPanelPresentation,
@@ -11420,6 +11422,12 @@ export default function ChatView(props: ChatViewProps) {
     onUpdateProjectScript: updateProjectScript,
     onDeleteProjectScript: deleteProjectScript,
   };
+  /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+     A draft with no project yet has nothing for the header to name and no
+     workspace for the panels to show, so the title, the panel toggles and
+     the details card wait until a project is picked. */
+  const forkProjectlessDraft = isLocalDraftThread && activeProject === null;
+  /* fork:end fork-new-agent-draft */
   const panelToggleControlProps = {
     terminalAvailable: activeProject !== null,
     terminalOpen: terminalUiState.terminalOpen,
@@ -11554,20 +11562,26 @@ export default function ChatView(props: ChatViewProps) {
               className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-28 [-webkit-app-region:no-drag]"
             />
           ) : null}
-          {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
+          {/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */}
+          {!rightPanelControlsAtRoot && !rightPanelControlsInPanel && !forkProjectlessDraft
+            ? panelLayoutControls
+            : null}
           {inlineRightPanelOwnsTitleBar ? threadPanelHeaderControl : null}
-          <ChatHeader
-            activeThreadEnvironmentId={activeThread.environmentId}
-            activeThreadId={activeThread.id}
-            isServerThread={isServerThread}
-            activeThreadTitle={activeThread.title}
-            activeProject={activeProject ?? null}
-            rightPanelOpen={inlineRightPanelOwnsTitleBar}
-            onNewThreadInProject={handleNewThreadInActiveProject}
-            {...(activeDraftLogicalProjectKey
-              ? { onOpenProjectSettings: handleOpenDraftProjectSettings }
-              : {})}
-          />
+          {forkProjectlessDraft ? null : (
+            <ChatHeader
+              activeThreadEnvironmentId={activeThread.environmentId}
+              activeThreadId={activeThread.id}
+              isServerThread={isServerThread}
+              activeThreadTitle={activeThread.title}
+              activeProject={activeProject ?? null}
+              rightPanelOpen={inlineRightPanelOwnsTitleBar}
+              onNewThreadInProject={handleNewThreadInActiveProject}
+              {...(activeDraftLogicalProjectKey
+                ? { onOpenProjectSettings: handleOpenDraftProjectSettings }
+                : {})}
+            />
+          )}
+          {/* fork:end fork-new-agent-draft */}
         </header>
 
         {/* Main content area with optional plan sidebar */}
@@ -11643,7 +11657,9 @@ export default function ChatView(props: ChatViewProps) {
                 {...(draftId ? { onWorktreeSetupWorkLocally } : {})}
                 {...(onOpenWorktreeSetupTerminal ? { onOpenWorktreeSetupTerminal } : {})}
                 isPreparingWorktree={!paintOnlyDisplayedTimeline && isPreparingWorktree}
-                footer={paintOnlyDisplayedTimeline ? null : threadStatusLine}
+                /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+                   No status line after the last message: thread state is a composer card. */
+                /* fork:end fork-thread-state-cards */
                 listRef={legendListRef}
                 timelineEntries={displayedTimeline.entries}
                 providerStatuses={
@@ -12127,7 +12143,9 @@ export default function ChatView(props: ChatViewProps) {
               </AlertDialogPopup>
             </AlertDialog>
 
-            <ThreadDetailsPanel {...threadDetailsPanelProps} />
+            {/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */}
+            {forkProjectlessDraft ? null : <ThreadDetailsPanel {...threadDetailsPanelProps} />}
+            {/* fork:end fork-new-agent-draft */}
 
             {pullRequestDialogState ? (
               <PullRequestThreadDialog

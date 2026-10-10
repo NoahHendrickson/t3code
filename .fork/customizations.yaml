@@ -1828,9 +1828,9 @@
     the desktop glass — the renderer blurs the picture in its own composite
     and the screen shows it sharp, re-confirmed on 2026-10-08 with blur(40px)
     on the vessel (capturePage blurred, the window did not) — which is the
-    vibrancy entry's standing rule and the reason the sheet declares no
-    filter anywhere. Instead every frosted element (the vessel, each context
-    pill, each header pill and each panel toggle) carries a pre-blurred,
+    vibrancy entry's standing rule and the reason the frost declares no
+    filter. Instead every frosted element (the vessel, each context pill and
+    each header pill) carries a pre-blurred,
     translucent twin of the picture (custom/assets/glass-hero-frost.png:
     glass-hero.png at Gaussian σ=8px, a quarter size, 396×264 RGBA, 131 KB,
     with a baked 45% alpha — under the picture's 80%, so the glass dims the
@@ -1851,9 +1851,9 @@
     each states those three as tokens — the vessel's wash follows the
     vessel fill, a pill's its chip fill and hover, the header's controls a
     white 18% (26% on the lone pill's hover, through the token, since the
-    floor covers its own fill; a Group's halves and the toggles paint their
-    hover on their children, above the frost). The copy's box is the whole
-    card and nine hosts paint one each, but the host's clip-path is the
+    floor covers its own fill; a Group's halves paint their hover on their
+    children, above the frost). The copy's box is the whole card and each
+    host paints one, but the host's clip-path is the
     cull rect Chromium rasterises within, so each costs its own chip-sized
     area and a hover repaints that, not the card; the header hosts skip the
     mask, which is solid up there and costs a surface.
@@ -1862,7 +1862,9 @@
     clips a fixed descendant; overflow would not) under its own stacking
     context, so the labels stay above it. The clip steps 4px out while the
     host or anything inside it is focus-visible, enough for ring-2 plus its
-    1px offset, so keyboard focus stays visible on the draft. Button's
+    1px offset, so keyboard focus stays visible on the draft; the prompt
+    editor is excluded, since an editing host is focus-visible on every
+    click and draws no ring, and counting it haloed the vessel. Button's
     pressed state scales the lone pills and the chips, and a transform
     makes the host the containing block of its own fixed copy, so the hosts
     clear `scale`. That same trap is why the draft overlay centres on auto
@@ -1872,15 +1874,22 @@
     transform the composer, but the stamp leaves the overlay at the flip
     and the frost goes with it. The lone header pill's ::before is
     upstream's variant overlay the fork already empties, repurposed rather
-    than fought; the toggle spans are stamped data-fork-frost-host in
-    PanelLayoutControls (a fenced hunk, the one hook this adds) because
-    their Toggles carry pseudo-elements of their own. The toggles are scoped
-    to the header rather than the at-root titlebar layout, where the
-    controls precede the chat view in the tree and the anchor could not
-    resolve; clipping the toggle span would clip the live-agent badge on its
-    corner, but a draft has no agents and so no badge. Gated on @supports
-    (anchor-name) so a browser without anchor positioning keeps the washes
-    and nothing else.
+    than fought. The pills are scoped to the header rather than the at-root
+    titlebar layout, where the controls precede the chat view in the tree
+    and the anchor could not resolve. Gated on @supports (anchor-name) so a
+    browser without anchor positioning keeps the washes and nothing else.
+
+    The three panel toggles are not frosted: they wear the thread details
+    menu's own material (fork-popup-surface's --fork-popup-fill, its 12%
+    hairline as an inset outline, and its blur(28px) saturate(1.4)), so the
+    button that opens the menu and its two neighbours read as the card that
+    hangs under them. Unlike the vessel's, that blur does land on screen
+    under the desktop glass: a native capture of the window on 2026-10-10
+    showed the toggles as smooth as the menu, so the guard's no-filter rule
+    exempts this one rule. The hosts are the toggles' tooltip-trigger spans, stamped
+    data-fork-panel-toggle in PanelLayoutControls (fenced hunks, the one
+    hook this adds), because the Toggles paint their own hover and pressed
+    tints and those stay above the fill.
 
     custom/assets/glass-hero.png is Figma's Dither effect (Bayer 16x16, 3
     levels per channel, 2px cells, contrast 1, brightness 100, colour)
@@ -1904,7 +1913,7 @@
     # The root the card paints on, the fills it clears and the overlay
     # whose stamp lifts it.
     - apps/web/src/components/ChatView.tsx
-    # Fenced data-fork-frost-host stamps on the two panel toggle spans.
+    # Fenced data-fork-panel-toggle stamps on the three panel toggle spans.
     - apps/web/src/components/chat/PanelLayoutControls.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
@@ -3627,7 +3636,18 @@
     flashes. A backdrop-filter still cannot help there: over the native
     material it never blurs the rows on screen (tested with plain squares
     in the root and in a body surface, with stacked layers, and with the
-    list composited on its own). The dialog
+    list composited on its own). The thread details card joins that recipe
+    and the cutout once a thread has started, as a popover only (its popup
+    is upstream's bare panel variant, so the arm names the card inside
+    it); docked inline it lives inside #root, where no hole can open
+    beneath it, and on a new agent's draft it stays frosted over the
+    picture, which the header's panel toggles match
+    (fork-glass-new-agent-stage). The gate is data-fork-popup on the
+    portaled popover wrapper, set from ChatView's !isDraftHeroState through
+    ThreadDetailsPanel and ThreadDetailsCard (fenced props), so the fill, the
+    opening rule and the cutout query match locally; a :has() on :root
+    would widen style invalidation to the whole document while a thread
+    streams. The dialog
     arm of the clear skips the one dialog that carries dropdown-glass.
     Generic surface-glass overlays still
     use the context-chip fill over --fork-popup-glass-floor — the stage as
@@ -3654,8 +3674,17 @@
   files:
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/components/ChatView.tsx
+    - apps/web/src/components/chat/ThreadDetailsPanel.tsx
+    - apps/web/src/components/chat/ThreadDetailsCard.tsx
   shadows: []
   watch:
+    # Fenced forkGlassPopup prop: ChatView sets it from !isDraftHeroState,
+    # ThreadDetailsPanel forwards it, and ThreadDetailsCard stamps
+    # data-fork-popup on the portaled popover wrapper.
+    - apps/web/src/components/ChatView.tsx
+    - apps/web/src/components/chat/ThreadDetailsPanel.tsx
+    - apps/web/src/components/chat/ThreadDetailsCard.tsx
     # Stamp the popup slots and the dropdown-glass utility the rule targets.
     - apps/web/src/components/ui/menu.tsx
     - apps/web/src/components/ui/select.tsx
@@ -3715,8 +3744,9 @@
 
 - id: fork-glass-popup-cutout
   intent: >
-    Under Glass, popups (menu, select, combobox, popover, glass tooltip and
-    the Usage dialog — the fork-popup-surface arms) read as the same live
+    Under Glass, popups (menu, select, combobox, popover, glass tooltip,
+    the Usage dialog — the fork-popup-surface arms — and, in a started
+    thread, the thread details card opened as a popover) read as the same live
     glass as the sidebar and the composer's control row, not as an
     estimated solid. While one is open, custom/forkGlassPopupCutout.ts masks
     a popup-shaped hole out of everything painted beneath it, so its own
@@ -3788,12 +3818,10 @@
     warnings, the inline activity strip) are the top section of the composer
     card, not a card floating behind it.
 
-    Upstream #16782 moved the settled / snoozed / woke notices out of the
-    banner stack into the timeline-footer status line, where the fork keeps
-    its "Unsettle" / "Unsettling..." action wording, and #16631 replaced the
-    resume-with-less-context card with compact-on-send. The fork's settled-only
-    stack filter (custom/composerBannerVisibility.ts) went with them in the
-    2026-10-07 sync.
+    Upstream #16782 moved the settled / snoozed / woke notices into a
+    timeline-footer status line and #16631 replaced the
+    resume-with-less-context card with compact-on-send; the fork brings
+    those cards back (fork-thread-state-cards, fork-resume-compaction-banner).
 
     Colour: instead of upstream's severity tint — a --info / --success /
     --warning / --error outline plus a wash of the same hue over the glass,
@@ -3854,6 +3882,66 @@
     - docs/user/thread-sidebar.md
   verify:
     - apps/web/src/__fork_guards__/forkComposerBannerSurface.test.ts
+
+- id: fork-resume-compaction-banner
+  intent: >
+    Returning to a large, stale Claude thread shows the "Resume with less
+    context" notice card above the composer (Compact as the white primary,
+    "Keep full history" as the dismiss), as it did before the 2026-10-07 sync.
+    Upstream #16631 replaced that card with a split "Compact and send" button
+    that took the send slot, so Enter compacted first and the dictation mic
+    (fork-local-dictation) lost its slot whenever the offer was up. The fork
+    leaves upstream's send untouched: ChatView passes null
+    resumeCompactionTokens to the composer and the send path, so the composer
+    never renders the compact-send button and Enter sends as typed. The card
+    lives in custom/useResumeCompactionBanner.tsx with its old gating: hidden
+    while a run is going or a question is pending, dismissed per thread and
+    context snapshot for the session, and permanently by the existing
+    native-dismiss flags. The Claude user doc describes the card, not
+    compact-on-send.
+  tier: 4
+  files:
+    - apps/web/src/custom/useResumeCompactionBanner.tsx
+    - apps/web/src/components/ChatView.tsx
+    - docs/user/providers-claude.md
+  shadows: []
+  watch:
+    # Owns resumeCompactionTokens, the compact-before-send path and the banner stack.
+    - apps/web/src/components/ChatView.tsx
+    # Renders the compact-send button when compactBeforeSendTokens is non-null.
+    - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    # Owns shouldOfferResumeCompaction, the offer threshold the card reuses.
+    - apps/web/src/components/chat/ContextWindowMeter.logic.ts
+    - docs/user/providers-claude.md
+  verify:
+    - apps/web/src/__fork_guards__/forkResumeCompactionBanner.test.ts
+
+- id: fork-thread-state-cards
+  intent: >
+    A settled or snoozed thread shows its notice card above the composer
+    ("This thread is settled" with Unsettle, "This thread is snoozed" with
+    Wake now, both the white primary), and a woken thread shows the "Thread
+    woke from snooze" notice there too, as before the 2026-10-07 sync.
+    Upstream #16782 replaced those cards with a quiet status line after the
+    last message (ThreadStatusLine as the timeline footer), which the fork
+    drops: ChatView (fenced) builds the cards in custom/useThreadStateBanners
+    instead of the status line and passes no footer. A settled thread shows
+    only its Unsettle card; every other notice comes back, undismissed, once
+    the thread is unsettled (docs/user/thread-sidebar.md says so).
+  tier: 4
+  files:
+    - apps/web/src/custom/useThreadStateBanners.tsx
+    - apps/web/src/components/ChatView.tsx
+    # Ignores upstream's now-unmounted ThreadStatusLine.tsx for the file audit.
+    - knip.jsonc
+  shadows: []
+  watch:
+    # Owns the settled / snoozed / woke state, their handlers, the banner
+    # stack and the timeline footer the status line rode in.
+    - apps/web/src/components/ChatView.tsx
+    - apps/web/src/components/chat/ThreadStatusLine.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkThreadStateCards.test.ts
 
 - id: fork-pending-user-input
   intent: >
@@ -4062,9 +4150,11 @@
     paint var(--card), an 8px radius, and border-color var(--fork-composer-
     border) so Cool / Neutral palettes keep their own hairline weight. Path
     labels outside the header lift to --foreground (not the Show/Hide hint).
-    Outline actions are header > div button (TooltipTrigger overwrites
-    data-slot="button") and share the dark --fork-outline-* recipe with
-    pending Previous. Every button in the card hovers as the same 4% white
+    The header actions (fold toggle, Open diff) are ghost-muted Buttons
+    upstream and stay borderless: selected as header > div button
+    (TooltipTrigger overwrites data-slot="button") they take --foreground
+    ink only, never the --fork-outline-border recipe pending Previous
+    wears. Every button in the card hovers as the same 4% white
     lift (--fork-outline-hover-bg) instead of upstream's accent/60 fill,
     which lands darker than the card. The user's sent chat bubble
     (bg-message → --message-surface, upstream's --accent) is painted
@@ -4273,6 +4363,9 @@
     projectSelectionRequired gate blocks send until a project is chosen. The
     prompt itself stays editable on an unassigned draft (a fenced exception
     in ChatComposer's editor gate), so the user writes while choosing.
+    Until a project is picked the header is empty: ChatView (fenced) skips
+    the title, the panel toggles and the thread details card while a local
+    draft has no project, since there is nothing for them to name or show.
 
     The project is chosen from the first chip in the composer's context row
     (custom/DraftProjectPill), ahead of the workspace and branch chips and

@@ -18,12 +18,20 @@ export function ThreadDetailsCard({
   handle,
   onPresentationChange,
   children,
+  /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
+  forkGlassPopup = false,
+  /* fork:end fork-popup-surface */
 }: {
   threadRef: ScopedThreadRef;
   anchor: RefObject<Element | null>;
   handle: ReturnType<typeof PopoverCreateHandle>;
   onPresentationChange: (presentation: ThreadPanelPresentation) => void;
   children: (density: "full" | "compact" | "essential") => ReactNode;
+  /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
+  /** Stamps the portaled popover wrapper so the Glass popup recipe and cutout
+   * reach the card without a document-wide :has(). Off on a new agent's draft. */
+  forkGlassPopup?: boolean;
+  /* fork:end fork-popup-surface */
 }) {
   const canvas = useChatCanvas();
   const preferredPlacement = canvas
@@ -168,7 +176,13 @@ export function ThreadDetailsCard({
           variant="panel"
           padding="none"
         >
-          <div data-density={density} data-thread-details-panel="popover">
+          <div
+            data-density={density}
+            data-thread-details-panel="popover"
+            /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
+            data-fork-popup={forkGlassPopup || undefined}
+            /* fork:end fork-popup-surface */
+          >
             {card}
           </div>
         </PopoverPopup>

@@ -29,6 +29,9 @@ export const FORK_GLASS_POPUP_SELECTOR = [
   ':is([data-slot="menu-popup"], [data-slot="menu-sub-content"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"]).dropdown-glass',
   '[data-slot="select-popup"] > .dropdown-glass',
   '.dropdown-glass:has(> [data-slot="combobox-popup"])',
+  // The thread details card, popover-presented in a started thread only: the
+  // portaled wrapper carries data-fork-popup outside a new agent's draft.
+  '[data-thread-details-panel="popover"][data-fork-popup] > [data-thread-details-card].dropdown-glass',
 ].join(", ");
 
 /** The attributes Base UI moves on a popup's subtree when it closes or repositions. */

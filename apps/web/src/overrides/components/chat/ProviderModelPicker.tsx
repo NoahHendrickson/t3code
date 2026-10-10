@@ -405,7 +405,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         />
         {props.traits ? (
           <>
-            <MenuSeparator className="mx-0 my-0" />
+            {/* Edge to edge: the popup's scroll wrapper pads its children by
+                4px, so the rule pulls back out by the same amount. It ends at
+                the wrapper's padding box, so nothing scrolls sideways. */}
+            <MenuSeparator className="-mx-1 my-0" />
             {/* Stamped like the pages above, so the wheel lock lets the popup
                 scroll from here and modelPickerHoldsFocus counts the panel's
                 controls as inside the picker. */}

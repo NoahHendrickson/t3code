@@ -33,9 +33,9 @@ const ROOT = "[data-chat-column-maximized-away]";
 const HERO = '[data-chat-composer-overlay="true"][data-draft-hero]';
 const DRAFT = `${ROOT}:has(${HERO})`;
 const SUPPORTS = ["@supports (anchor-name: --fork-glass-card)"];
-// The four frost hosts, as the sheet lists them inside one :is().
+// The three frost hosts, as the sheet lists them inside one :is().
 const HOSTS =
-  ':is([data-fork-composer-stack="true"][data-fork-composer-vessel],[data-fork-composer-stack="true"][data-fork-composer-context-row]:is(button,[data-slot="button"],[data-fork-context-chip],[data-fork-pr-chip]),[data-chat-header]:is([data-fork-pill],[data-fork-frost-host]))';
+  ':is([data-fork-composer-stack="true"][data-fork-composer-vessel],[data-fork-composer-stack="true"][data-fork-composer-context-row]:is(button,[data-slot="button"],[data-fork-context-chip],[data-fork-pr-chip]),[data-chat-header][data-fork-pill])';
 
 const sheet = readSibling("../theme.custom.glass.css");
 const rules = cssRules(sheet);
@@ -78,10 +78,15 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       expect(rule.selector, `rule not scoped to Glass "${rule.selector}"`).toContain(
         `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`,
       );
-      // No filter anywhere: under the desktop glass a backdrop-filter blurs
-      // the picture in the renderer's composite and not on screen (the
-      // vibrancy entry's standing rule, re-confirmed 2026-10-08 at blur(40px)).
-      expect(rule.body, `filter in ${rule.selector}`).not.toMatch(/backdrop-filter/u);
+      // No filter on the frost: under the desktop glass a backdrop-filter on
+      // the vessel blurs the picture in the renderer's composite and not on
+      // screen (the vibrancy entry's standing rule, re-confirmed 2026-10-08 at
+      // blur(40px)). The panel toggles are the one exception: they wear the
+      // thread details menu's material, blur included, and a native window
+      // capture (2026-10-10) showed that blur on screen.
+      if (!rule.selector.includes("[data-fork-panel-toggle]")) {
+        expect(rule.body, `filter in ${rule.selector}`).not.toMatch(/backdrop-filter/u);
+      }
       // Never transparent: under the desktop glass that is a hole to the
       // raw wallpaper (the seam read orange against a sunset).
       expect(rule.body, `went transparent: ${rule.selector}`).not.toContain("transparent");
@@ -261,8 +266,12 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(flat(host?.body)).toBe(
       "isolation: isolate; clip-path: inset(0 round var(--fork-glass-frost-radius)); background: var(--fork-glass-frost-floor); scale: none;",
     );
-    // The clip steps out for the focus ring, on the host or anything in it.
-    const focus = find(`${GLASS}${DRAFT}${HOSTS}:is(:focus-visible,:has(:focus-visible))`);
+    // The clip steps out for the focus ring, on the host or anything in it
+    // except the prompt editor: an editing host is focus-visible on every
+    // click and draws no ring, so counting it haloed the vessel on focus.
+    const focus = find(
+      `${GLASS}${DRAFT}${HOSTS}:is(:focus-visible,:has(:focus-visible:not([data-testid="composer-editor"])))`,
+    );
     expect(flat(focus?.body)).toBe(
       "clip-path: inset(-4px round calc(var(--fork-glass-frost-radius) + 4px));",
     );
@@ -305,11 +314,8 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       "--fork-glass-frost-wash: var(--fork-context-chip-bg-hover);",
     );
     const HEADER = `${DRAFT}[data-chat-header]`;
-    expect(flat(find(`${GLASS}${HEADER}:is([data-fork-pill],[data-fork-frost-host])`)?.body)).toBe(
-      "--fork-glass-frost-wash: rgb(255 255 255 / 18%); --fork-glass-frost-radius: 6px; --fork-glass-frost-mask: none;",
-    );
     expect(flat(find(`${GLASS}${HEADER}[data-fork-pill]`)?.body)).toBe(
-      "--fork-glass-frost-radius: var(--fork-pill-radius);",
+      "--fork-glass-frost-wash: rgb(255 255 255 / 18%); --fork-glass-frost-radius: var(--fork-pill-radius); --fork-glass-frost-mask: none;",
     );
     expect(
       flat(find(`${GLASS}${HEADER}button[data-fork-pill]:is(:hover,[data-pressed])`)?.body),
@@ -321,9 +327,14 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       }
     }
 
+    // All three panel toggles wear the thread details menu's material, not
+    // the frost: the button that opens the menu reads as the card under it.
+    expect(flat(find(`${GLASS}${HEADER}[data-fork-panel-toggle]`)?.body)).toContain(
+      "background: var(--fork-popup-fill);",
+    );
     // The toggle hosts are a real hook, not the TooltipTrigger's wrapper shape.
     const controls = readSibling("../components/chat/PanelLayoutControls.tsx");
-    expect(controls.match(/data-fork-frost-host/gu)).toHaveLength(2);
+    expect(controls.match(/data-fork-panel-toggle/gu)).toHaveLength(3);
     expect(controls).toContain("fork:begin fork-glass-new-agent-stage");
     expect(sheet).not.toContain("span:has(> button)");
 

@@ -81,6 +81,11 @@
         // ghost; it stays on disk as the landing pad for that port.
         "src/components/chat/ThreadContextDragGhost.tsx",
         // fork:end sidebar-v2-project-grouping
+        // fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+        // Settled / snoozed / woke stay composer cards, so nothing mounts
+        // upstream's status line; it stays on disk so syncs merge cleanly.
+        "src/components/chat/ThreadStatusLine.tsx",
+        // fork:end fork-thread-state-cards
       ],
       // fork:end fork-sidebar-chrome
       // UI component modules are copied and adapted as cohesive sets. Keep their
