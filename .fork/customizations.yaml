@@ -4302,6 +4302,9 @@
     projectSelectionRequired gate blocks send until a project is chosen. The
     prompt itself stays editable on an unassigned draft (a fenced exception
     in ChatComposer's editor gate), so the user writes while choosing.
+    Until a project is picked the header is empty: ChatView (fenced) skips
+    the title, the panel toggles and the thread details card while a local
+    draft has no project, since there is nothing for them to name or show.
 
     The project is chosen from the first chip in the composer's context row
     (custom/DraftProjectPill), ahead of the workspace and branch chips and
