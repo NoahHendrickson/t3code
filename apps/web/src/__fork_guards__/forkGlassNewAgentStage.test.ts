@@ -369,7 +369,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // lengths the cutout writes: a popup's positioner is transformed, which
     // would break an anchor. overflow, not clip-path, keeps the shadow.
     expect(flat(find(`${VIBRANT}${POPUP}`)?.body)).toBe(
-      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 8%);",
+      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 5%); --fork-glass-frost-veil: 45%;",
     );
     const popupFrost = find(`${VIBRANT}${POPUP}::after`)?.body;
     expect(popupFrost).toMatch(/position:\s*absolute/u);

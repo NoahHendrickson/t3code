@@ -459,9 +459,12 @@
    popup sits in a positioner Floating UI moves with a transform, which
    would be the copy's containing block and break the anchor; overflow
    clips it to the popup's radius and, unlike clip-path, keeps the popup's
-   shadow. ::after, because popover and tooltip already use ::before. Its
-   wash is the general popup frost's white 8% (fork-popup-surface), a step
-   over the vessel so the menu reads as raised. No stamp, no change: an
+   shadow. ::after, because popover and tooltip already use ::before. It
+   wears the composer control row's material rather than the general popup
+   frost's: the vessel's white 5% wash, and a heavier veil of the floor so
+   the picture reads as subdued through it the way it does through the row,
+   instead of the menu reading as a lighter, warmer cut-out of the picture
+   wherever it opens high on the card. No stamp, no change: an
    opaque client keeps the blurred popup material, which sees the picture
    on its own. `body` only outranks the palettes sheet's popup rule, which
    comes later in source order. */
@@ -471,7 +474,8 @@
   isolation: isolate;
   overflow: clip;
   background: var(--fork-glass-frost-floor);
-  --fork-glass-frost-wash: rgb(255 255 255 / 8%);
+  --fork-glass-frost-wash: rgb(255 255 255 / 5%);
+  --fork-glass-frost-veil: 45%;
 }
 
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
