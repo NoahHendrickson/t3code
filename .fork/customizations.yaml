@@ -1934,6 +1934,11 @@
     - apps/web/src/components/ChatView.tsx
     # Fenced data-fork-panel-toggle stamps on the three panel toggle spans.
     - apps/web/src/components/chat/PanelLayoutControls.tsx
+    # The floating player's data-preview-mini-player stamp and its z-47/48/49
+    # split, and the data-browser-surface-slot marker inside it, which the
+    # stacking-context carve and the cutout's draft-card selector key on.
+    - apps/web/src/components/preview/ThreadPreviewMiniPlayer.tsx
+    - apps/web/src/browser/BrowserSurfaceSlot.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts

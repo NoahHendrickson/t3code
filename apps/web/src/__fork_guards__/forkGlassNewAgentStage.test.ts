@@ -118,16 +118,18 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(flat(root[2]?.body)).toBe("--fork-glass-frost-floor: var(--fork-popup-glass-floor);");
     // A floating preview's chrome must out-stack its root-level webview, so
     // the stacking context steps aside while one is open.
-    expect(flat(find(`${GLASS} ${ROOT}:has([data-preview-mini-player])`)?.body)).toBe(
-      "isolation: auto;",
-    );
+    expect(
+      flat(
+        find(`${GLASS} ${ROOT}:has([data-preview-mini-player] [data-browser-surface-slot])`)?.body,
+      ),
+    ).toBe("isolation: auto; --fork-glass-frost-image: none;");
     const unkeyed = rules.filter(
       (rule) => !compact(rule.selector).includes(HERO) && !root.includes(rule),
     );
     // Only the at-rest art and its reduced-motion twin paint without the
     // stamp, beside the frosted popups, which only exist over the draft.
     expect(unkeyed.map((rule) => compact(rule.selector))).toEqual([
-      `${compact(GLASS)}${ROOT}:has([data-preview-mini-player])`,
+      `${compact(GLASS)}${ROOT}:has([data-preview-mini-player][data-browser-surface-slot])`,
       `${compact(GLASS)}${ROOT}::after`,
       `${compact(GLASS)}${ROOT}::after`,
       `${VIBRANT_GLASS}${POPUP}`,
