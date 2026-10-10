@@ -7713,9 +7713,6 @@ export default function ChatView(props: ChatViewProps) {
      The fork keeps the "Resume with less context" card instead of compact-on-send:
      the card offers Compact, the send button stays the plain send (dictation keeps
      its slot), and Enter sends as typed, so the send path sees null below. */
-  const compactActiveThreadContext = useCallback(() => {
-    composerRef.current?.compactContext();
-  }, [composerRef]);
   const resumeCompactionBannerItem = useResumeCompactionBanner({
     threadId: activeThread?.id ?? null,
     contextWindow: activeContextWindow,
@@ -7724,7 +7721,7 @@ export default function ChatView(props: ChatViewProps) {
     provider: selectedProvider,
     nowMinute,
     compactDisabledReason,
-    onCompact: compactActiveThreadContext,
+    composerRef,
   });
   const resumeCompactionTokens: number | null = null;
   /* fork:end fork-resume-compaction-banner */

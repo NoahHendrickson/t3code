@@ -1,11 +1,29 @@
 import { ChevronsDownUpIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore, type RefObject } from "react";
 
 import type { ComposerBannerStackItem } from "~/components/chat/ComposerBannerStack";
 import { shouldOfferResumeCompaction } from "~/components/chat/ContextWindowMeter.logic";
 import { Button } from "~/components/ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
+
+// Session-scoped dismissals, one key per (thread, snapshot). They live at module
+// scope, not in hook state, because ChatView remounts per route (a draft and a
+// server thread are separate instances) and a dismissal must outlive that.
+const dismissedKeys = new Set<string>();
+const dismissListeners = new Set<() => void>();
+
+function subscribeToDismissals(listener: () => void) {
+  dismissListeners.add(listener);
+  return () => {
+    dismissListeners.delete(listener);
+  };
+}
+
+function dismissResumeCompaction(key: string) {
+  dismissedKeys.add(key);
+  for (const listener of dismissListeners) listener();
+}
 
 /**
  * The "Resume with less context" notice card the fork keeps in place of
@@ -22,21 +40,21 @@ export function useResumeCompactionBanner(input: {
   readonly provider: string | null | undefined;
   readonly nowMinute: string;
   readonly compactDisabledReason: string | null;
-  readonly onCompact: () => void;
+  readonly composerRef: RefObject<{ readonly compactContext: () => void } | null>;
 }): ComposerBannerStackItem | null {
   const { threadId, contextWindow, dismissed, hidden, provider, nowMinute } = input;
-  const { compactDisabledReason, onCompact } = input;
-  // Session-scoped dismissals, one key per (thread, snapshot). A set rather
-  // than a single slot so dismissing the banner on one thread does not
-  // resurface it on another thread dismissed earlier.
-  const [dismissedKeys, setDismissedKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const { compactDisabledReason, composerRef } = input;
   const key = threadId && contextWindow ? `${threadId}:${contextWindow.updatedAt}` : null;
+  const keyDismissed = useSyncExternalStore(
+    subscribeToDismissals,
+    () => key !== null && dismissedKeys.has(key),
+  );
 
   return useMemo(() => {
     if (
       key === null ||
       contextWindow === null ||
-      dismissedKeys.has(key) ||
+      keyDismissed ||
       dismissed ||
       hidden ||
       !shouldOfferResumeCompaction({
@@ -57,7 +75,7 @@ export function useResumeCompactionBanner(input: {
         data-fork-composer-notice-action="primary"
         disabled={compactDisabled}
         onClick={() => {
-          if (!compactDisabled) onCompact();
+          if (!compactDisabled) composerRef.current?.compactContext();
         }}
       >
         Compact
@@ -79,17 +97,17 @@ export function useResumeCompactionBanner(input: {
         compactAction
       ),
       dismissLabel: "Keep full history",
-      onDismiss: () => setDismissedKeys((keys) => new Set(keys).add(key)),
+      onDismiss: () => dismissResumeCompaction(key),
     } satisfies ComposerBannerStackItem;
   }, [
     compactDisabledReason,
+    composerRef,
     contextWindow,
     dismissed,
-    dismissedKeys,
     hidden,
     key,
+    keyDismissed,
     nowMinute,
-    onCompact,
     provider,
   ]);
 }
