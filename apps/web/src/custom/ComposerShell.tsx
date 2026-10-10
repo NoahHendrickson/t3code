@@ -114,23 +114,19 @@ type ComposerPromptRowProps = Pick<
   "approvalPending" | "mobilePendingActionsVisible"
 > & {
   action: ReactNode;
-  /** Attach: leads the row in a started thread, so the text starts after it. */
-  leading?: ReactNode;
   children?: ReactNode;
   /** Empty editor: a live dictation session fills this row instead of stacking. */
   promptEmpty?: boolean;
 };
 
 /**
- * Keeps the prompt between its leading action (attach) and its primary-action
- * cluster in the drawn base row. Both go with showInlinePrimaryAction, so an
- * approval takes attach away along with send.
+ * Keeps the prompt beside its primary-action cluster in the drawn base row.
+ * The cluster goes with showInlinePrimaryAction, so an approval takes send away.
  */
 export const ComposerPromptRow = memo(function ComposerPromptRow({
   action,
   approvalPending,
   children,
-  leading,
   mobilePendingActionsVisible,
   promptEmpty = false,
 }: ComposerPromptRowProps) {
@@ -142,22 +138,14 @@ export const ComposerPromptRow = memo(function ComposerPromptRow({
 
   return (
     // Stamped so the draft-only geometry (theme.custom.css, keyed on the
-    // overlay's data-draft-hero) can put the prompt on top and both action
-    // slots on one row beneath it. prompt-empty lets a live dictation
-    // session fill the compact row when there is nothing typed.
+    // overlay's data-draft-hero) can put the prompt on top and the action
+    // cluster beneath it. prompt-empty lets a live dictation session fill
+    // the compact row when there is nothing typed.
     <div
       data-fork-composer-prompt-row="true"
       {...(promptEmpty ? { "data-fork-composer-prompt-empty": "true" } : {})}
       className="flex min-w-0 items-end gap-6"
     >
-      {leading && showInlinePrimaryAction ? (
-        <div
-          data-fork-composer-leading-actions="true"
-          className="flex shrink-0 items-center self-end"
-        >
-          {leading}
-        </div>
-      ) : null}
       <div data-fork-composer-prompt="true" className="relative min-w-0 flex-1">
         {children}
       </div>

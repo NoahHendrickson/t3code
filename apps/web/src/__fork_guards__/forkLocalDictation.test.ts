@@ -171,10 +171,10 @@ describe("fork local dictation", () => {
     );
     expect(hookArgument).not.toContain("promptRef.current =");
     expect(hookArgument).not.toContain("value: promptRef.current");
-    // Dictation borrows the send button. ChatComposer says when it owns the
-    // slot: with nothing to send (the mic in place of a disabled send, but not
-    // over a sending or connecting spinner) and for the whole of a live session
-    // (the check, with a cancel X beside it). ComposerPrimaryActions hands the
+    // A live session borrows the send button. ChatComposer says when it owns
+    // the slot: for the whole of a live session (the check, with a cancel X
+    // beside it), never while idle — the mic lives in the control row, so an
+    // empty prompt shows send. ComposerPrimaryActions hands the
     // slot over on every path that renders send, including while running, so
     // a session started from the mic always has its check. There it renders
     // before stop, so stop keeps the right edge and a live session's timeline,
@@ -182,7 +182,7 @@ describe("fork local dictation", () => {
     // running (mobile viewports) keeps its place after stop.
     const primary = read("../components/chat/ComposerPrimaryActions.tsx");
     expect(composer).toMatch(
-      /const dictationOwnsPrimaryAction =\s*dictation\.isAvailable &&\s*\(dictation\.blocksSubmission \|\|\s*\(pendingPrimaryAction === null &&\s*!showResumeAction &&\s*!composerSendState\.hasSendableContent &&\s*!isSendBusy &&\s*!isConnecting\)\)/u,
+      /const dictationOwnsPrimaryAction = dictation\.isAvailable && dictation\.blocksSubmission;/u,
     );
     // A question keeps Next/Submit until a session starts, then the live
     // session holds the slot like send's. ChatComposer decides that where it
@@ -225,24 +225,24 @@ describe("fork local dictation", () => {
     expect(control).toContain('data-fork-dictation-action={busy ? "done" : "dictate"}');
     expect(control).toMatch(/busy \? \(\s*<CheckIcon/u);
     expect(control).toMatch(/\) : \(\s*<MicrophoneIcon weight="fill"/u);
-    // Once there is something to send, send takes its slot back and the mic
-    // steps beside it as a ghost in attach's box, same filled glyph, so
-    // dictation stays one click away while typing. Never alongside a live
-    // session, whose X and check are in the slot.
+    // The mic is a ghost in the control row's left slot, after attach and
+    // before the mode controls (Full access). It stays in place, inert, while
+    // a live session's X and check hold the send slot, and never rides the
+    // primary cluster.
     expect(composer).toMatch(
-      /!dictationOwnsPrimaryAction \|\|[\s\S]{0,200}?<ForkDictationGhostMic/u,
+      /modeControls=\{\s*<>\s*\{composerAttachAction\}[\s\S]{0,400}?<ForkDictationGhostMic\s*dictation=\{dictation\}\s*disabled=\{dictationDisabled \|\| dictation\.blocksSubmission\}\s*\/>[\s\S]{0,120}?\{composerModeControls\}/u,
+    );
+    expect(composer).not.toMatch(
+      /const composerPrimaryActionSlot = \([\s\S]{0,1500}?<ForkDictationGhostMic/u,
     );
     expect(control).toMatch(
       /data-fork-composer-action="dictate"[\s\S]*?onClick=\{dictation\.start\}/u,
     );
     expect(control).toMatch(/icon=\{<MicrophoneIcon weight="fill" \/>\}/u);
-    expect(theme).toMatch(
-      /\.dark\s*:is\([^)]*\[data-fork-composer-action="dictate"\][^)]*\)\s*\{[^}]*color:\s*#ffffff/u,
-    );
     expect(control).toContain(
       "onClick={recording ? dictation.stop : transcribing ? undefined : dictation.start}",
     );
-    // The X is a ghost in attach's box, mounted only while a session is live.
+    // The X is a ghost in send's box, mounted only while a session is live.
     expect(control).toMatch(
       /\{busy \? \(\s*<Button[^>]*data-fork-composer-action="dictate-cancel"/su,
     );
@@ -286,10 +286,9 @@ describe("fork local dictation", () => {
       /if \(!unfocused && composer\?\.contains\(target\) !== true\) return;/u,
     );
     // In a started thread an empty prompt keeps the compact row: the cluster
-    // fills attach's slot and the editor (gap 0, prompt collapsed, actions
-    // flex). Typed text turns the row into the draft box's grid: attach keeps
-    // its place beside the last line, the cluster spans the row beneath, and
-    // the prompt reserves the cluster's idle width on the right so the lines
+    // fills the editor's place (gap 0, prompt collapsed, actions flex). Typed
+    // text turns the row into the draft box's grid: the cluster spans the row
+    // beneath, and the prompt reserves the cluster's idle width on the right so the lines
     // never reflow. prompt-empty is stamped on the row; the timeline's
     // presence keys the rest.
     const live = String.raw`:has\(\s*\[data-fork-dictation-timeline\]\s*\)`;
@@ -301,13 +300,7 @@ describe("fork local dictation", () => {
     );
     expect(theme).toMatch(
       new RegExp(
-        String.raw`:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]${typed}\s*\{[^}]*display:\s*grid;[^}]*grid-template-areas:\s*"leading prompt"\s*"actions actions"`,
-        "u",
-      ),
-    );
-    expect(theme).toMatch(
-      new RegExp(
-        String.raw`${typed}\s*\[data-fork-composer-leading-actions\]\s*\{[^}]*grid-area:\s*leading;\s*margin-inline-end:\s*6px`,
+        String.raw`:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]${typed}\s*\{[^}]*display:\s*grid;[^}]*grid-template-areas:\s*"prompt"\s*"actions"`,
         "u",
       ),
     );
@@ -349,33 +342,12 @@ describe("fork local dictation", () => {
     );
     expect(theme).toMatch(
       new RegExp(
-        String.raw`${typed}:has\(\[data-fork-composer-action="dictate"\], \[data-fork-composer-action="stop"\]\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)`,
+        String.raw`${typed}:has\(\[data-fork-composer-action="stop"\]\)\s*\[data-fork-composer-prompt\]\s*\{[^}]*padding-right:\s*calc\(24px \+ 8px \+ 24px \+ 24px\)`,
         "u",
       ),
     );
     expect(theme).not.toMatch(/padding-left:\s*calc\(24px \+ 6px\)/u);
-    // The ghost mic stays mounted (hidden) through a session that started over
-    // typed text, so the reserve above still counts it.
-    expect(composer).toMatch(
-      /\(dictation\.blocksSubmission && composerSendState\.hasSendableContent\) \? \(\s*<ForkDictationGhostMic/u,
-    );
-    expect(composer).toMatch(/hidden=\{\s*dictationOwnsPrimaryAction \|\|/u);
-    expect(control).toMatch(/data-fork-composer-action="dictate"\s*hidden=\{hidden\}/u);
-    // Attach steps aside only where the cluster needs its slot, the compact
-    // empty row: hidden by CSS rather than unmounted, so upstream's render
-    // stands. Everywhere else it keeps its place, disabled for the session.
-    expect(theme).toMatch(
-      new RegExp(
-        String.raw`:not\(\[data-draft-hero\]\)\s*\[data-fork-composer-prompt-row\]\[data-fork-composer-prompt-empty\]${live}\s*\[data-fork-composer-leading-actions\]\s*\{[^}]*display:\s*none`,
-        "u",
-      ),
-    );
-    expect(theme).not.toMatch(
-      new RegExp(
-        String.raw`\[data-fork-composer-prompt-row\]${live}\s*\[data-fork-composer-leading-actions\]\s*\{[^}]*display:\s*none`,
-        "u",
-      ),
-    );
+    // Attach keeps its place in the control row, disabled for the session.
     expect(composer).toContain("const composerAttachAction = showComposerAttachAction ? (");
     expect(composer).toMatch(
       /data-fork-composer-action="attach"[\s\S]{0,200}?disabled=\{dictation\.blocksSubmission\}/u,

@@ -54,51 +54,42 @@
     showing, and an owner change cancels an in-flight one rather than
     re-targeting it. Cancellation stops owned work, stale drafts never receive
     transcripts, and a session writes to the field it started in: a question
-    that takes a typed answer is dictated into like the prompt (the ghost mic
-    beside Next/Submit, and a live session holds that slot as it holds
-    send's; not on a compact viewport, where Next/Submit sit in a strip below
+    that takes a typed answer is dictated into like the prompt (the
+    control-row mic, and a live session holds the Next/Submit slot as it
+    holds send's; not on a compact viewport, where Next/Submit sit in a strip below
     the editor with no slot for the controls, so the question stays
     dictation-free there), while a prompt session outlived by an approval or question
     routes its transcript into the prompt draft itself. When the session's
     field leaves the editor or the action cluster unmounts, the recording is
     transcribed on the spot rather than left running with no control to end it.
-    Dictation borrows the send button rather than adding controls beside it.
-    Since the orchestrator-V2 sync (2026-10-05) an idle mic also yields the
-    slot to upstream's resume action (a settled thread offering "Resume
-    thread"); a live session never does. Upstream now renders stop alone
-    while a turn runs, so the mic sits to stop's left on that branch and
-    otherwise takes the slot bare, without send's tooltip.
-    With nothing to send, the slot shows an enabled filled microphone in
-    place of a disabled send (never over a sending or connecting spinner,
-    and a send in flight also blocks starting a session from the ghost mic
-    or the keyboard);
-    once there is something to send, send takes the slot back and the same
-    filled mic steps beside it as a ghost in attach's box; starting a
-    session turns that same button into the check and puts a ghost cancel X
-    and the level timeline beside it; the check spins while transcribing. The
+    The mic is a filled-glyph ghost in the composer's control row, after
+    attach and before the mode controls (Full access), at the row's 20px
+    ghost size; the send slot always shows send while idle. A send in flight
+    blocks starting a session from the mic or the keyboard. A live session
+    borrows the send button: it becomes the check with a ghost cancel X and
+    the level timeline beside it, and the check spins while transcribing;
+    the control-row mic stays in place, disabled, so the row never shifts. The
     timeline is a canvas filling the row to the left of the X: a 2px dot per
     50 ms sample, newest at the right, so silence is dots and speech is bars
     scrolling left, painted in the foreground colour (pure white in dark). In
-    a started thread an empty prompt keeps the compact one-line row: attach
-    hides and the cluster (timeline, X, check) fills that slot and the editor
-    so the composer does not grow and no hole is left on the left. Typed text
-    turns the row into the draft box's grid: attach keeps its place beside
-    the last line, disabled rather than hidden so it cannot be clicked
-    mid-session (the draft box's attach is likewise disabled in place), and
-    the cluster spans the row beneath so the timeline does not squeeze the
-    lines; the prompt reserves the idle cluster's width on the right (the
-    send slot or the ghost mic that stood before it, kept mounted and hidden
-    for the session so it still counts) so the typed text never reflows.
+    a started thread an empty prompt keeps the compact one-line row: the
+    cluster (timeline, X, check) fills the editor's place so the composer
+    does not grow. Typed text turns the row into the draft box's grid: the
+    cluster spans the row beneath so the timeline does not squeeze the
+    lines, and the prompt reserves the idle cluster's width on the right
+    (send, or stop and send while a turn runs) so the typed text never
+    reflows. Attach stays in the control row, disabled rather than hidden
+    for the session.
     ChatComposer stamps prompt-empty on the row; the timeline's presence keys
     the rest.
     ChatComposer decides when
     dictation owns the slot and ComposerPrimaryActions hands it over on every
     path that renders send, including while a turn runs, where it sits to
     stop's left so stop keeps the right edge and never moves when a session
-    starts (upstream's send while running keeps its place after stop). The mic
-    and check wear the send button's own class list and fork tone attribute,
-    so the flat white fill in dark applies to them too; the X is a ghost in
-    attach's 24px box in the pure-white ghost colour, from theme.custom.css.
+    starts (upstream's send while running keeps its place after stop). The
+    check wears the send button's own class list and fork tone attribute,
+    so the flat white fill in dark applies to it too; the X is a ghost in
+    send's 24px box in pure white, from theme.custom.css.
     Nothing animates: no tray, no slide or stagger, and no separate blue mic;
     the timeline appears in place. When the send slot
     shows something else (an approval, a choice-only question, or the plan follow-up's
@@ -2759,16 +2750,14 @@
     so the banner stack lives in ChatComposer, not ChatView, and nothing
     hangs above the vessel any more (no shoulder clearance). Upstream's
     bottom toolbar is not rendered at all — the control row owns those
-    controls — and its attach-files control leads the prompt row instead
-    (ComposerPromptRow's leading slot, so in a started thread the text starts
-    after the plus and send trails alone), stamped
-    data-fork-composer-action="attach" (fenced in ChatComposer) so it shares
-    send/stop's 24px square and the items-end row does not drop the prompt
-    below the send axis, and hovering
-    with the ghost controls' 4% lift rather than --accent, which on the Cool
-    palettes is the prompt surface it sits on. Its glyph is a plus, not
-    upstream's paperclip, and in dark mode the row's ghost actions (attach and
-    the dictation controls) paint pure white instead of the muted foreground. Actions are always stamped by
+    controls — and its attach-files control leads the control row's left
+    slot instead, followed by the dictation mic (fork-local-dictation) and
+    then the mode controls, so send trails the prompt alone. Attach and the
+    mic are stamped data-fork-composer-action (fenced in ChatComposer) and
+    sized there as 20px squares, the row's ghost height, taking the row's
+    ghost ink and 4% hover. Its glyph is a plus, not upstream's paperclip.
+    The dictation cancel X, a ghost in the send slot, paints pure white in
+    dark instead of the muted foreground. Actions are always stamped by
     name, never selected by position: ComposerPrimaryActions hoists a
     labelled Refine submit into the same cluster as a direct child. The
     context-usage meter carries
@@ -2814,7 +2803,7 @@
     # trailing), and keeps that strip mounted when the thread's worktree
     # directory is missing.
     - apps/web/src/components/ChatView.tsx
-    # data-fork-composer-action on the send, stop and attach buttons; the whole 24px
+    # data-fork-composer-action on the send and stop buttons; the whole 24px
     # square restyle hangs off it. Send also carries
     # data-fork-composer-send-tone (always "flat") for the dark-mode
     # white/black fill, and its stage-art span data-fork-composer-send-art,
@@ -4325,9 +4314,7 @@
     vessel up the ancestor chain in headful Chrome; neutralising the name
     alone restored the blur. That geometry is the drawn box (Figma 418:11501): an
     80px prompt surface with 8px padding, the prompt line on top and the
-    attach / send actions on their own row beneath — attach leading, send
-    trailing, a two-column grid since attach is the row's own leading slot —
-    which folds back to the compact base row the moment the thread starts. The draft composer is also capped at 42rem (the drawn
+    send action on its own row beneath, trailing — which folds back to the compact base row the moment the thread starts. The draft composer is also capped at 42rem (the drawn
     663px) instead of upstream's 48rem, keyed on a data-fork-composer-stack
     stamp on ChatView's composer stack plus the overlay's data-draft-hero.
 

@@ -631,16 +631,15 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(action?.body).toMatch(/height:\s*24px/u);
     expect(action?.body).toMatch(/border-radius:\s*4px/u);
-    // Upstream's attach-files button (#8236) mounts in the same cluster at
-    // icon-sm (28px); the row is items-end, so a taller neighbour drops the
-    // prompt. It is stamped by name like send and stop and shares their box.
-    // Never by position: ComposerPrimaryActions hoists a labelled Refine
-    // submit into the cluster as a direct child, and a `> button` rule would
-    // squash it and steal its hover.
+    // Upstream's attach-files button (#8236) mounts in the primary cluster;
+    // the fork moves it to the control row. It is stamped by name like send
+    // and stop. Never by position: ComposerPrimaryActions hoists a labelled
+    // Refine submit into the cluster as a direct child, and a `> button`
+    // rule would squash it and steal its hover.
     expect(chatComposer).toContain('data-fork-composer-action="attach"');
     expect(chatComposer).toContain('aria-label="Attach files"');
-    // Attach leads the prompt row (ComposerPromptRow's leading slot), so in a
-    // started thread the text starts after the plus and send trails alone.
+    // Attach leads the control row's left slot, ahead of the mic and the
+    // mode controls (Full access); send trails the prompt alone.
     expect(chatComposer).toMatch(/const composerAttachAction = showComposerAttachAction \? \(/u);
     // The whole moved block is one fence, not just its data attribute: a sync
     // conflict inside it must show the fork's boundary.
@@ -650,22 +649,24 @@ describe("fork guard: fork-composer-shell", () => {
     expect(chatComposer).toMatch(
       /\) : null;\s*\/\* fork:end fork-composer-shell \*\/\s*const composerPrimaryActionSlot = \(/u,
     );
-    expect(chatComposer).toContain("leading={composerAttachAction}");
-    const leadingGap = rules.find(
-      (rule) =>
-        rule.selector.includes(":not([data-draft-hero])") &&
-        rule.selector.includes("[data-fork-composer-leading-actions]"),
+    expect(chatComposer).toMatch(/modeControls=\{\s*<>\s*\{composerAttachAction\}/u);
+    expect(theme).not.toContain("leading-actions");
+    // In the control row the stamped ghosts are 20px squares, the row's ghost
+    // height, rather than send's 24px box.
+    const rowAction = rules.find((rule) =>
+      rule.selector
+        .replace(/\s+/gu, " ")
+        .endsWith('[data-fork-composer-control-row-slot="left"] [data-fork-composer-action]'),
     );
-    expect(leadingGap?.body, "plus sits 6px from the text, not the row's 24px").toMatch(
-      /margin-inline-end:\s*-18px/u,
-    );
+    expect(rowAction?.body).toMatch(/width:\s*20px/u);
+    expect(rowAction?.body).toMatch(/padding-inline:\s*0/u);
     const promptLift = rules.find(
       (rule) =>
         rule.selector.includes(":not([data-draft-hero])") &&
         rule.selector.endsWith("[data-fork-composer-prompt]") &&
         rule.body.includes("translate:"),
     );
-    expect(promptLift?.body, "text is lifted 1px to centre on the plus").toMatch(
+    expect(promptLift?.body, "text is lifted 1px to centre on send").toMatch(
       /translate:\s*0 -1px/u,
     );
     expect(chatComposer).not.toMatch(
@@ -674,14 +675,14 @@ describe("fork guard: fork-composer-shell", () => {
     // The glyph is a plus; upstream's paperclip must not come back on a sync.
     expect(chatComposer).toMatch(/data-fork-composer-action="attach"[\s\S]{0,400}?<PlusIcon \/>/u);
     expect(chatComposer).not.toContain("<PaperclipIcon />");
-    // Dark mode paints the row's ghost actions pure white, not the muted foreground.
+    // Dark mode paints the send slot's ghost X pure white, not the muted foreground.
     const whiteGhosts = rules.find(
       (rule) =>
         rule.selector.includes(".dark") &&
-        rule.selector.includes('[data-fork-composer-action="attach"]') &&
+        rule.selector.includes('[data-fork-composer-action="dictate-cancel"]') &&
         rule.body.includes("--control-icon-color: #ffffff"),
     );
-    expect(whiteGhosts, "attach and dictation ghosts are pure white in dark mode").toBeDefined();
+    expect(whiteGhosts, "the dictation X is pure white in dark mode").toBeDefined();
     for (const rule of rules) {
       expect(rule.selector, "actions must be stamped, not selected by position").not.toMatch(
         /data-chat-composer-actions[^{]*>\s*button/u,
@@ -689,12 +690,12 @@ describe("fork guard: fork-composer-shell", () => {
     }
     // Its hover is the ghost lift, not --accent: on the Cool palettes --accent
     // is the prompt surface the button sits on, so upstream's hover vanished.
-    const attachHover = rules.find((rule) =>
+    const cancelHover = rules.find((rule) =>
       rule.selector
         .replace(/\s+/gu, " ")
-        .includes('[data-fork-composer-action="attach"]:is(:hover, [data-pressed])'),
+        .includes('[data-fork-composer-action="dictate-cancel"]:is(:hover, [data-pressed])'),
     );
-    expect(attachHover?.body).toMatch(/background:\s*var\(--fork-composer-control-hover\)/u);
+    expect(cancelHover?.body).toMatch(/background:\s*var\(--fork-composer-control-hover\)/u);
     for (const rule of rules.filter((candidate) => candidate.body.includes("height: 20px"))) {
       expect(rule.selector).not.toMatch(
         /data-chat-composer-(inline-actions|mobile-pending-actions)/u,

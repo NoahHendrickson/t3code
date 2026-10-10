@@ -352,39 +352,23 @@
   padding-block: 8px;
 }
 
-/* Prompt on top, the two action slots on one row beneath: attach (the row's
-   leading slot) at the leading edge, send at the trailing. A grid rather than
-   a column, because attach and the primary cluster are separate children of
-   the row and a column would give attach a row of its own. */
+/* Prompt on top, the action cluster on a row beneath it with send at the
+   trailing edge. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"][data-draft-hero]
   [data-fork-composer-prompt-row] {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
-    "prompt prompt"
-    "leading actions";
+    "prompt"
+    "actions";
   align-items: stretch;
   gap: 0;
 }
 
-:root[data-fork="noahhendrickson-t3code"]
-  [data-chat-composer-overlay="true"][data-draft-hero]
-  [data-fork-composer-leading-actions] {
-  grid-area: leading;
-}
-
-/* In a started thread the plus sits closer to the text than send does: the
-   row's 24px gap pulled in to 6px on the leading side only. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-leading-actions] {
-  margin-inline-end: -18px;
-}
-
 /* The row is items-end, so the 23px text line hangs half a pixel below the
-   24px plus and its glyphs read lower still; a 1px lift centres the text on
-   the plus and the buttons at the far end. Paint only, no layout. */
+   24px send and its glyphs read lower still; a 1px lift centres the text on
+   the buttons at the far end. Paint only, no layout. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
   [data-fork-composer-prompt] {
@@ -864,11 +848,12 @@
   background: var(--fork-composer-control-hover);
 }
 
-/* Send, stop and attach are the exception to the pill rule: 24px squares at
-   a 4px radius. Send and stop are the only filled controls in the composer;
-   attach is a ghost that shares their box so the items-end prompt row stays
-   44px (upstream mounts it at icon-sm, 28px). Each is stamped by name in
-   ChatComposer / ComposerPrimaryActions — never selected by position, because
+/* The stamped actions are the exception to the pill rule: 24px squares at a
+   4px radius. Send and stop are the only filled controls in the composer;
+   the dictation cancel X is a ghost that shares their box so the items-end
+   prompt row stays 44px (upstream mounts it at icon-sm, 28px). Each is
+   stamped by name in ChatComposer / ComposerPrimaryActions /
+   ForkDictationControl — never selected by position, because
    ComposerPrimaryActions also hoists a labelled Refine submit into the same
    cluster as a direct child. */
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-action] {
@@ -878,38 +863,33 @@
   border-radius: 4px;
 }
 
-/* Attach is the one ghost among the stamped actions. Upstream hovers it with
-   --accent, which on the Cool palettes is the prompt surface it sits on, so it
-   takes the same 4% lift as the ghost controls in the row below. */
+/* Attach and the mic lead the control row's left slot as 20px squares, the
+   row's ghost height; the ghost-control rule above owns their ink and hover.
+   Upstream routes ghost icons through --control-icon-color, so it follows the
+   row's ink here. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-action="attach"]:is(:hover, [data-pressed]):not(:disabled) {
-  background: var(--fork-composer-control-hover);
+  [data-fork-composer-control-row-slot="left"]
+  [data-fork-composer-action] {
+  width: 20px;
+  padding-inline: 0;
+  --control-icon-color: currentColor;
 }
 
-/* The ghost actions (attach, the ghost mic beside send, and the dictation
-   cancel X) read as pure white in dark mode. Upstream's ghost variant routes
+/* The dictation cancel X (fork-local-dictation) is the one ghost in the send
+   slot. It reads as pure white in dark mode: upstream's ghost variant routes
    icons through --control-icon-color at the contrast-muted tone, which on the
-   prompt surface is too faint next to the filled send. Disabled keeps
-   upstream's opacity. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  :is(
-    [data-fork-composer-action="attach"],
-    [data-fork-composer-action="dictate"],
-    [data-fork-composer-action="dictate-cancel"]
-  ) {
+   prompt surface is too faint next to the filled send. Upstream hovers it with
+   --accent, which on the Cool palettes is the prompt surface it sits on, so it
+   takes the control row's 4% lift instead. While a session is live the check
+   is the send button itself and takes its fill. Disabled keeps upstream's
+   opacity. */
+:root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-action="dictate-cancel"] {
   --control-icon-color: #ffffff;
   color: #ffffff;
 }
 
-/* The ghost mic and the cancel X (fork-local-dictation) share attach's box and
-   hover so they do not re-grow the prompt row. With nothing to send, and while
-   a session is live, the mic and check are the send button itself and take its
-   fill instead. */
 :root[data-fork="noahhendrickson-t3code"]
-  :is([data-fork-composer-action="dictate"], [data-fork-composer-action="dictate-cancel"]):is(
-    :hover,
-    [data-pressed]
-  ):not(:disabled) {
+  [data-fork-composer-action="dictate-cancel"]:is(:hover, [data-pressed]):not(:disabled) {
   background: var(--fork-composer-control-hover);
 }
 
@@ -2751,14 +2731,12 @@
    While a session is live the action row holds the level timeline, the cancel
    X and the check (which is the send button). The timeline is a canvas that
    fills whatever width the row has left. In a started thread an empty prompt
-   would grow if the cluster dropped under it, and hiding attach would leave
-   its slot empty, so the compact row stays one line and the cluster takes
-   attach's place plus the editor. Typed text still drops the cluster under
-   the prompt so the timeline does not squeeze the lines: the row becomes the
-   draft box's grid, attach keeping its place beside the last line (disabled
-   for the session, from ChatComposer) and the cluster spanning the row
-   beneath; the prompt then reserves the idle cluster's width on the right
-   so nothing reflows. Keyed on the timeline's presence plus prompt-empty
+   would grow if the cluster dropped under it, so the compact row stays one
+   line and the cluster takes the editor's place. Typed text still drops the
+   cluster under the prompt so the timeline does not squeeze the lines: the
+   row becomes the draft box's grid, the cluster spanning the row beneath;
+   the prompt then reserves the idle cluster's width on the right so nothing
+   reflows. Keyed on the timeline's presence plus prompt-empty
    from ComposerPromptRow. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
@@ -2766,25 +2744,12 @@
     [data-fork-composer-prompt-empty]
   ) {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
-    "leading prompt"
-    "actions actions";
+    "prompt"
+    "actions";
   align-items: end;
   gap: 4px 0;
-}
-
-/* Attach's 6px lead is a margin here rather than the row's 24px gap pulled
-   in, so a row with no attach slot (the column collapses to nothing) starts
-   the prompt at the edge. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
-    [data-fork-composer-prompt-empty]
-  )
-  [data-fork-composer-leading-actions] {
-  grid-area: leading;
-  margin-inline-end: 6px;
 }
 
 :root[data-fork="noahhendrickson-t3code"]
@@ -2814,7 +2779,7 @@
 
 /* Empty started-thread prompt: stay in the compact row. Collapse the editor
    (still mounted, so the transcript can land) and let the cluster grow into
-   attach's slot and the prompt. Gap is zeroed so the 0-width prompt does not
+   the prompt's place. Gap is zeroed so the 0-width prompt does not
    keep the row's 24px neighbour gap as a hole on the left. The draft box is
    already two rows, so it is left alone. */
 :root[data-fork="noahhendrickson-t3code"]
@@ -2848,15 +2813,12 @@
   align-self: stretch;
 }
 
-/* The typed text keeps its measure. Between its neighbours the prompt was
-   the row minus attach and its 6px lead on the left (still there in the
-   grid) and minus the cluster and its 24px gap on the right; with the
-   cluster underneath it reserves that right-hand width as padding, so
-   nothing reflows when the session starts or ends. Idle, the cluster is the
-   24px send slot (the mic), or two boxes on an 8px gap: the ghost mic before
-   send once there was text (the ghost stays mounted, hidden, for the session
-   so it still counts), or stop before the slot while a turn runs. The draft
-   box already keeps its actions under the prompt, so it reserves nothing. */
+/* The typed text keeps its measure. Beside it the prompt was the row minus
+   the cluster and its 24px gap; with the cluster underneath it reserves
+   that width as padding, so nothing reflows when the session starts or
+   ends. Idle, the cluster is the 24px send slot, or stop and send on an 8px
+   gap while a turn runs. The draft box already keeps its actions under the
+   prompt, so it reserves nothing. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
   [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
@@ -2870,22 +2832,9 @@
   [data-chat-composer-overlay="true"]:not([data-draft-hero])
   [data-fork-composer-prompt-row]:has([data-fork-dictation-timeline]):not(
     [data-fork-composer-prompt-empty]
-  ):has([data-fork-composer-action="dictate"], [data-fork-composer-action="stop"])
+  ):has([data-fork-composer-action="stop"])
   [data-fork-composer-prompt] {
   padding-right: calc(24px + 8px + 24px + 24px);
-}
-
-/* Attach steps aside only where the cluster needs its slot: the compact
-   empty row in a started thread. Hidden rather than unmounted, so
-   ChatComposer keeps upstream's render. Everywhere else (typed text, the
-   draft box) it stays in place, disabled for the session. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-chat-composer-overlay="true"]:not([data-draft-hero])
-  [data-fork-composer-prompt-row][data-fork-composer-prompt-empty]:has(
-    [data-fork-dictation-timeline]
-  )
-  [data-fork-composer-leading-actions] {
-  display: none;
 }
 
 /* The timeline paints in its own `color`: the foreground in light mode, and
