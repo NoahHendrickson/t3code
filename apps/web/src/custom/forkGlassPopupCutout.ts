@@ -46,7 +46,7 @@ const DRAFT_CARD_SELECTOR =
   '[data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])';
 
 /** Stamped on a popup that frosts over the draft card instead of cutting it. */
-export const FORK_GLASS_FROST_ATTRIBUTE = "data-fork-glass-frost";
+const FORK_GLASS_FROST_ATTRIBUTE = "data-fork-glass-frost";
 
 /** The attributes Base UI moves on a popup's subtree when it closes or repositions. */
 const POPUP_ATTRIBUTES = ["style", "hidden", "data-ending-style", "data-side", "data-align"];

@@ -303,9 +303,17 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     }
     expect(frost?.body).toContain("z-index: -1");
     expect(frost?.body).toContain("pointer-events: none");
-    expect(flat(frost?.body)).toContain(
-      "background: linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
+    expect(frost?.body).toContain("background: var(--fork-glass-frost-layers);");
+    // The layers are stated once, on every element that states a wash (the
+    // hosts and the frosted popup) — a custom property substitutes its var()s
+    // where it is declared, so on the chat view it would miss the wash.
+    const VIBRANT = `${MARKER}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
+    const layers = find(`${GLASS}${DRAFT}${HOSTS},${VIBRANT}${POPUP}`);
+    expect(layers?.atRules).toEqual([]);
+    expect(flat(layers?.body)).toBe(
+      "--fork-glass-frost-layers: linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
     );
+    expect(sheet.match(/var\(--fork-glass-frost-image\)/gu)).toHaveLength(1);
     expect(frost?.body).toContain("mask-image: var(--fork-glass-frost-mask)");
     // Exactly one fixed pseudo-element recipe in the sheet.
     expect(rules.filter((rule) => /position:\s*fixed/u.test(rule.body))).toHaveLength(1);
@@ -335,9 +343,13 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(
       flat(find(`${GLASS}${HEADER}button[data-fork-pill]:is(:hover,[data-pressed])`)?.body),
     ).toBe("--fork-glass-frost-wash: rgb(255 255 255 / 26%);");
-    // Every frost rule is gated on anchor support.
+    // Every anchored copy, host clip and host wash is gated on anchor
+    // support. The frosted popup places its copy without an anchor, so its
+    // wash, and the layers token the two share, need no gate.
     for (const rule of rules) {
-      if (rule.body.includes("--fork-glass-frost-wash") || rule.body.includes("clip-path")) {
+      const hostWash =
+        /--fork-glass-frost-wash\s*:/u.test(rule.body) && compact(rule.selector).includes(HERO);
+      if (hostWash || /anchor\(|clip-path/u.test(rule.body)) {
         expect(rule.atRules, rule.selector).toEqual(SUPPORTS);
       }
     }
@@ -356,9 +368,8 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // Popups over the card carry the same copy, placed absolutely from the
     // lengths the cutout writes: a popup's positioner is transformed, which
     // would break an anchor. overflow, not clip-path, keeps the shadow.
-    const VIBRANT = `${MARKER}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
     expect(flat(find(`${VIBRANT}${POPUP}`)?.body)).toBe(
-      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor);",
+      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 8%);",
     );
     const popupFrost = find(`${VIBRANT}${POPUP}::after`)?.body;
     expect(popupFrost).toMatch(/position:\s*absolute/u);
@@ -370,9 +381,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     ]) {
       expect(popupFrost).toContain(`${edge}: var(--fork-glass-frost-${length});`);
     }
-    expect(flat(popupFrost)).toContain(
-      "var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
-    );
+    expect(popupFrost).toContain("background: var(--fork-glass-frost-layers);");
     expect(popupFrost).toContain("mask-image: var(--fork-glass-frost-mask)");
 
     // The anchor only resolves against the viewport if no ancestor of the

@@ -335,14 +335,7 @@
     pointer-events: none;
     border-radius: 0;
     box-shadow: none;
-    background:
-      linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)),
-      linear-gradient(
-        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
-        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
-      ),
-      var(--fork-glass-card-scrim),
-      var(--fork-glass-frost-image) 51% top / cover no-repeat;
+    background: var(--fork-glass-frost-layers);
     mask-image: var(--fork-glass-frost-mask);
   }
 
@@ -425,6 +418,34 @@
   backdrop-filter: blur(28px) saturate(1.4);
 }
 
+/* The copy's four layers — the host's wash, the floor's veil, the scrim
+   and the blurred picture — once, for the composer's hosts and the popups
+   below alike. Declared on every element that states a wash rather than on
+   the chat view: a custom property substitutes its var()s where it is
+   declared, so on the chat view it would read the wash there, where none
+   is set, and every host would lose its frost. Tokens only, so it needs no
+   anchor gate. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+  :is(
+    [data-fork-composer-stack="true"] [data-fork-composer-vessel],
+    [data-fork-composer-stack="true"]
+      [data-fork-composer-context-row]
+      :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]),
+    [data-chat-header] [data-fork-pill]
+  ),
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  body
+  .dropdown-glass[data-fork-glass-frost] {
+  --fork-glass-frost-layers:
+    linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)),
+    linear-gradient(
+      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
+      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
+    ),
+    var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;
+}
+
 /* Popups over the card. Under the desktop glass a popup normally cuts a hole
    to the native material (custom/forkGlassPopupCutout.ts, under
    fork-glass-popup-cutout); over the draft that hole would cut the picture
@@ -438,7 +459,7 @@
    popup sits in a positioner Floating UI moves with a transform, which
    would be the copy's containing block and break the anchor; overflow
    clips it to the popup's radius and, unlike clip-path, keeps the popup's
-   shadow. ::after, because popover and tooltip already use ::before. The
+   shadow. ::after, because popover and tooltip already use ::before. Its
    wash is the general popup frost's white 8% (fork-popup-surface), a step
    over the vessel so the menu reads as raised. No stamp, no change: an
    opaque client keeps the blurred popup material, which sees the picture
@@ -450,6 +471,7 @@
   isolation: isolate;
   overflow: clip;
   background: var(--fork-glass-frost-floor);
+  --fork-glass-frost-wash: rgb(255 255 255 / 8%);
 }
 
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
@@ -463,13 +485,6 @@
   height: var(--fork-glass-frost-height);
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(rgb(255 255 255 / 8%), rgb(255 255 255 / 8%)),
-    linear-gradient(
-      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
-      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
-    ),
-    var(--fork-glass-card-scrim),
-    var(--fork-glass-frost-image) 51% top / cover no-repeat;
+  background: var(--fork-glass-frost-layers);
   mask-image: var(--fork-glass-frost-mask);
 }
