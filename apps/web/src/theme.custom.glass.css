@@ -265,7 +265,10 @@
    - The clip would also cut the focus-visible ring, which is drawn outside
      the border box; while a host or anything inside it is focus-visible the
      clip steps 4px out, enough for ring-2 plus its 1px offset, at the cost
-     of a 4px halo of frost that only shows under keyboard focus.
+     of a 4px halo of frost that only shows under keyboard focus. The prompt
+     editor is left out of that test: an editing host matches :focus-visible
+     on every click, not only from the keyboard, and it draws no ring, so
+     counting it haloed the whole vessel whenever the caret sat in the prompt.
 
    The hosts' floor sits on the host itself, unmasked, so where the fade
    thins the copy the host shows the stage's colour and never the sharp
@@ -306,7 +309,7 @@
         [data-fork-composer-context-row]
         :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]),
       [data-chat-header] :is([data-fork-pill], [data-fork-frost-host])
-    ):is(:focus-visible, :has(:focus-visible)) {
+    ):is(:focus-visible, :has(:focus-visible:not([data-testid="composer-editor"]))) {
     clip-path: inset(-4px round calc(var(--fork-glass-frost-radius) + 4px));
   }
 

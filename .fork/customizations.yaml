@@ -1871,7 +1871,9 @@
     clips a fixed descendant; overflow would not) under its own stacking
     context, so the labels stay above it. The clip steps 4px out while the
     host or anything inside it is focus-visible, enough for ring-2 plus its
-    1px offset, so keyboard focus stays visible on the draft. Button's
+    1px offset, so keyboard focus stays visible on the draft; the prompt
+    editor is excluded, since an editing host is focus-visible on every
+    click and draws no ring, and counting it haloed the vessel. Button's
     pressed state scales the lone pills and the chips, and a transform
     makes the host the containing block of its own fixed copy, so the hosts
     clear `scale`. That same trap is why the draft overlay centres on auto

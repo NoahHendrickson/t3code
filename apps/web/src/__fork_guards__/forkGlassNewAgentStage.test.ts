@@ -261,8 +261,12 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(flat(host?.body)).toBe(
       "isolation: isolate; clip-path: inset(0 round var(--fork-glass-frost-radius)); background: var(--fork-glass-frost-floor); scale: none;",
     );
-    // The clip steps out for the focus ring, on the host or anything in it.
-    const focus = find(`${GLASS}${DRAFT}${HOSTS}:is(:focus-visible,:has(:focus-visible))`);
+    // The clip steps out for the focus ring, on the host or anything in it
+    // except the prompt editor: an editing host is focus-visible on every
+    // click and draws no ring, so counting it haloed the vessel on focus.
+    const focus = find(
+      `${GLASS}${DRAFT}${HOSTS}:is(:focus-visible,:has(:focus-visible:not([data-testid="composer-editor"])))`,
+    );
     expect(flat(focus?.body)).toBe(
       "clip-path: inset(-4px round calc(var(--fork-glass-frost-radius) + 4px));",
     );
