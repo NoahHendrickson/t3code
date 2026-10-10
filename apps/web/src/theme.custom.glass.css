@@ -18,7 +18,13 @@
    from the top of that sheet, so these land BEFORE the palette rules in
    source order and every rule here that overrides one of them wins on
    specificity alone. Every selector is marker- and palette-scoped, so no
-   other palette sees any of it. */
+   other palette sees any of it.
+
+   Every selector also stands down while the root carries
+   data-fork-glass-picture="off", the Settings switch that turns the stage
+   off (custom/forkGlassNewAgentPicture.ts), so a draft paints on the
+   started thread's stage. The gate sits in :where(), adding no
+   specificity, so no contest with the palettes sheet changes. */
 
 /* The card paints on ChatView's own root (upstream stamps it
    data-chat-column-maximized-away): the header and the chat column are its
@@ -30,7 +36,9 @@
    card's box from. Nothing here paints, so a started thread is laid out and
    painted exactly as before. The root's one fixed child (the title-bar
    no-drag spacer) is unaffected by a relative ancestor. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away] {
   position: relative;
   isolation: isolate;
@@ -55,7 +63,9 @@
    picture the card no longer shows. The popup cutout's draft-card selector
    skips this state too, so popups cut to the material as in a started
    thread. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has([data-preview-mini-player] [data-browser-surface-slot]) {
   isolation: auto;
   --fork-glass-frost-image: none;
@@ -64,7 +74,9 @@
 /* The tokens the draft rules read, on the chat view and on any popup frosted
    over the card (data-fork-glass-frost, below), which portals out of the
    chat view and cannot inherit them. Tokens only. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is([data-chat-column-maximized-away], [data-fork-glass-frost]) {
   /* The card's inset from the chat view, read by the picture and by every
      frost copy's anchor() insets. */
@@ -99,7 +111,9 @@
    surface-glass overlays; the frost stands on the same estimate, so the
    composer and the header's controls carry the wallpaper's cast like the
    stage around them instead of reading as neutral slabs. A token only. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is([data-chat-column-maximized-away], [data-fork-glass-frost]) {
   --fork-glass-frost-floor: var(--fork-popup-glass-floor);
 }
@@ -128,7 +142,9 @@
    frame's source picture scaled to the 1582×1054 the frame renders it at, so
    each 2px dot lands where the design draws it. 27 colours, stored as a
    palette PNG: 101 KB. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]::after {
   content: "";
   position: absolute;
@@ -149,7 +165,9 @@
    through `:has()` on the chat view, so nothing in ChatView is stamped for
    the theme. The argument names two attributes no message node carries, so
    streaming a turn never puts these rules in the invalidation path. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has(
     [data-chat-composer-overlay="true"][data-draft-hero]
   )::after {
@@ -157,7 +175,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]::after {
     transition: none;
   }
@@ -172,7 +192,9 @@
    meant every new opaque child was a silent regression. The switch thumb is
    the one bg-background that is a foreground fill. `none` resets the colour
    too. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
   .bg-background:not([data-slot="switch-thumb"]) {
   background: none;
@@ -182,7 +204,9 @@
    the project crumb to 50% and the title sits at the foreground, and both
    sank into the dithered sky even over the scrim. Every descendant, because
    the crumbs carry text-foreground utilities of their own. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
   [data-chat-header]
   :is(
@@ -203,14 +227,16 @@
    would cover the material). A draft has no transcript to keep legible,
    which is the whole reason the stage's 82% reading value exists, so
    meeting the panel's 73% here costs nothing the vibrancy guard protects. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:not(
-    [data-fork-sidebar-vibrancy="true"]
-  )
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
   [data-slot="sidebar-inset"]:has([data-chat-composer-overlay="true"][data-draft-hero]) {
   background-color: var(--fork-glass-panel);
 }
 
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]:has([data-chat-composer-overlay="true"][data-draft-hero]) {
   background-image: linear-gradient(var(--fork-glass-panel) 0 100%);
 }
@@ -225,7 +251,9 @@
    desktop glass a transparent border is a 1px strip of raw wallpaper down
    the seam (it read orange against a sunset). --sidebar is the panel's fill
    on both clients, so the border disappears into the panel beside it. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-wrapper"]:has([data-chat-composer-overlay="true"][data-draft-hero])
   [data-slot="sidebar-container"][data-sidebar-version="v2"] {
   border-color: var(--sidebar);
@@ -239,7 +267,9 @@
    well so the text area reads darker than the control row, and a white 24%
    hairline with 38% on focus. The control row's ghost ink steps up from the
    stage's 65% so the model trigger reads over the picture. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-composer-overlay="true"][data-draft-hero] {
   --fork-composer-vessel-bg: rgb(255 255 255 / 5%);
   --fork-composer-bg: rgb(0 0 0 / 41%);
@@ -252,7 +282,9 @@
 
 /* The effort label beside it is upstream's muted ink (white 50% under
    glass); lifted to 65% for the same reason, draft-only. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-composer-overlay="true"][data-draft-hero]
   [data-chat-provider-model-picker-traits] {
   color: rgb(255 255 255 / 65%);
@@ -313,7 +345,9 @@
    2px dots and `cover` scales it back up smooth. Gated on anchor support so
    a browser without it keeps the washes and nothing else. */
 @supports (anchor-name: --fork-glass-card) {
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     :is(
       [data-fork-composer-stack="true"] [data-fork-composer-vessel],
@@ -328,7 +362,9 @@
     scale: none;
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     :is(
       [data-fork-composer-stack="true"] [data-fork-composer-vessel],
@@ -340,7 +376,9 @@
     clip-path: inset(-4px round calc(var(--fork-glass-frost-radius) + 4px));
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     :is(
       [data-fork-composer-stack="true"] [data-fork-composer-vessel],
@@ -367,7 +405,9 @@
      through the token, since the floor covers the host's own fill; a
      Group's halves paint their hover on their children, above the frost,
      so only the lone header pill needs the token moved. */
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-fork-composer-stack="true"]
     [data-fork-composer-vessel] {
@@ -375,7 +415,9 @@
     --fork-glass-frost-radius: var(--fork-composer-radius);
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-fork-composer-stack="true"]
     [data-fork-composer-context-row]
@@ -384,7 +426,9 @@
     --fork-glass-frost-radius: 6px;
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-fork-composer-stack="true"]
     [data-fork-composer-context-row]
@@ -403,7 +447,9 @@
      layout: there the controls precede the chat view in the tree and the
      anchor would not resolve. The fade mask is solid up here, so they skip
      it. */
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-chat-header]
     [data-fork-pill] {
@@ -412,7 +458,9 @@
     --fork-glass-frost-mask: none;
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-picture="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-chat-header]
     button[data-fork-pill]:is(:hover, [data-pressed]) {
@@ -430,7 +478,9 @@
    PanelLayoutControls stamps data-fork-panel-toggle (fenced hunks); the
    Toggle inside paints its hover and pressed tints above the fill. The
    hairline is an inset outline so the box keeps the Toggle's size. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
   [data-chat-header]
   [data-fork-panel-toggle] {
@@ -442,6 +492,23 @@
   backdrop-filter: blur(28px) saturate(1.4);
 }
 
+/* The thread details card docked inline keeps the base popup frost over
+   the picture. Under Glass the palettes sheet stands it opaque on the
+   floor, since over the bare stage its blur flattens the native material
+   to grey; here the picture is in the page, so the blur has it to work on,
+   as the panel toggles' does. */
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+  [data-thread-details-panel="inline"]
+  > [data-thread-details-card].dropdown-glass {
+  background: var(--fork-popup-fill);
+  border-color: rgb(from var(--contrast-foreground) r g b / 12%);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
+}
+
 /* The copy's four layers — the host's wash, the floor's veil, the scrim
    and the blurred picture — once, for the composer's hosts and the popups
    below alike. Declared on every element that states a wash rather than on
@@ -449,7 +516,9 @@
    declared, so on the chat view it would read the wash there, where none
    is set, and every host would lose its frost. Tokens only, so it needs no
    anchor gate. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
   :is(
     [data-fork-composer-stack="true"] [data-fork-composer-vessel],
@@ -458,14 +527,22 @@
       :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]),
     [data-chat-header] [data-fork-pill]
   ),
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   body
   .dropdown-glass[data-fork-glass-frost] {
   --fork-glass-frost-layers:
     linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)),
     linear-gradient(
-      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
-      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
+      rgb(
+        from var(--fork-glass-frost-veil-color, var(--fork-glass-frost-floor)) r g b /
+          var(--fork-glass-frost-veil)
+      ),
+      rgb(
+        from var(--fork-glass-frost-veil-color, var(--fork-glass-frost-floor)) r g b /
+          var(--fork-glass-frost-veil)
+      )
     ),
     var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;
 }
@@ -484,25 +561,48 @@
    would be the copy's containing block and break the anchor; overflow
    clips it to the popup's radius and, unlike clip-path, keeps the popup's
    shadow. ::after, because popover and tooltip already use ::before. It
-   wears the composer control row's material rather than the general popup
-   frost's: the vessel's white 5% wash, and a heavier veil of the floor so
-   the picture reads as subdued through it the way it does through the row,
-   instead of the menu reading as a lighter, warmer cut-out of the picture
-   wherever it opens high on the card. No stamp, no change: an
+   wears the composer control row's white 5% wash, but over a heavier copy
+   than the row's: rows of small text, not one prompt, have to read on it,
+   so the picture is blurred further and dimmed harder. The dimming keeps
+   the picture's colours: glass-hero-popup-frost.png is glass-hero.png at
+   σ=24px and the same quarter size, with the 80% alpha the stage paints the
+   picture at rather than the row's 45%, and the veil is the scrim's neutral
+   dark at 50%, not the floor. The floor is the wallpaper's estimate, and as
+   the bulk of the stack it tinted every menu the wallpaper's colour
+   (lavender over a purple desktop) instead of the picture's. No stamp, no
+   change: an
    opaque client keeps the blurred popup material, which sees the picture
-   on its own. `body` only outranks the palettes sheet's popup rule, which
-   comes later in source order. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+   on its own. The floor is !important because the palettes sheet's popup
+   rule outranks any plain selector here: its :is() takes the specificity
+   of its heaviest arm, the thread details card's. Losing to it put the 73%
+   panel tint under the frost, and the sharp picture and the headline read
+   through every menu.
+
+   The copy clips at the border box, not the padding box, so the frost runs
+   to the edge: clipped inside the border, the 1px edge showed the bare
+   floor, darker than the frost, and read as a black ring. The copy paints
+   over the border, so the hairline is a white 12% inset outline, which
+   paints over the copy — the panel toggles' recipe. */
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   body
   .dropdown-glass[data-fork-glass-frost] {
   isolation: isolate;
   overflow: clip;
-  background: var(--fork-glass-frost-floor);
+  overflow-clip-margin: border-box;
+  outline: 1px solid rgb(255 255 255 / 12%);
+  outline-offset: -1px;
+  background: var(--fork-glass-frost-floor) !important;
   --fork-glass-frost-wash: rgb(255 255 255 / 5%);
-  --fork-glass-frost-veil: 45%;
+  --fork-glass-frost-veil: 50%;
+  --fork-glass-frost-veil-color: rgb(12 12 14);
+  --fork-glass-frost-image: url("./custom/assets/glass-hero-popup-frost.png");
 }
 
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-picture="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   body
   .dropdown-glass[data-fork-glass-frost]::after {
   content: "";

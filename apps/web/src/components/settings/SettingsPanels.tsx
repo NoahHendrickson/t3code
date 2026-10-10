@@ -79,12 +79,16 @@ import {
 } from "../../hooks/useTheme";
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
 import {
+  COOL_DARKER_THEME,
   FORK_PALETTE_LABELS,
   FORK_PALETTES,
   isForkPalette,
   useForkAppearance,
 } from "../../custom/forkTheme";
 /* fork:end fork-cool-dark-theme */
+/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+import { useForkGlassNewAgentPicture } from "../../custom/forkGlassNewAgentPicture";
+/* fork:end fork-glass-new-agent-stage */
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import {
   useScopedSettings,
@@ -543,6 +547,9 @@ export function useSettingsRestore(onRestored?: () => void) {
   /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
   const { appearance, setAppearance } = useForkAppearance(theme, setTheme);
   /* fork:end fork-cool-dark-theme */
+  /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+  const [glassNewAgentPicture, setGlassNewAgentPicture] = useForkGlassNewAgentPicture();
+  /* fork:end fork-glass-new-agent-stage */
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
 
@@ -558,6 +565,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
       ...(isForkPalette(appearance) ? [FORK_PALETTE_LABELS[appearance]] : []),
       /* fork:end fork-cool-dark-theme */
+      /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+      ...(!glassNewAgentPicture ? ["New agent picture"] : []),
+      /* fork:end fork-glass-new-agent-stage */
       ...(!followSystem ? ["Follow system"] : []),
       ...(themeHalves !== null ? ["Theme mix"] : []),
       ...(settings.appearanceContrast !== DEFAULT_UNIFIED_SETTINGS.appearanceContrast
@@ -744,6 +754,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
       appearance,
       /* fork:end fork-cool-dark-theme */
+      /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+      glassNewAgentPicture,
+      /* fork:end fork-glass-new-agent-stage */
       theme,
       themeHalves,
     ],
@@ -763,6 +776,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
     if (isForkPalette(appearance)) setAppearance("dark");
     /* fork:end fork-cool-dark-theme */
+    /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+    if (!glassNewAgentPicture) setGlassNewAgentPicture(true);
+    /* fork:end fork-glass-new-agent-stage */
 
     // Only touch the theme keys that are actually dirty, so a theme-storage
     // failure cannot block restoring unrelated settings. Preferences are
@@ -893,6 +909,10 @@ export function useSettingsRestore(onRestored?: () => void) {
     /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
     setAppearance,
     /* fork:end fork-cool-dark-theme */
+    /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+    glassNewAgentPicture,
+    setGlassNewAgentPicture,
+    /* fork:end fork-glass-new-agent-stage */
     setTheme,
     setThemeHalf,
     theme,
@@ -1197,6 +1217,9 @@ export function AppearanceSettingsPanel() {
   /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
   const { appearance, setAppearance } = useForkAppearance(theme, setTheme);
   /* fork:end fork-cool-dark-theme */
+  /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+  const [glassNewAgentPicture, setGlassNewAgentPicture] = useForkGlassNewAgentPicture();
+  /* fork:end fork-glass-new-agent-stage */
   const customThemes = useCustomThemes();
   const [isImportThemeOpen, setIsImportThemeOpen] = useState(false);
   const settings = useScopedSettings();
@@ -1280,6 +1303,29 @@ export function AppearanceSettingsPanel() {
           }
         />
         {/* fork:end fork-cool-dark-theme */}
+        {/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */}
+        {appearance === COOL_DARKER_THEME ? (
+          <SettingsRow
+            title="New agent picture"
+            description="Show the picture behind a new agent in Glass."
+            resetAction={
+              glassNewAgentPicture ? null : (
+                <SettingResetButton
+                  label="new agent picture"
+                  onClick={() => setGlassNewAgentPicture(true)}
+                />
+              )
+            }
+            control={
+              <Switch
+                checked={glassNewAgentPicture}
+                onCheckedChange={(checked) => setGlassNewAgentPicture(Boolean(checked))}
+                aria-label="Show the new agent picture"
+              />
+            }
+          />
+        ) : null}
+        {/* fork:end fork-glass-new-agent-stage */}
 
         <SettingsRow
           {...searchableSetting("setting-appearance-contrast")}

@@ -152,7 +152,7 @@ describe("fork guard: fork-popup-surface", () => {
     expect(glassPopup?.body).not.toContain("--glass-opacity");
     expect(glassPopup?.body).not.toContain("--fork-popup-glass-floor");
     expect(flat(glassPopup?.body ?? "")).toContain(
-      "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)), rgb(22 22 22 / 73%);",
+      "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)), rgb(22 22 22 / 82%);",
     );
     expect(glassPopup?.body).toContain("border-color: rgb(255 255 255 / 8%);");
     // The hole is cut the frame a popup mounts, so a fade-in would flash the
@@ -198,7 +198,19 @@ describe("fork guard: fork-popup-surface", () => {
     expect(detailsCard).toContain('data-thread-details-panel="popover"');
     expect(detailsCard).toContain("data-fork-popup={forkGlassPopup || undefined}");
     expect(detailsPanel).toContain("forkGlassPopup={props.forkGlassPopup ?? false}");
-    expect(chatView).toContain("forkGlassPopup: !isDraftHeroState,");
+    // Docked inline the card lives inside #root, where no hole can open, so
+    // under Glass it is the vessel's wash over the stage: not a blur, which
+    // flattens the cleared stage to grey, and not the measured floor, which
+    // is sampled beside the sidebar and painted the wallpaper's colour.
+    const docked = cssRules(palettes).find((rule) =>
+      rule.selector.includes('[data-thread-details-panel="inline"]'),
+    );
+    expect(docked?.body).toContain("var(--fork-composer-vessel-bg)");
+    expect(docked?.body).not.toContain("--fork-popup-glass-floor");
+    expect(docked?.body).toMatch(/(?<!-webkit-)backdrop-filter:\s*none/u);
+    // Stamped on a started thread, and on a draft whose picture is switched
+    // off (fork-glass-new-agent-stage), where nothing is frosted over.
+    expect(chatView).toContain("forkGlassPopup: !isDraftHeroState || !forkGlassNewAgentPicture,");
     // No list-side blur, no page surface, no clone: those were tried and read
     // as a modal dim rather than a frost.
     for (const candidate of cssRules(palettes)) {

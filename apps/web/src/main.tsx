@@ -11,6 +11,9 @@ import { applyForkMarker } from "./custom/forkMarker";
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
 import { initializeForkTheme } from "./custom/forkTheme";
 /* fork:end fork-cool-dark-theme */
+/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+import { initializeForkGlassNewAgentPicture } from "./custom/forkGlassNewAgentPicture";
+/* fork:end fork-glass-new-agent-stage */
 
 import { prepareProviderAuthDelivery } from "./providerAuthDelivery";
 import { isElectron } from "./env";
@@ -36,6 +39,9 @@ applyForkMarker(document.documentElement);
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
 initializeForkTheme();
 /* fork:end fork-cool-dark-theme */
+/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+initializeForkGlassNewAgentPicture();
+/* fork:end fork-glass-new-agent-stage */
 
 if (isElectron) {
   syncDocumentElectronPlatformClasses(navigator.platform);

@@ -58,6 +58,14 @@ vi.mock("../../custom/forkTheme", async (importOriginal) => ({
   }),
 }));
 /* fork:end fork-cool-dark-theme */
+/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
+// The new agent picture switch reads localStorage the same way; answer with
+// its default, so it is never one of the changed settings.
+vi.mock("../../custom/forkGlassNewAgentPicture", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../custom/forkGlassNewAgentPicture")>()),
+  useForkGlassNewAgentPicture: () => [true, vi.fn()],
+}));
+/* fork:end fork-glass-new-agent-stage */
 
 vi.mock("../../localApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../localApi")>()),
