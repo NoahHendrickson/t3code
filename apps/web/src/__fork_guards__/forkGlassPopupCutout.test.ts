@@ -15,7 +15,12 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { cutoutMaskStyle, planCutout, type CutoutHole } from "../custom/forkGlassPopupCutout";
+import {
+  cutoutMaskStyle,
+  frostPlacement,
+  planCutout,
+  type CutoutHole,
+} from "../custom/forkGlassPopupCutout";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -100,6 +105,22 @@ describe("fork guard: fork-glass-popup-cutout", () => {
     expect(style["mask-image"]?.startsWith("linear-gradient(#000, #000), url(")).toBe(true);
     expect(style["mask-composite"]).toBe("subtract, add, add");
     expect(style["mask-clip"]).toBe("no-clip");
+  });
+
+  it("frosts a popup inside the new-agent card instead of cutting the picture away", () => {
+    // The draft card (fork-glass-new-agent-stage) paints the portrait over the
+    // glass; a popup wholly inside it is placed against the card's box, in its
+    // own padding box, so the frost copy lands on its sharp twin.
+    const card = { x: 300, y: 48, width: 900, height: 700 };
+    const popup = { x: 490, y: 174, width: 336, height: 276, borderLeft: 1, borderTop: 1 };
+    expect(frostPlacement(popup, card)).toEqual({
+      "--fork-glass-frost-x": "-191px",
+      "--fork-glass-frost-y": "-127px",
+      "--fork-glass-frost-width": "900px",
+      "--fork-glass-frost-height": "700px",
+    });
+    // Reaching past the card (over the sidebar) keeps the hole to the glass.
+    expect(frostPlacement({ ...popup, x: 280 }, card)).toBeNull();
   });
 
   it.each([
