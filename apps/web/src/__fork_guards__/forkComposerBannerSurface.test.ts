@@ -276,10 +276,8 @@ describe("fork guard: fork-composer-banner-surface", () => {
   });
 
   it("stamps the branch-changed notice card and leaves other drawer banners alone", () => {
-    // Upstream #16782 moved the settled notice into the timeline-footer status
-    // line (the fork keeps its "Unsettle" wording there). The resume-compaction
-    // card the fork restored over #16631 lives in custom/useResumeCompactionBanner.
-    expect(chatView).toContain('actionLabel={isUnsettling ? "Unsettling..." : "Unsettle"}');
+    // The settled / snoozed and resume-compaction cards the fork restored over
+    // #16782 and #16631 live in custom/ and carry their own primary stamps.
     expect(chatView).toContain("Branch changed to");
     expect(bannerStack).toContain('"data-fork-composer-notice": "true"');
     expect(bannerStack).toContain("readonly icon?:");

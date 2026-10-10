@@ -3815,13 +3815,10 @@
     warnings, the inline activity strip) are the top section of the composer
     card, not a card floating behind it.
 
-    Upstream #16782 moved the settled / snoozed / woke notices out of the
-    banner stack into the timeline-footer status line, where the fork keeps
-    its "Unsettle" / "Unsettling..." action wording, and #16631 replaced the
-    resume-with-less-context card with compact-on-send (the fork brings that
-    card back: fork-resume-compaction-banner). The fork's settled-only
-    stack filter (custom/composerBannerVisibility.ts) went with them in the
-    2026-10-07 sync.
+    Upstream #16782 moved the settled / snoozed / woke notices into a
+    timeline-footer status line and #16631 replaced the
+    resume-with-less-context card with compact-on-send; the fork brings
+    those cards back (fork-thread-state-cards, fork-resume-compaction-banner).
 
     Colour: instead of upstream's severity tint — a --info / --success /
     --warning / --error outline plus a wash of the same hue over the glass,
@@ -3915,6 +3912,33 @@
     - docs/user/providers-claude.md
   verify:
     - apps/web/src/__fork_guards__/forkResumeCompactionBanner.test.ts
+
+- id: fork-thread-state-cards
+  intent: >
+    A settled or snoozed thread shows its notice card above the composer
+    ("This thread is settled" with Unsettle, "This thread is snoozed" with
+    Wake now, both the white primary), and a woken thread shows the "Thread
+    woke from snooze" notice there too, as before the 2026-10-07 sync.
+    Upstream #16782 replaced those cards with a quiet status line after the
+    last message (ThreadStatusLine as the timeline footer), which the fork
+    drops: ChatView (fenced) builds the cards in custom/useThreadStateBanners
+    instead of the status line and passes no footer. A settled thread shows
+    only its Unsettle card; every other notice comes back, undismissed, once
+    the thread is unsettled (docs/user/thread-sidebar.md says so).
+  tier: 4
+  files:
+    - apps/web/src/custom/useThreadStateBanners.tsx
+    - apps/web/src/components/ChatView.tsx
+    # Ignores upstream's now-unmounted ThreadStatusLine.tsx for the file audit.
+    - knip.jsonc
+  shadows: []
+  watch:
+    # Owns the settled / snoozed / woke state, their handlers, the banner
+    # stack and the timeline footer the status line rode in.
+    - apps/web/src/components/ChatView.tsx
+    - apps/web/src/components/chat/ThreadStatusLine.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkThreadStateCards.test.ts
 
 - id: fork-pending-user-input
   intent: >

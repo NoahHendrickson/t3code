@@ -300,10 +300,11 @@ import { isEditableFocused } from "../lib/editableFocus";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { resolveChatShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
+/* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+   AlarmClockIcon and CheckCircle2Icon left the lucide import below with upstream's status line. */
+/* fork:end fork-thread-state-cards */
 import {
-  AlarmClockIcon,
   PaperclipIcon,
-  CheckCircle2Icon,
   ChevronDownIcon,
   DownloadIcon,
   GitBranchIcon,
@@ -515,8 +516,10 @@ import {
 } from "./chat/QueuedRunsControl";
 import { useLinkedThreadPullRequest } from "./ThreadStatusIndicators";
 import type { ComposerBannerStackItem } from "./chat/ComposerBannerStack";
-import { ThreadStatusLine } from "./chat/ThreadStatusLine";
-import { formatRelativeTimeLabel, formatRelativeTimeUntilLabel } from "../timestampFormat";
+/* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+   Thread state rides the composer cards, not upstream's ThreadStatusLine. */
+import { useThreadStateBanners } from "~/custom/useThreadStateBanners";
+/* fork:end fork-thread-state-cards */
 import { ComposerSurface } from "./chat/ComposerSurface";
 import { resolveThreadSyncPhase } from "../threadSync";
 import {
@@ -7659,63 +7662,22 @@ export default function ChatView(props: ChatViewProps) {
   // Background liveness (working / monitoring) lives on the context-strip
   // pill, not in this stack.
   /* fork:end fork-composer-shell */
-  // Settled, snoozed, and woke are thread state, not composer actions: each
-  // gets one quiet line after the last message instead of a banner. A woken
-  // thread announces itself here, not just in the sidebar pill. Dismissing
-  // marks the wake as seen (same acknowledgment as the pill); sending a
-  // message clears it as a side effect of the send path.
-  // Memoized: it is the timeline's list footer, and a new element re-renders that footer.
-  // nowMinute keeps the relative time fresh.
-  const threadStatusLine = useMemo(() => {
-    void nowMinute;
-    return activeThreadSnoozed ? (
-      <ThreadStatusLine
-        icon={<AlarmClockIcon />}
-        label={
-          activeThreadShell?.snoozedUntil
-            ? `Snoozed, ${formatRelativeTimeUntilLabel(activeThreadShell.snoozedUntil)}`
-            : "Snoozed"
-        }
-        actionLabel={isUnsnoozing ? "Waking..." : "Wake now"}
-        actionDisabled={!canOperateThread || isUnsnoozing}
-        onAction={() => void handleUnsnoozeActiveThread()}
-      />
-    ) : activeThreadSettled ? (
-      <ThreadStatusLine
-        icon={<CheckCircle2Icon />}
-        label={
-          activeThreadShell?.settledAt
-            ? `Settled ${formatRelativeTimeLabel(activeThreadShell.settledAt)}`
-            : "Settled"
-        }
-        /* fork:begin fork-composer-banner-surface — see .fork/customizations.yaml#fork-composer-banner-surface */
-        actionLabel={isUnsettling ? "Unsettling..." : "Unsettle"}
-        /* fork:end fork-composer-banner-surface */
-        actionDisabled={!canOperateThread || isUnsettling}
-        onAction={() => void handleUnsettleActiveThread()}
-      />
-    ) : activeThreadWokeVisible ? (
-      <ThreadStatusLine
-        icon={<AlarmClockIcon />}
-        label="Woke from snooze"
-        actionLabel="Dismiss"
-        onAction={acknowledgeActiveThreadWoke}
-      />
-    ) : null;
-  }, [
-    acknowledgeActiveThreadWoke,
-    activeThreadSettled,
-    activeThreadShell?.settledAt,
-    activeThreadShell?.snoozedUntil,
-    activeThreadSnoozed,
-    activeThreadWokeVisible,
+  /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+     Settled, snoozed and woke stay notice cards above the composer, as before
+     upstream moved them into a status line after the last message. */
+  const { woke: wokeThreadBannerItem, parked: parkedThreadBannerItem } = useThreadStateBanners({
+    threadId: activeThread?.id ?? null,
+    settled: activeThreadSettled,
+    snoozed: activeThreadSnoozed,
+    wokeVisible: activeThreadWokeVisible,
     canOperateThread,
-    handleUnsettleActiveThread,
-    handleUnsnoozeActiveThread,
-    isUnsettling,
     isUnsnoozing,
-    nowMinute,
-  ]);
+    isUnsettling,
+    onUnsnooze: handleUnsnoozeActiveThread,
+    onUnsettle: handleUnsettleActiveThread,
+    onAcknowledgeWoke: acknowledgeActiveThreadWoke,
+  });
+  /* fork:end fork-thread-state-cards */
   const activeThreadHasCompactableConversation = serverVisibleTurnItems.some(
     ({ item }) =>
       item.type === "user_message" &&
@@ -7824,6 +7786,13 @@ export default function ChatView(props: ChatViewProps) {
         })
       : null;
   const composerBannerItems = useMemo<ComposerBannerStackItem[]>(() => {
+    /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+       A settled thread shows only its Unsettle card; the other notices come
+       back, undismissed, once it is unsettled. */
+    if (activeThreadSettled && parkedThreadBannerItem) return [parkedThreadBannerItem];
+    const wokeThreadItems = wokeThreadBannerItem === null ? [] : [wokeThreadBannerItem];
+    const parkedThreadItems = parkedThreadBannerItem === null ? [] : [parkedThreadBannerItem];
+    /* fork:end fork-thread-state-cards */
     const limitRecoveryItems = limitRecoveryBanner === null ? [] : [limitRecoveryBanner];
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
        Both returns below omit background-liveness banner items — Monitoring /
@@ -7849,6 +7818,10 @@ export default function ChatView(props: ChatViewProps) {
         /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
         ...resumeCompactionItems,
         /* fork:end fork-resume-compaction-banner */
+        /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+        ...wokeThreadItems,
+        ...parkedThreadItems,
+        /* fork:end fork-thread-state-cards */
       ];
     }
     return [
@@ -7861,6 +7834,9 @@ export default function ChatView(props: ChatViewProps) {
       /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
       ...resumeCompactionItems,
       /* fork:end fork-resume-compaction-banner */
+      /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+      ...wokeThreadItems,
+      /* fork:end fork-thread-state-cards */
       {
         id: `branch-mismatch:${activeBranchMismatchKey}`,
         variant: "info",
@@ -7915,6 +7891,9 @@ export default function ChatView(props: ChatViewProps) {
           setBranchMismatchDismissTick((tick) => tick + 1);
         },
       },
+      /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+      ...parkedThreadItems,
+      /* fork:end fork-thread-state-cards */
     ];
   }, [
     activeBranchMismatchKey,
@@ -7931,6 +7910,11 @@ export default function ChatView(props: ChatViewProps) {
     /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
     resumeCompactionBannerItem,
     /* fork:end fork-resume-compaction-banner */
+    /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards */
+    activeThreadSettled,
+    parkedThreadBannerItem,
+    wokeThreadBannerItem,
+    /* fork:end fork-thread-state-cards */
     showBranchMismatchBanner,
     systemComposerBannerItems,
     usageLimitsBanner,
@@ -11673,7 +11657,9 @@ export default function ChatView(props: ChatViewProps) {
                 {...(draftId ? { onWorktreeSetupWorkLocally } : {})}
                 {...(onOpenWorktreeSetupTerminal ? { onOpenWorktreeSetupTerminal } : {})}
                 isPreparingWorktree={!paintOnlyDisplayedTimeline && isPreparingWorktree}
-                footer={paintOnlyDisplayedTimeline ? null : threadStatusLine}
+                /* fork:begin fork-thread-state-cards — see .fork/customizations.yaml#fork-thread-state-cards
+                   No status line after the last message: thread state is a composer card. */
+                /* fork:end fork-thread-state-cards */
                 listRef={legendListRef}
                 timelineEntries={displayedTimeline.entries}
                 providerStatuses={
