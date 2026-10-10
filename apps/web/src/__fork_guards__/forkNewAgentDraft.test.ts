@@ -207,13 +207,15 @@ describe("fork guard: fork-new-agent-draft", () => {
     const shell = readSibling("../custom/ComposerShell.tsx");
     expect(chatView).toContain("data-draft-hero={isDraftHeroState || undefined}");
     // The overlay's centre-line position is CSS on the stamp, not a second
-    // className in ChatView — and an offset, never a stretch: the overlay is
-    // the element ChatView measures, and a floating preview over an unsent
-    // draft reads that height as its bottom inset.
+    // className in ChatView — auto margins on a fit-content height. Never a
+    // stretch: the overlay is the element ChatView measures, and a floating
+    // preview over an unsent draft reads that height as its bottom inset. And
+    // never a translate: a transform makes the overlay the containing block
+    // of the Glass draft's fixed-position frost (fork-glass-new-agent-stage).
     expect(css).toMatch(
-      /\[data-chat-composer-overlay="true"\]\[data-draft-hero\]\s*\{\s*top:\s*50%;\s*bottom:\s*auto;\s*padding-top:\s*0;\s*translate:\s*0 -50%;/u,
+      /\[data-chat-composer-overlay="true"\]\[data-draft-hero\]\s*\{\s*top:\s*0;\s*bottom:\s*0;\s*height:\s*fit-content;\s*margin-block:\s*auto;\s*padding-top:\s*0;\s*\}/u,
     );
-    expect(css).not.toMatch(/\[data-draft-hero\]\s*\{[^}]*top:\s*0;\s*bottom:\s*0/u);
+    expect(css).not.toMatch(/\[data-draft-hero\]\s*\{[^}]*translate:/u);
     // The taller drawn box: prompt on top, attach leading and send trailing
     // on their own row — keyed off the overlay so it folds back on send. A
     // grid, since attach is the row's own leading slot (a started thread puts

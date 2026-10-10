@@ -1634,6 +1634,10 @@
     matches the stage, so [data-chat-composer-overlay] paints `background:
     none` under glass and the timeline cutoff mask ends the transcript above the
     composer instead of anything covering it.
+    Glass's new-agent draft (fork-glass-new-agent-stage) re-confirmed this on
+    2026-10-08 — blur(40px) on the vessel blurred the picture in capturePage
+    and not on screen — and bakes its frost instead; its gutter meets the
+    panel's 73% because a draft has no transcript to keep legible.
 
     backdrop-filter and the native material are alternatives, not layers. The
     NSVisualEffectView sits behind the window, outside anything the page
@@ -1751,6 +1755,162 @@
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerSidebarVibrancy.test.ts
     - apps/web/src/__fork_guards__/forkNeutralDarkerTheme.test.ts
+
+- id: fork-glass-new-agent-stage
+  intent: >
+    Under Glass (storage id cool-darker), a new agent's empty draft is the
+    screen drawn in Figma 517:18256: the chat view is a rounded card 8px
+    inside the stage with the header's breadcrumb and controls inside it,
+    the dithered portrait behind the centred composer, the composer, its
+    context pills and the header's controls frosted over the picture, and
+    around the card a stage in the sidebar's own colour with no seam between
+    panel and stage. Every rule is keyed on the draft except the two root
+    rules, which only give the chat view a stacking context, an anchor name
+    and the tokens the draft rules read; a started thread is laid out and
+    painted exactly as before.
+
+    The card paints on ChatView's root (upstream's
+    data-chat-column-maximized-away stamp) rather than the chat column: the
+    header and the column are that root's children, the right panel and the
+    terminal drawers its siblings, so the picture spans exactly header plus
+    column and the panel, when open, sits beside the card. The box is the
+    picture and nothing else — Frame 558 draws no fill or hairline — so it
+    is the root's ::after at the card's 8px inset, 8px radius and z-index
+    -1. Insetting the pseudo-element rather than the root keeps the layout
+    identical in both states, so the composer's centre line never moves and
+    the first send is one opacity fade on the 400ms clock and curve the
+    composer's slide and fold share (fork-new-agent-draft); reduced motion
+    drops it on the same query. The draft state is read off the overlay's
+    own data-draft-hero stamp through `:has()` on the chat view, the inset
+    or the sidebar wrapper — never on :root, which would widen :has()
+    invalidation to the whole document while a thread streams — so nothing
+    in ChatView is stamped for the theme.
+
+    On a draft every opaque bg-background inside the chat view (the header,
+    the column's messages wrapper) paints nothing, by class the way the
+    vibrancy block clears the inset, so an opaque client shows the picture
+    below the header too; the switch thumb is the one bg-background that is
+    a foreground fill. The crumbs go full white with a soft shadow, since
+    upstream's 50% project crumb and the foreground title both sank into
+    the dithered sky.
+
+    The picture reads at 80% (the frame draws 30%; tuned by eye), solid to
+    59% of the card's height and faded to 35% by 94% — never to nothing, so
+    the foot keeps the picture — under a scrim from the top edge (rgb(12 12
+    14) from 55% to clear over 96px) so the header's crumbs and controls
+    read over the sky. The asset is the dither at full strength and the
+    strength is the pseudo-element's opacity; under the desktop vibrancy
+    (fork-cool-darker-sidebar-vibrancy) that lets the wallpaper's cast
+    reach through the portrait.
+
+    Around the card the stage takes the panel's colour through one shared
+    token: --fork-glass-panel, declared in the palettes sheet beside the v2
+    panel's --sidebar once per client (#181b1e opaque, the rgb(22 22 22 /
+    73%) tint under the glass marker), so a retuned panel moves the gutter
+    and the frost floor with it. Two inset rules because the two clients
+    paint it differently — an opaque colour, or a gradient over the cleared
+    inset, since an opaque fill under the marker would cover the material;
+    a draft has no transcript to keep legible, which is the only reason the
+    stage's 82% reading value exists, so meeting the panel's 73% costs
+    nothing the vibrancy guard protects. The v2 container's seam takes the
+    panel's own fill (--sidebar) while a draft is open, read through the
+    sidebar wrapper's :has() because the panel is the inset's sibling — not
+    transparent, because the panel tint paints inside the container and
+    under the desktop glass a transparent border is a 1px strip of raw
+    wallpaper down the seam.
+
+    The draft composer's fills are restated on the overlay every composer
+    element descends from, the way Westworld's draft does, and settled
+    lighter than the frame's (vessel white 16%, well rgb(30 30 30) at 50%):
+    vessel white 5%, pills none with 8% on hover, well black 41% so the text
+    area reads darker than the control row, hairline white 24% with 38% on
+    focus, the control row's ink white 80% and the effort label white 65%.
+
+    The frost is BAKED, not filtered. A backdrop-filter cannot do this under
+    the desktop glass — the renderer blurs the picture in its own composite
+    and the screen shows it sharp, re-confirmed on 2026-10-08 with blur(40px)
+    on the vessel (capturePage blurred, the window did not) — which is the
+    vibrancy entry's standing rule and the reason the sheet declares no
+    filter anywhere. Instead every frosted element (the vessel, each context
+    pill, each header pill and each panel toggle) carries a pre-blurred,
+    translucent twin of the picture (custom/assets/glass-hero-frost.png:
+    glass-hero.png at Gaussian σ=8px, a quarter size, 396×264 RGBA, 131 KB,
+    with a baked 45% alpha — under the picture's 80%, so the glass dims the
+    picture as well as blurring it; a floor-coloured veil layer,
+    --fork-glass-frost-veil at 10%, dims it a step further) on a `position:
+    fixed` ::before whose four insets are anchor() reads of the chat view's
+    --fork-glass-card plus the card's inset, so it takes the card's box
+    wherever the sidebar, right panel and window put it, and the same
+    `cover` crop on the same box lands every pixel of the blurred copy on
+    its sharp twin. Beneath the twin is the stage as it reads on screen
+    (--fork-glass-frost-floor, on the chat view so the header's hosts
+    inherit it too: --fork-glass-panel on an opaque client,
+    fork-glass-floor-color's measured --fork-popup-glass-floor under the
+    desktop glass, so the composer carries the wallpaper's cast like the
+    stage around it rather than reading as a neutral slab), and on top is
+    the host's own wash. One recipe, one rule: the hosts differ only in the
+    wash, the radius they clip at and whether they carry the fade mask, and
+    each states those three as tokens — the vessel's wash follows the
+    vessel fill, a pill's its chip fill and hover, the header's controls a
+    white 18% (26% on the lone pill's hover, through the token, since the
+    floor covers its own fill; a Group's halves and the toggles paint their
+    hover on their children, above the frost). The copy's box is the whole
+    card and nine hosts paint one each, but the host's clip-path is the
+    cull rect Chromium rasterises within, so each costs its own chip-sized
+    area and a hover repaints that, not the card; the header hosts skip the
+    mask, which is solid up there and costs a surface.
+
+    Each host clips its copy to its rounded shape with clip-path (which
+    clips a fixed descendant; overflow would not) under its own stacking
+    context, so the labels stay above it. The clip steps 4px out while the
+    host or anything inside it is focus-visible, enough for ring-2 plus its
+    1px offset, so keyboard focus stays visible on the draft. Button's
+    pressed state scales the lone pills and the chips, and a transform
+    makes the host the containing block of its own fixed copy, so the hosts
+    clear `scale`. That same trap is why the draft overlay centres on auto
+    margins instead of `translate: 0 -50%` (fork-new-agent-draft): a
+    transformed ancestor would resolve the anchor against the overlay
+    instead of the viewport. During the first send upstream's slide does
+    transform the composer, but the stamp leaves the overlay at the flip
+    and the frost goes with it. The lone header pill's ::before is
+    upstream's variant overlay the fork already empties, repurposed rather
+    than fought; the toggle spans are stamped data-fork-frost-host in
+    PanelLayoutControls (a fenced hunk, the one hook this adds) because
+    their Toggles carry pseudo-elements of their own. The toggles are scoped
+    to the header rather than the at-root titlebar layout, where the
+    controls precede the chat view in the tree and the anchor could not
+    resolve; clipping the toggle span would clip the live-agent badge on its
+    corner, but a draft has no agents and so no badge. Gated on @supports
+    (anchor-name) so a browser without anchor positioning keeps the washes
+    and nothing else.
+
+    custom/assets/glass-hero.png is Figma's Dither effect (Bayer 16x16, 3
+    levels per channel, 2px cells, contrast 1, brightness 100, colour)
+    re-run over the frame's source picture scaled to the 1582×1054 the frame
+    renders it at — the shader's load, ordered and present passes reproduced
+    cell for cell, checked at 99% agreement against Figma's own export of
+    the layer. 27 colours as a palette PNG, 101 KB. `cover` at 51% top is
+    the drawn crop (the picture 310px left of a 945px box, top-aligned),
+    which lands the figure on the card's right third behind the composer.
+    Must not alter Westworld, Neutral Dark, Neutral Darker or default Dark,
+    and must not change a started Glass thread.
+  tier: 2
+  files:
+    - apps/web/src/theme.custom.glass.css
+    - apps/web/src/custom/assets/glass-hero.png
+    - apps/web/src/custom/assets/glass-hero-frost.png
+  watch:
+    # @imports the sheet at its top, after Westworld's, and names
+    # --fork-glass-panel beside the v2 panel's --sidebar.
+    - apps/web/src/theme.custom.palettes.css
+    # The root the card paints on, the fills it clears and the overlay
+    # whose stamp lifts it.
+    - apps/web/src/components/ChatView.tsx
+    # Fenced data-fork-frost-host stamps on the two panel toggle spans.
+    - apps/web/src/components/chat/PanelLayoutControls.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
+    - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
 
 - id: fork-neutral-dark-theme
   intent: >
@@ -4102,13 +4262,16 @@
     className and only stamps data-draft-hero; that stamp is the layout
     mode, and theme.custom.css owns everything keyed on it — the overlay's
     move to the centre line, the docked-only floor gradient and the
-    draft-only prompt geometry. The move is an offset (top 50%, translate
-    -50%), never a stretch: the overlay is the element ChatView measures, and
-    its height feeds the timeline cutoff, the scroll-to-end clearance and the
+    draft-only prompt geometry. The move is auto margins on a fit-content
+    height (top 0, bottom 0), never a stretch and never a translate. Not a
+    stretch because the overlay is the element ChatView measures, and its
+    height feeds the timeline cutoff, the scroll-to-end clearance and the
     floating preview's bottom inset — a preview can be floated over an unsent
-    draft, and a column-high inset collapsed it to nothing. The translate is
-    safe for the glass composer's backdrop-filter (verified on screen; the
-    blur failure once blamed on it was the view-transition-name below).
+    draft, and a column-high inset collapsed it to nothing. Not a translate
+    because a transform makes the overlay the containing block of every
+    fixed-position descendant, and the Glass draft's frost
+    (fork-glass-new-agent-stage) is one, anchored to the chat view's box; it
+    was `translate: 0 -50%` until that frost resolved against the overlay.
 
     The mobile morph's view-transition-names (upstream's
     MOBILE_COMPOSER / MOBILE_DRAFT_HEADLINE) are stamped only on mobile
