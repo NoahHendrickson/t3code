@@ -68,10 +68,15 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
   );
   const threadPanelTooltip = (trigger: ReactElement) => (
     <Tooltip>
+      {/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage
+          The span carries the Glass draft's menu material, like the two toggles below. */}
       <TooltipTrigger
-        render={trigger}
+        render={<span className="flex shrink-0" data-fork-panel-toggle />}
         {...(threadPanelPresentation === "popover" ? {} : { onClick: onToggleThreadPanel })}
-      />
+      >
+        {trigger}
+      </TooltipTrigger>
+      {/* fork:end fork-glass-new-agent-stage */}
       <TooltipPopup side="bottom">
         Toggle thread details
         {threadPanelShortcutLabel ? ` (${threadPanelShortcutLabel})` : ""}
@@ -94,8 +99,8 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
       {showTerminalControl ? (
         <Tooltip>
           {/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage
-              The span hosts the Glass draft's frost copy; the Toggle inside carries pseudo-elements of its own. */}
-          <TooltipTrigger render={<span className="flex shrink-0" data-fork-frost-host />}>
+              The span carries the Glass draft's menu material; the Toggle inside paints its own hover above it. */}
+          <TooltipTrigger render={<span className="flex shrink-0" data-fork-panel-toggle />}>
             {/* fork:end fork-glass-new-agent-stage */}
             <Toggle
               className="shrink-0 [-webkit-app-region:no-drag]"
@@ -119,8 +124,8 @@ export const PanelLayoutControls = memo(function PanelLayoutControls({
       {showRightPanelControl ? (
         <Tooltip>
           {/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage
-              The span hosts the Glass draft's frost copy; the Toggle inside carries pseudo-elements of its own. */}
-          <TooltipTrigger render={<span className="flex shrink-0" data-fork-frost-host />}>
+              The span carries the Glass draft's menu material; the Toggle inside paints its own hover above it. */}
+          <TooltipTrigger render={<span className="flex shrink-0" data-fork-panel-toggle />}>
             {/* fork:end fork-glass-new-agent-stage */}
             <Toggle
               className="shrink-0 [-webkit-app-region:no-drag]"
