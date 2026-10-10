@@ -4075,9 +4075,11 @@
     paint var(--card), an 8px radius, and border-color var(--fork-composer-
     border) so Cool / Neutral palettes keep their own hairline weight. Path
     labels outside the header lift to --foreground (not the Show/Hide hint).
-    Outline actions are header > div button (TooltipTrigger overwrites
-    data-slot="button") and share the dark --fork-outline-* recipe with
-    pending Previous. Every button in the card hovers as the same 4% white
+    The header actions (fold toggle, Open diff) are ghost-muted Buttons
+    upstream and stay borderless: selected as header > div button
+    (TooltipTrigger overwrites data-slot="button") they take --foreground
+    ink only, never the --fork-outline-border recipe pending Previous
+    wears. Every button in the card hovers as the same 4% white
     lift (--fork-outline-hover-bg) instead of upstream's accent/60 fill,
     which lands darker than the card. The user's sent chat bubble
     (bg-message → --message-surface, upstream's --accent) is painted

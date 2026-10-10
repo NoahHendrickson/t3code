@@ -104,7 +104,9 @@ describe("fork guard: fork-pending-user-input", () => {
     );
     expect(outline?.selector).toContain(MARKER);
     expect(outline?.selector).toContain(".dark");
-    expect(outline?.selector).toContain("[data-changed-files-header]");
+    // The changed-files header actions are ghost buttons and must not share
+    // this outline (forkChangedFilesCard.test.ts pins their own rule).
+    expect(outline?.selector).not.toContain("[data-changed-files-header]");
     expect(outline?.body).toMatch(/border-color:\s*var\(--fork-outline-border\)/u);
   });
 

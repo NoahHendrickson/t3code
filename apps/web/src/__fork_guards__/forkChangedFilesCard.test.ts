@@ -75,7 +75,7 @@ describe("fork guard: fork-changed-files-card", () => {
     expect(token?.body).toMatch(/--fork-outline-hover-bg:\s*rgb\(255 255 255 \/ 4%\)/u);
   });
 
-  it("lifts path labels outside the header and outlines header action buttons", () => {
+  it("lifts path labels outside the header and keeps header action buttons borderless", () => {
     const label = cssRules(theme).find(
       (rule) =>
         rule.selector.includes("[data-changed-files-state]") &&
@@ -87,13 +87,19 @@ describe("fork guard: fork-changed-files-card", () => {
     // MiddleTruncate's tail half takes the same ink as its truncating head.
     expect(label?.selector).toContain("span.truncate + span.shrink-0");
 
-    const button = cssRules(theme).find(
-      (rule) =>
-        rule.selector.includes("[data-changed-files-header] > div button") &&
-        rule.body.includes("background: transparent"),
+    // The header actions are ghost-muted Buttons upstream: they keep the
+    // foreground ink but must not be pulled into the outline recipe, which
+    // would recolour their transparent border into a visible one.
+    const button = cssRules(theme).find((rule) =>
+      rule.selector.includes("[data-changed-files-header] > div button"),
     );
     expect(button?.selector).toContain(MARKER);
     expect(button?.selector).toContain(".dark");
+    expect(button?.body).toMatch(/color:\s*var\(--foreground\)/u);
+    for (const rule of cssRules(theme)) {
+      if (!rule.selector.includes("[data-changed-files-header]")) continue;
+      expect(rule.body).not.toMatch(/border-color:\s*var\(--fork-outline-border/u);
+    }
     // Must not key off data-slot="button" — TooltipTrigger overwrites it.
     expect(theme).not.toMatch(/\[data-changed-files-state\][^{]*\[data-slot="button"\]/u);
   });
