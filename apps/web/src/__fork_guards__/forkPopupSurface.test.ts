@@ -274,6 +274,29 @@ describe("fork guard: fork-popup-surface", () => {
     expect(tag?.body).toContain("vertical-align: baseline;");
   });
 
+  it("lifts the thread details card's rows on the fork hook, not on upstream's class names", () => {
+    // The card's rows, split halves and icon actions all compose one hover
+    // surface string; the fork appends its hook there (fenced), so the lift
+    // reaches exactly those and never the automations Switch in the same
+    // card, and no Tailwind group name or blanket button:hover is a contract.
+    const styles = readSibling("../components/chat/threadDetailsPanelStyles.ts");
+    expect(styles).toMatch(
+      /THREAD_DETAILS_PANEL_HOVER_SURFACE_CLASS =\s*"fork-thread-details-lift hover:!bg-black/u,
+    );
+    expect(flat(frost?.selector ?? "")).toContain("[data-thread-details-card].dropdown-glass");
+    const lift = cssRules(theme).find((candidate) =>
+      flat(candidate.selector).includes("[data-thread-details-card] .fork-thread-details-lift:is("),
+    );
+    expect(lift?.selector).toContain(MARKER);
+    expect(lift?.selector).toContain(".dark");
+    expect(lift?.body).toContain("background-color: var(--fork-outline-hover-bg) !important;");
+    expect(theme).not.toContain("group/thread-details-");
+    for (const candidate of cssRules(theme)) {
+      if (!candidate.selector.includes("[data-thread-details-card]")) continue;
+      expect(flat(candidate.selector), candidate.selector).not.toMatch(/\bbutton:hover\b/u);
+    }
+  });
+
   it("carries one arm per primitive", () => {
     // No fork fallback for browsers without backdrop-filter: upstream's
     // utility paints --popover with !important there, which nothing declared

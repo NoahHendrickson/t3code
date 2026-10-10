@@ -1248,6 +1248,8 @@
     # Owned by sidebar-v2-project-grouping; this entry owns only its plus
     # button's box and the 2px that puts it on the trailing column's axis.
     - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+    # The sweep verb badge's chip recipe, keyed on data-fork-sweep-badge.
+    - apps/web/src/theme.custom.css
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
@@ -3461,7 +3463,11 @@
     popover popup, so that card is a branch of the one rule; the panel's own
     additions are the composer vessel's radius, the 4% lift on its rows and
     split groups (upstream's hover utilities are !important, so the lift is
-    too) and the vessel hairline on its section dividers. There is one rule
+    too; it keys on fork-thread-details-lift, a hook fenced onto upstream's
+    one hover-surface class string in threadDetailsPanelStyles.ts, so it
+    reaches exactly the surfaces that compose it and not the automations
+    Switch in the same card) and the vessel hairline on its section
+    dividers. There is one rule
     and no per-surface carve-out: the project
     header's menu, the Usage overlay and the Dictate tooltip are on it by
     their slot, not a stamp. Under Glass (theme.custom.palettes.css) the
@@ -3506,6 +3512,9 @@
     - apps/web/src/components/ui/select.tsx
     - apps/web/src/components/ui/combobox.tsx
     - apps/web/src/components/ui/popover.tsx
+    # Carries the fenced fork-thread-details-lift hook on the panel's hover
+    # surface string, which every panel row and split half composes.
+    - apps/web/src/components/chat/threadDetailsPanelStyles.ts
     # Stamps data-slot="badge" on the Default tag the menu row tag rule restyles.
     - apps/web/src/components/ui/badge.tsx
     # Renders DefaultBadge inside its menu radio rows.
@@ -4066,10 +4075,17 @@
     V2SubagentGroup (avatar stack, chevron, bordered member box). The fork
     swaps that one call site for ForkSubagentGroup, which reads the thread's
     live subagent roster the way upstream's group does and paints the Figma
-    tree from it. V2 carries no effort or token usage per subagent, so the
-    meta line is the model (spelled "Opus 5.5" / "GPT 6 Astra" from the slug)
-    and each member's own elapsed time; the batch's elapsed span rides the
-    header line beside the status summary. The agents panel is gone in V2, so
+    tree from it: lead, summary and the progress-or-result pick are
+    upstream's shared subagent-display helpers, and the fork's own parts are
+    the sidebar mark vocabulary, the one-line markdown strip and the model
+    spelling. V2 carries no effort or token usage per subagent, so the meta
+    line is the model (upstream's formatModelSlugName with the vendor word
+    dropped and a dated snapshot's date left off: "Opus 5.5", and "Sonnet
+    4.5" from the claude-sonnet-4-5-20250929 a Claude subagent reports) and
+    each member's own elapsed time; the batch's elapsed span rides the
+    header line beside the status summary when a member reports a start
+    time, which provider-native subagents often do not. The agents panel is
+    gone in V2, so
     there is no "View agents" door — a member row opens its own thread when
     it has one, and otherwise is inert text. A single subagent still renders
     upstream's lifecycle row. Upstream's V2SubagentGroup stays in the file,
@@ -4085,6 +4101,8 @@
     # Fenced import, the swapped render at the batch call site, and the
     # unused-marker on upstream's V2SubagentGroup.
     - apps/web/src/components/chat/MessagesTimeline.tsx
+    # Fenced: the grouped-batch cases no longer click a collapsed group open.
+    - apps/web/src/components/chat/MessagesTimeline.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkSubagentSpawnCard.test.ts
 

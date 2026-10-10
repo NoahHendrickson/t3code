@@ -28,17 +28,24 @@ describe("fork guard: fork-subagent-spawn-card", () => {
       /\(row\.subagents\?\.length \?\? 1\) > 1\) \{[\s\S]{0,400}?<ForkSubagentGroup[\s\S]{0,200}?onOpenThread=\{ctx\.onOpenThread\}/u,
     );
     expect(timeline).not.toContain("return <V2SubagentGroup key={row.id} row={row} />;");
+    // Upstream's grouped-batch cases click a collapsed group open; the fork
+    // tree has no such state, and the fenced cases say so.
+    const timelineTest = readSibling("../components/chat/MessagesTimeline.test.tsx");
+    expect(timelineTest).toContain("fork:begin fork-subagent-spawn-card");
   });
 
   it("keeps the Figma header and member rows", () => {
     expect(group).toContain('from "@phosphor-icons/react"');
     expect(group).toContain('<TreeView weight="regular"');
-    // Lead and status wording come from upstream's shared summary helpers.
+    // Lead, status wording, the progress-or-result pick and the model's name
+    // come from upstream's shared helpers; the fork owns only the vocabulary.
     expect(model).toContain("subagentGroupSummary(rows)");
     expect(model).toContain("summarizeSubagentStatuses(rows.map((row) => row.status))");
-    // Members take the sidebar's status vocabulary, not avatars or a box.
-    expect(group).toContain("<SidebarV2WorkingRain seed={rainSeed} />");
-    expect(group).toContain('<SidebarV2StatusDot tone="done" />');
+    expect(model).toContain("subagentDetailPreview(input)");
+    expect(model).toContain("formatModelSlugName(slug)");
+    expect(model).not.toContain("isForkSubagentSettled");
+    // Members take the sidebar's status marks, not avatars or a box.
+    expect(group).toContain("<SidebarV2StatusMark status={memberStatus(member.mark)}");
     expect(group).not.toContain("SubagentAvatar");
     expect(group).not.toContain("border-border/60");
     expect(group).not.toContain("bg-card/30");

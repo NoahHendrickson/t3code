@@ -5,8 +5,11 @@
  * Takes the projected subagent items of one spawn batch plus the thread's
  * live subagent roster (upstream's projection keeps status, progress, result,
  * model and timing current there) and returns what the tree paints: the lead
- * line, the status summary, and one row per member with the sidebar's status
- * vocabulary. Kept out of the component so the rules are testable without
+ * line, the status summary, the batch's elapsed span, and one row per member
+ * with the sidebar's status vocabulary. Lead, summary and the
+ * progress-or-result preference are upstream's shared helpers; what is the
+ * fork's own here is the mark vocabulary, the one-line markdown strip and the
+ * model spelling. Kept out of the component so the rules are testable without
  * rendering.
  */
 import type {
@@ -16,9 +19,11 @@ import type {
 } from "@t3tools/contracts";
 import {
   formatSubagentDisplayTitle,
+  subagentDetailPreview,
   subagentGroupSummary,
   summarizeSubagentStatuses,
 } from "@t3tools/client-runtime/state/subagent-display";
+import { formatModelSlugName } from "@t3tools/shared/model";
 import * as DateTime from "effect/DateTime";
 
 export type ForkSubagentItem = Extract<OrchestrationV2TurnItem, { readonly type: "subagent" }>;
@@ -39,12 +44,26 @@ export interface ForkSubagentTreeRow {
   readonly childThreadId: ThreadId | null;
 }
 
+/** The batch's one elapsed span, in the shape `AgentElapsed` ticks. */
+export interface ForkSubagentTiming {
+  readonly status: "running" | "completed";
+  readonly startedAt: string;
+  readonly completedAt: string | null;
+}
+
 export interface ForkSubagentTree {
   /** "Kicked off N subagents" while any member works, "Ran N subagents" after. */
   readonly lead: string;
   /** "2 working · 1 done", in the agents panel's words. */
   readonly summary: string;
   readonly active: boolean;
+  /**
+   * First launch to last settle, ticking while the batch is active — upstream's
+   * group rule: null when no member reports a start time (provider-native
+   * subagents often carry none), and the end withheld rather than cut short
+   * while a settled member has no completion time.
+   */
+  readonly timing: ForkSubagentTiming | null;
   readonly rows: ReadonlyArray<ForkSubagentTreeRow>;
 }
 
@@ -70,15 +89,6 @@ const STATUS_MARK: Record<ForkSubagentStatus, ForkSubagentMark> = {
   interrupted: "stopped",
 };
 
-export function isForkSubagentSettled(status: ForkSubagentStatus): boolean {
-  return (
-    status === "completed" ||
-    status === "failed" ||
-    status === "cancelled" ||
-    status === "interrupted"
-  );
-}
-
 /** The server's placeholder when a child ends without output; the mark already says it. */
 const GENERIC_CHILD_END = /^Child task ended with status\b/iu;
 
@@ -92,49 +102,34 @@ function plainDetail(text: string): string {
     .trim();
 }
 
+/** Upstream's pick (progress while live, result once settled, one line), then
+    the fork's placeholder drop and markdown strip over it. */
 function resolveDetail(input: {
   readonly status: ForkSubagentStatus;
   readonly progress: string | undefined;
   readonly result: string | null;
 }): string {
-  const progress = input.progress?.trim() || null;
-  const result = input.result?.trim() || null;
-  const raw = isForkSubagentSettled(input.status) ? result || progress : progress || result;
-  if (raw === null || GENERIC_CHILD_END.test(raw)) return STATUS_WORD[input.status];
-  return plainDetail(raw) || STATUS_WORD[input.status];
+  const preview = subagentDetailPreview(input);
+  if (preview === null || GENERIC_CHILD_END.test(preview)) return STATUS_WORD[input.status];
+  return plainDetail(preview) || STATUS_WORD[input.status];
 }
 
-const ACRONYMS = new Set(["gpt", "glm", "grok"]);
-
 /**
- * A model slug the way the Figma tree spells it: vendor prefix dropped, words
- * title-cased, a trailing version joined with dots — `claude-opus-5-5` reads
- * "Opus 5.5", `gpt-6-astra` reads "GPT 6 Astra". Null when there is nothing to
- * show; the raw slug when it has no dashes to work with.
+ * A model id the way the Figma tree spells it: upstream's shared spelling
+ * (`formatModelSlugName`) with the vendor word dropped and a dated snapshot's
+ * date left off, so `claude-opus-5-5` reads "Opus 5.5" and the
+ * `claude-sonnet-4-5-20250929` a Claude subagent reports reads "Sonnet 4.5".
+ * Null when nothing was reported.
  */
 export function formatForkSubagentModel(model: string | null): string | null {
-  const slug = model?.trim().toLowerCase();
+  const slug = model?.trim();
   if (!slug) return null;
-  const parts = slug.split(/[-_/]+/u).filter((part) => part.length > 0);
-  if (parts.length === 0) return null;
-  if (parts[0] === "claude" && parts.length > 1) parts.shift();
-  const words: string[] = [];
-  for (const part of parts) {
-    const numeric = /^\d+$/u.test(part);
-    const previous = words.at(-1);
-    if (numeric && previous !== undefined && /^\d+(\.\d+)*$/u.test(previous)) {
-      words[words.length - 1] = `${previous}.${part}`;
-      continue;
-    }
-    words.push(
-      numeric
-        ? part
-        : ACRONYMS.has(part)
-          ? part.toUpperCase()
-          : part[0]!.toUpperCase() + part.slice(1),
-    );
-  }
-  return words.join(" ");
+  return (
+    formatModelSlugName(slug)
+      .replace(/^claude\s+/iu, "")
+      .replace(/\s+\d{8}(?=\[|$)/u, "")
+      .trim() || null
+  );
 }
 
 function isoOrNull(value: DateTime.Utc | null | undefined): string | null {
@@ -145,10 +140,26 @@ export function resolveForkSubagentTree(
   members: ReadonlyArray<ForkSubagentItem>,
   liveAgents: ReadonlyArray<OrchestrationV2Subagent> | null | undefined,
 ): ForkSubagentTree {
-  const rows = members.map((item): ForkSubagentTreeRow => {
+  const rows: ForkSubagentTreeRow[] = [];
+  let startMs: number | null = null;
+  let endMs: number | null = null;
+  let endUnknown = false;
+  for (const item of members) {
     const live = liveAgents?.find((agent) => agent.id === item.subagentId);
     const status = live?.status ?? item.status;
-    return {
+    const startedAt = live?.startedAt ?? item.startedAt;
+    const completedAt = live?.completedAt ?? item.completedAt;
+    if (startedAt) {
+      const ms = DateTime.toEpochMillis(startedAt);
+      startMs = startMs === null ? ms : Math.min(startMs, ms);
+    }
+    if (completedAt) {
+      const ms = DateTime.toEpochMillis(completedAt);
+      endMs = endMs === null ? ms : Math.max(endMs, ms);
+    } else {
+      endUnknown = true;
+    }
+    rows.push({
       id: item.id,
       title: formatSubagentDisplayTitle(live?.title ?? item.title ?? "Subagent"),
       status,
@@ -160,16 +171,25 @@ export function resolveForkSubagentTree(
       }),
       failed: status === "failed",
       model: live?.model ?? null,
-      startedAt: isoOrNull(live?.startedAt ?? item.startedAt),
-      completedAt: isoOrNull(live?.completedAt ?? item.completedAt),
+      startedAt: isoOrNull(startedAt),
+      completedAt: isoOrNull(completedAt),
       childThreadId: live?.childThreadId ?? item.childThreadId,
-    };
-  });
+    });
+  }
   const group = subagentGroupSummary(rows);
   return {
     lead: group.label,
     summary: summarizeSubagentStatuses(rows.map((row) => row.status)),
     active: group.active,
+    timing:
+      startMs === null
+        ? null
+        : {
+            status: group.active ? "running" : "completed",
+            startedAt: new Date(startMs).toISOString(),
+            completedAt:
+              group.active || endUnknown || endMs === null ? null : new Date(endMs).toISOString(),
+          },
     rows,
   };
 }

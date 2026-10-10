@@ -2107,12 +2107,12 @@ describe("MessagesTimeline", () => {
           renderer!.root.findAll(
             (node) => node.type === "button" && node.props["aria-label"] === "Open Package audit",
           );
-        if (count > 1) {
-          expect(child()).toHaveLength(0);
-          await act(() => group().props.onClick({ nativeEvent: new Event("click") }));
-        } else {
-          expect(group()).toBeUndefined();
-        }
+        /* fork:begin fork-subagent-spawn-card — see .fork/customizations.yaml#fork-subagent-spawn-card
+           The fork tree has no collapsed state and no group button: a batch's
+           member rows are on screen from the start, so there is nothing to
+           click open here and nothing to click shut after the navigation. */
+        expect(group()).toBeUndefined();
+        /* fork:end fork-subagent-spawn-card */
         expect(child()).toHaveLength(count);
         const content = renderer!.root
           .findAll((node) => typeof node.type === "string")
@@ -2124,10 +2124,6 @@ describe("MessagesTimeline", () => {
         if (progress && progress !== preview) expect(content).not.toContain(progress);
         await act(() => child()[0]!.props.onClick());
         expect(onOpenThread).toHaveBeenCalledWith("thread-subagent-1");
-        if (count > 1) {
-          await act(() => group().props.onClick({ nativeEvent: new Event("click") }));
-          expect(child()).toHaveLength(0);
-        }
       } finally {
         await act(() => renderer?.unmount());
         vi.stubGlobal("HTMLElement", undefined);

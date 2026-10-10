@@ -7507,24 +7507,13 @@ export default function ChatView(props: ChatViewProps) {
     if (presentation === null || !activeThread) {
       return null;
     }
-    // `waiting` is upstream's "this work will wake the agent" (subagents); a dev
-    // server that merely outlives the turn is monitoring-only, so it does not rain.
     return renderComposerLivenessPill(
       resolveComposerLivenessPillProps({
-        liveness: presentation.waiting ? "working" : "monitoring",
+        presentation,
         rainSeed: `${activeThread.environmentId}:${activeThread.id}`,
-        liveCount: presentation.items.filter((item) => item.kind === "subagent").length,
         stopping: isStoppingBackgroundWork,
         canStop: canOperateThread,
         onStop: () => void handleStopBackgroundWork(),
-        // The tasks behind the count, for the pill's list: a subagent's row
-        // opens its thread (what upstream's dropped banner linked to).
-        tasks: presentation.items.map((item) => ({
-          id: item.taskId,
-          label: item.label,
-          kind: item.kind,
-          childThreadId: item.childThreadId ?? null,
-        })),
         onOpenThread: onOpenRelatedThread,
       }),
     );

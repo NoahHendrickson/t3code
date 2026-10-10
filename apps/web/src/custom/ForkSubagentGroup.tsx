@@ -5,10 +5,11 @@
  * Replaces upstream's `V2SubagentGroup` (an avatar stack, a chevron, and a
  * bordered member box) at the one site MessagesTimeline renders a batch of
  * two or more subagents. A Phosphor TreeView leads "Kicked off N subagents" /
- * "Ran N subagents" with the status summary and the batch's elapsed span on
- * the line below; the members sit indented underneath, each with the
- * sidebar's status vocabulary (working rain or a settled dot), the title, its
- * live activity or result, and the model with its own elapsed time. No
+ * "Ran N subagents" with the status summary and, when a member reports a
+ * start time, the batch's elapsed span on the line below; the members sit
+ * indented underneath, each with the sidebar's status mark (working rain, a
+ * settled dot, or the hollow idle circle for idle and stopped), the title,
+ * its live activity or result, and the model with its own elapsed time. No
  * borders, no fills: a row is a button only when the member has a thread of
  * its own to open. Upstream's agents panel is gone in V2, so there is no
  * "View agents" door; the rows are the roster.
@@ -21,7 +22,7 @@ import { TreeView } from "@phosphor-icons/react";
 import { useAtomValue } from "@effect/atom-react";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
-import { memo, type ReactNode } from "react";
+import { memo } from "react";
 
 import { AgentElapsed } from "~/components/chat/AgentElapsed";
 import type { MessagesTimelineRow } from "~/components/chat/MessagesTimeline.logic";
@@ -35,11 +36,7 @@ import {
   type ForkSubagentMark,
   type ForkSubagentTreeRow,
 } from "./forkSubagentTree";
-import {
-  SidebarV2IdleMark,
-  SidebarV2StatusDot,
-  SidebarV2WorkingRain,
-} from "./SidebarV2StatusIndicator";
+import { SidebarV2StatusMark, type SidebarV2TopStatusMark } from "./SidebarV2StatusIndicator";
 
 export const ForkSubagentGroup = memo(function ForkSubagentGroup(props: {
   readonly row: Extract<MessagesTimelineRow, { readonly kind: "event" }>;
@@ -57,13 +54,13 @@ export const ForkSubagentGroup = memo(function ForkSubagentGroup(props: {
     (thread) => thread?.projection.subagents,
   );
   const tree = resolveForkSubagentTree(members, liveAgents);
-  const batchTiming = resolveBatchTiming(tree.rows);
 
   return (
     <WorkLogBlock continues={row.continuesWorkLog}>
       <div
         data-fork-subagent-tree=""
         data-subagent-group
+        role="group"
         aria-label={tree.lead}
         className="flex w-full min-w-0 flex-col items-start gap-3.5 py-1 text-sm leading-5"
       >
@@ -75,9 +72,9 @@ export const ForkSubagentGroup = memo(function ForkSubagentGroup(props: {
             <span className="w-full min-w-0 truncate text-foreground">{tree.lead}</span>
             <span className="flex min-w-0 items-start gap-3 whitespace-nowrap text-muted-foreground">
               <span>{tree.summary}</span>
-              {batchTiming ? (
+              {tree.timing ? (
                 <span className="tabular-nums">
-                  <AgentElapsed agent={batchTiming} />
+                  <AgentElapsed agent={tree.timing} />
                 </span>
               ) : null}
             </span>
@@ -102,7 +99,7 @@ function ForkSubagentMemberRow(props: {
   const content = (
     <>
       <span aria-hidden className="flex shrink-0 items-center py-1">
-        {memberMark(member.mark, member.id)}
+        <SidebarV2StatusMark status={memberStatus(member.mark)} rainSeed={member.id} idle="dot" />
       </span>
       <span className="flex min-w-0 flex-1 flex-col items-start">
         <span className="w-full min-w-0 truncate text-foreground">{member.title}</span>
@@ -150,56 +147,22 @@ function ForkSubagentMemberRow(props: {
   );
 }
 
-function memberMark(mark: ForkSubagentMark, rainSeed: string): ReactNode {
+/** The sidebar's mark set by the tree's vocabulary. Idle and stopped both
+    settle on the hollow idle circle: nothing pending, nothing to report. */
+function memberStatus(mark: ForkSubagentMark): SidebarV2TopStatusMark | null {
   switch (mark) {
     case "rain":
-      return <SidebarV2WorkingRain seed={rainSeed} />;
-    case "idle":
-      return <SidebarV2IdleMark />;
+      return { label: "Working", mark: "rain" };
     case "done":
-      return <SidebarV2StatusDot tone="done" />;
+      return { label: "Completed", mark: "dot", tone: "done" };
     case "failed":
-      return <SidebarV2StatusDot tone="failed" />;
+      return { label: "Failed", mark: "dot", tone: "failed" };
+    case "idle":
     case "stopped":
-      return (
-        <span className="flex size-[14px] shrink-0 items-center justify-center">
-          <span className="size-2 rounded-full bg-muted-foreground/60" />
-        </span>
-      );
+      return null;
     default: {
       const exhaustive: never = mark;
       return exhaustive;
     }
   }
-}
-
-/**
- * One elapsed span for the batch: first launch to last settle, ticking while
- * any member works. A settled member without a completion time leaves the end
- * unknown, so the span is withheld rather than cut short — the same rule as
- * upstream's group timing.
- */
-function resolveBatchTiming(rows: ReadonlyArray<ForkSubagentTreeRow>) {
-  let startMs: number | null = null;
-  let endMs: number | null = null;
-  let endUnknown = false;
-  for (const row of rows) {
-    if (row.startedAt) {
-      const ms = Date.parse(row.startedAt);
-      startMs = startMs === null ? ms : Math.min(startMs, ms);
-    }
-    if (row.completedAt) {
-      const ms = Date.parse(row.completedAt);
-      endMs = endMs === null ? ms : Math.max(endMs, ms);
-    } else {
-      endUnknown = true;
-    }
-  }
-  if (startMs === null) return null;
-  const live = rows.some((row) => row.mark === "rain");
-  return {
-    status: live ? ("running" as const) : ("completed" as const),
-    startedAt: new Date(startMs).toISOString(),
-    completedAt: live || endUnknown || endMs === null ? null : new Date(endMs).toISOString(),
-  };
 }

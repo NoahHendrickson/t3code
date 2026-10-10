@@ -2620,18 +2620,17 @@
 /* Rows and split groups inside the card hover as the fork's 4% white lift
    (--fork-outline-hover-bg), not upstream's black/white tints — the same
    lift every outline action and changed-files row already takes. Upstream
+   composes every panel row, split half and icon action from one hover
+   surface string (threadDetailsPanelStyles.ts), and the fork appends its
+   hook to that string (fenced there): the lift keys on the hook, so it
+   reaches exactly those surfaces and never, say, the automations Switch
+   in the same card, and no Tailwind group name is a contract. Upstream
    stacks a group tint under a segment tint so the hovered half of a split
    control reads darker; the lift stacks the same way (4% + 4%). Upstream's
    utilities are `!important` (`hover:!bg-…`), so this is too. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-thread-details-card]
-  :is(
-    button:hover,
-    button[data-pressed],
-    button[data-popup-open],
-    [class*="group/thread-details-"]:hover,
-    [class*="group/thread-details-"]:has([data-popup-open])
-  ) {
+  .fork-thread-details-lift:is(:hover, [data-pressed], [data-popup-open], :has([data-popup-open])) {
   background-color: var(--fork-outline-hover-bg) !important;
 }
 

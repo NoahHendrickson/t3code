@@ -119,6 +119,16 @@
   cursor: pointer;
 }
 
+/* theme.custom.css lifts any hovered, pressed or open button in the context
+   row to the chip-hover fill, at a specificity the reset above loses to; the
+   label is text, not a chip, so it holds transparent in those states — the
+   stop button's own hover rule keeps its square the same way. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  button[data-fork-monitoring-list]:is(:hover, [data-pressed], [data-popup-open]):not(:disabled) {
+  background: transparent;
+}
+
 :root[data-fork="noahhendrickson-t3code"] button[data-fork-monitoring-list]:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
