@@ -2218,8 +2218,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // Dictation follows the editor's gate, not send's: an unassigned new-agent
   // draft keeps its prompt editable while a project is still to be chosen,
   // so it can be dictated into too, and send stays blocked as before.
-  // A send in flight keeps the spinner in the slot: neither the ghost mic
-  // beside typed text nor the keyboard may start a session over it.
+  // A send in flight keeps the spinner in the slot: neither the control-row
+  // mic nor the keyboard may start a session over it.
   // A question that takes a typed answer holds it in the editor (see the
   // ComposerPromptEditor `value` binding), so dictation writes there too.
   // Not on a compact viewport (max-sm, which Electron reaches through zoom):
@@ -3165,21 +3165,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     activePendingApproval === null &&
     (pendingPrimaryAction === null || dictationAnswersQuestion) &&
     !(pendingUserInputs.length === 0 && showPlanFollowUpPrompt);
-  // Dictation takes the send slot with nothing to send (the mic in place of a
-  // disabled send) and for the whole of a live session (the check and X). A
-  // question keeps Next/Submit in the slot until a session starts; the mic
-  // stands beside it as the ghost. Upstream's resume action (a resumable run
-  // or held queued runs with an empty draft) also lives in that slot, so the
-  // idle mic yields to it and stands beside it as the ghost; a live session
-  // keeps the slot regardless, since the check is the only way to end it.
-  const dictationOwnsPrimaryAction =
-    dictation.isAvailable &&
-    (dictation.blocksSubmission ||
-      (pendingPrimaryAction === null &&
-        !showResumeAction &&
-        !composerSendState.hasSendableContent &&
-        !isSendBusy &&
-        !isConnecting));
+  // The mic lives in the control row; a live session takes the send slot
+  // (the check and X) for its whole length. A question keeps Next/Submit in
+  // the slot until a session starts.
+  const dictationOwnsPrimaryAction = dictation.isAvailable && dictation.blocksSubmission;
   const { settleWithoutControls: settleDictationWithoutControls } = dictation;
   useEffect(() => {
     if (!dictationControlsVisible || dictationFieldRef.current !== dictationEditorField) {
@@ -6934,9 +6923,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ) : null;
 
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
-     Attach leads the prompt row (ComposerPromptRow's leading slot) rather
-     than riding the primary cluster, so typed text starts after the plus.
-     Upstream renders this input and button inside the right-hand cluster. */
+     Attach leads the control row's left slot, ahead of the mic and the mode
+     controls. Upstream renders this input and button inside the right-hand
+     cluster. */
   const composerAttachAction = showComposerAttachAction ? (
     <>
       <input
@@ -6967,7 +6956,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
               aria-label="Attach files"
               data-fork-composer-action="attach"
               /* fork-local-dictation: inert in place, not hidden, while a
-                 session is live; only the compact empty row hides it. */
+                 session is live. */
               disabled={dictation.blocksSubmission}
             />
           }
@@ -6990,24 +6979,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     >
       {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */}
       <ForkDictationNotices dictation={dictation} />
-      {/* Once there is something to send, send takes its slot back and the mic
-          steps beside it as a ghost. A live session's X and check live in the
-          slot itself, so the ghost hides for the session; it stays mounted
-          when the session started over typed text, so the stacked row's
-          prompt reserve (theme.custom.css, keyed on its presence) still
-          counts the width it had. A choice-only question has no field to
-          dictate into, so the ghost hides beside its Next/Submit. */}
-      {!dictationOwnsPrimaryAction ||
-      (dictation.blocksSubmission && composerSendState.hasSendableContent) ? (
-        <ForkDictationGhostMic
-          dictation={dictation}
-          disabled={dictationDisabled}
-          hidden={
-            dictationOwnsPrimaryAction ||
-            (pendingPrimaryAction !== null && !dictationAnswersQuestion)
-          }
-        />
-      ) : null}
       {/* fork:end fork-local-dictation */}
       <ComposerFooterPrimaryActions
         compact={isComposerResting || isComposerPrimaryActionsCompact}
@@ -7149,7 +7120,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         collapsedMobile={isComposerCollapsedMobile}
         context={contextStrip}
         mobilePendingActionsVisible={showMobilePendingAnswerActions}
-        modeControls={composerModeControls}
+        modeControls={
+          <>
+            {composerAttachAction}
+            {/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+                Stays in place, inert, for a live session (its X and check
+                take the send slot) and wherever there is no field to
+                dictate into. */}
+            <ForkDictationGhostMic
+              dictation={dictation}
+              disabled={dictationDisabled || dictation.blocksSubmission}
+            />
+            {/* fork:end fork-local-dictation */}
+            {composerModeControls}
+          </>
+        }
         modelControls={composerModelControls}
         readoutControls={composerReadoutControls}
       >
@@ -7924,7 +7909,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */}
                   <ComposerPromptRow
                     action={composerPrimaryActionSlot}
-                    leading={composerAttachAction}
                     approvalPending={activePendingApproval !== null}
                     mobilePendingActionsVisible={showMobilePendingAnswerActions}
                     /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */

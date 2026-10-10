@@ -128,17 +128,12 @@ function DictationTooltip(props: { label: string; trigger: ReactElement; icon: R
 }
 
 /**
- * The mic once there is something to send: a ghost beside the send button in
- * attach's 24px box, so dictation stays one click away while typing. Same
- * filled glyph as the send-slot mic, so it reads as the same control moved.
+ * The mic: a ghost in the composer's control row, beside attach and ahead of
+ * the mode controls. Starting a session hands the send slot to
+ * ForkDictationPrimaryButton.
  */
-export function ForkDictationGhostMic(props: {
-  dictation: ForkDictation;
-  disabled: boolean;
-  /** Mounted but not shown: the stacked row's prompt reserve counts it. */
-  hidden?: boolean;
-}) {
-  const { dictation, disabled, hidden = false } = props;
+export function ForkDictationGhostMic(props: { dictation: ForkDictation; disabled: boolean }) {
+  const { dictation, disabled } = props;
   if (!dictation.isAvailable) return null;
   return (
     <DictationTooltip
@@ -150,7 +145,6 @@ export function ForkDictationGhostMic(props: {
           size="icon-sm"
           aria-label="Dictate (Right Command)"
           data-fork-composer-action="dictate"
-          hidden={hidden}
           disabled={disabled}
           onPointerDown={(event) => event.preventDefault()}
           onClick={dictation.start}
@@ -162,14 +156,12 @@ export function ForkDictationGhostMic(props: {
 }
 
 /**
- * Dictation borrows the send button. With nothing to send the button is the
- * mic rather than a disabled send; starting a session turns it into the check
- * and puts a cancel X and the level timeline beside it; the check spins while
- * transcribing. Everything appears in place: nothing slides, grows, or springs in.
+ * A live session borrows the send button: it becomes the check, with a cancel
+ * X and the level timeline beside it, and the check spins while transcribing.
+ * Everything appears in place: nothing slides, grows, or springs in.
  *
  * `className` is the send button's own, passed in by ComposerPrimaryActions so
- * the mic and check are the send button in every respect but their glyph and
- * click. Pointer-down is always swallowed so the editor keeps focus and the
+ * the check is the send button in every respect but its glyph and click. Pointer-down is always swallowed so the editor keeps focus and the
  * transcript lands at its caret.
  */
 export function ForkDictationPrimaryButton(props: {
