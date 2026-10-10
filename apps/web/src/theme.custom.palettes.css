@@ -759,7 +759,9 @@
    glass sits on the card inside it, hence an arm of its own. On a new
    agent's draft it keeps the base recipe, frosted over the picture, which
    the header's panel toggles match (fork-glass-new-agent-stage); docked
-   inline it lives inside #root, where no hole can open beneath it. */
+   inline it lives inside #root, where no hole can open beneath it. The
+   portaled wrapper carries data-fork-popup outside the draft, so the arm
+   matches locally instead of through a :has() on :root. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     :is(
@@ -771,8 +773,7 @@
     ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"]),
-    :root:not(:has([data-chat-composer-overlay="true"][data-draft-hero]))
-      [data-thread-details-panel="popover"]
+    [data-thread-details-panel="popover"][data-fork-popup]
       > [data-thread-details-card].dropdown-glass
   ) {
   background:
@@ -817,8 +818,7 @@
       ).dropdown-glass[data-starting-style],
     [data-slot="select-popup"][data-starting-style]:has(> .dropdown-glass),
     .dropdown-glass > [data-slot="combobox-popup"][data-starting-style],
-    :root:not(:has([data-chat-composer-overlay="true"][data-draft-hero]))
-      [data-slot="popover-popup"][data-starting-style]:has([data-thread-details-panel="popover"])
+    [data-slot="popover-popup"][data-starting-style]:has([data-fork-popup])
   ) {
   opacity: 1;
   scale: none;

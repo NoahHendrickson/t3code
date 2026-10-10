@@ -3653,7 +3653,12 @@
     it); docked inline it lives inside #root, where no hole can open
     beneath it, and on a new agent's draft it stays frosted over the
     picture, which the header's panel toggles match
-    (fork-glass-new-agent-stage). The dialog
+    (fork-glass-new-agent-stage). The gate is data-fork-popup on the
+    portaled popover wrapper, set from ChatView's !isDraftHeroState through
+    ThreadDetailsPanel and ThreadDetailsCard (fenced props), so the fill, the
+    opening rule and the cutout query match locally; a :has() on :root
+    would widen style invalidation to the whole document while a thread
+    streams. The dialog
     arm of the clear skips the one dialog that carries dropdown-glass.
     Generic surface-glass overlays still
     use the context-chip fill over --fork-popup-glass-floor — the stage as
@@ -3680,8 +3685,17 @@
   files:
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/components/ChatView.tsx
+    - apps/web/src/components/chat/ThreadDetailsPanel.tsx
+    - apps/web/src/components/chat/ThreadDetailsCard.tsx
   shadows: []
   watch:
+    # Fenced forkGlassPopup prop: ChatView sets it from !isDraftHeroState,
+    # ThreadDetailsPanel forwards it, and ThreadDetailsCard stamps
+    # data-fork-popup on the portaled popover wrapper.
+    - apps/web/src/components/ChatView.tsx
+    - apps/web/src/components/chat/ThreadDetailsPanel.tsx
+    - apps/web/src/components/chat/ThreadDetailsCard.tsx
     # Stamp the popup slots and the dropdown-glass utility the rule targets.
     - apps/web/src/components/ui/menu.tsx
     - apps/web/src/components/ui/select.tsx

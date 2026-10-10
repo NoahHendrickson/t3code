@@ -75,6 +75,10 @@ export interface ThreadDetailsPanelProps extends Pick<
     input: NewProjectScriptInput,
   ) => Promise<ProjectScriptActionResult>;
   onDeleteProjectScript: (scriptId: string) => Promise<ProjectScriptActionResult>;
+  /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
+  /** The card wears the Glass popup recipe (started threads, not the draft hero). */
+  forkGlassPopup?: boolean;
+  /* fork:end fork-popup-surface */
 }
 
 export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
@@ -119,6 +123,9 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
       anchor={props.anchor}
       handle={props.handle}
       onPresentationChange={props.onPresentationChange}
+      /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
+      forkGlassPopup={props.forkGlassPopup ?? false}
+      /* fork:end fork-popup-surface */
     >
       {(density) => (
         <>

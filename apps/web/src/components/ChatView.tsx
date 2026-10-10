@@ -11362,6 +11362,9 @@ export default function ChatView(props: ChatViewProps) {
     ) : null
   ) : null;
   const threadDetailsPanelProps: ThreadDetailsPanelProps = {
+    /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
+    forkGlassPopup: !isDraftHeroState,
+    /* fork:end fork-popup-surface */
     anchor: threadPanelPopoverAnchorRef,
     handle: threadPanelPopoverHandle,
     onPresentationChange: setThreadPanelPresentation,
