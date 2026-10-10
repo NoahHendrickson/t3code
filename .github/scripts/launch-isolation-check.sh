@@ -5,7 +5,7 @@
 # ~/.t3/userdata database read-write — only launching the packaged app proves
 # isolation. This launches the DMG's bundle against a scratch HOME and asserts
 # everything it creates is fork-owned: ~/.t3-fork must appear (the server
-# child owns state.sqlite, so its arrival proves the child derived the fork
+# child owns statev2.sqlite, so its arrival proves the child derived the fork
 # base too), and nothing upstream-named may exist anywhere under the scratch
 # HOME afterwards.
 #
@@ -129,7 +129,7 @@ while :; do
   if [ -e "$scratch/.t3" ]; then
     violated "the build created ~/.t3" "$scratch/.t3"
   fi
-  if [ -e "$scratch/.t3-fork/userdata/state.sqlite" ]; then
+  if [ -e "$scratch/.t3-fork/userdata/statev2.sqlite" ]; then
     break
   fi
   if ! kill -0 "$pid" 2>/dev/null; then
@@ -140,7 +140,7 @@ while :; do
     exit 1
   fi
   if [ "$(date +%s)" -ge "$deadline" ]; then
-    echo "Server never created $scratch/.t3-fork/userdata/state.sqlite within 180s" >&2
+    echo "Server never created $scratch/.t3-fork/userdata/statev2.sqlite within 180s" >&2
     dump_diagnostics
     exit 1
   fi
