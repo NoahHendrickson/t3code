@@ -1891,6 +1891,23 @@
     hook this adds), because the Toggles paint their own hover and pressed
     tints and those stay above the fill.
 
+    Popups that open over the card (the context pills' menus, the model
+    picker) take the same frost. Under the desktop glass a popup normally
+    cuts a hole to the native material (fork-glass-popup-cutout), which on
+    a draft cut the picture away too and opened the menu on the bare
+    desktop. The cutout instead stamps a popup that sits wholly inside the
+    card data-fork-glass-frost, with the card's box relative to the popup's
+    padding box as four lengths, and the sheet lays the blurred copy on an
+    absolute ::after placed by them, over the floor, under the general popup
+    frost's white 8% wash. Absolute rather than fixed + anchor(): Floating
+    UI moves the positioner with a transform, which would become the copy's
+    containing block and break the anchor. overflow clips it to the popup's
+    radius and keeps the popup's shadow, which clip-path would cut. The card
+    tokens are stated on the chat view and on the stamped popup, which
+    portals out of the chat view and cannot inherit them. A popup that
+    reaches outside the card keeps its hole; an opaque client never stamps,
+    since its popups' backdrop-filter already blurs the picture.
+
     custom/assets/glass-hero.png is Figma's Dither effect (Bayer 16x16, 3
     levels per channel, 2px cells, contrast 1, brightness 100, colour)
     re-run over the frame's source picture scaled to the 1582×1054 the frame
@@ -1906,6 +1923,8 @@
     - apps/web/src/theme.custom.glass.css
     - apps/web/src/custom/assets/glass-hero.png
     - apps/web/src/custom/assets/glass-hero-frost.png
+    # Stamps popups over the card instead of cutting them.
+    - apps/web/src/custom/forkGlassPopupCutout.ts
   watch:
     # @imports the sheet at its top, after Westworld's, and names
     # --fork-glass-panel beside the v2 panel's --sidebar.
@@ -3775,7 +3794,10 @@
     by the vibrancy marker, not a sync's return value, because a superseded
     sync resolves with its own stale answer; the sync is idempotent, so a
     palette tick that leaves glass on keeps the running cutout. Web, Linux
-    and non-Glass palettes never mask anything.
+    and non-Glass palettes never mask anything. A popup wholly inside the
+    new-agent draft's picture card gets no hole: it is stamped
+    data-fork-glass-frost and frosts over the picture instead
+    (fork-glass-new-agent-stage).
   tier: 3
   files:
     - apps/web/src/custom/forkGlassPopupCutout.ts

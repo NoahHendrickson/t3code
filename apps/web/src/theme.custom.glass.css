@@ -27,15 +27,21 @@
    sits beside the card. The pseudo-element at z-index -1 only lands above
    the stage's fill when the root is a stacking context, and `inset` needs a
    containing block. The anchor name is what the frost copies read the
-   card's box from. The rest are tokens the draft rules read: nothing here
-   paints, so a started thread is laid out and painted exactly as before.
-   The root's one fixed child (the title-bar no-drag spacer) is unaffected by
-   a relative ancestor. */
+   card's box from. Nothing here paints, so a started thread is laid out and
+   painted exactly as before. The root's one fixed child (the title-bar
+   no-drag spacer) is unaffected by a relative ancestor. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away] {
   position: relative;
   isolation: isolate;
   anchor-name: --fork-glass-card;
+}
+
+/* The tokens the draft rules read, on the chat view and on any popup frosted
+   over the card (data-fork-glass-frost, below), which portals out of the
+   chat view and cannot inherit them. Tokens only. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :is([data-chat-column-maximized-away], [data-fork-glass-frost]) {
   /* The card's inset from the chat view, read by the picture and by every
      frost copy's anchor() insets. */
   --fork-glass-card-inset: 8px;
@@ -70,7 +76,7 @@
    composer and the header's controls carry the wallpaper's cast like the
    stage around them instead of reading as neutral slabs. A token only. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away] {
+  :is([data-chat-column-maximized-away], [data-fork-glass-frost]) {
   --fork-glass-frost-floor: var(--fork-popup-glass-floor);
 }
 
@@ -329,14 +335,7 @@
     pointer-events: none;
     border-radius: 0;
     box-shadow: none;
-    background:
-      linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)),
-      linear-gradient(
-        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
-        rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
-      ),
-      var(--fork-glass-card-scrim),
-      var(--fork-glass-frost-image) 51% top / cover no-repeat;
+    background: var(--fork-glass-frost-layers);
     mask-image: var(--fork-glass-frost-mask);
   }
 
@@ -417,4 +416,75 @@
   background: var(--fork-popup-fill);
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);
+}
+
+/* The copy's four layers — the host's wash, the floor's veil, the scrim
+   and the blurred picture — once, for the composer's hosts and the popups
+   below alike. Declared on every element that states a wash rather than on
+   the chat view: a custom property substitutes its var()s where it is
+   declared, so on the chat view it would read the wash there, where none
+   is set, and every host would lose its frost. Tokens only, so it needs no
+   anchor gate. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+  :is(
+    [data-fork-composer-stack="true"] [data-fork-composer-vessel],
+    [data-fork-composer-stack="true"]
+      [data-fork-composer-context-row]
+      :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]),
+    [data-chat-header] [data-fork-pill]
+  ),
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  body
+  .dropdown-glass[data-fork-glass-frost] {
+  --fork-glass-frost-layers:
+    linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)),
+    linear-gradient(
+      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)),
+      rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil))
+    ),
+    var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;
+}
+
+/* Popups over the card. Under the desktop glass a popup normally cuts a hole
+   to the native material (custom/forkGlassPopupCutout.ts, under
+   fork-glass-popup-cutout); over the draft that hole would cut the picture
+   away with everything else, and the menu would open on the bare desktop.
+   So the cutout leaves a popup that opens wholly inside the card alone and
+   stamps it data-fork-glass-frost instead, with the card's box relative to
+   the popup as four lengths, and the popup takes the same frost the pills
+   carry: the floor on the popup, the blurred copy above it at z-index -1,
+   placed by those lengths so it lands on its sharp twin, the popup's own
+   wash on top. Absolute rather than the hosts' fixed + anchor(), because a
+   popup sits in a positioner Floating UI moves with a transform, which
+   would be the copy's containing block and break the anchor; overflow
+   clips it to the popup's radius and, unlike clip-path, keeps the popup's
+   shadow. ::after, because popover and tooltip already use ::before. Its
+   wash is the general popup frost's white 8% (fork-popup-surface), a step
+   over the vessel so the menu reads as raised. No stamp, no change: an
+   opaque client keeps the blurred popup material, which sees the picture
+   on its own. `body` only outranks the palettes sheet's popup rule, which
+   comes later in source order. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  body
+  .dropdown-glass[data-fork-glass-frost] {
+  isolation: isolate;
+  overflow: clip;
+  background: var(--fork-glass-frost-floor);
+  --fork-glass-frost-wash: rgb(255 255 255 / 8%);
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  body
+  .dropdown-glass[data-fork-glass-frost]::after {
+  content: "";
+  position: absolute;
+  top: var(--fork-glass-frost-y);
+  left: var(--fork-glass-frost-x);
+  width: var(--fork-glass-frost-width);
+  height: var(--fork-glass-frost-height);
+  z-index: -1;
+  pointer-events: none;
+  background: var(--fork-glass-frost-layers);
+  mask-image: var(--fork-glass-frost-mask);
 }

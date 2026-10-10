@@ -17,6 +17,13 @@
  * fixed children, so the mask goes on the container's children instead
  * (positioners, backdrops), and only on those a hole actually touches.
  *
+ * The new-agent draft is the exception (fork-glass-new-agent-stage): its card
+ * paints the portrait over the glass, and a hole would cut the picture away
+ * too. A popup that opens wholly inside the card gets no hole; it is stamped
+ * data-fork-glass-frost with the card's box relative to itself, and
+ * theme.custom.glass.css lays the stage's baked frost under it, the way the
+ * composer's pills carry it.
+ *
  * Masks exist only while a popup is open. With none open, all that runs is a
  * childList observer on <body> and on the portal containers, to notice one
  * mounting (Base UI mounts the container before rendering into it, so body
@@ -34,6 +41,13 @@ export const FORK_GLASS_POPUP_SELECTOR = [
   '[data-thread-details-panel="popover"][data-fork-popup] > [data-thread-details-card].dropdown-glass',
 ].join(", ");
 
+/** ChatView's root while its composer is a new-agent draft: the picture card's host. */
+const DRAFT_CARD_SELECTOR =
+  '[data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])';
+
+/** Stamped on a popup that frosts over the draft card instead of cutting it. */
+const FORK_GLASS_FROST_ATTRIBUTE = "data-fork-glass-frost";
+
 /** The attributes Base UI moves on a popup's subtree when it closes or repositions. */
 const POPUP_ATTRIBUTES = ["style", "hidden", "data-ending-style", "data-side", "data-align"];
 
@@ -47,6 +61,13 @@ const SETTLED_FRAMES = 3;
 
 /** Reaches past a lower surface's border box to the popup shadows around it. */
 const SHADOW_REACH = 48;
+
+const FROST_PROPERTIES = [
+  "--fork-glass-frost-x",
+  "--fork-glass-frost-y",
+  "--fork-glass-frost-width",
+  "--fork-glass-frost-height",
+];
 
 const MASK_PROPERTIES = [
   "mask-image",
@@ -140,6 +161,44 @@ function holeImage(hole: CutoutHole): string {
 }
 
 /**
+ * Where a popup over the draft card puts its frost: the card's box relative
+ * to the popup's padding box, which its absolute frost layer is placed in.
+ * Null when the popup reaches outside the card, where it cuts a hole instead.
+ */
+export function frostPlacement(
+  popup: Rect & { readonly borderLeft: number; readonly borderTop: number },
+  card: Rect,
+): Record<string, string> | null {
+  const inside =
+    popup.x >= card.x &&
+    popup.y >= card.y &&
+    popup.x + popup.width <= card.x + card.width &&
+    popup.y + popup.height <= card.y + card.height;
+  if (!inside) return null;
+  return {
+    "--fork-glass-frost-x": `${round(card.x - popup.x - popup.borderLeft)}px`,
+    "--fork-glass-frost-y": `${round(card.y - popup.y - popup.borderTop)}px`,
+    "--fork-glass-frost-width": `${round(card.width)}px`,
+    "--fork-glass-frost-height": `${round(card.height)}px`,
+  };
+}
+
+/** The draft card's box: the chat view inset by the card's own inset. */
+function draftCard(appRoot: HTMLElement): Rect | null {
+  const view = appRoot.querySelector<HTMLElement>(DRAFT_CARD_SELECTOR);
+  if (view === null) return null;
+  const inset =
+    Number.parseFloat(getComputedStyle(view).getPropertyValue("--fork-glass-card-inset")) || 0;
+  const rect = view.getBoundingClientRect();
+  return {
+    x: rect.left + inset,
+    y: rect.top + inset,
+    width: rect.width - inset * 2,
+    height: rect.height - inset * 2,
+  };
+}
+
+/**
  * The mask a surface wears: a solid layer the size of the viewport with every
  * hole subtracted, the holes unioned beneath it. Each hole is a separate
  * layer placed by mask-position, so a popup that moves changes positions only
@@ -168,6 +227,10 @@ export function cutoutMaskStyle(
 function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
   /** Element → the mask it carries, as written, so unchanged frames write nothing. */
   const masked = new Map<HTMLElement, string>();
+  /** Popup → the frost placement it carries, as written. */
+  const frosted = new Map<HTMLElement, string>();
+  /** Set by frost() during one apply(). */
+  let frostChanged = false;
   let containers: Array<Element> = [];
   let popups: Array<HTMLElement> = [];
   let frame = 0;
@@ -177,13 +240,56 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
     for (const property of MASK_PROPERTIES) element.style.removeProperty(property);
   };
 
+  const clearFrost = (popup: HTMLElement) => {
+    popup.removeAttribute(FORK_GLASS_FROST_ATTRIBUTE);
+    for (const property of FROST_PROPERTIES) popup.style.removeProperty(property);
+  };
+
+  /**
+   * Frosts the popup if it sits inside the draft card; true if it does. A
+   * closing popup keeps whatever it had, so it fades out on the same frost.
+   */
+  const frost = (popup: HTMLElement, hole: CutoutHole, card: Rect | null): boolean => {
+    const placement =
+      card === null
+        ? null
+        : frostPlacement(
+            { ...hole, borderLeft: popup.clientLeft, borderTop: popup.clientTop },
+            card,
+          );
+    if (placement === null) {
+      if (frosted.delete(popup)) {
+        clearFrost(popup);
+        frostChanged = true;
+      }
+      return false;
+    }
+    const written = Object.values(placement).join("|");
+    if (frosted.get(popup) !== written) {
+      frosted.set(popup, written);
+      popup.setAttribute(FORK_GLASS_FROST_ATTRIBUTE, "");
+      for (const [property, value] of Object.entries(placement)) {
+        popup.style.setProperty(property, value);
+      }
+      frostChanged = true;
+    }
+    return true;
+  };
+
   /** Writes every mask for the current popups; true if anything changed. */
   const apply = (): boolean => {
+    frostChanged = false;
+    for (const popup of frosted.keys()) {
+      if (!popup.isConnected) frosted.delete(popup);
+    }
     const holes: Array<CutoutHole> = [];
+    let card: Rect | null | undefined;
     containers.forEach((container, layer) => {
       for (const popup of container.querySelectorAll<HTMLElement>(FORK_GLASS_POPUP_SELECTOR)) {
         const hole = measure(popup, layer);
-        if (hole !== null) holes.push(hole);
+        if (hole === null) continue;
+        if (card === undefined) card = draftCard(appRoot);
+        if (!frost(popup, hole, card)) holes.push(hole);
       }
     });
 
@@ -207,7 +313,7 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
       width: document.documentElement.clientWidth,
       height: document.documentElement.clientHeight,
     };
-    let changed = false;
+    let changed = frostChanged;
     for (const surface of surfaces) {
       const cut = plan.get(surface.key);
       if (cut === undefined) continue;
@@ -296,6 +402,8 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
     if (frame !== 0) cancelAnimationFrame(frame);
     for (const element of masked.keys()) clearMask(element);
     masked.clear();
+    for (const popup of frosted.keys()) clearFrost(popup);
+    frosted.clear();
   };
 }
 

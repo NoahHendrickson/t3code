@@ -32,6 +32,10 @@ const VIBRANCY = '[data-fork-sidebar-vibrancy="true"]';
 const ROOT = "[data-chat-column-maximized-away]";
 const HERO = '[data-chat-composer-overlay="true"][data-draft-hero]';
 const DRAFT = `${ROOT}:has(${HERO})`;
+// A popup the cutout frosts over the draft card instead of cutting.
+const FROSTED = "[data-fork-glass-frost]";
+const TOKENS = `:is(${ROOT},${FROSTED})`;
+const POPUP = `body.dropdown-glass${FROSTED}`;
 const SUPPORTS = ["@supports (anchor-name: --fork-glass-card)"];
 // The three frost hosts, as the sheet lists them inside one :is().
 const HOSTS =
@@ -91,26 +95,37 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       // raw wallpaper (the seam read orange against a sunset).
       expect(rule.body, `went transparent: ${rule.selector}`).not.toContain("transparent");
     }
-    // The two rules that reach the root element itself declare the
+    // The three rules that reach the root element itself declare the
     // containing block, the stacking context, the anchor and tokens — no
     // margin, clip, fill or border — so a started Glass thread is laid out
-    // and painted exactly as before. Everything else is keyed on the draft.
-    const root = rules.filter((rule) => compact(rule.selector).endsWith(ROOT));
+    // and painted exactly as before. Everything else is keyed on the draft,
+    // or on the frost stamp the cutout only sets over the draft card.
+    const VIBRANT_GLASS = `${compact(MARKER)}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
+    const root = rules.filter((rule) =>
+      [ROOT, TOKENS].some((tail) => compact(rule.selector).endsWith(tail)),
+    );
     expect(root.map((rule) => compact(rule.selector))).toEqual([
       `${compact(GLASS)}${ROOT}`,
-      `${compact(MARKER)}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]${ROOT}`,
+      `${compact(GLASS)}${TOKENS}`,
+      `${VIBRANT_GLASS}${TOKENS}`,
     ]);
     expect(flat(root[0]?.body)).toBe(
-      'position: relative; isolation: isolate; anchor-name: --fork-glass-card; --fork-glass-card-inset: 8px; --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
+      "position: relative; isolation: isolate; anchor-name: --fork-glass-card;",
     );
-    expect(flat(root[1]?.body)).toBe("--fork-glass-frost-floor: var(--fork-popup-glass-floor);");
+    expect(flat(root[1]?.body)).toBe(
+      '--fork-glass-card-inset: 8px; --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
+    );
+    expect(flat(root[2]?.body)).toBe("--fork-glass-frost-floor: var(--fork-popup-glass-floor);");
     const unkeyed = rules.filter(
-      (rule) => !compact(rule.selector).includes(HERO) && !compact(rule.selector).endsWith(ROOT),
+      (rule) => !compact(rule.selector).includes(HERO) && !root.includes(rule),
     );
-    // Only the at-rest art and its reduced-motion twin paint without the stamp.
+    // Only the at-rest art and its reduced-motion twin paint without the
+    // stamp, beside the frosted popups, which only exist over the draft.
     expect(unkeyed.map((rule) => compact(rule.selector))).toEqual([
       `${compact(GLASS)}${ROOT}::after`,
       `${compact(GLASS)}${ROOT}::after`,
+      `${VIBRANT_GLASS}${POPUP}`,
+      `${VIBRANT_GLASS}${POPUP}::after`,
     ]);
     // Every :has() that reads the stamp sits on the chat view, the inset or
     // the sidebar wrapper — never on :root, which would widen invalidation
@@ -288,9 +303,17 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     }
     expect(frost?.body).toContain("z-index: -1");
     expect(frost?.body).toContain("pointer-events: none");
-    expect(flat(frost?.body)).toContain(
-      "background: linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
+    expect(frost?.body).toContain("background: var(--fork-glass-frost-layers);");
+    // The layers are stated once, on every element that states a wash (the
+    // hosts and the frosted popup) — a custom property substitutes its var()s
+    // where it is declared, so on the chat view it would miss the wash.
+    const VIBRANT = `${MARKER}${VIBRANCY}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
+    const layers = find(`${GLASS}${DRAFT}${HOSTS},${VIBRANT}${POPUP}`);
+    expect(layers?.atRules).toEqual([]);
+    expect(flat(layers?.body)).toBe(
+      "--fork-glass-frost-layers: linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
     );
+    expect(sheet.match(/var\(--fork-glass-frost-image\)/gu)).toHaveLength(1);
     expect(frost?.body).toContain("mask-image: var(--fork-glass-frost-mask)");
     // Exactly one fixed pseudo-element recipe in the sheet.
     expect(rules.filter((rule) => /position:\s*fixed/u.test(rule.body))).toHaveLength(1);
@@ -320,9 +343,13 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(
       flat(find(`${GLASS}${HEADER}button[data-fork-pill]:is(:hover,[data-pressed])`)?.body),
     ).toBe("--fork-glass-frost-wash: rgb(255 255 255 / 26%);");
-    // Every frost rule is gated on anchor support.
+    // Every anchored copy, host clip and host wash is gated on anchor
+    // support. The frosted popup places its copy without an anchor, so its
+    // wash, and the layers token the two share, need no gate.
     for (const rule of rules) {
-      if (rule.body.includes("--fork-glass-frost-wash") || rule.body.includes("clip-path")) {
+      const hostWash =
+        /--fork-glass-frost-wash\s*:/u.test(rule.body) && compact(rule.selector).includes(HERO);
+      if (hostWash || /anchor\(|clip-path/u.test(rule.body)) {
         expect(rule.atRules, rule.selector).toEqual(SUPPORTS);
       }
     }
@@ -337,6 +364,25 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(controls.match(/data-fork-panel-toggle/gu)).toHaveLength(3);
     expect(controls).toContain("fork:begin fork-glass-new-agent-stage");
     expect(sheet).not.toContain("span:has(> button)");
+
+    // Popups over the card carry the same copy, placed absolutely from the
+    // lengths the cutout writes: a popup's positioner is transformed, which
+    // would break an anchor. overflow, not clip-path, keeps the shadow.
+    expect(flat(find(`${VIBRANT}${POPUP}`)?.body)).toBe(
+      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 8%);",
+    );
+    const popupFrost = find(`${VIBRANT}${POPUP}::after`)?.body;
+    expect(popupFrost).toMatch(/position:\s*absolute/u);
+    for (const [edge, length] of [
+      ["top", "y"],
+      ["left", "x"],
+      ["width", "width"],
+      ["height", "height"],
+    ]) {
+      expect(popupFrost).toContain(`${edge}: var(--fork-glass-frost-${length});`);
+    }
+    expect(popupFrost).toContain("background: var(--fork-glass-frost-layers);");
+    expect(popupFrost).toContain("mask-image: var(--fork-glass-frost-mask)");
 
     // The anchor only resolves against the viewport if no ancestor of the
     // pseudo-element is transformed, so the draft overlay must centre
