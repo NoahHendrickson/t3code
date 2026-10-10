@@ -241,6 +241,14 @@ describe("fork guard: fork-model-picker", () => {
     expect(picker).toContain('<div data-model-picker-content="true">{props.traits.panel}</div>');
     // Anchored to the trigger's right edge, which stays put as the label changes length.
     expect(picker).toContain('align={props.isComposerOwned ? "end" : "start"}');
+    // The composer's menu stays above the trigger as its pages change height;
+    // the fenced menu.tsx passthrough is what lets it opt out of flipping.
+    expect(picker).toContain(
+      '? { side: "top" as const, collisionAvoidance: { side: "none" as const } }',
+    );
+    expect(readSibling("../components/ui/menu.tsx")).toContain(
+      "collisionAvoidance={collisionAvoidance}",
+    );
     // Every pick in the composer keeps it open, even from a model without
     // traits; only Settings closes on a pick.
     expect(picker).toContain("if (!props.combined) setIsMenuOpen(false);");

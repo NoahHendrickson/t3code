@@ -367,10 +367,16 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         </span>
       </MenuTrigger>
       {/* The composer's trigger ends the row, so its right edge holds still
-          while the label's length changes; anchor the menu there. */}
+          while the label's length changes; anchor the menu there. It always
+          opens above and never flips: paging to a taller provider would
+          otherwise move it to the other side mid-pick (the draft composer
+          sits mid-screen), so a short space scrolls the menu instead. */}
       <MenuPopup
         {...floatingLayerProps}
         align={props.isComposerOwned ? "end" : "start"}
+        {...(props.isComposerOwned
+          ? { side: "top" as const, collisionAvoidance: { side: "none" as const } }
+          : {})}
         className={props.combined ? "w-64" : "w-56"}
       >
         <ModelPickerContent
