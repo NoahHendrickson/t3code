@@ -277,8 +277,8 @@ describe("fork guard: fork-composer-banner-surface", () => {
 
   it("stamps the branch-changed notice card and leaves other drawer banners alone", () => {
     // Upstream #16782 moved the settled notice into the timeline-footer status
-    // line (the fork keeps its "Unsettle" wording there) and #16631 replaced the
-    // resume-compaction card with compact-on-send, so one Figma card remains.
+    // line (the fork keeps its "Unsettle" wording there). The resume-compaction
+    // card the fork restored over #16631 lives in custom/useResumeCompactionBanner.
     expect(chatView).toContain('actionLabel={isUnsettling ? "Unsettling..." : "Unsettle"}');
     expect(chatView).toContain("Branch changed to");
     expect(bannerStack).toContain('"data-fork-composer-notice": "true"');

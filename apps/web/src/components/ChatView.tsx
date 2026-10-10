@@ -345,6 +345,9 @@ import {
 import { DraftProjectPill } from "~/custom/DraftProjectPill";
 import { useDraftProjectAssignmentPending } from "~/custom/useNewAgentDraft";
 /* fork:end fork-new-agent-draft */
+/* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+import { useResumeCompactionBanner } from "~/custom/useResumeCompactionBanner";
+/* fork:end fork-resume-compaction-banner */
 import { registerFaviconProjectForThread } from "~/browserFaviconStore";
 import { getProviderModelCapabilities } from "../providerModels";
 import {
@@ -519,7 +522,9 @@ import { resolveThreadSyncPhase } from "../threadSync";
 import {
   hasAvailableCompactionProvider,
   hasDismissedResumeCompaction,
-  shouldOfferResumeCompaction,
+  /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner
+     shouldOfferResumeCompaction moved to custom/useResumeCompactionBanner. */
+  /* fork:end fork-resume-compaction-banner */
 } from "./chat/ContextWindowMeter.logic";
 import { deriveLatestContextWindowSnapshot } from "../lib/contextWindow";
 import {
@@ -7742,25 +7747,25 @@ export default function ChatView(props: ChatViewProps) {
           ? "Compaction is unavailable for this provider"
           : "Compacting is unavailable right now"
     : null;
-  // Tokens a stale Claude session would re-read on its next turn. While set,
-  // Enter compacts first and the composer's send button says so; "Send with
-  // full history" in its menu skips that once. Held queues and multi-model
-  // sends never compact first, so the offer hides for them.
-  const resumeCompactionTokens =
-    activeContextWindow &&
-    !resumeCompactionPermanentlyDismissed &&
-    !nativeResumeCompactionDismissed &&
-    !compactDisabled &&
-    !hasHeldQueuedRuns &&
-    multipleModelSelections === null &&
-    shouldOfferResumeCompaction({
-      provider: selectedProvider,
-      usedTokens: activeContextWindow.usedTokens,
-      updatedAt: activeContextWindow.updatedAt,
-      now: `${nowMinute}:00.000Z`,
-    })
-      ? activeContextWindow.usedTokens
-      : null;
+  /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner
+     The fork keeps the "Resume with less context" card instead of compact-on-send:
+     the card offers Compact, the send button stays the plain send (dictation keeps
+     its slot), and Enter sends as typed, so the send path sees null below. */
+  const compactActiveThreadContext = useCallback(() => {
+    composerRef.current?.compactContext();
+  }, [composerRef]);
+  const resumeCompactionBannerItem = useResumeCompactionBanner({
+    threadId: activeThread?.id ?? null,
+    contextWindow: activeContextWindow,
+    dismissed: resumeCompactionPermanentlyDismissed || nativeResumeCompactionDismissed,
+    hidden: pendingUserInputs.length > 0 || phase === "running",
+    provider: selectedProvider,
+    nowMinute,
+    compactDisabledReason,
+    onCompact: compactActiveThreadContext,
+  });
+  const resumeCompactionTokens: number | null = null;
+  /* fork:end fork-resume-compaction-banner */
   // Set only for the synchronous span of a "Send with full history" submit;
   // onSend reads it before its first await.
   const keepFullHistoryOnceRef = useRef(false);
@@ -7829,6 +7834,10 @@ export default function ChatView(props: ChatViewProps) {
     // The user asked for this one, so it leads the notice tier instead of trailing it.
     const usageLimitsItems = usageLimitsBanner === null ? [] : [usageLimitsBanner];
     const projectCloneItems = projectCloneBannerItem === null ? [] : [projectCloneBannerItem];
+    /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+    const resumeCompactionItems =
+      resumeCompactionBannerItem === null ? [] : [resumeCompactionBannerItem];
+    /* fork:end fork-resume-compaction-banner */
     if (!localCheckoutBranchMismatch || !showBranchMismatchBanner || !activeBranchMismatchKey) {
       return [
         ...feedbackBannerItems,
@@ -7837,6 +7846,9 @@ export default function ChatView(props: ChatViewProps) {
         ...projectCloneItems,
         ...systemComposerBannerItems,
         ...backgroundWorkItems,
+        /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+        ...resumeCompactionItems,
+        /* fork:end fork-resume-compaction-banner */
       ];
     }
     return [
@@ -7846,6 +7858,9 @@ export default function ChatView(props: ChatViewProps) {
       ...projectCloneItems,
       ...systemComposerBannerItems,
       ...backgroundWorkItems,
+      /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+      ...resumeCompactionItems,
+      /* fork:end fork-resume-compaction-banner */
       {
         id: `branch-mismatch:${activeBranchMismatchKey}`,
         variant: "info",
@@ -7913,6 +7928,9 @@ export default function ChatView(props: ChatViewProps) {
     goalBannerItem,
     localCheckoutBranchMismatch,
     projectCloneBannerItem,
+    /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
+    resumeCompactionBannerItem,
+    /* fork:end fork-resume-compaction-banner */
     showBranchMismatchBanner,
     systemComposerBannerItems,
     usageLimitsBanner,

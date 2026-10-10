@@ -3818,7 +3818,8 @@
     Upstream #16782 moved the settled / snoozed / woke notices out of the
     banner stack into the timeline-footer status line, where the fork keeps
     its "Unsettle" / "Unsettling..." action wording, and #16631 replaced the
-    resume-with-less-context card with compact-on-send. The fork's settled-only
+    resume-with-less-context card with compact-on-send (the fork brings that
+    card back: fork-resume-compaction-banner). The fork's settled-only
     stack filter (custom/composerBannerVisibility.ts) went with them in the
     2026-10-07 sync.
 
@@ -3881,6 +3882,39 @@
     - docs/user/thread-sidebar.md
   verify:
     - apps/web/src/__fork_guards__/forkComposerBannerSurface.test.ts
+
+- id: fork-resume-compaction-banner
+  intent: >
+    Returning to a large, stale Claude thread shows the "Resume with less
+    context" notice card above the composer (Compact as the white primary,
+    "Keep full history" as the dismiss), as it did before the 2026-10-07 sync.
+    Upstream #16631 replaced that card with a split "Compact and send" button
+    that took the send slot, so Enter compacted first and the dictation mic
+    (fork-local-dictation) lost its slot whenever the offer was up. The fork
+    leaves upstream's send untouched: ChatView passes null
+    resumeCompactionTokens to the composer and the send path, so the composer
+    never renders the compact-send button and Enter sends as typed. The card
+    lives in custom/useResumeCompactionBanner.tsx with its old gating: hidden
+    while a run is going or a question is pending, dismissed per thread and
+    context snapshot for the session, and permanently by the existing
+    native-dismiss flags. The Claude user doc describes the card, not
+    compact-on-send.
+  tier: 4
+  files:
+    - apps/web/src/custom/useResumeCompactionBanner.tsx
+    - apps/web/src/components/ChatView.tsx
+    - docs/user/providers-claude.md
+  shadows: []
+  watch:
+    # Owns resumeCompactionTokens, the compact-before-send path and the banner stack.
+    - apps/web/src/components/ChatView.tsx
+    # Renders the compact-send button when compactBeforeSendTokens is non-null.
+    - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    # Owns shouldOfferResumeCompaction, the offer threshold the card reuses.
+    - apps/web/src/components/chat/ContextWindowMeter.logic.ts
+    - docs/user/providers-claude.md
+  verify:
+    - apps/web/src/__fork_guards__/forkResumeCompactionBanner.test.ts
 
 - id: fork-pending-user-input
   intent: >
