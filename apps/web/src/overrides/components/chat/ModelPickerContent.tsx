@@ -237,8 +237,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onToggleModel,
   } = props;
   const [searchQuery, setSearchQuery] = useState("");
-  // Null until the user pages somewhere; see `page` below.
-  const [openedPage, setPage] = useState<ModelPickerPage | null>(null);
+  // The menu remounts on every open, so each open lands on Favorites.
+  const [storedPage, setPage] = useState<ModelPickerPage>(FAVORITES_PAGE);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const favorites = useClientSettings((s) => s.favorites ?? []);
@@ -414,10 +414,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     [favoritesSet, flatModels, instanceOrder, matchesLockedProvider],
   );
 
-  // The menu remounts on every open and lands on Favorites when there are
-  // any. Derived rather than seeded so favorites that load after mount still
-  // count, and unfavoriting the last one falls back to the providers page.
-  const page = openedPage ?? (favoriteModels.length > 0 ? FAVORITES_PAGE : PROVIDERS_PAGE);
+  // An empty Favorites page shows the providers page instead, whether it was
+  // landed on or navigated to: none yet, locked out, or the last star removed.
+  const page =
+    storedPage.kind === "favorites" && favoriteModels.length === 0 ? PROVIDERS_PAGE : storedPage;
 
   const modelsForInstance = useCallback(
     (instanceId: ProviderInstanceId) => {
