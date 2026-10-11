@@ -346,9 +346,6 @@ import {
 import { DraftProjectPill } from "~/custom/DraftProjectPill";
 import { useDraftProjectAssignmentPending } from "~/custom/useNewAgentDraft";
 /* fork:end fork-new-agent-draft */
-/* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
-import { useForkGlassNewAgentPicture } from "~/custom/forkGlassNewAgentPicture";
-/* fork:end fork-glass-new-agent-stage */
 /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
 import { useResumeCompactionBanner } from "~/custom/useResumeCompactionBanner";
 /* fork:end fork-resume-compaction-banner */
@@ -4139,9 +4136,6 @@ export default function ChatView(props: ChatViewProps) {
     backgroundSubmissionPending,
     hasWorktreeSetupCard: worktreeSetup !== null,
   });
-  /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
-  const [forkGlassNewAgentPicture] = useForkGlassNewAgentPicture();
-  /* fork:end fork-glass-new-agent-stage */
   const draftHeroTransition = useDraftHeroLayoutTransition(
     isDraftHeroState,
     /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
@@ -11369,7 +11363,7 @@ export default function ChatView(props: ChatViewProps) {
   ) : null;
   const threadDetailsPanelProps: ThreadDetailsPanelProps = {
     /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
-    forkGlassPopup: !isDraftHeroState || !forkGlassNewAgentPicture,
+    forkGlassPopup: !isDraftHeroState,
     /* fork:end fork-popup-surface */
     anchor: threadPanelPopoverAnchorRef,
     handle: threadPanelPopoverHandle,

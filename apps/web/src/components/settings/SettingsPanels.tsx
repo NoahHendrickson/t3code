@@ -549,6 +549,8 @@ export function useSettingsRestore(onRestored?: () => void) {
   /* fork:end fork-cool-dark-theme */
   /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
   const [glassNewAgentPicture, setGlassNewAgentPicture] = useForkGlassNewAgentPicture();
+  // Only while Glass shows the row: elsewhere the switch is hidden and inert.
+  const glassNewAgentPictureChanged = appearance === COOL_DARKER_THEME && !glassNewAgentPicture;
   /* fork:end fork-glass-new-agent-stage */
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
@@ -566,7 +568,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(isForkPalette(appearance) ? [FORK_PALETTE_LABELS[appearance]] : []),
       /* fork:end fork-cool-dark-theme */
       /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
-      ...(!glassNewAgentPicture ? ["New agent picture"] : []),
+      ...(glassNewAgentPictureChanged ? ["New agent picture"] : []),
       /* fork:end fork-glass-new-agent-stage */
       ...(!followSystem ? ["Follow system"] : []),
       ...(themeHalves !== null ? ["Theme mix"] : []),
@@ -755,7 +757,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       appearance,
       /* fork:end fork-cool-dark-theme */
       /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
-      glassNewAgentPicture,
+      glassNewAgentPictureChanged,
       /* fork:end fork-glass-new-agent-stage */
       theme,
       themeHalves,
@@ -777,7 +779,7 @@ export function useSettingsRestore(onRestored?: () => void) {
     if (isForkPalette(appearance)) setAppearance("dark");
     /* fork:end fork-cool-dark-theme */
     /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
-    if (!glassNewAgentPicture) setGlassNewAgentPicture(true);
+    if (glassNewAgentPictureChanged) setGlassNewAgentPicture(true);
     /* fork:end fork-glass-new-agent-stage */
 
     // Only touch the theme keys that are actually dirty, so a theme-storage
@@ -910,7 +912,7 @@ export function useSettingsRestore(onRestored?: () => void) {
     setAppearance,
     /* fork:end fork-cool-dark-theme */
     /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
-    glassNewAgentPicture,
+    glassNewAgentPictureChanged,
     setGlassNewAgentPicture,
     /* fork:end fork-glass-new-agent-stage */
     setTheme,

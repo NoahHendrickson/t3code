@@ -493,14 +493,17 @@
 }
 
 /* The thread details card docked inline keeps the base popup frost over
-   the picture. Under Glass the palettes sheet stands it opaque on the
-   floor, since over the bare stage its blur flattens the native material
-   to grey; here the picture is in the page, so the blur has it to work on,
-   as the panel toggles' does. */
+   the picture. Under Glass the palettes sheet paints it as the vessel's
+   wash over the stage, since over the bare stage its blur flattens the
+   native material to grey; here the picture is in the page, so the blur
+   has it to work on, as the panel toggles' does. Not while a desktop tab
+   floats, when the stage drops its picture (above) and the wash applies. */
 :root[data-fork="noahhendrickson-t3code"]:where(
     :not([data-fork-glass-picture="off"])
   ).dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
+  [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero]):not(
+    :has([data-preview-mini-player] [data-browser-surface-slot])
+  )
   [data-thread-details-panel="inline"]
   > [data-thread-details-card].dropdown-glass {
   background: var(--fork-popup-fill);
@@ -572,11 +575,11 @@
    (lavender over a purple desktop) instead of the picture's. No stamp, no
    change: an
    opaque client keeps the blurred popup material, which sees the picture
-   on its own. The floor is !important because the palettes sheet's popup
-   rule outranks any plain selector here: its :is() takes the specificity
-   of its heaviest arm, the thread details card's. Losing to it put the 73%
-   panel tint under the frost, and the sharp picture and the headline read
-   through every menu.
+   on its own. `body` outranks the palettes sheet's popup rule, which comes
+   later in source order; that rule keeps its heavier thread details arm in
+   :where() so it cannot outweigh this one. Losing to it put the panel tint
+   under the frost, and the sharp picture and the headline read through
+   every menu.
 
    The copy clips at the border box, not the padding box, so the frost runs
    to the edge: clipped inside the border, the 1px edge showed the bare
@@ -593,7 +596,7 @@
   overflow-clip-margin: border-box;
   outline: 1px solid rgb(255 255 255 / 12%);
   outline-offset: -1px;
-  background: var(--fork-glass-frost-floor) !important;
+  background: var(--fork-glass-frost-floor);
   --fork-glass-frost-wash: rgb(255 255 255 / 5%);
   --fork-glass-frost-veil: 50%;
   --fork-glass-frost-veil-color: rgb(12 12 14);

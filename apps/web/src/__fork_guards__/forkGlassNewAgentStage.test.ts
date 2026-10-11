@@ -20,6 +20,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
 import { FORK_GLASS_PICTURE_OFF_ATTRIBUTE } from "../custom/forkGlassNewAgentPicture";
+import { FORK_GLASS_POPUP_SELECTOR } from "../custom/forkGlassPopupCutout";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
 
@@ -62,16 +63,25 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
   it("stands the whole stage down when the picture switch is off", () => {
     // Stamped before first render, so an off draft never flashes the card.
     expect(readSibling("../main.tsx")).toContain("initializeForkGlassNewAgentPicture();");
-    // The cutout finds no card to frost over, so popups cut holes as in a
-    // started thread...
+    // Off, popups cut holes as in a started thread: the cutout finds no card
+    // to frost over, and the thread details popover, which ChatView leaves
+    // unstamped on any draft, is one of its popups through the root attribute.
+    const offRoot = `[${FORK_GLASS_PICTURE_OFF_ATTRIBUTE}="off"]`;
+    expect(FORK_GLASS_POPUP_SELECTOR).toContain(`${offRoot} *`);
     expect(readSibling("../custom/forkGlassPopupCutout.ts")).toContain(
-      `':root:not([${FORK_GLASS_PICTURE_OFF_ATTRIBUTE}="off"]) [data-chat-column-maximized-away]`,
+      ":root:not(${PICTURE_OFF}) [data-chat-column-maximized-away]",
     );
-    // ...and the thread details popover is stamped as it is there.
-    expect(chatView).toContain("forkGlassPopup: !isDraftHeroState || !forkGlassNewAgentPicture,");
-    const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
-    expect(settingsPanels).toContain('title="New agent picture"');
-    expect(settingsPanels).toContain("if (!glassNewAgentPicture) setGlassNewAgentPicture(true);");
+    // The palettes sheet paints that popover the same way, and lets it open
+    // without a fade over its fresh hole.
+    expect(compact(palettes)).toContain(compact(`[data-fork-popup], ${offRoot} *`));
+    expect(compact(palettes)).toContain(
+      compact(`${offRoot} [data-slot="popover-popup"][data-starting-style]`),
+    );
+    // React never reads the switch on ChatView's render path.
+    expect(chatView).not.toContain("forkGlassNewAgentPicture");
+    expect(readSibling("../components/settings/SettingsPanels.tsx")).toContain(
+      'title="New agent picture"',
+    );
   });
 
   it("registers the stage and loads its sheet from the palettes sheet", () => {
@@ -402,7 +412,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // lengths the cutout writes: a popup's positioner is transformed, which
     // would break an anchor. overflow, not clip-path, keeps the shadow.
     expect(flat(find(`${VIBRANT}${POPUP}`)?.body)).toBe(
-      'isolation: isolate; overflow: clip; overflow-clip-margin: border-box; outline: 1px solid rgb(255 255 255 / 12%); outline-offset: -1px; background: var(--fork-glass-frost-floor) !important; --fork-glass-frost-wash: rgb(255 255 255 / 5%); --fork-glass-frost-veil: 50%; --fork-glass-frost-veil-color: rgb(12 12 14); --fork-glass-frost-image: url("./custom/assets/glass-hero-popup-frost.png");',
+      'isolation: isolate; overflow: clip; overflow-clip-margin: border-box; outline: 1px solid rgb(255 255 255 / 12%); outline-offset: -1px; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 5%); --fork-glass-frost-veil: 50%; --fork-glass-frost-veil-color: rgb(12 12 14); --fork-glass-frost-image: url("./custom/assets/glass-hero-popup-frost.png");',
     );
     const popupFrost = find(`${VIBRANT}${POPUP}::after`)?.body;
     expect(popupFrost).toMatch(/position:\s*absolute/u);

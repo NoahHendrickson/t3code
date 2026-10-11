@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import {
-  FORK_GLASS_PICTURE_OFF_ATTRIBUTE,
-  initializeForkGlassNewAgentPicture,
-} from "./forkGlassNewAgentPicture";
-
 const STORAGE_KEY = "t3code:fork:glass-new-agent-picture:v1";
+const ATTRIBUTE = "data-fork-glass-picture";
 
 function stubBrowser(stored: string | null) {
   const values = new Map<string, string>(stored === null ? [] : [[STORAGE_KEY, stored]]);
@@ -32,7 +28,15 @@ function stubBrowser(stored: string | null) {
     else values.set(STORAGE_KEY, value);
     for (const listener of storageListeners) listener({ key: STORAGE_KEY });
   };
-  return { attributes, fireStorage };
+  return { attributes, fireStorage, storageListeners };
+}
+
+// The initializer runs once per module instance, so each case loads its own.
+async function initialize() {
+  vi.resetModules();
+  const module = await import("./forkGlassNewAgentPicture");
+  expect(module.FORK_GLASS_PICTURE_OFF_ATTRIBUTE).toBe(ATTRIBUTE);
+  return module.initializeForkGlassNewAgentPicture;
 }
 
 describe("initializeForkGlassNewAgentPicture", () => {
@@ -40,28 +44,36 @@ describe("initializeForkGlassNewAgentPicture", () => {
     vi.unstubAllGlobals();
   });
 
-  it("leaves the stage on when nothing is stored", () => {
+  it("leaves the stage on when nothing is stored", async () => {
     const { attributes } = stubBrowser(null);
-    initializeForkGlassNewAgentPicture();
-    expect(attributes.has(FORK_GLASS_PICTURE_OFF_ATTRIBUTE)).toBe(false);
+    (await initialize())();
+    expect(attributes.has(ATTRIBUTE)).toBe(false);
   });
 
-  it("stamps the root off before first render when the picture is switched off", () => {
+  it("stamps the root off before first render when the picture is switched off", async () => {
     const { attributes } = stubBrowser("false");
-    initializeForkGlassNewAgentPicture();
-    expect(attributes.get(FORK_GLASS_PICTURE_OFF_ATTRIBUTE)).toBe("off");
+    (await initialize())();
+    expect(attributes.get(ATTRIBUTE)).toBe("off");
   });
 
-  it("follows another tab switching it back on", () => {
+  it("follows another tab switching it back on", async () => {
     const { attributes, fireStorage } = stubBrowser("false");
-    initializeForkGlassNewAgentPicture();
+    (await initialize())();
     fireStorage("true");
-    expect(attributes.has(FORK_GLASS_PICTURE_OFF_ATTRIBUTE)).toBe(false);
+    expect(attributes.has(ATTRIBUTE)).toBe(false);
   });
 
-  it("treats an unreadable value as on", () => {
+  it("treats an unreadable value as on", async () => {
     const { attributes } = stubBrowser("not json");
-    initializeForkGlassNewAgentPicture();
-    expect(attributes.has(FORK_GLASS_PICTURE_OFF_ATTRIBUTE)).toBe(false);
+    (await initialize())();
+    expect(attributes.has(ATTRIBUTE)).toBe(false);
+  });
+
+  it("listens once however often it is called", async () => {
+    const { storageListeners } = stubBrowser(null);
+    const init = await initialize();
+    init();
+    init();
+    expect(storageListeners).toHaveLength(1);
   });
 });

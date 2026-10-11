@@ -763,7 +763,14 @@
    the header's panel toggles match (fork-glass-new-agent-stage); docked
    inline it lives inside #root, where no hole can open beneath it. The
    portaled wrapper carries data-fork-popup outside the draft, so the arm
-   matches locally instead of through a :has() on :root. */
+   matches locally instead of through a :has() on :root; on a draft whose
+   picture is switched off (fork-glass-new-agent-stage) the root attribute
+   stands in for it, since nothing is frosted over there.
+
+   That arm sits in :where(). An :is() takes the specificity of its heaviest
+   argument whichever one matched, so unwrapped its four selectors weighed
+   every menu as much as the details card, and the stage sheet's frosted
+   popups could not outrank this rule without !important. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     :is(
@@ -775,8 +782,10 @@
     ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"]),
-    [data-thread-details-panel="popover"][data-fork-popup]
-      > [data-thread-details-card].dropdown-glass
+    :where(
+      [data-thread-details-panel="popover"]:is([data-fork-popup], [data-fork-glass-picture="off"] *)
+        > [data-thread-details-card].dropdown-glass
+    )
   ) {
   background:
     linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
@@ -839,7 +848,9 @@
       ).dropdown-glass[data-starting-style],
     [data-slot="select-popup"][data-starting-style]:has(> .dropdown-glass),
     .dropdown-glass > [data-slot="combobox-popup"][data-starting-style],
-    [data-slot="popover-popup"][data-starting-style]:has([data-fork-popup])
+    [data-slot="popover-popup"][data-starting-style]:has([data-fork-popup]),
+    [data-fork-glass-picture="off"]
+      [data-slot="popover-popup"][data-starting-style]:has([data-thread-details-panel="popover"])
   ) {
   opacity: 1;
   scale: none;

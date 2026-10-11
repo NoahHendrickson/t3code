@@ -6,8 +6,10 @@
  * every rule in that sheet stands down through the root attribute below,
  * so a draft paints on the same stage as a started thread; the composer
  * still centres, which is fork-new-agent-draft's and not the stage's. The
- * popup cutout stops finding a card to frost over, and ChatView stamps the
- * thread details popover as it does in a started thread.
+ * popup cutout and the palettes sheet read the same attribute, so popups,
+ * the thread details popover among them, cut holes as in a started thread.
+ * The attribute is the one place the state lives in the DOM; no component
+ * subscribes to it.
  *
  * Device-local, like the palette it belongs to: a contracts field would put
  * a fork key in a schema upstream owns.
@@ -36,9 +38,12 @@ function readPictureEnabled(): boolean {
   }
 }
 
+let initialized = false;
+
 /** Paints the stored preference before first render and follows other tabs. */
 export function initializeForkGlassNewAgentPicture(): void {
-  if (typeof window === "undefined") return;
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
   applyPictureAttribute(readPictureEnabled());
   window.addEventListener("storage", (event) => {
     if (event.key === STORAGE_KEY) applyPictureAttribute(readPictureEnabled());
@@ -51,7 +56,10 @@ export function useForkGlassNewAgentPicture(): [boolean, (enabled: boolean) => v
   const setEnabled = useCallback(
     (next: boolean) => {
       setStored(next);
-      applyPictureAttribute(next);
+      // From what storage kept, not from `next`: the setter only logs a
+      // failed write, and the root must not hide a picture the switch and a
+      // reload would still show.
+      applyPictureAttribute(readPictureEnabled());
     },
     [setStored],
   );
