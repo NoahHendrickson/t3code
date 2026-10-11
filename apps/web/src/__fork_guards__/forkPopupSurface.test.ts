@@ -152,7 +152,7 @@ describe("fork guard: fork-popup-surface", () => {
     expect(glassPopup?.body).not.toContain("--glass-opacity");
     expect(glassPopup?.body).not.toContain("--fork-popup-glass-floor");
     expect(flat(glassPopup?.body ?? "")).toContain(
-      "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)), rgb(22 22 22 / 73%);",
+      "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)), rgb(22 22 22 / 82%);",
     );
     expect(glassPopup?.body).toContain("border-color: rgb(255 255 255 / 8%);");
     // The hole is cut the frame a popup mounts, so a fade-in would flash the
@@ -178,12 +178,13 @@ describe("fork guard: fork-popup-surface", () => {
     }
     // The thread details card is a dropdown too once a thread has started:
     // painted, cut out and opened at full strength like the rest. A new
-    // agent's draft keeps it frosted over the picture. The gate is a stamp on
-    // the portaled wrapper, never a :has() on :root, which would widen style
+    // agent's draft keeps it frosted over the picture, unless the picture is
+    // switched off. The gate is a stamp on the portaled wrapper or the root
+    // attribute, never a :has() on :root, which would widen style
     // invalidation to the whole document while a thread streams.
     const detailsArm =
-      '[data-thread-details-panel="popover"][data-fork-popup] > [data-thread-details-card].dropdown-glass';
-    expect(flat(glassPopup?.selector ?? "")).toContain(detailsArm);
+      '[data-thread-details-panel="popover"]:is([data-fork-popup], [data-fork-glass-picture="off"] *) > [data-thread-details-card].dropdown-glass';
+    expect(tight(glassPopup?.selector ?? "")).toContain(tight(detailsArm));
     expect(tight(FORK_GLASS_POPUP_SELECTOR)).toContain(tight(detailsArm));
     expect(flat(opening?.selector ?? "")).toContain(
       '[data-slot="popover-popup"][data-starting-style]:has([data-fork-popup])',
@@ -198,7 +199,23 @@ describe("fork guard: fork-popup-surface", () => {
     expect(detailsCard).toContain('data-thread-details-panel="popover"');
     expect(detailsCard).toContain("data-fork-popup={forkGlassPopup || undefined}");
     expect(detailsPanel).toContain("forkGlassPopup={props.forkGlassPopup ?? false}");
+    // Docked inline the card lives inside #root, where no hole can open, so
+    // under Glass it is the vessel's wash over the stage: not a blur, which
+    // flattens the cleared stage to grey, and not the measured floor, which
+    // is sampled beside the sidebar and painted the wallpaper's colour.
+    const docked = cssRules(palettes).find((rule) =>
+      rule.selector.includes('[data-thread-details-panel="inline"]'),
+    );
+    expect(docked?.body).toContain("var(--fork-composer-vessel-bg)");
+    expect(docked?.body).not.toContain("--fork-popup-glass-floor");
+    expect(docked?.body).toMatch(/(?<!-webkit-)backdrop-filter:\s*none/u);
     expect(chatView).toContain("forkGlassPopup: !isDraftHeroState,");
+    // The details arm weighs four attributes. Bare inside the :is() it would
+    // lend that weight to every menu, and the stage sheet's frosted popups
+    // could not outrank this rule; :where() keeps it out of the count.
+    expect(flat(glassPopup?.selector ?? "")).toMatch(
+      /:where\( \[data-thread-details-panel="popover"\]/u,
+    );
     // No list-side blur, no page surface, no clone: those were tried and read
     // as a modal dim rather than a frost.
     for (const candidate of cssRules(palettes)) {

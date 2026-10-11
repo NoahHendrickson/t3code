@@ -1918,13 +1918,21 @@
     which lands the figure on the card's right third behind the composer.
     Must not alter Westworld, Neutral Dark, Neutral Darker or default Dark,
     and must not change a started Glass thread.
+
+    Settings > Appearance > Interface carries a "New agent picture" switch
+    while Glass is the palette, on by default. Off, the whole stage stands
+    down and a draft paints on the started thread's stage, the composer
+    still centred. Device-local (localStorage), restored by Restore defaults.
   tier: 2
   files:
     - apps/web/src/theme.custom.glass.css
     - apps/web/src/custom/assets/glass-hero.png
     - apps/web/src/custom/assets/glass-hero-frost.png
+    - apps/web/src/custom/assets/glass-hero-popup-frost.png
     # Stamps popups over the card instead of cutting them.
     - apps/web/src/custom/forkGlassPopupCutout.ts
+    # The picture switch: storage, the root attribute the sheet gates on.
+    - apps/web/src/custom/forkGlassNewAgentPicture.ts
   watch:
     # @imports the sheet at its top, after Westworld's, and names
     # --fork-glass-panel beside the v2 panel's --sidebar.
@@ -1939,9 +1947,15 @@
     # stacking-context carve and the cutout's draft-card selector key on.
     - apps/web/src/components/preview/ThreadPreviewMiniPlayer.tsx
     - apps/web/src/browser/BrowserSurfaceSlot.tsx
+    # The picture switch: its init before first render, and its Settings row.
+    - apps/web/src/main.tsx
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    # Mocks the switch's hook, which the restore harness cannot run.
+    - apps/web/src/components/settings/SettingsPanels.restore.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
+    - apps/web/src/custom/forkGlassNewAgentPicture.test.ts
 
 - id: fork-neutral-dark-theme
   intent: >

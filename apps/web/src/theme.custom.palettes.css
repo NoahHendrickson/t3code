@@ -739,9 +739,11 @@
 }
 
 /* Popups under glass (theme.custom.css, fork-popup-surface) are the
-   composer's control row, floating: the vessel wash over the stage tint
-   where the composer sits (the ramp's 73% floor, which is also the
-   sidebar panel's), straight on the native material. Nothing in the page
+   cards on the stage, floating: the vessel wash over the stage's own 82%
+   tint, straight on the native material, so a menu reads exactly like the
+   docked thread details card (below), which is that wash over the stage
+   itself. The ramp's 73% floor read lighter and took more of the
+   wallpaper's colour than the stage around it. Nothing in the page
    shows through because nothing is painted there —
    custom/forkGlassPopupCutout.ts masks a popup-shaped hole out of #root and
    any portal beneath while one is open, the way the timeline cutoff clears
@@ -761,7 +763,14 @@
    the header's panel toggles match (fork-glass-new-agent-stage); docked
    inline it lives inside #root, where no hole can open beneath it. The
    portaled wrapper carries data-fork-popup outside the draft, so the arm
-   matches locally instead of through a :has() on :root. */
+   matches locally instead of through a :has() on :root; on a draft whose
+   picture is switched off (fork-glass-new-agent-stage) the root attribute
+   stands in for it, since nothing is frosted over there.
+
+   That arm sits in :where(). An :is() takes the specificity of its heaviest
+   argument whichever one matched, so unwrapped its four selectors weighed
+   every menu as much as the details card, and the stage sheet's frosted
+   popups could not outrank this rule without !important. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     :is(
@@ -773,14 +782,35 @@
     ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"]),
-    [data-thread-details-panel="popover"][data-fork-popup]
-      > [data-thread-details-card].dropdown-glass
+    :where(
+      [data-thread-details-panel="popover"]:is([data-fork-popup], [data-fork-glass-picture="off"] *)
+        > [data-thread-details-card].dropdown-glass
+    )
   ) {
   background:
     linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
-    rgb(22 22 22 / 73%);
+    rgb(22 22 22 / 82%);
   border-color: rgb(255 255 255 / 8%);
   box-shadow: 0 2px 16px rgb(0 0 0 / 25%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* The thread details card docked inline is a card on the stage, so it wears
+   the composer vessel's wash straight over it. It lives inside #root, where
+   no hole can open beneath it, and the base recipe's backdrop-filter over
+   the cleared stage flattened it to a neutral grey slab; the measured floor
+   was no better, since it is sampled beside the sidebar and painted the
+   wallpaper's colour wherever the card sat. The wash can stay translucent
+   because the card only docks where the chat lane clears it
+   (threadDetailsCardLayout.ts), so nothing but the stage is behind it.
+   Over the new-agent picture the stage restores the blur, which has the
+   picture to work on (theme.custom.glass.css). */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-thread-details-panel="inline"]
+  > [data-thread-details-card].dropdown-glass {
+  background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg));
+  border-color: rgb(255 255 255 / 8%);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -818,7 +848,9 @@
       ).dropdown-glass[data-starting-style],
     [data-slot="select-popup"][data-starting-style]:has(> .dropdown-glass),
     .dropdown-glass > [data-slot="combobox-popup"][data-starting-style],
-    [data-slot="popover-popup"][data-starting-style]:has([data-fork-popup])
+    [data-slot="popover-popup"][data-starting-style]:has([data-fork-popup]),
+    [data-fork-glass-picture="off"]
+      [data-slot="popover-popup"][data-starting-style]:has([data-thread-details-panel="popover"])
   ) {
   opacity: 1;
   scale: none;

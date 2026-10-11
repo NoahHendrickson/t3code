@@ -19,6 +19,8 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
+import { FORK_GLASS_PICTURE_OFF_ATTRIBUTE } from "../custom/forkGlassNewAgentPicture";
+import { FORK_GLASS_POPUP_SELECTOR } from "../custom/forkGlassPopupCutout";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
 
@@ -26,7 +28,11 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
+// Every rule stands down while the picture switch is off; :where() keeps
+// the gate out of the specificity the palettes sheet is ranked against.
+const PICTURE_ON = `:where(:not([${FORK_GLASS_PICTURE_OFF_ATTRIBUTE}="off"]))`;
+const FORK_ROOT = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
+const MARKER = `${FORK_ROOT}${PICTURE_ON}`;
 const GLASS = `${MARKER}.dark[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 const VIBRANCY = '[data-fork-sidebar-vibrancy="true"]';
 const ROOT = "[data-chat-column-maximized-away]";
@@ -54,18 +60,44 @@ const find = (selector: string) =>
   rules.find((rule) => compact(rule.selector) === compact(selector));
 
 describe("fork guard: fork-glass-new-agent-stage", () => {
+  it("stands the whole stage down when the picture switch is off", () => {
+    // Stamped before first render, so an off draft never flashes the card.
+    expect(readSibling("../main.tsx")).toContain("initializeForkGlassNewAgentPicture();");
+    // Off, popups cut holes as in a started thread: the cutout finds no card
+    // to frost over, and the thread details popover, which ChatView leaves
+    // unstamped on any draft, is one of its popups through the root attribute.
+    const offRoot = `[${FORK_GLASS_PICTURE_OFF_ATTRIBUTE}="off"]`;
+    expect(FORK_GLASS_POPUP_SELECTOR).toContain(`${offRoot} *`);
+    expect(readSibling("../custom/forkGlassPopupCutout.ts")).toContain(
+      ":root:not(${PICTURE_OFF}) [data-chat-column-maximized-away]",
+    );
+    // The palettes sheet paints that popover the same way, and lets it open
+    // without a fade over its fresh hole.
+    expect(compact(palettes)).toContain(compact(`[data-fork-popup], ${offRoot} *`));
+    expect(compact(palettes)).toContain(
+      compact(`${offRoot} [data-slot="popover-popup"][data-starting-style]`),
+    );
+    // React never reads the switch on ChatView's render path.
+    expect(chatView).not.toContain("forkGlassNewAgentPicture");
+    expect(readSibling("../components/settings/SettingsPanels.tsx")).toContain(
+      'title="New agent picture"',
+    );
+  });
+
   it("registers the stage and loads its sheet from the palettes sheet", () => {
     expect(customizations).toContain("id: fork-glass-new-agent-stage");
     expect(customizations).toContain("apps/web/src/theme.custom.glass.css");
     expect(customizations).toContain("apps/web/src/custom/assets/glass-hero.png");
     expect(customizations).toContain("apps/web/src/custom/assets/glass-hero-frost.png");
+    expect(customizations).toContain("apps/web/src/custom/assets/glass-hero-popup-frost.png");
+    expect(customizations).toContain("apps/web/src/custom/forkGlassNewAgentPicture.ts");
     expect(customizations).toContain("apps/web/src/components/chat/PanelLayoutControls.tsx");
     // Both sheets @import before any rule; Westworld's stays first.
     const westworld = palettes.indexOf('@import "./theme.custom.westworld.css";');
     const glass = palettes.indexOf('@import "./theme.custom.glass.css";');
     expect(westworld).toBeGreaterThanOrEqual(0);
     expect(glass).toBeGreaterThan(westworld);
-    for (const asset of ["glass-hero.png", "glass-hero-frost.png"]) {
+    for (const asset of ["glass-hero.png", "glass-hero-frost.png", "glass-hero-popup-frost.png"]) {
       expect(
         NodeFS.existsSync(
           NodeURL.fileURLToPath(new URL(`../custom/assets/${asset}`, import.meta.url)),
@@ -78,17 +110,20 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
   it("scopes every rule to Glass and leaves a started thread alone", () => {
     expect(rules.length).toBeGreaterThan(0);
     for (const rule of rules) {
-      expect(rule.selector, `unscoped rule "${rule.selector}"`).toContain(MARKER);
+      expect(compact(rule.selector), `unscoped rule "${rule.selector}"`).toContain(compact(MARKER));
       expect(rule.selector, `rule not scoped to Glass "${rule.selector}"`).toContain(
         `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`,
       );
       // No filter on the frost: under the desktop glass a backdrop-filter on
       // the vessel blurs the picture in the renderer's composite and not on
       // screen (the vibrancy entry's standing rule, re-confirmed 2026-10-08 at
-      // blur(40px)). The panel toggles are the one exception: they wear the
-      // thread details menu's material, blur included, and a native window
-      // capture (2026-10-10) showed that blur on screen.
-      if (!rule.selector.includes("[data-fork-panel-toggle]")) {
+      // blur(40px)). The panel toggles and the docked thread details card are
+      // the exceptions: they wear the details menu's material, blur included,
+      // and a native window capture (2026-10-10) showed that blur on screen.
+      if (
+        !rule.selector.includes("[data-fork-panel-toggle]") &&
+        !rule.selector.includes("[data-thread-details-card]")
+      ) {
         expect(rule.body, `filter in ${rule.selector}`).not.toMatch(/backdrop-filter/u);
       }
       // Never transparent: under the desktop glass that is a hole to the
@@ -189,7 +224,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     );
     const takers = every.filter((rule) => rule.body.includes("glass-hero.png"));
     expect(takers.length).toBeGreaterThan(0);
-    expect(takers.every((rule) => rule.selector.includes(GLASS))).toBe(true);
+    expect(takers.every((rule) => compact(rule.selector).includes(compact(GLASS)))).toBe(true);
   });
 
   it("clears every opaque fill in the chat view and lifts the crumbs while the draft is empty", () => {
@@ -319,7 +354,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     const layers = find(`${GLASS}${DRAFT}${HOSTS},${VIBRANT}${POPUP}`);
     expect(layers?.atRules).toEqual([]);
     expect(flat(layers?.body)).toBe(
-      "--fork-glass-frost-layers: linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)), linear-gradient( rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)), rgb(from var(--fork-glass-frost-floor) r g b / var(--fork-glass-frost-veil)) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
+      "--fork-glass-frost-layers: linear-gradient(var(--fork-glass-frost-wash), var(--fork-glass-frost-wash)), linear-gradient( rgb( from var(--fork-glass-frost-veil-color, var(--fork-glass-frost-floor)) r g b / var(--fork-glass-frost-veil) ), rgb( from var(--fork-glass-frost-veil-color, var(--fork-glass-frost-floor)) r g b / var(--fork-glass-frost-veil) ) ), var(--fork-glass-card-scrim), var(--fork-glass-frost-image) 51% top / cover no-repeat;",
     );
     expect(sheet.match(/var\(--fork-glass-frost-image\)/gu)).toHaveLength(1);
     expect(frost?.body).toContain("mask-image: var(--fork-glass-frost-mask)");
@@ -377,7 +412,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // lengths the cutout writes: a popup's positioner is transformed, which
     // would break an anchor. overflow, not clip-path, keeps the shadow.
     expect(flat(find(`${VIBRANT}${POPUP}`)?.body)).toBe(
-      "isolation: isolate; overflow: clip; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 5%); --fork-glass-frost-veil: 45%;",
+      'isolation: isolate; overflow: clip; overflow-clip-margin: border-box; outline: 1px solid rgb(255 255 255 / 12%); outline-offset: -1px; background: var(--fork-glass-frost-floor); --fork-glass-frost-wash: rgb(255 255 255 / 5%); --fork-glass-frost-veil: 50%; --fork-glass-frost-veil-color: rgb(12 12 14); --fork-glass-frost-image: url("./custom/assets/glass-hero-popup-frost.png");',
     );
     const popupFrost = find(`${VIBRANT}${POPUP}::after`)?.body;
     expect(popupFrost).toMatch(/position:\s*absolute/u);
@@ -397,7 +432,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // without a translate (fork-new-agent-draft owns that rule).
     const overlayRule = cssRules(readSibling("../theme.custom.css")).find(
       (rule) =>
-        compact(rule.selector) === `${compact(MARKER)}${HERO}` &&
+        compact(rule.selector) === `${compact(FORK_ROOT)}${HERO}` &&
         rule.body.includes("margin-block"),
     );
     expect(overlayRule?.body).toMatch(/height:\s*fit-content/u);
