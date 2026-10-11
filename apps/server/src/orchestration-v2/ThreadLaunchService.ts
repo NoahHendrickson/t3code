@@ -315,7 +315,28 @@ const make = Effect.gen(function* () {
         const uuid = yield* randomUuidV4;
         branch = buildTemporaryWorktreeBranchName(() => uuid.replaceAll("-", ""));
       } else {
-        branch = requestedBranch ?? null;
+        /* fork:begin server-local-thread-branch — see .fork/customizations.yaml#server-local-thread-branch
+           The workspace record below rewrites the branch, so a root or
+           existing-folder launch resolves it the way the create did; a bare
+           `requestedBranch ?? null` wipes the live branch the create just
+           recorded. */
+        branch = yield* resolveBootstrapThreadBranch(
+          {
+            threadId,
+            projectId: input.projectId,
+            branch: requestedBranch ?? null,
+            worktreePath:
+              input.workspaceStrategy.type === "existing_worktree"
+                ? input.workspaceStrategy.worktreePath
+                : null,
+            preparingWorktree: false,
+          },
+          {
+            getProjectShellById: projects.getById,
+            localStatus: git.localStatus,
+          },
+        );
+        /* fork:end server-local-thread-branch */
       }
       let worktreePath =
         input.workspaceStrategy.type === "existing_worktree"

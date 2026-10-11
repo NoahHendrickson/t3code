@@ -41,6 +41,10 @@ describe("fork guard: server-local-thread-branch", () => {
     // Only a worktree actually being made names its own branch; a root or
     // existing-folder launch still gets the live branch.
     expect(hunks).toContain('preparingWorktree: workspaceStrategy.type === "worktree"');
+    // Preparation re-records the workspace; it must resolve the branch the
+    // same way, or it wipes the one the create just recorded.
+    expect(hunks).toContain("branch = yield* resolveBootstrapThreadBranch(");
+    expect(launch).not.toContain("branch = requestedBranch ?? null;");
     expect(hunks).not.toContain("listRefs(");
     // The policy stays out of the launch service: the fence carries the
     // import and the call, not a resolver of its own.
@@ -63,5 +67,6 @@ describe("fork guard: server-local-thread-branch", () => {
     expect(hunks).toContain("fills in the checked-out branch when a root launch names none");
     expect(hunks).toContain("keeps an explicit branch over the checked-out one");
     expect(hunks).toContain("leaves a worktree launch to name its own branch");
+    expect(hunks).toContain("keeps the checked-out branch once preparation records the workspace");
   });
 });

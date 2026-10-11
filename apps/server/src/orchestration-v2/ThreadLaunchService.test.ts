@@ -2319,6 +2319,29 @@ it.effect("fills in the checked-out branch when a root launch names none", () =>
   }),
 );
 
+it.effect("keeps the checked-out branch once preparation records the workspace", () =>
+  Effect.gen(function* () {
+    const harness = makeHarness({ localStatus: checkedOut("feature/from-phone") });
+    yield* Effect.gen(function* () {
+      const launches = yield* ThreadLaunch.ThreadLaunchService;
+      const threads = yield* ThreadManagement.ThreadManagementService;
+      const launched = yield* launches.launch(
+        launchInput({
+          command: "command:launch:fork-checkout-branch-prepared",
+          thread: "thread:launch:fork-checkout-branch-prepared",
+          message: "hello from the phone",
+        }),
+      );
+      // Setup runs after the workspace record, so the record has landed.
+      yield* waitUntil(() => Effect.sync(() => harness.runSetup.mock.calls.length === 1));
+      assert.equal(
+        (yield* threads.getThreadProjection(launched.threadId)).thread.branch,
+        "feature/from-phone",
+      );
+    }).pipe(Effect.provide(harness.layer));
+  }),
+);
+
 it.effect("keeps an explicit branch over the checked-out one", () =>
   Effect.gen(function* () {
     const harness = makeHarness({ localStatus: checkedOut("feature/from-phone") });
