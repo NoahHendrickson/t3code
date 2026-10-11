@@ -5,9 +5,10 @@
  * Same export, same props as upstream, so ProviderModelPicker's import is
  * untouched; the four exported helpers are upstream's verbatim. The render
  * is the fork's: a paged menu. ProviderModelPicker's shadow hosts this in a
- * Base UI Menu; the first page lists a search field, Favorites and one row per
- * provider instance, and clicking a row swaps the page for that provider's
- * models (legacy models one page deeper), led by a back row. Typing anywhere
+ * Base UI Menu; it opens on the Favorites page when there are favorites, whose
+ * back row leads to the providers page: Favorites and one row per provider
+ * instance. Clicking a row swaps the page for that provider's models (legacy
+ * models one page deeper), led by a back row. Typing anywhere
  * lands in the search field, and a query swaps the page for one flat,
  * provider-agnostic list of matching models. Picking a model never closes the
  * menu from here; the host decides, since it may render more below the pages.
@@ -193,6 +194,7 @@ type ModelPickerPage =
   | { readonly kind: "models"; readonly instanceId: ProviderInstanceId; readonly legacy: boolean };
 
 const PROVIDERS_PAGE: ModelPickerPage = { kind: "providers" };
+const FAVORITES_PAGE: ModelPickerPage = { kind: "favorites" };
 
 function parentPage(page: ModelPickerPage): ModelPickerPage {
   return page.kind === "models" && page.legacy ? { ...page, legacy: false } : PROVIDERS_PAGE;
@@ -235,7 +237,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onToggleModel,
   } = props;
   const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState<ModelPickerPage>(PROVIDERS_PAGE);
+  // Null until the user pages somewhere; see `page` below.
+  const [openedPage, setPage] = useState<ModelPickerPage | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const favorites = useClientSettings((s) => s.favorites ?? []);
@@ -410,6 +413,11 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       ),
     [favoritesSet, flatModels, instanceOrder, matchesLockedProvider],
   );
+
+  // The menu remounts on every open and lands on Favorites when there are
+  // any. Derived rather than seeded so favorites that load after mount still
+  // count, and unfavoriting the last one falls back to the providers page.
+  const page = openedPage ?? (favoriteModels.length > 0 ? FAVORITES_PAGE : PROVIDERS_PAGE);
 
   const modelsForInstance = useCallback(
     (instanceId: ProviderInstanceId) => {

@@ -145,6 +145,10 @@ describe("fork guard: fork-model-picker", () => {
     expect(content.indexOf('providerId: "favorites"')).toBeLessThan(
       content.indexOf("{providerEntries.map(renderProviderRow)}"),
     );
+    // The menu opens on Favorites until the user pages elsewhere.
+    expect(content).toMatch(
+      /const page =\s*openedPage \?\? \(favoriteModels\.length > 0 \? FAVORITES_PAGE : PROVIDERS_PAGE\);/u,
+    );
     // Legacy models sit one page deeper, not inline.
     expect(content).toContain('target: { kind: "models", instanceId, legacy: true }');
     // A row swaps the page and focuses the search field only later: focusing
