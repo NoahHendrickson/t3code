@@ -4582,8 +4582,8 @@
     workspace strategy (root or an existing folder reads the checkout; a
     worktree launch names its own branch through provisioning and is left
     alone). Preparation then re-records the workspace in the background
-    (the `:workspace` metadata update) and resolves the branch the same way
-    in a second hunk; upstream's `requestedBranch ?? null` there wiped the
+    (the `:workspace` metadata update); a second hunk leaves `branch` out of
+    it when the launch names none, because upstream's null there wiped the
     branch the create had just recorded on every root launch.
     A launch that reuses a client-created thread
     (reuseExistingThread) keeps the branch the client recorded, by product
