@@ -420,7 +420,14 @@ const make = Effect.gen(function* () {
             type: "thread.metadata.update",
             commandId: CommandId.make(`${input.commandId}:workspace`),
             threadId,
-            branch,
+            /* fork:begin server-local-thread-branch — see .fork/customizations.yaml#server-local-thread-branch
+               A launch that names no branch leaves the field out: an absent
+               branch keeps the record, null would wipe the one the create
+               (or the client) recorded. */
+            ...(input.workspaceStrategy.type !== "worktree" && requestedBranch === undefined
+              ? {}
+              : { branch }),
+            /* fork:end server-local-thread-branch */
             worktreePath,
           })
           .pipe(Effect.mapError(mapError(input, "update-thread", threadId)));
