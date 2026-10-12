@@ -131,9 +131,9 @@ Each newly opened PR starts a separate review of that exact PR and commit in the
 repository. Existing PRs and later pushes do not trigger this automation. Run history links
 to the triggering PR. Pause the task to stop reviews, or delete it to disconnect its GitHub
 webhooks. The environment must be running to review; Connections can hold incoming events
-while it is offline. If a review could not be set up, for example because its worktree could
-not be created, redeliver the webhook after fixing the cause. Events already dispatched to a
-thread are not run twice.
+while it is offline. If a review thread appears but its worktree could not be created, retry
+from that thread. If no thread appeared, redeliver the webhook after fixing the cause. Each PR
+event starts at most one review.
 <!-- fork:end fork-github-pr-automation -->
 
 To generate a fresh title from the conversation, open a thread's menu and choose
