@@ -193,12 +193,4 @@ describe("fork guard: phosphor-duotone-icons", () => {
       "lucide lucide-x size-4",
     );
   });
-
-  it("draws the checkbox tick with Phosphor, not upstream's inline path", () => {
-    // The checkbox never imports an icon, so the alias cannot reach it; only
-    // the shadow does. Upstream's tick is a hand-drawn path.
-    const checkbox = read("src/overrides/components/ui/checkbox.tsx");
-    expect(checkbox).toContain('import { Check, Minus } from "@phosphor-icons/react";');
-    expect(checkbox).not.toContain("M5.252 12.7 10.2 18.63 18.748 5.37");
-  });
 });

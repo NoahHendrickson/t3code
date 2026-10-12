@@ -532,18 +532,14 @@
     lucide's 2px stroke. The shim also reproduces lucide's `lucide lucide-<name>`
     SVG classes, because upstream tests assert them to identify which icon
     rendered — honouring the contract keeps those tests passing unmodified
-    instead of forcing Tier 4 edits into upstream test files. The checkbox
-    draws its tick inline rather than importing one, so it is shadowed to
-    draw Phosphor's Check (and Minus when indeterminate) at the bold weight.
+    instead of forcing Tier 4 edits into upstream test files.
   tier: 1
   files:
     - apps/web/src/custom/icons/lucide-phosphor.tsx
     # `lucide-react/dynamic` (project icons by name, upstream #9137) answered
     # from the same table, so the picker only offers names that render.
     - apps/web/src/custom/icons/lucide-phosphor-dynamic.tsx
-    - apps/web/src/overrides/components/ui/checkbox.tsx
-  shadows:
-    - apps/web/src/components/ui/checkbox.tsx
+  shadows: []
   watch:
     - apps/web/vite.config.ts
     - apps/web/tsconfig.json
