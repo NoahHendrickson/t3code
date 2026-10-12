@@ -34,7 +34,7 @@ export function ScheduledSectionLabel(props: { readonly children: ReactNode }) {
   return <h2 className="text-sm font-medium text-muted-foreground">{props.children}</h2>;
 }
 
-export function isConnectedEnvironment(environment: EnvironmentPresentation): boolean {
+function isConnectedEnvironment(environment: EnvironmentPresentation): boolean {
   return environment.connection.phase === "connected" && environment.serverConfig !== null;
 }
 

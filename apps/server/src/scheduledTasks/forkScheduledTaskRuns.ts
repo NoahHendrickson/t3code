@@ -53,7 +53,7 @@ export function escapeGlobPrefix(prefix: string): string {
 }
 
 /** The turn-item id prefix shared by every run of `taskId`, or of every task. */
-export function scheduledTaskTurnItemPrefix(taskId: ScheduledTaskId | undefined): string {
+function scheduledTaskTurnItemPrefix(taskId: ScheduledTaskId | undefined): string {
   const messagePrefix =
     taskId === undefined
       ? SCHEDULED_TASK_MESSAGE_PREFIX

@@ -17,8 +17,6 @@ import {
 
 import { formatRelativeTime } from "~/timestampFormat";
 
-export const SCHEDULED_PAGE_PATH = "/scheduled";
-
 export type ScheduledPageTab = "settings" | "runs";
 
 /** `task: "new"` is the create form; `view: "runs"` is every run across tasks. */
