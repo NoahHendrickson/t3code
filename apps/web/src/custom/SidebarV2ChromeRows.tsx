@@ -1,8 +1,8 @@
 /**
- * The Sidebar V2 control rows — search, new agent, add project, usage, and
- * the projects filter — see `.fork/customizations.yaml#fork-sidebar-chrome`.
+ * The Sidebar V2 control rows — search, new agent, add project, usage,
+ * scheduled, and the projects filter — see `.fork/customizations.yaml#fork-sidebar-chrome`.
  *
- * Metrics from Figma t3-fork node 364:11246: the four action rows are the
+ * Metrics from Figma t3-fork node 364:11246: the action rows are the
  * design system's ghost Button (364:10544) stacked 2px apart inside the
  * panel's 8px inset — 32px tall, 10px corners, 12px inline padding, a 16px
  * leading icon 6px from a 14px Regular label, everything at the panel's
@@ -36,10 +36,12 @@ import { CheckIcon, EllipsisIcon, FolderIcon, FolderPlusIcon, SearchIcon } from 
 // file is fork-owned, so there is no upstream import site to preserve.
 import {
   ArrowUpDownIcon,
+  CalendarClockIcon,
   ChartDonutIcon,
   FadersHorizontalIcon,
   NavigationArrowIcon,
 } from "./icons/lucide-phosphor";
+import { SidebarV2ScheduledRow } from "./SidebarV2ScheduledRow";
 import { SidebarV2UsageRow } from "./UsagePopover";
 import { CommandDialogTrigger } from "~/components/ui/command";
 import {
@@ -121,7 +123,7 @@ const CHROME_ACTION = cn(
 
 type ChromeIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
-/** New agent, Add a project, and Usage share one shape; Search keeps its own
+/** New agent, Add a project, Usage, and Scheduled share one shape; Search keeps its own
     (CommandDialogTrigger). onClick is optional so Usage can hand the same
     button to PopoverTrigger / DialogTrigger via `render`, the way Search
     hands SidebarMenuButton to CommandDialogTrigger. Extra props (ref,
@@ -148,7 +150,8 @@ function ChromeLabeledAction({
   /** Holds the row in its hover fill. The New agent row is "active" while the
       open draft has no project yet — the column it opened is still the
       row's own until a project is chosen and the draft gets a card. Usage
-      uses the same fill while the overlay is open. */
+      uses the same fill while the overlay is open, Scheduled while its page
+      is the one on screen. */
   readonly active?: boolean | undefined;
   readonly onClick?: () => void;
   readonly trailing?: ReactNode;
@@ -212,7 +215,7 @@ function ChromeSearchRow(props: { readonly commandPaletteShortcutLabel: string |
   );
 }
 
-/** Search + New agent + Add a project + Usage share one group so Figma's
+/** Search + New agent + Add a project + Usage + Scheduled share one group so Figma's
  *  stacked action block (364:11246) does not pick up inter-group padding: the
  *  block starts flush under the header and stacks its rows 2px apart inside
  *  the panel's 8px inset. */
@@ -263,6 +266,16 @@ export function SidebarV2ChromeActionRows(props: {
             label="Usage"
             ariaLabel="Usage"
             testId="sidebar-v2-usage"
+          />
+        }
+      />
+      <SidebarV2ScheduledRow
+        trigger={
+          <ChromeLabeledAction
+            icon={CalendarClockIcon}
+            label="Scheduled"
+            ariaLabel="Scheduled tasks"
+            testId="sidebar-v2-scheduled"
           />
         }
       />

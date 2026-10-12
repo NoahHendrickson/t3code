@@ -2281,6 +2281,111 @@
     - apps/web/src/__fork_guards__/forkUsagePopover.test.ts
     - apps/web/src/components/usage/UsagePage.test.tsx
 
+- id: fork-sidebar-scheduled-row
+  intent: >
+    The V2 sidebar's action block ends with a Scheduled row directly under
+    Usage: the chrome door to every scheduled task across every project and
+    environment. It is a labeled action in the same shape as New agent, Add a
+    project and Usage (CalendarClockIcon, the glyph the settings nav already
+    uses for the page), stacked in the one action group so no inter-group
+    padding opens between it and Usage. Clicking it navigates to a page
+    rather than opening a popover: Usage is a
+    dashboard you glance at over the thread, while scheduled tasks are a
+    managed list with an editor dialog, a deliveries dialog and a per-task
+    menu, and the settings page already spans projects and environments and
+    offers New task with a project picker. Nothing from that page is
+    re-rendered in the sidebar. The row lights (the chrome rows' active fill)
+    while that page is on screen, closes the mobile sheet before navigating,
+    and relies on the utility pages' Back footer and Escape to return to the
+    thread. The row owns its router reads in a fork file, so Sidebar.tsx's
+    chrome call site gains no prop for it. Since fork-scheduled-page the
+    destination is the fork's own /scheduled page rather than Settings →
+    Scheduled tasks; the rest of this entry still holds.
+  tier: 1
+  files:
+    - apps/web/src/custom/SidebarV2ScheduledRow.tsx
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - apps/web/src/routes/scheduled.tsx
+    - apps/web/src/components/sidebar/mainAppLocation.ts
+    - docs/user/thread-sidebar.md
+  verify:
+    - apps/web/src/__fork_guards__/forkSidebarScheduledRow.test.ts
+
+- id: fork-scheduled-page
+  intent: >
+    /scheduled is a workspace page, laid out like Cursor's Automations: a
+    heading with New task and a filter row (environment chips when there is more than one, All
+    runs, search), and one table of every scheduled task across every
+    connected environment with its project, trigger and next run,
+    Active/Inactive, last run, and model. A row opens the task as its own
+    page: the title is the heading, the on/off switch and the project sit
+    under it, and two tabs split Settings from Run history. Settings is one
+    composer laid out like the chat's: where it runs (workspace, base branch
+    or checkout) as the context pills above it, the instructions in the
+    vessel, the trigger as the control row's leading pill (its popover holds
+    the trigger editor) and the model at the row's end. Creating a
+    task is the same page with no history yet; the Settings tab mirrors
+    upstream's editor dialog field for field (webhook URL, rotate,
+    signature, age limit, workspace, base branch) so both doors save the
+    same row. Every run is a thread (or a turn in the task's bound thread);
+    the Run history tab and the All runs view list them newest first with
+    the agent run's status, trigger, start and duration, and a row opens the
+    thread. Older/Newer pages keep the complete history accessible without
+    shifting older pages when new runs arrive. Run history comes from one read-only RPC,
+    scheduledTasks.listRuns, which derives runs from the message ids the
+    task service already mints (a prefix scan over the turn-item primary key
+    joined to the run and thread projections) — nothing new is persisted and
+    the client overlays the thread shell's live status for the same run.
+    The page is a utility page (Back in the sidebar footer, Escape returns
+    to the thread), and the sidebar's Scheduled row is its door; the
+    upstream Settings → Scheduled tasks page is left as it is for links that
+    still point there. Mobile keeps its own settings editor.
+    Trigger choices use the compact rounded track and raised selected tab
+    from Figma node 521:5338, preserving all four trigger behaviors.
+    Under Glass the cards take the stage-card wash, and a card
+    clips its table so a hovered row never paints past its corners.
+    That composer wears the chat composer's own context-row, vessel,
+    surface and control-row stamps, so every palette paints it the same.
+  tier: 4
+  files:
+    - apps/web/src/custom/scheduled/ScheduledPage.tsx
+    - apps/web/src/custom/scheduled/ScheduledTriggerTabs.tsx
+    - apps/web/src/custom/scheduled/ScheduledTaskDetail.tsx
+    - apps/web/src/custom/scheduled/ScheduledTaskEditor.tsx
+    - apps/web/src/custom/scheduled/ScheduledRunsTable.tsx
+    - apps/web/src/custom/scheduled/scheduledPageChrome.tsx
+    - apps/web/src/custom/scheduled/scheduledComposer.css
+    - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/custom/scheduled/scheduledPage.logic.ts
+    - apps/web/src/custom/scheduled/scheduledPage.logic.test.ts
+    - apps/web/src/routes/scheduled.tsx
+    - packages/contracts/src/scheduledTaskRuns.ts
+    - apps/server/src/scheduledTasks/forkScheduledTaskRuns.ts
+    - apps/server/src/scheduledTasks/forkScheduledTaskRuns.test.ts
+  shadows: []
+  watch:
+    - apps/web/src/routeTree.gen.ts
+    - apps/web/src/components/sidebar/mainAppLocation.ts
+    - apps/web/src/components/settings/scheduledTasksSettings.logic.ts
+    - apps/web/src/components/settings/ScheduledTasksSettings.tsx
+    - packages/contracts/src/index.ts
+    - packages/contracts/src/rpc.ts
+    - docs/user/thread-sidebar.md
+    - packages/contracts/src/scheduledTask.ts
+    - packages/client-runtime/src/state/server.ts
+    - apps/server/src/scheduledTasks/ScheduledTaskService.ts
+    - apps/server/src/ws.ts
+    - apps/server/src/auth/RpcAuthorization.ts
+    - apps/server/src/observability/RpcInstrumentation.ts
+    - apps/server/src/mcp/OrchestratorMcpToolkit.integration.test.ts
+    - docs/user/thread-sidebar.md
+  verify:
+    - apps/web/src/__fork_guards__/forkScheduledPage.test.ts
+    - apps/web/src/custom/scheduled/scheduledPage.logic.test.ts
+    - apps/server/src/scheduledTasks/forkScheduledTaskRuns.test.ts
+
 - id: fork-workspace-header
   intent: >
     The workspace topbar is 52px. One token (--workspace-topbar-height) drives
@@ -4704,3 +4809,55 @@
   verify:
     - apps/web/src/__fork_guards__/serverRepositoryIdentityBaseRemote.test.ts
     - apps/server/src/project/RepositoryIdentityResolver.test.ts
+
+- id: fork-scheduled-task-effort
+  intent: >
+    Scheduled task editors reuse the composer's combined model menu and effort
+    slider, with edits saved on the task rather than a conversation draft.
+    Effort is restored when editing, and reset when switching models or
+    provider instances.
+  tier: 4
+  files:
+    - apps/web/src/custom/scheduled/ScheduledTaskModelPicker.tsx
+    - apps/web/src/custom/scheduled/scheduledTaskModel.logic.ts
+    - apps/web/src/custom/scheduled/ScheduledTaskEditor.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/settings/ScheduledTasksSettings.tsx
+    - apps/web/src/components/settings/scheduledTasksSettings.logic.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkScheduledTaskEffort.test.ts
+    - apps/web/src/components/chat/TraitsPicker.test.ts
+    - apps/web/src/components/settings/scheduledTasksSettings.logic.test.ts
+
+- id: fork-github-pr-automation
+  intent: >
+    Scheduled automations offer GitHub PR opened as a plain-language trigger
+    with multiple project repositories. Setup manages signed GitHub hooks;
+    only opened PRs in those repositories start a review. Every run receives
+    the exact triggering repository, PR and commits in a fresh worktree.
+    Retries do not duplicate reviews; deliveries that never reached durable dispatch
+    can be redelivered after failure or restart. Failed repository changes clean up
+    newly connected hooks, and deletion removes managed hooks.
+  tier: 4
+  files:
+    - packages/contracts/src/githubPrAutomation.ts
+    - apps/server/src/scheduledTasks/GitHubPrAutomation.ts
+    - apps/server/src/scheduledTasks/GitHubPrAutomation.test.ts
+    - apps/server/src/scheduledTasks/githubPrTrigger.ts
+    - apps/web/src/custom/scheduled/githubAutomation.logic.ts
+    - apps/web/src/custom/scheduled/ScheduledTaskDetail.tsx
+    - apps/web/src/custom/scheduled/ScheduledTaskEditor.tsx
+    - apps/web/src/custom/scheduled/ScheduledRunsTable.tsx
+    - apps/web/src/custom/scheduled/scheduledPage.logic.ts
+  shadows: []
+  watch:
+    - packages/contracts/src/scheduledTask.ts
+    - packages/contracts/src/index.ts
+    - apps/server/src/scheduledTasks/ScheduledTaskService.ts
+    - apps/server/src/orchestration-v2/runtimeLayer.ts
+    - apps/web/src/components/settings/ScheduledTasksSettings.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGithubPrAutomation.test.ts
+    - apps/server/src/scheduledTasks/GitHubPrAutomation.test.ts
+    - apps/server/src/scheduledTasks/ScheduledTaskService.webhook.test.ts

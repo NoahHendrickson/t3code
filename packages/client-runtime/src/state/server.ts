@@ -1084,6 +1084,13 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:server:scheduled-task:webhook-delivery",
       tag: WS_METHODS.scheduledTasksGetWebhookDelivery,
     }),
+    /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+    scheduledTaskRuns: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:server:scheduled-task:runs",
+      tag: WS_METHODS.scheduledTasksListRuns,
+      staleTimeMs: 5_000,
+    }),
+    /* fork:end fork-scheduled-page */
     /** Live scheduled-task list: snapshot on subscribe, fresh list after every server-side change. */
     scheduledTasksLive: createEnvironmentRpcSubscriptionAtomFamily(runtime, {
       label: "environment-data:server:scheduled-tasks:live",

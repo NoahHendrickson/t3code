@@ -1,4 +1,7 @@
 import * as Schema from "effect/Schema";
+/* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+import { GitHubPrAutomation } from "./githubPrAutomation.ts";
+/* fork:end fork-github-pr-automation */
 
 import {
   CommandId,
@@ -85,6 +88,9 @@ const WebhookMaxDeliveryAgeMinutes = Schema.Int.check(
 });
 
 const ScheduledTaskWebhookSchedule = Schema.Struct({
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  github: Schema.optional(Schema.NullOr(GitHubPrAutomation)),
+  /* fork:end fork-github-pr-automation */
   type: Schema.Literal("webhook").annotate({
     description: "Run when the task's webhook URL receives a request.",
   }),
@@ -97,6 +103,9 @@ const ScheduledTaskWebhookSchedule = Schema.Struct({
 });
 
 const ScheduledTaskUpsertWebhookSchedule = Schema.Struct({
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  github: Schema.optional(Schema.NullOr(GitHubPrAutomation)),
+  /* fork:end fork-github-pr-automation */
   type: Schema.Literal("webhook").annotate({
     description: "Run when the task's webhook URL receives a request.",
   }),
@@ -256,6 +265,9 @@ export type ScheduledTaskWebhookDeliveryId = typeof ScheduledTaskWebhookDelivery
 export const ScheduledTaskWebhookDeliveryOutcome = Schema.Literals([
   "accepted",
   "dispatch_failed",
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  "ignored",
+  /* fork:end fork-github-pr-automation */
   "rejected_signature",
   "disabled",
   "rate_limited",

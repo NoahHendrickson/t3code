@@ -113,6 +113,10 @@ export const RPC_REQUIRED_SCOPES = {
   // Delivery logs hold request bodies, so they need the same scope as the URL.
   [WS_METHODS.scheduledTasksListWebhookDeliveries]: AuthOrchestrationOperateScope,
   [WS_METHODS.scheduledTasksGetWebhookDelivery]: AuthOrchestrationOperateScope,
+  /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+  // Run history is thread metadata the read scope already sees; no request bodies.
+  [WS_METHODS.scheduledTasksListRuns]: AuthOrchestrationReadScope,
+  /* fork:end fork-scheduled-page */
   [WS_METHODS.cloudGetRelayClientStatus]: AuthRelayReadScope,
   [WS_METHODS.cloudInstallRelayClient]: AuthRelayWriteScope,
   [WS_METHODS.pullRequestsList]: AuthOrchestrationReadScope,

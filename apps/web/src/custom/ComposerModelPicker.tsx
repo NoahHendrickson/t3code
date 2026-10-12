@@ -7,7 +7,8 @@
  * every other trait keeps a compact control (a checkbox for on/off traits,
  * segments for the rest). The trigger reads "Opus 5.5 High". Writes go to the
  * same draft-store options, with the same Ultrathink prompt prefix, as
- * upstream's traits picker, which the composer no longer renders beside it.
+ * upstream's traits picker. Controlled editors supply their own options
+ * callback so scheduled tasks can reuse the menu without a conversation draft.
  */
 import type { ProviderOptionDescriptor } from "@t3tools/contracts";
 import {
@@ -193,18 +194,18 @@ function ComposerModelTraitsPanel(props: {
   const setProviderModelOptions = useComposerDraftStore((store) => store.setProviderModelOptions);
 
   const updateDescriptors = (next: ReadonlyArray<ProviderOptionDescriptor>) => {
+    const options = buildProviderOptionSelectionsFromDescriptors(next);
+    if (input.onModelOptionsChange) {
+      input.onModelOptionsChange(options);
+      return;
+    }
     const target = input.threadRef ?? input.draftId;
     if (!target) return;
-    setProviderModelOptions(
-      target,
-      input.provider,
-      buildProviderOptionSelectionsFromDescriptors(next),
-      {
-        ...(input.instanceId ? { instanceId: input.instanceId } : {}),
-        model: input.model,
-        persistSticky: true,
-      },
-    );
+    setProviderModelOptions(target, input.provider, options, {
+      ...(input.instanceId ? { instanceId: input.instanceId } : {}),
+      model: input.model,
+      persistSticky: true,
+    });
   };
 
   // Upstream's select semantics: Ultrathink is a prompt prefix, not a stored

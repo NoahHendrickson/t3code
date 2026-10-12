@@ -319,6 +319,9 @@ import {
   ScheduledTaskUpsertInput,
   ScheduledTaskMutationResult,
 } from "./scheduledTask.ts";
+/* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+import { ScheduledTaskListRunsInput, ScheduledTaskListRunsResult } from "./scheduledTaskRuns.ts";
+/* fork:end fork-scheduled-page */
 import { SecretRequestAnswerInput, SecretRequestError } from "./secretRequest.ts";
 import {
   ProjectCloneActionInput,
@@ -483,6 +486,9 @@ export const WS_METHODS = {
   secretsAnswerRequest: "secrets.answerRequest",
   scheduledTasksListWebhookDeliveries: "scheduledTasks.listWebhookDeliveries",
   scheduledTasksGetWebhookDelivery: "scheduledTasks.getWebhookDelivery",
+  /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+  scheduledTasksListRuns: "scheduledTasks.listRuns",
+  /* fork:end fork-scheduled-page */
 
   // Cloud environment methods
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
@@ -1710,6 +1716,14 @@ const WsScheduledTasksGetWebhookDeliveryRpc = Rpc.make(
   },
 );
 
+/* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+const WsScheduledTasksListRunsRpc = Rpc.make(WS_METHODS.scheduledTasksListRuns, {
+  payload: ScheduledTaskListRunsInput,
+  success: ScheduledTaskListRunsResult,
+  error: Schema.Union([ScheduledTaskError, EnvironmentAuthorizationError]),
+});
+/* fork:end fork-scheduled-page */
+
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
@@ -1799,6 +1813,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsSecretsAnswerRequestRpc,
   WsScheduledTasksListWebhookDeliveriesRpc,
   WsScheduledTasksGetWebhookDeliveryRpc,
+  /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+  WsScheduledTasksListRunsRpc,
+  /* fork:end fork-scheduled-page */
   WsServerReportClientActivityRpc,
   WsServerReportHostPowerStateRpc,
   WsServerGetBackgroundPolicyRpc,

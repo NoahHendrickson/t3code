@@ -6,7 +6,7 @@
  * implicit fast-mode default, same Ultrathink detection) so the menu's
  * reasoning half reads and writes exactly what the traits picker did.
  */
-import type { ProviderOptionDescriptor } from "@t3tools/contracts";
+import type { ProviderOptionDescriptor, ProviderOptionSelections } from "@t3tools/contracts";
 import {
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
@@ -25,7 +25,10 @@ import {
 import { getProviderModelCapabilities } from "../providerModels";
 
 /** The composer's traits input, as it already hands to the traits picker. */
-export type ComposerModelTraitsInput = Parameters<typeof renderProviderTraitsPicker>[0];
+export type ComposerModelTraitsInput = Parameters<typeof renderProviderTraitsPicker>[0] & {
+  /** Controlled editors persist options on their own draft rather than a conversation. */
+  onModelOptionsChange?: (options: ProviderOptionSelections | undefined) => void;
+};
 
 export type SelectDescriptor = Extract<ProviderOptionDescriptor, { type: "select" }>;
 
@@ -79,10 +82,15 @@ export function effortStopIndex(descriptor: SelectDescriptor, ultrathinkActive: 
 
 export type ComposerModelTraits = ReturnType<typeof resolveComposerModelTraits>;
 
-/** Null when the model has nothing to configure or the composer has no draft to write to. */
+/** Null when the model has nothing to configure or no destination for edited options. */
 export function resolveComposerModelTraits(input: ComposerModelTraitsInput) {
   const { provider, model, models, prompt, planModeEnabled } = input;
-  if (input.threadRef === undefined && input.draftId === undefined) return null;
+  if (
+    input.threadRef === undefined &&
+    input.draftId === undefined &&
+    input.onModelOptionsChange === undefined
+  )
+    return null;
 
   const caps = getProviderModelCapabilities(models, model, provider, planModeEnabled);
   const modelOptions = withImplicitFastModeDefault(caps, input.modelOptions);

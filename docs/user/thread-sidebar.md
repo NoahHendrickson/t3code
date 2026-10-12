@@ -109,6 +109,33 @@ active thread in that project) and **Settings**, and the plus starts a thread in
 
 <!-- fork:end fork-new-agent-draft -->
 
+<!-- fork:begin fork-sidebar-scheduled-row — see .fork/customizations.yaml#fork-sidebar-scheduled-row -->
+
+**Scheduled** below **Usage** opens the Scheduled page: every scheduled task across your projects
+and environments in one list. Open a task to change its trigger, instructions, model, and
+workspace, or switch to **Run history** to see what it did; every run is a thread you can open
+and reply to. **All runs** lists runs from every task, newest first; use **Older** and **Newer**
+to browse the full history. **New task** starts one for any project. Press Escape to return to
+the thread you were on.
+<!-- fork:end fork-sidebar-scheduled-row -->
+
+<!-- fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation -->
+
+To review new GitHub PRs automatically, choose **New task** in Scheduled.
+Name the automation, write your review instructions, select **GitHub PR opened**, and select
+its repositories from your projects. Creating the automation connects those repositories to
+T3 Code. The environment needs T3 Connect remote access and GitHub access with permission to
+manage repository webhooks; the editor links to both settings.
+
+Each newly opened PR starts a separate review of that exact PR and commit in the matching
+repository. Existing PRs and later pushes do not trigger this automation. Run history links
+to the triggering PR. Pause the task to stop reviews, or delete it to disconnect its GitHub
+webhooks. The environment must be running to review; Connections can hold incoming events
+while it is offline. If a review thread appears but its worktree could not be created, retry
+from that thread. If no thread appeared, redeliver the webhook after fixing the cause. Each PR
+event starts at most one review.
+<!-- fork:end fork-github-pr-automation -->
+
 To generate a fresh title from the conversation, open a thread's menu and choose
 **Regenerate title**. The action is unavailable while title generation is in progress
 or when the connected environment needs a server update.

@@ -1,10 +1,13 @@
-import type { ProviderOptionDescriptor } from "@t3tools/contracts";
+import { ProviderDriverKind, type ProviderOptionDescriptor } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
+import { DraftId } from "../composerDraftStore";
 
 import {
   effortStopIndex,
   findEffortDescriptor,
   orderTraitRows,
+  resolveComposerModelTraits,
+  type ComposerModelTraitsInput,
   type SelectDescriptor,
 } from "./composerModelTraits";
 
@@ -21,6 +24,37 @@ const claudeEffort: SelectDescriptor = {
   ],
   promptInjectedValues: ["ultrathink"],
 };
+
+describe("controlled model traits", () => {
+  const input: ComposerModelTraitsInput = {
+    provider: ProviderDriverKind.make("claudeAgent"),
+    model: "test-model",
+    models: [
+      {
+        slug: "test-model",
+        name: "Test model",
+        isCustom: true,
+        capabilities: { optionDescriptors: [claudeEffort] },
+      },
+    ],
+    modelOptions: [{ id: "effort", value: "max" }],
+    prompt: "Review this PR",
+    onPromptChange: () => {},
+    planModeEnabled: false,
+  };
+
+  it("offers the same effort levels and selected value for tasks as conversation drafts", () => {
+    const controlled = resolveComposerModelTraits({ ...input, onModelOptionsChange: () => {} });
+    const composer = resolveComposerModelTraits({ ...input, draftId: DraftId.make("draft") });
+    expect(controlled).not.toBeNull();
+    expect(controlled).toEqual(composer);
+    expect(controlled?.effortDescriptor?.currentValue).toBe("max");
+  });
+
+  it("still hides editable traits without a draft or controlled destination", () => {
+    expect(resolveComposerModelTraits(input)).toBeNull();
+  });
+});
 
 describe("findEffortDescriptor", () => {
   it("finds each provider's effort option, skipping traits that come first", () => {

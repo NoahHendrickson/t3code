@@ -10,6 +10,9 @@ export function isSidebarUtilityPage(pathname: string) {
     pathname.startsWith("/settings/") ||
     pathname.startsWith("/projects/") ||
     pathname === "/usage" ||
+    /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+    pathname === "/scheduled" ||
+    /* fork:end fork-scheduled-page */
     pathname === "/pull-requests"
   );
 }
