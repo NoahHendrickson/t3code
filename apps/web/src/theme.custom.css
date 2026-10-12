@@ -2406,6 +2406,34 @@
   --chat-composer-attachment-overlap: 0px;
 }
 
+/* The collapsed tasks badge is not a shoulder tab here: it is the header row
+   of the open tasks drawer, so it gets the drawer's floor treatment — vessel
+   width, no tuck, no card, the drawer's default density — and toggling only
+   adds or removes the list beneath it. It is only ever shown without a banner
+   card, so it never needs to ride a card's shoulder the way stash does. */
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-slot="composer-banner-attachment"]:has(
+    [data-composer-shoulder-tab] > [data-composer-tasks-badge]
+  ) {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge]) {
+  --chat-composer-attachment-overlap: 0px;
+  --composer-banner-padding-block: calc(var(--spacing) * 1);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge])::before {
+  display: none;
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-slot="composer-banner-peek"] {
