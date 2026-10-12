@@ -3,8 +3,8 @@
  * `.fork/customizations.yaml#fork-model-picker`.
  *
  * Upstream's file with three changes. The Popover shell becomes a Base UI
- * Menu, so the picker can page — providers first, then a provider's models
- * (ModelPickerContent's shadow renders the pages). Non-modal like the popover
+ * Menu, so the picker can page — Favorites or providers, then a provider's
+ * models (ModelPickerContent's shadow renders the pages). Non-modal like the popover
  * it replaces; upstream's own wheel/touch lock below still guards the page.
  * The trigger label drops the provider name ("Opus 5.5", not "Claude Opus
  * 5.5"). The composer's trigger hides the provider icon too, except where its

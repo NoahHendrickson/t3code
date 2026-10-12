@@ -4,7 +4,7 @@
  *
  * Two shadows turn the model picker into a paged menu: ProviderModelPicker
  * swaps upstream's Popover for a Menu, and ModelPickerContent renders the
- * providers first, then a provider's models in place. In the composer,
+ * Favorites or providers page, then a provider's models in place. In the composer,
  * ComposerModelPicker adds the reasoning panel under the pages, replacing the
  * separate traits picker. A sync that deletes either shadow
  * falls back to upstream's rail-and-list popover with no error, and a sync
@@ -145,13 +145,19 @@ describe("fork guard: fork-model-picker", () => {
     expect(content.indexOf('providerId: "favorites"')).toBeLessThan(
       content.indexOf("{providerEntries.map(renderProviderRow)}"),
     );
+    // The menu lands on Favorites when one can be picked, else on providers,
+    // and an empty Favorites page shows providers.
+    expect(content).toMatch(
+      /useState<ModelPickerPage>\(\(\) =>[^;]*\? FAVORITES_PAGE\s*: PROVIDERS_PAGE/u,
+    );
+    expect(content).toContain('storedPage.kind === "favorites" && favoriteModels.length === 0');
     // Legacy models sit one page deeper, not inline.
     expect(content).toContain('target: { kind: "models", instanceId, legacy: true }');
     // A row swaps the page and focuses the search field only later: focusing
     // it from the click races the menu's focus-out check against the removed
     // row and closes the menu.
     expect(content).toMatch(
-      /setPage\(next\);\s*window\.requestAnimationFrame\(focusSearchInput\);\s*window\.setTimeout\(focusSearchInput, 0\);/u,
+      /setStoredPage\(next\);\s*window\.requestAnimationFrame\(focusSearchInput\);\s*window\.setTimeout\(focusSearchInput, 0\);/u,
     );
     // The menu parks focus on the popup after a swap; typing still searches.
     expect(content).toContain("closest<HTMLElement>('[data-slot=\"menu-popup\"]')");

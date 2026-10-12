@@ -5,9 +5,10 @@
  * Same export, same props as upstream, so ProviderModelPicker's import is
  * untouched; the four exported helpers are upstream's verbatim. The render
  * is the fork's: a paged menu. ProviderModelPicker's shadow hosts this in a
- * Base UI Menu; the first page lists a search field, Favorites and one row per
- * provider instance, and clicking a row swaps the page for that provider's
- * models (legacy models one page deeper), led by a back row. Typing anywhere
+ * Base UI Menu; it opens on the Favorites page when there are favorites, whose
+ * back row leads to the providers page: Favorites and one row per provider
+ * instance. Clicking a row swaps the page for that provider's models (legacy
+ * models one page deeper), led by a back row. Typing anywhere
  * lands in the search field, and a query swaps the page for one flat,
  * provider-agnostic list of matching models. Picking a model never closes the
  * menu from here; the host decides, since it may render more below the pages.
@@ -193,6 +194,7 @@ type ModelPickerPage =
   | { readonly kind: "models"; readonly instanceId: ProviderInstanceId; readonly legacy: boolean };
 
 const PROVIDERS_PAGE: ModelPickerPage = { kind: "providers" };
+const FAVORITES_PAGE: ModelPickerPage = { kind: "favorites" };
 
 function parentPage(page: ModelPickerPage): ModelPickerPage {
   return page.kind === "models" && page.legacy ? { ...page, legacy: false } : PROVIDERS_PAGE;
@@ -235,7 +237,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onToggleModel,
   } = props;
   const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState<ModelPickerPage>(PROVIDERS_PAGE);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const favorites = useClientSettings((s) => s.favorites ?? []);
@@ -411,6 +412,19 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     [favoritesSet, flatModels, instanceOrder, matchesLockedProvider],
   );
 
+  // The menu remounts on every open and lands once: on Favorites when one can
+  // be picked, else on the providers page. Favorites that load after the open
+  // join the providers page's Favorites row rather than swapping the page.
+  const [storedPage, setStoredPage] = useState<ModelPickerPage>(() =>
+    favoriteModels.some((model) => !getModelDisabledReason?.(model.instanceId, model.slug))
+      ? FAVORITES_PAGE
+      : PROVIDERS_PAGE,
+  );
+  // An empty Favorites page shows the providers page instead: the last star
+  // removed, or its providers gone.
+  const page =
+    storedPage.kind === "favorites" && favoriteModels.length === 0 ? PROVIDERS_PAGE : storedPage;
+
   const modelsForInstance = useCallback(
     (instanceId: ProviderInstanceId) => {
       const models = sortProviderModelItems(
@@ -502,7 +516,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   // and that check have both run.
   const openPage = useCallback(
     (next: ModelPickerPage) => {
-      setPage(next);
+      setStoredPage(next);
       window.requestAnimationFrame(focusSearchInput);
       window.setTimeout(focusSearchInput, 0);
     },
@@ -546,9 +560,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       if (next === "favorites" && favoriteModels.length === 0) return;
       setSearchQuery("");
       openPage(
-        next === "favorites"
-          ? { kind: "favorites" }
-          : { kind: "models", instanceId: next, legacy: false },
+        next === "favorites" ? FAVORITES_PAGE : { kind: "models", instanceId: next, legacy: false },
       );
     },
     [
@@ -1003,7 +1015,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           ? renderPageLink({
               key: "favorites",
               providerId: "favorites",
-              target: { kind: "favorites" },
+              target: FAVORITES_PAGE,
               label: (
                 <>
                   {favoritesIcon}
