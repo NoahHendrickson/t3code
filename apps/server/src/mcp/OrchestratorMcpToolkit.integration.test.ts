@@ -509,6 +509,9 @@ const layerUnusedScheduledTaskStub = Layer.succeed(
     rotateWebhookToken: () => Effect.die("unused in this test"),
     listWebhookDeliveries: () => Effect.die("unused in this test"),
     getWebhookDelivery: () => Effect.die("unused in this test"),
+    /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+    listRuns: () => Effect.die("unused in this test"),
+    /* fork:end fork-scheduled-page */
     triggerWebhook: () => Effect.die("unused in this test"),
   }),
 );
@@ -670,6 +673,9 @@ describe("orchestrator MCP toolkit", () => {
               rotateWebhookToken: () => Effect.die("unused in this test"),
               listWebhookDeliveries: () => Effect.die("unused in this test"),
               getWebhookDelivery: () => Effect.die("unused in this test"),
+              /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+              listRuns: () => Effect.die("unused in this test"),
+              /* fork:end fork-scheduled-page */
               triggerWebhook: () => Effect.die("unused in this test"),
             }),
           );

@@ -57,9 +57,16 @@ export * from "./previewAutomation.ts";
 export * from "./resourceTelemetry.ts";
 export * from "./usage.ts";
 export * from "./scheduledTask.ts";
+/* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+export * from "./scheduledTaskRuns.ts";
+/* fork:end fork-scheduled-page */
 export * from "./worktreeMcp.ts";
 export * from "./resourceTelemetry.ts";
 export * from "./rpc.ts";
 export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
 export * from "./clientRpcPermissions.ts";
+
+/* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+export * from "./githubPrAutomation.ts";
+/* fork:end fork-github-pr-automation */

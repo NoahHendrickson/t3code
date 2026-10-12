@@ -67,11 +67,9 @@ export interface DraftState {
   /** Not editable in the dialog, but preserved so editing an agent-created task keeps its modes. */
   readonly runtimeMode: RuntimeMode;
   readonly interactionMode: ProviderInteractionMode;
-  /**
-   * The task's original model selection. The picker only edits
-   * `instanceId:model`; keeping the source object preserves provider options
-   * (reasoning, temperature, …) when the model itself is left unchanged.
-   */
+  /* fork:begin fork-scheduled-task-effort — see .fork/customizations.yaml#fork-scheduled-task-effort */
+  /** Saved or edited provider options, retained while the model and instance match. */
+  /* fork:end fork-scheduled-task-effort */
   readonly baseModelSelection: ModelSelection | null;
   readonly signatureEnabled: boolean;
   readonly signatureHeader: string;

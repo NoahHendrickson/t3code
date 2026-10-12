@@ -1,3 +1,6 @@
+/* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+import * as GitHubPrAutomation from "../scheduledTasks/GitHubPrAutomation.ts";
+/* fork:end fork-github-pr-automation */
 import * as UsageLimitRecoveryWorker from "./UsageLimitRecoveryWorker.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as Layer from "effect/Layer";
@@ -276,6 +279,9 @@ const layerSecretRequestsProvided = SecretRequests.layer.pipe(
   Layer.provide(layerThreadManagementProvided),
 );
 const layerScheduledTaskProvided = ScheduledTaskService.layer.pipe(
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  Layer.provide(GitHubPrAutomation.layer),
+  /* fork:end fork-github-pr-automation */
   Layer.provide(
     Layer.mergeAll(
       layerThreadLaunchProvided,

@@ -620,6 +620,15 @@
   background: none;
 }
 
+/* The Scheduled page's cards (custom/scheduled/scheduledPageChrome.tsx) paint
+   `bg-card/30`, an alpha of the opaque cool #1c1f22 that the exact-class wash
+   below cannot see, so each read as a cooler, darker patch of missing
+   wallpaper. Same 5% wash as the changed-files card; nothing nests in them. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-scheduled-card] {
+  background-color: rgb(255 255 255 / 5%);
+}
+
 /* The user's sent bubble shares the card's fill (theme.custom.css paints
    `.bg-message` from --card, the same rung the card sits on). Under glass
    --card is the 73% slab, so the bubble follows the card onto the 5% wash or

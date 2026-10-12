@@ -1,3 +1,10 @@
+/* fork:begin fork-scheduled-task-effort — see .fork/customizations.yaml#fork-scheduled-task-effort */
+import { ScheduledTaskModelPicker } from "~/custom/scheduled/ScheduledTaskModelPicker";
+import { scheduledTaskModelSelection } from "~/custom/scheduled/scheduledTaskModel.logic";
+/* fork:end fork-scheduled-task-effort */
+/* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+import { useNavigate } from "@tanstack/react-router";
+/* fork:end fork-github-pr-automation */
 import { useAtomValue } from "@effect/atom-react";
 import {
   Clock3Icon,
@@ -76,7 +83,6 @@ import { Label } from "../ui/label";
 import { Menu, MenuTrigger, MenuPopup, MenuItem, MenuSeparator } from "../ui/menu";
 import { ToggleGroup, Toggle } from "../ui/toggle-group";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "../ui/empty";
-import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -173,7 +179,9 @@ function splitModelKey(value: string): ModelSelection | null {
 }
 
 export function scheduleLabel(schedule: ScheduledTaskSchedule): string {
-  if (schedule.type === "webhook") return "On webhook";
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  if (schedule.type === "webhook") return schedule.github ? "GitHub PR opened" : "On webhook";
+  /* fork:end fork-github-pr-automation */
   if (schedule.type === "interval") {
     const minutes = schedule.everyMs / 60_000;
     return Number.isInteger(minutes)
@@ -218,6 +226,9 @@ const DELIVERY_OUTCOME_LABELS: Record<ScheduledTaskWebhookDeliveryOutcome, strin
   disabled: "Task paused",
   rate_limited: "Rate limited",
   expired: "Too old",
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  ignored: "Not a new PR",
+  /* fork:end fork-github-pr-automation */
 };
 
 function deliveryOutcomeVariant(outcome: ScheduledTaskWebhookDeliveryOutcome) {
@@ -244,9 +255,19 @@ export function ScheduledTasksSettings(target: {
     environmentId: EnvironmentId;
     task: ScheduledTask | null;
   } | null>(null);
-  const openForEdit = useCallback((environmentId: EnvironmentId, task: ScheduledTask) => {
-    setEditor({ environmentId, task });
-  }, []);
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  const navigate = useNavigate();
+  const openForEdit = useCallback(
+    (environmentId: EnvironmentId, task: ScheduledTask) => {
+      if (task.schedule.type === "webhook" && task.schedule.github) {
+        void navigate({ to: "/scheduled", search: { env: environmentId, task: task.id } });
+        return;
+      }
+      setEditor({ environmentId, task });
+    },
+    [navigate],
+  );
+  /* fork:end fork-github-pr-automation */
   const defaultEnvironment = environment ?? connectedEnvironments[0];
   const canCreate = useAtomValue(
     serverEnvironment.upsertScheduledTask.permissionAtom(defaultEnvironment?.environmentId ?? null),
@@ -261,9 +282,15 @@ export function ScheduledTasksSettings(target: {
             size="xs"
             variant="ghost-muted"
             disabled={!defaultEnvironment || !canCreate}
-            onClick={() =>
-              defaultEnvironment &&
-              setEditor({ environmentId: defaultEnvironment.environmentId, task: null })
+            onClick={
+              () =>
+                defaultEnvironment &&
+                /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+                void navigate({
+                  to: "/scheduled",
+                  search: { env: defaultEnvironment.environmentId, task: "new" },
+                })
+              /* fork:end fork-github-pr-automation */
             }
           >
             <PlusIcon className="size-3" />
@@ -831,9 +858,14 @@ function ScheduledTaskEditorDialog({
   // The real model picker is keyed by a `${instanceId}:${model}` string, which
   // is exactly how the draft stores its selection.
   const firstInstance = instanceEntries[0];
-  const activeSelection = draft.modelKey
-    ? splitModelKey(draft.modelKey)
-    : scheduledTaskDefaultModel(settings, selectedProject ?? null, instanceEntries);
+  /* fork:begin fork-scheduled-task-effort — see .fork/customizations.yaml#fork-scheduled-task-effort */
+  const activeSelection = scheduledTaskModelSelection(
+    draft.modelKey
+      ? splitModelKey(draft.modelKey)
+      : scheduledTaskDefaultModel(settings, selectedProject ?? null, instanceEntries),
+    draft.baseModelSelection,
+  );
+  /* fork:end fork-scheduled-task-effort */
   const activeInstanceId =
     activeSelection?.instanceId ?? firstInstance?.instanceId ?? ("" as ProviderInstanceId);
   const activeModel = activeSelection?.model ?? "";
@@ -1120,21 +1152,43 @@ function ScheduledTaskEditorDialog({
               />
             </Field>
 
-            <Field label="Model">
-              <ProviderModelPicker
-                disabled={saving || !connected}
-                activeInstanceId={activeInstanceId}
-                model={activeModel}
-                lockedProvider={null}
-                instanceEntries={instanceEntries}
-                modelOptionsByInstance={modelOptionsByInstance}
-                isComposerOwned={false}
-                triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
-                onInstanceModelChange={(instanceId, model) =>
-                  setDraft((current) => ({ ...current, modelKey: `${instanceId}:${model}` }))
-                }
-              />
+            {/* fork:begin fork-scheduled-task-effort — see .fork/customizations.yaml#fork-scheduled-task-effort */}
+            <Field label="Model and effort">
+              <div className="flex flex-wrap items-center gap-2">
+                <ScheduledTaskModelPicker
+                  disabled={saving || !connected}
+                  activeInstanceId={activeInstanceId}
+                  model={activeModel}
+                  lockedProvider={null}
+                  instanceEntries={instanceEntries}
+                  modelOptionsByInstance={modelOptionsByInstance}
+                  isComposerOwned={false}
+                  triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
+                  onInstanceModelChange={(instanceId, model) =>
+                    setDraft((current) => ({
+                      ...current,
+                      modelKey: `${instanceId}:${model}`,
+                      baseModelSelection:
+                        instanceId === activeSelection?.instanceId &&
+                        model === activeSelection.model
+                          ? activeSelection
+                          : null,
+                    }))
+                  }
+                  selection={activeSelection}
+                  prompt={draft.prompt}
+                  onPromptChange={(prompt) => setDraft((current) => ({ ...current, prompt }))}
+                  onSelectionChange={(selection) =>
+                    setDraft((current) => ({
+                      ...current,
+                      modelKey: `${selection.instanceId}:${selection.model}`,
+                      baseModelSelection: selection,
+                    }))
+                  }
+                />
+              </div>
             </Field>
+            {/* fork:end fork-scheduled-task-effort */}
 
             <div className="space-y-3">
               {task?.schedule.type === "interval" &&

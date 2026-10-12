@@ -40,6 +40,10 @@ import * as Semaphore from "effect/Semaphore";
 import * as Stream from "effect/Stream";
 import * as SqlClient from "effect/sql/SqlClient";
 
+/* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+import * as GitHubPrAutomation from "./GitHubPrAutomation.ts";
+import { githubPrTrigger, type GitHubPrTrigger } from "./githubPrTrigger.ts";
+/* fork:end fork-github-pr-automation */
 import * as ThreadLaunchService from "../orchestration-v2/ThreadLaunchService.ts";
 import * as Metrics from "../observability/Metrics.ts";
 import * as ThreadManagementService from "../orchestration-v2/ThreadManagementService.ts";
@@ -53,6 +57,10 @@ import {
   type WebhookRequest,
 } from "./webhookTemplate.ts";
 import { constantTimeEquals, verifyWebhookSignature } from "./webhookVerification.ts";
+/* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+import type { ScheduledTaskListRunsInput, ScheduledTaskListRunsResult } from "@t3tools/contracts";
+import { listScheduledTaskRuns } from "./forkScheduledTaskRuns.ts";
+/* fork:end fork-scheduled-page */
 
 /** Path prefix of the environment route that receives webhook requests. */
 export const WEBHOOK_ROUTE_PREFIX = "/api/hooks";
@@ -131,6 +139,9 @@ export type WebhookDeliveryOutcome =
   | "accepted"
   | "duplicate"
   | "prompt_too_long"
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+  | "ignored"
+  /* fork:end fork-github-pr-automation */
   | "queue_full"
   | "rate_limited"
   | "disabled"
@@ -144,7 +155,9 @@ export type WebhookTriggerResult =
       readonly _tag: "accepted";
       readonly deliveryId: ScheduledTaskWebhookDeliveryId;
       /** A 202 covers more than a started run; this says which. */
-      readonly outcome: "accepted" | "duplicate" | "prompt_too_long";
+      /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+      readonly outcome: "accepted" | "duplicate" | "prompt_too_long" | "ignored";
+      /* fork:end fork-github-pr-automation */
     }
   | { readonly _tag: "not_found" }
   | { readonly _tag: "rejected_signature" }
@@ -245,6 +258,12 @@ export class ScheduledTaskService extends Context.Service<
     readonly getWebhookDelivery: (
       input: ScheduledTaskGetWebhookDeliveryInput,
     ) => Effect.Effect<ScheduledTaskGetWebhookDeliveryResult, ScheduledTaskError>;
+    /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+    /** Runs a task (or every task) dispatched, derived from the V2 projections. */
+    readonly listRuns: (
+      input: ScheduledTaskListRunsInput,
+    ) => Effect.Effect<ScheduledTaskListRunsResult, ScheduledTaskError>;
+    /* fork:end fork-scheduled-page */
     /**
      * Verifies, logs and dispatches one webhook request. Returns as soon as the
      * delivery is logged; the run itself continues in the background so senders
@@ -307,6 +326,19 @@ function webhookEndpoint(
     hasSecret: row.webhook_secret !== null,
   };
 }
+
+/* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+function sameProjects(
+  a: ReadonlyArray<{ readonly projectId: string }>,
+  b: ReadonlyArray<{ readonly projectId: string }>,
+): boolean {
+  const ids = new Set(a.map((entry) => entry.projectId));
+  return (
+    ids.size === new Set(b.map((entry) => entry.projectId)).size &&
+    b.every((entry) => ids.has(entry.projectId))
+  );
+}
+/* fork:end fork-github-pr-automation */
 
 const decodeRow = (row: ScheduledTaskRow, origin: WebhookOrigin | null = null) =>
   Effect.gen(function* () {
@@ -397,6 +429,39 @@ export const layer = Layer.effect(
     const secretRequests = yield* SecretRequests.SecretRequests;
     const scheduler = yield* Scheduler.Scheduler;
     const readWebhookOrigin = yield* ScheduledTaskWebhookOrigin;
+    /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+    // Timer-only embeddings need no GitHub credentials or network services.
+    const githubAutomation = yield* Effect.serviceOption(GitHubPrAutomation.GitHubPrAutomation);
+    const githubService = Effect.gen(function* () {
+      if (Option.isNone(githubAutomation))
+        return yield* taskError("GitHub automations are unavailable in this environment.");
+      return githubAutomation.value;
+    });
+    const mutationPermit = yield* Semaphore.make(1);
+    // A claim is final only once the initial message has a durable receipt.
+    // This also repairs claims left behind by a crash before dispatch, including
+    // claims made by older builds. Accepted receipts survive thread deletion.
+    const releaseUndispatchedGithubClaims = (deliveryId?: string) =>
+      sql`
+        DELETE FROM scheduled_task_webhook_relay_deliveries
+        WHERE relay_delivery_id LIKE 'delivery:github:%'
+          AND ${deliveryId === undefined ? sql`1 = 1` : sql`relay_delivery_id = ${deliveryId}`}
+          AND NOT EXISTS (
+            SELECT 1 FROM orchestration_command_receipts AS receipt
+            WHERE receipt.command_id = 'scheduled-task:' || task_id || ':webhook:' ||
+              relay_delivery_id || ':initial-message'
+              AND receipt.status = 'accepted'
+          )
+      `.pipe(
+        Effect.mapError((cause) => taskError("Could not recover GitHub deliveries.", { cause })),
+      );
+    // Best-effort at startup: a busy database must not keep the service from building.
+    yield* releaseUndispatchedGithubClaims().pipe(
+      Effect.catch((cause) =>
+        Effect.logWarning("Could not recover GitHub deliveries at startup", { cause }),
+      ),
+    );
+    /* fork:end fork-github-pr-automation */
     // Webhook deliveries for one task dispatch in arrival order rather than
     // being dropped while an earlier delivery is still dispatching.
     const webhookPermits = yield* Ref.make<ReadonlyMap<ScheduledTaskId, Semaphore.Semaphore>>(
@@ -619,6 +684,11 @@ export const layer = Layer.effect(
       sql
         .withTransaction(
           sql`DELETE FROM scheduled_task_webhook_deliveries WHERE task_id = ${id}`.pipe(
+            /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            Effect.andThen(
+              sql`DELETE FROM scheduled_task_webhook_relay_deliveries WHERE task_id = ${id} AND relay_delivery_id LIKE 'delivery:github:%'`,
+            ),
+            /* fork:end fork-github-pr-automation */
             Effect.andThen(sql`DELETE FROM scheduled_tasks WHERE task_id = ${id}`),
           ),
         )
@@ -710,7 +780,13 @@ export const layer = Layer.effect(
     const runTask = Effect.fn("ScheduledTaskService.runTask")(function* (
       task: ScheduledTask,
       trigger: "scheduled" | "manual" | "webhook",
-      webhook?: { readonly deliveryId: string; readonly prompt: string },
+      /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+      webhook?: {
+        readonly deliveryId: string;
+        readonly prompt: string;
+        readonly github?: GitHubPrTrigger | undefined;
+      },
+      /* fork:end fork-github-pr-automation */
     ) {
       const reserved = yield* Ref.modify(activeRuns, (active) => {
         if (active.has(task.id)) return [false, active] as const;
@@ -773,6 +849,21 @@ export const layer = Layer.effect(
           if (reason !== null) return yield* new WebhookDeliverySkipped({ reason });
         }
 
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        if (
+          webhook?.github !== undefined &&
+          (active.schedule.type !== "webhook" ||
+            !active.schedule.github?.repositories.some(
+              (repository) =>
+                repository.projectId === webhook.github?.projectId &&
+                webhook.github.label.startsWith(repository.nameWithOwner + " #"),
+            ))
+        ) {
+          return yield* new WebhookDeliverySkipped({
+            reason: "The repository was removed before this review started.",
+          });
+        }
+        /* fork:end fork-github-pr-automation */
         yield* markRunning(active.id, startedAtIso);
         yield* notifyChanged;
 
@@ -793,16 +884,26 @@ export const layer = Layer.effect(
         // dispatch are also captured and recorded as a failed run instead of
         // aborting before markCompleted.
         const result =
-          active.threadId === null
-            ? yield* Effect.exit(
+          /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+          webhook?.github !== undefined || active.threadId === null
+            ? /* fork:end fork-github-pr-automation */
+              yield* Effect.exit(
                 threadLaunch.launch({
                   commandId,
-                  projectId: active.projectId,
-                  title: active.title,
+                  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+                  projectId: webhook?.github?.projectId ?? active.projectId,
+                  title: webhook?.github
+                    ? `${active.title} · ${webhook.github.label}`
+                    : active.title,
+                  /* fork:end fork-github-pr-automation */
                   modelSelection: active.modelSelection,
                   runtimeMode: active.runtimeMode,
                   interactionMode: active.interactionMode,
-                  workspaceStrategy: active.workspaceStrategy,
+                  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+                  workspaceStrategy: webhook?.github
+                    ? { type: "worktree", baseRef: webhook.github.baseRef, startFromOrigin: true }
+                    : active.workspaceStrategy,
+                  /* fork:end fork-github-pr-automation */
                   initialMessage: {
                     messageId,
                     scheduledTaskId: active.id,
@@ -1021,7 +1122,8 @@ export const layer = Layer.effect(
         // Keep the existing next_run_at when the schedule itself is untouched:
         // editing a title or prompt must not postpone (or resurrect) a due
         // run — only schedule/enabled changes restart the clock.
-        const schedule: ScheduledTask["schedule"] =
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        let schedule: ScheduledTask["schedule"] =
           input.schedule.type === "webhook"
             ? {
                 type: "webhook",
@@ -1036,7 +1138,9 @@ export const layer = Layer.effect(
                 maxDeliveryAgeMinutes: input.schedule.maxDeliveryAgeMinutes ?? null,
               }
             : input.schedule;
-        const webhook =
+        /* fork:end fork-github-pr-automation */
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        let webhook =
           input.schedule.type === "webhook"
             ? yield* Effect.gen(function* () {
                 const existing = existingTask === null ? null : yield* findWebhookCredentials(id);
@@ -1074,6 +1178,53 @@ export const layer = Layer.effect(
                 return { token, secret, secretChanged };
               })
             : { token: null, secret: null, secretChanged: true };
+        /* fork:end fork-github-pr-automation */
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        if (input.requireExisting && existingTask === null)
+          return yield* taskError("Schedule task not found.", { taskId: id });
+        const previousGithub =
+          existingTask?.schedule.type === "webhook" ? existingTask.schedule.github : null;
+        const github =
+          input.schedule.type === "webhook"
+            ? input.schedule.github === undefined
+              ? previousGithub
+              : input.schedule.github
+            : null;
+        if (github && schedule.type === "webhook") {
+          const token = webhook.token ?? (yield* newWebhookToken);
+          const savedCredentials = existingTask ? yield* findWebhookCredentials(id) : null;
+          const savedSecret = savedCredentials?.secret ?? null;
+          // An edit that keeps the same projects keeps the hooks it already has,
+          // so renaming or re-prompting never needs GitHub or T3 Connect.
+          const keepHooks =
+            previousGithub != null &&
+            savedSecret !== null &&
+            previousGithub.repositories.every((repository) => repository.hookId !== undefined) &&
+            sameProjects(previousGithub.repositories, github.repositories);
+          const secret = savedSecret ?? (yield* newWebhookToken);
+          const repositories = keepHooks
+            ? previousGithub.repositories
+            : yield* Effect.gen(function* () {
+                const service = yield* githubService;
+                const origin = yield* readWebhookOrigin;
+                if (!origin.relayHookBaseUrl)
+                  return yield* taskError(
+                    "Enable T3 Connect in Settings → Connections before connecting a GitHub automation.",
+                  );
+                return yield* service.connect({
+                  projectIds: github.repositories.map((repository) => repository.projectId),
+                  url: `${origin.relayHookBaseUrl}/${encodeURIComponent(id)}/${token}`,
+                  secret,
+                });
+              });
+          schedule = {
+            ...schedule,
+            signature: { header: "x-hub-signature-256", encoding: "hex", prefix: "sha256=" },
+            github: { repositories },
+          };
+          webhook = { token, secret, secretChanged: !keepHooks };
+        }
+        /* fork:end fork-github-pr-automation */
         const scheduleUnchanged =
           existingTask !== null &&
           existingTask.enabled === input.enabled &&
@@ -1084,8 +1235,13 @@ export const layer = Layer.effect(
           prompt: input.prompt,
           enabled: input.enabled,
           schedule,
-          projectId: input.projectId,
-          threadId: input.threadId ?? null,
+          /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+          projectId:
+            schedule.type === "webhook"
+              ? (schedule.github?.repositories[0]?.projectId ?? input.projectId)
+              : input.projectId,
+          threadId: github ? null : (input.threadId ?? null),
+          /* fork:end fork-github-pr-automation */
           workspaceStrategy: input.workspaceStrategy,
           modelSelection: input.modelSelection,
           runtimeMode: input.runtimeMode,
@@ -1102,7 +1258,48 @@ export const layer = Layer.effect(
           lastRunError: existingTask?.lastRunError ?? null,
           runCount: existingTask?.runCount ?? 0,
         };
-        yield* saveTask(task, input.requireExisting === true, webhook);
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        yield* saveTask(task, input.requireExisting === true, webhook).pipe(
+          Effect.onError(() => {
+            if (schedule.type !== "webhook" || !schedule.github) return Effect.void;
+            const created = schedule.github.repositories.filter(
+              (next) =>
+                !previousGithub?.repositories.some(
+                  (previous) =>
+                    previous.nameWithOwner === next.nameWithOwner &&
+                    previous.hookId === next.hookId,
+                ),
+            );
+            return githubService.pipe(
+              Effect.flatMap((service) => service.remove(created)),
+              Effect.ignore,
+            );
+          }),
+        );
+        // Hooks of dropped repositories go only after the save commits, so a
+        // failed save never leaves the task listing hooks that are gone.
+        if (previousGithub) {
+          const nextRepositories =
+            schedule.type === "webhook" ? (schedule.github?.repositories ?? []) : [];
+          const removed = previousGithub.repositories.filter(
+            (previous) =>
+              !nextRepositories.some(
+                (next) =>
+                  next.nameWithOwner === previous.nameWithOwner && next.hookId === previous.hookId,
+              ),
+          );
+          if (removed.length)
+            yield* githubService.pipe(
+              Effect.flatMap((service) => service.remove(removed)),
+              Effect.catch((cause) =>
+                Effect.logWarning("Could not remove GitHub webhooks dropped from a task", {
+                  taskId: id,
+                  cause,
+                }),
+              ),
+            );
+        }
+        /* fork:end fork-github-pr-automation */
         yield* notifyChanged;
         return { task: (yield* findTask(id)) ?? task };
       });
@@ -1137,7 +1334,26 @@ export const layer = Layer.effect(
       });
 
     const deleteTask: ScheduledTaskService["Service"]["delete"] = (input) =>
-      deleteRow(input.id).pipe(
+      /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+      Effect.gen(function* () {
+        const existing = yield* findTask(input.id);
+        yield* deleteRow(input.id);
+        // Deleting never depends on GitHub: a revoked token or lost hook access
+        // must not strand the task. A hook left behind only reaches a dead URL.
+        if (existing?.schedule.type === "webhook" && existing.schedule.github) {
+          const repositories = existing.schedule.github.repositories;
+          yield* githubService.pipe(
+            Effect.flatMap((service) => service.remove(repositories)),
+            Effect.catch((cause) =>
+              Effect.logWarning("Could not remove GitHub webhooks of a deleted task", {
+                taskId: input.id,
+                cause,
+              }),
+            ),
+          );
+        }
+      }).pipe(
+        /* fork:end fork-github-pr-automation */
         Effect.andThen(
           Effect.all([
             Ref.update(webhookRateWindows, (windows) => {
@@ -1179,6 +1395,12 @@ export const layer = Layer.effect(
         if (task.schedule.type !== "webhook") {
           return yield* taskError("Only webhook tasks have a URL token.", { taskId: input.id });
         }
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        if (task.schedule.github)
+          return yield* taskError(
+            "GitHub manages this connection. Delete the automation to disconnect it.",
+          );
+        /* fork:end fork-github-pr-automation */
         const token = yield* newWebhookToken;
         const now = yield* localNow;
         // Matching created_at keeps a rotation from landing on a task deleted
@@ -1455,13 +1677,35 @@ export const layer = Layer.effect(
               );
         const observe = (outcome: WebhookDeliveryOutcome) =>
           observeDelivery(request, outcome, receivedAt, now);
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        const githubEvent = schedule.github ? githubPrTrigger(schedule.github, request) : null;
+        /* fork:end fork-github-pr-automation */
         const deliveryId = ScheduledTaskWebhookDeliveryId.make(
-          request.relayDeliveryId === undefined
-            ? `delivery:${yield* crypto.randomUUIDv4.pipe(
-                Effect.mapError((cause) => taskError("Could not generate delivery id.", { cause })),
-              )}`
-            : `delivery:relay:${request.relayDeliveryId}`,
+          /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+          githubEvent
+            ? `delivery:github:${task.id}:${githubEvent.eventKey}`
+            : request.relayDeliveryId === undefined
+              ? `delivery:${yield* crypto.randomUUIDv4.pipe(
+                  Effect.mapError((cause) =>
+                    taskError("Could not generate delivery id.", { cause }),
+                  ),
+                )}`
+              : `delivery:relay:${request.relayDeliveryId}`,
+          /* fork:end fork-github-pr-automation */
         );
+        /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+        // Hooks receive every pull_request action. Anything but a new PR is
+        // answered before the rate limit and never logged, so pushes and label
+        // edits cannot crowd out the opened event or the real deliveries.
+        if (schedule.github && githubEvent === null) {
+          yield* observeDelivery(request, "ignored", undefined, undefined);
+          return {
+            _tag: "accepted" as const,
+            deliveryId,
+            outcome: "ignored" as const,
+          };
+        }
+        /* fork:end fork-github-pr-automation */
         // A held request may already have reached this environment directly
         // before a timeout; it runs once. Claimed in its own table, kept longer
         // than the relay holds a request, because the delivery log is trimmed.
@@ -1480,7 +1724,11 @@ export const layer = Layer.effect(
         // that is never released. Everything in here is local and quick.
         return yield* Effect.uninterruptible(
           Effect.gen(function* () {
-            if (request.relayDeliveryId !== undefined) {
+            /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            // GitHub's event key covers both direct and relay delivery. A separate
+            // relay claim would suppress retries after a failed GitHub dispatch.
+            if (request.relayDeliveryId !== undefined && githubEvent === null) {
+              /* fork:end fork-github-pr-automation */
               const claimed = yield* sql<{ relay_delivery_id: string }>`
                 INSERT INTO scheduled_task_webhook_relay_deliveries
                   (relay_delivery_id, task_id, seen_at)
@@ -1501,6 +1749,9 @@ export const layer = Layer.effect(
               yield* sql`
                 DELETE FROM scheduled_task_webhook_relay_deliveries
                 WHERE seen_at < ${iso(DateTime.subtract(now, { hours: 48 }))}
+                  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+                  AND relay_delivery_id NOT LIKE 'delivery:github:%'
+                  /* fork:end fork-github-pr-automation */
               `.pipe(Effect.ignore);
             }
             const log = (
@@ -1567,7 +1818,12 @@ export const layer = Layer.effect(
               return { _tag: "expired" as const };
             }
 
-            const rendered = renderWebhookPrompt(task.prompt, request);
+            /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            const github = githubEvent;
+            const rendered = github
+              ? { prompt: `${github.context}\n\nReview instructions:\n${task.prompt}`, missing: [] }
+              : renderWebhookPrompt(task.prompt, request);
+            /* fork:end fork-github-pr-automation */
             // A provider refuses a turn this long, so it is not started. The
             // delivery is not retryable, so the claim is kept. Providers trim
             // the prompt before checking, so whitespace around it is free.
@@ -1608,11 +1864,47 @@ export const layer = Layer.effect(
               else next.set(queueKey, count);
               return next;
             });
+            /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            let claimedGithub = false;
+            // Claims are made only after signature verification and queue reservation.
+            // A stable event key also deduplicates direct and relay delivery of the same PR.
+            if (github) {
+              const claimId = deliveryId;
+              const claimed = yield* sql<{ relay_delivery_id: string }>`
+                INSERT INTO scheduled_task_webhook_relay_deliveries (relay_delivery_id, task_id, seen_at)
+                VALUES (${claimId}, ${task.id}, ${iso(now)})
+                ON CONFLICT (relay_delivery_id) DO NOTHING RETURNING relay_delivery_id
+              `.pipe(
+                Effect.mapError((cause) =>
+                  taskError("Could not record GitHub delivery.", { cause }),
+                ),
+                Effect.onError(() => release),
+              );
+              if (claimed.length === 0) {
+                yield* release;
+                yield* observe("duplicate");
+                return { _tag: "accepted" as const, deliveryId, outcome: "duplicate" as const };
+              }
+              claimedGithub = true;
+            }
+            /* fork:end fork-github-pr-automation */
             yield* log("accepted", {
               signatureVerified: signature !== null,
               missing: rendered.missing,
               renderedPrompt: rendered.prompt,
-            }).pipe(Effect.onError(() => release));
+              /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            }).pipe(
+              Effect.onError(() =>
+                Effect.gen(function* () {
+                  yield* release;
+                  if (claimedGithub)
+                    yield* sql`DELETE FROM scheduled_task_webhook_relay_deliveries WHERE relay_delivery_id = ${deliveryId}`.pipe(
+                      Effect.ignore,
+                    );
+                }),
+              ),
+            );
+            /* fork:end fork-github-pr-automation */
             yield* observe("accepted");
             const permit = yield* webhookPermit(task.id);
             const runOutcome = (outcome: "started" | "skipped" | "failed") =>
@@ -1620,7 +1912,19 @@ export const layer = Layer.effect(
                 Effect.annotateCurrentSpan({ "scheduled_task.webhook.run_outcome": outcome }),
                 Metrics.increment(Metrics.webhookRunsTotal, { outcome }),
               ]);
-            yield* runTask(task, "webhook", { deliveryId, prompt: rendered.prompt }).pipe(
+            /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            let dispatched = false;
+            yield* runTask(task, "webhook", {
+              deliveryId,
+              prompt: rendered.prompt,
+              github: github ?? undefined,
+            }).pipe(
+              Effect.tap((completed) =>
+                Effect.sync(() => {
+                  dispatched = completed.lastRunStatus === "succeeded";
+                }),
+              ),
+              /* fork:end fork-github-pr-automation */
               Effect.flatMap((completed) =>
                 completed.lastRunStatus === "failed"
                   ? runOutcome("failed").pipe(
@@ -1642,6 +1946,19 @@ export const layer = Layer.effect(
                   Effect.andThen(markDeliveryFailed(deliveryId, "The run failed to start.")),
                 ),
               ),
+              /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+              Effect.ensuring(
+                Effect.suspend(() =>
+                  github && !dispatched
+                    ? releaseUndispatchedGithubClaims(deliveryId).pipe(
+                        Effect.catch((cause) =>
+                          Effect.logWarning("Could not release GitHub delivery", { cause }),
+                        ),
+                      )
+                    : Effect.void,
+                ),
+              ),
+              /* fork:end fork-github-pr-automation */
               permit.withPermits(1),
               // Its own trace: the request that triggered it has already been answered.
               Effect.withSpan("ScheduledTaskService.runWebhookDelivery", {
@@ -1662,13 +1979,20 @@ export const layer = Layer.effect(
     return ScheduledTaskService.of({
       list,
       subscribeList,
-      upsert,
-      setEnabled,
-      delete: deleteTask,
+      /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+      upsert: (input) => upsert(input).pipe(mutationPermit.withPermits(1)),
+      setEnabled: (input) => setEnabled(input).pipe(mutationPermit.withPermits(1)),
+      delete: (input) => deleteTask(input).pipe(mutationPermit.withPermits(1)),
+      /* fork:end fork-github-pr-automation */
       runNow,
-      rotateWebhookToken,
+      /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+      rotateWebhookToken: (input) => rotateWebhookToken(input).pipe(mutationPermit.withPermits(1)),
+      /* fork:end fork-github-pr-automation */
       listWebhookDeliveries,
       getWebhookDelivery,
+      /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+      listRuns: (input) => listScheduledTaskRuns(sql, input),
+      /* fork:end fork-scheduled-page */
       triggerWebhook,
     });
   }),

@@ -2056,6 +2056,13 @@ const layerWsRpc = (
           Effect.annotateCurrentSpan({ "scheduled_task.id": input.id }).pipe(
             Effect.andThen(scheduledTasks.getWebhookDelivery(input)),
           ),
+        /* fork:begin fork-scheduled-page — see .fork/customizations.yaml#fork-scheduled-page */
+        [WS_METHODS.scheduledTasksListRuns]: (input) =>
+          (input.id === undefined
+            ? Effect.void
+            : Effect.annotateCurrentSpan({ "scheduled_task.id": input.id })
+          ).pipe(Effect.andThen(scheduledTasks.listRuns(input))),
+        /* fork:end fork-scheduled-page */
         [WS_METHODS.serverProbe]: (_input) => Effect.succeed({}),
         [WS_METHODS.serverGetConfig]: (_input) => loadServerConfig({ usageLimitsCommand: false }),
         [WS_METHODS.serverSearchAcpRegistry]: (input) =>

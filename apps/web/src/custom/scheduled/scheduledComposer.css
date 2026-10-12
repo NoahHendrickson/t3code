@@ -1,0 +1,24 @@
+/* The Scheduled composer's context pills — see
+   `.fork/customizations.yaml#fork-scheduled-page`. The chip rule in
+   theme.custom.css paints every button in a composer context row (fill,
+   24px, 6px radius, 12px type) but leaves borders alone, because the chat's
+   chips are ghost controls with none. The base-branch picker here is
+   upstream's WorktreeBaseBranchPicker, an outline Button at full width, so
+   it keeps a hairline, an inset highlight and the whole row. Cleared to the
+   chat's branch chip. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-scheduled-composer]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"]) {
+  width: auto;
+  max-width: 16rem;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-scheduled-composer]
+  [data-fork-composer-context-row]
+  :is(button, [data-slot="button"])::before {
+  display: none;
+}
