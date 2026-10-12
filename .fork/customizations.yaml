@@ -4070,10 +4070,16 @@
     list of family words, not the provider's display name: Grok's "Grok Build"
     keeps its name because "Build" alone is nothing. Picker rows drop the name
     too, since the page's back row or the row's provider label names it.
-    The menu opens on the Favorites page when favorites exist; its back row
-    leads to the providers page, which holds a search field, then Favorites
-    (heart, only when favorites exist), then one row per enabled provider
-    instance with its glyph, name and a dot on the current provider. Clicking a row swaps the
+    A search field heads every page. The menu opens on the Favorites page
+    when one of them can be picked, else on the providers page. It decides
+    once per open, so favorites that load later join the providers page's
+    Favorites row instead of swapping the page under the user. It opens on
+    Favorites even when the current model is not a favorite, by product
+    choice: one click to a favorite is the point. Its back row leads to the
+    providers page: Favorites (heart, only when favorites exist), then one
+    row per enabled provider instance with its glyph, name and a dot on the
+    current provider. An emptied Favorites page shows the providers page.
+    Clicking a row swaps the
     menu in place to that provider's current models, led by a back row;
     legacy models are one page deeper. ArrowRight opens a row's page, and
     ArrowLeft (or Backspace / ArrowLeft in an empty search field) steps back;

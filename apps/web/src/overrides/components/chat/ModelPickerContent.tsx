@@ -237,8 +237,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onToggleModel,
   } = props;
   const [searchQuery, setSearchQuery] = useState("");
-  // The menu remounts on every open, so each open lands on Favorites.
-  const [storedPage, setPage] = useState<ModelPickerPage>(FAVORITES_PAGE);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const favorites = useClientSettings((s) => s.favorites ?? []);
@@ -414,8 +412,16 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     [favoritesSet, flatModels, instanceOrder, matchesLockedProvider],
   );
 
-  // An empty Favorites page shows the providers page instead, whether it was
-  // landed on or navigated to: none yet, locked out, or the last star removed.
+  // The menu remounts on every open and lands once: on Favorites when one can
+  // be picked, else on the providers page. Favorites that load after the open
+  // join the providers page's Favorites row rather than swapping the page.
+  const [storedPage, setStoredPage] = useState<ModelPickerPage>(() =>
+    favoriteModels.some((model) => !getModelDisabledReason?.(model.instanceId, model.slug))
+      ? FAVORITES_PAGE
+      : PROVIDERS_PAGE,
+  );
+  // An empty Favorites page shows the providers page instead: the last star
+  // removed, or its providers gone.
   const page =
     storedPage.kind === "favorites" && favoriteModels.length === 0 ? PROVIDERS_PAGE : storedPage;
 
@@ -510,7 +516,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   // and that check have both run.
   const openPage = useCallback(
     (next: ModelPickerPage) => {
-      setPage(next);
+      setStoredPage(next);
       window.requestAnimationFrame(focusSearchInput);
       window.setTimeout(focusSearchInput, 0);
     },
@@ -554,9 +560,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       if (next === "favorites" && favoriteModels.length === 0) return;
       setSearchQuery("");
       openPage(
-        next === "favorites"
-          ? { kind: "favorites" }
-          : { kind: "models", instanceId: next, legacy: false },
+        next === "favorites" ? FAVORITES_PAGE : { kind: "models", instanceId: next, legacy: false },
       );
     },
     [
@@ -1011,7 +1015,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           ? renderPageLink({
               key: "favorites",
               providerId: "favorites",
-              target: { kind: "favorites" },
+              target: FAVORITES_PAGE,
               label: (
                 <>
                   {favoritesIcon}
