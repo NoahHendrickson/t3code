@@ -1,7 +1,7 @@
 import { ProviderDriverKind } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { prefixComposerProviderName, stripProviderName } from "./modelPickerDisplayName";
+import { stripProviderName, triggerModelName } from "./modelPickerDisplayName";
 
 const claude = ProviderDriverKind.make("claudeAgent");
 const codex = ProviderDriverKind.make("codex");
@@ -37,16 +37,32 @@ describe("stripProviderName", () => {
   });
 });
 
-describe("prefixComposerProviderName", () => {
-  it("names Cursor, whose resold models would otherwise read as their maker's", () => {
-    expect(prefixComposerProviderName("Opus 5.5", { driverKind: cursor })).toBe("Cursor Opus 5.5");
-    expect(prefixComposerProviderName("Composer 2", { driverKind: cursor })).toBe(
+describe("triggerModelName", () => {
+  const hidden = { iconShown: false };
+  const shown = { iconShown: true };
+
+  it("names a reseller when its icon is hidden", () => {
+    expect(triggerModelName("Claude Opus 5.5", { driverKind: cursor }, hidden)).toBe(
+      "Cursor Opus 5.5",
+    );
+    expect(triggerModelName("Composer 2", { driverKind: cursor }, hidden)).toBe(
       "Cursor Composer 2",
     );
   });
 
-  it("leaves other providers' names alone", () => {
-    expect(prefixComposerProviderName("Opus 5.5", { driverKind: claude })).toBe("Opus 5.5");
-    expect(prefixComposerProviderName("GPT-5.5", { driverKind: codex })).toBe("GPT-5.5");
+  it("never doubles a reseller name the catalogue already carries", () => {
+    expect(
+      triggerModelName("Cursor Auto", { driverKind: cursor, displayName: "Cursor" }, hidden),
+    ).toBe("Cursor Auto");
+  });
+
+  it("only strips beside the icon or for non-resellers", () => {
+    expect(triggerModelName("Claude Opus 5.5", { driverKind: cursor }, shown)).toBe("Opus 5.5");
+    expect(triggerModelName("Claude Opus 5.5", { driverKind: claude }, hidden)).toBe("Opus 5.5");
+    expect(triggerModelName("GPT-5.5", { driverKind: codex }, hidden)).toBe("GPT-5.5");
+  });
+
+  it("keeps the name whole without a provider", () => {
+    expect(triggerModelName("Claude Opus 5.5", null, hidden)).toBe("Claude Opus 5.5");
   });
 });
