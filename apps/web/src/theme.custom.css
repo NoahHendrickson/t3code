@@ -2317,8 +2317,8 @@
    literal value would stop tracking the token the control row reads.
 
    Shoulder tabs (the stash and tasks badges) are ComposerBanner.Roots too and
-   are excluded by name from the card rules below; they get their own floor
-   rules after them. The collapsed stack's peek cap has no surface attribute but reads
+   take the same floor treatment; only the dock stacking and the tab density
+   below name them. The collapsed stack's peek cap has no surface attribute but reads
    the same fill variable, so the colour remap lists its slot beside the
    surface and gives it the hairline in place of its severity border utility;
    it takes the composer radius so the cap reads as one more card behind.
@@ -2340,15 +2340,15 @@
 
 /* The attachment wrappers carry the inset width and the tuck, and the dock is
    one of them, so any wrapper around a card goes full width and flush. The
-   overlap variable is what upstream's tuck is measured in — zeroing it on the
-   card drops the padding the tuck reserved. It is read off the tab's own
-   element below, which keeps its value. */
+   shoulder tabs (stash, tasks) are banner Roots too, so they count: upstream's
+   inset tab tucked under the prompt box reads as a dark slab jammed against
+   the vessel's top edge, and like the banners they are vessel floor instead.
+   The match is by descendant so the dock also goes flush around the tasks row
+   nested in its column, whether or not the stash tab is showing. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-slot="composer-banner-attachment"]:has(
-    [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-        [data-composer-shoulder-tab]
-      )
+    [data-slot="composer-banner"][data-composer-banner-surface="attached"]
   ) {
   width: 100%;
   max-width: none;
@@ -2382,9 +2382,7 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-    [data-composer-shoulder-tab]
-  )::before {
+  [data-slot="composer-banner"][data-composer-banner-surface="attached"]::before {
   display: none;
 }
 
@@ -2397,42 +2395,18 @@
    measures its tuck in, and the Root reserves bottom padding for it. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-    [data-composer-shoulder-tab]
-  ) {
+  [data-slot="composer-banner"][data-composer-banner-surface="attached"] {
   --chat-composer-attachment-overlap: 0px;
 }
 
-/* Shoulder tabs (stash, tasks) are not tabs here either: upstream's inset
-   card tucked under the prompt box reads as a dark slab jammed against the
-   vessel's top edge. Like the banners they are vessel floor — vessel width,
-   no tuck, no card. The collapsed tasks badge is also the header row of the
-   open tasks drawer, so it takes the drawer's default density and toggling
-   only adds or removes the list beneath it. */
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]) {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
-
+/* The collapsed tasks badge is the header row of the open tasks drawer, so
+   both shoulder tabs take the drawer's default density: toggling tasks only
+   adds or removes the list beneath it, and a stash tab sharing the dock row
+   keeps the same text line. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-composer-shoulder-tab] {
-  --chat-composer-attachment-overlap: 0px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge]) {
   --composer-banner-padding-block: calc(var(--spacing) * 1);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-shoulder-tab]::before {
-  display: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark

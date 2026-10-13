@@ -142,7 +142,7 @@ describe("fork guard: fork-composer-banner-surface", () => {
     const [rule, ...rest] = cardRules(() => true);
     expect(rest).toHaveLength(0);
     expect(rule?.selector).toContain(`${MARKER}.dark`);
-    expect(rule?.selector).toContain("[data-composer-shoulder-tab]");
+    expect(rule?.selector).not.toContain("[data-composer-shoulder-tab]");
     expect(rule?.body).toMatch(/--chat-composer-attachment-overlap:\s*0px/u);
     for (const painted of ["background", "border", "box-shadow"]) {
       expect(rule?.body, painted).not.toContain(painted);
@@ -162,13 +162,19 @@ describe("fork guard: fork-composer-banner-surface", () => {
   });
 
   it("pulls the attachment wrappers out to the vessel's full width", () => {
-    const rule = rules.find(
+    const widened = rules.filter(
       (candidate) =>
         flat(candidate.selector).includes('[data-slot="composer-banner-attachment"]:has(') &&
-        flat(candidate.selector).includes(CARD) &&
         candidate.body.includes("width: 100%"),
     );
+    expect(widened).toHaveLength(1);
+    const [rule] = widened;
     expect(rule?.selector).toContain(`${MARKER}.dark`);
+    // By descendant and with no tab carve-out: the dock reaches the tasks row
+    // only through its column, so a child match or a `:not` on the shoulder
+    // tab sends the tasks-only dock back under the prompt box.
+    expect(flat(rule?.selector ?? "")).toContain(`:has( ${CARD} )`);
+    expect(rule?.selector).not.toContain(":not(");
     expect(rule?.body).toMatch(/max-width:\s*none/u);
     expect(rule?.body).toMatch(/margin:\s*0/u);
   });
@@ -178,7 +184,16 @@ describe("fork guard: fork-composer-banner-surface", () => {
       (candidate) =>
         flat(candidate.selector).includes(CARD) && flat(candidate.selector).endsWith("::before"),
     );
+    expect(rule?.selector).not.toContain("[data-composer-shoulder-tab]");
     expect(rule?.body).toMatch(/display:\s*none/u);
+  });
+
+  it("gives both shoulder tabs the tasks drawer's density", () => {
+    const rule = rules.find((candidate) =>
+      flat(candidate.selector).endsWith("[data-fork-composer-vessel] [data-composer-shoulder-tab]"),
+    );
+    expect(rule?.selector).toContain(`${MARKER}.dark`);
+    expect(rule?.body).toMatch(/--composer-banner-padding-block:\s*calc\(var\(--spacing\) \* 1\)/u);
   });
 
   it("gives notices and the activity strip the design's metrics", () => {
@@ -242,7 +257,7 @@ describe("fork guard: fork-composer-banner-surface", () => {
     expect(componentSource("Root")).toContain('data-slot="composer-banner"');
     const attachment = componentSource("Attachment");
     expect(attachment).toContain('data-slot="composer-banner-attachment"');
-    // The tuck the card rule zeroes, and the shoulder-tab margin still reads.
+    // The tuck the wrapper rule cancels; the card rule zeroes its overlap.
     expect(attachment).toContain("-mb-[calc(1rem+1px)]");
     expect(banner).toContain("--chat-composer-attachment-overlap");
     for (const slot of [
