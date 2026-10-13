@@ -2317,8 +2317,8 @@
    literal value would stop tracking the token the control row reads.
 
    Shoulder tabs (the stash and tasks badges) are ComposerBanner.Roots too and
-   are excluded by name everywhere below: they are tabs on the card's shoulder,
-   not cards. The collapsed stack's peek cap has no surface attribute but reads
+   are excluded by name from the card rules below; they get their own floor
+   rules after them. The collapsed stack's peek cap has no surface attribute but reads
    the same fill variable, so the colour remap lists its slot beside the
    surface and gives it the hairline in place of its severity border utility;
    it takes the composer radius so the cap reads as one more card behind.
@@ -2355,10 +2355,8 @@
   margin: 0;
 }
 
-/* A full-width card would squeeze the stash / tasks tab sharing the dock row.
-   Stack the dock instead: the tab rides above the card's right shoulder and
-   its own overlap padding tucks it under the card, which paints over it in
-   order-modified paint order. */
+/* A full-width card would squeeze the stash tab sharing the dock row. Stack
+   the dock instead: the tab is a floor row above the card, right-aligned. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]):has(
@@ -2380,7 +2378,6 @@
   > [data-composer-shoulder-tab] {
   order: -1;
   align-self: flex-end;
-  margin-bottom: calc(-1 * var(--chat-composer-attachment-overlap) - 4px);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
@@ -2406,16 +2403,15 @@
   --chat-composer-attachment-overlap: 0px;
 }
 
-/* The collapsed tasks badge is not a shoulder tab here: it is the header row
-   of the open tasks drawer, so it gets the drawer's floor treatment — vessel
-   width, no tuck, no card, the drawer's default density — and toggling only
-   adds or removes the list beneath it. It is only ever shown without a banner
-   card, so it never needs to ride a card's shoulder the way stash does. */
+/* Shoulder tabs (stash, tasks) are not tabs here either: upstream's inset
+   card tucked under the prompt box reads as a dark slab jammed against the
+   vessel's top edge. Like the banners they are vessel floor — vessel width,
+   no tuck, no card. The collapsed tasks badge is also the header row of the
+   open tasks drawer, so it takes the drawer's default density and toggling
+   only adds or removes the list beneath it. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-slot="composer-banner-attachment"]:has(
-    [data-composer-shoulder-tab] > [data-composer-tasks-badge]
-  ) {
+  [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]) {
   width: 100%;
   max-width: none;
   margin: 0;
@@ -2423,14 +2419,19 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge]) {
+  [data-composer-shoulder-tab] {
   --chat-composer-attachment-overlap: 0px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark
+  [data-fork-composer-vessel]
+  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge]) {
   --composer-banner-padding-block: calc(var(--spacing) * 1);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge])::before {
+  [data-composer-shoulder-tab]::before {
   display: none;
 }
 
