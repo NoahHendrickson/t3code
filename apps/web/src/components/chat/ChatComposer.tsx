@@ -6788,76 +6788,83 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   // Model compact uses upstream widths. The model picker carries the traits
   // (fork-model-picker), so no width ever strands them in a second control.
   const composerModelControls = showProviderUnavailable ? null : (
-    <ComposerModelPicker
-      traitsInput={providerTraitsPickerInput}
-      isComposerOwned
-      compact={isComposerModelSlotCompact}
-      disabled={providerCatalogPending || isSendBusy}
-      {...(routeKind === "draft" && supportsMultipleModels
-        ? {
-            ...(multipleModelSelections !== null
-              ? { selectedModels: multipleModelSelections }
-              : {}),
-            onToggleModel: (instanceId: ProviderInstanceId, model: string) => {
-              const current = multipleModelSelections ?? [selectedModelSelection];
-              const matchesModel = (selection: ModelSelection) => {
-                if (selection.instanceId !== instanceId) return false;
-                const entry = providerInstanceEntries.find(
-                  (entry) => entry.instanceId === selection.instanceId,
-                );
-                const resolvedModel = resolveModelPickerSelectedModel({
-                  driverKind: entry?.driverKind,
-                  model: selection.model,
-                  options: modelOptionsByInstance.get(selection.instanceId) ?? [],
-                });
-                return (resolvedModel?.slug ?? selection.model) === model;
-              };
-              const exists = current.some(matchesModel);
-              const next = exists
-                ? current.filter((selection) => !matchesModel(selection))
-                : [...current, createModelSelection(instanceId, model)];
-              if (next.length > 1) {
-                setMultipleModelSelections(next);
-              } else {
-                setMultipleModelSelections(null);
-                const remaining = next[0] ?? selectedModelSelection;
-                onProviderModelSelect(remaining.instanceId, remaining.model, {
-                  focusComposer: false,
-                });
-              }
-            },
-          }
-        : {})}
-      activeInstanceId={
-        providerCatalogPending
-          ? (activeThreadModelSelection?.instanceId ?? selectedInstanceId)
-          : selectedInstanceId
-      }
-      model={
-        providerCatalogPending
-          ? (activeThreadModelSelection?.model ?? selectedModelForPickerWithCustomFallback)
-          : selectedModelForPickerWithCustomFallback
-      }
-      lockedProvider={lockedProvider}
-      lockedContinuationGroupKey={lockedContinuationGroupKey}
-      instanceEntries={providerInstanceEntries}
-      keybindings={keybindings}
-      modelOptionsByInstance={modelOptionsByInstance}
-      size="sm"
-      terminalOpen={terminalOpen}
-      open={isComposerModelPickerOpen}
-      instanceIndicatorBackground="var(--contrast-input)"
-      {...(composerProviderState.modelPickerIconClassName
-        ? { activeProviderIconClassName: composerProviderState.modelPickerIconClassName }
-        : {})}
-      onOpenChange={setIsComposerModelPickerOpen}
-      getModelDisabledReason={getModelDisabledReason}
-      onInstanceModelChange={(instanceId, model) => {
-        setMultipleModelSelections(null);
-        onProviderModelSelect(instanceId, model);
-      }}
-      onOpenProviderSetup={onOpenProviderSetup}
-    />
+    <>
+      {/* fork:begin fork-composer-usage-limits — see .fork/customizations.yaml#fork-composer-usage-limits */}
+      {isComposerModelSlotCompact ? null : (
+        <ComposerUsageLimitsReadout usageLimits={selectedProviderStatus?.usageLimits} />
+      )}
+      {/* fork:end fork-composer-usage-limits */}
+      <ComposerModelPicker
+        traitsInput={providerTraitsPickerInput}
+        isComposerOwned
+        compact={isComposerModelSlotCompact}
+        disabled={providerCatalogPending || isSendBusy}
+        {...(routeKind === "draft" && supportsMultipleModels
+          ? {
+              ...(multipleModelSelections !== null
+                ? { selectedModels: multipleModelSelections }
+                : {}),
+              onToggleModel: (instanceId: ProviderInstanceId, model: string) => {
+                const current = multipleModelSelections ?? [selectedModelSelection];
+                const matchesModel = (selection: ModelSelection) => {
+                  if (selection.instanceId !== instanceId) return false;
+                  const entry = providerInstanceEntries.find(
+                    (entry) => entry.instanceId === selection.instanceId,
+                  );
+                  const resolvedModel = resolveModelPickerSelectedModel({
+                    driverKind: entry?.driverKind,
+                    model: selection.model,
+                    options: modelOptionsByInstance.get(selection.instanceId) ?? [],
+                  });
+                  return (resolvedModel?.slug ?? selection.model) === model;
+                };
+                const exists = current.some(matchesModel);
+                const next = exists
+                  ? current.filter((selection) => !matchesModel(selection))
+                  : [...current, createModelSelection(instanceId, model)];
+                if (next.length > 1) {
+                  setMultipleModelSelections(next);
+                } else {
+                  setMultipleModelSelections(null);
+                  const remaining = next[0] ?? selectedModelSelection;
+                  onProviderModelSelect(remaining.instanceId, remaining.model, {
+                    focusComposer: false,
+                  });
+                }
+              },
+            }
+          : {})}
+        activeInstanceId={
+          providerCatalogPending
+            ? (activeThreadModelSelection?.instanceId ?? selectedInstanceId)
+            : selectedInstanceId
+        }
+        model={
+          providerCatalogPending
+            ? (activeThreadModelSelection?.model ?? selectedModelForPickerWithCustomFallback)
+            : selectedModelForPickerWithCustomFallback
+        }
+        lockedProvider={lockedProvider}
+        lockedContinuationGroupKey={lockedContinuationGroupKey}
+        instanceEntries={providerInstanceEntries}
+        keybindings={keybindings}
+        modelOptionsByInstance={modelOptionsByInstance}
+        size="sm"
+        terminalOpen={terminalOpen}
+        open={isComposerModelPickerOpen}
+        instanceIndicatorBackground="var(--contrast-input)"
+        {...(composerProviderState.modelPickerIconClassName
+          ? { activeProviderIconClassName: composerProviderState.modelPickerIconClassName }
+          : {})}
+        onOpenChange={setIsComposerModelPickerOpen}
+        getModelDisabledReason={getModelDisabledReason}
+        onInstanceModelChange={(instanceId, model) => {
+          setMultipleModelSelections(null);
+          onProviderModelSelect(instanceId, model);
+        }}
+        onOpenProviderSetup={onOpenProviderSetup}
+      />
+    </>
   );
 
   const composerModeControls = (
@@ -7140,13 +7147,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }
         modelControls={composerModelControls}
         readoutControls={composerReadoutControls}
-        /* fork:begin fork-composer-usage-limits — see .fork/customizations.yaml#fork-composer-usage-limits */
-        limitsControls={
-          showProviderUnavailable || isComposerModelSlotCompact ? null : (
-            <ComposerUsageLimitsReadout usageLimits={selectedProviderStatus?.usageLimits} />
-          )
-        }
-        /* fork:end fork-composer-usage-limits */
       >
         {/* fork:end fork-composer-shell */}
         <ComposerBanner.Dock>

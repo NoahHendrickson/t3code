@@ -8,7 +8,6 @@ import {
   CHATGPT_USAGE_URL,
   collectLimitAccounts,
   collectExternalUsageLinks,
-  collectLimitNotices,
   collectLimitPools,
   cursorUsageWindowDetails,
   displayLimitWindows,
@@ -34,7 +33,8 @@ import { OpenAI } from "../Icons";
 import { Alert, AlertTitle } from "../ui/alert";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { ScheduledCard } from "~/custom/scheduled/scheduledPageChrome";
-import { usageMeterTone } from "~/custom/usageMeterTone";
+import { UsageMeter } from "~/custom/UsageMeter";
+import { actionableLimitNotices } from "~/custom/usageLimitNotices";
 import { PaceIcon, ResetCreditDialog, resetCreditsSummary, useResetCredit } from "./UsageLimits";
 
 /** `someone@example.com` → `SE`: enough to tell accounts apart, too little to identify one. */
@@ -258,21 +258,11 @@ function PoolSegment({
           />
         }
       >
-        <span
-          className={cn(
-            "relative w-full overflow-hidden rounded-full bg-muted",
-            compact ? "h-1" : "h-1.5",
-          )}
-        >
-          <span
-            aria-hidden
-            className={cn(
-              "absolute inset-y-0 left-0 rounded-full opacity-85 transition-[background-color,opacity] group-hover/segment:opacity-100 group-data-[popup-open]/segment:opacity-100",
-              usageMeterTone(remaining),
-            )}
-            style={{ width: `${remaining}%` }}
-          />
-        </span>
+        <UsageMeter
+          remaining={remaining}
+          className={cn("w-full", compact ? "h-1" : "h-1.5")}
+          fillClassName="opacity-85 group-hover/segment:opacity-100 group-data-[popup-open]/segment:opacity-100"
+        />
       </PopoverTrigger>
       {account.redeem ? (
         <RedeemableSegmentPopup
@@ -337,9 +327,10 @@ function RedeemableSegmentPopup({
         onConfirm={() => void redeem.redeem()}
         disabled={!redeem.canManageProviders}
       />
-      {/* The popover closed before the confirm, so the outcome needs a home outside it. */}
+      {/* The popover closed before the confirm, so the outcome needs a home
+          outside it: last in the wrapping row, so the segments keep their columns. */}
       {redeem.status ? (
-        <span role="status" className="basis-full text-xs text-muted-foreground">
+        <span role="status" className="order-last basis-full text-xs text-muted-foreground">
           <AccountName account={account} className="font-medium text-foreground" /> {redeem.status}
         </span>
       ) : null}
@@ -409,9 +400,10 @@ function PoolWindowRow({
               compact={compact}
             />
           ) : (
-            <span
+            <UsageMeter
               key={member.account.key}
-              className={cn("min-w-0 flex-1 rounded-full bg-muted", compact ? "h-1" : "h-1.5")}
+              remaining={null}
+              className={cn("min-w-0 flex-1", compact ? "h-1" : "h-1.5")}
             />
           ),
         )}
@@ -441,9 +433,8 @@ function PoolSection({
     (total, account) => total + (account.limits.resetCredits?.availableCount ?? 0),
     0,
   );
-  const Shell = compact ? "section" : ScheduledCard;
   return (
-    <Shell className={compact ? "flex flex-col gap-2 px-3 py-2.5" : "flex flex-col gap-3 p-4"}>
+    <LimitsCard compact={compact} className={cn("flex flex-col", compact ? "gap-2" : "gap-3")}>
       <h2
         className={cn(
           "flex items-center gap-2 font-medium text-foreground",
@@ -482,7 +473,24 @@ function PoolSection({
           );
         })}
       </div>
-    </Shell>
+    </LimitsCard>
+  );
+}
+
+/** A provider's block: a card on the Usage page, a divided section in the compact menu. */
+function LimitsCard({
+  compact,
+  className,
+  children,
+}: {
+  readonly compact: boolean;
+  readonly className?: string;
+  readonly children: ReactNode;
+}) {
+  return compact ? (
+    <section className={cn("px-3 py-2.5", className)}>{children}</section>
+  ) : (
+    <ScheduledCard className={cn("p-4", className)}>{children}</ScheduledCard>
   );
 }
 
@@ -504,13 +512,8 @@ export function UsageLimitsPooled({
   readonly compact?: boolean;
 }) {
   const pools = collectLimitPools(collectLimitAccounts(presentations), now);
-  // A provider that reports no windows has nothing to show or act on; only failures stay.
-  // Matches the wording of `limitsNotice` in @t3tools/shared/usageLimits.
-  const notices = collectLimitNotices(presentations).filter(
-    (notice) => !notice.endsWith(": No limits reported."),
-  );
+  const notices = actionableLimitNotices(presentations);
   const externalLinks = collectExternalUsageLinks(presentations);
-  const ExternalLinkShell = compact ? "section" : ScheduledCard;
   const cursorPromptAt =
     Math.max(
       pools.findIndex((pool) => pool.driver === "codex"),
@@ -531,12 +534,10 @@ export function UsageLimitsPooled({
       ))}
       {cursorPromptAt === pools.length ? cursorPrompt : null}
       {externalLinks.map((link) => (
-        <ExternalLinkShell
+        <LimitsCard
           key={link.url}
-          className={cn(
-            "flex flex-wrap items-center justify-between gap-3",
-            compact ? "px-3 py-2.5" : "p-4",
-          )}
+          compact={compact}
+          className="flex flex-wrap items-center justify-between gap-3"
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {link.url === CHATGPT_USAGE_URL ? (
@@ -561,22 +562,19 @@ export function UsageLimitsPooled({
             Manage usage
             <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
           </Button>
-        </ExternalLinkShell>
+        </LimitsCard>
       ))}
-      {compact && notices.length > 0 ? (
-        <div className="px-3 py-2.5">
+      {notices.length > 0 ? (
+        <div className={cn(compact && "px-3 py-2.5")}>
           <LimitNotices notices={notices} />
         </div>
-      ) : (
-        <LimitNotices notices={notices} />
-      )}
+      ) : null}
     </div>
   );
 }
 
 /** Sources and providers that could not be read, so a missing bar is not mistaken for a full one. */
 function LimitNotices({ notices }: { readonly notices: readonly string[] }) {
-  if (notices.length === 0) return null;
   return (
     <Alert variant="warning" controlAlignment="first-line">
       <AlertTriangleIcon />

@@ -2299,26 +2299,31 @@
     is no in-bar label, index chip or legend row. The Cursor keychain prompt
     and the external-usage links are the same card. A provider that reports
     no windows (e.g. Grok) gets no "No limits reported." warning; probe
-    failures and source errors still do. A compact mode, used by
+    failures and source errors still do. The dropped line is derived from
+    upstream's limitsNotice, not copied, so a rewording cannot bring it
+    back. A compact mode, used by
     the composer's limits menu (fork-composer-usage-limits), drops the cards
     for dividers between providers and steps the type and meter down.
+    The card is the Scheduled page's (fork-scheduled-page owns it).
   tier: 4
   files:
-    - apps/web/src/custom/scheduled/scheduledPageChrome.tsx
-    - apps/web/src/custom/usageMeterTone.ts
+    - apps/web/src/overrides/components/usage/UsageLimitsPooled.tsx
+    - apps/web/src/custom/UsageMeter.tsx
+    - apps/web/src/custom/usageLimitNotices.ts
   shadows:
     - apps/web/src/components/usage/UsageLimitsPooled.tsx
   watch:
     - apps/web/src/components/usage/UsagePage.tsx
   verify:
-    - apps/web/src/__fork_guards__/customizationsManifest.test.ts
+    - apps/web/src/__fork_guards__/forkUsageLimits.test.ts
 
 - id: fork-composer-usage-limits
   intent: >
-    The composer vessel's control row carries a small 5-hour bar
-    immediately before the model picker: the selected provider's session
-    window, filled to the share left and toned like the Usage meters
-    (custom/usageMeterTone.ts). It reads the selected instance's own
+    The composer vessel's control row carries a small session-limit bar
+    immediately before the model picker, inside the model controls slot so
+    it takes the row's control geometry: the selected provider's session
+    window, drawn with the Usage view's meter (custom/UsageMeter.tsx). It
+    reads the selected instance's own
     ServerProvider.usageLimits snapshot, so it follows the model picker and
     adds no wire data or polling. Clicking it opens a 16rem popover with
     every provider's limits across all environments: the Usage view's list
@@ -2329,13 +2334,12 @@
   tier: 4
   files:
     - apps/web/src/custom/ComposerUsageLimitsReadout.tsx
-    - apps/web/src/custom/usageMeterTone.ts
-    - apps/web/src/custom/ComposerShell.tsx
+    - apps/web/src/custom/UsageMeter.tsx
   shadows: []
   watch:
     - apps/web/src/components/chat/ChatComposer.tsx
   verify:
-    - apps/web/src/__fork_guards__/customizationsManifest.test.ts
+    - apps/web/src/__fork_guards__/forkUsageLimits.test.ts
 
 - id: fork-usage-tabs
   intent: >

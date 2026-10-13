@@ -31,8 +31,6 @@ type ComposerShellProps = ComposerShellVisibilityInput & {
   modeControls: ReactNode;
   modelControls: ReactNode;
   readoutControls: ReactNode;
-  /** Subscription quota left, beside the model (fork-composer-usage-limits). */
-  limitsControls?: ReactNode;
 };
 
 /** Owns the fork's context → vessel(surface + controls) composition and state gates. */
@@ -45,7 +43,6 @@ export const ComposerShell = memo(function ComposerShell({
   modeControls,
   modelControls,
   readoutControls,
-  limitsControls,
 }: ComposerShellProps) {
   const { showInteractiveControls } = resolveComposerShellVisibility({
     approvalPending,
@@ -57,7 +54,6 @@ export const ComposerShell = memo(function ComposerShell({
     readoutControls || (showInteractiveControls && modelControls) ? (
       <>
         {readoutControls}
-        {showInteractiveControls ? limitsControls : null}
         {showInteractiveControls ? (
           <div data-fork-composer-model-controls="true" className="flex min-w-0 items-center">
             {modelControls}
