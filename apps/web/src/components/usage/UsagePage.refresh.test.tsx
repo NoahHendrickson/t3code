@@ -69,6 +69,9 @@ vi.mock("../ui/select", () => ({
 }));
 vi.mock("../ui/sidebar", () => ({ SidebarInset: "div" }));
 vi.mock("../ui/toggle-group", () => ({ Toggle: "button", ToggleGroup: "div" }));
+/* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs */
+vi.mock("../../custom/SegmentedTabs", () => ({ SegmentedTab: "button", SegmentedTabs: "div" }));
+/* fork:end fork-usage-tabs */
 vi.mock("../ui/tooltip", () => ({ Tooltip: "div", TooltipPopup: "div", TooltipTrigger: "div" }));
 vi.mock("../ui/popover", () => ({ Popover: "div", PopoverPopup: "div", PopoverTrigger: "div" }));
 vi.mock("../ui/menu", () => ({

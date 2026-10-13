@@ -16,6 +16,10 @@
  * sheet treatment but sizes itself to the viewport below its 3rem top inset,
  * where the panel's own height would otherwise run past the bottom edge.
  *
+ * A pointer open focuses the popup itself, not its first tabbable: that is
+ * the environment filter, whose focus-visible outline then boxed the
+ * breadcrumb on every click. A keyboard open keeps Base UI's default.
+ *
  * The dashboard is loaded lazily: the sidebar is in the main chunk, and a
  * static import here would pull the whole /usage route (page, price
  * overrides, provider chart) into every cold load whether or not Usage is
@@ -27,7 +31,7 @@
  * cover that frost.
  */
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import { cloneElement, lazy, Suspense, useState, type ReactElement } from "react";
+import { cloneElement, lazy, Suspense, useRef, useState, type ReactElement } from "react";
 
 import { Dialog, DialogPopup, DialogTrigger } from "~/components/ui/dialog";
 import { Popover, PopoverTrigger } from "~/components/ui/popover";
@@ -43,6 +47,7 @@ const USAGE_PANEL_SIZE =
 
 export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ active?: boolean }> }) {
   const [open, setOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
   const { isMobile } = useSidebar();
   const trigger = cloneElement(props.trigger, { active: open });
   const panel = (
@@ -83,6 +88,8 @@ export function SidebarV2UsageRow(props: { readonly trigger: ReactElement<{ acti
         >
           <PopoverPrimitive.Popup
             aria-label="Usage"
+            ref={popupRef}
+            initialFocus={(openType) => (openType === "keyboard" ? true : popupRef.current)}
             className={cn(
               USAGE_PANEL_SIZE,
               "dropdown-glass relative origin-(--transform-origin) rounded-lg text-popover-foreground shadow-[0_16px_40px_-18px_rgb(0_0_0/55%)] outline-none transition-[scale,opacity] data-starting-style:scale-98 data-starting-style:opacity-0 dark:shadow-[0_18px_44px_-18px_rgb(0_0_0/80%)]",

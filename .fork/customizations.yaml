@@ -2281,6 +2281,84 @@
     - apps/web/src/__fork_guards__/forkUsagePopover.test.ts
     - apps/web/src/components/usage/UsagePage.test.tsx
 
+- id: fork-usage-limits-surface
+  intent: >
+    The Usage limits view (page and popover) is one ScheduledCard per
+    provider, the Scheduled page's card, so Glass gives it the same 5%
+    stage-card wash instead of a bare outline on the frost. The provider's
+    mark and name head the card, with its banked reset credits summed at the
+    right. Each window is a compact two-line row: its label over the
+    meter's left end, the pooled share left with its pace and the next reset
+    (pace glyph first, no "left" word, the reset at the percent's size and
+    weight with no separator) over the right end, then a thin fully
+    rounded meter toned by the share
+    left (green from 50%, pastel yellow down to 20%, red below).
+    Every figure appears once. A pooled window keeps one segment per account
+    in fixed columns; who an account is, its own share, its reset and the
+    reset-credit action live in that segment's hover/click popover, so there
+    is no in-bar label, index chip or legend row. The Cursor keychain prompt
+    and the external-usage links are the same card. A provider that reports
+    no windows (e.g. Grok) gets no "No limits reported." warning; probe
+    failures and source errors still do. The dropped line is derived from
+    upstream's limitsNotice, not copied, so a rewording cannot bring it
+    back. A compact mode, used by
+    the composer's limits menu (fork-composer-usage-limits), drops the cards
+    for dividers between providers and steps the type and meter down.
+    The card is the Scheduled page's (fork-scheduled-page owns it).
+  tier: 4
+  files:
+    - apps/web/src/overrides/components/usage/UsageLimitsPooled.tsx
+    - apps/web/src/custom/UsageMeter.tsx
+    - apps/web/src/custom/usageLimitNotices.ts
+  shadows:
+    - apps/web/src/components/usage/UsageLimitsPooled.tsx
+  watch:
+    - apps/web/src/components/usage/UsagePage.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkUsageLimits.test.ts
+
+- id: fork-composer-usage-limits
+  intent: >
+    The composer vessel's control row carries a small session-limit bar
+    immediately before the model picker, inside the model controls slot so
+    it takes the row's control geometry: the selected provider's session
+    window, drawn with the Usage view's meter (custom/UsageMeter.tsx). It
+    reads the selected instance's own
+    ServerProvider.usageLimits snapshot, so it follows the model picker and
+    adds no wire data or polling. Clicking it opens a 16rem popover with
+    every provider's limits across all environments: the Usage view's list
+    in its compact mode (providers split by edge-to-edge dividers, no cards, text-xs, a
+    4px meter), its clock taken on open. The list subscribes to the
+    environment presentations only while the menu is open. Hidden when the
+    provider reports no session window and when the model slot is compact.
+  tier: 4
+  files:
+    - apps/web/src/custom/ComposerUsageLimitsReadout.tsx
+    - apps/web/src/custom/UsageMeter.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/chat/ChatComposer.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkUsageLimits.test.ts
+
+- id: fork-usage-tabs
+  intent: >
+    The Usage page's metric (Cost / Tokens / Limits), period, and breakdown
+    tabs are the scheduled trigger picker's tabs (custom/SegmentedTabs.tsx,
+    Figma node 521:5338): a compact rounded track with the selected tab
+    raised, instead of upstream's segmented ToggleGroup. Behavior is
+    unchanged; the period tabs still dim while Limits is shown.
+  tier: 4
+  files:
+    - apps/web/src/custom/SegmentedTabs.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/usage/UsagePage.tsx
+    - apps/web/src/components/usage/UsagePage.refresh.test.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkUsageTabs.test.ts
+    - apps/web/src/components/usage/UsagePage.refresh.test.tsx
+
 - id: fork-sidebar-scheduled-row
   intent: >
     The V2 sidebar's action block ends with a Scheduled row directly under
@@ -2352,6 +2430,7 @@
   files:
     - apps/web/src/custom/scheduled/ScheduledPage.tsx
     - apps/web/src/custom/scheduled/ScheduledTriggerTabs.tsx
+    - apps/web/src/custom/SegmentedTabs.tsx
     - apps/web/src/custom/scheduled/ScheduledTaskDetail.tsx
     - apps/web/src/custom/scheduled/ScheduledTaskEditor.tsx
     - apps/web/src/custom/scheduled/ScheduledRunsTable.tsx
