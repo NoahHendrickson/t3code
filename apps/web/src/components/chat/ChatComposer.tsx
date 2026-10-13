@@ -282,6 +282,9 @@ import { useDebouncedValue } from "~/state/queries";
 import { ComposerModelPicker } from "../../custom/ComposerModelPicker";
 import { modelPickerHoldsFocus } from "../../custom/modelPickerFocus";
 /* fork:end fork-model-picker */
+/* fork:begin fork-composer-usage-limits — see .fork/customizations.yaml#fork-composer-usage-limits */
+import { ComposerUsageLimitsReadout } from "../../custom/ComposerUsageLimitsReadout";
+/* fork:end fork-composer-usage-limits */
 import { resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import {
   type ComposerCommandItem,
@@ -7137,6 +7140,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         }
         modelControls={composerModelControls}
         readoutControls={composerReadoutControls}
+        /* fork:begin fork-composer-usage-limits — see .fork/customizations.yaml#fork-composer-usage-limits */
+        limitsControls={
+          showProviderUnavailable || isComposerModelSlotCompact ? null : (
+            <ComposerUsageLimitsReadout usageLimits={selectedProviderStatus?.usageLimits} />
+          )
+        }
+        /* fork:end fork-composer-usage-limits */
       >
         {/* fork:end fork-composer-shell */}
         <ComposerBanner.Dock>

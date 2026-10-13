@@ -65,7 +65,9 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { SidebarInset } from "../ui/sidebar";
 import { Skeleton } from "../ui/skeleton";
-import { Toggle, ToggleGroup } from "../ui/toggle-group";
+/* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs */
+import { SegmentedTab as Toggle, SegmentedTabs as ToggleGroup } from "../../custom/SegmentedTabs";
+/* fork:end fork-usage-tabs */
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import {
@@ -80,6 +82,9 @@ import { UsagePriceOverrides } from "./UsagePriceOverrides";
 import { UsageProviderChart } from "./UsageProviderChart";
 import { SpeedPremium, UsageModelDialog } from "./UsageModelDialog";
 import { UsageShareBar } from "./UsageShareBar";
+/* fork:begin fork-usage-limits-surface — see .fork/customizations.yaml#fork-usage-limits-surface */
+import { ScheduledCard } from "../../custom/scheduled/scheduledPageChrome";
+/* fork:end fork-usage-limits-surface */
 import {
   costTypeSegments,
   modelShare,
@@ -395,7 +400,9 @@ export function UsagePage(
       >
         <ToggleGroup
           aria-label="Usage metric"
-          variant="segmented"
+          /* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs
+             The fork's tabs carry their own look, so upstream's variant is gone. */
+          /* fork:end fork-usage-tabs */
           value={[metric]}
           onValueChange={(next) => {
             const value = next[0];
@@ -412,7 +419,9 @@ export function UsagePage(
             disabled; unmounting it shifted the metric toggle ~300px. */}
         <ToggleGroup
           aria-label="Usage period"
-          variant="segmented"
+          /* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs
+             The fork's tabs carry their own look, so upstream's variant is gone. */
+          /* fork:end fork-usage-tabs */
           value={[String(windowDays)]}
           disabled={showingLimits}
           onValueChange={(next) => {
@@ -748,7 +757,9 @@ export function UsagePage(
                   <h2 className="text-sm font-medium text-foreground">Breakdown</h2>
                   <ToggleGroup
                     aria-label="Usage breakdown"
-                    variant="segmented"
+                    /* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs
+                       The fork's tabs carry their own look, so upstream's variant is gone. */
+                    /* fork:end fork-usage-tabs */
                     value={[breakdown]}
                     onValueChange={(next) => {
                       const value = next[0];
@@ -1067,7 +1078,10 @@ function CursorEnableLimits({
   readonly onEnabled: () => void;
 }) {
   return (
-    <section className="flex flex-col gap-3">
+    /* fork:begin fork-usage-limits-surface — see .fork/customizations.yaml#fork-usage-limits-surface
+       One card per provider, the header inside it, as the limits cards are. */
+    <ScheduledCard className="flex flex-col gap-3 p-4">
+      {/* fork:end fork-usage-limits-surface */}
       <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
         <ProviderInstanceIcon
           driverKind={ProviderDriverKind.make("cursor")}
@@ -1078,7 +1092,9 @@ function CursorEnableLimits({
         />
         Cursor
       </h2>
-      <div className="flex flex-col items-start gap-3 rounded-lg border border-border/60 p-4">
+      {/* fork:begin fork-usage-limits-surface — see .fork/customizations.yaml#fork-usage-limits-surface */}
+      <div className="flex flex-col items-start gap-3">
+        {/* fork:end fork-usage-limits-surface */}
         <p className="text-xs text-muted-foreground">{CURSOR_KEYCHAIN_COPY}</p>
         <div className="flex flex-wrap gap-2">
           {environments.map((environment) => (
@@ -1093,7 +1109,9 @@ function CursorEnableLimits({
           ))}
         </div>
       </div>
-    </section>
+      {/* fork:begin fork-usage-limits-surface — see .fork/customizations.yaml#fork-usage-limits-surface */}
+    </ScheduledCard>
+    /* fork:end fork-usage-limits-surface */
   );
 }
 
