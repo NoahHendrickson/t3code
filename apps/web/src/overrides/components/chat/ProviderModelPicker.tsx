@@ -8,7 +8,8 @@
  * it replaces; upstream's own wheel/touch lock below still guards the page.
  * The trigger label drops the provider name ("Opus 5.5", not "Claude Opus
  * 5.5"). The composer's trigger hides the provider icon too, except where its
- * label collapses; Settings keeps it. And an optional `traits` slot (the
+ * label collapses, and names Cursor instead ("Cursor Opus 5.5"); Settings
+ * keeps the icon. And an optional `traits` slot (the
  * composer's ComposerModelPicker fills it) adds the reasoning label to the
  * trigger and its panel under the pages, keeping the menu open on a pick.
  *
@@ -28,7 +29,7 @@ import { Badge } from "../ui/badge";
 import { Menu, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
-import { stripProviderName } from "~/custom/modelPickerDisplayName";
+import { triggerModelName } from "~/custom/modelPickerDisplayName";
 import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import { ChatGptSharingControl } from "./ChatGptSharingControl";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
@@ -112,12 +113,11 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
     (activeEntry?.driverKind === "opencode" || activeEntry?.driverKind === "antigravity"
       ? undefined
       : selectedInstanceOptions[0]);
-  // The provider name is dropped here; the tooltip keeps the full model name
-  // and names the provider instance.
+  // The composer hides the provider icon, so a reseller names itself there;
+  // the tooltip keeps the full model name and names the provider instance.
+  const iconShown = !props.isComposerOwned;
   const triggerTitle = selectedModel
-    ? activeEntry
-      ? stripProviderName(getTriggerDisplayModelName(selectedModel), activeEntry)
-      : getTriggerDisplayModelName(selectedModel)
+    ? triggerModelName(getTriggerDisplayModelName(selectedModel), activeEntry, { iconShown })
     : props.model === ANTIGRAVITY_DEFAULT_MODEL
       ? "Choose model"
       : props.model || "Choose model";
@@ -202,12 +202,9 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
       model: selection.model,
       options: props.modelOptionsByInstance.get(selection.instanceId) ?? [],
     });
-    // Same provider-name strip as the single trigger title; the tooltip
-    // keeps the full names.
+    // Same name as the single trigger title; the tooltip keeps the full names.
     const modelName = model
-      ? entry
-        ? stripProviderName(getTriggerDisplayModelName(model), entry)
-        : getTriggerDisplayModelName(model)
+      ? triggerModelName(getTriggerDisplayModelName(model), entry, { iconShown })
       : selection.model;
     return {
       ...selection,

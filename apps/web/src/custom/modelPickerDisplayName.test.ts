@@ -1,7 +1,7 @@
 import { ProviderDriverKind } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { stripProviderName } from "./modelPickerDisplayName";
+import { stripProviderName, triggerModelName } from "./modelPickerDisplayName";
 
 const claude = ProviderDriverKind.make("claudeAgent");
 const codex = ProviderDriverKind.make("codex");
@@ -34,5 +34,35 @@ describe("stripProviderName", () => {
     expect(stripProviderName("GPT-5.5", { driverKind: codex })).toBe("GPT-5.5");
     expect(stripProviderName("Claudette 2", { driverKind: claude })).toBe("Claudette 2");
     expect(stripProviderName("Claude", { driverKind: claude })).toBe("Claude");
+  });
+});
+
+describe("triggerModelName", () => {
+  const hidden = { iconShown: false };
+  const shown = { iconShown: true };
+
+  it("names a reseller when its icon is hidden", () => {
+    expect(triggerModelName("Claude Opus 5.5", { driverKind: cursor }, hidden)).toBe(
+      "Cursor Opus 5.5",
+    );
+    expect(triggerModelName("Composer 2", { driverKind: cursor }, hidden)).toBe(
+      "Cursor Composer 2",
+    );
+  });
+
+  it("never doubles a reseller name the catalogue already carries", () => {
+    expect(
+      triggerModelName("Cursor Auto", { driverKind: cursor, displayName: "Cursor" }, hidden),
+    ).toBe("Cursor Auto");
+  });
+
+  it("only strips beside the icon or for non-resellers", () => {
+    expect(triggerModelName("Claude Opus 5.5", { driverKind: cursor }, shown)).toBe("Opus 5.5");
+    expect(triggerModelName("Claude Opus 5.5", { driverKind: claude }, hidden)).toBe("Opus 5.5");
+    expect(triggerModelName("GPT-5.5", { driverKind: codex }, hidden)).toBe("GPT-5.5");
+  });
+
+  it("keeps the name whole without a provider", () => {
+    expect(triggerModelName("Claude Opus 5.5", null, hidden)).toBe("Claude Opus 5.5");
   });
 });
