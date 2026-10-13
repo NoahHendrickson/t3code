@@ -2317,8 +2317,8 @@
    literal value would stop tracking the token the control row reads.
 
    Shoulder tabs (the stash and tasks badges) are ComposerBanner.Roots too and
-   are excluded by name everywhere below: they are tabs on the card's shoulder,
-   not cards. The collapsed stack's peek cap has no surface attribute but reads
+   take the same floor treatment; only the dock stacking and the tab density
+   below name them. The collapsed stack's peek cap has no surface attribute but reads
    the same fill variable, so the colour remap lists its slot beside the
    surface and gives it the hairline in place of its severity border utility;
    it takes the composer radius so the cap reads as one more card behind.
@@ -2340,25 +2340,23 @@
 
 /* The attachment wrappers carry the inset width and the tuck, and the dock is
    one of them, so any wrapper around a card goes full width and flush. The
-   overlap variable is what upstream's tuck is measured in — zeroing it on the
-   card drops the padding the tuck reserved. It is read off the tab's own
-   element below, which keeps its value. */
+   shoulder tabs (stash, tasks) are banner Roots too, so they count: upstream's
+   inset tab tucked under the prompt box reads as a dark slab jammed against
+   the vessel's top edge, and like the banners they are vessel floor instead.
+   The match is by descendant so the dock also goes flush around the tasks row
+   nested in its column, whether or not the stash tab is showing. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-slot="composer-banner-attachment"]:has(
-    [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-        [data-composer-shoulder-tab]
-      )
+    [data-slot="composer-banner"][data-composer-banner-surface="attached"]
   ) {
   width: 100%;
   max-width: none;
   margin: 0;
 }
 
-/* A full-width card would squeeze the stash / tasks tab sharing the dock row.
-   Stack the dock instead: the tab rides above the card's right shoulder and
-   its own overlap padding tucks it under the card, which paints over it in
-   order-modified paint order. */
+/* A full-width card would squeeze the stash tab sharing the dock row. Stack
+   the dock instead: the tab is a floor row above the card, right-aligned. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
   [data-slot="composer-banner-attachment"]:has(> [data-composer-shoulder-tab]):has(
@@ -2380,14 +2378,11 @@
   > [data-composer-shoulder-tab] {
   order: -1;
   align-self: flex-end;
-  margin-bottom: calc(-1 * var(--chat-composer-attachment-overlap) - 4px);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-    [data-composer-shoulder-tab]
-  )::before {
+  [data-slot="composer-banner"][data-composer-banner-surface="attached"]::before {
   display: none;
 }
 
@@ -2400,38 +2395,18 @@
    measures its tuck in, and the Root reserves bottom padding for it. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-slot="composer-banner"][data-composer-banner-surface="attached"]:not(
-    [data-composer-shoulder-tab]
-  ) {
+  [data-slot="composer-banner"][data-composer-banner-surface="attached"] {
   --chat-composer-attachment-overlap: 0px;
 }
 
-/* The collapsed tasks badge is not a shoulder tab here: it is the header row
-   of the open tasks drawer, so it gets the drawer's floor treatment — vessel
-   width, no tuck, no card, the drawer's default density — and toggling only
-   adds or removes the list beneath it. It is only ever shown without a banner
-   card, so it never needs to ride a card's shoulder the way stash does. */
+/* The collapsed tasks badge is the header row of the open tasks drawer, so
+   both shoulder tabs take the drawer's default density: toggling tasks only
+   adds or removes the list beneath it, and a stash tab sharing the dock row
+   keeps the same text line. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-slot="composer-banner-attachment"]:has(
-    [data-composer-shoulder-tab] > [data-composer-tasks-badge]
-  ) {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge]) {
-  --chat-composer-attachment-overlap: 0px;
+  [data-composer-shoulder-tab] {
   --composer-banner-padding-block: calc(var(--spacing) * 1);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-composer-shoulder-tab]:has(> [data-composer-tasks-badge])::before {
-  display: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
