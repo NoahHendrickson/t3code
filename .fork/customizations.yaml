@@ -4166,9 +4166,10 @@
     of the file (trigger, wheel/touch lock) upstream's, except that the
     trigger label drops the provider name its icon already shows ("Opus 5.5",
     not "Claude Opus 5.5"; the tooltip keeps the full name). The composer's
-    trigger also hides the provider icon, showing the model name alone; the
-    tooltip is what tells a Cursor-served Opus from Claude's own there. The
-    icon returns only in the composer's resting strip below 640px, where
+    trigger also hides the provider icon, showing the model name alone,
+    except that Cursor's models lead with "Cursor" ("Cursor Opus 5.5") so a
+    Cursor-served Opus never reads as Claude's own; multi-model labels do the
+    same. The icon returns only in the composer's resting strip below 640px, where
     upstream collapses the label to nothing and the icon would otherwise be
     the trigger's only content. Settings pickers keep the icon. Cursor's models also drop
     the "Claude" family name they are resold under. The strip is a per-provider

@@ -35,3 +35,14 @@ export function stripProviderName(
   }
   return name;
 }
+
+/**
+ * Names Cursor in the composer trigger, which hides the provider icon: Cursor
+ * resells Claude's models, so a bare "Opus 5.5" would read as Claude's own.
+ */
+export function prefixComposerProviderName(
+  name: string,
+  provider: { driverKind: ProviderDriverKind },
+): string {
+  return provider.driverKind === ProviderDriverKind.make("cursor") ? `Cursor ${name}` : name;
+}

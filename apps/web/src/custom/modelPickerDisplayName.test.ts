@@ -1,7 +1,7 @@
 import { ProviderDriverKind } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { stripProviderName } from "./modelPickerDisplayName";
+import { prefixComposerProviderName, stripProviderName } from "./modelPickerDisplayName";
 
 const claude = ProviderDriverKind.make("claudeAgent");
 const codex = ProviderDriverKind.make("codex");
@@ -34,5 +34,19 @@ describe("stripProviderName", () => {
     expect(stripProviderName("GPT-5.5", { driverKind: codex })).toBe("GPT-5.5");
     expect(stripProviderName("Claudette 2", { driverKind: claude })).toBe("Claudette 2");
     expect(stripProviderName("Claude", { driverKind: claude })).toBe("Claude");
+  });
+});
+
+describe("prefixComposerProviderName", () => {
+  it("names Cursor, whose resold models would otherwise read as their maker's", () => {
+    expect(prefixComposerProviderName("Opus 5.5", { driverKind: cursor })).toBe("Cursor Opus 5.5");
+    expect(prefixComposerProviderName("Composer 2", { driverKind: cursor })).toBe(
+      "Cursor Composer 2",
+    );
+  });
+
+  it("leaves other providers' names alone", () => {
+    expect(prefixComposerProviderName("Opus 5.5", { driverKind: claude })).toBe("Opus 5.5");
+    expect(prefixComposerProviderName("GPT-5.5", { driverKind: codex })).toBe("GPT-5.5");
   });
 });

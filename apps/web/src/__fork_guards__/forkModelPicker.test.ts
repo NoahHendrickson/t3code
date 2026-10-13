@@ -113,9 +113,15 @@ describe("fork guard: fork-model-picker", () => {
     // collapses the label below 640px, so the icon must come back there;
     // Settings keeps the icon, and no stylesheet rule may hide it. The
     // tooltip names the instance the hidden icon used to.
+    // In the composer, Cursor's models are named "Cursor Opus 5.5": without
+    // the icon a bare "Opus 5.5" reads as Claude's own.
     expect(picker).toContain(
-      "stripProviderName(getTriggerDisplayModelName(selectedModel), activeEntry)",
+      "return props.isComposerOwned ? prefixComposerProviderName(stripped, entry) : stripped;",
     );
+    expect(picker).toContain(
+      "triggerModelName(getTriggerDisplayModelName(selectedModel), activeEntry)",
+    );
+    expect(picker).toContain("triggerModelName(getTriggerDisplayModelName(model), entry)");
     expect(picker).toMatch(/\{activeEntry \? \(\s*<ProviderInstanceIcon/u);
     // One class for the single icon and the multi-model avatar stack alike.
     expect(picker).toContain(
