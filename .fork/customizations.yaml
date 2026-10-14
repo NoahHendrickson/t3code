@@ -4941,3 +4941,21 @@
     - apps/web/src/__fork_guards__/forkGithubPrAutomation.test.ts
     - apps/server/src/scheduledTasks/GitHubPrAutomation.test.ts
     - apps/server/src/scheduledTasks/ScheduledTaskService.webhook.test.ts
+
+- id: fork-new-worktree-default-base
+  intent: >
+    Switching a draft to New worktree always starts from the repo default
+    branch, not from whatever branch the draft carried. In Current checkout,
+    GitActionsControl syncs the live checkout's branch into the draft; from an
+    existing worktree, the draft holds that tree's branch. Upstream's
+    onEnvModeChange kept that branch, so it became the new worktree's base and
+    the branch selector's default-branch seed (which only fills an empty
+    branch) never ran. Entering worktree mode clears branch and worktreePath
+    together; the user can still pick a different base afterwards.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/web/src/components/ChatView.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkNewWorktreeDefaultBase.test.ts
