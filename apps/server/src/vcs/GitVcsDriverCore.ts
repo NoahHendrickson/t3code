@@ -59,13 +59,14 @@ const WORKTREE_ADD_TIMEOUT_MS = 300_000;
    there: a webhook fanning one PR event out to several tasks reaches the
    base-branch write within the same millisecond, and every loser rolls back
    a worktree that already exists. Retrying at roughly 20, 40, 80, 160 and
-   320ms outlasts a sibling writer, which holds the lock for milliseconds. */
-const CONFIG_LOCK_HELD_PATTERN = /could not lock config file/i;
+   320ms outlasts a sibling writer, which holds the lock for milliseconds.
+   The pattern is git's C-locale wording, so the write pins LC_ALL=C, and it
+   needs the "File exists" cause: the same prefix introduces a permission
+   error, which no amount of waiting fixes. */
+const CONFIG_LOCK_HELD_PATTERN = /could not lock config file .*: File exists/i;
 const CONFIG_LOCK_HELD_DETAIL = "Another git process held .git/config.lock.";
-const CONFIG_WRITE_RETRY_SCHEDULE = Schedule.recurs(5).pipe(
-  Schedule.addDelay(({ attempt }) => Effect.succeed(Duration.millis(20 * 2 ** (attempt - 1)))),
-  Schedule.jittered,
-);
+const CONFIG_WRITE_RETRY_ATTEMPTS = 5;
+const CONFIG_WRITE_RETRY_SCHEDULE = Schedule.exponential("20 millis").pipe(Schedule.jittered);
 /* fork:end git-config-lock-retry */
 const WORKTREE_REMOVE_TIMEOUT_MS = Duration.toMillis(Duration.minutes(5));
 const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
@@ -1149,7 +1150,14 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     value: string,
   ): Effect.Effect<void, GitCommandError> => {
     const args = ["config", key, value];
-    return executeGit(operation, cwd, args, { allowNonZeroExit: true }).pipe(
+    const lockHeld = (result: GitVcsDriver.ExecuteGitResult) =>
+      result.exitCode !== 0 && CONFIG_LOCK_HELD_PATTERN.test(result.stderr);
+    return executeGitWithStableDiagnostics(operation, cwd, args, { allowNonZeroExit: true }).pipe(
+      Effect.repeat({
+        while: lockHeld,
+        times: CONFIG_WRITE_RETRY_ATTEMPTS,
+        schedule: CONFIG_WRITE_RETRY_SCHEDULE,
+      }),
       Effect.flatMap((result) => {
         if (result.exitCode === 0) {
           return Effect.void;
@@ -1159,7 +1167,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           new GitCommandError({
             ...gitCommandContext({ operation, cwd, args }),
             ...(reason === null ? {} : { reason }),
-            detail: CONFIG_LOCK_HELD_PATTERN.test(result.stderr)
+            detail: lockHeld(result)
               ? CONFIG_LOCK_HELD_DETAIL
               : "Git command exited with a non-zero status.",
             ...(result.exitCode === null ? {} : { exitCode: result.exitCode }),
@@ -1167,10 +1175,6 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
             stderrLength: result.stderr.length,
           }),
         );
-      }),
-      Effect.retry({
-        while: (error) => error.detail === CONFIG_LOCK_HELD_DETAIL,
-        schedule: CONFIG_WRITE_RETRY_SCHEDULE,
       }),
     );
   };

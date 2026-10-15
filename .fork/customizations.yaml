@@ -4954,9 +4954,12 @@
     during provision worktree" and rolled back a worktree that already
     existed. The retry (five attempts, 20ms doubling, jittered) outlasts a
     sibling writer; a lock that persists still fails, with a detail naming
-    the lock instead of a bare non-zero status. Both merge-base writes
-    (worktree creation and first push) share the helper. Upstream carries
-    the same unretried write; drop this fence if it adopts a retry.
+    the lock instead of a bare non-zero status. The write pins LC_ALL=C so
+    the C-locale pattern matches on localized hosts, and the pattern needs
+    git's "File exists" cause: the same prefix introduces a permission
+    error, which is reported as is and never retried. Both merge-base
+    writes (worktree creation and first push) share the helper. Upstream
+    carries the same unretried write; drop this fence if it adopts a retry.
   tier: 4
   files: []
   shadows: []

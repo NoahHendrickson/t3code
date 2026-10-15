@@ -2875,20 +2875,21 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
       }),
     );
     /* fork:begin git-config-lock-retry — see .fork/customizations.yaml#git-config-lock-retry */
-    const makeConfigLockHeldHandle = () =>
+    const makeConfigLockFailureHandle = (cause: string) =>
       ChildProcessSpawner.makeHandle({
         ...makeSuccessfulHandle(""),
         exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(255)),
         stderr: Stream.encodeText(
-          Stream.make("error: could not lock config file .git/config: File exists\n"),
+          Stream.make(`error: could not lock config file .git/config: ${cause}\n`),
         ),
       });
-    // Real git for everything except the base-branch write, which reports a
-    // held `.git/config.lock` for the first `lockedAttempts` tries.
-    const makeLockedConfigDriver = (lockedAttempts: number) =>
+    // Real git for everything except the base-branch write, which fails with
+    // the given lock cause for the first `failingAttempts` tries.
+    const makeLockedConfigDriver = (failingAttempts: number, cause = "File exists") =>
       Effect.gen(function* () {
         const delegate = yield* ChildProcessSpawner.ChildProcessSpawner;
         const attempts = yield* Ref.make(0);
+        const locales = yield* Ref.make<ReadonlyArray<string | undefined>>([]);
         const spawner = ChildProcessSpawner.make((command) =>
           Effect.gen(function* () {
             if (!ChildProcess.isStandardCommand(command)) {
@@ -2900,9 +2901,10 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
             if (!isMergeBaseWrite) {
               return yield* delegate.spawn(command);
             }
+            yield* Ref.update(locales, (current) => [...current, command.options.env?.LC_ALL]);
             const attempt = yield* Ref.updateAndGet(attempts, (count) => count + 1);
-            return attempt <= lockedAttempts
-              ? makeConfigLockHeldHandle()
+            return attempt <= failingAttempts
+              ? makeConfigLockFailureHandle(cause)
               : yield* delegate.spawn(command);
           }),
         );
@@ -2910,7 +2912,7 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
           Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
           Effect.provide(layerServerConfig),
         );
-        return { driver, attempts };
+        return { driver, attempts, locales };
       });
     const createLockedWorktree = (
       driver: GitVcsDriver.GitVcsDriver["Service"],
@@ -2939,11 +2941,13 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
           Effect.gen(function* () {
             const cwd = yield* makeTmpDir();
             const { initialBranch } = yield* initRepoWithCommit(cwd);
-            const { driver, attempts } = yield* makeLockedConfigDriver(2);
+            const { driver, attempts, locales } = yield* makeLockedConfigDriver(2);
 
             yield* createLockedWorktree(driver, cwd, initialBranch);
 
             assert.equal(yield* Ref.get(attempts), 3);
+            // The lock message is matched in git's C-locale wording.
+            assert.deepStrictEqual(yield* Ref.get(locales), ["C", "C", "C"]);
             assert.equal(
               yield* git(cwd, ["config", "branch.feature/locked.gh-merge-base"]),
               initialBranch,
@@ -2971,6 +2975,24 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
             ),
             "",
           );
+        }),
+      ),
+    );
+    it.effect("does not retry a config lock git could not create", () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const cwd = yield* makeTmpDir();
+          const { initialBranch } = yield* initRepoWithCommit(cwd);
+          const { driver, attempts } = yield* makeLockedConfigDriver(
+            Number.POSITIVE_INFINITY,
+            "Permission denied",
+          );
+
+          const error = yield* createLockedWorktree(driver, cwd, initialBranch).pipe(Effect.flip);
+
+          assert.instanceOf(error, GitCommandError);
+          assert.equal(error.detail, "Git command exited with a non-zero status.");
+          assert.equal(yield* Ref.get(attempts), 1);
         }),
       ),
     );
