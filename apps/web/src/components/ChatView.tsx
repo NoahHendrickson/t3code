@@ -10898,8 +10898,12 @@ export default function ChatView(props: ChatViewProps) {
              live checkout's (GitActionsControl syncs it in Current checkout)
              or an existing worktree's. Kept, it became the new worktree's
              base, and the branch selector seeds the repo default only into
-             an empty branch. */
-          ...(mode === "worktree" ? { branch: null, worktreePath: null } : {}),
+             an empty branch. Only on the way in: Base UI re-fires
+             onValueChange for the checked item, and a reselect must keep a
+             base the user picked. An existing worktree reads as "local". */
+          ...(mode === "worktree" && envMode !== "worktree"
+            ? { branch: null, worktreePath: null }
+            : {}),
           /* fork:end fork-new-worktree-default-base */
         });
       }
@@ -10908,6 +10912,7 @@ export default function ChatView(props: ChatViewProps) {
     [
       canOverrideServerThreadEnvMode,
       composerDraftTarget,
+      envMode,
       isLocalDraftThread,
       multipleModelSelections,
       activeProjectSettings.settings.newWorktreesStartFromOrigin,

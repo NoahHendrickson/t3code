@@ -4951,7 +4951,9 @@
     onEnvModeChange kept that branch, so it became the new worktree's base and
     the branch selector's default-branch seed (which only fills an empty
     branch) never ran. Entering worktree mode clears branch and worktreePath
-    together; the user can still pick a different base afterwards.
+    together, only on the transition in: Base UI re-fires onValueChange for the
+    already-checked item, and that reselect must keep a base the user picked.
+    An existing-worktree draft reads as "local", so it still clears.
   tier: 4
   files: []
   shadows: []
