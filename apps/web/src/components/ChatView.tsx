@@ -10893,7 +10893,18 @@ export default function ChatView(props: ChatViewProps) {
             envMode: mode,
             newWorktreesStartFromOrigin: activeProjectSettings.settings.newWorktreesStartFromOrigin,
           }),
-          ...(mode === "worktree" && draftThread?.worktreePath ? { worktreePath: null } : {}),
+          /* fork:begin fork-new-worktree-default-base — see .fork/customizations.yaml#fork-new-worktree-default-base
+             Entering New worktree drops the branch the draft carried — the
+             live checkout's (GitActionsControl syncs it in Current checkout)
+             or an existing worktree's. Kept, it became the new worktree's
+             base, and the branch selector seeds the repo default only into
+             an empty branch. Only on the way in: Base UI re-fires
+             onValueChange for the checked item, and a reselect must keep a
+             base the user picked. An existing worktree reads as "local". */
+          ...(mode === "worktree" && envMode !== "worktree"
+            ? { branch: null, worktreePath: null }
+            : {}),
+          /* fork:end fork-new-worktree-default-base */
         });
       }
       scheduleComposerFocus();
@@ -10901,7 +10912,7 @@ export default function ChatView(props: ChatViewProps) {
     [
       canOverrideServerThreadEnvMode,
       composerDraftTarget,
-      draftThread?.worktreePath,
+      envMode,
       isLocalDraftThread,
       multipleModelSelections,
       activeProjectSettings.settings.newWorktreesStartFromOrigin,
