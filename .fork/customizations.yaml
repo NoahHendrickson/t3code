@@ -4961,3 +4961,30 @@
     - apps/web/src/components/ChatView.tsx
   verify:
     - apps/web/src/__fork_guards__/forkNewWorktreeDefaultBase.test.ts
+
+- id: git-config-lock-retry
+  intent: >
+    A git config write retries briefly while another git process holds
+    .git/config.lock. Git takes that lock for every config write and gives
+    up at once when it is held, and T3 writes branch.<name>.gh-merge-base
+    right after `git worktree add`. Several thread launches in one
+    repository reach that write within the same millisecond — a GitHub
+    webhook fanning one PR event out to three review tasks did on
+    2026-10-14 — so all but one launch failed "Workspace preparation failed
+    during provision worktree" and rolled back a worktree that already
+    existed. The retry (five attempts, 20ms doubling, jittered) outlasts a
+    sibling writer; a lock that persists still fails, with a detail naming
+    the lock instead of a bare non-zero status. The write pins LC_ALL=C so
+    the C-locale pattern matches on localized hosts, and the pattern needs
+    git's "File exists" cause: the same prefix introduces a permission
+    error, which is reported as is and never retried. Both merge-base
+    writes (worktree creation and first push) share the helper. Upstream
+    carries the same unretried write; drop this fence if it adopts a retry.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/server/src/vcs/GitVcsDriverCore.ts
+    - apps/server/src/vcs/GitVcsDriverCore.test.ts
+  verify:
+    - apps/server/src/vcs/GitVcsDriverCore.test.ts

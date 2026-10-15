@@ -12,6 +12,9 @@ import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
+/* fork:begin git-config-lock-retry — see .fork/customizations.yaml#git-config-lock-retry */
+import * as Schedule from "effect/Schedule";
+/* fork:end git-config-lock-retry */
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Semaphore from "effect/Semaphore";
@@ -50,6 +53,21 @@ const gitProcesses = Semaphore.makeUnsafe(8);
 // take well beyond the default 30s (e.g. a 375k-file repo takes ~40s on an idle
 // machine). Give it generous headroom while still bounding a genuinely hung git.
 const WORKTREE_ADD_TIMEOUT_MS = 300_000;
+/* fork:begin git-config-lock-retry — see .fork/customizations.yaml#git-config-lock-retry
+   Git takes `.git/config.lock` for every config write and gives up at once
+   when another process holds it. Thread launches in one repository collide
+   there: a webhook fanning one PR event out to several tasks reaches the
+   base-branch write within the same millisecond, and every loser rolls back
+   a worktree that already exists. Retrying at roughly 20, 40, 80, 160 and
+   320ms outlasts a sibling writer, which holds the lock for milliseconds.
+   The pattern is git's C-locale wording, so the write pins LC_ALL=C, and it
+   needs the "File exists" cause: the same prefix introduces a permission
+   error, which no amount of waiting fixes. */
+const CONFIG_LOCK_HELD_PATTERN = /could not lock config file .*: File exists/i;
+const CONFIG_LOCK_HELD_DETAIL = "Another git process held .git/config.lock.";
+const CONFIG_WRITE_RETRY_ATTEMPTS = 5;
+const CONFIG_WRITE_RETRY_SCHEDULE = Schedule.exponential("20 millis").pipe(Schedule.jittered);
+/* fork:end git-config-lock-retry */
 const WORKTREE_REMOVE_TIMEOUT_MS = Duration.toMillis(Duration.minutes(5));
 const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
 const OUTPUT_TRUNCATED_MARKER = "\n\n[truncated]";
@@ -1123,6 +1141,44 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     options: ExecuteGitOptions = {},
   ): Effect.Effect<void, GitCommandError> =>
     executeGit(operation, cwd, args, options).pipe(Effect.asVoid);
+
+  /* fork:begin git-config-lock-retry — see .fork/customizations.yaml#git-config-lock-retry */
+  const writeConfigValue = (
+    operation: string,
+    cwd: string,
+    key: string,
+    value: string,
+  ): Effect.Effect<void, GitCommandError> => {
+    const args = ["config", key, value];
+    const lockHeld = (result: GitVcsDriver.ExecuteGitResult) =>
+      result.exitCode !== 0 && CONFIG_LOCK_HELD_PATTERN.test(result.stderr);
+    return executeGitWithStableDiagnostics(operation, cwd, args, { allowNonZeroExit: true }).pipe(
+      Effect.repeat({
+        while: lockHeld,
+        times: CONFIG_WRITE_RETRY_ATTEMPTS,
+        schedule: CONFIG_WRITE_RETRY_SCHEDULE,
+      }),
+      Effect.flatMap((result) => {
+        if (result.exitCode === 0) {
+          return Effect.void;
+        }
+        const reason = classifyGitFailure(result.stderr);
+        return Effect.fail(
+          new GitCommandError({
+            ...gitCommandContext({ operation, cwd, args }),
+            ...(reason === null ? {} : { reason }),
+            detail: lockHeld(result)
+              ? CONFIG_LOCK_HELD_DETAIL
+              : "Git command exited with a non-zero status.",
+            ...(result.exitCode === null ? {} : { exitCode: result.exitCode }),
+            stdoutLength: result.stdout.length,
+            stderrLength: result.stderr.length,
+          }),
+        );
+      }),
+    );
+  };
+  /* fork:end git-config-lock-retry */
 
   const runGitStdout = (
     operation: string,
@@ -2397,11 +2453,14 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
           true,
         ).pipe(Effect.map((stdout) => stdout.trim()));
         if (configuredMergeBase.length === 0) {
-          yield* runGit("GitVcsDriver.pushCurrentBranch.recordMergeBase", cwd, [
-            "config",
+          /* fork:begin git-config-lock-retry — see .fork/customizations.yaml#git-config-lock-retry */
+          yield* writeConfigValue(
+            "GitVcsDriver.pushCurrentBranch.recordMergeBase",
+            cwd,
             `branch.${branch}.gh-merge-base`,
             currentUpstream.branchName,
-          ]);
+          );
+          /* fork:end git-config-lock-retry */
         }
         yield* runGit(
           "GitVcsDriver.pushCurrentBranch.pushOwnBranch",
@@ -3486,11 +3545,14 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         remoteNames.toSorted((left, right) => right.length - left.length),
       );
       const baseBranch = parsedBaseRef?.branchName ?? input.baseRefName;
-      yield* runGit("GitVcsDriver.createWorktree.configureBaseRef", input.cwd, [
-        "config",
+      /* fork:begin git-config-lock-retry — see .fork/customizations.yaml#git-config-lock-retry */
+      yield* writeConfigValue(
+        "GitVcsDriver.createWorktree.configureBaseRef",
+        input.cwd,
         `branch.${input.newRefName}.gh-merge-base`,
         baseBranch,
-      ]);
+      );
+      /* fork:end git-config-lock-retry */
     }
 
     return {

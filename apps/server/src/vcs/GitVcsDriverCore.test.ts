@@ -2874,6 +2874,129 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
         }
       }),
     );
+    /* fork:begin git-config-lock-retry — see .fork/customizations.yaml#git-config-lock-retry */
+    const makeConfigLockFailureHandle = (cause: string) =>
+      ChildProcessSpawner.makeHandle({
+        ...makeSuccessfulHandle(""),
+        exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(255)),
+        stderr: Stream.encodeText(
+          Stream.make(`error: could not lock config file .git/config: ${cause}\n`),
+        ),
+      });
+    // Real git for everything except the base-branch write, which fails with
+    // the given lock cause for the first `failingAttempts` tries.
+    const makeLockedConfigDriver = (failingAttempts: number, cause = "File exists") =>
+      Effect.gen(function* () {
+        const delegate = yield* ChildProcessSpawner.ChildProcessSpawner;
+        const attempts = yield* Ref.make(0);
+        const locales = yield* Ref.make<ReadonlyArray<string | undefined>>([]);
+        const spawner = ChildProcessSpawner.make((command) =>
+          Effect.gen(function* () {
+            if (!ChildProcess.isStandardCommand(command)) {
+              return yield* Effect.die("expected a standard Git command");
+            }
+            const isMergeBaseWrite =
+              command.args[0] === "config" &&
+              command.args[1] === "branch.feature/locked.gh-merge-base";
+            if (!isMergeBaseWrite) {
+              return yield* delegate.spawn(command);
+            }
+            yield* Ref.update(locales, (current) => [...current, command.options.env?.LC_ALL]);
+            const attempt = yield* Ref.updateAndGet(attempts, (count) => count + 1);
+            return attempt <= failingAttempts
+              ? makeConfigLockFailureHandle(cause)
+              : yield* delegate.spawn(command);
+          }),
+        );
+        const driver = yield* makeGitVcsDriverCore().pipe(
+          Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+          Effect.provide(layerServerConfig),
+        );
+        return { driver, attempts, locales };
+      });
+    const createLockedWorktree = (
+      driver: GitVcsDriver.GitVcsDriver["Service"],
+      cwd: string,
+      initialBranch: string,
+    ) =>
+      Effect.gen(function* () {
+        const path = yield* Path.Path;
+        const worktreePath = path.join(yield* makeTmpDir("git-worktrees-"), "locked");
+        // The retry backoff sleeps on the clock, so the launch runs on the live one.
+        return yield* TestClock.withLive(
+          driver.createWorktree({
+            cwd,
+            path: worktreePath,
+            refName: initialBranch,
+            newRefName: "feature/locked",
+            baseRefName: initialBranch,
+          }),
+        );
+      });
+
+    it.effect(
+      "waits out another git process holding .git/config.lock when recording the base branch",
+      () =>
+        Effect.scoped(
+          Effect.gen(function* () {
+            const cwd = yield* makeTmpDir();
+            const { initialBranch } = yield* initRepoWithCommit(cwd);
+            const { driver, attempts, locales } = yield* makeLockedConfigDriver(2);
+
+            yield* createLockedWorktree(driver, cwd, initialBranch);
+
+            assert.equal(yield* Ref.get(attempts), 3);
+            // The lock message is matched in git's C-locale wording.
+            assert.deepStrictEqual(yield* Ref.get(locales), ["C", "C", "C"]);
+            assert.equal(
+              yield* git(cwd, ["config", "branch.feature/locked.gh-merge-base"]),
+              initialBranch,
+            );
+          }),
+        ),
+    );
+    it.effect("fails the base-branch write once .git/config.lock outlasts the retry budget", () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const cwd = yield* makeTmpDir();
+          const { initialBranch } = yield* initRepoWithCommit(cwd);
+          const { driver, attempts } = yield* makeLockedConfigDriver(Number.POSITIVE_INFINITY);
+
+          const error = yield* createLockedWorktree(driver, cwd, initialBranch).pipe(Effect.flip);
+
+          assert.instanceOf(error, GitCommandError);
+          assert.equal(error.operation, "GitVcsDriver.createWorktree.configureBaseRef");
+          assert.equal(error.exitCode, 255);
+          assert.include(error.message, ".git/config.lock");
+          assert.equal(yield* Ref.get(attempts), 6);
+          assert.equal(
+            yield* git(cwd, ["config", "--get", "branch.feature/locked.gh-merge-base"]).pipe(
+              Effect.orElseSucceed(() => ""),
+            ),
+            "",
+          );
+        }),
+      ),
+    );
+    it.effect("does not retry a config lock git could not create", () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const cwd = yield* makeTmpDir();
+          const { initialBranch } = yield* initRepoWithCommit(cwd);
+          const { driver, attempts } = yield* makeLockedConfigDriver(
+            Number.POSITIVE_INFINITY,
+            "Permission denied",
+          );
+
+          const error = yield* createLockedWorktree(driver, cwd, initialBranch).pipe(Effect.flip);
+
+          assert.instanceOf(error, GitCommandError);
+          assert.equal(error.detail, "Git command exited with a non-zero status.");
+          assert.equal(yield* Ref.get(attempts), 1);
+        }),
+      ),
+    );
+    /* fork:end git-config-lock-retry */
     it("parses checkout progress lines from git's stderr", () => {
       assert.deepStrictEqual(parseGitCheckoutProgressLine("Updating files:  78% (2104/2700)"), {
         percent: 78,
