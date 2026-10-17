@@ -27,9 +27,10 @@
 - id: fork-local-dictation
   intent: >
     macOS desktop users can dictate prompts locally for free through a composer
-    microphone and a tap of the right Command key. An English Whisper Small
-    model (181 MiB)
-    downloads once with integrity verification; whisper.cpp runs with Metal.
+    microphone and a tap of the right Command key. A Whisper Large v3
+    Turbo model (547 MiB) and a Silero voice-activity model download once with
+    integrity verification; whisper.cpp runs with Metal, skips non-speech, and
+    returns the transcript as one paragraph.
     Audio stays on the client device even for remote environments. The composer
     owns its dictation session through a hook that mirrors mobile's
     useVoiceInputController (built once, cancelled on owner change, disposed on

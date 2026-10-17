@@ -15,21 +15,31 @@ afterEach(async () => {
   );
 });
 const modelBytes = new Uint8Array([1, 2, 3]);
+const vadBytes = new Uint8Array([4, 5]);
 const model = {
   file: "ggml-test.bin",
   url: "https://example.test/model",
   bytes: 3,
   sha256: NodeCrypto.createHash("sha256").update(modelBytes).digest("hex"),
 };
-const installedFiles = [model.file, `${model.file}.sha256`];
+const vad = {
+  file: "ggml-vad-test.bin",
+  url: "https://example.test/vad",
+  bytes: 2,
+  sha256: NodeCrypto.createHash("sha256").update(vadBytes).digest("hex"),
+};
+const models = { speech: model, vad };
+const installedFiles = [model.file, `${model.file}.sha256`, vad.file, `${vad.file}.sha256`].sort();
+const serve = async (url: string | URL | Request) =>
+  new Response(String(url) === vad.url ? vadBytes : modelBytes);
 async function fixture(options: Partial<ConstructorParameters<typeof LocalSpeechEngine>[0]> = {}) {
   const directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "voice-engine-test-"));
   directories.push(directory);
-  const fetchModel = vi.fn<typeof fetch>(async () => new Response(modelBytes));
+  const fetchModel = vi.fn<typeof fetch>(serve);
   const engine = new LocalSpeechEngine({
     binary: process.execPath,
     cacheDirectory: directory,
-    model,
+    models,
     fetch: fetchModel,
     ...options,
   });
@@ -55,9 +65,16 @@ function wav() {
 describe("local speech engine", () => {
   it("downloads once, validates integrity, and reuses the model across launches", async () => {
     const { engine, fetchModel, directory } = await fixture();
-    await engine.prepare("one", () => {});
+    const progress: number[] = [];
+    await engine.prepare("one", (percent) => progress.push(percent));
     await engine.prepare("two", () => {});
-    expect(fetchModel).toHaveBeenCalledTimes(1);
+    expect(fetchModel).toHaveBeenCalledTimes(2);
+    // One scale across both files: it never restarts and ends at 100.
+    expect(progress).toEqual([...progress].sort((a, b) => a - b));
+    expect(progress.at(-1)).toBe(100);
+    expect(new Uint8Array(await NodeFSP.readFile(NodePath.join(directory, vad.file)))).toEqual(
+      vadBytes,
+    );
     expect(new Uint8Array(await NodeFSP.readFile(NodePath.join(directory, model.file)))).toEqual(
       modelBytes,
     );
@@ -67,7 +84,7 @@ describe("local speech engine", () => {
     const restarted = new LocalSpeechEngine({
       binary: process.execPath,
       cacheDirectory: directory,
-      model,
+      models,
       fetch: offline,
     });
     await restarted.prepare("three", () => {});
@@ -77,10 +94,11 @@ describe("local speech engine", () => {
   it("hashes an unstamped model once and trusts the stamp afterwards", async () => {
     const { directory } = await fixture();
     await NodeFSP.writeFile(NodePath.join(directory, model.file), modelBytes);
+    await NodeFSP.writeFile(NodePath.join(directory, vad.file), vadBytes);
     const engine = new LocalSpeechEngine({
       binary: process.execPath,
       cacheDirectory: directory,
-      model,
+      models,
       fetch: async () => {
         throw new Error("offline");
       },
@@ -95,8 +113,8 @@ describe("local speech engine", () => {
     const restarted = new LocalSpeechEngine({
       binary: process.execPath,
       cacheDirectory: directory,
-      model,
-      fetch: async () => new Response(modelBytes),
+      models,
+      fetch: serve,
     });
     await restarted.prepare("two", () => {});
     expect(new Uint8Array(await NodeFSP.readFile(NodePath.join(directory, model.file)))).toEqual(
@@ -110,15 +128,18 @@ describe("local speech engine", () => {
     await NodeFSP.rm(NodePath.join(directory, model.file));
     await expect(engine.transcribe("one", wav())).rejects.toThrow("missing");
     await engine.prepare("two", () => {});
-    expect(fetchModel).toHaveBeenCalledTimes(2);
+    expect(fetchModel).toHaveBeenCalledTimes(3);
     expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
 
-  it("clears recording scratch directories left behind by a crash", async () => {
+  it("clears crash leftovers and models a newer build replaced", async () => {
     const { engine, directory } = await fixture();
     const stale = NodePath.join(directory, "recording-stale");
     await NodeFSP.mkdir(stale, { recursive: true });
     await NodeFSP.writeFile(NodePath.join(stale, "audio.wav"), wav());
+    await NodeFSP.writeFile(NodePath.join(directory, "ggml-small.en-q5_1.bin"), modelBytes);
+    await NodeFSP.writeFile(NodePath.join(directory, "ggml-small.en-q5_1.bin.sha256"), "old");
+    await NodeFSP.writeFile(NodePath.join(directory, `${model.file}.download`), modelBytes);
     await engine.prepare("one", () => {});
     expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
@@ -127,7 +148,7 @@ describe("local speech engine", () => {
     const fetchModel = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(new Uint8Array([9, 2, 3])))
-      .mockResolvedValueOnce(new Response(modelBytes));
+      .mockImplementation(serve);
     const { engine, directory } = await fixture({ fetch: fetchModel });
     await expect(engine.prepare("one", () => {})).rejects.toThrow("damaged");
     expect(await NodeFSP.readdir(directory)).toEqual([]);
@@ -142,7 +163,7 @@ describe("local speech engine", () => {
     const { engine } = await fixture({
       fetch: async (_url, options) => {
         fetches += 1;
-        if (fetches > 1) return new Response(modelBytes);
+        if (fetches > 1) return serve(_url);
         started.resolve(options!.signal!);
         return finished.promise;
       },
@@ -166,19 +187,20 @@ describe("local speech engine", () => {
     await expect(third).rejects.toThrow("cancelled");
     // The queue keeps serving after cancellations.
     await expect(engine.prepare("window-2:d", () => {})).resolves.toBeUndefined();
-    expect(fetches).toBe(2);
+    expect(fetches).toBe(3);
   });
 
-  it("reads only the helper's transcript output and deletes temporary recordings", async () => {
+  it("joins the helper's per-segment lines into one paragraph and deletes recordings", async () => {
     const run = vi.fn<typeof runWhisper>(async (_binary, args) => {
       const audio = args[args.indexOf("--file") + 1]!;
       expect(await NodeFSP.readFile(audio)).toEqual(wav());
       const output = args[args.indexOf("--output-file") + 1]!;
-      await NodeFSP.writeFile(`${output}.txt`, " Add local dictation. \n");
+      // whisper-cli breaks lines at pauses, mid-sentence, with a leading space.
+      await NodeFSP.writeFile(`${output}.txt`, " Add local dictation\n and ship it. \n");
     });
     const { engine, directory } = await fixture({ run });
     await engine.prepare("owner", () => {});
-    expect(await engine.transcribe("owner", wav())).toBe("Add local dictation.");
+    expect(await engine.transcribe("owner", wav())).toBe("Add local dictation and ship it.");
     expect((await NodeFSP.readdir(directory)).sort()).toEqual(installedFiles);
   });
 
