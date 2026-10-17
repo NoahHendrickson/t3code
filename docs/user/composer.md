@@ -153,7 +153,7 @@ the session and then the transcript with a **Copy** button, and stays until you
 copy or dismiss it. Closing the toast while it is still listening cancels the
 recording.
 
-First use downloads an English speech model (181 MiB). After that, transcription
+First use downloads a speech model (about 550 MiB). After that, transcription
 works offline with no account, API key, or usage fee. Audio stays on your device,
 including when connected to a remote environment, and temporary recordings are
 deleted after processing. The desktop app needs microphone permission. Switching
