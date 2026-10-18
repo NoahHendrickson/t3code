@@ -16,13 +16,18 @@ type ModelSpecification = {
   readonly sha256: string;
 };
 
+type SpeechModels = {
+  readonly speech: ModelSpecification;
+  readonly vad: ModelSpecification;
+};
+
 /**
  * Large v3 Turbo, quantized: far fewer misheard words than Small for a model
  * that still transcribes a long dictation in about a second on Apple Silicon
  * Metal. Silero VAD cuts non-speech out before Whisper sees it, so background
  * noise and pauses are not transcribed or turned into invented text.
  */
-const DEFAULT_MODELS = {
+const DEFAULT_MODELS: SpeechModels = {
   speech: {
     file: "ggml-large-v3-turbo-q5_0.bin",
     url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin",
@@ -35,16 +40,16 @@ const DEFAULT_MODELS = {
     bytes: 885098,
     sha256: "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987",
   },
-} satisfies Record<string, ModelSpecification>;
+};
 
 /**
  * Whisper reads the prompt as text that came before the recording, so it
- * biases spelling toward these terms and its punctuation toward this style.
+ * biases spelling toward these terms. A bare list rather than a sentence, so
+ * there is no transcript-like phrase for a short, unclear clip to echo.
  */
 const VOCABULARY_PROMPT =
-  "Prompt for a coding agent in T3 Code, using Claude, Codex, Cursor, and OpenCode. " +
-  "It mentions TypeScript, React, Electron, Vite, Effect, the composer, the sidebar, " +
-  "a worktree, a pull request, a commit, the CLI, and the API.";
+  "T3 Code, Claude, Codex, Cursor, Grok, Antigravity, OpenCode, TypeScript, React, " +
+  "Electron, Vite, Effect, composer, sidebar, worktree, pull request, commit, CLI, API.";
 // Bound by the same limit that arms the recorder, so raising it upstream can
 // never leave a full-length recording rejected here after the fact.
 const MAX_AUDIO_BYTES = 44 + 16_000 * 2 * VOICE_RECORDING_LIMIT_SECONDS;
@@ -129,7 +134,7 @@ export class LocalSpeechEngine {
     cacheDirectory: string;
     fetch?: typeof fetch;
     run?: typeof runWhisper;
-    models?: typeof DEFAULT_MODELS;
+    models?: SpeechModels;
   };
 
   constructor(options: LocalSpeechEngine["options"]) {
@@ -142,6 +147,13 @@ export class LocalSpeechEngine {
 
   private modelPath(specification: ModelSpecification) {
     return NodePath.join(this.options.cacheDirectory, specification.file);
+  }
+
+  /** Checked together, so hashing one unstamped model does not hold up the other. */
+  private async missingModels(signal: AbortSignal): Promise<ModelSpecification[]> {
+    const models = Object.values(this.models);
+    const verified = await Promise.all(models.map((model) => this.verifyModel(model, signal)));
+    return models.filter((_, index) => !verified[index]);
   }
 
   cancel(requestKey: string): void {
@@ -184,9 +196,7 @@ export class LocalSpeechEngine {
       // Re-checked every session (a stat plus the sidecar stamp, so it is
       // cheap): a model deleted to reclaim space must download again, not
       // fail every later dictation until the app restarts.
-      const missing: ModelSpecification[] = [];
-      for (const specification of Object.values(this.models))
-        if (!(await this.verifyModel(specification, signal))) missing.push(specification);
+      const missing = await this.missingModels(signal);
       if (missing.length === 0) return;
       // One percentage across every missing file, so the label never restarts.
       const total = missing.reduce((sum, specification) => sum + specification.bytes, 0);
@@ -309,10 +319,9 @@ export class LocalSpeechEngine {
   transcribe(requestKey: string, wav: Uint8Array): Promise<string> {
     return this.operate(requestKey, async (signal) => {
       validateVoiceWav(wav);
+      if ((await this.missingModels(signal)).length > 0)
+        throw new Error("The speech model is missing. Start dictation again to download it.");
       const { speech, vad } = this.models;
-      for (const specification of [speech, vad])
-        if (!(await this.verifyModel(specification, signal)))
-          throw new Error("The speech model is missing. Start dictation again to download it.");
       const directory = await NodeFSP.mkdtemp(
         NodePath.join(this.options.cacheDirectory, "recording-"),
       );
