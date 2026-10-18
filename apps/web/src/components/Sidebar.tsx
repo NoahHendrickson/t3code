@@ -980,7 +980,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   const topStatus:
     | { label: string; tone: "working"; mark: "rain" }
     | { label: string; tone: SidebarV2DotTone; mark: "dot" | "woke" }
-    | { label: "Waiting"; mark: "monitoring" }
+    | { label: "Waiting" | "Monitoring"; mark: "monitoring" }
     | null =
     status === "working"
       ? {
@@ -999,11 +999,21 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               ? { label: "Usage limit reached", tone: "approval", mark: "dot" }
               : status === "failed"
                 ? { label: "Failed", tone: "failed", mark: "dot" }
-                : isWoke
-                  ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
-                  : isUnread
-                    ? { label: "Done", tone: "done", mark: "dot" }
-                    : null;
+                : /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                     A settled turn whose roster is commands only (a dev
+                     server, a long shell) does not hold completion, so
+                     upstream presents the run's own status (#14872) and the
+                     card would read idle. The composer's context-strip pill
+                     labels that same roster "Monitoring"; the card draws the
+                     same breathing mark so the two never disagree. */
+                  status === "ready" && thread.pendingBackgroundTasks.length > 0
+                  ? { label: "Monitoring", mark: "monitoring" }
+                  : /* fork:end sidebar-v2-card-rows */
+                    isWoke
+                    ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
+                    : isUnread
+                      ? { label: "Done", tone: "done", mark: "dot" }
+                      : null;
 
   /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
   // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
