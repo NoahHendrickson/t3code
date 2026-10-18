@@ -54,9 +54,10 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(sidebarV2).toContain('? { label: "Waiting", mark: "monitoring" }');
     // A commands-only roster (a dev server left running) does not hold
     // completion upstream, so the row would read idle while the composer's
-    // context-strip pill says "Monitoring". The card draws the same mark.
+    // context-strip pill says "Monitoring". The card draws the same mark, but
+    // only in place of the idle ring: Done must still win for an unread turn.
     expect(sidebarV2).toMatch(
-      /status === "ready" && thread\.pendingBackgroundTasks\.length > 0\s*\?\s*\{ label: "Monitoring", mark: "monitoring" \}/u,
+      /\{ label: "Done", tone: "done", mark: "dot" \}[\s\S]{0,800}?thread\.pendingBackgroundTasks\.length > 0\s*\?\s*\{ label: "Monitoring", mark: "monitoring" \}\s*:[^;]*?null;/u,
     );
     // Monitoring is a pulsing dot via the shared mark renderer, not a sky
     // text label — and both card and slim draw it in the same 14px-tall slot.

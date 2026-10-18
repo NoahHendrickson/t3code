@@ -999,21 +999,21 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               ? { label: "Usage limit reached", tone: "approval", mark: "dot" }
               : status === "failed"
                 ? { label: "Failed", tone: "failed", mark: "dot" }
-                : /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-                     A settled turn whose roster is commands only (a dev
-                     server, a long shell) does not hold completion, so
-                     upstream presents the run's own status (#14872) and the
-                     card would read idle. The composer's context-strip pill
-                     labels that same roster "Monitoring"; the card draws the
-                     same breathing mark so the two never disagree. */
-                  status === "ready" && thread.pendingBackgroundTasks.length > 0
-                  ? { label: "Monitoring", mark: "monitoring" }
-                  : /* fork:end sidebar-v2-card-rows */
-                    isWoke
-                    ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
-                    : isUnread
-                      ? { label: "Done", tone: "done", mark: "dot" }
-                      : null;
+                : isWoke
+                  ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
+                  : isUnread
+                    ? { label: "Done", tone: "done", mark: "dot" }
+                    : /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                         Any roster still present here does not hold completion
+                         (a dev server, a long shell): shellRuntime parks the
+                         runtime at idle (→ "waiting" above) exactly when it
+                         does. Rather than read idle while the composer's pill
+                         says "Monitoring", the card draws the breathing mark.
+                         Woke and Done outrank it, since nothing will wake the
+                         agent and the roster can outlive the unread turn. */
+                      thread.pendingBackgroundTasks.length > 0
+                      ? { label: "Monitoring", mark: "monitoring" }
+                      : /* fork:end sidebar-v2-card-rows */ null;
 
   /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
   // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
