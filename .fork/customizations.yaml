@@ -718,7 +718,13 @@
     Since the 2026-10-05 sync (orchestrator V2): upstream's "monitoring"
     status is "waiting" and keeps the fork's breathing mark; the new "limited"
     status (usage limit reached) draws the amber approval-tone dot, because
-    it is waiting on the user. Both <li> variants carry
+    it is waiting on the user. A settled run whose roster is commands only (a
+    dev server left running) does not hold completion upstream (#14872), so
+    the row would read idle while the composer's context-strip pill labels
+    that same roster "Monitoring". The card draws the breathing mark, labelled
+    Monitoring, only in place of the idle ring: Woke and Done outrank it,
+    because nothing wakes the agent and the roster can outlive the unread
+    turn by hours. Both <li> variants carry
     data-thread-item={threadKey} so upstream's sweep can find rows under the
     pointer, and the sweep's verb badge draws with the fork's glyphs. The
     shelf headers keep their chevron (upstream moved its own headers to

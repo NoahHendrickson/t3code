@@ -980,7 +980,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   const topStatus:
     | { label: string; tone: "working"; mark: "rain" }
     | { label: string; tone: SidebarV2DotTone; mark: "dot" | "woke" }
-    | { label: "Waiting"; mark: "monitoring" }
+    | { label: "Waiting" | "Monitoring"; mark: "monitoring" }
     | null =
     status === "working"
       ? {
@@ -1003,7 +1003,17 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
                   : isUnread
                     ? { label: "Done", tone: "done", mark: "dot" }
-                    : null;
+                    : /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                         Any roster still present here does not hold completion
+                         (a dev server, a long shell): shellRuntime parks the
+                         runtime at idle (→ "waiting" above) exactly when it
+                         does. Rather than read idle while the composer's pill
+                         says "Monitoring", the card draws the breathing mark.
+                         Woke and Done outrank it, since nothing will wake the
+                         agent and the roster can outlive the unread turn. */
+                      thread.pendingBackgroundTasks.length > 0
+                      ? { label: "Monitoring", mark: "monitoring" }
+                      : /* fork:end sidebar-v2-card-rows */ null;
 
   /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
   // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
