@@ -290,6 +290,7 @@ import {
   SidebarV2ThreadCardMeta,
 } from "~/custom/SidebarV2ThreadCardMeta";
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "~/custom/sidebarV2CardAlignment";
+import { triggerModelName } from "~/custom/modelPickerDisplayName";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
@@ -348,9 +349,6 @@ import {
   sidebarServerActionThreadKeys,
 } from "~/custom/sidebarV2DraftRows";
 /* fork:end sidebar-v2-draft-rows */
-/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
-import { triggerModelName } from "~/custom/modelPickerDisplayName";
-/* fork:end sidebar-v2-card-rows */
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import {
   deriveProviderEntriesByEnvironment,
@@ -1056,12 +1054,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   const modelLabel = selectedModel
     ? getTriggerDisplayModelLabel(selectedModel)
     : thread.modelSelection.model;
-  /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-     The card shows no provider icon, so it names the model the way the
-     iconless picker trigger does: "Opus 5.5" for Claude, "Cursor Opus 5.5"
-     for Cursor. The tooltip keeps modelLabel beside its icon. */
-  const cardModelLabel = triggerModelName(modelLabel, providerEntry, { iconShown: false });
-  /* fork:end sidebar-v2-card-rows */
 
   // The local environment is "this machine" and needs no marker; every other
   // one gets its machine glyph. With no local environment (the hosted app)
@@ -2054,11 +2046,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 /* fork:end sidebar-v2-card-rows */
                 /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                  The PR badge, pre-built above: a link with upstream's tone and
-                 click routing, so it stays on the row's side of the seam. */
+                 click routing, so it stays on the row's side of the seam.
+                 The card shows no provider icon, so the model is named the way
+                 the iconless picker trigger names it: "Opus 5.5" for Claude,
+                 "Cursor Opus 5.5" for Cursor. The tooltip keeps modelLabel
+                 beside its icon. */
                 prSlot={prBadge}
-                /* fork:end sidebar-v2-card-rows */
-                /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
-                modelLabel={cardModelLabel}
+                modelLabel={triggerModelName(modelLabel, providerEntry, { iconShown: false })}
                 /* fork:end sidebar-v2-card-rows */
                 isRemote={isRemote}
               />

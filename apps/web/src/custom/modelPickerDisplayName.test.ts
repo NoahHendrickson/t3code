@@ -32,9 +32,15 @@ describe("stripProviderName", () => {
     expect(stripProviderName("Grok 4.6", { driverKind: grok, displayName: "Grok" })).toBe(
       "Grok 4.6",
     );
-    expect(triggerModelName("Grok Build", { driverKind: grok, displayName: "Grok" }, {
-      iconShown: false,
-    })).toBe("Grok Build");
+    expect(
+      triggerModelName(
+        "Grok Build",
+        { driverKind: grok, displayName: "Grok" },
+        {
+          iconShown: false,
+        },
+      ),
+    ).toBe("Grok Build");
   });
 
   it("leaves names that don't lead with the provider", () => {

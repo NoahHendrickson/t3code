@@ -113,6 +113,11 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     for (const prop of ["projectTitle=", "branch=", "modelLabel=", "isRemote="]) {
       expect(sidebarV2).toContain(prop);
     }
+    // The card has no provider icon, so the model is named like the iconless
+    // picker trigger: without this, a Cursor thread reads as Claude's own.
+    expect(sidebarV2).toContain(
+      "modelLabel={triggerModelName(modelLabel, providerEntry, { iconShown: false })}",
+    );
   });
 
   it("leads the flat card's project with its favicon, folder mark as the fallback", () => {
