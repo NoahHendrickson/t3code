@@ -3023,3 +3023,52 @@
   :is(span.truncate, span.truncate + span.shrink-0) {
   color: var(--foreground);
 }
+
+/* Touch affordances — see `.fork/customizations.yaml#fork-touch-affordances`.
+
+   The surfaces custom/touchLongPressContextMenu opens a menu on take no text
+   selection or callout from a touch, or iOS would start selecting the row's
+   title on the same hold that opens its menu. Coarse pointers only, so a
+   mouse can still select a row's text. Keep this list in step with
+   TOUCH_CONTEXT_MENU_SELECTOR. */
+@media (pointer: coarse) {
+  :root[data-fork="noahhendrickson-t3code"]
+    :is(
+      [data-thread-item],
+      [data-fork-project-section-header],
+      [data-right-panel-tab-list] [data-active-tab],
+      .group\/pr-row
+    ) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* A right-panel tab's leading icon is its close button, swapped for an X on
+     hover. Touch has no hover, so the icon stayed an icon while still closing
+     the tab when tapped. On touch the active tab shows the X it closes with,
+     and an inactive tab's icon no longer takes the tap. The close button is
+     the tab's first child; a mute button may follow it. */
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-right-panel-tab-list]
+    [data-active-tab="false"]
+    > button:first-child {
+    pointer-events: none;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-right-panel-tab-list]
+    [data-active-tab="true"]
+    > button:first-child
+    > span {
+    display: none;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-right-panel-tab-list]
+    [data-active-tab="true"]
+    > button:first-child
+    > svg {
+    display: block;
+  }
+}

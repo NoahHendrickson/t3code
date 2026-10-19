@@ -14,6 +14,9 @@ import { initializeForkTheme } from "./custom/forkTheme";
 /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
 import { initializeForkGlassNewAgentPicture } from "./custom/forkGlassNewAgentPicture";
 /* fork:end fork-glass-new-agent-stage */
+/* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances */
+import { installTouchLongPressContextMenu } from "./custom/touchLongPressContextMenu";
+/* fork:end fork-touch-affordances */
 
 import { prepareProviderAuthDelivery } from "./providerAuthDelivery";
 import { isElectron } from "./env";
@@ -42,6 +45,9 @@ initializeForkTheme();
 /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
 initializeForkGlassNewAgentPicture();
 /* fork:end fork-glass-new-agent-stage */
+/* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances */
+installTouchLongPressContextMenu();
+/* fork:end fork-touch-affordances */
 
 if (isElectron) {
   syncDocumentElectronPlatformClasses(navigator.platform);

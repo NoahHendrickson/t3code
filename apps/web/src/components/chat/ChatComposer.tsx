@@ -7400,6 +7400,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   <button
                     type="button"
                     data-chat-composer-transition-actions="true"
+                    /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances
+                       The collapsed phone row sends with the same button the open
+                       composer does: theme.custom.css draws it off these stamps. */
+                    {...(showResumeAction
+                      ? {}
+                      : {
+                          "data-fork-composer-action": "send",
+                          "data-fork-composer-send-tone": "flat",
+                        })}
+                    /* fork:end fork-touch-affordances */
                     className="flex size-8 shrink-0 items-center justify-center rounded-full bg-message-action text-message-action-foreground hover:bg-message-action-hover disabled:opacity-64"
                     disabled={collapsedComposerPrimaryActionDisabled}
                     aria-label={collapsedComposerPrimaryActionLabel}
@@ -7415,21 +7425,31 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     {showResumeAction ? (
                       <PlayIcon className="size-4 fill-current" aria-hidden="true" />
                     ) : (
+                      /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances
+                         The open composer's return arrow (ComposerPrimaryActions), not upstream's up arrow. */
                       <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
                         fill="none"
                         aria-hidden="true"
                       >
                         <path
-                          d="M8 3L8 13M8 3L4 7M8 3L12 7"
+                          d="M18 8.5V12.5H6"
                           stroke="currentColor"
-                          strokeWidth="2"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M9 9.5L6 12.5L9 15.5"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
                       </svg>
+                      /* fork:end fork-touch-affordances */
                     )}
                   </button>
                 </div>

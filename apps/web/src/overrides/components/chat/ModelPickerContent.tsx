@@ -800,6 +800,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
             className={cn(
               "flex size-6 cursor-pointer items-center justify-center rounded-[4px] text-muted-foreground/70 hover:text-foreground",
               HOVER_REVEAL_CLASS,
+              // No hover on touch: the star stays shown, or tapping a row's
+              // right edge would toggle a favorite the user cannot see.
+              "pointer-coarse:opacity-100",
             )}
             disabled={Boolean(disabledReason)}
             onPointerDown={(event) => event.stopPropagation()}

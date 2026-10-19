@@ -211,12 +211,21 @@ export default function ProjectScriptsControl({
                   <MenuShortcut className="ms-0 mr-7">{shortcutLabel}</MenuShortcut>
                 ) : (
                   // The shortcut yields its slot to the edit button on hover.
-                  <span className="transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0">
+                  /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances
+                     Touch has no hover, so there the edit button holds the slot outright. */
+                  <span className="transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0 pointer-coarse:hidden">
+                    {/* fork:end fork-touch-affordances */}
                     <MenuShortcut className="ms-0">{shortcutLabel}</MenuShortcut>
                   </span>
                 ))}
               <span
-                className={`absolute right-0 top-1/2 flex -translate-y-1/2 ${presentation === "menu" ? "" : "opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-visible:opacity-100 group-focus-visible:pointer-events-auto"}`}
+                className={`absolute right-0 top-1/2 flex -translate-y-1/2 ${presentation === "menu" ? "" : "opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-visible:opacity-100 group-focus-visible:pointer-events-auto"}${
+                  /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances */
+                  presentation === "menu"
+                    ? ""
+                    : " pointer-coarse:opacity-100 pointer-coarse:pointer-events-auto"
+                  /* fork:end fork-touch-affordances */
+                }`}
               >
                 <Button
                   type="button"
