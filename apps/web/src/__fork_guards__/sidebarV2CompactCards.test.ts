@@ -39,8 +39,11 @@ describe("fork guard: sidebar-v2-compact-cards", () => {
     expect(sidebar).toMatch(
       /props\.compact === true \? null : \(\s*\/\*[^]*?\*\/\s*<SidebarV2ThreadCardMeta/u,
     );
-    expect(marks).toContain("WorktreeIcon");
-    expect(marks).toContain("data-fork-dev-server-live=");
+    // The checkout mark is the repo line's own, so its pulse and accessible
+    // text cannot drift between the two cards.
+    expect(marks).toContain("<SidebarV2CheckoutMark");
+    expect(marks).toContain('branchName="sr-only"');
+    expect(sidebar).toContain("<SidebarV2CompactCardLead project={props.project} />");
   });
 
   it("hints the drawn compact height", () => {

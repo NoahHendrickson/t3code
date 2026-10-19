@@ -57,6 +57,7 @@ import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
 import { cn } from "~/lib/utils";
+import type { SidebarV2Grouping } from "./sidebarV2ProjectGrouping";
 import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
 
 /** Structural on purpose: the four fields these rows read, no more. The row is
@@ -352,14 +353,12 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   readonly menuOpen: boolean;
   readonly onMenuOpenChange: (open: boolean) => void;
   readonly onProjectActions: (event: ReactMouseEvent<HTMLButtonElement>, project: TProject) => void;
-  readonly groupByProject: boolean;
-  readonly onGroupByProjectChange: (groupByProject: boolean) => void;
-  /** Non-null disables the switch and says why — see the call site. */
+  /** How the active cards are sectioned. The two switches below each pick
+      their mode or clear back to flat, so they cannot both be on. */
+  readonly grouping: SidebarV2Grouping;
+  readonly onGroupingChange: (grouping: SidebarV2Grouping) => void;
+  /** Non-null disables the project switch and says why — see the call site. */
   readonly groupByProjectUnavailableReason: string | null;
-  /** Status sections (Needs input, Completed, Working, Idle) — exclusive with
-      project grouping; the caller turns the other off. */
-  readonly groupByStatus: boolean;
-  readonly onGroupByStatusChange: (groupByStatus: boolean) => void;
   /** One-line cards — see `sidebar-v2-compact-cards`. */
   readonly compactCards: boolean;
   readonly onCompactCardsChange: (compactCards: boolean) => void;
@@ -488,8 +487,8 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
               <MenuCheckboxItem
                 variant="switch"
                 closeOnClick={false}
-                checked={props.groupByProject}
-                onCheckedChange={props.onGroupByProjectChange}
+                checked={props.grouping === "project"}
+                onCheckedChange={(checked) => props.onGroupingChange(checked ? "project" : "none")}
                 disabled={props.groupByProjectUnavailableReason !== null}
                 aria-label={
                   props.groupByProjectUnavailableReason === null
@@ -507,8 +506,8 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
               <MenuCheckboxItem
                 variant="switch"
                 closeOnClick={false}
-                checked={props.groupByStatus}
-                onCheckedChange={props.onGroupByStatusChange}
+                checked={props.grouping === "status"}
+                onCheckedChange={(checked) => props.onGroupingChange(checked ? "status" : "none")}
                 className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
                 data-testid="sidebar-v2-group-by-status-toggle"
               >

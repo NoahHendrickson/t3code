@@ -1,26 +1,28 @@
 /**
- * The marks a compact thread card carries on its single line — see
+ * The pieces a compact thread card adds to its single line — see
  * `.fork/customizations.yaml#sidebar-v2-compact-cards`.
  *
  * A compact card is the full card's title line alone. What the repo line said
  * in words is reduced to marks that ride ahead of the trailing group: a cloud
- * when the agent runs on another machine, the checkout mark (worktree or
- * branch, the same either-or the repo line draws), the terminal glyph, and the
- * pull request badge. Names — project, branch, model — move to the row's hover
- * card, which every card already has.
+ * when the agent runs on another machine, the checkout mark (the repo line's
+ * own `SidebarV2CheckoutMark`, branch name for assistive tech only), the
+ * terminal glyph, and the pull request badge. The project, which the repo line
+ * names, leads the title as its favicon instead (`SidebarV2CompactCardLead`).
+ * Names — project, branch, model — are in the row's hover card, which every
+ * card already has.
  *
  * Laptop is not drawn: on the repo line it fills a slot the layout reserves,
- * but on one line a mark that every local thread carries says nothing. The
- * checkout mark keeps the dev-server pulse hook, so a running server still
- * lights the row whose checkout it serves.
+ * but on one line a mark that every local thread carries says nothing.
  *
  * Presentational only, with the PR badge and terminal glyph as slots, for the
  * same reason as `SidebarV2ThreadCardMeta`: no row state crosses the seam.
  */
 import type { ReactNode } from "react";
 
-import { CloudIcon, GitBranchIcon } from "./icons/lucide-phosphor";
-import { WorktreeIcon } from "./icons/WorktreeIcon";
+import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
+
+import { CloudIcon } from "./icons/lucide-phosphor";
+import { SidebarV2CheckoutMark, SidebarV2ProjectFolderMark } from "./SidebarV2ThreadCardMeta";
 
 export interface SidebarV2ThreadCardCompactMarksProps {
   readonly branch: string | null;
@@ -55,26 +57,37 @@ export function SidebarV2ThreadCardCompactMarks(props: SidebarV2ThreadCardCompac
         </>
       ) : null}
       {props.hasWorktree || props.branch ? (
-        <span
+        <SidebarV2CheckoutMark
+          branch={props.branch}
+          hasWorktree={props.hasWorktree}
+          devServerPort={props.devServerPort}
+          branchName="sr-only"
           className="flex items-center"
-          data-fork-dev-server-live={props.devServerPort != null ? "" : undefined}
-        >
-          {props.hasWorktree ? (
-            <>
-              <span className="sr-only">Worktree</span>
-              <WorktreeIcon aria-hidden className={MARK} />
-            </>
-          ) : (
-            <GitBranchIcon aria-hidden className={MARK} />
-          )}
-          {props.branch ? <span className="sr-only">{props.branch}</span> : null}
-          {props.devServerPort != null ? (
-            <span className="sr-only">{`Server listening on port ${props.devServerPort}`}</span>
-          ) : null}
-        </span>
+        />
       ) : null}
       {props.terminalSlot ?? null}
       {props.prSlot ?? null}
+    </span>
+  );
+}
+
+/** The project favicon a compact card's title leads with, at the slim rows'
+    16px, falling back to the repo line's folder mark — also for a thread whose
+    project record has not landed yet. */
+export function SidebarV2CompactCardLead(props: {
+  readonly project: ProjectFaviconProject | null;
+}) {
+  return (
+    <span className="flex size-4 shrink-0 items-center justify-center">
+      {props.project ? (
+        <ProjectFavicon
+          project={props.project}
+          className="size-4 text-muted-foreground"
+          fallbackIcon={SidebarV2ProjectFolderMark}
+        />
+      ) : (
+        <SidebarV2ProjectFolderMark className="size-4 text-muted-foreground" />
+      )}
     </span>
   );
 }

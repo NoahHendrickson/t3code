@@ -19,6 +19,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { SidebarV2IdleMark } from "../custom/SidebarV2StatusIndicator";
+import { resolveSidebarV2CardStatusKind } from "../custom/sidebarV2CardStatus";
 import {
   SIDEBAR_V2_CARD_ALIGNMENT,
   SIDEBAR_V2_CARD_ALIGNMENT_PX,
@@ -43,22 +44,35 @@ const upstreamCss = readSibling("../index.css");
 
 describe("fork guard: sidebar-v2-card-rows", () => {
   it("keeps upstream wake and monitoring semantics in the customized row", () => {
+    // The row draws its mark from the shared derivation status grouping also
+    // buckets from (custom/sidebarV2CardStatus), so the semantics live there.
+    const cardStatus = readSibling("../custom/sidebarV2CardStatus.ts");
+    expect(sidebarV2).toContain("resolveSidebarV2CardStatus(thread, {");
     // Settlement is server-side since upstream #8600: a settled thread never
     // reads as woke, and there is no client auto-settle predicate to forward.
-    expect(sidebarV2).toContain('thread.settledOverride !== "settled";');
+    expect(cardStatus).toContain('thread.settledOverride !== "settled";');
     expect(sidebarV2).toMatch(
       /status === "ready" \|\| status === "working" \|\| status === "waiting"/u,
     );
     // Upstream renamed the calm background status monitoring -> waiting; the
     // fork keeps drawing it with the breathing monitoring mark.
-    expect(sidebarV2).toContain('? { label: "Waiting", mark: "monitoring" }');
+    expect(cardStatus).toContain('return { label: "Waiting", mark: "monitoring" };');
     // A commands-only roster (a dev server left running) does not hold
     // completion upstream, so the row would read idle while the composer's
     // context-strip pill says "Monitoring". The card draws the same mark, but
     // only in place of the idle ring: Done must still win for an unread turn.
-    expect(sidebarV2).toMatch(
-      /\{ label: "Done", tone: "done", mark: "dot" \}[\s\S]{0,800}?thread\.pendingBackgroundTasks\.length > 0\s*\?\s*\{ label: "Monitoring", mark: "monitoring" \}\s*:[^;]*?null;/u,
-    );
+    const kind = (over: Partial<Parameters<typeof resolveSidebarV2CardStatusKind>[0]>) =>
+      resolveSidebarV2CardStatusKind({
+        status: "ready",
+        isUnread: false,
+        isWoke: false,
+        hasPendingBackgroundTasks: false,
+        ...over,
+      });
+    expect(kind({ isUnread: true, hasPendingBackgroundTasks: true })).toBe("done");
+    expect(kind({ isWoke: true, hasPendingBackgroundTasks: true })).toBe("woke");
+    expect(kind({ hasPendingBackgroundTasks: true })).toBe("monitoring");
+    expect(cardStatus).toContain('return { label: "Monitoring", mark: "monitoring" };');
     // Monitoring is a pulsing dot via the shared mark renderer, not a sky
     // text label — and both card and slim draw it in the same 14px-tall slot.
     expect(sidebarV2).toContain("<SidebarV2StatusMark");

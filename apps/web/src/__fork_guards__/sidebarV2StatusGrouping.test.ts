@@ -24,11 +24,10 @@ const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 describe("fork guard: sidebar-v2-status-grouping", () => {
   it("offers the switch beside Group by project, exclusive with it", () => {
     expect(chromeRows).toContain("Group by status");
-    expect(chromeRows).toContain("onCheckedChange={props.onGroupByStatusChange}");
-    expect(sidebar).toContain("groupByStatus={groupByStatus}");
-    expect(sidebar).toContain("if (value) setGroupByProject(false);");
-    expect(sidebar).toContain("if (value) setGroupByStatus(false);");
-    expect(sidebar).toContain("const statusGrouped = groupByStatus && !groupByProject;");
+    // One grouping value, so the two switches cannot both be on.
+    expect(chromeRows).toContain('props.onGroupingChange(checked ? "status" : "none")');
+    expect(sidebar).toContain("onGroupingChange={setGrouping}");
+    expect(sidebar).toContain('const statusGrouped = grouping === "status";');
   });
 
   it("builds status sections inside activeSections, so paint and keyboard order stay one list", () => {
@@ -36,9 +35,10 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     const end = sidebar.indexOf("const visibleActiveSections = useMemo(");
     expect(start).toBeGreaterThan(-1);
     const memo = sidebar.slice(start, end);
-    expect(memo).toContain("buildStatusThreadSections({");
-    expect(memo).toContain("completedHolds.observe({");
+    expect(memo).toContain("buildSidebarV2StatusSections({");
+    expect(memo).toContain("holds: completedHolds");
     expect(memo).toContain("openThreadKey: statusOpenThreadKey");
+    expect(sidebar).toContain('if (section.kind === "status")');
     expect(sidebar).toContain("visibleActiveSections.flatMap((section) => section.threads)");
     expect(sidebar).toContain("<SidebarV2StatusSectionHeader");
   });

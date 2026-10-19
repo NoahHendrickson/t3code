@@ -33,10 +33,11 @@ const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 describe("fork guard: sidebar-v2-project-grouping", () => {
   it("offers the switch from the projects filter menu", () => {
     expect(chromeRows).toContain("Group by project");
-    expect(chromeRows).toContain("onGroupByProjectChange");
+    expect(chromeRows).toContain('props.onGroupingChange(checked ? "project" : "none")');
     // Toggling a view preference must not dismiss the menu it lives in.
     expect(chromeRows).toContain("closeOnClick={false}");
-    expect(sidebar).toContain("groupByProject={groupByProject}");
+    expect(sidebar).toContain("grouping={grouping}");
+    expect(sidebar).toContain('const groupByProject = grouping === "project";');
     // Where grouping can draw no header, the switch says so rather than
     // accepting a click that does nothing.
     expect(chromeRows).toContain("disabled={props.groupByProjectUnavailableReason !== null}");
@@ -83,7 +84,9 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // header is drawn from it and the cards' under-a-header flag is read off
     // the same value, so they cannot come to disagree.
     expect(render).toContain("const header = section.header;");
-    expect(render).toMatch(/renderThreadRow\(\s*thread,\s*"active",\s*header !== null\s*\)/u);
+    expect(render).toMatch(
+      /renderThreadRow\(\s*thread,\s*"active",\s*\{\s*underProjectHeader: header !== null,?\s*\}\s*\)/u,
+    );
     // collapsed is decided once in visibleActiveSections and carried on the
     // section — recomputing membership here would drift from the filter.
     expect(render).toContain("collapsed={section.collapsed}");
