@@ -26,9 +26,12 @@ const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 const marks = readSibling("../custom/SidebarV2ThreadCardCompactMarks.tsx");
 
 describe("fork guard: sidebar-v2-compact-cards", () => {
-  it("offers the switch in the projects filter menu", () => {
+  it("offers the checkbox in the Threads filter menu", () => {
     expect(chromeRows).toContain("Compact cards");
     expect(chromeRows).toContain("onCheckedChange={props.onCompactCardsChange}");
+    // A plain checkbox, apart from the grouping radios, its box trailing.
+    expect(chromeRows).toMatch(/<OptionCheckboxItem\s+checked=\{props\.compactCards\}/u);
+    expect(chromeRows).not.toMatch(/variant="switch"[\s\S]{0,120}checked=\{props\.compactCards\}/u);
     expect(sidebar).toContain("compactCards={compactCards}");
     // Slim shelf rows are already one line; only cards go compact.
     expect(sidebar).toContain("compact={isCard && compactCards}");

@@ -69,7 +69,7 @@ Pinning does not prevent automatic settlement. Settling a thread removes its pin
 On web and desktop, drag a pinned card to change its place among the pins; the other pins slide
 aside to show where it will land, and the order survives a refresh. Threads do not move between
 sections by dragging — use the row's own actions (**Pin**, **Settle**, **Snooze**) or its menu
-for that. With the **Projects** row set to **Manual**, drag a project header above or below
+for that. With the **Threads** row set to **Manual**, drag a project header above or below
 another to arrange the projects themselves.
 
 <!-- fork:end sidebar-v2-project-grouping -->
@@ -100,8 +100,8 @@ the composer (ahead of the workspace and branch pills); the draft then takes its
 project. Change the project from the same pill before sending and the draft moves with it.
 Clicking **New agent** again returns to the draft you left open.
 
-The **Projects** row sorts and filters the list: the sort button picks the project order, and
-the filter button turns grouping on and off and checks off which projects the list shows — tick
+The **Threads** row sorts and filters the list: the sort button picks the project order, and
+the filter button picks how the list is grouped and checks off which projects it shows — tick
 as many as you like; **All projects** clears the filter. Choose **Manual**
 with grouping on to arrange projects yourself: drag a project header above or below another. Hover a project's
 section to reveal its header buttons: the three dots open a menu with **Settle all threads** (every
@@ -161,7 +161,7 @@ cannot drag or move threads within it. Your saved order returns when you turn it
 
 ### Group threads by status
 
-On web and desktop, open the filter menu on the **Projects** row and turn on **Group by status**
+On web and desktop, open the filter menu on the **Threads** row and choose **Group by status**
 to split active threads into **Needs input**, **Completed**, **Working**, and **Idle**. Needs
 input holds approvals, questions, and failed runs. A completed thread stays in **Completed**
 while you have it open and for five minutes after you leave it, then moves to **Idle**. Idle
@@ -175,7 +175,7 @@ section while it is on, and each device keeps its own choice.
 
 ### Compact cards
 
-On web and desktop, turn on **Compact cards** in the filter menu on the **Projects** row to show
+On web and desktop, turn on **Compact cards** in the filter menu on the **Threads** row to show
 each thread on one line. The title keeps its status mark, and icons show a pull request, a
 running terminal, a remote machine, and whether the thread is on a branch or its own worktree.
 Hover a card to see its project, branch, and model.

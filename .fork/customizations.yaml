@@ -856,8 +856,8 @@
 
 - id: sidebar-v2-project-grouping
   intent: >
-    Sidebar V2's active cards can be grouped under project headers, from a
-    switch at the top of the fork's projects filter menu. Upstream's flat list
+    Sidebar V2's active cards can be grouped under project headers, from the
+    grouping radios at the top of the fork's Threads filter menu. Upstream's flat list
     stays the default, and the preference is device-local (localStorage) rather
     than a field in packages/contracts.
 
@@ -879,7 +879,7 @@
     Only the active cards group, and only where a header says something the
     screen does not already: the snoozed and settled shelves stay flat, and
     grouping is skipped whenever one project is on screen, whether by scope or
-    by the sidebar having a single project. The switch is disabled with a stated
+    by the sidebar having a single project. The option is disabled with a stated
     reason in those states rather than accepting a click that does nothing.
 
     Section order is projectGroups' own order and thread order inside a section
@@ -1034,10 +1034,10 @@
 - id: sidebar-v2-status-grouping
   intent: >
     Sidebar V2's active cards can be split by status instead of by project,
-    from a "Group by status" switch beside "Group by project" in the projects
-    filter menu. Grouping is one value (useSidebarV2Grouping: none, project or
+    from a "Group by status" option in the Threads filter menu: one radio
+    group of No grouping, Group by project and Group by status. Grouping is one value (useSidebarV2Grouping: none, project or
     status), so the two switches cannot both be on; it is still stored as the
-    two device-local booleans each switch shipped with, and project wins if
+    two device-local booleans the original switches shipped with, and project wins if
     both were ever stored on.
 
     Sections paint Needs input, Completed, Working, Idle, in that order. A
@@ -1088,7 +1088,7 @@
     # input of threadCardTitleRecedes.
     - apps/web/src/custom/sidebarV2RowPolicy.ts
     # Shared with fork-sidebar-chrome and sidebar-v2-project-grouping; this
-    # entry owns only the "Group by status" switch.
+    # entry owns the grouping radio group.
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
   shadows: []
   watch:
@@ -1099,8 +1099,8 @@
 
 - id: sidebar-v2-compact-cards
   intent: >
-    Sidebar V2 cards can draw as a single line, from a "Compact cards" switch in
-    the projects filter menu beside the grouping switches. Device-local
+    Sidebar V2 cards can draw as a single line, from a "Compact cards" checkbox
+    in the Threads filter menu, set apart from the grouping radios. Device-local
     (localStorage), default off; the full two-line card is unchanged.
 
     A compact card is the full card's title line alone, in the same padding,
@@ -1131,7 +1131,7 @@
     # Shared with sidebar-v2-card-rows, which owns the card metrics; this
     # entry owns only sidebarV2CompactCardHeight.
     - apps/web/src/custom/sidebarV2CardAlignment.ts
-    # Shared with fork-sidebar-chrome; this entry owns only the switch.
+    # Shared with fork-sidebar-chrome; this entry owns only the checkbox.
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
   shadows: []
   watch:
@@ -2236,8 +2236,8 @@
     it. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
     shrink it.
 
-    The Projects row (368:21211) takes the project headers' shape on the same
-    inset: a static muted Label/12 label, then two 32px icon buttons on the
+    The Threads row (368:21211, drawn there as "Projects") takes the project
+    headers' shape on the same inset: a static muted Label/12 label, then two 32px icon buttons on the
     list edge — a sort menu (ArrowsDownUp) over the same
     sidebarProjectSortOrder client setting the legacy sidebar's sort menu and
     Settings edit, and the filter (FadersHorizontal) that owns the scope /

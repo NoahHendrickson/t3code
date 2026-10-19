@@ -381,7 +381,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(rows.split("CHROME_ROW_ICON_TINT").length - 1).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps chrome type at 14px for actions and the Projects label", () => {
+  it("keeps chrome type at 14px for actions and the Threads label", () => {
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
     const type = /const CHROME_TYPE\s*=\s*"([^"]+)"/u.exec(rows)?.[1];
     expect(type).toBeDefined();
@@ -408,21 +408,23 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(merged).toContain("font-normal");
     expect(merged).toContain("data-[active=true]:font-normal");
     expect(merged).not.toContain("font-medium");
-    // The action rows read it; the Projects label is the headers' Label/12
+    // The action rows read it; the Threads label is the headers' Label/12
     // and spells its own (368:21211).
     expect(rows).toContain("CHROME_TYPE");
     expect(rows.split("CHROME_TYPE").length - 1).toBeGreaterThanOrEqual(2);
     expect(rows).toMatch(
-      /text-\[0\.75rem\] leading-4 font-medium text-muted-foreground"\s*>\s*Projects/u,
+      /text-\[0\.75rem\] leading-4 font-medium text-muted-foreground"\s*>\s*Threads/u,
     );
   });
 
-  it("keeps Projects as a static label with sort and an active-aware filter", () => {
+  it("keeps Threads as a static label with sort and an active-aware filter", () => {
     // Figma 368:21211: the label, then two 32px icon buttons on the list edge
     // — sort (ArrowsDownUp) over the client's sidebarProjectSortOrder, and the
     // filter (FadersHorizontal) that owns the scope / group-by menu.
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
-    expect(rows).toMatch(/>\s*Projects\s*</u);
+    // Named for what the list shows; it was "Projects" until the filter menu
+    // grew grouping and density options that are about threads, not projects.
+    expect(rows).toMatch(/>\s*Threads\s*</u);
     expect(rows).toContain("FadersHorizontalIcon");
     expect(rows).toContain("ArrowUpDownIcon");
     expect(rows).toContain('data-testid="sidebar-v2-project-sort"');
@@ -453,8 +455,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // not take three trips. "All projects" is the empty set — checked while
     // nothing is scoped, clearing the set when chosen.
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
-    // Everything under the menu's one separator is the scope list.
-    const scopeMenu = rows.slice(rows.indexOf("<MenuSeparator />"));
+    // Everything under the menu's last separator is the scope list; the
+    // grouping radios and the Compact cards checkbox sit above it.
+    const scopeMenu = rows.slice(rows.lastIndexOf("<MenuSeparator />"));
     expect(scopeMenu).toContain('testId="sidebar-v2-project-scope-all"');
     expect(rows).toContain("readonly projectScopeKeys: ReadonlySet<string>;");
     expect(rows).toContain(

@@ -22,10 +22,11 @@ const sidebar = readSibling("../components/Sidebar.tsx");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 
 describe("fork guard: sidebar-v2-status-grouping", () => {
-  it("offers the switch beside Group by project, exclusive with it", () => {
+  it("offers the option beside Group by project, exclusive with it", () => {
     expect(chromeRows).toContain("Group by status");
     // One grouping value, so the two switches cannot both be on.
-    expect(chromeRows).toContain('props.onGroupingChange(checked ? "status" : "none")');
+    expect(chromeRows).toContain('value="status"');
+    expect(chromeRows).toContain('value="none"');
     expect(sidebar).toContain("onGroupingChange={setGrouping}");
     expect(sidebar).toContain('const statusGrouped = grouping === "status";');
   });
