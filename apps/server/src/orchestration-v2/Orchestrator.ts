@@ -2183,6 +2183,11 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       branch: command.branch,
       worktreePath: command.worktreePath,
       activeProviderThreadId: null,
+      /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+      ...(command.scheduledTaskId === undefined
+        ? {}
+        : { scheduledTaskId: command.scheduledTaskId }),
+      /* fork:end fork-scheduled-runs-off-sidebar */
       lineage: {
         parentThreadId: null,
         relationshipToParent: null,

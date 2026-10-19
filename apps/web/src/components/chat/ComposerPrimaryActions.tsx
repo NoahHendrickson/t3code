@@ -4,6 +4,7 @@ import { CornerUpRight, ListPlus } from "lucide";
 import { MorphIcon } from "~/components/MorphIcon";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import { StopSquareIcon } from "~/custom/StopSquareIcon";
+import { ForkReturnGlyph } from "~/custom/ForkReturnGlyph";
 /* fork:end fork-composer-shell */
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
 import {
@@ -451,25 +452,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
         <MorphIcon className="size-4" icon={isQueuing ? ListPlus : CornerUpRight} />
       ) : (
         /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-        /* The return arrow from the designs, replacing upstream's up arrow. Kept
-           on the button's own 24x24 grid rather than retraced onto a tight
-           viewBox, so the glyph lands at the drawn 12x7 centred on 12,12. */
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M18 8.5V12.5H6"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M9 9.5L6 12.5L9 15.5"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <ForkReturnGlyph />
         /* fork:end fork-composer-shell */
       )}
     </button>

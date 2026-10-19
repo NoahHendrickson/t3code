@@ -372,6 +372,12 @@ it.effect.each(
       );
       assert.equal(turnItem?.text, task.prompt);
       assert.equal(turnItem?.scheduledTaskId, task.id);
+      /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+      // Only a thread the task launched carries its id; a bound thread stays the user's.
+      const launchedBy = target === "new" ? task.id : undefined;
+      assert.equal(thread!.scheduledTaskId, launchedBy);
+      assert.equal(projection.thread.scheduledTaskId, launchedBy);
+      /* fork:end fork-scheduled-runs-off-sidebar */
     }).pipe(Effect.provide(Layer.mergeAll(harness.layer, layerScheduledTasks)));
   },
 );

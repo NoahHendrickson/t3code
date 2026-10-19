@@ -69,7 +69,7 @@ Pinning does not prevent automatic settlement. Settling a thread removes its pin
 On web and desktop, drag a pinned card to change its place among the pins; the other pins slide
 aside to show where it will land, and the order survives a refresh. Threads do not move between
 sections by dragging — use the row's own actions (**Pin**, **Settle**, **Snooze**) or its menu
-for that. With the **Projects** row set to **Manual**, drag a project header above or below
+for that. With the **Threads** row set to **Manual**, drag a project header above or below
 another to arrange the projects themselves.
 
 <!-- fork:end sidebar-v2-project-grouping -->
@@ -100,8 +100,8 @@ the composer (ahead of the workspace and branch pills); the draft then takes its
 project. Change the project from the same pill before sending and the draft moves with it.
 Clicking **New agent** again returns to the draft you left open.
 
-The **Projects** row sorts and filters the list: the sort button picks the project order, and
-the filter button turns grouping on and off and checks off which projects the list shows — tick
+The **Threads** row sorts and filters the list: the sort button picks the project order, and
+the filter button picks how the list is grouped and checks off which projects it shows — tick
 as many as you like; **All projects** clears the filter. Choose **Manual**
 with grouping on to arrange projects yourself: drag a project header above or below another. Hover a project's
 section to reveal its header buttons: the three dots open a menu with **Settle all threads** (every
@@ -111,17 +111,25 @@ active thread in that project) and **Settings**, and the plus starts a thread in
 
 <!-- fork:begin fork-sidebar-scheduled-row — see .fork/customizations.yaml#fork-sidebar-scheduled-row -->
 
-**Scheduled** below **Usage** opens the Scheduled page: every scheduled task across your projects
-and environments in one list. Open a task to change its trigger, instructions, model, and
+**Automations** below **Usage** opens the Automations page: every automation across your projects
+and environments in one list. Open an automation to change its trigger, instructions, model, and
 workspace, or switch to **Run history** to see what it did; every run is a thread you can open
-and reply to. **All runs** lists runs from every task, newest first; use **Older** and **Newer**
-to browse the full history. **New task** starts one for any project. Press Escape to return to
+and reply to. **All runs** lists runs from every automation, newest first; use **Older** and
+**Newer** to browse the full history. **New automation** starts one for any project. Press Escape to return to
 the thread you were on.
 <!-- fork:end fork-sidebar-scheduled-row -->
 
+<!-- fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar -->
+
+Threads an automation starts stay out of your project groups and live on the Automations page
+instead. While any are running, waiting on you, or failed and not yet opened, **Automations**
+shows how many, and clicking it opens **All runs**. To keep a run in the sidebar, open it and pin it. An automation that sends
+into a thread you chose keeps that thread where it is.
+<!-- fork:end fork-scheduled-runs-off-sidebar -->
+
 <!-- fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation -->
 
-To review new GitHub PRs automatically, choose **New task** in Scheduled.
+To review new GitHub PRs automatically, choose **New automation** in Automations.
 Name the automation, write your review instructions, select **GitHub PR opened**, and select
 its repositories from your projects. Creating the automation connects those repositories to
 T3 Code. The environment needs T3 Connect remote access and GitHub access with permission to
@@ -129,10 +137,10 @@ manage repository webhooks; the editor links to both settings.
 
 Each newly opened PR starts a separate review of that exact PR and commit in the matching
 repository. Existing PRs and later pushes do not trigger this automation. Run history links
-to the triggering PR. Pause the task to stop reviews, or delete it to disconnect its GitHub
+to the triggering PR. Pause the automation to stop reviews, or delete it to disconnect its GitHub
 webhooks. The environment must be running to review; Connections can hold incoming events
-while it is offline. If a review thread appears but its worktree could not be created, retry
-from that thread. If no thread appeared, redeliver the webhook after fixing the cause. Each PR
+while it is offline. If a review fails, for example because its worktree could not be created,
+**Automations** counts it until you open it; retry from that thread. If no thread appeared, redeliver the webhook after fixing the cause. Each PR
 event starts at most one review.
 <!-- fork:end fork-github-pr-automation -->
 
@@ -156,6 +164,31 @@ device keeps its own choice.
 
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
+
+<!-- fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping -->
+
+### Group threads by status
+
+On web and desktop, open the filter menu on the **Threads** row and choose **Group by status**
+to split active threads into **Needs input**, **Completed**, **Working**, and **Idle**. Needs
+input holds approvals, questions, and failed runs. A completed thread stays in **Completed**
+while you have it open and for five minutes after you leave it, then moves to **Idle**. Idle
+threads settle on the usual schedule. Pinned threads get a **Pinned** group of
+their own at the top. This replaces **Group by project** and the Working
+section while it is on, and each device keeps its own choice.
+
+<!-- fork:end sidebar-v2-status-grouping -->
+
+<!-- fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards -->
+
+### Compact cards
+
+On web and desktop, turn on **Compact cards** in the filter menu on the **Threads** row to show
+each thread on one line. The title keeps its status mark, and icons show a pull request, a
+running terminal, a remote machine, and whether the thread is on a branch or its own worktree.
+Hover a card to see its project, branch, and model.
+
+<!-- fork:end sidebar-v2-compact-cards -->
 
 ## Settle finished work
 

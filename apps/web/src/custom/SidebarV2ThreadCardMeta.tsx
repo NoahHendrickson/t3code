@@ -102,6 +102,46 @@ export function SidebarV2ProjectFolderMark(props: { readonly className?: string 
   return <FolderIcon aria-hidden className={props.className} />;
 }
 
+/** Which checkout a thread is on: the worktree or branch mark, the branch name
+    (drawn, or for assistive tech only), and the dev-server pulse hook. Shared
+    by this repo line and the compact card (`sidebar-v2-compact-cards`), so the
+    mark, its pulse and its accessible text change in one place. Callers draw
+    it only when the thread has a worktree or a branch — see the repo line for
+    why the worktree mark replaces the branch mark rather than joining it. */
+export function SidebarV2CheckoutMark(props: {
+  readonly branch: string | null;
+  readonly hasWorktree: boolean;
+  readonly devServerPort: number | null;
+  /** "visible" draws the name beside the mark; "sr-only" keeps it for
+      assistive tech where the line has no room for it. */
+  readonly branchName: "visible" | "sr-only";
+  readonly className: string;
+}) {
+  return (
+    <span
+      className={props.className}
+      data-fork-dev-server-live={props.devServerPort != null ? "" : undefined}
+    >
+      {props.hasWorktree ? (
+        <>
+          <span className="sr-only">Worktree</span>
+          <WorktreeIcon aria-hidden className={MARK} />
+        </>
+      ) : (
+        <GitBranchIcon aria-hidden className={MARK} />
+      )}
+      {props.branch ? (
+        <span className={props.branchName === "visible" ? "truncate whitespace-nowrap" : "sr-only"}>
+          {props.branch}
+        </span>
+      ) : null}
+      {props.devServerPort != null ? (
+        <span className="sr-only">{`Server listening on port ${props.devServerPort}`}</span>
+      ) : null}
+    </span>
+  );
+}
+
 export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
   return (
     // data-fork-thread-card-meta is the palette's hook: Glass inks this line
@@ -174,25 +214,13 @@ export function SidebarV2ThreadCardMeta(props: SidebarV2ThreadCardMetaProps) {
                text for screen readers — after the branch name, identity
                before transient state — and survives `prefers-reduced-motion`
                as a static working-green mark. */
-            <span
+            <SidebarV2CheckoutMark
+              branch={props.branch}
+              hasWorktree={props.hasWorktree === true}
+              devServerPort={props.devServerPort ?? null}
+              branchName="visible"
               className="flex min-w-0 flex-1 items-center gap-0.5"
-              data-fork-dev-server-live={props.devServerPort != null ? "" : undefined}
-            >
-              {props.hasWorktree ? (
-                <>
-                  <span className="sr-only">Worktree</span>
-                  <WorktreeIcon aria-hidden className={MARK} />
-                </>
-              ) : (
-                <GitBranchIcon aria-hidden className={MARK} />
-              )}
-              {props.branch ? (
-                <span className="truncate whitespace-nowrap">{props.branch}</span>
-              ) : null}
-              {props.devServerPort != null ? (
-                <span className="sr-only">{`Server listening on port ${props.devServerPort}`}</span>
-              ) : null}
-            </span>
+            />
           ) : null}
           {props.terminalSlot ?? null}
         </span>

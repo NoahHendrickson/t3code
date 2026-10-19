@@ -89,6 +89,9 @@ export const layer: Layer.Layer<ThreadForkServiceV2> = Layer.succeed(
           ...input.sourceProjection.thread,
           createdBy: input.createdBy,
           creationSource: input.creationSource,
+          /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+          scheduledTaskId: undefined,
+          /* fork:end fork-scheduled-runs-off-sidebar */
           id: input.targetThreadId,
           title: input.title ?? `${input.sourceProjection.thread.title} fork`,
           activeProviderThreadId: null,

@@ -153,21 +153,21 @@ export function ScheduledTaskDetail(props: {
   if (!connected) {
     return (
       <DetailNotice title="Environment disconnected">
-        Reconnect {environment?.label ?? "this environment"} to open its scheduled tasks.
+        Reconnect {environment?.label ?? "this environment"} to open its automations.
       </DetailNotice>
     );
   }
   if (tasksQuery.error !== null) {
-    return <DetailNotice title="Could not load scheduled tasks">{tasksQuery.error}</DetailNotice>;
+    return <DetailNotice title="Could not load automations">{tasksQuery.error}</DetailNotice>;
   }
   const task = tasksQuery.data?.tasks.find((entry) => entry.id === props.taskId) ?? null;
   if (tasksQuery.data === null) {
-    return <DetailNotice title="Loading…">Fetching this task.</DetailNotice>;
+    return <DetailNotice title="Loading…">Fetching this automation.</DetailNotice>;
   }
   if (task === null) {
     return (
-      <DetailNotice title="Task unavailable">
-        This task no longer exists on {environment?.label ?? "this environment"}.
+      <DetailNotice title="Automation unavailable">
+        This automation no longer exists on {environment?.label ?? "this environment"}.
       </DetailNotice>
     );
   }
@@ -204,7 +204,7 @@ function BackLink() {
       className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
     >
       <ArrowLeftIcon className="size-3.5" aria-hidden />
-      Scheduled
+      Automations
     </Link>
   );
 }
@@ -279,7 +279,7 @@ function TaskDetailForm(props: {
     setBusy(false);
     if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
       setDraft((current) => ({ ...current, enabled: !enabled }));
-      reportFailure("Could not update scheduled task", squashAtomCommandFailure(result));
+      reportFailure("Could not update automation", squashAtomCommandFailure(result));
     }
   };
 
@@ -290,7 +290,7 @@ function TaskDetailForm(props: {
     const result = await runNow({ environmentId, input: { id: task.id } });
     setBusy(false);
     if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
-      reportFailure("Could not run scheduled task", squashAtomCommandFailure(result));
+      reportFailure("Could not run automation", squashAtomCommandFailure(result));
       return;
     }
     openTab("runs");
@@ -308,7 +308,7 @@ function TaskDetailForm(props: {
     const result = await remove({ environmentId, input: { id: task.id } });
     setBusy(false);
     if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
-      reportFailure("Could not delete scheduled task", squashAtomCommandFailure(result));
+      reportFailure("Could not delete automation", squashAtomCommandFailure(result));
       return;
     }
     void navigate({ to: "/scheduled", search: {} });
@@ -330,10 +330,7 @@ function TaskDetailForm(props: {
       !projects.some((project) => project.id === selectedProjectId) ||
       selection === null
     ) {
-      reportFailure(
-        "Scheduled task is incomplete",
-        "Add a title, instructions, project, and model.",
-      );
+      reportFailure("Automation is incomplete", "Add a title, instructions, project, and model.");
       return;
     }
     if (
@@ -416,7 +413,7 @@ function TaskDetailForm(props: {
     submissionPending.current = false;
     if (result._tag === "Failure") {
       if (!isAtomCommandInterrupted(result)) {
-        reportFailure("Could not save scheduled task", squashAtomCommandFailure(result));
+        reportFailure("Could not save automation", squashAtomCommandFailure(result));
       }
       return;
     }
@@ -438,9 +435,9 @@ function TaskDetailForm(props: {
       <div className="flex flex-col gap-3">
         <BackLink />
         <input
-          aria-label="Task name"
+          aria-label="Automation name"
           className="w-full bg-transparent text-2xl font-semibold tracking-tight text-foreground outline-none placeholder:text-muted-foreground/60"
-          placeholder="Untitled task"
+          placeholder="Untitled automation"
           value={draft.title}
           disabled={disabled}
           onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
@@ -521,7 +518,7 @@ function TaskDetailForm(props: {
         </div>
         {task !== null ? (
           <ToggleGroup
-            aria-label="Task view"
+            aria-label="Automation view"
             value={[props.tab]}
             onValueChange={(values) => {
               const next = values[0];
