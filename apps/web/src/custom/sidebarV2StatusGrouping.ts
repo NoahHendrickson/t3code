@@ -147,6 +147,9 @@ export function sidebarV2StatusBucketForKind(
  * list before it gets here, so a missing thread is usually just scoped out
  * for a moment; deleted threads simply age out.
  *
+ * Holds are stamped with the real time of the call (`nowMs`), not the minute
+ * clock, so a hold started when you leave counts from that moment.
+ *
  * Expiry needs a call to land: the sidebar rebuilds its sections on every
  * minute tick (`useNowMinute` feeds the partition memo), so a hold you left
  * is released within a minute of running out.
@@ -167,12 +170,13 @@ export function createSidebarV2CompletedHoldTracker(holdMs = SIDEBAR_V2_COMPLETE
           continue;
         }
         const before = previous?.get(key);
-        if (
-          (before !== undefined && before !== "idle") ||
-          ((key === input.openThreadKey || key === previousOpenThreadKey) && heldSince.has(key))
-        ) {
-          heldSince.set(key, input.nowMs);
-        }
+        if (before !== undefined && before !== "idle") heldSince.set(key, input.nowMs);
+      }
+      // The open thread (and the one just left) refresh independently of the
+      // buckets: the project scope can hide the thread you are reading, and
+      // its hold must not run out behind the filter while it is still open.
+      for (const key of [input.openThreadKey, previousOpenThreadKey]) {
+        if (key !== null && heldSince.has(key)) heldSince.set(key, input.nowMs);
       }
       for (const [key, since] of heldSince) {
         if (input.nowMs - since >= holdMs) heldSince.delete(key);
@@ -281,7 +285,10 @@ export function buildSidebarV2StatusSections(input: {
   const effective = input.holds.apply({
     buckets,
     openThreadKey: input.openThreadKey,
-    nowMs: Date.parse(input.now),
+    // The real time, not `now`: `now` refreshes with the partition memo and
+    // can be a minute old when you leave a thread, which would start the hold
+    // that much early. Expiry still rides the minute tick.
+    nowMs: Date.now(),
   });
   return groupSidebarV2StatusSections({
     threads: input.threads,

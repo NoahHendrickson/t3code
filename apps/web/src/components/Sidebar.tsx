@@ -392,6 +392,7 @@ const inboxReturns = createInboxReturnTracker();
 // Status grouping: which threads just came to rest and linger in Completed.
 // Module scope for the same reason as inboxReturns.
 const completedHolds = createSidebarV2CompletedHoldTracker();
+const EMPTY_LAST_VISITED_AT_BY_ID: Readonly<Record<string, string>> = {};
 /* fork:end sidebar-v2-status-grouping */
 
 function canOperateThreads(
@@ -2102,7 +2103,11 @@ export default function Sidebar() {
   // Old servers without visited tracking keep the watermark here; the section
   // has to read it the way each row does, or a row's dot and its section
   // disagree.
-  const threadLastVisitedAtById = useUiStateStore((store) => store.threadLastVisitedAtById);
+  // Only status grouping reads it; the other modes select a stable empty
+  // record so a visit cannot re-render and re-section them.
+  const threadLastVisitedAtById = useUiStateStore((store) =>
+    statusGrouped ? store.threadLastVisitedAtById : EMPTY_LAST_VISITED_AT_BY_ID,
+  );
   /* fork:end sidebar-v2-status-grouping */
   /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
   const [compactCards, setCompactCards] = useSidebarV2CompactCards();

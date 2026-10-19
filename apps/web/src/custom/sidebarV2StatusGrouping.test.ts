@@ -60,6 +60,15 @@ describe("createSidebarV2CompletedHoldTracker", () => {
     expect(apply(tracker, { a: "idle" }, 3_000).get("a")).toBe("done");
   });
 
+  it("keeps the open thread's hold while the project scope hides it for longer than the delay", () => {
+    const tracker = createSidebarV2CompletedHoldTracker(HOLD_MS);
+    apply(tracker, { a: "done" }, 0, "a");
+    apply(tracker, { a: "idle" }, 1_000, "a");
+    // Scoped out on every minute tick for six minutes, still open throughout.
+    for (let second = 60; second <= 360; second += 60) apply(tracker, {}, second * 1_000, "a");
+    expect(apply(tracker, { a: "idle" }, 361_000, "a").get("a")).toBe("done");
+  });
+
   it("drops the hold as soon as the thread moves again", () => {
     const tracker = createSidebarV2CompletedHoldTracker(HOLD_MS);
     apply(tracker, { a: "done" }, 0);
