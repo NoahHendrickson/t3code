@@ -39,7 +39,7 @@ export function ScheduledRunsHeader(props: { readonly showTask: boolean }) {
     <TableHeader>
       <TableRow>
         <TableHead>Status</TableHead>
-        <TableHead>{props.showTask ? "Task" : "Thread"}</TableHead>
+        <TableHead>{props.showTask ? "Automation" : "Thread"}</TableHead>
         <TableHead>Trigger</TableHead>
         <TableHead>Started</TableHead>
         <TableHead>Duration</TableHead>
@@ -121,7 +121,7 @@ export function ScheduledRunRows(props: {
             ? "No older runs."
             : props.taskId === undefined
               ? "No runs yet."
-              : "This task has not run yet."}
+              : "This automation has not run yet."}
         </NoticeRow>
       ) : (
         runs.map((run) => (

@@ -28,7 +28,7 @@ describe("fork guard: fork-sidebar-scheduled-row", () => {
   it("renders Scheduled as the chrome row directly under Usage", () => {
     expect(chromeRows).toContain("<SidebarV2ScheduledRow");
     expect(chromeRows).toContain('testId="sidebar-v2-scheduled"');
-    expect(chromeRows).toContain('label="Scheduled"');
+    expect(chromeRows).toContain('label="Automations"');
     expect(chromeRows).toContain("icon={CalendarClockIcon}");
     const usageAt = chromeRows.indexOf('testId="sidebar-v2-usage"');
     const scheduledAt = chromeRows.indexOf('testId="sidebar-v2-scheduled"');
@@ -41,7 +41,8 @@ describe("fork guard: fork-sidebar-scheduled-row", () => {
 
   it("navigates to the fork's scheduled page", () => {
     expect(scheduledRow).toContain('const SCHEDULED_TASKS_PATH = "/scheduled"');
-    expect(scheduledRow).toContain("navigate({ to: SCHEDULED_TASKS_PATH })");
+    // Live hidden runs send the row to All runs (fork-scheduled-runs-off-sidebar).
+    expect(scheduledRow).toContain(": { to: SCHEDULED_TASKS_PATH },");
     expect(route).toContain('createFileRoute("/scheduled")');
     // The row is a door, not a second list: nothing from the settings page
     // is re-rendered in the sidebar.
@@ -66,7 +67,7 @@ describe("fork guard: fork-sidebar-scheduled-row", () => {
   });
 
   it("tells users where the row goes", () => {
-    expect(sidebarDocs).toContain("**Scheduled** below **Usage**");
+    expect(sidebarDocs).toContain("**Automations** below **Usage**");
     expect(sidebarDocs).toContain("fork:begin fork-sidebar-scheduled-row");
   });
 });

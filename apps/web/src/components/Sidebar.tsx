@@ -298,6 +298,9 @@ import {
   threadRowSurfaceClassName,
 } from "~/custom/sidebarV2RowPolicy";
 /* fork:end sidebar-v2-card-rows */
+/* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+import { omitScheduledRunsFromSidebar } from "~/custom/scheduledRunsOffSidebar";
+/* fork:end fork-scheduled-runs-off-sidebar */
 import { SidebarV2ChromeActionRows, SidebarV2ProjectScopeRow } from "~/custom/SidebarV2ChromeRows";
 /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
 import {
@@ -2206,7 +2209,14 @@ export default function Sidebar() {
     ],
   );
   const projectGroups = useMemo(
-    () => sortSidebarV2ProjectGroups(unsortedProjectGroups, threads, sidebarProjectSortOrder),
+    () =>
+      sortSidebarV2ProjectGroups(
+        unsortedProjectGroups,
+        /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+        omitScheduledRunsFromSidebar(threads),
+        /* fork:end fork-scheduled-runs-off-sidebar */
+        sidebarProjectSortOrder,
+      ),
     [sidebarProjectSortOrder, threads, unsortedProjectGroups],
   );
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
@@ -2416,7 +2426,13 @@ export default function Sidebar() {
     const preciseNow = new Date().toISOString();
     // Subagent child threads live in the parent's Agents surface, not the
     // sidebar roster (v2 models them as real threads with lineage).
-    const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys);
+    /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar
+       Task-launched threads live on the Scheduled page unless pinned. */
+    const visible = filterSidebarV2VisibleThreads(
+      omitScheduledRunsFromSidebar(threads),
+      scopedProjectKeys,
+    );
+    /* fork:end fork-scheduled-runs-off-sidebar */
     inboxReturns.observe(workingShelfEnabled ? threads : null);
     const pinned: EnvironmentThreadShell[] = [];
     const active: EnvironmentThreadShell[] = [];

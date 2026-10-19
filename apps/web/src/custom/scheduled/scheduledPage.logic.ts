@@ -238,7 +238,7 @@ export const DELIVERY_OUTCOME_LABELS: Record<ScheduledTaskWebhookDeliveryOutcome
   accepted: "Ran",
   dispatch_failed: "Run failed",
   rejected_signature: "Bad signature",
-  disabled: "Task paused",
+  disabled: "Automation paused",
   rate_limited: "Rate limited",
   expired: "Too old",
   ignored: "Not a new PR",

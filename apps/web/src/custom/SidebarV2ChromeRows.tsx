@@ -273,8 +273,8 @@ export function SidebarV2ChromeActionRows(props: {
         trigger={
           <ChromeLabeledAction
             icon={CalendarClockIcon}
-            label="Scheduled"
-            ariaLabel="Scheduled tasks"
+            label="Automations"
+            ariaLabel="Automations"
             testId="sidebar-v2-scheduled"
           />
         }
