@@ -49,7 +49,10 @@ export function SidebarV2StatusSectionHeader(props: {
           // The first header still needs air under the Projects row: the list
           // has no top padding, and this label has no 32px row of its own the
           // way a project header does.
-          props.isFirst ? "mt-3" : SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderLead,
+          // Between sections, the project groups' 24px gap (headerLead 22 on
+          // top of the list gap), so a status group reads as far apart from
+          // the next as a project group does.
+          props.isFirst ? "mt-3" : SIDEBAR_V2_CARD_ALIGNMENT.headerLead,
           SIDEBAR_V2_CARD_ALIGNMENT.shelfHeaderTrail,
         )}
       >

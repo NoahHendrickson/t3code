@@ -6,9 +6,9 @@
  * design system's ghost Button (364:10544) stacked 2px apart inside the
  * panel's 8px inset — 32px tall, 10px corners, 12px inline padding, a 16px
  * leading icon 6px from a 14px Regular label, everything at the panel's
- * foreground. The Projects row below (368:21211) is the project headers'
- * shape on the same inset: a muted Label/12 label, then two 32px icon
- * buttons — sort and filter — on the list edge.
+ * foreground. The Threads row below (368:21211) is the project headers'
+ * shape on the same inset: a muted 13px semibold label, then two 32px icon
+ * buttons — sort and the view menu — on the list edge.
  *
  * Fork-owned rather than fenced in place: this is pure presentation, and
  * leaving it inline meant `Sidebar.tsx` carried the whole rewrite while the
@@ -31,27 +31,21 @@ import type {
 } from "react";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { CheckIcon, FolderIcon, FolderPlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { CheckIcon, FolderIcon, FolderPlusIcon, SearchIcon } from "lucide-react";
 // Fork-only glyphs (no lucide counterpart) come from the shim's own path: this
 // file is fork-owned, so there is no upstream import site to preserve.
 import {
   ArrowUpDownIcon,
   CalendarClockIcon,
   ChartDonutIcon,
-  FadersHorizontalIcon,
+  EllipsisVerticalIcon,
   NavigationArrowIcon,
+  SettingsIcon,
 } from "./icons/lucide-phosphor";
 import { SidebarV2ScheduledRow } from "./SidebarV2ScheduledRow";
 import { SidebarV2UsageRow } from "./UsagePopover";
 import { CommandDialogTrigger } from "~/components/ui/command";
-import {
-  Menu,
-  MenuPopup,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuSeparator,
-  MenuTrigger,
-} from "~/components/ui/menu";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "~/components/ui/menu";
 import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
@@ -89,8 +83,8 @@ export const CHROME_ROW_ICON_TINT = "[&>svg]:text-sidebar-foreground [&>svg]:opa
     so the panel's 13px text-xs remap cannot shrink them. font-normal and the
     active twin displace sidebarMenuButtonVariants' font-medium (default
     variant and data-[active=true]), so the New agent row stays Regular while
-    a draft is held. The Projects label is the headers' Label/12 and spells
-    its own. */
+    a draft is held. The Threads label matches the status-section labels and
+    spells its own. */
 const CHROME_TYPE =
   "text-[0.875rem] leading-5 font-normal text-sidebar-foreground data-[active=true]:font-normal";
 /** The Projects row's two icon buttons (Figma 368:21214 / 368:21215): the
@@ -341,6 +335,18 @@ function ScopeCheckboxItem(props: {
   );
 }
 
+/** The filter menu's dividers run edge to edge: the popup pads its rows by
+    4px and ui/menu's separator insets a further 8px, which left a short rule
+    floating between sections this menu separates by kind. The negative margin
+    cancels the popup's padding, and my-2 gives each section a little more
+    air than ui/menu's my-1. data-slot keeps the fork's divider tint
+    (theme.custom.css). */
+function FullWidthMenuSeparator() {
+  return (
+    <MenuPrimitive.Separator className="-mx-1 my-2 h-px bg-border" data-slot="menu-separator" />
+  );
+}
+
 /** The menu's view options — the grouping radios and the Compact cards
     checkbox: the label first, the indicator on the trailing edge, so they read
     as settings rather than as more rows of the scope list below them, whose
@@ -451,20 +457,23 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   const sortTooltip = `Sort projects — ${SORT_ORDER_LABELS[props.projectSortOrder]}`;
 
   return (
-    // Figma 368:21211 — the project headers' row shape: a muted Label/12
-    // label on the same 12px inset as the cards' prompt, then sort and filter
-    // as 32px icon buttons pulled onto the list edge. pt-6 is the gap between
-    // the action block and this row: 24px, the same as the gap between groups
-    // in the list, so the row reads as the start of the list rather than as
-    // the tail of the actions above it.
+    // Figma 368:21211 — the project headers' row shape: a muted label, 13px
+    // semibold like the status-section labels, on the same 12px inset as the cards' prompt, then sort and filter
+    // as 32px icon buttons pulled onto the list edge. mt-6 is the gap between
+    // the action block and this row: 24px, the same as the gap between
+    // status groups in the list, so the row reads as the start of the list
+    // rather than as the tail of the actions above it. A margin, not padding:
+    // SidebarContent zeroes the top padding of a group that follows another
+    // ([&>[data-sidebar=group]+[data-sidebar=group]]:pt-0), so a pt-* here
+    // never reaches the screen.
     // data-fork-projects-row is the palette's hook: Glass re-inks this row, the
     // project headers and the card meta lines together (theme.custom.palettes.css).
-    <SidebarGroup data-fork-projects-row="" className={cn("px-2 pt-6 pb-0", CHROME_ROW_INSET)}>
+    <SidebarGroup data-fork-projects-row="" className={cn("mt-6 px-2 pt-0 pb-0", CHROME_ROW_INSET)}>
       <div className="flex h-8 items-center gap-1.5 px-3">
         <span
           role="heading"
           aria-level={2}
-          className="min-w-0 flex-1 truncate text-left text-[0.75rem] leading-4 font-medium text-muted-foreground"
+          className="min-w-0 flex-1 truncate text-left text-[0.8125rem] leading-4 font-semibold text-muted-foreground"
         >
           Threads
         </span>
@@ -536,7 +545,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                   />
                 }
               >
-                <FadersHorizontalIcon className="size-4 shrink-0" />
+                <SettingsIcon className="size-4 shrink-0" />
               </TooltipTrigger>
               <TooltipPopup side="right">{filterTooltip}</TooltipPopup>
             </Tooltip>
@@ -590,7 +599,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                   Group by status
                 </OptionRadioItem>
               </MenuRadioGroup>
-              <MenuSeparator />
+              <FullWidthMenuSeparator />
               {/* Set apart from the radios: card density is independent of
                   grouping and combines with any of the three. */}
               <OptionCheckboxItem
@@ -600,7 +609,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
               >
                 Compact cards
               </OptionCheckboxItem>
-              <MenuSeparator />
+              <FullWidthMenuSeparator />
               {/* Checkboxes, not radios: the scope is a set, so several
                   projects can be on at once and each toggles independently.
                   The menu stays open across toggles for the same reason the
@@ -625,14 +634,14 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                   <span className="min-w-0 truncate text-sm">{project.displayName}</span>
                   <button
                     type="button"
-                    aria-label={`Project settings for ${project.displayName}`}
-                    className="ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/55 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Project actions for ${project.displayName}`}
+                    className="ml-auto inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                     // Stopping pointerdown keeps the checkbox item from toggling
                     // the project as a side effect of reaching its overflow.
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => props.onProjectActions(event, project)}
                   >
-                    <SettingsIcon className="size-3.5" />
+                    <EllipsisVerticalIcon className="size-4" />
                   </button>
                 </ScopeCheckboxItem>
               ))}

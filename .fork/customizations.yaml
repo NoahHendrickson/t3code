@@ -2237,11 +2237,11 @@
     shrink it.
 
     The Threads row (368:21211, drawn there as "Projects") takes the project
-    headers' shape on the same inset: a static muted Label/12 label, then two 32px icon buttons on the
+    headers' shape on the same inset: a static muted label (13px semibold, matching the status-section labels), then two 32px icon buttons on the
     list edge — a sort menu (ArrowsDownUp) over the same
     sidebarProjectSortOrder client setting the legacy sidebar's sort menu and
-    Settings edit, and the filter (FadersHorizontal) that owns the scope /
-    group-by menu. Switching that menu to Manual writes the on-screen
+    Settings edit, and the menu button (a gear) that owns the scope,
+    grouping and density menu. Switching that menu to Manual writes the on-screen
     project order into projectOrder first, so the headers stay put and
     drag starts from the list the user was looking at rather than a
     leftover or empty stored order.
