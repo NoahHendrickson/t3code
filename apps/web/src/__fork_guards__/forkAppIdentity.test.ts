@@ -218,6 +218,14 @@ describe("fork guard: fork-app-identity", () => {
     expect(pngDimensions("assets/fork/n3-macos-dock.png")).toEqual([1272, 1272]);
   });
 
+  it("shows the fork's own icon beside this repo's project", () => {
+    expect(JSON.parse(read("t3.json")).iconPath).toBe("assets/fork/n3-project-icon-180.png");
+    const icon = NodeFS.readFileSync(
+      NodePath.join(repoRoot, "assets/fork/n3-project-icon-180.png"),
+    );
+    expect([icon.readUInt32BE(16), icon.readUInt32BE(20)]).toEqual([180, 180]);
+  });
+
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {
     const environment = read(DESKTOP_ENVIRONMENT);
     // The condition and the refusal below share these two named inputs; the
