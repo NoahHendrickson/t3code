@@ -290,6 +290,7 @@ import {
   SidebarV2ThreadCardMeta,
 } from "~/custom/SidebarV2ThreadCardMeta";
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "~/custom/sidebarV2CardAlignment";
+import { triggerModelName } from "~/custom/modelPickerDisplayName";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
@@ -2045,10 +2046,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 /* fork:end sidebar-v2-card-rows */
                 /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                  The PR badge, pre-built above: a link with upstream's tone and
-                 click routing, so it stays on the row's side of the seam. */
+                 click routing, so it stays on the row's side of the seam.
+                 The card shows no provider icon, so the model is named the way
+                 the iconless picker trigger names it: "Opus 5.5" for Claude,
+                 "Cursor Opus 5.5" for Cursor. The tooltip keeps modelLabel
+                 beside its icon. */
                 prSlot={prBadge}
+                modelLabel={triggerModelName(modelLabel, providerEntry, { iconShown: false })}
                 /* fork:end sidebar-v2-card-rows */
-                modelLabel={modelLabel}
                 isRemote={isRemote}
               />
               /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */

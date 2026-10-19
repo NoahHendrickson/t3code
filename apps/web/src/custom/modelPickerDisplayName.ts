@@ -7,11 +7,17 @@ import { PROVIDER_DISPLAY_NAMES, ProviderDriverKind } from "@t3tools/contracts";
  * the family name goes. Where the logo is hidden, triggerModelName names the
  * reseller instead. Providers whose family word carries the model's
  * identity (Grok's "Grok Build", "Grok 4.6") are deliberately absent: strip
- * "Grok" and only "Build" is left.
+ * "Grok" and only "Build" is left. KEPT_FAMILY_NAMES holds that line even when
+ * the instance is named after the family, as the default Grok instance is.
  */
 const SHOWN_FAMILY_NAMES: Partial<Record<ProviderDriverKind, ReadonlyArray<string>>> = {
   [ProviderDriverKind.make("claudeAgent")]: ["Claude"],
   [ProviderDriverKind.make("cursor")]: ["Claude"],
+};
+
+/** Family words that are the model's name, never stripped as an instance name. */
+const KEPT_FAMILY_NAMES: Partial<Record<ProviderDriverKind, ReadonlyArray<string>>> = {
+  [ProviderDriverKind.make("grok")]: ["Grok"],
 };
 
 /** Providers that resell another maker's models; named wherever their icon isn't shown. */
@@ -33,6 +39,9 @@ export function stripProviderName(
     provider.displayName,
   ]) {
     const prefix = providerName?.trim().toLowerCase();
+    if (KEPT_FAMILY_NAMES[provider.driverKind]?.some((kept) => kept.toLowerCase() === prefix)) {
+      continue;
+    }
     if (prefix && name.toLowerCase().startsWith(`${prefix} `)) {
       return name.slice(prefix.length).trim() || name;
     }
