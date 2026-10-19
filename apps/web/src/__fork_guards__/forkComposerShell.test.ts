@@ -257,6 +257,14 @@ describe("fork guard: fork-composer-shell", () => {
     expect(chatView).toMatch(/isGitRepo:\s*isGitRepo \|\| activeThreadWorktreePath !== null/u);
   });
 
+  it("shows a started thread's project and branch read-only once the strip retreats", () => {
+    // Upstream drops the strip after the first send; the fallback strip must
+    // still lead with the pinned project and branch chips.
+    expect(chatView).toMatch(/isServerThread && activeProject && !showComposerContextStrip/u);
+    expect(chatView).toMatch(/leading: draftProjectPill \?\? threadContextReadout/u);
+    expect(chatView).toMatch(/draftProjectPill != null \|\|\s*threadContextReadout != null/u);
+  });
+
   it("keeps composer styling scoped to the fork marker", () => {
     const composerRules = rules.filter(
       (rule) =>

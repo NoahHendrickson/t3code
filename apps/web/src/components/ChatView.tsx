@@ -341,6 +341,8 @@ import {
   renderComposerLivenessPill,
   resolveComposerLivenessPillProps,
 } from "~/custom/composerContextStrip";
+import { ThreadContextReadout } from "~/custom/ThreadContextReadout";
+import { resolveBranchToolbarValue } from "~/components/BranchToolbar.logic";
 /* fork:end fork-composer-shell */
 /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
 import { DraftProjectPill } from "~/custom/DraftProjectPill";
@@ -11091,6 +11093,35 @@ export default function ChatView(props: ChatViewProps) {
     [activeProject?.title, activeProjectRef, draftId, isLocalDraftThread],
   );
   /* fork:end fork-new-agent-draft */
+  // A started thread's project and branch are pinned, so once upstream drops
+  // the strip they come back as read-only chips. The "Composer context"
+  // setting keeps upstream's interactive strip instead.
+  const threadContextBranch = isGitRepo
+    ? resolveBranchToolbarValue({
+        envMode,
+        activeWorktreePath,
+        activeThreadBranch,
+        currentGitBranch: gitStatusQuery.data?.refName ?? null,
+      })
+    : null;
+  const threadContextReadout = useMemo(
+    () =>
+      isServerThread && activeProject && !showComposerContextStrip && !showProviderSubagentBar ? (
+        <ThreadContextReadout
+          project={activeProject}
+          branch={threadContextBranch}
+          inWorktree={activeWorktreePath !== null}
+        />
+      ) : null,
+    [
+      activeProject,
+      activeWorktreePath,
+      isServerThread,
+      showComposerContextStrip,
+      showProviderSubagentBar,
+      threadContextBranch,
+    ],
+  );
   /**
    * The worktree/branch strip, as an element rather than a render site.
    *
@@ -11160,18 +11191,19 @@ export default function ChatView(props: ChatViewProps) {
         <>
           {toolbar}
           {renderComposerContextStripFallback({
-            leading: draftProjectPill,
+            leading: draftProjectPill ?? threadContextReadout,
             trailing: composerLivenessPill,
           })}
         </>
       );
     }
     return renderComposerContextStripFallback({
-      leading: draftProjectPill,
+      leading: draftProjectPill ?? threadContextReadout,
       trailing: composerLivenessPill,
     });
   }, [
     draftProjectPill,
+    threadContextReadout,
     mountComposerContextStrip,
     showComposerContextStrip,
     activeThread,
@@ -11855,7 +11887,8 @@ export default function ChatView(props: ChatViewProps) {
                       contextStrip={
                         showComposerContextStrip ||
                         composerLivenessPill != null ||
-                        draftProjectPill != null
+                        draftProjectPill != null ||
+                        threadContextReadout != null
                       }
                       /* fork:end fork-composer-shell */
                     >
