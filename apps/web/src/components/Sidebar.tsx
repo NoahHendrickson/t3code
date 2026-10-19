@@ -1341,10 +1341,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       // text while forcing its title forward — two opposite policies in one
       // rectangle. Slim shelves keep upstream's rule.
       recedes: variant === "card" ? cardRecedes : shouldRecede,
-      // Cards take the component set's 12px corner; slim shelf rows keep the 8px
+      // Cards take the component set's 16px corner; slim shelf rows keep the 8px
       // they were drawn at.
       variant,
       /* fork:end sidebar-v2-card-rows */
+      /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
+      // A compact card is one line tall like a shelf row, so it takes its corner.
+      compact: props.compact,
+      /* fork:end sidebar-v2-compact-cards */
     }),
     // Upstream #13344: keyboard focus draws the same inset ring on every row.
     // Additive for the same reason as the file-drag ring below — focus is
