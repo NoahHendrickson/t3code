@@ -28,6 +28,13 @@ describe("stripProviderName", () => {
   it("keeps a family word that carries the model's identity", () => {
     expect(stripProviderName("Grok Build", { driverKind: grok })).toBe("Grok Build");
     expect(stripProviderName("Grok 4.6", { driverKind: grok })).toBe("Grok 4.6");
+    // The default Grok instance is named "Grok"; that is not a custom account name.
+    expect(stripProviderName("Grok 4.6", { driverKind: grok, displayName: "Grok" })).toBe(
+      "Grok 4.6",
+    );
+    expect(triggerModelName("Grok Build", { driverKind: grok, displayName: "Grok" }, {
+      iconShown: false,
+    })).toBe("Grok Build");
   });
 
   it("leaves names that don't lead with the provider", () => {
