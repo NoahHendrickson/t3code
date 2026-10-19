@@ -29,7 +29,7 @@ export const TOUCH_CONTEXT_MENU_SELECTOR = [
 /** Matches the platform's own long-press delay closely enough to feel native. */
 export const LONG_PRESS_MS = 500;
 /** A finger that drifts further than this is scrolling, not pressing. */
-export const LONG_PRESS_SLOP_PX = 10;
+const LONG_PRESS_SLOP_PX = 10;
 
 /** How long a release click may trail the hold before the latch lets go. */
 const RELEASE_CLICK_WINDOW_MS = 300;
