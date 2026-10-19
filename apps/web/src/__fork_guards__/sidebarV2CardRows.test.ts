@@ -295,14 +295,14 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.metaLine).toBe(16);
   });
 
-  it("gives a card 16px corners and a slim shelf row 8px", () => {
+  it("gives a card 16px corners and a one-line row 8px", () => {
     // --radius is 10px, so neither is a rounded-* token: the card's is the
-    // component set's literal (364:17299) and the slim rows keep --radius-md.
-    const at = (variant: "card" | "slim") =>
-      threadRowSurfaceClassName({ isActive: false, isSelected: false, recedes: false, variant });
+    // component set's literal (364:17299) and the one-line rows keep --radius-md.
+    const at = (shape: "card" | "line") =>
+      threadRowSurfaceClassName({ isActive: false, isSelected: false, recedes: false, shape });
     expect(at("card")).toContain("rounded-[16px]");
-    expect(at("slim")).toContain("rounded-md");
-    expect(at("slim")).not.toContain("rounded-[16px]");
+    expect(at("line")).toContain("rounded-md");
+    expect(at("line")).not.toContain("rounded-[16px]");
   });
 
   it("lifts receded titles via a dedicated token, not the shared muted channel", () => {

@@ -55,6 +55,13 @@ describe("fork guard: sidebar-v2-compact-cards", () => {
     expect(sidebar).toContain(`[contain-intrinsic-size:auto_${sidebarV2CompactCardHeight()}px]`);
   });
 
+  it("gives a compact card the one-line row's corner", () => {
+    // 34px tall like a slim shelf row; the full card's 16px reads as a pill.
+    expect(sidebar).toContain(
+      'shape: variant === "card" && props.compact !== true ? "card" : "line"',
+    );
+  });
+
   it("names a worktree checkout in the hover card", () => {
     expect(sidebar).toContain('<span className="shrink-0 text-muted-foreground">Worktree</span>');
   });
