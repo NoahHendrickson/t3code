@@ -40,10 +40,10 @@ import { CheckIcon, EllipsisIcon, FolderIcon, FolderPlusIcon, SearchIcon } from 
 // file is fork-owned, so there is no upstream import site to preserve.
 import {
   ArrowUpDownIcon,
-  CalendarClockIcon,
   ChartDonutIcon,
   FadersHorizontalIcon,
   NavigationArrowIcon,
+  ZapIcon,
 } from "./icons/lucide-phosphor";
 import { SidebarV2UsageRow } from "./UsagePopover";
 import { CommandDialogTrigger } from "~/components/ui/command";
@@ -321,7 +321,7 @@ function ChromeAutomationsRow() {
     .join(", ");
   return (
     <ChromeLabeledAction
-      icon={CalendarClockIcon}
+      icon={ZapIcon}
       label="Automations"
       ariaLabel={live > 0 ? `Automations — ${activityLabel}` : "Automations"}
       testId="sidebar-v2-scheduled"

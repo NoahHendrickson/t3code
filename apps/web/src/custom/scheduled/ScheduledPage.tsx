@@ -130,7 +130,7 @@ export function ScheduledPage() {
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
       <WorkspacePageHeader electron={isElectron}>
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <CalendarClockIcon className="size-4 text-muted-foreground" aria-hidden />
+          <ZapIcon className="size-4 text-muted-foreground" aria-hidden />
           <span className="font-medium">Automations</span>
         </div>
       </WorkspacePageHeader>

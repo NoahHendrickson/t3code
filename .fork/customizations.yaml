@@ -2371,8 +2371,8 @@
     The V2 sidebar's action block ends with a Scheduled row directly under
     Usage: the chrome door to every scheduled task across every project and
     environment. It is a labeled action in the same shape as New agent, Add a
-    project and Usage (CalendarClockIcon, the glyph the settings nav already
-    uses for the page), stacked in the one action group so no inter-group
+    project and Usage (ZapIcon, the lightning bolt the Automations page
+    header also wears), stacked in the one action group so no inter-group
     padding opens between it and Usage. Clicking it navigates to a page
     rather than opening a popover: Usage is a
     dashboard you glance at over the thread, while scheduled tasks are a
