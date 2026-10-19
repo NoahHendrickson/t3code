@@ -12,6 +12,9 @@
  * count's style. With project grouping off this is the only place a
  * section's project spread shows at a glance.
  *
+ * The pinned block takes the same header while status grouping is on, so
+ * every group in the list reads the same way; `section` is "pinned" there.
+ *
  * Clicking it collapses the section; the count is already on screen, so a
  * collapsed header needs nothing extra to say how many cards it hides. The
  * first header takes 12px of its own below the Projects row.
@@ -20,12 +23,12 @@ import { cn } from "~/lib/utils";
 
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "./sidebarV2CardAlignment";
 import {
-  SIDEBAR_V2_STATUS_BUCKET_LABELS,
-  type SidebarV2StatusBucket,
+  SIDEBAR_V2_STATUS_SECTION_LABELS,
+  type SidebarV2StatusSectionKey,
 } from "./sidebarV2StatusGrouping";
 
 export function SidebarV2StatusSectionHeader(props: {
-  readonly status: SidebarV2StatusBucket;
+  readonly section: SidebarV2StatusSectionKey;
   readonly count: number;
   readonly projectCount: number;
   readonly isFirst: boolean;
@@ -39,7 +42,7 @@ export function SidebarV2StatusSectionHeader(props: {
         onClick={props.onToggleCollapsed}
         aria-expanded={!props.collapsed}
         data-testid="sidebar-v2-status-section-toggle"
-        data-status={props.status}
+        data-status={props.section}
         className={cn(
           "flex w-full cursor-pointer items-center gap-1.5 text-left text-[0.8125rem] leading-4",
           SIDEBAR_V2_CARD_ALIGNMENT.cardPad,
@@ -51,7 +54,7 @@ export function SidebarV2StatusSectionHeader(props: {
         )}
       >
         <span className="truncate font-semibold text-muted-foreground">
-          {SIDEBAR_V2_STATUS_BUCKET_LABELS[props.status]}
+          {SIDEBAR_V2_STATUS_SECTION_LABELS[props.section]}
         </span>
         <span className="shrink-0 font-semibold text-muted-foreground/60 tabular-nums">
           {props.count}

@@ -43,6 +43,18 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(sidebar).toContain("<SidebarV2StatusSectionHeader");
   });
 
+  it("gives the pinned block its own collapsible header while status grouping is on", () => {
+    expect(sidebar).toContain(
+      "const pinnedSectionShown = statusGrouped && pinnedThreads.length > 0;",
+    );
+    expect(sidebar).toContain('section="pinned"');
+    expect(sidebar).toContain('collapsedStatusSections.has("pinned")');
+    // The collapsed block paints and navigates the same rows.
+    expect(sidebar).toContain("...visiblePinnedThreads,");
+    // The header replaces the divider; the other modes keep it.
+    expect(sidebar).toMatch(/pinnedThreads\.length > 0 &&[\s\S]{0,200}?!pinnedSectionShown/u);
+  });
+
   it("keeps the Working shelf beta out of the way while status grouping is on", () => {
     expect(sidebar).toContain("const workingShelfActive = workingShelfEnabled && !statusGrouped;");
     expect(sidebar).toContain("workingShelfActive && isSidebarThreadWorking(thread)");

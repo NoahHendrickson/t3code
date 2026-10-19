@@ -320,6 +320,7 @@ import { SidebarV2StatusSectionHeader } from "~/custom/SidebarV2StatusSectionHea
 import { resolveSidebarV2CardStatus } from "~/custom/sidebarV2CardStatus";
 import {
   buildSidebarV2StatusSections,
+  countSidebarV2Projects,
   createSidebarV2CompletedHoldTracker,
   useSidebarV2CollapsedStatusSections,
   type SidebarV2ListSection,
@@ -2746,6 +2747,27 @@ export default function Sidebar() {
   // re-render that follows, where AutoAnimate can fade it and reflow the rows
   // below in one clean pass. The highlight itself stays on the live key.
   const keptRouteThreadKey = useDeferredValue(routeThreadKey);
+  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+     Status grouping gives the pinned block a header like the status sections,
+     shown only while something is pinned, and it collapses the same way: the
+     open thread stays visible. Flat and project modes keep the divider. */
+  const pinnedSectionShown = statusGrouped && pinnedThreads.length > 0;
+  const pinnedCollapsed = pinnedSectionShown && collapsedStatusSections.has("pinned");
+  const pinnedProjectCount = useMemo(
+    () => (pinnedSectionShown ? countSidebarV2Projects(pinnedThreads, projectRefIndex) : 0),
+    [pinnedSectionShown, pinnedThreads, projectRefIndex],
+  );
+  const keepCollapsedPinnedRow = useCallback(
+    (thread: EnvironmentThreadShell) =>
+      keptRouteThreadKey !== null &&
+      scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)) === keptRouteThreadKey,
+    [keptRouteThreadKey],
+  );
+  const visiblePinnedThreads = useMemo(
+    () => (pinnedCollapsed ? pinnedThreads.filter(keepCollapsedPinnedRow) : pinnedThreads),
+    [keepCollapsedPinnedRow, pinnedCollapsed, pinnedThreads],
+  );
+  /* fork:end sidebar-v2-status-grouping */
   const visibleActiveSections = useMemo(
     () =>
       activeSections.map((section) => {
@@ -2817,14 +2839,14 @@ export default function Sidebar() {
        the grouped paint order, so keyboard order and paint order stay one list.
        The Working shelf (beta) paints after the sections, before snoozed. */
     () => [
-      ...pinnedThreads,
+      ...visiblePinnedThreads,
       ...orderedActiveThreads,
       ...visibleWorkingThreads,
       ...visibleSnoozedThreads,
       ...renderedSettledThreads,
     ],
     [
-      pinnedThreads,
+      visiblePinnedThreads,
       orderedActiveThreads,
       visibleWorkingThreads,
       visibleSnoozedThreads,
@@ -4709,8 +4731,26 @@ export default function Sidebar() {
                     // header text). Vanishes entirely at count 0. Pinned cards
                     // stay flat above the grouped sections — a pin freezes
                     // prominence across projects.
+                    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                    const renderedPinnedThreads = pinnedCollapsed
+                      ? orderedPinnedThreads.filter(keepCollapsedPinnedRow)
+                      : orderedPinnedThreads;
+                    /* fork:end sidebar-v2-status-grouping */
                     const items: ReactNode[] = [
-                      pinnedThreads.length > 0 ? (
+                      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                      pinnedSectionShown ? (
+                        <SidebarV2StatusSectionHeader
+                          key="status-section-header:pinned"
+                          section="pinned"
+                          count={pinnedThreads.length}
+                          projectCount={pinnedProjectCount}
+                          isFirst
+                          collapsed={pinnedCollapsed}
+                          onToggleCollapsed={() => toggleStatusSectionCollapsed("pinned")}
+                        />
+                      ) : null,
+                      /* fork:end sidebar-v2-status-grouping */
+                      renderedPinnedThreads.length > 0 ? (
                         <li key="pinned-dnd" className="list-none">
                           <DndContext
                             sensors={pinnedDndSensors}
@@ -4719,7 +4759,7 @@ export default function Sidebar() {
                             onDragEnd={handlePinnedDragEnd}
                           >
                             <SortableContext
-                              items={orderedPinnedThreads
+                              items={renderedPinnedThreads
                                 .map((thread) =>
                                   scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
                                 )
@@ -4735,7 +4775,7 @@ export default function Sidebar() {
                                 className={cn("flex flex-col", SIDEBAR_V2_CARD_ALIGNMENT.listGap)}
                               >
                                 {/* fork:end sidebar-v2-card-rows */}
-                                {orderedPinnedThreads.map((thread) => {
+                                {renderedPinnedThreads.map((thread) => {
                                   const threadKey = scopedThreadKey(
                                     scopeThreadRef(thread.environmentId, thread.id),
                                   );
@@ -4763,7 +4803,12 @@ export default function Sidebar() {
                         </li>
                       ) : null,
                     ];
-                    if (pinnedThreads.length > 0) {
+                    if (
+                      pinnedThreads.length > 0 &&
+                      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                      !pinnedSectionShown
+                      /* fork:end sidebar-v2-status-grouping */
+                    ) {
                       items.push(
                         <li
                           key="pinned-divider"
@@ -4807,10 +4852,12 @@ export default function Sidebar() {
                           return [
                             <SidebarV2StatusSectionHeader
                               key={`status-section-header:${status}`}
-                              status={status}
+                              section={status}
                               count={section.threadCount}
                               projectCount={section.projectCount}
-                              isFirst={sectionIndex === 0}
+                              // Below a Pinned header, the first status
+                              // section takes the ordinary lead.
+                              isFirst={sectionIndex === 0 && !pinnedSectionShown}
                               collapsed={section.collapsed}
                               onToggleCollapsed={() => toggleStatusSectionCollapsed(status)}
                             />,

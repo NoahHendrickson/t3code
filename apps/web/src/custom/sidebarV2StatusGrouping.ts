@@ -57,7 +57,13 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "idle",
 ];
 
-export const SIDEBAR_V2_STATUS_BUCKET_LABELS: Record<SidebarV2StatusBucket, string> = {
+/** Every header status grouping draws: the four status sections, plus the
+    pinned block, which takes a header of its own while status grouping is on
+    so it reads as one more group. */
+export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
+
+export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusSectionKey, string> = {
+  pinned: "Pinned",
   input: "Needs input",
   done: "Completed",
   working: "Working",
@@ -96,13 +102,13 @@ export type SidebarV2ListSection<TThread> =
   | SidebarV2ActiveSection<TThread>
   | SidebarV2StatusSection<TThread>;
 
-const isStatusBucket = (key: string): key is SidebarV2StatusBucket =>
-  (SIDEBAR_V2_STATUS_BUCKET_ORDER as readonly string[]).includes(key);
+const isStatusSectionKey = (key: string): key is SidebarV2StatusSectionKey =>
+  key in SIDEBAR_V2_STATUS_SECTION_LABELS;
 
 export function useSidebarV2CollapsedStatusSections() {
   return useSidebarV2CollapsedKeys(
     SIDEBAR_V2_COLLAPSED_STATUS_SECTIONS_STORAGE_KEY,
-    isStatusBucket,
+    isStatusSectionKey,
   );
 }
 

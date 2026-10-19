@@ -58,7 +58,9 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // one keyboard order. Order asserted, not just presence: a merge that
     // reorders the spreads (pinned after active) still contains every name
     // while breaking the paint/keyboard-order outcome.
-    const pinnedSpread = sidebar.indexOf("...pinnedThreads,");
+    // Status grouping can collapse the pinned block, so the spread is the
+    // visible pinned rows (all of them in every other mode).
+    const pinnedSpread = sidebar.indexOf("...visiblePinnedThreads,");
     const activeSpread = sidebar.indexOf("...orderedActiveThreads,");
     const snoozedSpread = sidebar.indexOf("...visibleSnoozedThreads,");
     expect(pinnedSpread).toBeGreaterThanOrEqual(0);

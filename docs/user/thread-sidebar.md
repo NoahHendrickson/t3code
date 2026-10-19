@@ -165,7 +165,8 @@ On web and desktop, open the filter menu on the **Projects** row and turn on **G
 to split active threads into **Needs input**, **Completed**, **Working**, and **Idle**. Needs
 input holds approvals, questions, and failed runs. A completed thread stays in **Completed**
 while you have it open and for five minutes after you leave it, then moves to **Idle**. Idle
-threads settle on the usual schedule. This replaces **Group by project** and the Working
+threads settle on the usual schedule. Pinned threads get a **Pinned** group of
+their own at the top. This replaces **Group by project** and the Working
 section while it is on, and each device keeps its own choice.
 
 <!-- fork:end sidebar-v2-status-grouping -->

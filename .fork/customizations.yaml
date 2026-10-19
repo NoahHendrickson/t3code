@@ -1052,7 +1052,10 @@
     for hours. Pinned, snoozed and settled keep their shelves, and Idle reaches
     Settled through the server's existing auto-settle. While status grouping is
     on the Working shelf beta stands down and its threads paint in the Working
-    section.
+    section, and the pinned block takes a "Pinned" header of the same style in
+    place of its divider, shown only while something is pinned and collapsible
+    like the rest (the open thread stays visible). Flat and project modes keep
+    the divider.
 
     Under a status header the section decides a card's title brightness
     (threadCardTitleRecedes's statusSection input): only Needs input and
