@@ -330,6 +330,9 @@ import {
   sidebarServerActionThreadKeys,
 } from "~/custom/sidebarV2DraftRows";
 /* fork:end sidebar-v2-draft-rows */
+/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+import { triggerModelName } from "~/custom/modelPickerDisplayName";
+/* fork:end sidebar-v2-card-rows */
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
 import {
   deriveProviderEntriesByEnvironment,
@@ -1047,6 +1050,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   const modelLabel = selectedModel
     ? getTriggerDisplayModelLabel(selectedModel)
     : thread.modelSelection.model;
+  /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+     The card shows no provider icon, so it names the model the way the
+     iconless picker trigger does: "Opus 5.5" for Claude, "Cursor Opus 5.5"
+     for Cursor. The tooltip keeps modelLabel beside its icon. */
+  const cardModelLabel = triggerModelName(modelLabel, providerEntry, { iconShown: false });
+  /* fork:end sidebar-v2-card-rows */
 
   // The local environment is "this machine" and needs no marker; every other
   // one gets its machine glyph. With no local environment (the hosted app)
@@ -2007,7 +2016,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                  click routing, so it stays on the row's side of the seam. */
               prSlot={prBadge}
               /* fork:end sidebar-v2-card-rows */
-              modelLabel={modelLabel}
+              /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
+              modelLabel={cardModelLabel}
+              /* fork:end sidebar-v2-card-rows */
               isRemote={isRemote}
             />
           </div>

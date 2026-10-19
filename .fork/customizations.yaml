@@ -626,7 +626,10 @@
     sit 2px apart on the list ul's gap-0.5; the li itself carries no padding,
     so contain-intrinsic-size is the drawn 54 exactly. Every mark on the repo
     line is 12px, with a 1x8 hairline between the runtime glyph and the
-    branch. The model label is caption 11/15. The PR badge is 12px, literal
+    branch. The model label is caption 11/15, named as the iconless picker
+    trigger names it (triggerModelName): the card carries no provider icon,
+    so only a reseller says whose it is ("Cursor Opus 5.5"; Claude's own
+    reads "Opus 5.5"). The PR badge is 12px, literal
     so the panel's --text-xs remap cannot grow it. The project name is
     capped at 40% only when a branch shares the line, so a card with no
     branch (nothing to yield to) can show the full name. Branch and model both read
