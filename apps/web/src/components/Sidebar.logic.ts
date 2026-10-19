@@ -24,6 +24,12 @@ import {
 } from "../lib/threadSort";
 import type { SidebarThreadSummary, Thread } from "../types";
 import { cn } from "../lib/utils";
+/* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+import {
+  isScheduledRunOffSidebar,
+  type ScheduledRunRosterFields,
+} from "../custom/scheduledRunsOffSidebar";
+/* fork:end fork-scheduled-runs-off-sidebar */
 import { isLatestRunSettled } from "../session-logic";
 import { resolveServerBackedAppStageLabel } from "../branding.logic";
 
@@ -571,12 +577,16 @@ export function filterSidebarV2VisibleThreads<
   T extends Pick<SidebarThreadSummary, "archivedAt" | "lineage"> & {
     environmentId: string;
     projectId: string;
-  },
+  } & ScheduledRunRosterFields,
 >(threads: readonly T[], scopedProjectKeys: ReadonlySet<string> | null): T[] {
   return threads.filter(
     (thread) =>
       thread.archivedAt === null &&
       !isSidebarSubagentThread(thread) &&
+      /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar
+         Automation runs live on the Automations page unless pinned. */
+      !isScheduledRunOffSidebar(thread) &&
+      /* fork:end fork-scheduled-runs-off-sidebar */
       (scopedProjectKeys === null ||
         scopedProjectKeys.has(`${thread.environmentId}:${thread.projectId}`)),
   );

@@ -1,6 +1,6 @@
 /**
  * The Sidebar V2 control rows — search, new agent, add project, usage,
- * scheduled, and the projects filter — see `.fork/customizations.yaml#fork-sidebar-chrome`.
+ * automations, and the projects filter — see `.fork/customizations.yaml#fork-sidebar-chrome`.
  *
  * Metrics from Figma t3-fork node 364:11246: the action rows are the
  * design system's ghost Button (364:10544) stacked 2px apart inside the
@@ -19,7 +19,9 @@
  * command palette trigger, a radio group, three labeled actions and a
  * per-project overflow action. It is all data and callbacks, though: no
  * upstream state is reached into, so an upstream refactor of how that state
- * is produced cannot break this file.
+ * is produced cannot break this file. The Automations row is the one
+ * exception: it reads the router and the thread shells itself, so the
+ * Sidebar.tsx call site gains no props for it.
  */
 import type { SidebarProjectSortOrder } from "@t3tools/contracts/settings";
 import type {
@@ -31,6 +33,8 @@ import type {
 } from "react";
 
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
+import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useCallback, useMemo } from "react";
 import { CheckIcon, EllipsisIcon, FolderIcon, FolderPlusIcon, SearchIcon } from "lucide-react";
 // Fork-only glyphs (no lucide counterpart) come from the shim's own path: this
 // file is fork-owned, so there is no upstream import site to preserve.
@@ -41,7 +45,6 @@ import {
   FadersHorizontalIcon,
   NavigationArrowIcon,
 } from "./icons/lucide-phosphor";
-import { SidebarV2ScheduledRow } from "./SidebarV2ScheduledRow";
 import { SidebarV2UsageRow } from "./UsagePopover";
 import { CommandDialogTrigger } from "~/components/ui/command";
 import {
@@ -53,11 +56,14 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from "~/components/ui/menu";
-import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
+import { SidebarGroup, SidebarMenuButton, useSidebar } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
 import { cn } from "~/lib/utils";
 import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
+import { useThreadShells } from "~/state/entities";
+import { summarizeScheduledRunActivity } from "./scheduledRunActivity";
+import { SidebarV2StatusMark } from "./SidebarV2StatusIndicator";
 
 /** Structural on purpose: the four fields these rows read, no more. The row is
     generic over anything satisfying it, so the callbacks hand back upstream's
@@ -269,17 +275,79 @@ export function SidebarV2ChromeActionRows(props: {
           />
         }
       />
-      <SidebarV2ScheduledRow
-        trigger={
-          <ChromeLabeledAction
-            icon={CalendarClockIcon}
-            label="Automations"
-            ariaLabel="Automations"
-            testId="sidebar-v2-scheduled"
-          />
-        }
-      />
+      <ChromeAutomationsRow />
     </SidebarGroup>
+  );
+}
+
+const SCHEDULED_TASKS_PATH = "/scheduled";
+
+/** The chrome door to every automation across every project and environment —
+    see `.fork/customizations.yaml#fork-sidebar-scheduled-row`. It goes to the
+    fork's /scheduled page (custom/scheduled) rather than a popover, lights
+    while that page is open, and closes the mobile sheet before navigating.
+
+    Automation runs are off the project groups (custom/scheduledRunsOffSidebar),
+    so the row reports the live ones (fork-scheduled-runs-off-sidebar): a count
+    with the rain while they work, the amber dot once one waits on you, the
+    failed dot for a failure nobody has opened. While any are live the row
+    opens All runs, which lists newest first. */
+function ChromeAutomationsRow() {
+  const navigate = useNavigate();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const isOnScheduledTasks = useLocation({
+    select: (location) => location.pathname === SCHEDULED_TASKS_PATH,
+  });
+  const threads = useThreadShells();
+  const { working, needsYou, failed } = useMemo(
+    () => summarizeScheduledRunActivity(threads),
+    [threads],
+  );
+  const live = working + needsYou + failed;
+  const openScheduledTasks = useCallback(() => {
+    if (isMobile) setOpenMobile(false);
+    void navigate(
+      live > 0
+        ? { to: SCHEDULED_TASKS_PATH, search: { view: "runs" } }
+        : { to: SCHEDULED_TASKS_PATH },
+    );
+  }, [isMobile, live, navigate, setOpenMobile]);
+  const activityLabel = [
+    working > 0 ? `${working} running` : null,
+    needsYou > 0 ? `${needsYou} waiting on you` : null,
+    failed > 0 ? `${failed} failed` : null,
+  ]
+    .filter((part) => part !== null)
+    .join(", ");
+  return (
+    <ChromeLabeledAction
+      icon={CalendarClockIcon}
+      label="Automations"
+      ariaLabel={live > 0 ? `Automations — ${activityLabel}` : "Automations"}
+      testId="sidebar-v2-scheduled"
+      active={isOnScheduledTasks}
+      onClick={openScheduledTasks}
+      trailing={
+        live > 0 ? (
+          <span
+            className="flex shrink-0 items-center gap-1.5 text-[0.75rem] leading-4 text-muted-foreground tabular-nums"
+            data-testid="sidebar-v2-scheduled-activity"
+          >
+            <span aria-hidden>{live}</span>
+            <SidebarV2StatusMark
+              status={
+                needsYou > 0
+                  ? { label: activityLabel, mark: "dot", tone: "approval" }
+                  : failed > 0
+                    ? { label: activityLabel, mark: "dot", tone: "failed" }
+                    : { label: activityLabel, mark: "rain" }
+              }
+              rainSeed="sidebar-v2-scheduled"
+            />
+          </span>
+        ) : null
+      }
+    />
   );
 }
 

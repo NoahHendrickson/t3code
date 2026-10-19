@@ -21,6 +21,7 @@ import { useRelativeTimeTick } from "~/components/settings/settingsLayout";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useProject, useThreadShell } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
@@ -226,17 +227,23 @@ function ScheduledRunRow(props: {
       </TableCell>
       <TableCell className="text-muted-foreground tabular-nums">
         {pullRequest ? (
-          <a
-            href={pullRequest.url}
-            target="_blank"
-            rel="noreferrer"
-            title={pullRequest.label}
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            #{pullRequest.number}
-          </a>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <a
+                  href={pullRequest.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                  className="underline underline-offset-2 hover:text-foreground"
+                />
+              }
+            >
+              #{pullRequest.number}
+            </TooltipTrigger>
+            <TooltipPopup side="top">{pullRequest.label}</TooltipPopup>
+          </Tooltip>
         ) : (
           "—"
         )}

@@ -122,8 +122,8 @@ the thread you were on.
 <!-- fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar -->
 
 Threads an automation starts stay out of your project groups and live on the Automations page
-instead. While any are running or waiting on you, **Automations** shows how many, and clicking it
-opens **All runs**. To keep a run in the sidebar, open it and pin it. An automation that sends
+instead. While any are running, waiting on you, or failed and not yet opened, **Automations**
+shows how many, and clicking it opens **All runs**. To keep a run in the sidebar, open it and pin it. An automation that sends
 into a thread you chose keeps that thread where it is.
 <!-- fork:end fork-scheduled-runs-off-sidebar -->
 
@@ -139,8 +139,8 @@ Each newly opened PR starts a separate review of that exact PR and commit in the
 repository. Existing PRs and later pushes do not trigger this automation. Run history links
 to the triggering PR. Pause the automation to stop reviews, or delete it to disconnect its GitHub
 webhooks. The environment must be running to review; Connections can hold incoming events
-while it is offline. If a review thread appears but its worktree could not be created, retry
-from that thread. If no thread appeared, redeliver the webhook after fixing the cause. Each PR
+while it is offline. If a review fails, for example because its worktree could not be created,
+**Automations** counts it until you open it; retry from that thread. If no thread appeared, redeliver the webhook after fixing the cause. Each PR
 event starts at most one review.
 <!-- fork:end fork-github-pr-automation -->
 

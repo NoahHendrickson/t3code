@@ -3,28 +3,27 @@
  * Fork guard — see `.fork/README.md` §4b and
  * `.fork/customizations.yaml#fork-scheduled-runs-off-sidebar`.
  *
- * Threads a scheduled task launches stay off the sidebar's project groups
- * unless pinned, and the Scheduled row reports the live ones. A sync that
- * drops the roster filter floods the sidebar with automated runs again; one
- * that drops the server stamp silently turns the filter into a no-op.
+ * Threads an automation launches stay off the sidebar's project groups
+ * unless pinned, and the Automations row reports the live ones. A sync that
+ * drops the roster rule floods the sidebar with automated runs again; one
+ * that drops the server stamp silently turns the rule into a no-op.
  */
 
 import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
+import { ProviderInstanceId, RunId, ScheduledTaskId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import {
-  isScheduledRunOffSidebar,
-  omitScheduledRunsFromSidebar,
-  summarizeScheduledRunActivity,
-} from "../custom/scheduledRunsOffSidebar";
+import { filterSidebarV2VisibleThreads } from "../components/Sidebar.logic";
+import { summarizeScheduledRunActivity } from "../custom/scheduledRunActivity";
+import { makeThreadFixture } from "../test-fixtures";
+import type { Thread } from "../types";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const sidebar = readSibling("../components/Sidebar.tsx");
-const scheduledRow = readSibling("../custom/SidebarV2ScheduledRow.tsx");
+const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 const runsTable = readSibling("../custom/scheduled/ScheduledRunsTable.tsx");
 const backButton = readSibling("../custom/scheduled/AutomationRunBackButton.tsx");
 const chatHeader = readSibling("../components/chat/ChatHeader.tsx");
@@ -32,64 +31,74 @@ const contracts = readSibling("../../../../packages/contracts/src/orchestrationV
 const launch = readSibling("../../../server/src/orchestration-v2/ThreadLaunchService.ts");
 const projectionStore = readSibling("../../../server/src/orchestration-v2/ProjectionStore.ts");
 
-function shell(input: {
-  readonly id: string;
-  readonly scheduledTaskId?: string;
-  readonly pinnedAt?: string | null;
-  readonly archivedAt?: string | null;
-  readonly runtimeStatus?: "running" | "idle" | null;
-  readonly hasPendingApprovals?: boolean;
-}) {
+const UPDATED_AT = "2026-10-19T12:00:00.000Z";
+
+function runtime(status: "running" | "failed"): NonNullable<Thread["runtime"]> {
   return {
-    id: input.id,
-    archivedAt: input.archivedAt ?? null,
-    pinnedAt: input.pinnedAt ?? null,
-    hasPendingApprovals: input.hasPendingApprovals ?? false,
-    hasPendingUserInput: false,
-    runtime:
-      input.runtimeStatus == null
-        ? null
-        : ({ status: input.runtimeStatus } as unknown as NonNullable<
-            Parameters<typeof isScheduledRunOffSidebar>[0]["runtime"]
-          >),
-    source: input.scheduledTaskId === undefined ? {} : { scheduledTaskId: input.scheduledTaskId },
+    status,
+    activeRunId: null,
+    providerInstanceId: ProviderInstanceId.make("codex"),
+    providerName: null,
+    lastError: null,
+    updatedAt: UPDATED_AT,
   };
 }
 
+/** A run thread the automation `review` launched. */
+function automationRun(id: string, overrides: Partial<Thread> = {}): Thread {
+  const thread = makeThreadFixture({ id: id as Thread["id"], ...overrides });
+  return {
+    ...thread,
+    source: { ...thread.source, scheduledTaskId: ScheduledTaskId.make("scheduled-task:review") },
+  };
+}
+
+function failedRun(id: string, lastVisitedAt: string | null): Thread {
+  return automationRun(id, {
+    runtime: runtime("failed"),
+    lastVisitedAt,
+    latestRun: {
+      runId: RunId.make(`run:${id}`),
+      status: "failed",
+      requestedAt: "2026-10-19T10:00:00.000Z",
+      startedAt: "2026-10-19T10:00:00.000Z",
+      completedAt: "2026-10-19T10:05:00.000Z",
+      assistantMessageId: null,
+    },
+  });
+}
+
 describe("fork guard: fork-scheduled-runs-off-sidebar", () => {
-  it("keeps task-launched threads off the roster until pinned", () => {
+  it("keeps automation runs off the roster until pinned", () => {
     const threads = [
-      shell({ id: "mine" }),
-      shell({ id: "review", scheduledTaskId: "task:review" }),
-      shell({ id: "kept", scheduledTaskId: "task:review", pinnedAt: "2026-10-19T00:00:00.000Z" }),
+      makeThreadFixture({ id: "mine" as Thread["id"] }),
+      automationRun("review"),
+      automationRun("kept", { pinnedAt: UPDATED_AT }),
     ];
-    expect(omitScheduledRunsFromSidebar(threads).map((thread) => thread.id)).toEqual([
+    expect(filterSidebarV2VisibleThreads(threads, null).map((thread) => thread.id)).toEqual([
       "mine",
       "kept",
     ]);
   });
 
-  it("counts only the hidden runs still in motion or waiting on you", () => {
+  it("counts hidden runs in motion, waiting on you, or failed and unopened", () => {
     expect(
       summarizeScheduledRunActivity([
-        shell({ id: "a", scheduledTaskId: "t", runtimeStatus: "running" }),
-        shell({ id: "b", scheduledTaskId: "t", hasPendingApprovals: true }),
-        shell({ id: "c", scheduledTaskId: "t", runtimeStatus: "idle" }),
-        shell({ id: "d", scheduledTaskId: "t", runtimeStatus: "running", archivedAt: "x" }),
-        shell({ id: "e", scheduledTaskId: "t", runtimeStatus: "running", pinnedAt: "x" }),
-        shell({ id: "f", runtimeStatus: "running" }),
+        automationRun("working", { runtime: runtime("running") }),
+        automationRun("approval", { hasPendingApprovals: true }),
+        automationRun("idle"),
+        failedRun("failed-never-opened", null),
+        failedRun("failed-opened-after", "2026-10-19T11:00:00.000Z"),
+        automationRun("archived", { runtime: runtime("running"), archivedAt: UPDATED_AT }),
+        automationRun("pinned", { runtime: runtime("running"), pinnedAt: UPDATED_AT }),
+        makeThreadFixture({ id: "mine" as Thread["id"], runtime: runtime("running") }),
       ]),
-    ).toEqual({ working: 1, needsYou: 1 });
+    ).toEqual({ working: 1, needsYou: 1, failed: 1 });
   });
 
-  it("filters both roster call sites in Sidebar.tsx", () => {
-    expect(sidebar).toContain("omitScheduledRunsFromSidebar(threads),\n      scopedProjectKeys,");
-    expect(sidebar).toContain("omitScheduledRunsFromSidebar(threads),\n        /* fork:end");
-  });
-
-  it("reports live runs on the Scheduled row and opens All runs", () => {
-    expect(scheduledRow).toContain("summarizeScheduledRunActivity(threads)");
-    expect(scheduledRow).toContain('search: { view: "runs" }');
+  it("reports live runs on the Automations row and opens All runs", () => {
+    expect(chromeRows).toContain("summarizeScheduledRunActivity(threads)");
+    expect(chromeRows).toContain('search: { view: "runs" }');
   });
 
   it("gives a run opened from Automations a way back", () => {

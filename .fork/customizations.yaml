@@ -2392,7 +2392,6 @@
     upstream's Settings → Scheduled tasks page are untouched.
   tier: 1
   files:
-    - apps/web/src/custom/SidebarV2ScheduledRow.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
   shadows: []
   watch:
@@ -2404,31 +2403,34 @@
 
 - id: fork-scheduled-runs-off-sidebar
   intent: >
-    Threads a scheduled task launches stay off the sidebar's project groups
-    and live on the Scheduled page, so automated runs such as PR reviews do
-    not flood the roster. The server stamps the launching task's id on the
-    thread (AppThread.scheduledTaskId, carried by thread.create and copied
-    onto the thread shell); a task bound to an existing thread never stamps
-    it, and forks and subagent children clear it. It rides in the thread's
-    stored payload, so there is no migration and older threads read as
-    unstamped. Pinning a launched thread brings it back to the roster, and
-    unpinning hides it again. The sidebar's Automations row counts the hidden,
-    unarchived runs that are working or waiting on an approval or a question,
-    drawing the rain while they work and the amber dot once one waits on you;
-    while any are live the row opens All runs. The count comes from the
-    shells the client already holds, with no new wire data or polling. A run
-    opened from Automations carries a history-state flag, and the thread
-    header shows a back arrow only for that history entry; it steps back to
-    the list that opened it. Mobile is out of scope and keeps listing these
-    threads.
+    Threads an automation launches stay off the sidebar's project groups and
+    live on the Automations page, so automated runs such as PR reviews do not
+    flood the roster. The server stamps the launching task's id on the thread
+    (AppThread.scheduledTaskId, carried by thread.create and copied onto the
+    thread shell); an automation bound to an existing thread never stamps it,
+    and forks and subagent children clear it. It rides in the thread's stored
+    payload, so there is no migration and older threads read as unstamped.
+    The roster rule sits in filterSidebarV2VisibleThreads beside the subagent
+    rule, so every roster caller honors it. Pinning a launched thread brings
+    it back to the roster, and unpinning hides it again. The sidebar's
+    Automations row counts the hidden, unarchived runs that are working,
+    waiting on an approval or a question, or failed and not opened since:
+    the rain while they work, the amber dot once one waits on you, the failed
+    dot for an unopened failure. While any are live the row opens All runs.
+    The count comes from the shells the client already holds, with no new
+    wire data or polling. A run opened from Automations carries a
+    history-state flag, and the thread header shows a back arrow only for
+    that history entry; it steps back to the list that opened it. Mobile is
+    out of scope and keeps listing these threads.
   tier: 4
   files:
     - apps/web/src/custom/scheduledRunsOffSidebar.ts
-    - apps/web/src/custom/SidebarV2ScheduledRow.tsx
+    - apps/web/src/custom/scheduledRunActivity.ts
     - apps/web/src/custom/scheduled/AutomationRunBackButton.tsx
   shadows: []
   watch:
-    - apps/web/src/components/Sidebar.tsx
+    - apps/web/src/components/Sidebar.logic.ts
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/components/chat/ChatHeader.tsx
     - apps/web/src/custom/scheduled/ScheduledRunsTable.tsx
     - packages/contracts/src/orchestrationV2.ts
