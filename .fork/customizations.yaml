@@ -363,6 +363,10 @@
     derived from the release 1024 render (the ICO embeds PNG entries at
     16–256px), so every packaged channel carries the same artwork. Filenames
     still say n3-* for path stability.
+    The repo's own project icon (t3.json iconPath, what the sidebar draws
+    beside this project) is the wordmark's pixel "n" in frosted white on a glass tile of
+    #1fb362 (a shade cooler than the mark's top arm), replacing upstream's
+    blueprint T3.
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
     app's own internal origin, not just a deep-link handler — two installed
     apps contend for it, untidy but not destructive).
@@ -405,8 +409,10 @@
     - assets/fork/n3-web-favicon-16x16.png
     - assets/fork/n3-web-favicon-32x32.png
     - assets/fork/n3-web-favicon.ico
+    - assets/fork/n3-project-icon-180.png
   shadows: []
   watch:
+    - t3.json
     - apps/desktop/src/main.ts
     - apps/desktop/src/app/DesktopApp.ts
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
