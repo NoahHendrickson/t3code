@@ -1,0 +1,50 @@
+// @effect-diagnostics nodeBuiltinImport:off
+/**
+ * Fork guard — see `.fork/README.md` §4b and
+ * `.fork/customizations.yaml#sidebar-v2-status-grouping`.
+ *
+ * Bucketing and the Completed hold are tested as behaviour beside their module
+ * (`custom/sidebarV2StatusGrouping.test.ts`). This guards the seam inside
+ * upstream's `Sidebar.tsx`: that the switch is wired, that status sections
+ * come out of the same `activeSections` sequence the keyboard order flattens,
+ * and that the Working shelf beta stands down while status grouping is on.
+ */
+
+import * as NodeFS from "node:fs";
+import * as NodeURL from "node:url";
+import { describe, expect, it } from "vite-plus/test";
+
+function readSibling(relativePath: string): string {
+  return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
+}
+
+const sidebar = readSibling("../components/Sidebar.tsx");
+const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
+
+describe("fork guard: sidebar-v2-status-grouping", () => {
+  it("offers the switch beside Group by project, exclusive with it", () => {
+    expect(chromeRows).toContain("Group by status");
+    expect(chromeRows).toContain("onCheckedChange={props.onGroupByStatusChange}");
+    expect(sidebar).toContain("groupByStatus={groupByStatus}");
+    expect(sidebar).toContain("if (value) setGroupByProject(false);");
+    expect(sidebar).toContain("if (value) setGroupByStatus(false);");
+    expect(sidebar).toContain("const statusGrouped = groupByStatus && !groupByProject;");
+  });
+
+  it("builds status sections inside activeSections, so paint and keyboard order stay one list", () => {
+    const start = sidebar.indexOf("const activeSections = useMemo(");
+    const end = sidebar.indexOf("const visibleActiveSections = useMemo(");
+    expect(start).toBeGreaterThan(-1);
+    const memo = sidebar.slice(start, end);
+    expect(memo).toContain("buildStatusThreadSections({");
+    expect(memo).toContain("completedHolds.observe({");
+    expect(memo).toContain("openThreadKey: statusOpenThreadKey");
+    expect(sidebar).toContain("visibleActiveSections.flatMap((section) => section.threads)");
+    expect(sidebar).toContain("<SidebarV2StatusSectionHeader");
+  });
+
+  it("keeps the Working shelf beta out of the way while status grouping is on", () => {
+    expect(sidebar).toContain("const workingShelfActive = workingShelfEnabled && !statusGrouped;");
+    expect(sidebar).toContain("workingShelfActive && isSidebarThreadWorking(thread)");
+  });
+});

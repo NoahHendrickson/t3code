@@ -1031,6 +1031,96 @@
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
 
+- id: sidebar-v2-status-grouping
+  intent: >
+    Sidebar V2's active cards can be split by status instead of by project,
+    from a "Group by status" switch beside "Group by project" in the projects
+    filter menu. The two switches are exclusive, project grouping wins if both
+    were ever stored on, and the preference is device-local (localStorage)
+    like project grouping's.
+
+    Sections paint Needs input, Completed, Working, Idle, in that order, and a
+    card's section comes from the same ladder as its status dot
+    (resolveSidebarV2TopStatus), so the two agree. Approval, input, failed and
+    limited are Needs input; working and waiting are Working; done and woke
+    are Completed; no dot is Idle. The one deliberate exception is the
+    commands-only Monitoring mark (sidebar-v2-card-rows): such a thread sits in
+    Idle, because nothing will wake its agent and the command can run for hours. Pinned, snoozed and settled keep
+    their shelves, and Idle reaches Settled through the server's existing
+    auto-settle. While status grouping is on the Working shelf beta stands down
+    and its threads paint in the Working section.
+
+    Under a status header the section decides a card's title brightness
+    (statusSectionCardTitleRecedes): only Needs input and Completed titles are
+    full strength, Working and Idle recede, and the open or selected card never
+    does. The flat and project modes keep threadCardTitleRecedes unchanged.
+    Section headers are a muted semibold label with its count beside it, a
+    step under the card title's size, on the cards' inset, with no mark,
+    hairline or chevron, and how many projects the section spans on its right
+    ("2 projects", counted per logical project); clicking still collapses.
+
+    The sections come out of the activeSections memo as headerless sections
+    carrying a status, so render order and the keyboard-order flattening
+    (orderedActiveThreads) stay one sequence, the invariant
+    sidebar-v2-project-grouping states.
+
+    A thread that comes to rest (read, or finished while open) stays in
+    Completed while it is open and for SIDEBAR_V2_COMPLETED_HOLD_MS after you
+    leave it. The server's lastVisitedAt is the thread's last activity time,
+    not when you looked, so the hold is a client-local module-scope tracker;
+    the first observation is a baseline so mounting never reshuffles the list.
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2StatusGrouping.ts
+    - apps/web/src/custom/SidebarV2StatusSectionHeader.tsx
+    # Shared with fork-sidebar-chrome and sidebar-v2-project-grouping; this
+    # entry owns only the "Group by status" switch.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - docs/user/thread-sidebar.md
+    - apps/web/src/components/Sidebar.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2StatusGrouping.test.ts
+
+- id: sidebar-v2-compact-cards
+  intent: >
+    Sidebar V2 cards can draw as a single line, from a "Compact cards" switch in
+    the projects filter menu beside the grouping switches. Device-local
+    (localStorage), default off; the full two-line card is unchanged.
+
+    A compact card is the full card's title line alone, in the same padding,
+    so its height is sidebarV2CompactCardHeight() (34) and its
+    contain-intrinsic-size hint must match. The repo line's facts ride ahead of
+    the trailing group as marks: a cloud for a remote thread, the checkout mark
+    (worktree or branch, the same either-or the repo line draws, keeping the
+    dev-server pulse hook), the terminal glyph and the PR badge. Project,
+    branch and model names move to the row's hover card, which every card
+    already opens; that hover card names the checkout as a worktree when it is
+    one, because the compact mark alone cannot.
+
+    The project favicon leads a compact card's title, since there is no repo
+    line to name the project; under a project header (projectTitleHidden) it
+    is left off because the header already names it.
+
+    Only card-variant rows (pinned, active, working) go compact. The snoozed and
+    settled slim rows are already one line and keep their own layout.
+  tier: 4
+  files:
+    - apps/web/src/custom/SidebarV2ThreadCardCompactMarks.tsx
+    - apps/web/src/custom/sidebarV2CompactCards.ts
+    # Shared with sidebar-v2-card-rows, which owns the card metrics; this
+    # entry owns only sidebarV2CompactCardHeight.
+    - apps/web/src/custom/sidebarV2CardAlignment.ts
+    # Shared with fork-sidebar-chrome; this entry owns only the switch.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - docs/user/thread-sidebar.md
+    - apps/web/src/components/Sidebar.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2CompactCards.test.ts
+
 - id: sidebar-v2-list-animation
   intent: >
     Sidebar V2's thread list mounts `@formkit/auto-animate` so rows ease when

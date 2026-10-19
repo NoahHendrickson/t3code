@@ -356,6 +356,13 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   readonly onGroupByProjectChange: (groupByProject: boolean) => void;
   /** Non-null disables the switch and says why — see the call site. */
   readonly groupByProjectUnavailableReason: string | null;
+  /** Status sections (Needs input, Completed, Working, Idle) — exclusive with
+      project grouping; the caller turns the other off. */
+  readonly groupByStatus: boolean;
+  readonly onGroupByStatusChange: (groupByStatus: boolean) => void;
+  /** One-line cards — see `sidebar-v2-compact-cards`. */
+  readonly compactCards: boolean;
+  readonly onCompactCardsChange: (compactCards: boolean) => void;
   /** The client's project sort order — the same setting the legacy sidebar's
       sort menu and Settings edit, so the surfaces cannot disagree. */
   readonly projectSortOrder: SidebarProjectSortOrder;
@@ -380,12 +387,13 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
   return (
     // Figma 368:21211 — the project headers' row shape: a muted Label/12
     // label on the same 12px inset as the cards' prompt, then sort and filter
-    // as 32px icon buttons pulled onto the list edge. pt-4 is the gap between
-    // the action block and this row; the design (364:8534) leaves 24px
-    // between the block and the first project group, and this row spends it.
+    // as 32px icon buttons pulled onto the list edge. pt-6 is the gap between
+    // the action block and this row: 24px, the same as the gap between groups
+    // in the list, so the row reads as the start of the list rather than as
+    // the tail of the actions above it.
     // data-fork-projects-row is the palette's hook: Glass re-inks this row, the
     // project headers and the card meta lines together (theme.custom.palettes.css).
-    <SidebarGroup data-fork-projects-row="" className={cn("px-2 pt-4 pb-0", CHROME_ROW_INSET)}>
+    <SidebarGroup data-fork-projects-row="" className={cn("px-2 pt-6 pb-0", CHROME_ROW_INSET)}>
       <div className="flex h-8 items-center gap-1.5 px-3">
         <span
           role="heading"
@@ -493,6 +501,28 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                 data-testid="sidebar-v2-group-by-project-toggle"
               >
                 Group by project
+              </MenuCheckboxItem>
+              {/* Never disabled: status sections read the same with one
+                  project as with ten. */}
+              <MenuCheckboxItem
+                variant="switch"
+                closeOnClick={false}
+                checked={props.groupByStatus}
+                onCheckedChange={props.onGroupByStatusChange}
+                className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
+                data-testid="sidebar-v2-group-by-status-toggle"
+              >
+                Group by status
+              </MenuCheckboxItem>
+              <MenuCheckboxItem
+                variant="switch"
+                closeOnClick={false}
+                checked={props.compactCards}
+                onCheckedChange={props.onCompactCardsChange}
+                className="h-8 min-h-8 px-2 py-0 text-sm font-medium"
+                data-testid="sidebar-v2-compact-cards-toggle"
+              >
+                Compact cards
               </MenuCheckboxItem>
               <MenuSeparator />
               {/* Checkboxes, not radios: the scope is a set, so several

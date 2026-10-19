@@ -157,6 +157,30 @@ device keeps its own choice.
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
 
+<!-- fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping -->
+
+### Group threads by status
+
+On web and desktop, open the filter menu on the **Projects** row and turn on **Group by status**
+to split active threads into **Needs input**, **Completed**, **Working**, and **Idle**. Needs
+input holds approvals, questions, and failed runs. A completed thread stays in **Completed**
+while you have it open and for five minutes after you leave it, then moves to **Idle**. Idle
+threads settle on the usual schedule. This replaces **Group by project** and the Working
+section while it is on, and each device keeps its own choice.
+
+<!-- fork:end sidebar-v2-status-grouping -->
+
+<!-- fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards -->
+
+### Compact cards
+
+On web and desktop, turn on **Compact cards** in the filter menu on the **Projects** row to show
+each thread on one line. The title keeps its status mark, and icons show a pull request, a
+running terminal, a remote machine, and whether the thread is on a branch or its own worktree.
+Hover a card to see its project, branch, and model.
+
+<!-- fork:end sidebar-v2-compact-cards -->
+
 ## Settle finished work
 
 Choose **Settle thread** from its menu to move finished work out of the active list
