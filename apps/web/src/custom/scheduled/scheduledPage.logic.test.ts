@@ -8,6 +8,7 @@ import {
   overlayRunStatus,
   presentRunStatus,
   runDurationSeconds,
+  runPullRequest,
   validateScheduledPageSearch,
 } from "./scheduledPage.logic";
 
@@ -135,5 +136,37 @@ describe("draftTriggerLabel", () => {
     expect(draftTriggerLabel({ ...draft, scheduleMode: "webhook", githubPrOpened: true })).toBe(
       "GitHub PR opened",
     );
+  });
+});
+
+describe("runPullRequest", () => {
+  const commit = "a".repeat(40);
+  const linked = {
+    repository: "owner/app",
+    number: 12,
+    url: "https://github.com/owner/app/pull/12",
+  };
+
+  it("prefers the PR a GitHub trigger named over the thread's links", () => {
+    expect(
+      runPullRequest(
+        `scheduled-task-message:task:webhook:delivery:github:task:owner/no3y:108:${commit}`,
+        { pullRequests: [linked] },
+      ),
+    ).toEqual({
+      number: 108,
+      label: "owner/no3y #108",
+      url: "https://github.com/owner/no3y/pull/108",
+    });
+  });
+
+  it("falls back to the thread's linked, then branch, pull request", () => {
+    const messageId = "scheduled-task-message:task:webhook:delivery-1";
+    expect(runPullRequest(messageId, { pullRequests: [linked] })?.number).toBe(12);
+    expect(runPullRequest(messageId, { pullRequests: [], branchPullRequest: linked })?.label).toBe(
+      "owner/app #12",
+    );
+    expect(runPullRequest(messageId, { pullRequests: [] })).toBeNull();
+    expect(runPullRequest(messageId, null)).toBeNull();
   });
 });

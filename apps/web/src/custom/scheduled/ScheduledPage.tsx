@@ -130,8 +130,8 @@ export function ScheduledPage() {
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
       <WorkspacePageHeader electron={isElectron}>
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <CalendarClockIcon className="size-4 text-muted-foreground" aria-hidden />
-          <span className="font-medium">Scheduled</span>
+          <ZapIcon className="size-4 text-muted-foreground" aria-hidden />
+          <span className="font-medium">Automations</span>
         </div>
       </WorkspacePageHeader>
       <ScrollArea className="min-h-0 flex-1">
@@ -180,7 +180,7 @@ function TaskList(props: { readonly environments: ReadonlyArray<EnvironmentPrese
     <div className="flex flex-col gap-6" data-testid="scheduled-task-list">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight">Scheduled</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Automations</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Run agents on a timer or when something happens, in any of your projects. Every run is a
             thread you can open and reply to.
@@ -193,7 +193,7 @@ function TaskList(props: { readonly environments: ReadonlyArray<EnvironmentPrese
           data-testid="scheduled-new-task"
         >
           <PlusIcon />
-          New task
+          New automation
         </Button>
       </div>
 
@@ -204,7 +204,7 @@ function TaskList(props: { readonly environments: ReadonlyArray<EnvironmentPrese
               <ClockIcon />
             </EmptyMedia>
             <EmptyTitle>No environments connected</EmptyTitle>
-            <EmptyDescription>Connect an environment to see its scheduled tasks.</EmptyDescription>
+            <EmptyDescription>Connect an environment to see its automations.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -251,7 +251,7 @@ function TaskList(props: { readonly environments: ReadonlyArray<EnvironmentPrese
                     <SearchIcon />
                   </InputGroupAddon>
                   <InputGroupInput
-                    aria-label="Search tasks"
+                    aria-label="Search automations"
                     placeholder="Search…"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
@@ -332,10 +332,10 @@ function EnvironmentTaskRows(props: {
       {tasksQuery.error !== null ? (
         <TaskNoticeRow tone="error">{tasksQuery.error}</TaskNoticeRow>
       ) : tasks === null ? (
-        <TaskNoticeRow>Loading scheduled tasks…</TaskNoticeRow>
+        <TaskNoticeRow>Loading automations…</TaskNoticeRow>
       ) : tasks.length === 0 ? (
         <TaskNoticeRow>
-          {props.query.trim() ? "No tasks match your search." : "No scheduled tasks yet."}
+          {props.query.trim() ? "No automations match your search." : "No automations yet."}
         </TaskNoticeRow>
       ) : (
         tasks.map((task) => <TaskRow key={task.id} environmentId={environmentId} task={task} />)
@@ -391,7 +391,7 @@ function TaskRow(props: { readonly environmentId: EnvironmentId; readonly task: 
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Could not update scheduled task",
+          title: "Could not update automation",
           description: String(squashAtomCommandFailure(result)),
         }),
       );
@@ -531,11 +531,11 @@ function AllRuns(props: { readonly environments: ReadonlyArray<EnvironmentPresen
           className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="size-3.5" aria-hidden />
-          Scheduled
+          Automations
         </Link>
         <h1 className="text-xl font-semibold tracking-tight">All runs</h1>
         <p className="text-sm text-muted-foreground">
-          Every run your scheduled tasks have made, newest first. Open one to read the thread.
+          Every run your automations have made, newest first. Open one to read the thread.
         </p>
       </div>
       {props.environments.length === 0 ? (
