@@ -30,6 +30,7 @@ import { useCallback, useMemo } from "react";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 
 const SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-project:v1";
+const SIDEBAR_V2_GROUP_BY_STATUS_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-status:v1";
 const SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY = "t3code:fork:sidebar-v2-collapsed-projects:v1";
 
 /** Threads whose project no longer resolves to a group — a just-deleted
@@ -40,35 +41,69 @@ const SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY = "t3code:fork:sidebar-v2-collap
  *  user-facing. */
 export const UNGROUPED_PROJECT_KEY = "fork:ungrouped";
 
-const CollapsedProjectKeys = Schema.Array(Schema.String);
-const EMPTY_COLLAPSED_PROJECT_KEYS: readonly string[] = [];
+const CollapsedKeys = Schema.Array(Schema.String);
+const EMPTY_COLLAPSED_KEYS: readonly string[] = [];
 
-export function useSidebarV2GroupByProject(): [boolean, (value: boolean) => void] {
-  return useLocalStorage(SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY, false, Schema.Boolean);
+/** How the active cards are sectioned: one flat run, one section per project,
+    or one per status (`sidebar-v2-status-grouping`). One value, so the two
+    groupings cannot both be on. It is still stored as the two booleans each
+    switch shipped with, so preferences saved before the modes merged
+    survive; project wins if both were ever stored on. */
+export type SidebarV2Grouping = "none" | "project" | "status";
+
+export function useSidebarV2Grouping(): readonly [
+  SidebarV2Grouping,
+  (grouping: SidebarV2Grouping) => void,
+] {
+  const [byProject, setByProject] = useLocalStorage(
+    SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY,
+    false,
+    Schema.Boolean,
+  );
+  const [byStatus, setByStatus] = useLocalStorage(
+    SIDEBAR_V2_GROUP_BY_STATUS_STORAGE_KEY,
+    false,
+    Schema.Boolean,
+  );
+  const grouping: SidebarV2Grouping = byProject ? "project" : byStatus ? "status" : "none";
+  const setGrouping = useCallback(
+    (next: SidebarV2Grouping) => {
+      setByProject(next === "project");
+      setByStatus(next === "status");
+    },
+    [setByProject, setByStatus],
+  );
+  return [grouping, setGrouping];
 }
 
-/** Collapsed project keys as a Set for O(1) membership in the list memos. */
-export function useSidebarV2CollapsedProjects(): readonly [
-  ReadonlySet<string>,
-  (projectKey: string) => void,
-] {
-  const [keys, setKeys] = useLocalStorage(
-    SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY,
-    EMPTY_COLLAPSED_PROJECT_KEYS,
-    CollapsedProjectKeys,
-  );
-  const collapsed = useMemo(() => new Set(keys), [keys]);
+/** A persisted set of collapsed section keys, as a Set for O(1) membership in
+    the list memos. `isKey` narrows what was stored to the caller's key type,
+    dropping anything stale. */
+export function useSidebarV2CollapsedKeys<K extends string>(
+  storageKey: string,
+  isKey: (key: string) => key is K,
+): readonly [ReadonlySet<K>, (key: K) => void] {
+  const [keys, setKeys] = useLocalStorage(storageKey, EMPTY_COLLAPSED_KEYS, CollapsedKeys);
+  const collapsed = useMemo(() => new Set(keys.filter(isKey)), [isKey, keys]);
   const toggle = useCallback(
-    (projectKey: string) => {
+    (key: K) => {
       setKeys((previous) =>
-        previous.includes(projectKey)
-          ? previous.filter((key) => key !== projectKey)
-          : [...previous, projectKey],
+        previous.includes(key) ? previous.filter((entry) => entry !== key) : [...previous, key],
       );
     },
     [setKeys],
   );
   return [collapsed, toggle];
+}
+
+const isAnyKey = (key: string): key is string => key.length > 0;
+
+/** Collapsed project keys. */
+export function useSidebarV2CollapsedProjects(): readonly [
+  ReadonlySet<string>,
+  (projectKey: string) => void,
+] {
+  return useSidebarV2CollapsedKeys(SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY, isAnyKey);
 }
 
 /** Cards under a collapsed header stay hidden — except a keep-predicate match,
@@ -100,8 +135,10 @@ export interface SidebarV2GroupableThread {
 }
 
 /** A run of cards under one optional header. Flat is `header: null`, so there
-    is no second list shape and no mode flag to keep in step. */
+    is no second list shape and no mode flag to keep in step. `kind` tells it
+    apart from a status section (`SidebarV2StatusSection`). */
 export interface SidebarV2ActiveSection<TThread> {
+  readonly kind: "project";
   readonly header: {
     readonly projectKey: string;
     /** Null for the unresolved-project section — see `UNGROUPED_PROJECT_KEY`. */
@@ -142,6 +179,15 @@ export function createProjectRefIndex(
   return index;
 }
 
+/** The logical project a thread belongs to, or undefined when its project
+    resolves to no group — the same lookup the sections bucket by. */
+export function resolveThreadProjectKey(
+  projectRefIndex: ReadonlyMap<string, string>,
+  thread: SidebarV2GroupableThread,
+): string | undefined {
+  return projectRefIndex.get(projectRefKey(thread.environmentId, thread.projectId));
+}
+
 /**
  * Splits already-sorted active threads into the sections the list paints.
  *
@@ -165,13 +211,12 @@ export function buildActiveThreadSections<
   readonly projectRefIndex: ReadonlyMap<string, string>;
   readonly grouped: boolean;
 }): ReadonlyArray<SidebarV2ActiveSection<TThread>> {
-  if (!input.grouped) return [{ header: null, threads: input.threads }];
+  if (!input.grouped) return [{ kind: "project", header: null, threads: input.threads }];
 
   const threadsByProjectKey = new Map<string, TThread[]>();
   for (const thread of input.threads) {
     const projectKey =
-      input.projectRefIndex.get(projectRefKey(thread.environmentId, thread.projectId)) ??
-      UNGROUPED_PROJECT_KEY;
+      resolveThreadProjectKey(input.projectRefIndex, thread) ?? UNGROUPED_PROJECT_KEY;
     const existing = threadsByProjectKey.get(projectKey);
     if (existing) {
       existing.push(thread);
@@ -185,6 +230,7 @@ export function buildActiveThreadSections<
     const grouped = threadsByProjectKey.get(group.projectKey);
     if (grouped === undefined) continue;
     sections.push({
+      kind: "project",
       header: { projectKey: group.projectKey, displayName: group.displayName },
       threads: grouped,
     });
@@ -192,6 +238,7 @@ export function buildActiveThreadSections<
   const ungrouped = threadsByProjectKey.get(UNGROUPED_PROJECT_KEY);
   if (ungrouped !== undefined) {
     sections.push({
+      kind: "project",
       header: { projectKey: UNGROUPED_PROJECT_KEY, displayName: null },
       threads: ungrouped,
     });

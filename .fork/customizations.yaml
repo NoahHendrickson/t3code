@@ -856,8 +856,8 @@
 
 - id: sidebar-v2-project-grouping
   intent: >
-    Sidebar V2's active cards can be grouped under project headers, from a
-    switch at the top of the fork's projects filter menu. Upstream's flat list
+    Sidebar V2's active cards can be grouped under project headers, from the
+    grouping radios at the top of the fork's Threads filter menu. Upstream's flat list
     stays the default, and the preference is device-local (localStorage) rather
     than a field in packages/contracts.
 
@@ -879,7 +879,7 @@
     Only the active cards group, and only where a header says something the
     screen does not already: the snoozed and settled shelves stay flat, and
     grouping is skipped whenever one project is on screen, whether by scope or
-    by the sidebar having a single project. The switch is disabled with a stated
+    by the sidebar having a single project. The option is disabled with a stated
     reason in those states rather than accepting a click that does nothing.
 
     Section order is projectGroups' own order and thread order inside a section
@@ -1030,6 +1030,115 @@
     - apps/web/src/components/Sidebar.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2ProjectGrouping.test.ts
+
+- id: sidebar-v2-status-grouping
+  intent: >
+    Sidebar V2's active cards can be split by status instead of by project,
+    from a "Group by status" option in the Threads filter menu: one radio
+    group of No grouping, Group by project and Group by status. Grouping is one value (useSidebarV2Grouping: none, project or
+    status), so the two switches cannot both be on; it is still stored as the
+    two device-local booleans the original switches shipped with, and project wins if
+    both were ever stored on.
+
+    Sections paint Needs input, Completed, Working, Idle, in that order. A
+    card's mark and its section come from one derivation,
+    resolveSidebarV2CardStatus in custom/sidebarV2CardStatus.ts: the row draws
+    topStatus from it and the grouping buckets kind from it, so the ladder and
+    the read/woke rules exist once. Approval, input, failed and limited are
+    Needs input; working and waiting are Working; done and woke are Completed;
+    no mark is Idle. The one deliberate exception is the commands-only
+    Monitoring mark, visible in sidebarV2StatusBucketForKind: such a thread
+    sits in Idle, because nothing will wake its agent and the command can run
+    for hours. Pinned, snoozed and settled keep their shelves, and Idle reaches
+    Settled through the server's existing auto-settle. While status grouping is
+    on the Working shelf beta stands down and its threads paint in the Working
+    section, and the pinned block takes a "Pinned" header of the same style in
+    place of its divider, shown only while something is pinned and collapsible
+    like the rest (the open thread stays visible). Flat and project modes keep
+    the divider.
+
+    Under a status header the section decides a card's title brightness
+    (threadCardTitleRecedes's statusSection input): only Needs input and
+    Completed titles are full strength, Working and Idle recede, and the open
+    or selected card never does. Section headers are a muted semibold label
+    with its count, a step under the card title's size, on the cards' inset,
+    with no mark, hairline or chevron, and how many projects the section spans
+    on its right ("2 projects", counted per logical project); clicking
+    collapses.
+
+    buildSidebarV2StatusSections is the whole pipeline; the activeSections
+    memo dispatches to it or to project grouping, and both return
+    SidebarV2ListSection values told apart by kind. Render order and the
+    keyboard-order flattening (orderedActiveThreads) stay one sequence, the
+    invariant sidebar-v2-project-grouping states.
+
+    A thread that comes to rest (read, or finished while open) stays in
+    Completed while it is open and for five minutes after you leave it. The
+    server's lastVisitedAt is the thread's last activity time, not when you
+    looked, so the hold is a client-local module-scope tracker whose apply
+    returns the buckets to paint. Its first call is a baseline so mounting
+    never reshuffles the list, and a hold survives the thread being scoped out
+    of the list for a moment. Expiry rides the sidebar's minute tick.
+  tier: 4
+  files:
+    - apps/web/src/custom/sidebarV2StatusGrouping.ts
+    - apps/web/src/custom/sidebarV2CardStatus.ts
+    - apps/web/src/custom/SidebarV2StatusSectionHeader.tsx
+    # Shared with sidebar-v2-card-rows; this entry owns only the statusSection
+    # input of threadCardTitleRecedes.
+    - apps/web/src/custom/sidebarV2RowPolicy.ts
+    # Shared with fork-sidebar-chrome and sidebar-v2-project-grouping; this
+    # entry owns the grouping radio group.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - docs/user/thread-sidebar.md
+    - apps/web/src/components/Sidebar.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2StatusGrouping.test.ts
+
+- id: sidebar-v2-compact-cards
+  intent: >
+    Sidebar V2 cards can draw as a single line, from a "Compact cards" checkbox
+    in the Threads filter menu, set apart from the grouping radios. Device-local
+    (localStorage), default off; the full two-line card is unchanged.
+
+    A compact card is the full card's title line alone, in the same padding,
+    so its height is sidebarV2CompactCardHeight() (34) and its
+    contain-intrinsic-size hint must match. The repo line's facts ride ahead of
+    the trailing group as marks: a cloud for a remote thread, the checkout mark
+    (worktree or branch, the same either-or the repo line draws, keeping the
+    dev-server pulse hook), the terminal glyph and the PR badge. Project,
+    branch and model names move to the row's hover card, which every card
+    already opens; that hover card names the checkout as a worktree when it is
+    one, because the compact mark alone cannot.
+
+    The checkout mark is the repo line's own SidebarV2CheckoutMark (exported
+    from SidebarV2ThreadCardMeta.tsx), branch name for assistive tech only, so
+    the mark, its dev-server pulse and its accessible text change in one
+    place. The leading favicon is SidebarV2CompactCardLead.
+
+    The project favicon leads a compact card's title, since there is no repo
+    line to name the project; under a project header (projectTitleHidden) it
+    is left off because the header already names it.
+
+    Only card-variant rows (pinned, active, working) go compact. The snoozed and
+    settled slim rows are already one line and keep their own layout.
+  tier: 4
+  files:
+    - apps/web/src/custom/SidebarV2ThreadCardCompactMarks.tsx
+    - apps/web/src/custom/sidebarV2CompactCards.ts
+    # Shared with sidebar-v2-card-rows, which owns the card metrics; this
+    # entry owns only sidebarV2CompactCardHeight.
+    - apps/web/src/custom/sidebarV2CardAlignment.ts
+    # Shared with fork-sidebar-chrome; this entry owns only the checkbox.
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+  shadows: []
+  watch:
+    - docs/user/thread-sidebar.md
+    - apps/web/src/components/Sidebar.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2CompactCards.test.ts
 
 - id: sidebar-v2-list-animation
   intent: >
@@ -2127,12 +2236,12 @@
     it. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
     shrink it.
 
-    The Projects row (368:21211) takes the project headers' shape on the same
-    inset: a static muted Label/12 label, then two 32px icon buttons on the
+    The Threads row (368:21211, drawn there as "Projects") takes the project
+    headers' shape on the same inset: a static muted label (13px semibold, matching the status-section labels), then two 32px icon buttons on the
     list edge — a sort menu (ArrowsDownUp) over the same
     sidebarProjectSortOrder client setting the legacy sidebar's sort menu and
-    Settings edit, and the filter (FadersHorizontal) that owns the scope /
-    group-by menu. Switching that menu to Manual writes the on-screen
+    Settings edit, and the menu button (a gear) that owns the scope,
+    grouping and density menu. Switching that menu to Manual writes the on-screen
     project order into projectOrder first, so the headers stay put and
     drag starts from the list the user was looking at rather than a
     leftover or empty stored order.

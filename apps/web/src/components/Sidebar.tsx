@@ -226,7 +226,7 @@ import {
   resolveActiveThreadRouteRef,
   resolveThreadRouteTarget,
 } from "../threadRoutes";
-import { formatRelativeTimeLabel, parseTimestampDate } from "../timestampFormat";
+import { formatRelativeTimeLabel } from "../timestampFormat";
 import type { SidebarThreadSummary } from "../types";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { cn } from "~/lib/utils";
@@ -244,7 +244,6 @@ import {
   deleteSelectedThreadEntries,
   formatWorkingDurationLabel,
   firstValidTimestampMs,
-  hasUnseenCompletion,
   isSidebarNestedLinkClick,
   isSidebarThreadWorking,
   isTrailingDoubleClick,
@@ -254,7 +253,6 @@ import {
   resolveSidebarSweepKeys,
   resolveSidebarThreadSection,
   resolveSidebarRowAccessibility,
-  resolveSidebarThreadStatus,
   resolveThreadLastVisitedAt,
   resolveWorkingStartedAt,
   shouldNavigateAfterThreadPark,
@@ -286,7 +284,7 @@ import { ProjectFavicon, type ProjectFaviconProject } from "./ProjectFavicon";
 import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
-import { SidebarV2StatusMark, type SidebarV2DotTone } from "~/custom/SidebarV2StatusIndicator";
+import { SidebarV2StatusMark } from "~/custom/SidebarV2StatusIndicator";
 import {
   SidebarV2ProjectFolderMark,
   SidebarV2ThreadCardMeta,
@@ -314,9 +312,29 @@ import {
   threadsVisibleInProjectSection,
   UNGROUPED_PROJECT_KEY,
   useSidebarV2CollapsedProjects,
-  useSidebarV2GroupByProject,
+  useSidebarV2Grouping,
 } from "~/custom/sidebarV2ProjectGrouping";
 /* fork:end sidebar-v2-project-grouping */
+/* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+import { SidebarV2StatusSectionHeader } from "~/custom/SidebarV2StatusSectionHeader";
+import { resolveSidebarV2CardStatus } from "~/custom/sidebarV2CardStatus";
+import {
+  buildSidebarV2StatusSections,
+  countSidebarV2Projects,
+  createSidebarV2CompletedHoldTracker,
+  useSidebarV2CollapsedStatusSections,
+  type SidebarV2ListSection,
+  type SidebarV2StatusBucket,
+} from "~/custom/sidebarV2StatusGrouping";
+/* fork:end sidebar-v2-status-grouping */
+/* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
+import {
+  SidebarV2CompactCardLead,
+  SidebarV2ThreadCardCompactMarks,
+} from "~/custom/SidebarV2ThreadCardCompactMarks";
+import { useSidebarV2CompactCards } from "~/custom/sidebarV2CompactCards";
+import { WorktreeIcon } from "~/custom/icons/WorktreeIcon";
+/* fork:end sidebar-v2-compact-cards */
 /* fork:begin sidebar-v2-list-animation — see .fork/customizations.yaml#sidebar-v2-list-animation */
 import { sidebarV2ListAnimation } from "~/custom/sidebarV2ListAnimation";
 /* fork:end sidebar-v2-list-animation */
@@ -371,6 +389,12 @@ const WORKING_SHELF_EXPANDED_KEY = "t3code:sidebar:working-expanded";
 // Working beta: when this client saw each thread leave the Working shelf.
 // Module scope keeps the inbox order across routes that unmount the sidebar.
 const inboxReturns = createInboxReturnTracker();
+/* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+// Status grouping: which threads just came to rest and linger in Completed.
+// Module scope for the same reason as inboxReturns.
+const completedHolds = createSidebarV2CompletedHoldTracker();
+const EMPTY_LAST_VISITED_AT_BY_ID: Readonly<Record<string, string>> = {};
+/* fork:end sidebar-v2-status-grouping */
 
 function canOperateThreads(
   threads: ReadonlyArray<Pick<SidebarThreadSummary, "environmentId">>,
@@ -517,12 +541,24 @@ function SidebarThreadTooltip({
             <div className="min-w-0 truncate text-foreground/75">{environmentLabel}</div>
           </div>
         ) : null}
-        {thread.branch ? (
+        {/* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards
+            A compact card draws only the checkout mark, so the hover card has
+            to say which checkout it is: the worktree mark and label when the
+            thread has one, and the row even when there is no branch to name. */}
+        {thread.branch || thread.worktreePath !== null ? (
           <div className="flex min-w-0 items-center gap-2">
-            <GitBranchIcon className="size-3 shrink-0 stroke-muted-foreground" />
-            <MiddleTruncate value={thread.branch} className="flex" />
+            {thread.worktreePath !== null ? (
+              <WorktreeIcon aria-hidden className="size-3 shrink-0 text-muted-foreground" />
+            ) : (
+              <GitBranchIcon className="size-3 shrink-0 stroke-muted-foreground" />
+            )}
+            {thread.branch ? <MiddleTruncate value={thread.branch} className="flex" /> : null}
+            {thread.worktreePath !== null ? (
+              <span className="shrink-0 text-muted-foreground">Worktree</span>
+            ) : null}
           </div>
         ) : null}
+        {/* fork:end sidebar-v2-compact-cards */}
         {/* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */}
         {devServerLabel ? (
           <div className="flex min-w-0 items-center gap-2">
@@ -795,6 +831,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   projectTitleHidden?: boolean;
   /* fork:end sidebar-v2-project-grouping */
+  /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
+  // Card variant only: draw the title line alone, with the repo line reduced
+  // to marks on it. The hover card carries the names.
+  compact?: boolean;
+  /* fork:end sidebar-v2-compact-cards */
+  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+  // The status section the card paints under, when status grouping is on.
+  statusSection?: SidebarV2StatusBucket | undefined;
+  /* fork:end sidebar-v2-status-grouping */
   providerEntryByInstanceId: ReadonlyMap<string, ProviderInstanceEntry>;
   timestampFormat: TimestampFormat;
   onThreadClick: (event: ReactMouseEvent, threadRef: ScopedThreadRef) => void;
@@ -917,23 +962,17 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     ? resolveThreadCurrentPullRequestLink(thread.pullRequests)
     : null;
 
-  // Same semantics as the legacy sidebar (never-visited counts as read):
-  // switching sidebars must not light up every historical thread as unread.
-  const isUnread = hasUnseenCompletion({ ...thread, lastVisitedAt });
-  const status = resolveSidebarThreadStatus(thread);
-  // A woken thread reappears at its original position (the sort is
-  // deliberately static), so the pill has to carry the weight. Snoozing is
-  // an explicit act, so the pill clears only when the user re-engages:
-  // reading a completion-triggered wake, clicking the pill, sending a
-  // message, settling, archiving, or a change request state that settles the
-  // thread. Timer wakes survive a mere visit. An unparseable visit timestamp
-  // counts as never-visited, so corrupt local data cannot eat the wake signal.
-  const lastVisitedDate = lastVisitedAt === undefined ? null : parseTimestampDate(lastVisitedAt);
-  const wokeAtDate = props.wokeAt === null ? null : parseTimestampDate(props.wokeAt);
-  const isWoke =
-    wokeAtDate !== null &&
-    (lastVisitedDate === null || lastVisitedDate < wokeAtDate) &&
-    thread.settledOverride !== "settled";
+  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+     Read state and the status ladder come from custom/sidebarV2CardStatus,
+     which status grouping buckets from too, so a card's mark and its section
+     are one derivation. Upstream computes isUnread and isWoke inline here; the
+     semantics (never-visited reads as read, timer wakes survive a visit, a
+     settled thread never wakes) are documented with the shared function. */
+  const { status, isUnread, isWoke, topStatus } = resolveSidebarV2CardStatus(thread, {
+    lastVisitedAt,
+    wokeAt: props.wokeAt,
+  });
+  /* fork:end sidebar-v2-status-grouping */
   // Upstream's slim-shelf recede rule: who owns the NEXT move, folded with
   // read/woke state. CARDS DO NOT READ THIS — the component set draws Working
   // titles forward and Done/Idle receded, which is the opposite split, so a
@@ -975,45 +1014,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   // mark, and limited takes the amber dot — it is waiting on you the way
   // approval and input are.
   //
-  // Discriminated on `mark` so the dot branch cannot be handed the `working`
-  // tone, which has no dot rendering.
-  const topStatus:
-    | { label: string; tone: "working"; mark: "rain" }
-    | { label: string; tone: SidebarV2DotTone; mark: "dot" | "woke" }
-    | { label: "Waiting" | "Monitoring"; mark: "monitoring" }
-    | null =
-    status === "working"
-      ? {
-          // A native /goal keeps the agent going across turns until it is met.
-          label: thread.goal?.status === "active" ? "Goal" : "Working",
-          tone: "working",
-          mark: "rain",
-        }
-      : status === "waiting"
-        ? { label: "Waiting", mark: "monitoring" }
-        : status === "approval"
-          ? { label: "Needs approval", tone: "approval", mark: "dot" }
-          : status === "input"
-            ? { label: "Needs input", tone: "input", mark: "dot" }
-            : status === "limited"
-              ? { label: "Usage limit reached", tone: "approval", mark: "dot" }
-              : status === "failed"
-                ? { label: "Failed", tone: "failed", mark: "dot" }
-                : isWoke
-                  ? { label: "Woke from snooze", tone: "approval", mark: "woke" }
-                  : isUnread
-                    ? { label: "Done", tone: "done", mark: "dot" }
-                    : /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-                         Any roster still present here does not hold completion
-                         (a dev server, a long shell): shellRuntime parks the
-                         runtime at idle (→ "waiting" above) exactly when it
-                         does. Rather than read idle while the composer's pill
-                         says "Monitoring", the card draws the breathing mark.
-                         Woke and Done outrank it, since nothing will wake the
-                         agent and the roster can outlive the unread turn. */
-                      thread.pendingBackgroundTasks.length > 0
-                      ? { label: "Monitoring", mark: "monitoring" }
-                      : /* fork:end sidebar-v2-card-rows */ null;
+  // `topStatus` comes from resolveSidebarV2CardStatus above; the ladder and
+  // its labels live in custom/sidebarV2CardStatus.
 
   /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
   // The card's recede rule (Done/Idle — see rowPolicy). Computed once because
@@ -1025,6 +1027,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     isIdle: topStatus === null,
     isActive: props.isActive,
     isSelected,
+    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+       Under a status header the section decides instead. */
+    statusSection: props.statusSection,
+    /* fork:end sidebar-v2-status-grouping */
   });
   /* fork:end sidebar-v2-card-rows */
 
@@ -1728,7 +1734,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
            component set draws one height: the li carries no padding of its own,
            so it equals the drawn card exactly — 8 + 18 + 4 + 16 + 8 = 54,
            sidebarV2CardHeight() in custom/sidebarV2CardAlignment. */
-        "[contain-intrinsic-size:auto_54px]",
+        /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards
+           A compact card is the title line alone, 8 + 18 + 8 = 34,
+           sidebarV2CompactCardHeight(). */
+        props.compact === true
+          ? "[contain-intrinsic-size:auto_34px]"
+          : /* fork:end sidebar-v2-compact-cards */
+            "[contain-intrinsic-size:auto_54px]",
         /* fork:end sidebar-v2-card-rows */
       )}
     >
@@ -1784,7 +1796,19 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 SIDEBAR_V2_CARD_ALIGNMENT.titleGap,
               )}
             >
-              {title}
+              {/* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards
+                  A compact card has no repo line to name its project, so the
+                  favicon leads the title instead, as on the slim rows. Under a
+                  project header the header already names it. */}
+              {props.compact === true && props.projectTitleHidden !== true ? (
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <SidebarV2CompactCardLead project={props.project} />
+                  {title}
+                </span>
+              ) : (
+                /* fork:end sidebar-v2-compact-cards */
+                title
+              )}
               {isRegeneratingTitle ? (
                 <span role="status" className="sr-only">
                   Regenerating title
@@ -1802,6 +1826,20 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 className={cn("flex shrink-0 items-center", SIDEBAR_V2_CARD_ALIGNMENT.trailingGap)}
               >
                 {/* fork:end sidebar-v2-card-rows */}
+                {/* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards
+                    The repo line's facts as marks, leading the trailing group
+                    so the title truncates against them. */}
+                {props.compact === true ? (
+                  <SidebarV2ThreadCardCompactMarks
+                    branch={thread.branch}
+                    hasWorktree={thread.worktreePath !== null}
+                    devServerPort={devServerPort}
+                    isRemote={isRemote}
+                    terminalSlot={terminalStatusIcon}
+                    prSlot={prBadge}
+                  />
+                ) : null}
+                {/* fork:end sidebar-v2-compact-cards */}
                 {/* Elapsed while working, hover actions when offered.
                     Stacked and right-aligned so the title truncates against
                     whichever child is showing. */}
@@ -1976,40 +2014,46 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 {isSwept ? sweepBadge : null}
               </span>
             </div>
-            <SidebarV2ThreadCardMeta
-              projectTitle={props.projectTitle}
-              /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
-              projectTitleHidden={props.projectTitleHidden === true}
-              /* fork:end sidebar-v2-project-grouping */
-              /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+            {/* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */}
+            {props.compact === true ? null : (
+              /* fork:end sidebar-v2-compact-cards */
+              <SidebarV2ThreadCardMeta
+                projectTitle={props.projectTitle}
+                /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+                projectTitleHidden={props.projectTitleHidden === true}
+                /* fork:end sidebar-v2-project-grouping */
+                /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                  The project favicon, pre-built above beside the terminal glyph. */
-              projectIconSlot={projectIcon}
-              /* fork:end sidebar-v2-card-rows */
-              branch={thread.branch}
-              // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
-              // The same predicate the row already uses to pick its git cwd and
-              // env mode above, so the mark cannot claim a worktree the rest of
-              // the row is not treating as one.
-              // fork:end sidebar-v2-card-rows
-              hasWorktree={thread.worktreePath !== null}
-              /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
-              devServerPort={devServerPort}
-              /* fork:end sidebar-v2-dev-server-pulse */
-              /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                projectIconSlot={projectIcon}
+                /* fork:end sidebar-v2-card-rows */
+                branch={thread.branch}
+                // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                // The same predicate the row already uses to pick its git cwd and
+                // env mode above, so the mark cannot claim a worktree the rest of
+                // the row is not treating as one.
+                // fork:end sidebar-v2-card-rows
+                hasWorktree={thread.worktreePath !== null}
+                /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
+                devServerPort={devServerPort}
+                /* fork:end sidebar-v2-dev-server-pulse */
+                /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                  Upstream's terminal-status glyph (#4712), pre-built above and
                  handed in as a slot so the fork card keeps upstream's
                  after-the-branch reading order without upstream state crossing
                  the component boundary. */
-              terminalSlot={terminalStatusIcon}
-              /* fork:end sidebar-v2-card-rows */
-              /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+                terminalSlot={terminalStatusIcon}
+                /* fork:end sidebar-v2-card-rows */
+                /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                  The PR badge, pre-built above: a link with upstream's tone and
                  click routing, so it stays on the row's side of the seam. */
-              prSlot={prBadge}
-              /* fork:end sidebar-v2-card-rows */
-              modelLabel={modelLabel}
-              isRemote={isRemote}
-            />
+                prSlot={prBadge}
+                /* fork:end sidebar-v2-card-rows */
+                modelLabel={modelLabel}
+                isRemote={isRemote}
+              />
+              /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
+            )}
+            {/* fork:end sidebar-v2-compact-cards */}
           </div>
           {props.jumpLabel ? <JumpHintBadge label={props.jumpLabel} /> : null}
         </TooltipTrigger>
@@ -2048,9 +2092,27 @@ export default function Sidebar() {
   const workingShelfEnabled = useClientSettings((s) => s.sidebarWorkingShelfEnabled);
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
-  const [groupByProject, setGroupByProject] = useSidebarV2GroupByProject();
+  // One grouping value: flat, by project, or by status (sidebar-v2-status-grouping).
+  const [grouping, setGrouping] = useSidebarV2Grouping();
+  const groupByProject = grouping === "project";
   const [collapsedProjectKeys, toggleProjectGroupCollapsed] = useSidebarV2CollapsedProjects();
   /* fork:end sidebar-v2-project-grouping */
+  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+  const statusGrouped = grouping === "status";
+  const [collapsedStatusSections, toggleStatusSectionCollapsed] =
+    useSidebarV2CollapsedStatusSections();
+  // Old servers without visited tracking keep the watermark here; the section
+  // has to read it the way each row does, or a row's dot and its section
+  // disagree.
+  // Only status grouping reads it; the other modes select a stable empty
+  // record so a visit cannot re-render and re-section them.
+  const threadLastVisitedAtById = useUiStateStore((store) =>
+    statusGrouped ? store.threadLastVisitedAtById : EMPTY_LAST_VISITED_AT_BY_ID,
+  );
+  /* fork:end sidebar-v2-status-grouping */
+  /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
+  const [compactCards, setCompactCards] = useSidebarV2CompactCards();
+  /* fork:end sidebar-v2-compact-cards */
   const {
     settleThread,
     unsettleThread,
@@ -2417,14 +2479,19 @@ export default function Sidebar() {
     // Subagent child threads live in the parent's Agents surface, not the
     // sidebar roster (v2 models them as real threads with lineage).
     const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys);
-    inboxReturns.observe(workingShelfEnabled ? threads : null);
+    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+       Status grouping orders its sections by return too, and draws its own
+       Working section, so the beta shelf stands down while it is on. */
+    inboxReturns.observe(workingShelfEnabled || statusGrouped ? threads : null);
+    const workingShelfActive = workingShelfEnabled && !statusGrouped;
+    /* fork:end sidebar-v2-status-grouping */
     const pinned: EnvironmentThreadShell[] = [];
     const active: EnvironmentThreadShell[] = [];
     const working: EnvironmentThreadShell[] = [];
     // Working beta: only inbox threads fold away. Pins stay where the user
     // put them, and snoozed or settled threads keep their shelves.
     const inbox = (thread: EnvironmentThreadShell) =>
-      workingShelfEnabled && isSidebarThreadWorking(thread) ? working : active;
+      workingShelfActive && isSidebarThreadWorking(thread) ? working : active;
     const snoozed: EnvironmentThreadShell[] = [];
     const settled: EnvironmentThreadShell[] = [];
     for (const thread of visible) {
@@ -2506,6 +2573,9 @@ export default function Sidebar() {
     scopedProjectKeys,
     serverConfigs,
     snoozeWakeTick,
+    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+    statusGrouped,
+    /* fork:end sidebar-v2-status-grouping */
     threads,
     workingShelfEnabled,
   ]);
@@ -2619,16 +2689,50 @@ export default function Sidebar() {
   // one — would draw a header that only repeats a label already on screen. A
   // scope of several projects still groups; projects outside it have no
   // active threads to bucket and drop out of the sections on their own.
-  const activeSections = useMemo(
-    () =>
-      buildActiveThreadSections({
+  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+  // Only status grouping reads the open thread; the other modes must not
+  // re-section on every navigation, the busiest frame the list has.
+  const statusOpenThreadKey = statusGrouped ? routeThreadKey : null;
+  /* fork:end sidebar-v2-status-grouping */
+  const activeSections = useMemo((): ReadonlyArray<
+    SidebarV2ListSection<EnvironmentThreadShell>
+  > => {
+    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+       Status grouping comes out of the same sequence, so the render and the
+       keyboard order below need no second path. The pipeline lives in
+       custom/sidebarV2StatusGrouping. */
+    if (statusGrouped) {
+      return buildSidebarV2StatusSections({
         threads: activeThreads,
-        projectGroups,
+        localLastVisitedAtById: threadLastVisitedAtById,
+        now: snoozeNow,
+        openThreadKey: statusOpenThreadKey,
+        holds: completedHolds,
         projectRefIndex,
-        grouped: groupByProject && visibleProjectCount > 1,
-      }),
-    [activeThreads, groupByProject, projectGroups, projectRefIndex, visibleProjectCount],
-  );
+        returnedAt: inboxReturns.returnedAt,
+      });
+    }
+    completedHolds.reset();
+    /* fork:end sidebar-v2-status-grouping */
+    return buildActiveThreadSections({
+      threads: activeThreads,
+      projectGroups,
+      projectRefIndex,
+      grouped: groupByProject && visibleProjectCount > 1,
+    });
+  }, [
+    activeThreads,
+    groupByProject,
+    projectGroups,
+    projectRefIndex,
+    visibleProjectCount,
+    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+    snoozeNow,
+    statusGrouped,
+    statusOpenThreadKey,
+    threadLastVisitedAtById,
+    /* fork:end sidebar-v2-status-grouping */
+  ]);
   // Collapse filters the paint sequence: a closed group hides its cards, with
   // the open route thread kept visible so a deep link (or a collapse while
   // viewing) cannot bury the row you are on — same exception the snoozed shelf
@@ -2643,11 +2747,36 @@ export default function Sidebar() {
   // re-render that follows, where AutoAnimate can fade it and reflow the rows
   // below in one clean pass. The highlight itself stays on the live key.
   const keptRouteThreadKey = useDeferredValue(routeThreadKey);
+  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+     Status grouping gives the pinned block a header like the status sections,
+     shown only while something is pinned, and it collapses the same way: the
+     open thread stays visible. Flat and project modes keep the divider. */
+  const pinnedSectionShown = statusGrouped && pinnedThreads.length > 0;
+  const pinnedCollapsed = pinnedSectionShown && collapsedStatusSections.has("pinned");
+  const pinnedProjectCount = useMemo(
+    () => (pinnedSectionShown ? countSidebarV2Projects(pinnedThreads, projectRefIndex) : 0),
+    [pinnedSectionShown, pinnedThreads, projectRefIndex],
+  );
+  const keepCollapsedPinnedRow = useCallback(
+    (thread: EnvironmentThreadShell) =>
+      keptRouteThreadKey !== null &&
+      scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)) === keptRouteThreadKey,
+    [keptRouteThreadKey],
+  );
+  const visiblePinnedThreads = useMemo(
+    () => (pinnedCollapsed ? pinnedThreads.filter(keepCollapsedPinnedRow) : pinnedThreads),
+    [keepCollapsedPinnedRow, pinnedCollapsed, pinnedThreads],
+  );
+  /* fork:end sidebar-v2-status-grouping */
   const visibleActiveSections = useMemo(
     () =>
       activeSections.map((section) => {
         const collapsed =
-          section.header !== null && collapsedProjectKeys.has(section.header.projectKey);
+          /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+          section.kind === "status"
+            ? collapsedStatusSections.has(section.status)
+            : /* fork:end sidebar-v2-status-grouping */
+              section.header !== null && collapsedProjectKeys.has(section.header.projectKey);
         return {
           ...section,
           collapsed,
@@ -2661,7 +2790,14 @@ export default function Sidebar() {
           }),
         };
       }),
-    [activeSections, collapsedProjectKeys, keptRouteThreadKey],
+    [
+      activeSections,
+      collapsedProjectKeys,
+      keptRouteThreadKey,
+      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+      collapsedStatusSections,
+      /* fork:end sidebar-v2-status-grouping */
+    ],
   );
   // Positional consumers read this: resolveAdjacentThreadId (arrow nav),
   // rangeSelectTo (shift-select) and planForwardNavigation (where you land
@@ -2703,14 +2839,14 @@ export default function Sidebar() {
        the grouped paint order, so keyboard order and paint order stay one list.
        The Working shelf (beta) paints after the sections, before snoozed. */
     () => [
-      ...pinnedThreads,
+      ...visiblePinnedThreads,
       ...orderedActiveThreads,
       ...visibleWorkingThreads,
       ...visibleSnoozedThreads,
       ...renderedSettledThreads,
     ],
     [
-      pinnedThreads,
+      visiblePinnedThreads,
       orderedActiveThreads,
       visibleWorkingThreads,
       visibleSnoozedThreads,
@@ -4341,8 +4477,15 @@ export default function Sidebar() {
           onProjectActions={(event, project) => {
             void handleProjectSettings(event, project);
           }}
-          groupByProject={groupByProject}
-          onGroupByProjectChange={setGroupByProject}
+          /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+             One grouping value; the menu's radios pick it. */
+          grouping={grouping}
+          onGroupingChange={setGrouping}
+          /* fork:end sidebar-v2-status-grouping */
+          /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
+          compactCards={compactCards}
+          onCompactCardsChange={setCompactCards}
+          /* fork:end sidebar-v2-compact-cards */
           // The same client setting the legacy sidebar's sort menu edits.
           projectSortOrder={sidebarProjectSortOrder}
           onProjectSortOrderChange={(sortOrder) => {
@@ -4351,7 +4494,7 @@ export default function Sidebar() {
             }
             updateClientSettings({ sidebarProjectSortOrder: sortOrder });
           }}
-          // A switch that visibly does nothing teaches nothing. Where headers
+          // An option that visibly does nothing teaches nothing. Where headers
           // are suppressed — one project on screen, by scope or by having only
           // one — it says so instead of quietly ignoring the click.
           groupByProjectUnavailableReason={
@@ -4432,13 +4575,19 @@ export default function Sidebar() {
                     const renderThreadRow = (
                       thread: EnvironmentThreadShell,
                       section: SidebarSection,
-                      /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
-                      // Set by the one caller painting under a header; every other
-                      // caller is in a headerless section and leaves it alone.
-                      underProjectHeader = false,
-                      /* fork:end sidebar-v2-project-grouping */
-                      sortable?: SortableThreadRowBag,
+                      options: {
+                        /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
+                        // Set by the one caller painting under a project header.
+                        readonly underProjectHeader?: boolean;
+                        /* fork:end sidebar-v2-project-grouping */
+                        readonly sortable?: SortableThreadRowBag;
+                        /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                        readonly statusSection?: SidebarV2StatusBucket;
+                        /* fork:end sidebar-v2-status-grouping */
+                      } = {},
                     ) => {
+                      const { sortable, statusSection } = options;
+                      const underProjectHeader = options.underProjectHeader ?? false;
                       const threadKey = scopedThreadKey(
                         scopeThreadRef(thread.environmentId, thread.id),
                       );
@@ -4490,6 +4639,12 @@ export default function Sidebar() {
                               .threadSnooze === true
                           }
                           isPinned={thread.pinnedAt != null}
+                          /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
+                          compact={isCard && compactCards}
+                          /* fork:end sidebar-v2-compact-cards */
+                          /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                          statusSection={statusSection}
+                          /* fork:end sidebar-v2-status-grouping */
                           sortable={sortable}
                           sweepAction={actionSweep?.keys.has(threadKey) ? actionSweep.action : null}
                           /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
@@ -4576,8 +4731,26 @@ export default function Sidebar() {
                     // header text). Vanishes entirely at count 0. Pinned cards
                     // stay flat above the grouped sections — a pin freezes
                     // prominence across projects.
+                    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                    const renderedPinnedThreads = pinnedCollapsed
+                      ? orderedPinnedThreads.filter(keepCollapsedPinnedRow)
+                      : orderedPinnedThreads;
+                    /* fork:end sidebar-v2-status-grouping */
                     const items: ReactNode[] = [
-                      pinnedThreads.length > 0 ? (
+                      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                      pinnedSectionShown ? (
+                        <SidebarV2StatusSectionHeader
+                          key="status-section-header:pinned"
+                          section="pinned"
+                          count={pinnedThreads.length}
+                          projectCount={pinnedProjectCount}
+                          isFirst
+                          collapsed={pinnedCollapsed}
+                          onToggleCollapsed={() => toggleStatusSectionCollapsed("pinned")}
+                        />
+                      ) : null,
+                      /* fork:end sidebar-v2-status-grouping */
+                      renderedPinnedThreads.length > 0 ? (
                         <li key="pinned-dnd" className="list-none">
                           <DndContext
                             sensors={pinnedDndSensors}
@@ -4586,7 +4759,7 @@ export default function Sidebar() {
                             onDragEnd={handlePinnedDragEnd}
                           >
                             <SortableContext
-                              items={orderedPinnedThreads
+                              items={renderedPinnedThreads
                                 .map((thread) =>
                                   scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
                                 )
@@ -4602,7 +4775,7 @@ export default function Sidebar() {
                                 className={cn("flex flex-col", SIDEBAR_V2_CARD_ALIGNMENT.listGap)}
                               >
                                 {/* fork:end sidebar-v2-card-rows */}
-                                {orderedPinnedThreads.map((thread) => {
+                                {renderedPinnedThreads.map((thread) => {
                                   const threadKey = scopedThreadKey(
                                     scopeThreadRef(thread.environmentId, thread.id),
                                   );
@@ -4618,7 +4791,9 @@ export default function Sidebar() {
                                       // sensor on the row would eat that (#12935).
                                       disabled={renamingThreadKey === threadKey}
                                     >
-                                      {(bag) => renderThreadRow(thread, "pinned", false, bag)}
+                                      {(bag) =>
+                                        renderThreadRow(thread, "pinned", { sortable: bag })
+                                      }
                                     </SortableThreadRow>
                                   );
                                 })}
@@ -4628,7 +4803,12 @@ export default function Sidebar() {
                         </li>
                       ) : null,
                     ];
-                    if (pinnedThreads.length > 0) {
+                    if (
+                      pinnedThreads.length > 0 &&
+                      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                      !pinnedSectionShown
+                      /* fork:end sidebar-v2-status-grouping */
+                    ) {
                       items.push(
                         <li
                           key="pinned-divider"
@@ -4666,6 +4846,27 @@ export default function Sidebar() {
                         const previousSection = visibleActiveSections[sectionIndex - 1];
                         const afterOpenSection =
                           previousSection !== undefined && previousSection.threads.length > 0;
+                        /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                        if (section.kind === "status") {
+                          const status = section.status;
+                          return [
+                            <SidebarV2StatusSectionHeader
+                              key={`status-section-header:${status}`}
+                              section={status}
+                              count={section.threadCount}
+                              projectCount={section.projectCount}
+                              // Below a Pinned header, the first status
+                              // section takes the ordinary lead.
+                              isFirst={sectionIndex === 0 && !pinnedSectionShown}
+                              collapsed={section.collapsed}
+                              onToggleCollapsed={() => toggleStatusSectionCollapsed(status)}
+                            />,
+                            ...section.threads.map((thread) =>
+                              renderThreadRow(thread, "active", { statusSection: status }),
+                            ),
+                          ];
+                        }
+                        /* fork:end sidebar-v2-status-grouping */
                         return [
                           ...(header
                             ? [
@@ -4728,7 +4929,9 @@ export default function Sidebar() {
                               ]
                             : []),
                           ...section.threads.map((thread) =>
-                            renderThreadRow(thread, "active", header !== null),
+                            renderThreadRow(thread, "active", {
+                              underProjectHeader: header !== null,
+                            }),
                           ),
                         ];
                       }),

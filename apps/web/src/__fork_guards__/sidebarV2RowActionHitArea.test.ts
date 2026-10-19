@@ -216,7 +216,7 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     const labeledIcon = /<Icon className="([^"]*)"/u.exec(chromeRows)?.[1];
     expect(labeledIcon, "ChromeLabeledAction icon class missing").toBeDefined();
     expect(labeledIcon).toMatch(/\bsize-4\b/u);
-    expect(chromeRows).toMatch(/<FadersHorizontalIcon[\s\S]{0,120}?\bsize-4\b/u);
+    expect(chromeRows).toMatch(/<SettingsIcon[\s\S]{0,120}?\bsize-4\b/u);
     expect(chromeRows).toMatch(/<ArrowUpDownIcon[\s\S]{0,120}?\bsize-4\b/u);
     // The shelf headers' chevrons, 4px the other way: their row is px-2.5,
     // so a flush 12px glyph centres 6px in where a card's trailing box takes 8.

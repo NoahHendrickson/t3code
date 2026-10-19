@@ -155,3 +155,11 @@ export function sidebarV2CardHeight(): number {
   const px = SIDEBAR_V2_CARD_ALIGNMENT_PX;
   return px.cardPadY * 2 + px.titleLine + px.rowGap + px.metaLine;
 }
+
+/** A compact card's drawn height: the title line alone in the same padding
+    (`sidebar-v2-compact-cards`). Its contain-intrinsic-size hint has to match
+    for the same reason `sidebarV2CardHeight()`'s does. */
+export function sidebarV2CompactCardHeight(): number {
+  const px = SIDEBAR_V2_CARD_ALIGNMENT_PX;
+  return px.cardPadY * 2 + px.titleLine;
+}

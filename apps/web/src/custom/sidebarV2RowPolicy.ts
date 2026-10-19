@@ -29,6 +29,8 @@
  */
 import { cn } from "~/lib/utils";
 
+import type { SidebarV2StatusBucket } from "./sidebarV2StatusGrouping";
+
 // SIDEBAR_V2_ICON_BUTTON_CLASS moved to custom/sidebarV2TrailingColumn.ts:
 // this module is title-recede and surface policy, and the trailing column is
 // its own concern with its own derivation to carry.
@@ -45,7 +47,13 @@ import { cn } from "~/lib/utils";
  * quiet-vs-busy signal, not the title's tone.)
  *
  * Route-active and multi-selected rows never recede: you have just pointed at
- * them, so dimming would read as the row being disabled rather than quiet. */
+ * them, so dimming would read as the row being disabled rather than quiet.
+ *
+ * Under a status header (`sidebar-v2-status-grouping`) the section decides
+ * instead: only Needs input and Completed titles stay at full strength, and
+ * Working and Idle recede, since the header already says the agent is busy or
+ * the thread is quiet. That reverses this rule on Working and Done, and only
+ * while status grouping is on. */
 export function threadCardTitleRecedes(input: {
   /** The unread-done dot — an outcome reported but not yet opened. */
   readonly isDone: boolean;
@@ -53,8 +61,13 @@ export function threadCardTitleRecedes(input: {
   readonly isIdle: boolean;
   readonly isActive: boolean;
   readonly isSelected: boolean;
+  /** The status section the card paints under, when status grouping is on. */
+  readonly statusSection?: SidebarV2StatusBucket | undefined;
 }): boolean {
   if (input.isActive || input.isSelected) return false;
+  if (input.statusSection !== undefined) {
+    return input.statusSection === "working" || input.statusSection === "idle";
+  }
   return input.isDone || input.isIdle;
 }
 
