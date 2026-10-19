@@ -3175,6 +3175,11 @@
     exemption and flattens the state colour.
     The liveness pill, when shown, stays last; a draft's project chip
     (fork-new-agent-draft's `leading` slot) is first.
+    Once a thread starts and upstream drops the strip (Composer context off),
+    the same fallback strip leads with ThreadContextReadout: the project and
+    branch as read-only chips (worktree mark in a worktree), with no
+    workspace-mode label, so they show above the composer as well as in the
+    details card. Composer context on keeps upstream's interactive strip.
     Upstream's resting composer layout (#7855) is neutralized in the
     composerFooterLayout shadow: its helpers are ported so ChatComposer
     compiles, but shouldUseRestingComposerLayout is fenced to always return
@@ -3185,6 +3190,7 @@
     - apps/web/src/custom/ComposerShell.css
     - apps/web/src/custom/ComposerMonitoringPill.tsx
     - apps/web/src/custom/composerContextStrip.tsx
+    - apps/web/src/custom/ThreadContextReadout.tsx
     - apps/web/src/custom/StopSquareIcon.tsx
     - apps/web/src/custom/composerModelSlotCompact.ts
     - apps/web/src/theme.custom.css
@@ -3248,6 +3254,8 @@
     # the neutralized predicate.
     - apps/web/src/components/chat/MessagesTimeline.test.tsx
     - apps/web/src/components/chat/useComposerFocusState.test.tsx
+    # "The controls retreat…" names what stays once the thread starts.
+    - docs/user/appearance.md
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
 

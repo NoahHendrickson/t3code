@@ -10,6 +10,12 @@ import {
   type ComposerBackgroundLivenessPillProps,
 } from "./ComposerMonitoringPill";
 
+/** The read-only chip look in the context row: a locked BranchToolbar
+ * readout and ThreadContextReadout share it. Layout (width, flex) stays at
+ * each call site. */
+export const READ_ONLY_CONTEXT_CHIP_CLASS_NAME =
+  "inline-flex h-7 min-w-0 items-center gap-1 border border-transparent px-1.75 font-normal text-muted-foreground/70 text-xs sm:h-6";
+
 /** Build pill props from upstream's pending-work presentation. `waiting` is
  * upstream's "this work will wake the agent" (subagents, monitors); a dev
  * server that merely outlives the turn is monitoring-only, so it does not

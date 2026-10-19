@@ -341,6 +341,7 @@ import {
   renderComposerLivenessPill,
   resolveComposerLivenessPillProps,
 } from "~/custom/composerContextStrip";
+import { ThreadContextReadout } from "~/custom/ThreadContextReadout";
 /* fork:end fork-composer-shell */
 /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
 import { DraftProjectPill } from "~/custom/DraftProjectPill";
@@ -11091,6 +11092,40 @@ export default function ChatView(props: ChatViewProps) {
     [activeProject?.title, activeProjectRef, draftId, isLocalDraftThread],
   );
   /* fork:end fork-new-agent-draft */
+  // A server thread's project and branch are pinned, so while upstream's
+  // strip is hidden they show as read-only chips. The "Composer context"
+  // setting keeps upstream's interactive strip instead. `!showProviderSubagentBar`
+  // only matters to the Shell's contextStrip predicate below: the composer,
+  // strip included, is unmounted under the subagent bar.
+  const currentGitBranch = gitStatusQuery.data?.refName ?? null;
+  const threadContextReadout = useMemo(
+    () =>
+      isServerThread && activeProject && !showComposerContextStrip && !showProviderSubagentBar ? (
+        <ThreadContextReadout
+          project={activeProject}
+          isGitRepo={isGitRepo}
+          envMode={envMode}
+          activeWorktreePath={activeWorktreePath}
+          activeThreadBranch={activeThreadBranch}
+          currentGitBranch={currentGitBranch}
+        />
+      ) : null,
+    [
+      activeProject,
+      activeThreadBranch,
+      activeWorktreePath,
+      currentGitBranch,
+      envMode,
+      isGitRepo,
+      isServerThread,
+      showComposerContextStrip,
+      showProviderSubagentBar,
+    ],
+  );
+  // What leads the context row: a draft's project chooser or a server thread's
+  // readout. They never coexist (local draft vs server thread), and the
+  // readout is null whenever upstream's strip is visible.
+  const composerContextLeading = draftProjectPill ?? threadContextReadout;
   /**
    * The worktree/branch strip, as an element rather than a render site.
    *
@@ -11147,7 +11182,9 @@ export default function ChatView(props: ChatViewProps) {
           /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
           // Only into a visible strip: the hidden measuring strip below hands
           // the chip to the fallback instead, so it never renders twice.
-          {...(draftProjectPill && showComposerContextStrip ? { leading: draftProjectPill } : {})}
+          {...(composerContextLeading && showComposerContextStrip
+            ? { leading: composerContextLeading }
+            : {})}
           /* fork:end fork-new-agent-draft */
         />
       );
@@ -11160,18 +11197,18 @@ export default function ChatView(props: ChatViewProps) {
         <>
           {toolbar}
           {renderComposerContextStripFallback({
-            leading: draftProjectPill,
+            leading: composerContextLeading,
             trailing: composerLivenessPill,
           })}
         </>
       );
     }
     return renderComposerContextStripFallback({
-      leading: draftProjectPill,
+      leading: composerContextLeading,
       trailing: composerLivenessPill,
     });
   }, [
-    draftProjectPill,
+    composerContextLeading,
     mountComposerContextStrip,
     showComposerContextStrip,
     activeThread,
@@ -11855,7 +11892,7 @@ export default function ChatView(props: ChatViewProps) {
                       contextStrip={
                         showComposerContextStrip ||
                         composerLivenessPill != null ||
-                        draftProjectPill != null
+                        composerContextLeading != null
                       }
                       /* fork:end fork-composer-shell */
                     >

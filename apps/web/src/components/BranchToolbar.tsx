@@ -22,7 +22,10 @@ import {
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
 import type { ReactNode } from "react";
 
-import { renderComposerContextStripFallback } from "../custom/composerContextStrip";
+import {
+  READ_ONLY_CONTEXT_CHIP_CLASS_NAME,
+  renderComposerContextStripFallback,
+} from "../custom/composerContextStrip";
 /* fork:end fork-composer-shell */
 
 import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
@@ -210,7 +213,10 @@ const MobileRunContextSelector = memo(function MobileRunContextSelector({
             chip paint (desktop EnvModeSelector has the same mark). */}
         <span
           data-fork-context-chip
-          className="inline-flex h-7 min-w-0 max-w-[48%] flex-initial items-center justify-start gap-1 border border-transparent px-1.75 font-normal text-muted-foreground/70 text-xs sm:h-6"
+          className={cn(
+            READ_ONLY_CONTEXT_CHIP_CLASS_NAME,
+            "max-w-[48%] flex-initial justify-start",
+          )}
           data-composer-context-control
         >
           {triggerContent}
