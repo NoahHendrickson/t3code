@@ -2416,15 +2416,21 @@
     unarchived runs that are working or waiting on an approval or a question,
     drawing the rain while they work and the amber dot once one waits on you;
     while any are live the row opens All runs. The count comes from the
-    shells the client already holds, with no new wire data or polling. Mobile
-    is out of scope and keeps listing these threads.
+    shells the client already holds, with no new wire data or polling. A run
+    opened from Automations carries a history-state flag, and the thread
+    header shows a back arrow only for that history entry; it steps back to
+    the list that opened it. Mobile is out of scope and keeps listing these
+    threads.
   tier: 4
   files:
     - apps/web/src/custom/scheduledRunsOffSidebar.ts
     - apps/web/src/custom/SidebarV2ScheduledRow.tsx
+    - apps/web/src/custom/scheduled/AutomationRunBackButton.tsx
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
+    - apps/web/src/components/chat/ChatHeader.tsx
+    - apps/web/src/custom/scheduled/ScheduledRunsTable.tsx
     - packages/contracts/src/orchestrationV2.ts
     - apps/server/src/orchestration-v2/Orchestrator.ts
     - apps/server/src/orchestration-v2/ProjectionStore.ts

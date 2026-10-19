@@ -35,6 +35,9 @@ import {
   WorkspaceBreadcrumbText,
 } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
+/* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+import { AutomationRunBackButton } from "~/custom/scheduled/AutomationRunBackButton";
+/* fork:end fork-scheduled-runs-off-sidebar */
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -257,6 +260,9 @@ export const ChatHeader = memo(function ChatHeader({
       )}
       onContextMenu={handleHeaderContextMenu}
     >
+      {/* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */}
+      <AutomationRunBackButton />
+      {/* fork:end fork-scheduled-runs-off-sidebar */}
       <WorkspaceBreadcrumb
         ariaLabel="Thread breadcrumb"
         className="flex-1 overflow-clip [overflow-clip-margin:2px]"

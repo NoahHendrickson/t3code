@@ -25,6 +25,9 @@ function readSibling(relativePath: string): string {
 
 const sidebar = readSibling("../components/Sidebar.tsx");
 const scheduledRow = readSibling("../custom/SidebarV2ScheduledRow.tsx");
+const runsTable = readSibling("../custom/scheduled/ScheduledRunsTable.tsx");
+const backButton = readSibling("../custom/scheduled/AutomationRunBackButton.tsx");
+const chatHeader = readSibling("../components/chat/ChatHeader.tsx");
 const contracts = readSibling("../../../../packages/contracts/src/orchestrationV2.ts");
 const launch = readSibling("../../../server/src/orchestration-v2/ThreadLaunchService.ts");
 const projectionStore = readSibling("../../../server/src/orchestration-v2/ProjectionStore.ts");
@@ -87,6 +90,13 @@ describe("fork guard: fork-scheduled-runs-off-sidebar", () => {
   it("reports live runs on the Scheduled row and opens All runs", () => {
     expect(scheduledRow).toContain("summarizeScheduledRunActivity(threads)");
     expect(scheduledRow).toContain('search: { view: "runs" }');
+  });
+
+  it("gives a run opened from Automations a way back", () => {
+    expect(runsTable).toContain("state: OPENED_FROM_AUTOMATIONS_STATE,");
+    expect(chatHeader).toContain("<AutomationRunBackButton />");
+    expect(backButton).toContain("location.state.forkOpenedFromAutomations === true");
+    expect(backButton).toContain("router.history.back()");
   });
 
   it("keeps the server stamping the launching task on the thread shell", () => {

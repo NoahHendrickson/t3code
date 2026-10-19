@@ -6,6 +6,7 @@
  */
 import {
   EnvironmentId,
+  githubPrRunContext,
   ScheduledTaskId,
   type OrchestrationV2RunStatus,
   type ScheduledTask,
@@ -120,6 +121,44 @@ export function formatDuration(seconds: number): string {
 }
 
 /** The live thread status wins over the snapshot only when it describes the same run. */
+export interface RunPullRequest {
+  readonly number: number;
+  /** "owner/repo #123", for the tooltip. */
+  readonly label: string;
+  readonly url: string;
+}
+
+interface LinkedPullRequest {
+  readonly repository: string;
+  readonly number: number;
+  readonly url: string;
+}
+
+/**
+ * The pull request a run was about. A GitHub-triggered run names it in its
+ * message id; any other run falls back to the PR its thread linked, then the
+ * one discovered on its branch.
+ */
+export function runPullRequest(
+  messageId: string,
+  thread: {
+    readonly pullRequests?: ReadonlyArray<LinkedPullRequest> | undefined;
+    readonly linkedPullRequest?: LinkedPullRequest | null | undefined;
+    readonly branchPullRequest?: LinkedPullRequest | null | undefined;
+  } | null,
+): RunPullRequest | null {
+  const triggered = githubPrRunContext(messageId);
+  const triggeredNumber = triggered ? Number(/\/pull\/(\d+)$/.exec(triggered.url)?.[1]) : NaN;
+  if (triggered && Number.isInteger(triggeredNumber)) {
+    return { number: triggeredNumber, label: triggered.label, url: triggered.url };
+  }
+  const linked =
+    thread?.pullRequests?.[0] ?? thread?.linkedPullRequest ?? thread?.branchPullRequest ?? null;
+  return linked === null
+    ? null
+    : { number: linked.number, label: `${linked.repository} #${linked.number}`, url: linked.url };
+}
+
 export function overlayRunStatus(
   run: Pick<ScheduledTaskRun, "runId" | "status">,
   live: { readonly runId: string; readonly status: OrchestrationV2RunStatus } | null,

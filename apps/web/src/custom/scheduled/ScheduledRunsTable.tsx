@@ -1,4 +1,3 @@
-import { githubPrRunContext } from "@t3tools/contracts";
 /**
  * Run history for scheduled tasks — see
  * `.fork/customizations.yaml#fork-scheduled-page`. Every run is a thread (or
@@ -25,12 +24,14 @@ import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/compon
 import { useProject, useThreadShell } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
+import { OPENED_FROM_AUTOMATIONS_STATE } from "./AutomationRunBackButton";
 import {
   formatDuration,
   overlayRunStatus,
   presentRunStatus,
   relativeLabel,
   runDurationSeconds,
+  runPullRequest,
   TRIGGER_LABELS,
 } from "./scheduledPage.logic";
 
@@ -40,6 +41,8 @@ export function ScheduledRunsHeader(props: { readonly showTask: boolean }) {
       <TableRow>
         <TableHead>Status</TableHead>
         <TableHead>{props.showTask ? "Automation" : "Thread"}</TableHead>
+        <TableHead>Project</TableHead>
+        <TableHead>Pull request</TableHead>
         <TableHead>Trigger</TableHead>
         <TableHead>Started</TableHead>
         <TableHead>Duration</TableHead>
@@ -51,7 +54,7 @@ export function ScheduledRunsHeader(props: { readonly showTask: boolean }) {
   );
 }
 
-const COLUMN_COUNT = 6;
+const COLUMN_COUNT = 8;
 
 function NoticeRow(props: { readonly children: string; readonly tone?: "error" | "muted" }) {
   return (
@@ -172,8 +175,8 @@ function ScheduledRunRow(props: {
 }) {
   const navigate = useNavigate();
   const { run } = props;
-  const pullRequest = githubPrRunContext(run.messageId);
   const shell = useThreadShell({ environmentId: props.environmentId, threadId: run.threadId });
+  const pullRequest = runPullRequest(run.messageId, shell);
   const project = useProject({ environmentId: props.environmentId, projectId: run.projectId });
   const status = presentRunStatus(
     overlayRunStatus(
@@ -186,6 +189,7 @@ function ScheduledRunRow(props: {
     void navigate({
       to: "/$environmentId/$threadId",
       params: { environmentId: props.environmentId, threadId: run.threadId },
+      state: OPENED_FROM_AUTOMATIONS_STATE,
     });
   return (
     <TableRow
@@ -210,23 +214,32 @@ function ScheduledRunRow(props: {
               ? (props.taskTitle ?? shell?.title ?? run.threadTitle)
               : (shell?.title ?? run.threadTitle)}
           </span>
-          {pullRequest ? (
-            <a
-              href={pullRequest.url}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-              className="truncate text-muted-foreground underline underline-offset-2"
-            >
-              {pullRequest.label}
-            </a>
-          ) : (
+          {props.showTask && props.taskTitle !== undefined ? (
             <span className="truncate text-muted-foreground">
-              {props.showTask ? (shell?.title ?? run.threadTitle) : (project?.title ?? "")}
+              {shell?.title ?? run.threadTitle}
             </span>
-          )}
+          ) : null}
         </div>
+      </TableCell>
+      <TableCell className="max-w-48 truncate text-muted-foreground">
+        {project?.title ?? "—"}
+      </TableCell>
+      <TableCell className="text-muted-foreground tabular-nums">
+        {pullRequest ? (
+          <a
+            href={pullRequest.url}
+            target="_blank"
+            rel="noreferrer"
+            title={pullRequest.label}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            #{pullRequest.number}
+          </a>
+        ) : (
+          "—"
+        )}
       </TableCell>
       <TableCell className="text-muted-foreground">{TRIGGER_LABELS[run.trigger]}</TableCell>
       <TableCell className="text-muted-foreground">{relativeLabel(run.requestedAt)}</TableCell>
