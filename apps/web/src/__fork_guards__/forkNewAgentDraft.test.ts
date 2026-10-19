@@ -182,12 +182,17 @@ describe("fork guard: fork-new-agent-draft", () => {
     // has no project, and so no toolbar, yet. A started thread gets none.
     expect(chatView).toMatch(/isLocalDraftThread \? \(\s*<DraftProjectPill/u);
     expect(chatView).toMatch(
-      /\{\.\.\.\(draftProjectPill && showComposerContextStrip\s*\?\s*\{ leading: draftProjectPill \}\s*:\s*\{\}\)\}/u,
+      /\{\.\.\.\(composerContextLeading && showComposerContextStrip\s*\?\s*\{ leading: composerContextLeading \}\s*:\s*\{\}\)\}/u,
     );
     expect(chatView).toMatch(
-      /renderComposerContextStripFallback\(\{\s*leading: draftProjectPill,\s*trailing: composerLivenessPill,\s*\}\)/u,
+      /renderComposerContextStripFallback\(\{\s*leading: composerContextLeading,\s*trailing: composerLivenessPill,\s*\}\)/u,
     );
-    expect(chatView).toContain("draftProjectPill != null");
+    // The chip is the context row's leading value; a server thread's readout
+    // is the other source (fork-composer-shell).
+    expect(chatView).toContain(
+      "const composerContextLeading = draftProjectPill ?? threadContextReadout;",
+    );
+    expect(chatView).toContain("composerContextLeading != null");
     const branchToolbar = readSibling("../components/BranchToolbar.tsx");
     expect(branchToolbar).toContain("leading?: ReactNode");
     expect(branchToolbar).toMatch(

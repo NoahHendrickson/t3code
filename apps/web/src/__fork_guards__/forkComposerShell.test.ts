@@ -24,6 +24,7 @@ import {
   resolveComposerShellVisibility,
 } from "../custom/ComposerShell";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
+import { resolveThreadContextBranch } from "../custom/ThreadContextReadout";
 import { cssRules } from "./cssRules";
 
 /** Form ceiling from ChatComposer's `max-w-3xl` — keep compact thresholds below it. */
@@ -257,12 +258,30 @@ describe("fork guard: fork-composer-shell", () => {
     expect(chatView).toMatch(/isGitRepo:\s*isGitRepo \|\| activeThreadWorktreePath !== null/u);
   });
 
-  it("shows a started thread's project and branch read-only once the strip retreats", () => {
-    // Upstream drops the strip after the first send; the fallback strip must
-    // still lead with the pinned project and branch chips.
+  it("shows a server thread's project and branch read-only once the strip retreats", () => {
+    // While upstream's strip is hidden, the fallback strip must still lead
+    // with the pinned project and branch chips.
     expect(chatView).toMatch(/isServerThread && activeProject && !showComposerContextStrip/u);
-    expect(chatView).toMatch(/leading: draftProjectPill \?\? threadContextReadout/u);
-    expect(chatView).toMatch(/draftProjectPill != null \|\|\s*threadContextReadout != null/u);
+    // One leading value feeds every site: the BranchToolbar spread, both
+    // fallback strips and the Shell's contextStrip predicate.
+    expect(chatView).toContain(
+      "const composerContextLeading = draftProjectPill ?? threadContextReadout;",
+    );
+    expect(chatView.match(/leading: composerContextLeading\b/gu)).toHaveLength(3);
+    expect(chatView).toContain("composerContextLeading != null");
+    // A worktree thread keeps its saved branch when the directory is gone
+    // (git status then reports no repo), as the strip's own predicates do.
+    const branch = {
+      envMode: "worktree" as const,
+      activeThreadBranch: "feature/x",
+      currentGitBranch: null,
+    };
+    expect(
+      resolveThreadContextBranch({ ...branch, isGitRepo: false, activeWorktreePath: "/gone" }),
+    ).toBe("feature/x");
+    expect(
+      resolveThreadContextBranch({ ...branch, isGitRepo: false, activeWorktreePath: null }),
+    ).toBeNull();
   });
 
   it("keeps composer styling scoped to the fork marker", () => {

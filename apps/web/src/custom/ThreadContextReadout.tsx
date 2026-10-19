@@ -1,5 +1,5 @@
 /**
- * A started thread's project and branch, read-only, in the composer's context
+ * A server thread's project and branch, read-only, in the composer's context
  * row — see `.fork/customizations.yaml#fork-composer-shell`.
  *
  * Upstream drops the context strip once a thread starts (unless "Composer
@@ -10,28 +10,47 @@
  * `data-fork-context-chip`, so the row's CSS paints them like the draft's
  * interactive chips.
  */
+import { resolveBranchToolbarValue, type EnvMode } from "~/components/BranchToolbar.logic";
 import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
 
+import { READ_ONLY_CONTEXT_CHIP_CLASS_NAME } from "./composerContextStrip";
 import { FolderIcon, GitBranchIcon } from "./icons/lucide-phosphor";
 import { WorktreeIcon } from "./icons/WorktreeIcon";
 
-const READOUT_CHIP_CLASS_NAME =
-  "inline-flex h-7 min-w-0 items-center gap-1 border border-transparent px-1.75 font-normal text-muted-foreground/70 text-xs sm:h-6";
+/**
+ * The branch the readout names: the value BranchToolbar's strip would show.
+ * A worktree thread keeps its saved branch even when the directory is gone and
+ * git status reports no repo, matching the strip's own predicates.
+ */
+export function resolveThreadContextBranch(input: {
+  readonly isGitRepo: boolean;
+  readonly envMode: EnvMode;
+  readonly activeWorktreePath: string | null;
+  readonly activeThreadBranch: string | null;
+  readonly currentGitBranch: string | null;
+}): string | null {
+  if (!input.isGitRepo && input.activeWorktreePath === null) return null;
+  return resolveBranchToolbarValue(input);
+}
 
 export function ThreadContextReadout(props: {
   readonly project: ProjectFaviconProject;
-  /** Null outside a git repo, or before the branch resolves. */
-  readonly branch: string | null;
-  readonly inWorktree: boolean;
+  readonly isGitRepo: boolean;
+  readonly envMode: EnvMode;
+  readonly activeWorktreePath: string | null;
+  readonly activeThreadBranch: string | null;
+  /** The live ref from git status; null before it resolves. */
+  readonly currentGitBranch: string | null;
 }) {
-  const BranchIcon = props.inWorktree ? WorktreeIcon : GitBranchIcon;
+  const branch = resolveThreadContextBranch(props);
+  const BranchIcon = props.activeWorktreePath !== null ? WorktreeIcon : GitBranchIcon;
   return (
     <>
       <span
         data-fork-context-chip
         data-composer-context-control
         data-testid="thread-project-readout"
-        className={`${READOUT_CHIP_CLASS_NAME} max-w-72 shrink-0`}
+        className={`${READ_ONLY_CONTEXT_CHIP_CLASS_NAME} max-w-72 shrink-0`}
       >
         <ProjectFavicon
           project={props.project}
@@ -40,15 +59,15 @@ export function ThreadContextReadout(props: {
         />
         <span className="min-w-0 truncate">{props.project.title}</span>
       </span>
-      {props.branch ? (
+      {branch ? (
         <span
           data-fork-context-chip
           data-composer-context-control
           data-testid="thread-branch-readout"
-          className={READOUT_CHIP_CLASS_NAME}
+          className={READ_ONLY_CONTEXT_CHIP_CLASS_NAME}
         >
           <BranchIcon className="size-3 shrink-0" />
-          <span className="min-w-0 truncate">{props.branch}</span>
+          <span className="min-w-0 truncate">{branch}</span>
         </span>
       ) : null}
     </>
