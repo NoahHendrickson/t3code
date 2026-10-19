@@ -29,6 +29,12 @@ Related deep-dives that predate this file and stay where they are:
   used to claim that; the claim went stale when upstream moved worktree dev state into the
   worktree's own `.t3`. Migration mechanics for state left behind at `~/.t3/dev` are operational
   and live in `.fork/AGENTS.md`, since they go stale once everyone has moved.
+- The repo's project icon (`assets/fork/n3-project-icon-180.png`) has no Figma or Icon Composer
+  source. It is the wordmark's pixel "n" (3x3 cells of 30px, centred) in white on a 180px tile of
+  `#1fb362`, a shade cooler than the mark's top arm, with a 40px corner radius. The glass is drawn
+  procedurally: a vertical light-to-dark gradient, an elliptical top sheen, a rim lit from the top
+  left with a fainter glint opposite, and a bottom tint plus lit top edge on the glyph. Regenerate
+  it from that recipe rather than retouching the PNG.
 
 ## sidebar-v2-card-rows
 
