@@ -2371,8 +2371,8 @@
     The V2 sidebar's action block ends with a Scheduled row directly under
     Usage: the chrome door to every scheduled task across every project and
     environment. It is a labeled action in the same shape as New agent, Add a
-    project and Usage (CalendarClockIcon, the glyph the settings nav already
-    uses for the page), stacked in the one action group so no inter-group
+    project and Usage (ZapIcon, the lightning bolt the Automations page
+    header also wears), stacked in the one action group so no inter-group
     padding opens between it and Usage. Clicking it navigates to a page
     rather than opening a popover: Usage is a
     dashboard you glance at over the thread, while scheduled tasks are a
@@ -2386,9 +2386,12 @@
     chrome call site gains no prop for it. Since fork-scheduled-page the
     destination is the fork's own /scheduled page rather than Settings →
     Scheduled tasks; the rest of this entry still holds.
+    The row and the page it opens are labeled Automations (row, page
+    heading, breadcrumbs, and copy call each task an automation); the route
+    stays /scheduled and code keeps its scheduled-task names, so links and
+    upstream's Settings → Scheduled tasks page are untouched.
   tier: 1
   files:
-    - apps/web/src/custom/SidebarV2ScheduledRow.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
   shadows: []
   watch:
@@ -2397,6 +2400,52 @@
     - docs/user/thread-sidebar.md
   verify:
     - apps/web/src/__fork_guards__/forkSidebarScheduledRow.test.ts
+
+- id: fork-scheduled-runs-off-sidebar
+  intent: >
+    Threads an automation launches stay off the sidebar's project groups and
+    live on the Automations page, so automated runs such as PR reviews do not
+    flood the roster. The server stamps the launching task's id on the thread
+    (AppThread.scheduledTaskId, carried by thread.create and copied onto the
+    thread shell); an automation bound to an existing thread never stamps it,
+    and forks and subagent children clear it. It rides in the thread's stored
+    payload, so there is no migration and older threads read as unstamped.
+    The roster rule sits in filterSidebarV2VisibleThreads beside the subagent
+    rule, so every roster caller honors it. Pinning a launched thread brings
+    it back to the roster, and unpinning hides it again. The sidebar's
+    Automations row counts the hidden, unarchived runs that are working,
+    waiting on an approval or a question, or failed and not opened since:
+    the rain while they work, the amber dot once one waits on you, the failed
+    dot for an unopened failure. While any are live the row opens All runs.
+    The count comes from the shells the client already holds, with no new
+    wire data or polling. A run opened from Automations carries a
+    history-state flag, and the thread header shows a back arrow only for
+    that history entry; it steps back to the list that opened it. Mobile is
+    out of scope and keeps listing these threads.
+  tier: 4
+  files:
+    - apps/web/src/custom/scheduledRunsOffSidebar.ts
+    - apps/web/src/custom/scheduledRunActivity.ts
+    - apps/web/src/custom/scheduled/AutomationRunBackButton.tsx
+  shadows: []
+  watch:
+    - apps/web/src/components/Sidebar.logic.ts
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/components/chat/ChatHeader.tsx
+    - apps/web/src/custom/scheduled/ScheduledRunsTable.tsx
+    - packages/contracts/src/orchestrationV2.ts
+    - apps/server/src/orchestration-v2/Orchestrator.ts
+    - apps/server/src/orchestration-v2/ProjectionStore.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.ts
+    - apps/server/src/orchestration-v2/ThreadForkService.ts
+    - apps/server/src/orchestration-v2/SubagentProjection.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
+    - apps/server/src/orchestration-v2/ThreadForkService.test.ts
+    - docs/user/thread-sidebar.md
+  verify:
+    - apps/web/src/__fork_guards__/forkScheduledRunsOffSidebar.test.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
+    - apps/server/src/orchestration-v2/ThreadForkService.test.ts
 
 - id: fork-scheduled-page
   intent: >
@@ -5003,3 +5052,51 @@
     - apps/server/src/vcs/GitVcsDriverCore.test.ts
   verify:
     - apps/server/src/vcs/GitVcsDriverCore.test.ts
+
+- id: fork-touch-affordances
+  intent: >
+    Phone usability for controls that only a mouse could reach. On iOS
+    (iPadOS included, per browserClientOs) a still long-press on a sidebar
+    thread row, a right-panel tab or a pull request row opens that surface's
+    context menu — the only way in on touch to pin, snooze, settle and
+    discard a draft from the list; iOS WebKit never fires contextmenu from
+    touch, Android does and is left alone, and those surfaces take no text
+    selection or callout on a coarse pointer. Search in the sidebar opens the
+    palette through the bus, closing the phone sheet first (a dialog trigger
+    inside the sheet only closed the sheet). With no hovering pointer at all
+    (any-hover: none), controls nothing can reveal stop taking taps: the slim
+    rows' settle / un-settle / wake button, and an inactive panel tab's icon
+    in the right panel and the terminal drawer, whose active tab shows the X
+    it closes with; a trackpad on a touch-primary iPad keeps hover behaviour.
+    Controls touch needs are shown on a coarse pointer: the model picker's
+    favorite star and a project script's edit button. The collapsed phone
+    composer sends with the open composer's flat return-key button
+    (ForkReturnGlyph, shared with ComposerPrimaryActions) on a 32px target.
+  tier: 4
+  files:
+    - apps/web/src/custom/touchLongPressContextMenu.ts
+    - apps/web/src/custom/touchLongPressContextMenu.test.ts
+    - apps/web/src/custom/ForkReturnGlyph.tsx
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/custom/sidebarV2TrailingColumn.ts
+    - apps/web/src/overrides/components/chat/ModelPickerContent.tsx
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Fenced install.
+    - apps/web/src/main.tsx
+    # Fenced coarse-pointer classes on the script edit button and shortcut.
+    - apps/web/src/components/ProjectScriptsControl.tsx
+    # Fenced send stamps and return glyph on the collapsed phone row.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Fenced no-hover tab variants, and the active-tab stamp they read.
+    - apps/web/src/components/ui/panel-tab-close-button.tsx
+    - apps/web/src/components/ThreadTerminalDrawer.tsx
+    # Hooks the long-press selector keys on.
+    - apps/web/src/components/Sidebar.tsx
+    - apps/web/src/components/RightPanelTabs.tsx
+    - apps/web/src/components/pullRequest/ThreadPullRequestsPanel.tsx
+    - apps/web/src/components/pullRequest/PullRequestListRow.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkTouchAffordances.test.ts
+    - apps/web/src/custom/touchLongPressContextMenu.test.ts

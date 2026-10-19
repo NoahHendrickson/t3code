@@ -1791,6 +1791,10 @@ export default function ThreadTerminalDrawer({
                           return (
                             <div
                               key={terminalId}
+                              /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances
+                                 PanelTabCloseButton reads it to pick which tab shows its X on touch. */
+                              data-active-tab={isActive}
+                              /* fork:end fork-touch-affordances */
                               className={cn(
                                 "group/tab flex h-6 w-full items-center gap-0.5 rounded-md pr-2 pl-1.5 text-xs",
                                 isActive

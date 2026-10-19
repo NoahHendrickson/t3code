@@ -380,6 +380,10 @@ export const OrchestrationV2AppThread = Schema.Struct({
   branchPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
   activeProviderThreadId: Schema.NullOr(ProviderThreadId),
   historyOrigin: Schema.optional(OrchestrationV2ThreadHistoryOrigin),
+  /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+  /** The scheduled task that launched this thread. Forks and subagents do not inherit it. */
+  scheduledTaskId: Schema.optional(ScheduledTaskId),
+  /* fork:end fork-scheduled-runs-off-sidebar */
   lineage: OrchestrationV2AppThreadLineage,
   forkedFrom: Schema.NullOr(
     Schema.Union([
@@ -1850,6 +1854,10 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   forkedFrom: Schema.NullOr(OrchestrationV2AppThread.fields.forkedFrom),
   activeProviderThreadId: Schema.NullOr(ProviderThreadId),
   historyOrigin: Schema.optional(OrchestrationV2ThreadHistoryOrigin),
+  /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+  /** The scheduled task that launched this thread; omitted for every other thread. */
+  scheduledTaskId: Schema.optional(ScheduledTaskId),
+  /* fork:end fork-scheduled-runs-off-sidebar */
   latestRunId: Schema.NullOr(RunId),
   latestRunRequestedAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
   latestRunStartedAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
@@ -2618,6 +2626,9 @@ export const OrchestrationV2Command = Schema.Union([
     interactionMode: ProviderInteractionMode,
     branch: Schema.NullOr(TrimmedNonEmptyString),
     worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+    /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+    scheduledTaskId: Schema.optional(ScheduledTaskId),
+    /* fork:end fork-scheduled-runs-off-sidebar */
     importedNativeThread: Schema.optional(
       Schema.Struct({
         ref: Schema.Struct({

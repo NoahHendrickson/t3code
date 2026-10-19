@@ -50,7 +50,7 @@ describe("fork guard: fork-scheduled-page", () => {
     expect(page).toContain('data-testid="scheduled-new-task"');
     expect(page).not.toContain('data-testid="scheduled-starters"');
     expect(page).toContain('data-testid="scheduled-all-runs"');
-    expect(page).toContain('aria-label="Search tasks"');
+    expect(page).toContain('aria-label="Search automations"');
     expect(page).toContain('data-testid="scheduled-task-row"');
     // Active/Inactive reads like Cursor's status column, not a badge soup.
     expect(page).toContain('{task.enabled ? "Active" : "Inactive"}');
@@ -64,7 +64,7 @@ describe("fork guard: fork-scheduled-page", () => {
     expect(detail).toContain('data-testid="scheduled-task-detail"');
     expect(detail).toContain('<Toggle value="settings">Settings</Toggle>');
     expect(detail).toContain('<Toggle value="runs">Run history</Toggle>');
-    expect(detail).toContain('placeholder="Untitled task"');
+    expect(detail).toContain('placeholder="Untitled automation"');
     // The model lives inside the instructions card, where Cursor keeps it.
     expect(editor).toContain("<ScheduledTaskModelPicker");
     expect(editor).toContain("<ScheduledTriggerTabs");
