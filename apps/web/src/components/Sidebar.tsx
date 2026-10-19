@@ -4478,7 +4478,7 @@ export default function Sidebar() {
             void handleProjectSettings(event, project);
           }}
           /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
-             One grouping value; each switch picks its mode or clears it. */
+             One grouping value; the menu's radios pick it. */
           grouping={grouping}
           onGroupingChange={setGrouping}
           /* fork:end sidebar-v2-status-grouping */
@@ -4494,7 +4494,7 @@ export default function Sidebar() {
             }
             updateClientSettings({ sidebarProjectSortOrder: sortOrder });
           }}
-          // A switch that visibly does nothing teaches nothing. Where headers
+          // An option that visibly does nothing teaches nothing. Where headers
           // are suppressed — one project on screen, by scope or by having only
           // one — it says so instead of quietly ignoring the click.
           groupByProjectUnavailableReason={

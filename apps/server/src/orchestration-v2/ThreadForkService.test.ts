@@ -10,6 +10,7 @@ import {
   ProviderInstanceId,
   ProviderThreadId,
   RunId,
+  ScheduledTaskId,
   ThreadId,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
@@ -191,3 +192,32 @@ it.effect("rejects in-progress and rolled-back fork sources", () =>
     }
   }),
 );
+
+/* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+it.effect("does not carry the launching scheduled task onto a fork", () =>
+  Effect.gen(function* () {
+    const sourceRun = makeSourceRun("completed");
+    const sourceProjection = makeSourceProjection(sourceRun);
+    const service = yield* ThreadForkService.ThreadForkServiceV2;
+    const result = yield* service.plan({
+      sourceProjection: {
+        ...sourceProjection,
+        thread: {
+          ...sourceProjection.thread,
+          scheduledTaskId: ScheduledTaskId.make("scheduled-task:pr-review"),
+        },
+      },
+      sourceRun,
+      sourceProviderThread: undefined,
+      canonicalSourcePoint: { threadId: sourceThreadId, runId: sourceRunId },
+      transferId: ContextTransferId.make("context-transfer:fork-scheduled-source"),
+      targetThreadId,
+      title: "Fork of a review",
+      createdBy: "user",
+      creationSource: "web",
+      createdAt: forkCreatedAt,
+    });
+    assert.isUndefined(result.targetThread.scheduledTaskId);
+  }).pipe(Effect.provide(ThreadForkService.layer)),
+);
+/* fork:end fork-scheduled-runs-off-sidebar */
