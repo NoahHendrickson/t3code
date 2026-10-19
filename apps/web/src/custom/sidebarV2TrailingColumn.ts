@@ -131,9 +131,11 @@ export const SIDEBAR_V2_TRAILING_OFFSET = {
 export const SIDEBAR_V2_SLIM_ROW_ACTION_CLASS = cn(
   SIDEBAR_V2_ICON_BUTTON_CLASS,
   "absolute inset-y-0 right-0 opacity-0 focus-visible:opacity-100 group-any-hover/v2-row:opacity-100",
-  // Touch never reveals it, so it must not take taps either: its 44px coarse
-  // hit area sat invisibly over the time label and a tap meant to open the
-  // thread woke or un-settled it. Long-press opens the row menu instead.
-  "pointer-coarse:pointer-events-none",
+  // With no hovering pointer at all nothing reveals it, so it must not take
+  // taps either: its 44px coarse hit area sat invisibly over the time label
+  // and a tap meant to open the thread woke or un-settled it. Long-press opens
+  // the row menu instead. A trackpad on a touch-primary iPad still hovers it
+  // in, so it keeps its clicks there.
+  "[@media(any-hover:none)]:pointer-events-none",
   SIDEBAR_V2_TRAILING_OFFSET.slimActions,
 );

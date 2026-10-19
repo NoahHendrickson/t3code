@@ -219,13 +219,15 @@ export default function ProjectScriptsControl({
                   </span>
                 ))}
               <span
-                className={`absolute right-0 top-1/2 flex -translate-y-1/2 ${presentation === "menu" ? "" : "opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-visible:opacity-100 group-focus-visible:pointer-events-auto"}${
+                className={cn(
+                  "absolute right-0 top-1/2 flex -translate-y-1/2",
+                  presentation !== "menu" &&
+                    "opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-visible:opacity-100 group-focus-visible:pointer-events-auto",
                   /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances */
-                  presentation === "menu"
-                    ? ""
-                    : " pointer-coarse:opacity-100 pointer-coarse:pointer-events-auto"
+                  presentation !== "menu" &&
+                    "pointer-coarse:opacity-100 pointer-coarse:pointer-events-auto",
                   /* fork:end fork-touch-affordances */
-                }`}
+                )}
               >
                 <Button
                   type="button"

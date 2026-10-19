@@ -2,17 +2,19 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import {
-  installTouchLongPressContextMenu,
-  isTouchContextMenuMissing,
-  LONG_PRESS_MS,
-} from "./touchLongPressContextMenu";
+import { installTouchLongPressContextMenu, LONG_PRESS_MS } from "./touchLongPressContextMenu";
 
 const IPHONE = {
   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15",
   platform: "iPhone",
   maxTouchPoints: 5,
 };
+const IPADOS = {
+  userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15",
+  platform: "MacIntel",
+  maxTouchPoints: 5,
+};
+const DESKTOP_MAC = { ...IPADOS, maxTouchPoints: 0 };
 const ANDROID = {
   userAgent: "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/140 Mobile",
   platform: "Linux armv8l",
@@ -34,27 +36,6 @@ function pointer(type: string, target: Element, init: Partial<PointerEventInit> 
   });
   target.dispatchEvent(event);
 }
-
-describe("isTouchContextMenuMissing", () => {
-  it("is true on iPhone and iPadOS, false on Android and desktop Macs", () => {
-    expect(isTouchContextMenuMissing(IPHONE)).toBe(true);
-    expect(
-      isTouchContextMenuMissing({
-        userAgent: "Macintosh",
-        platform: "MacIntel",
-        maxTouchPoints: 5,
-      }),
-    ).toBe(true);
-    expect(isTouchContextMenuMissing(ANDROID)).toBe(false);
-    expect(
-      isTouchContextMenuMissing({
-        userAgent: "Macintosh",
-        platform: "MacIntel",
-        maxTouchPoints: 0,
-      }),
-    ).toBe(false);
-  });
-});
 
 describe("installTouchLongPressContextMenu", () => {
   let uninstall: () => void = () => {};
@@ -120,10 +101,31 @@ describe("installTouchLongPressContextMenu", () => {
     expect(onContextMenu).not.toHaveBeenCalled();
   });
 
-  it("installs nothing where the platform already fires contextmenu", () => {
-    uninstall = installTouchLongPressContextMenu(document, ANDROID);
+  it("runs on iPadOS, which reports a desktop Mac with touch points", () => {
+    uninstall = installTouchLongPressContextMenu(document, IPADOS);
     pointer("pointerdown", row);
     vi.advanceTimersByTime(LONG_PRESS_MS);
+    expect(onContextMenu).toHaveBeenCalledTimes(1);
+  });
+
+  it("installs nothing where the platform already fires contextmenu, or has no touch", () => {
+    for (const nav of [ANDROID, DESKTOP_MAC]) {
+      const remove = installTouchLongPressContextMenu(document, nav);
+      pointer("pointerdown", row);
+      vi.advanceTimersByTime(LONG_PRESS_MS);
+      remove();
+    }
     expect(onContextMenu).not.toHaveBeenCalled();
+  });
+
+  it("lets go of the click latch shortly after release when no click follows", () => {
+    uninstall = installTouchLongPressContextMenu(document, IPHONE);
+    pointer("pointerdown", row);
+    vi.advanceTimersByTime(LONG_PRESS_MS);
+    pointer("pointerup", row);
+    vi.advanceTimersByTime(1000);
+    // A keyboard-initiated click has no pointerdown to reset the latch.
+    row.click();
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

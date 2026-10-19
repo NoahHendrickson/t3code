@@ -2,7 +2,7 @@
  * Long-press opens the context menu on iOS — see
  * `.fork/customizations.yaml#fork-touch-affordances`.
  *
- * Sidebar rows, project headers, right-panel tabs and pull request rows keep
+ * Sidebar thread rows, right-panel tabs and pull request rows keep
  * their secondary actions (pin, snooze, settle, discard draft, close others…)
  * in a right-click menu. Android Chrome fires `contextmenu` on a long-press,
  * so those menus already open there. iOS WebKit never fires it from touch, so
@@ -17,10 +17,11 @@
  * previewing a link — and a synthetic event there would fight it.
  */
 
+import { browserClientOs } from "../connection/clientMetadata";
+
 /** Surfaces whose `onContextMenu` holds actions with no other touch entry. */
 export const TOUCH_CONTEXT_MENU_SELECTOR = [
   "[data-thread-item]",
-  "[data-fork-project-section-header]",
   "[data-right-panel-tab-list] [data-active-tab]",
   ".group\\/pr-row",
 ].join(", ");
@@ -30,33 +31,42 @@ export const LONG_PRESS_MS = 500;
 /** A finger that drifts further than this is scrolling, not pressing. */
 export const LONG_PRESS_SLOP_PX = 10;
 
-/** iPhone, iPod and iPad — iPadOS reports itself as a Mac with touch points. */
-export function isTouchContextMenuMissing(
-  nav: Pick<Navigator, "userAgent" | "platform" | "maxTouchPoints">,
-): boolean {
-  if (/iP(hone|od|ad)/.test(nav.userAgent)) return true;
-  return nav.platform === "MacIntel" && nav.maxTouchPoints > 1;
-}
+/** How long a release click may trail the hold before the latch lets go. */
+const RELEASE_CLICK_WINDOW_MS = 300;
 
 /**
- * Installs the listeners on `doc`. Returns the uninstaller; a no-op off iOS.
+ * Installs the listeners on `doc`. Returns the uninstaller; a no-op off iOS
+ * (iPadOS included), as `browserClientOs` tells it.
  */
 export function installTouchLongPressContextMenu(
   doc: Document = document,
   nav: Pick<Navigator, "userAgent" | "platform" | "maxTouchPoints"> = navigator,
 ): () => void {
-  if (!isTouchContextMenuMissing(nav)) return () => {};
+  if (browserClientOs(nav) !== "iOS") return () => {};
 
   let timer: ReturnType<typeof setTimeout> | null = null;
   let start: { x: number; y: number; pointerId: number } | null = null;
   // The release after a long-press still produces a click on the row under
-  // the finger; that click would navigate away from the menu just opened.
+  // the finger; that click would navigate away from the menu just opened. The
+  // latch only outlives the release briefly, so a click that never comes
+  // cannot eat a later keyboard- or assistive-tech-initiated one.
   let swallowNextClick = false;
+  let releaseTimer: ReturnType<typeof setTimeout> | null = null;
 
   const cancel = () => {
     if (timer !== null) clearTimeout(timer);
     timer = null;
     start = null;
+  };
+
+  const onPointerUp = () => {
+    cancel();
+    if (!swallowNextClick) return;
+    if (releaseTimer !== null) clearTimeout(releaseTimer);
+    releaseTimer = setTimeout(() => {
+      releaseTimer = null;
+      swallowNextClick = false;
+    }, RELEASE_CLICK_WINDOW_MS);
   };
 
   const onPointerDown = (event: PointerEvent) => {
@@ -101,14 +111,15 @@ export function installTouchLongPressContextMenu(
 
   doc.addEventListener("pointerdown", onPointerDown, true);
   doc.addEventListener("pointermove", onPointerMove, true);
-  doc.addEventListener("pointerup", cancel, true);
+  doc.addEventListener("pointerup", onPointerUp, true);
   doc.addEventListener("pointercancel", cancel, true);
   doc.addEventListener("click", onClick, true);
   return () => {
     cancel();
+    if (releaseTimer !== null) clearTimeout(releaseTimer);
     doc.removeEventListener("pointerdown", onPointerDown, true);
     doc.removeEventListener("pointermove", onPointerMove, true);
-    doc.removeEventListener("pointerup", cancel, true);
+    doc.removeEventListener("pointerup", onPointerUp, true);
     doc.removeEventListener("pointercancel", cancel, true);
     doc.removeEventListener("click", onClick, true);
   };
