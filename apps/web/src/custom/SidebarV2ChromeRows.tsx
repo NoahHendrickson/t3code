@@ -43,7 +43,7 @@ import {
 } from "./icons/lucide-phosphor";
 import { SidebarV2ScheduledRow } from "./SidebarV2ScheduledRow";
 import { SidebarV2UsageRow } from "./UsagePopover";
-import { CommandDialogTrigger } from "~/components/ui/command";
+import { openCommandPalette } from "~/commandPaletteBus";
 import {
   Menu,
   MenuCheckboxItem,
@@ -53,7 +53,7 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from "~/components/ui/menu";
-import { SidebarGroup, SidebarMenuButton } from "~/components/ui/sidebar";
+import { SidebarGroup, SidebarMenuButton, useSidebar } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
 import { cn } from "~/lib/utils";
@@ -124,10 +124,9 @@ const CHROME_ACTION = cn(
 type ChromeIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 /** New agent, Add a project, Usage, and Scheduled share one shape; Search keeps its own
-    (CommandDialogTrigger). onClick is optional so Usage can hand the same
-    button to PopoverTrigger / DialogTrigger via `render`, the way Search
-    hands SidebarMenuButton to CommandDialogTrigger. Extra props (ref,
-    aria-expanded) forward onto the button. */
+    (a div label, see ChromeSearchRow). onClick is optional so Usage can hand
+    the same button to PopoverTrigger / DialogTrigger via `render`. Extra
+    props (ref, aria-expanded) forward onto the button. */
 function ChromeLabeledAction({
   icon: Icon,
   label,
@@ -192,26 +191,32 @@ function ChromeLabeledAction({
   );
 }
 
+/**
+ * Opens the palette through the bus, the path "Add a project" takes. A dialog
+ * trigger here never opened it on a phone, where the sidebar is a modal sheet:
+ * the tap only closed the sheet.
+ */
 function ChromeSearchRow(props: { readonly commandPaletteShortcutLabel: string | null }) {
+  const { isMobile, setOpenMobile } = useSidebar();
   return (
-    <CommandDialogTrigger
-      render={
-        <SidebarMenuButton
-          size="sm"
-          type="button"
-          aria-label={
-            props.commandPaletteShortcutLabel
-              ? `Search threads and commands (${props.commandPaletteShortcutLabel})`
-              : "Search threads and commands"
-          }
-          className={CHROME_ACTION}
-          data-testid="command-palette-trigger"
-        />
+    <SidebarMenuButton
+      size="sm"
+      type="button"
+      aria-label={
+        props.commandPaletteShortcutLabel
+          ? `Search threads and commands (${props.commandPaletteShortcutLabel})`
+          : "Search threads and commands"
       }
+      className={CHROME_ACTION}
+      data-testid="command-palette-trigger"
+      onClick={() => {
+        if (isMobile) setOpenMobile(false);
+        openCommandPalette();
+      }}
     >
       <SearchIcon className="size-4 shrink-0" />
       <div className="flex-1 truncate text-left">Search</div>
-    </CommandDialogTrigger>
+    </SidebarMenuButton>
   );
 }
 

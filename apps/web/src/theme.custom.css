@@ -3023,3 +3023,34 @@
   :is(span.truncate, span.truncate + span.shrink-0) {
   color: var(--foreground);
 }
+
+/* Touch affordances — see `.fork/customizations.yaml#fork-touch-affordances`.
+
+   The surfaces custom/touchLongPressContextMenu opens a menu on take no text
+   selection or callout from a touch, or iOS would start selecting the row's
+   title on the same hold that opens its menu. Coarse pointers only, so a
+   mouse can still select a row's text. Keep this list in step with
+   TOUCH_CONTEXT_MENU_SELECTOR. */
+@media (pointer: coarse) {
+  :root[data-fork="noahhendrickson-t3code"]
+    :is([data-thread-item], [data-right-panel-tab-list] [data-active-tab], .group\/pr-row) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* The collapsed phone row's send takes the open composer's 24px box (the
+     [data-fork-composer-action] rule); the tap target stays the 32px the row
+     was laid out around. */
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-chat-composer-transition-actions][data-fork-composer-action] {
+    position: relative;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"]
+    [data-chat-composer-transition-actions][data-fork-composer-action]::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+}

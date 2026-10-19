@@ -4995,3 +4995,51 @@
     - apps/server/src/vcs/GitVcsDriverCore.test.ts
   verify:
     - apps/server/src/vcs/GitVcsDriverCore.test.ts
+
+- id: fork-touch-affordances
+  intent: >
+    Phone usability for controls that only a mouse could reach. On iOS
+    (iPadOS included, per browserClientOs) a still long-press on a sidebar
+    thread row, a right-panel tab or a pull request row opens that surface's
+    context menu — the only way in on touch to pin, snooze, settle and
+    discard a draft from the list; iOS WebKit never fires contextmenu from
+    touch, Android does and is left alone, and those surfaces take no text
+    selection or callout on a coarse pointer. Search in the sidebar opens the
+    palette through the bus, closing the phone sheet first (a dialog trigger
+    inside the sheet only closed the sheet). With no hovering pointer at all
+    (any-hover: none), controls nothing can reveal stop taking taps: the slim
+    rows' settle / un-settle / wake button, and an inactive panel tab's icon
+    in the right panel and the terminal drawer, whose active tab shows the X
+    it closes with; a trackpad on a touch-primary iPad keeps hover behaviour.
+    Controls touch needs are shown on a coarse pointer: the model picker's
+    favorite star and a project script's edit button. The collapsed phone
+    composer sends with the open composer's flat return-key button
+    (ForkReturnGlyph, shared with ComposerPrimaryActions) on a 32px target.
+  tier: 4
+  files:
+    - apps/web/src/custom/touchLongPressContextMenu.ts
+    - apps/web/src/custom/touchLongPressContextMenu.test.ts
+    - apps/web/src/custom/ForkReturnGlyph.tsx
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/custom/sidebarV2TrailingColumn.ts
+    - apps/web/src/overrides/components/chat/ModelPickerContent.tsx
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Fenced install.
+    - apps/web/src/main.tsx
+    # Fenced coarse-pointer classes on the script edit button and shortcut.
+    - apps/web/src/components/ProjectScriptsControl.tsx
+    # Fenced send stamps and return glyph on the collapsed phone row.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Fenced no-hover tab variants, and the active-tab stamp they read.
+    - apps/web/src/components/ui/panel-tab-close-button.tsx
+    - apps/web/src/components/ThreadTerminalDrawer.tsx
+    # Hooks the long-press selector keys on.
+    - apps/web/src/components/Sidebar.tsx
+    - apps/web/src/components/RightPanelTabs.tsx
+    - apps/web/src/components/pullRequest/ThreadPullRequestsPanel.tsx
+    - apps/web/src/components/pullRequest/PullRequestListRow.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkTouchAffordances.test.ts
+    - apps/web/src/custom/touchLongPressContextMenu.test.ts
