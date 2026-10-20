@@ -321,7 +321,6 @@ import { SidebarV2StatusSectionHeader } from "~/custom/SidebarV2StatusSectionHea
 import { resolveSidebarV2CardStatus } from "~/custom/sidebarV2CardStatus";
 import {
   buildSidebarV2StatusSections,
-  countSidebarV2Projects,
   createSidebarV2CompletedHoldTracker,
   useSidebarV2CollapsedStatusSections,
   type SidebarV2ListSection,
@@ -2715,7 +2714,6 @@ export default function Sidebar() {
         now: snoozeNow,
         openThreadKey: statusOpenThreadKey,
         holds: completedHolds,
-        projectRefIndex,
         returnedAt: inboxReturns.returnedAt,
       });
     }
@@ -2760,10 +2758,6 @@ export default function Sidebar() {
      open thread stays visible. Flat and project modes keep the divider. */
   const pinnedSectionShown = statusGrouped && pinnedThreads.length > 0;
   const pinnedCollapsed = pinnedSectionShown && collapsedStatusSections.has("pinned");
-  const pinnedProjectCount = useMemo(
-    () => (pinnedSectionShown ? countSidebarV2Projects(pinnedThreads, projectRefIndex) : 0),
-    [pinnedSectionShown, pinnedThreads, projectRefIndex],
-  );
   const keepCollapsedPinnedRow = useCallback(
     (thread: EnvironmentThreadShell) =>
       keptRouteThreadKey !== null &&
@@ -4750,7 +4744,6 @@ export default function Sidebar() {
                           key="status-section-header:pinned"
                           section="pinned"
                           count={pinnedThreads.length}
-                          projectCount={pinnedProjectCount}
                           isFirst
                           collapsed={pinnedCollapsed}
                           onToggleCollapsed={() => toggleStatusSectionCollapsed("pinned")}
@@ -4861,7 +4854,6 @@ export default function Sidebar() {
                               key={`status-section-header:${status}`}
                               section={status}
                               count={section.threadCount}
-                              projectCount={section.projectCount}
                               // Below a Pinned header, the first status
                               // section takes the ordinary lead.
                               isFirst={sectionIndex === 0 && !pinnedSectionShown}

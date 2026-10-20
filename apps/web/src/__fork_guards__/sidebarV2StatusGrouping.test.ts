@@ -42,6 +42,9 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(sidebar).toContain('if (section.kind === "status")');
     expect(sidebar).toContain("visibleActiveSections.flatMap((section) => section.threads)");
     expect(sidebar).toContain("<SidebarV2StatusSectionHeader");
+    // The header's right side stays empty: no project tally is passed through.
+    expect(sidebar).not.toContain("projectCount=");
+    expect(sidebar).not.toContain("countSidebarV2Projects");
   });
 
   it("gives the pinned block its own collapsible header while status grouping is on", () => {

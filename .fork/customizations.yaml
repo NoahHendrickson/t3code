@@ -1069,8 +1069,7 @@
     Completed titles are full strength, Working and Idle recede, and the open
     or selected card never does. Section headers are a muted semibold label
     with its count, a step under the card title's size, on the cards' inset,
-    with no mark, hairline or chevron, and how many projects the section spans
-    on its right ("2 projects", counted per logical project); clicking
+    with no mark, hairline or chevron, and nothing on the right; clicking
     collapses.
 
     buildSidebarV2StatusSections is the whole pipeline; the activeSections
