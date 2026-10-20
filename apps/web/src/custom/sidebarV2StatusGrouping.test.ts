@@ -5,7 +5,6 @@ import { resolveSidebarV2CardStatusKind } from "./sidebarV2CardStatus";
 import { createProjectRefIndex } from "./sidebarV2ProjectGrouping";
 import { threadCardTitleRecedes } from "./sidebarV2RowPolicy";
 import {
-  SIDEBAR_V2_STATUS_SECTION_LABELS,
   countSidebarV2Projects,
   createSidebarV2CompletedHoldTracker,
   groupSidebarV2StatusSections,
@@ -207,12 +206,6 @@ describe("groupSidebarV2StatusSections", () => {
     });
     expect(section?.threadCount).toBe(3);
     expect(section?.projectCount).toBe(2);
-  });
-});
-
-describe("SIDEBAR_V2_STATUS_SECTION_LABELS", () => {
-  it("names Settled for the shared section header", () => {
-    expect(SIDEBAR_V2_STATUS_SECTION_LABELS.settled).toBe("Settled");
   });
 });
 

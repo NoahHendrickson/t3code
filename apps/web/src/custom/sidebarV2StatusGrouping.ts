@@ -60,12 +60,16 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "idle",
 ];
 
-/** Every header status grouping draws: the four status sections, plus Pinned
-    and Settled, which take a header of the same style while status grouping
-    is on so the whole list reads as one kind of group. */
-export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned" | "settled";
+/** The sections the collapse store holds: the four status sections, plus the
+    pinned block, which takes a header of its own while status grouping is on
+    so it reads as one more group. */
+export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
 
-export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusSectionKey, string> = {
+/** Every header status grouping draws. Settled takes one too, but collapses
+    through its own shelf flag, so it is a label here and not a section key. */
+export type SidebarV2StatusHeaderKey = SidebarV2StatusSectionKey | "settled";
+
+export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusHeaderKey, string> = {
   pinned: "Pinned",
   input: "Needs input",
   done: "Completed",
@@ -107,7 +111,7 @@ export type SidebarV2ListSection<TThread> =
   | SidebarV2StatusSection<TThread>;
 
 const isStatusSectionKey = (key: string): key is SidebarV2StatusSectionKey =>
-  key in SIDEBAR_V2_STATUS_SECTION_LABELS;
+  key !== "settled" && key in SIDEBAR_V2_STATUS_SECTION_LABELS;
 
 export function useSidebarV2CollapsedStatusSections() {
   return useSidebarV2CollapsedKeys(

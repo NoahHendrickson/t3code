@@ -57,7 +57,10 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
   });
 
   it("gives the settled tail the status header while status grouping is on", () => {
-    expect(sidebar).toContain("if (statusGrouped && settledThreads.length > 0)");
+    expect(sidebar).toContain(
+      "const settledSectionShown = statusGrouped && settledThreads.length > 0;",
+    );
+    expect(sidebar).toMatch(/settledThreads\.length > 0 &&[\s\S]{0,200}?!settledSectionShown/u);
     expect(sidebar).toContain('section="settled"');
     expect(sidebar).toContain("count={settledThreads.length}");
     expect(sidebar).toContain("projectCount={settledProjectCount}");
