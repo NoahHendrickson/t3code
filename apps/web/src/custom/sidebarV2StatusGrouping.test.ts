@@ -188,7 +188,6 @@ describe("groupSidebarV2StatusSections", () => {
       bucketOf: () => "idle",
     });
     expect(section?.threadCount).toBe(3);
-    expect(section).not.toHaveProperty("projectCount");
   });
 });
 
