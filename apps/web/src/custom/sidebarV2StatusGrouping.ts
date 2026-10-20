@@ -5,8 +5,11 @@
  * The other answer to "how should the flat list read": instead of one stream,
  * the active cards split by who owns the next move — Needs input (an agent is
  * blocked on you), Completed (a result is ready to read), Working, and Idle.
- * Pinned, snoozed and settled keep their shelves; Idle ages into Settled
- * through the server's existing auto-settle.
+ * Snoozed keeps its shelf. Idle ages into Settled through the server's
+ * existing auto-settle. While status grouping is on, Pinned and Settled take
+ * this same header; Settled stays a time-ordered tail of slim rows, with its
+ * own collapse and paging, and the hairline shelf header returns in the other
+ * modes.
  *
  * A card's section comes from the same derivation as the mark it draws
  * (`resolveSidebarV2CardStatus`), so the two agree. One deliberate exception,
@@ -57,10 +60,10 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "idle",
 ];
 
-/** Every header status grouping draws: the four status sections, plus the
-    pinned block, which takes a header of its own while status grouping is on
-    so it reads as one more group. */
-export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
+/** Every header status grouping draws: the four status sections, plus Pinned
+    and Settled, which take a header of the same style while status grouping
+    is on so the whole list reads as one kind of group. */
+export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned" | "settled";
 
 export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusSectionKey, string> = {
   pinned: "Pinned",
@@ -68,6 +71,7 @@ export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusSectionKey,
   done: "Completed",
   working: "Working",
   idle: "Idle",
+  settled: "Settled",
 };
 
 /** How long a thread that came to rest stays in Completed after you leave it. */

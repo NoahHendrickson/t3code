@@ -2764,6 +2764,15 @@ export default function Sidebar() {
     () => (pinnedSectionShown ? countSidebarV2Projects(pinnedThreads, projectRefIndex) : 0),
     [pinnedSectionShown, pinnedThreads, projectRefIndex],
   );
+  // The settled tail's project spread, for the same header. Counted from the
+  // whole tail, including rows still behind Show more.
+  const settledProjectCount = useMemo(
+    () =>
+      statusGrouped && settledThreads.length > 0
+        ? countSidebarV2Projects(settledThreads, projectRefIndex)
+        : 0,
+    [projectRefIndex, settledThreads, statusGrouped],
+  );
   const keepCollapsedPinnedRow = useCallback(
     (thread: EnvironmentThreadShell) =>
       keptRouteThreadKey !== null &&
@@ -5048,6 +5057,29 @@ export default function Sidebar() {
                         items.push(renderThreadRow(thread, "snoozed"));
                       }
                     }
+                    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+                       Same header as the status sections. The hairline shelf
+                       below stays for flat and project modes, and the tail's
+                       own expanded flag still decides which rows paint. */
+                    if (statusGrouped && settledThreads.length > 0) {
+                      items.push(
+                        <SidebarV2StatusSectionHeader
+                          key="status-section-header:settled"
+                          section="settled"
+                          count={settledThreads.length}
+                          projectCount={settledProjectCount}
+                          // Below other groups, the ordinary lead. Alone under
+                          // the Projects row, the first-header air.
+                          isFirst={
+                            !pinnedSectionShown &&
+                            visibleActiveSections.length === 0 &&
+                            snoozedThreads.length === 0
+                          }
+                          collapsed={!settledShelfExpanded}
+                          onToggleCollapsed={toggleSettledShelf}
+                        />,
+                      );
+                    } else /* fork:end sidebar-v2-status-grouping */
                     if (settledThreads.length > 0) {
                       items.push(
                         <li

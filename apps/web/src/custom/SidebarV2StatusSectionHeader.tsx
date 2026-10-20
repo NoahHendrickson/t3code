@@ -12,8 +12,10 @@
  * count's style. With project grouping off this is the only place a
  * section's project spread shows at a glance.
  *
- * The pinned block takes the same header while status grouping is on, so
- * every group in the list reads the same way; `section` is "pinned" there.
+ * The pinned block and the settled tail take the same header while status
+ * grouping is on, so every group in the list reads the same way; `section`
+ * is "pinned" or "settled" there. Settled still collapses through its own
+ * shelf, and the other grouping modes keep the hairline shelf header.
  *
  * Clicking it collapses the section; the count is already on screen, so a
  * collapsed header needs nothing extra to say how many cards it hides. The
