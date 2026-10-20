@@ -10,7 +10,12 @@ import { makeComponentLogger } from "./DesktopObservability.ts";
 // AppImage itself instead of pointing into it.
 const { logInfo, logWarning } = makeComponentLogger("desktop-cli-shim");
 
-export const MARKER = "Written by T3 Code: runs the desktop app's bundled t3 CLI.";
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// Ownership of a `t3` link is decided by this marker, so the fork's must not
+// contain upstream's: otherwise either app would adopt, replace or delete the
+// other's command.
+export const MARKER = "Written by no3y Code: runs the desktop app's bundled t3 CLI.";
+// fork:end fork-app-identity
 
 const SERVER_ENTRY = "apps/server/dist/bin.mjs";
 

@@ -43,7 +43,10 @@ import { fileAttachmentCapabilityBlockReason } from "./composerAttachmentFiles";
 import { prepareQueuedEditAttachments, recoverQueuedMessageEdit } from "./queuedMessageEdit";
 import type { EditQueuedRunRequest } from "./QueuedRunsControl";
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-import { splitTrailingDesignChangeRun } from "~/custom/designMode/designChangeTranscript";
+import {
+  appendDesignChangeRun,
+  splitTrailingDesignChangeRun,
+} from "~/custom/designMode/designChangeTranscript";
 /* fork:end fork-design-mode */
 
 interface EditingQueuedRun {
@@ -70,18 +73,6 @@ export interface QueuedRunEditContent {
   readonly threadContexts: ReadonlyArray<ThreadContextRecord>;
 }
 
-/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
-   Put the held design run back last, where the transcript's strip-first
-   extraction expects it. */
-function forkQueuedEditText(editing: EditingQueuedRun, prompt: string): string {
-  const editText = prompt.trim();
-  if (editing.forkDesignChangeRun.length === 0) return editText;
-  return editText.length === 0
-    ? editing.forkDesignChangeRun
-    : `${editText}\n\n${editing.forkDesignChangeRun}`;
-}
-/* fork:end fork-design-mode */
-
 /** Draft id for editing a queued run of the route thread. */
 function queuedEditDraftTarget(routeThreadRef: ScopedThreadRef, runId: RunId) {
   return DraftId.make(`queued-edit:${scopedThreadKey(routeThreadRef)}:${runId}`);
@@ -97,7 +88,7 @@ async function submitQueuedRunEdit(input: {
 }): Promise<string | null> {
   const { environmentId, draftTarget, editing, content } = input;
   /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-  const editText = forkQueuedEditText(editing, content.prompt);
+  const editText = appendDesignChangeRun(content.prompt.trim(), editing.forkDesignChangeRun);
   /* fork:end fork-design-mode */
   const newAttachments = [...content.images, ...content.files];
   const uploadFiles = async (files: ReadonlyArray<ComposerFileAttachment>) => {
@@ -336,7 +327,7 @@ export function useQueuedRunEdit(input: {
     }
     if (
       /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-      forkQueuedEditText(editing, content.prompt).length === 0 &&
+      appendDesignChangeRun(content.prompt.trim(), editing.forkDesignChangeRun).length === 0 &&
       /* fork:end fork-design-mode */
       editing.existingAttachments.length === 0 &&
       newAttachments.length === 0

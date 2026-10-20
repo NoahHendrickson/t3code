@@ -69,7 +69,6 @@ export const AlignVCenterIcon = glyph(AlignCenterVertical);
 export const AlignVEndIcon = glyph(AlignBottom);
 export const AbsolutePositionIcon = glyph(PushPin);
 
-// Layout.
 export const AutoLayoutIcon = glyph(GridFour);
 export const DirectionRowIcon = glyph(ArrowRight);
 export const DirectionColumnIcon = glyph(ArrowDown);

@@ -281,6 +281,20 @@ export type LucideIcon = FC<LucideCompatProps>;
 export type LucideProps = LucideCompatProps;
 
 /**
+ * lucide's `icons` record, keyed by PascalCase name. Only upstream's
+ * `lib/lucideIconByName.ts` reads it, and the fork shadows that module, so this
+ * keeps upstream's import type-correct rather than serving a lookup.
+ */
+export const icons: Record<string, LucideIcon> = {};
+
+/** lucide also stamps the name re-kebabed from PascalCase, which glues a
+ *  trailing digit on ("mouse-pointer-2" → "lucide-mouse-pointer2"). */
+function withPascalKebabClass(classes: string, lucideName: string): string {
+  const pascalKebab = lucideName.replace(/-(\d)/g, "$1");
+  return pascalKebab === lucideName ? classes : `${classes} lucide-${pascalKebab}`;
+}
+
+/**
  * Pins a default weight while still letting a caller override it per usage.
  * Phosphor forwards unknown props to the `<svg>`, so upstream's `strokeWidth`
  * and Tailwind `size-*` classes pass through untouched — Phosphor renders
@@ -296,15 +310,6 @@ export type LucideProps = LucideCompatProps;
  * lucide aliases share their canonical wrapper so the same glyph cannot drift
  * between two export names.
  */
-const ICONS_BY_LUCIDE_NAME = new Map<string, LucideIcon>();
-
-/** lucide also stamps the name re-kebabed from PascalCase, which glues a
- *  trailing digit on ("mouse-pointer-2" → "lucide-mouse-pointer2"). */
-function withPascalKebabClass(classes: string, lucideName: string): string {
-  const pascalKebab = lucideName.replace(/-(\d)/g, "$1");
-  return pascalKebab === lucideName ? classes : `${classes} lucide-${pascalKebab}`;
-}
-
 function icon(lucideName: string, Base: PhosphorIcon, weight: IconWeight): LucideIcon {
   const lucideClasses = withPascalKebabClass(`lucide lucide-${lucideName}`, lucideName);
   const Wrapped: LucideIcon = ({ weight: override, className, ...props }) => (
@@ -317,7 +322,8 @@ function icon(lucideName: string, Base: PhosphorIcon, weight: IconWeight): Lucid
     />
   );
   Wrapped.displayName = `Duotone(${Base.displayName ?? "Icon"})`;
-  if (!ICONS_BY_LUCIDE_NAME.has(lucideName)) ICONS_BY_LUCIDE_NAME.set(lucideName, Wrapped);
+  icons[lucideName.replace(/(?:^|-)([a-z0-9])/g, (_, first: string) => first.toUpperCase())] ??=
+    Wrapped;
   return Wrapped;
 }
 
@@ -716,18 +722,3 @@ export function createLucideIcon(lucideName: string, iconNode: LucideIconNode): 
   Drawn.displayName = `Lucide(${lucideName})`;
   return Drawn;
 }
-
-/**
- * lucide's `icons` record: every icon the table draws, keyed by its PascalCase
- * lucide name. Upstream's project icons (#9137) list and resolve icons by name
- * through it, so the picker only offers names that render as Phosphor here.
- */
-export const icons: Readonly<Record<string, LucideIcon>> = Object.fromEntries(
-  [...ICONS_BY_LUCIDE_NAME].map(([lucideName, component]) => [
-    lucideName
-      .split("-")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(""),
-    component,
-  ]),
-);

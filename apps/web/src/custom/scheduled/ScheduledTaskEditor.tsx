@@ -1,6 +1,9 @@
 import { ScheduledTaskModelPicker } from "./ScheduledTaskModelPicker";
 import { ScheduledTriggerTabs } from "./ScheduledTriggerTabs";
-import { scheduledTaskModelSelection } from "./scheduledTaskModel.logic";
+import {
+  scheduledTaskDraftSelection,
+  scheduledTaskModelSelection,
+} from "./scheduledTaskModel.logic";
 import type { AutomationDraft as DraftState } from "./githubAutomation.logic";
 import { Checkbox } from "~/components/ui/checkbox";
 /**
@@ -129,9 +132,11 @@ export function useScheduledTaskModel(input: {
   );
   const firstInstance = instanceEntries[0];
   const activeSelection = scheduledTaskModelSelection(
-    input.draft.modelKey
-      ? splitModelKey(input.draft.modelKey)
-      : scheduledTaskDefaultModel(settings, input.project, instanceEntries),
+    scheduledTaskDraftSelection(
+      input.draft.modelKey ? splitModelKey(input.draft.modelKey) : null,
+      instanceEntries,
+      () => scheduledTaskDefaultModel(settings, input.project, instanceEntries),
+    ),
     input.draft.baseModelSelection,
   );
   const activeInstanceId =

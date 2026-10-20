@@ -1,3 +1,4 @@
+import { createElement } from "react";
 /**
  * The per-row glyph in the layers rail. Figma's layers panel is scannable because the icon
  * says what KIND of thing a row is before you read its name; the tag is the only type
@@ -43,19 +44,17 @@ const BY_TAG: Record<string, PhosphorIcon> = {
   video: ImageIcon,
 };
 
-/** One wrapper per distinct glyph, built once — `glyph()` pins the panel's weight, and
- * memoizing here keeps the row from minting a component type per render. */
-const WRAPPED = new Map<PhosphorIcon, ReturnType<typeof glyph>>();
-
-function wrapped(Base: PhosphorIcon): ReturnType<typeof glyph> {
-  const known = WRAPPED.get(Base);
-  if (known) return known;
-  const made = glyph(Base);
-  WRAPPED.set(Base, made);
-  return made;
-}
+/** One wrapper per distinct glyph, built at load — `glyph()` pins the panel's weight, and
+ * a render must pick a component type, never mint one. */
+const WRAPPED = new Map<PhosphorIcon, ReturnType<typeof glyph>>(
+  [...new Set([...Object.values(BY_TAG), Square])].map((Base) => [Base, glyph(Base)]),
+);
+const FALLBACK_GLYPH = WRAPPED.get(Square)!;
 
 export function LayerTypeIcon({ tag, className }: { tag: string; className?: string }) {
-  const Glyph = wrapped(BY_TAG[tag] ?? Square);
-  return <Glyph className={className} aria-hidden />;
+  const Base = BY_TAG[tag];
+  return createElement((Base && WRAPPED.get(Base)) ?? FALLBACK_GLYPH, {
+    className,
+    "aria-hidden": true,
+  });
 }

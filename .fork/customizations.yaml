@@ -393,6 +393,7 @@
     .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 4
   files:
+    - apps/desktop/src/app/DesktopCliCommandForkIdentity.test.ts
     - apps/web/src/custom/forkBranding.ts
     - assets/fork/app-icon.icon/Assets/mark.svg
     - assets/fork/app-icon.icon/icon.json
@@ -418,7 +419,8 @@
     - apps/desktop/src/window/DesktopApplicationMenu.test.ts
     - t3.json
     - apps/desktop/src/main.ts
-    - apps/desktop/src/app/DesktopApp.ts
+    # The launcher's ownership marker: the fork's must not contain upstream's.
+    - apps/desktop/src/app/DesktopCliShim.ts
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/app/DesktopEnvironment.test.ts
@@ -5202,7 +5204,7 @@
   tier: 4
   files:
     - apps/web/src/custom/touchLongPressContextMenu.ts
-    - apps/web/src/custom/touchLongPressContextMenu.test.ts
+    - apps/web/src/custom/touchLongPressContextMenu.browser.test.ts
     - apps/web/src/custom/ForkReturnGlyph.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/custom/sidebarV2TrailingColumn.ts
@@ -5226,4 +5228,4 @@
     - apps/web/src/components/pullRequest/PullRequestListRow.tsx
   verify:
     - apps/web/src/__fork_guards__/forkTouchAffordances.test.ts
-    - apps/web/src/custom/touchLongPressContextMenu.test.ts
+    - apps/web/src/custom/touchLongPressContextMenu.browser.test.ts

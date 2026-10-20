@@ -1,6 +1,9 @@
 import "vite-plus/test/config";
 import { defineConfig } from "vite-plus";
 import * as NodeURL from "node:url";
+/* fork:begin fork-lint-cleanliness — see .fork/customizations.yaml#fork-lint-cleanliness */
+import { DEFERRED_LINT_RULES, DEFERRED_LINT_SCOPE } from "./.fork/lint-deferred.mjs";
+/* fork:end fork-lint-cleanliness */
 
 const DOM_TEST_ENVIRONMENT_ALLOWLIST: Array<string> = [];
 
@@ -57,9 +60,6 @@ export default defineConfig({
   test: {
     environment: "node",
     exclude: [
-      /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
-      "**/.t3/**",
-      /* fork:end fork-app-identity */
       "**/.repos/**",
       "**/.t3/**",
       "**/node_modules/**",
@@ -475,31 +475,10 @@ export default defineConfig({
         },
       },
       {
-        // Upstream made the React Compiler rules and its own style rules
-        // errors for every web file (2026-10 sync). Fork-owned code predates
-        // them; here they warn instead, so .fork/lint-owned.mjs tracks each as a
-        // DEFERRED_RULES baseline that only ratchets down. Sidebar.tsx is in the
-        // list because the fork owns its Sidebar() body; SidebarChrome.tsx for
-        // the fork's header row. Upstream code everywhere else keeps the errors.
-        files: [
-          "apps/web/src/custom/**",
-          "apps/web/src/overrides/**",
-          "apps/web/src/__fork_guards__/**",
-          "apps/web/src/components/Sidebar.tsx",
-          "apps/web/src/components/sidebar/SidebarChrome.tsx",
-        ],
-        rules: {
-          "react/exhaustive-effect-dependencies": "warn",
-          "react/memo-dependencies": "warn",
-          "react/refs": "warn",
-          "react/set-state-in-effect": "warn",
-          "react/static-components": "warn",
-          "t3code/no-manual-memo": "warn",
-          "t3code/no-outset-state-indicators": "warn",
-          "t3code/no-low-value-comments": "warn",
-          "t3code/no-raw-resize-observer": "warn",
-          "t3code/no-dom-test-environment": "warn",
-        },
+        // Upstream's compiler and newer style rules only warn in fork-owned code;
+        // .fork/lint-deferred.mjs owns the scope and the baselines lint-owned enforces.
+        files: DEFERRED_LINT_SCOPE,
+        rules: Object.fromEntries(DEFERRED_LINT_RULES.map(([rule]) => [rule, "warn"])),
       },
       /* fork:end fork-lint-cleanliness */
     ],

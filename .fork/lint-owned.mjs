@@ -21,6 +21,7 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
 import { parseCustomizations } from "./detect-drift.mjs";
+import { DEFERRED_LINT_RULES } from "./lint-deferred.mjs";
 
 const FORK_DIR = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
 const REPO_ROOT = NodePath.resolve(FORK_DIR, "..");
@@ -95,24 +96,14 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
 // ChatView.tsx — a fork-owned file by manifest — went from 9/13/13 to 10/20/16
 // on memo-dependencies / preserve-manual-memoization / refs between the two
 // sync points; the fork's hunks add one preserve and one refs on top.
-// Re-measured at the 2026-10-20 sync. Upstream's React Compiler conversion
-// (#19869, #20379, #20396, #20397, #20418) took the upstream-authored lines out
-// of these counts, and made the compiler rules plus its own style rules errors
-// for all web code; the root vite.config.ts demotes them to warnings for
-// fork-owned paths only. What remains is fork code: the custom/ modules and
-// the fork's Sidebar() body, which still memoizes by hand.
-export const DEFERRED_RULES = new Map([
-  ["react(exhaustive-effect-dependencies)", 3],
-  ["react(memo-dependencies)", 12],
-  ["react(refs)", 18],
-  ["react(set-state-in-effect)", 4],
-  ["react(static-components)", 1],
-  ["t3code(no-manual-memo)", 131],
-  ["t3code(no-outset-state-indicators)", 12],
-  ["t3code(no-low-value-comments)", 7],
-  ["t3code(no-raw-resize-observer)", 4],
-  ["t3code(no-dom-test-environment)", 1],
-]);
+// The table lives in lint-deferred.mjs, shared with the root vite.config.ts;
+// oxlint reports codes as `react(refs)` for the config's `react/refs`.
+export const DEFERRED_RULES = new Map(
+  DEFERRED_LINT_RULES.map(([rule, baseline]) => [
+    rule.replace(/^([^/]+)\/(.+)$/u, "$1($2)"),
+    baseline,
+  ]),
+);
 
 const isLintable = (path) => LINTABLE.has(NodePath.extname(path));
 
@@ -271,8 +262,8 @@ function main() {
 
   if (deferred.length > 0) {
     console.error(
-      `fork-lint: ${deferred.length} warning(s) under rules deferred since the 2026-09-08 ` +
-        `sync (see DEFERRED_RULES). Not blocking; burn them down in a follow-up.\n`,
+      `fork-lint: ${deferred.length} warning(s) under deferred rules (see lint-deferred.mjs). ` +
+        `Not blocking; burn them down in a follow-up.\n`,
     );
     for (const diagnostic of deferred) {
       console.error(describe(diagnostic));

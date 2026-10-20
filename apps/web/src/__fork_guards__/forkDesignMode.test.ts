@@ -501,7 +501,9 @@ describe("fork guard: design mode", () => {
     expect(queuedEdit).toContain("store.setPrompt(target, forkQueuedEdit.promptText);");
     expect(queuedEdit).toContain("originalText: forkQueuedEdit.promptText,");
     expect(queuedEdit).toContain("forkDesignChangeRun: forkQueuedEdit.run,");
-    expect(queuedEdit).toContain("const editText = forkQueuedEditText(editing, content.prompt);");
+    expect(queuedEdit).toContain(
+      "const editText = appendDesignChangeRun(content.prompt.trim(), editing.forkDesignChangeRun);",
+    );
     expect(queuedEdit).toMatch(
       /text:\s*editText\.length === 0\s*\?\s*ATTACHMENT_ONLY_BOOTSTRAP_PROMPT\s*:\s*editText,/u,
     );

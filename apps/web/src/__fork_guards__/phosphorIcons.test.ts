@@ -89,6 +89,23 @@ describe("fork guard: phosphor-duotone-icons", () => {
     expect(popular.filter((name) => !iconNames.includes(name ?? ""))).toEqual([]);
   });
 
+  it("keeps resolving project icons saved under an alias name", async () => {
+    // The fork's picker has always offered every `*Icon` export, aliases
+    // included, so these names can already be saved on a project.
+    const { lucideIconByName, lucideIconNames } = await import("../overrides/lib/lucideIconByName");
+    for (const name of [
+      "more-horizontal",
+      "x-circle",
+      "package-plus",
+      "circle-arrow-up",
+      "square-arrow-out-up-right",
+      "git-pull-request-arrow",
+    ]) {
+      expect(lucideIconNames).toContain(name);
+      expect(lucideIconByName(name)).toBeDefined();
+    }
+  });
+
   it("exports every lucide binding the app imports", () => {
     const shim = read(SHIM_PATH);
     const exported = new Set([
