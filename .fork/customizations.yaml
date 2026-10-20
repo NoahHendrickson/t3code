@@ -185,6 +185,8 @@
   files: []
   shadows: []
   watch:
+    # Fenced override pinning a pnpm-patched transitive dep for Release Smoke.
+    - pnpm-workspace.yaml
     - .github/workflows/ci.yml
     - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
@@ -410,6 +412,7 @@
     - assets/fork/n3-project-icon-180.png
   shadows: []
   watch:
+    - apps/desktop/src/window/DesktopApplicationMenu.test.ts
     - t3.json
     - apps/desktop/src/main.ts
     - apps/desktop/src/app/DesktopApp.ts

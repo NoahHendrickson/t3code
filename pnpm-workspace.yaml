@@ -226,6 +226,12 @@ overrides:
   # Move this with @react-navigation/native: an older core than it requires crashes
   # every native stack at launch.
   "@react-navigation/core": 7.24.0
+  # fork:begin ci-runners — see .fork/customizations.yaml#ci-runners
+  # expo asks for expo-modules-core ~58.0.22 and the patch below is for 58.0.22;
+  # Release Smoke re-resolves from the registry, so a newer 58.0.x fails it with
+  # ERR_PNPM_UNUSED_PATCH. Drop this once upstream pins it or moves the patch.
+  expo-modules-core: 58.0.22
+  # fork:end ci-runners
   # The dbus-next patch drops usocket from the package, but pnpm resolves from the
   # registry manifest, so the edge has to be cut here as well.
   "dbus-next>usocket": "-"
