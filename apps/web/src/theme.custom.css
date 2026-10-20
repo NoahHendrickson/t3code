@@ -3054,3 +3054,11 @@
     inset: -4px;
   }
 }
+
+/* Side chat — see `.fork/customizations.yaml#fork-side-chat`.
+   The desktop side chat window is only a chat, so the header's right-panel
+   toggles (diff, terminal, browser) are not drawn. `data-side-chat` is set on
+   the root by custom/sideChat/surface.ts in that window only. */
+:root[data-fork="noahhendrickson-t3code"][data-side-chat] [data-workspace-titlebar-controls] {
+  display: none;
+}

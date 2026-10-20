@@ -38,6 +38,10 @@ import { SlowRpcRequestToastCoordinator } from "../components/SlowRpcRequestToas
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
 import { ForkDictationHotkeyHost } from "../custom/voice/ForkDictationHotkeyHost";
 /* fork:end fork-local-dictation */
+/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+import { SideChatShell } from "../custom/sideChat/SideChatShell";
+import { isSideChatSurface } from "../custom/sideChat/surface";
+/* fork:end fork-side-chat */
 import { ChatGptWelcomeCoordinator } from "../components/settings/ChatGptWelcomeCoordinator";
 import { ProviderAuthCallbackCoordinator } from "../components/settings/ProviderAuthCallbackCoordinator";
 import { ThemeEditorHost } from "../components/settings/ThemeEditorHost";
@@ -202,6 +206,32 @@ function RootRouteView() {
       </>
     );
   }
+
+  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+     The desktop side chat window is only a chat: no sidebar, and none of the
+     app-wide coordinators below. The main window already runs each of them
+     once; a second copy would double every notification and sound, fight
+     over the dictation and SnapShot hotkeys, and auto-navigate the side chat
+     to the server's bootstrap thread. */
+  if (isSideChatSurface) {
+    return (
+      <ToastProvider>
+        <AnchoredToastProvider>
+          <ContrastAppearanceSync />
+          <EnvironmentThemeSync />
+          <GlassAppearanceSync />
+          <FontAppearanceSync />
+          <ConfirmDialogHost />
+          <CommandPalette>
+            <SideChatShell>
+              <Outlet />
+            </SideChatShell>
+          </CommandPalette>
+        </AnchoredToastProvider>
+      </ToastProvider>
+    );
+  }
+  /* fork:end fork-side-chat */
 
   const appShell = (
     <CommandPalette>

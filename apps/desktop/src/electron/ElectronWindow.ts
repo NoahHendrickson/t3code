@@ -20,6 +20,9 @@ import {
   loadWindowsForegroundApi,
 } from "./WindowsForeground.ts";
 import { startWindowsForegroundFocusThread } from "./WindowsForegroundFocusThread.ts";
+/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+import { isForkAuxiliaryWindow } from "../fork/ForkAuxiliaryWindows.ts";
+/* fork:end fork-side-chat */
 
 function windowsForegroundFocusTarget(window: Electron.BrowserWindow) {
   return {
@@ -183,7 +186,12 @@ export const make = Effect.gen(function* () {
       return main;
     }
 
-    const first = Option.fromNullishOr((yield* listWindows)[0] ?? null);
+    /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+       The side chat window is never the app's window of last resort. */
+    const first = Option.fromNullishOr(
+      (yield* listWindows).find((window) => !isForkAuxiliaryWindow(window)) ?? null,
+    );
+    /* fork:end fork-side-chat */
     if (Option.isNone(first) || (yield* isWindowDestroyed(first.value))) {
       return Option.none<Electron.BrowserWindow>();
     }
