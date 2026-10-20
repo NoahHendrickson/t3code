@@ -94,16 +94,21 @@ const make = Effect.gen(function* () {
       );
     const cwd = projection.checkpointScopes.find((scope) => scope.id === input.scopeId)?.cwd;
     if (cwd !== undefined) {
+      // Retrying a display refresh after the checkpoint is durable blocks the next turn.
       /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow
          The thread whose turn just ran on the shared checkout adopts the
-         branch found there; the follower never fails the finalization. */
+         branch found there; the follower never fails the finalization. A
+         failed refresh is logged as upstream does and skips the follow. */
       const local = yield* observer
         .refresh({ cwd, threadId: input.threadId, runId: input.runId })
         .pipe(
-          Effect.mapError(
-            (cause) =>
-              new RunFinalizationError({ ...input, operation: "refresh-workspace", cause }),
-          ),
+          Effect.catchTags({
+            RunFinalizationRefreshError: (cause) =>
+              Effect.logWarning("Failed to refresh workspace after checkpoint capture", {
+                ...input,
+                cause,
+              }).pipe(Effect.as(null)),
+          }),
         );
       if (local !== null) {
         yield* follower.follow({ cwd, threadId: input.threadId, runId: input.runId, local });
@@ -125,8 +130,8 @@ export const layerObserver = Layer.effect(
     const pullRequests = yield* PullRequestService.PullRequestService;
     return {
       refreshAfterTurn: pullRequests.refreshAfterTurn,
-      refresh: ({ cwd, threadId, runId }) =>
-        Effect.gen(function* () {
+      refresh: Effect.fn("RunFinalizationService.refresh")(
+        function* ({ cwd, threadId, runId }) {
           const [, local] = yield* Effect.all(
             [workspaceEntries.refresh(cwd), vcsStatus.refreshLocalStatus(cwd)],
             { concurrency: "unbounded" },
@@ -150,7 +155,10 @@ export const layerObserver = Layer.effect(
           /* fork:begin server-local-checkout-branch-follow — see .fork/customizations.yaml#server-local-checkout-branch-follow */
           return local;
           /* fork:end server-local-checkout-branch-follow */
-        }).pipe(Effect.mapError((cause) => new RunFinalizationRefreshError({ cwd, cause }))),
+        },
+        (effect, { cwd }) =>
+          effect.pipe(Effect.mapError((cause) => new RunFinalizationRefreshError({ cwd, cause }))),
+      ),
     };
   }),
 );

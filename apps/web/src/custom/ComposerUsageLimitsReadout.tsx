@@ -47,7 +47,7 @@ export const ComposerUsageLimitsReadout = memo(function ComposerUsageLimitsReado
 
 /** Mounted only while the menu is open, so the composer never subscribes to every environment's providers. */
 function ComposerLimitsMenu(props: { readonly now: number }) {
-  const presentations = useAtomValue(environmentPresentations.presentationsAtom);
+  const presentations = useAtomValue(environmentPresentations.presentationsWithProvidersAtom);
   return (
     <div className="max-h-[min(28rem,calc(var(--available-height)-1rem))] overflow-y-auto py-1">
       <UsageLimitsPooled presentations={presentations} now={props.now} compact />

@@ -95,15 +95,23 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
 // ChatView.tsx — a fork-owned file by manifest — went from 9/13/13 to 10/20/16
 // on memo-dependencies / preserve-manual-memoization / refs between the two
 // sync points; the fork's hunks add one preserve and one refs on top.
+// Re-measured at the 2026-10-20 sync. Upstream's React Compiler conversion
+// (#19869, #20379, #20396, #20397, #20418) took the upstream-authored lines out
+// of these counts, and made the compiler rules plus its own style rules errors
+// for all web code; the root vite.config.ts demotes them to warnings for
+// fork-owned paths only. What remains is fork code: the custom/ modules and
+// the fork's Sidebar() body, which still memoizes by hand.
 export const DEFERRED_RULES = new Map([
-  ["react(exhaustive-effect-dependencies)", 17],
-  ["react(immutability)", 0],
-  ["react(memo-dependencies)", 23],
-  ["react(preserve-manual-memoization)", 20],
-  ["react(purity)", 1],
-  ["react(refs)", 36],
-  ["react(set-state-in-effect)", 26],
-  ["react(static-components)", 2],
+  ["react(exhaustive-effect-dependencies)", 3],
+  ["react(memo-dependencies)", 12],
+  ["react(refs)", 18],
+  ["react(set-state-in-effect)", 4],
+  ["react(static-components)", 1],
+  ["t3code(no-manual-memo)", 131],
+  ["t3code(no-outset-state-indicators)", 12],
+  ["t3code(no-low-value-comments)", 7],
+  ["t3code(no-raw-resize-observer)", 4],
+  ["t3code(no-dom-test-environment)", 1],
 ]);
 
 const isLintable = (path) => LINTABLE.has(NodePath.extname(path));

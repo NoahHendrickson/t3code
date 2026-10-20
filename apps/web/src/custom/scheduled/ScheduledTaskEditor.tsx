@@ -49,7 +49,6 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { resolveWorkspaceDisplayName } from "~/components/BranchToolbar.logic";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { ComposerControl, ComposerSelectControl } from "~/components/chat/ComposerControl";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
@@ -121,12 +120,12 @@ export function useScheduledTaskModel(input: {
   const providers =
     useAtomValue(serverEnvironment.providersValueAtom(input.environmentId)) ??
     EMPTY_SERVER_PROVIDERS;
-  const instanceEntries = useMemo(
-    () =>
-      sortProviderInstanceEntries(
-        applyProviderInstanceSettings(deriveProviderInstanceEntries(providers), settings),
-      ),
-    [providers, settings],
+  const instanceEntries = sortProviderInstanceEntries(
+    applyProviderInstanceSettings(
+      deriveProviderInstanceEntries(providers),
+      settings,
+      input.project?.id ?? null,
+    ),
   );
   const firstInstance = instanceEntries[0];
   const activeSelection = scheduledTaskModelSelection(
@@ -234,6 +233,7 @@ export function ScheduledTaskEditor(props: ScheduledTaskEditorProps) {
             >
               <div data-fork-composer-model-controls="true" className="flex min-w-0 items-center">
                 <ScheduledTaskModelPicker
+                  environmentId={props.environmentId}
                   disabled={props.disabled}
                   activeInstanceId={model.activeInstanceId}
                   model={model.activeModel}
@@ -554,9 +554,17 @@ function RunsInPills(props: ScheduledTaskEditorProps) {
   );
 }
 
+/** The checkout folder's own name, as the toolbar labels a workspace. */
+function checkoutDisplayName(path: string | null): string | null {
+  if (!path) return null;
+  const normalizedPath = path.replace(/[\\/]+$/, "");
+  if (normalizedPath.length === 0) return path;
+  return normalizedPath.split(/[\\/]/).at(-1) ?? normalizedPath;
+}
+
 function CheckoutPathPill(props: ScheduledTaskEditorProps) {
   const { draft, setDraft } = props;
-  const name = resolveWorkspaceDisplayName(draft.existingWorktreePath.trim() || null);
+  const name = checkoutDisplayName(draft.existingWorktreePath.trim() || null);
   return (
     <Popover>
       <PopoverTrigger

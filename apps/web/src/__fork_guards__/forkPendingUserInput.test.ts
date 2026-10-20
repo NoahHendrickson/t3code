@@ -57,12 +57,13 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(override).toContain("memo(function ComposerPendingUserInputCard(");
   });
 
-  it("gates both Questions mounts and the card hook on the operate scope (upstream #9786)", () => {
-    // ChatComposer mounts the panel twice: expanded, and inside the collapsed
-    // mobile controls. A sync that keeps only the first gate leaves a read-only
-    // phone client walking through answers it can never submit.
+  it("gates every Questions mount and the card hook on the operate scope (upstream #9786)", () => {
+    // ChatComposer mounts the panel once: upstream #20391 keeps the composer
+    // expanded while a question is pending, deleting the collapsed-mobile
+    // mount. A sync that brings a second mount back must gate it too, or a
+    // read-only phone client walks through answers it can never submit.
     const mounts = chatComposer.match(/<ComposerPendingUserInputPanel\b[\s\S]*?\/>/gu) ?? [];
-    expect(mounts).toHaveLength(2);
+    expect(mounts).toHaveLength(1);
     for (const mount of mounts) {
       expect(mount).toContain("disabled={!canOperateThread}");
     }

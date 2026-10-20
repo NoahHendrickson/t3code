@@ -21,7 +21,7 @@ const chatView = NodeFS.readFileSync(
 
 describe("fork guard: fork-new-worktree-default-base", () => {
   it("clears the carried branch only when a draft enters worktree mode", () => {
-    const start = chatView.indexOf("const onEnvModeChange = useCallback(");
+    const start = chatView.indexOf("const onEnvModeChange = (mode");
     expect(start).toBeGreaterThan(-1);
     const fence = chatView.slice(
       start,

@@ -53,7 +53,15 @@ const readReleaseJobs = () => readWorkflowJobs("release.yml");
 describe("fork guard: release-upstream-only", () => {
   it("gates both release entry points on the upstream repository", () => {
     const jobs = readReleaseJobs();
-    const gated = jobs.filter((job) => job.body.includes(UPSTREAM_GATE)).map((job) => job.id);
+    // An env value may branch on the repository too (build_bundle's telemetry
+    // channel); only a condition line gates the job.
+    const gated = jobs
+      .filter((job) =>
+        job.body
+          .split("\n")
+          .some((line) => line.includes(UPSTREAM_GATE) && !/^\s+[A-Z][A-Z0-9_]*:/u.test(line)),
+      )
+      .map((job) => job.id);
     // relay_public_config runs alongside preflight since upstream #7975, so
     // it carries the gate itself instead of inheriting it.
     expect(gated).toEqual(["resolve_commit", "preflight", "relay_public_config"]);

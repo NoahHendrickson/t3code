@@ -10,10 +10,7 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as ProjectStore from "../orchestration-v2/ProjectStore.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
-import * as GitHubApi from "../sourceControl/GitHubApi.ts";
-import * as GitHubCredentials from "../sourceControl/GitHubCredentials.ts";
-import * as GitHubGraphQlBudget from "../sourceControl/githubGraphQlBudget.ts";
-import * as SourceControlRateLimit from "../sourceControl/SourceControlRateLimit.ts";
+import * as GitHubRest from "@t3tools/source-control-github/server/GitHubRest";
 
 const Repository = Schema.Struct({ full_name: Schema.String, default_branch: Schema.String });
 const Hook = Schema.Struct({ id: Schema.Int, config: Schema.Struct({ url: Schema.String }) });
@@ -46,10 +43,10 @@ export class GitHubPrAutomation extends Context.Service<
 >()("t3/scheduledTasks/GitHubPrAutomation") {}
 
 export const make = Effect.gen(function* () {
-  const api = yield* GitHubApi.GitHubApi;
+  const api = yield* GitHubRest.GitHubRest;
   const projects = yield* ProjectStore.ProjectStoreV2;
   const vcs = yield* VcsProcess.VcsProcess;
-  const rest = (input: Omit<GitHubApi.GitHubRestInput, "host" | "operation">) =>
+  const rest = (input: Omit<GitHubRest.GitHubRestInput, "host" | "operation">) =>
     api
       .rest({
         ...input,
@@ -221,13 +218,6 @@ export const make = Effect.gen(function* () {
   return GitHubPrAutomation.of({ connect, remove });
 });
 
-export const layer = Layer.effect(GitHubPrAutomation, make).pipe(
-  Layer.provide(ProjectStore.layer),
-  Layer.provide(
-    GitHubApi.layer.pipe(
-      Layer.provide(GitHubCredentials.layer),
-      Layer.provide(GitHubGraphQlBudget.layer),
-      Layer.provide(SourceControlRateLimit.layer),
-    ),
-  ),
-);
+// GitHubRest comes from the server's source-control layer, which builds it once so
+// these calls share the quota reserve and rate-limit pause with every other GitHub reader.
+export const layer = Layer.effect(GitHubPrAutomation, make).pipe(Layer.provide(ProjectStore.layer));

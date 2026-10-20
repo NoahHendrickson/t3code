@@ -21,7 +21,6 @@ import { XIcon } from "~/custom/icons/lucide-phosphor";
 const webRoot = NodePath.resolve(NodeURL.fileURLToPath(new URL(".", import.meta.url)), "../..");
 const repoRoot = NodePath.resolve(webRoot, "../..");
 const SHIM_PATH = "src/custom/icons/lucide-phosphor.tsx";
-const DYNAMIC_SHIM_PATH = "src/custom/icons/lucide-phosphor-dynamic.tsx";
 
 function read(relativePath: string): string {
   return NodeFS.readFileSync(NodePath.join(webRoot, relativePath), "utf8");
@@ -73,25 +72,17 @@ describe("fork guard: phosphor-duotone-icons", () => {
     const config = read("vite.config.ts");
     expect(config).toContain('"lucide-react": NodeURL.fileURLToPath(');
     expect(config).toContain(SHIM_PATH);
-    // The subpath must be listed before the bare name: the bare alias also
-    // matches `lucide-react/dynamic` and would rewrite it into the shim file.
-    expect(config).toContain('"lucide-react/dynamic": NodeURL.fileURLToPath(');
-    expect(config.indexOf('"lucide-react/dynamic"')).toBeLessThan(
-      config.indexOf('"lucide-react":'),
-    );
-    expect(config).toContain(DYNAMIC_SHIM_PATH);
   });
 
   it("keeps the TypeScript path mapping in step with the bundler alias", () => {
     const tsconfig = read("tsconfig.json");
     expect(tsconfig).toContain(`"lucide-react": ["./${SHIM_PATH}"]`);
-    expect(tsconfig).toContain(`"lucide-react/dynamic": ["./${DYNAMIC_SHIM_PATH}"]`);
   });
 
   it("answers every popular project icon by name from the shim's table", async () => {
     // upstream's picker leads with these; a name the table cannot draw would
     // silently fall back to the folder glyph in the picker itself.
-    const { iconNames } = await import("../custom/icons/lucide-phosphor-dynamic");
+    const { lucideIconNames: iconNames } = await import("../overrides/lib/lucideIconByName");
     const options = read("src/projectIconOptions.ts");
     const popular = [...options.matchAll(/^\s+"([a-z0-9-]+)",$/gmu)].map((m) => m[1]);
     expect(popular.length).toBeGreaterThan(10);
@@ -164,9 +155,14 @@ describe("fork guard: phosphor-duotone-icons", () => {
     // This file names all three forms in prose, and the shim is the alias
     // target rather than a consumer of it.
     const selfPath = NodeURL.fileURLToPath(import.meta.url);
+    const srcRoot = NodePath.join(webRoot, "src");
     for (const file of aliasedSourceFiles()) {
       if (file === selfPath) continue;
       if (file.endsWith(SHIM_PATH.replaceAll("/", NodePath.sep))) continue;
+      // An upstream module the fork shadows never reaches the bundle; its
+      // override is scanned in its place.
+      const relative = NodePath.relative(srcRoot, file);
+      if (NodeFS.existsSync(NodePath.join(srcRoot, "overrides", relative))) continue;
       const source = NodeFS.readFileSync(file, "utf8");
       const hasDefaultOrNamespace =
         /import\s+(?:\*\s+as\s+\w+|\w+)\s*(?:,\s*\{[^}]*\})?\s*from\s*"lucide-react"/.test(source);

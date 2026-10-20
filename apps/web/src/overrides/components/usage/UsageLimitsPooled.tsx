@@ -16,34 +16,43 @@ import {
   type LimitPool,
   type LimitPoolMember,
   type LimitPoolWindow,
+  paceRemainingPercent,
   remainingPercent,
 } from "@t3tools/shared/usageLimits";
+import type { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { AlertTriangleIcon, ExternalLinkIcon, TicketIcon } from "lucide-react";
-import { Fragment, type ReactNode, useState } from "react";
+import {
+  createContext,
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  use,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { ensureLocalApi } from "../../localApi";
 import { usePrimarySettings } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
 import { formatUpcomingTimestamp } from "../../timestampFormat";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
-import { getDriverOption } from "../settings/providerDriverMeta";
+import { providerClients } from "../settings/providerDriverMeta";
 import { RedactedSensitiveText } from "../settings/RedactedSensitiveText";
 import { Button } from "../ui/button";
 import { OpenAI } from "../Icons";
 import { Alert, AlertTitle } from "../ui/alert";
-import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
+import { Popover, PopoverCreateHandle, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { ScheduledCard } from "~/custom/scheduled/scheduledPageChrome";
 import { UsageMeter } from "~/custom/UsageMeter";
 import { actionableLimitNotices } from "~/custom/usageLimitNotices";
 import { PaceIcon, ResetCreditDialog, resetCreditsSummary, useResetCredit } from "./UsageLimits";
 
-/** `someone@example.com` → `SE`: enough to tell accounts apart, too little to identify one. */
 function accountInitials(email: string): string {
   const [local = "", domain = ""] = email.split("@");
   return `${local[0] ?? ""}${domain[0] ?? ""}`.toUpperCase() || "?";
 }
 
-/** A stable hue per email, so the same account gets the same chip on every visit. */
 function accountHue(email: string): number {
   let hash = 0;
   for (let index = 0; index < email.length; index += 1) {
@@ -52,7 +61,6 @@ function accountHue(email: string): number {
   return Math.abs(hash) % 360;
 }
 
-/** The two-letter chip for an email, coloured by a stable hue per address. */
 function AccountChip({ email }: { readonly email: string }) {
   const hue = accountHue(email);
   return (
@@ -67,10 +75,6 @@ function AccountChip({ email }: { readonly email: string }) {
   );
 }
 
-/**
- * The same mark the model picker uses for a native instance (provider glyph,
- * initials badge, accent); hub accounts have no instance, so they get the chip.
- */
 function AccountAvatar({
   account,
   className,
@@ -83,7 +87,9 @@ function AccountAvatar({
       <ProviderInstanceIcon
         driverKind={account.driver}
         displayName={
-          account.displayName ?? getDriverOption(account.driver)?.label ?? String(account.driver)
+          account.displayName ??
+          providerClients.get(account.driver)?.label ??
+          String(account.driver)
         }
         accentColor={account.accentColor}
         showBadge={Boolean(account.displayName)}
@@ -96,11 +102,6 @@ function AccountAvatar({
   return account.email ? <AccountChip email={account.email} /> : null;
 }
 
-/**
- * Who an account is, without printing the email: the instance name when there
- * is one, else a two-letter chip. The address itself is revealed on demand in
- * the segment's popover.
- */
 function AccountName({
   account,
   className,
@@ -118,7 +119,7 @@ function AccountName({
   }
   return (
     <span className={className}>
-      {getDriverOption(account.driver)?.label ?? String(account.driver)}
+      {providerClients.get(account.driver)?.label ?? String(account.driver)}
     </span>
   );
 }
@@ -132,11 +133,6 @@ function Row({ label, children }: { readonly label: string; readonly children: R
   );
 }
 
-/**
- * Everything about one account in one window: plan, where it is signed in,
- * the email on request, reset time and share of the pool it restores, and the
- * reset-credit action. Opens on hover for a glance, on click to act.
- */
 function SegmentPopover({
   account,
   window,
@@ -149,12 +145,12 @@ function SegmentPopover({
   readonly window: LimitPoolMember["window"];
   readonly reset: LimitPoolWindow["resets"][number] | undefined;
   readonly now: number;
-  /** Redeem state owned by the segment, since the confirm lives outside this popover. */
   readonly redeem: ReturnType<typeof useResetCredit> | null;
   readonly onRedeem: () => void;
 }) {
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
   const remaining = remainingPercent(window);
+  const timeLeft = paceRemainingPercent(window, now);
   const resetsIn = formatResetsIn(window, now);
   const where =
     account.environments.length > 0
@@ -168,7 +164,7 @@ function SegmentPopover({
         <span className="flex items-center gap-2 text-sm font-medium text-foreground">
           <AccountAvatar account={account} />
           <span className="truncate">
-            {account.displayName ?? getDriverOption(account.driver)?.label ?? account.driver}
+            {account.displayName ?? providerClients.get(account.driver)?.label ?? account.driver}
           </span>
         </span>
         {account.email ? (
@@ -195,6 +191,7 @@ function SegmentPopover({
             {resetsIn ? ` · ${resetsIn.replace("resets in ", "in ")}` : ""}
           </Row>
         ) : null}
+        {timeLeft !== null ? <Row label="Even pace">{timeLeft}% left by now</Row> : null}
         {reset && reset.restoresPercent > 0 ? (
           <Row label="Restores">+{reset.restoresPercent}% of pool</Row>
         ) : null}
@@ -220,6 +217,62 @@ function SegmentPopover({
 }
 
 /**
+ * Every segment on the page shares one popover, so hovering or clicking another
+ * segment moves it instead of opening a second one. The payload is the segment
+ * it currently describes.
+ */
+type SegmentPayload = Omit<Parameters<typeof SegmentPopover>[0], "now" | "onRedeem">;
+const SegmentPopoverContext = createContext<ReturnType<
+  typeof PopoverCreateHandle<SegmentPayload>
+> | null>(null);
+
+function ActiveSegmentPopover({
+  handle,
+  actions,
+  payload,
+  pools,
+  now,
+}: {
+  readonly handle: ReturnType<typeof PopoverCreateHandle<SegmentPayload>>;
+  readonly actions: RefObject<PopoverPrimitive.Root.Actions | null>;
+  readonly payload: SegmentPayload;
+  readonly pools: readonly LimitPool[];
+  readonly now: number;
+}) {
+  const available = pools.some((pool) =>
+    displayLimitWindows(pool).some((window) =>
+      window.members.some(
+        (member) =>
+          member.account.key === payload.account.key &&
+          member.window.id === payload.window.id &&
+          member.window.kind === payload.window.kind &&
+          Boolean(member.account.redeem) === Boolean(payload.redeem),
+      ),
+    ),
+  );
+  // The trigger is gone, so the popup has nothing to anchor to: an exit transition would
+  // slide it to the viewport origin. Unmount it outright, which also clears Base UI's
+  // active-trigger bookkeeping so the segment can open again when it comes back.
+  useLayoutEffect(() => {
+    if (available) return;
+    handle.close();
+    actions.current?.unmount();
+  }, [available, handle, actions]);
+  return (
+    <PopoverPopup side="top" sideOffset={6}>
+      <SegmentPopover
+        {...payload}
+        now={now}
+        onRedeem={() => {
+          handle.close();
+          payload.redeem?.setConfirming(true);
+        }}
+      />
+    </PopoverPopup>
+  );
+}
+
+/**
  * One account's share of one pooled window: a thin fully rounded meter, its
  * popover, and the reset confirm. The button is taller than the bar it draws
  * so the strip stays easy to hover and tap. The confirm is a sibling of the
@@ -228,10 +281,7 @@ function SegmentPopover({
  */
 function PoolSegment({
   account,
-  window,
-  reset,
-  now,
-  compact,
+  ...props
 }: {
   readonly account: LimitAccount;
   readonly window: LimitPoolMember["window"];
@@ -239,102 +289,80 @@ function PoolSegment({
   readonly now: number;
   readonly compact: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const remaining = remainingPercent(window);
-  const resetsIn = formatResetsIn(window, now);
-  const credits = account.limits.resetCredits?.availableCount ?? 0;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        openOnHover
-        render={
-          <button
-            type="button"
-            aria-label={`${account.displayName ?? (account.email ? accountInitials(account.email) : account.driver)}: ${remaining}% left${resetsIn ? `, ${resetsIn}` : ""}${credits ? `, ${credits} reset ${credits === 1 ? "credit" : "credits"} banked` : ""}`}
-            className={cn(
-              "group/segment flex min-w-0 flex-1 cursor-pointer items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              compact ? "h-3" : "h-4",
-            )}
-          />
-        }
-      >
-        <UsageMeter
-          remaining={remaining}
-          className={cn("w-full", compact ? "h-1" : "h-1.5")}
-          fillClassName="opacity-85 group-hover/segment:opacity-100 group-data-[popup-open]/segment:opacity-100"
-        />
-      </PopoverTrigger>
-      {account.redeem ? (
-        <RedeemableSegmentPopup
-          account={account}
-          window={window}
-          reset={reset}
-          now={now}
-          redeemAt={account.redeem}
-          closePopover={() => setOpen(false)}
-        />
-      ) : (
-        <PopoverPopup side="top" sideOffset={6}>
-          <SegmentPopover
-            account={account}
-            window={window}
-            reset={reset}
-            now={now}
-            redeem={null}
-            onRedeem={() => {}}
-          />
-        </PopoverPopup>
-      )}
-    </Popover>
+  return account.redeem ? (
+    <RedeemableSegment account={account} redeemAt={account.redeem} {...props} />
+  ) : (
+    <SegmentTriggers account={account} redeem={null} {...props} />
   );
 }
 
-/** Split out so the redeem hook only runs for accounts that can redeem. */
-function RedeemableSegmentPopup({
-  account,
-  window,
-  reset,
-  now,
+function RedeemableSegment({
   redeemAt,
-  closePopover,
-}: {
-  readonly account: LimitAccount;
-  readonly window: LimitPoolMember["window"];
-  readonly reset: LimitPoolWindow["resets"][number] | undefined;
-  readonly now: number;
+  ...props
+}: Omit<Parameters<typeof SegmentTriggers>[0], "redeem"> & {
   readonly redeemAt: NonNullable<LimitAccount["redeem"]>;
-  readonly closePopover: () => void;
 }) {
   const redeem = useResetCredit(redeemAt.environmentId, redeemAt.input);
   return (
     <>
-      <PopoverPopup side="top" sideOffset={6}>
-        <SegmentPopover
-          account={account}
-          window={window}
-          reset={reset}
-          now={now}
-          redeem={redeem}
-          onRedeem={() => {
-            closePopover();
-            redeem.setConfirming(true);
-          }}
-        />
-      </PopoverPopup>
+      <SegmentTriggers redeem={redeem} {...props} />
       <ResetCreditDialog
         open={redeem.confirming}
         onOpenChange={redeem.setConfirming}
         onConfirm={() => void redeem.redeem()}
         disabled={!redeem.canManageProviders}
       />
-      {/* The popover closed before the confirm, so the outcome needs a home
-          outside it: last in the wrapping row, so the segments keep their columns. */}
-      {redeem.status ? (
+      {/* The popover closed before the confirm, so progress and the outcome need
+          a home outside it: last in the wrapping row, so the segments keep their columns. */}
+      {redeem.busy || redeem.status ? (
         <span role="status" className="order-last basis-full text-xs text-muted-foreground">
-          <AccountName account={account} className="font-medium text-foreground" /> {redeem.status}
+          <AccountName account={props.account} className="font-medium text-foreground" />{" "}
+          {redeem.busy ? "Using reset credit…" : redeem.status}
         </span>
       ) : null}
     </>
+  );
+}
+
+function SegmentTriggers({
+  account,
+  window,
+  reset,
+  redeem,
+  now,
+  compact,
+}: SegmentPayload & {
+  readonly now: number;
+  readonly compact: boolean;
+}) {
+  const popover = use(SegmentPopoverContext) ?? undefined;
+  const payload: SegmentPayload = { account, window, reset, redeem };
+  const remaining = remainingPercent(window);
+  const timeLeft = paceRemainingPercent(window, now);
+  const resetsIn = formatResetsIn(window, now);
+  const credits = account.limits.resetCredits?.availableCount ?? 0;
+  return (
+    <PopoverTrigger
+      handle={popover}
+      payload={payload}
+      openOnHover
+      render={
+        <button
+          type="button"
+          aria-label={`${account.displayName ?? (account.email ? accountInitials(account.email) : account.driver)}: ${remaining}% left${resetsIn ? `, ${resetsIn}` : ""}${timeLeft === null ? "" : `, ${timeLeft}% of the window left`}${credits ? `, ${credits} reset ${credits === 1 ? "credit" : "credits"} banked` : ""}`}
+          className={cn(
+            "group/segment flex min-w-0 flex-1 cursor-pointer items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            compact ? "h-3" : "h-4",
+          )}
+        />
+      }
+    >
+      <UsageMeter
+        remaining={remaining}
+        className={cn("w-full", compact ? "h-1" : "h-1.5")}
+        fillClassName="opacity-85 group-hover/segment:opacity-100 group-data-[popup-open]/segment:opacity-100"
+      />
+    </PopoverTrigger>
   );
 }
 
@@ -427,7 +455,7 @@ function PoolSection({
   readonly now: number;
   readonly compact: boolean;
 }) {
-  const label = getDriverOption(pool.driver)?.label ?? String(pool.driver);
+  const label = providerClients.get(pool.driver)?.label ?? String(pool.driver);
   const windows = displayLimitWindows(pool);
   const credits = pool.accounts.reduce(
     (total, account) => total + (account.limits.resetCredits?.availableCount ?? 0),
@@ -494,11 +522,6 @@ function LimitsCard({
   );
 }
 
-/**
- * Accounts pooled per provider: what is open across all of them, who resets
- * next, and how much of the pool that hands back. Answers "can I keep going"
- * before "on which account".
- */
 export function UsageLimitsPooled({
   presentations,
   now,
@@ -511,6 +534,8 @@ export function UsageLimitsPooled({
   /** The composer's limits menu: providers split by dividers instead of cards, smaller type. */
   readonly compact?: boolean;
 }) {
+  const [segmentPopover] = useState(() => PopoverCreateHandle<SegmentPayload>());
+  const segmentPopoverActions = useRef<PopoverPrimitive.Root.Actions | null>(null);
   const pools = collectLimitPools(collectLimitAccounts(presentations), now);
   const notices = actionableLimitNotices(presentations);
   const externalLinks = collectExternalUsageLinks(presentations);
@@ -526,12 +551,27 @@ export function UsageLimitsPooled({
           No provider on the selected environments reports subscription limits.
         </p>
       ) : null}
-      {pools.map((pool, index) => (
-        <Fragment key={pool.driver}>
-          {index === cursorPromptAt ? cursorPrompt : null}
-          <PoolSection pool={pool} now={now} compact={compact} />
-        </Fragment>
-      ))}
+      <SegmentPopoverContext value={segmentPopover}>
+        {pools.map((pool, index) => (
+          <Fragment key={pool.driver}>
+            {index === cursorPromptAt ? cursorPrompt : null}
+            <PoolSection pool={pool} now={now} compact={compact} />
+          </Fragment>
+        ))}
+      </SegmentPopoverContext>
+      <Popover handle={segmentPopover} actionsRef={segmentPopoverActions}>
+        {({ payload }) =>
+          payload ? (
+            <ActiveSegmentPopover
+              handle={segmentPopover}
+              actions={segmentPopoverActions}
+              payload={payload}
+              pools={pools}
+              now={now}
+            />
+          ) : null
+        }
+      </Popover>
       {cursorPromptAt === pools.length ? cursorPrompt : null}
       {externalLinks.map((link) => (
         <LimitsCard
@@ -573,7 +613,6 @@ export function UsageLimitsPooled({
   );
 }
 
-/** Sources and providers that could not be read, so a missing bar is not mistaken for a full one. */
 function LimitNotices({ notices }: { readonly notices: readonly string[] }) {
   return (
     <Alert variant="warning" controlAlignment="first-line">

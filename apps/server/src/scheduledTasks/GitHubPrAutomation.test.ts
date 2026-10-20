@@ -16,7 +16,9 @@ import * as ThreadManagementService from "../orchestration-v2/ThreadManagementSe
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
-import * as GitHubApi from "../sourceControl/GitHubApi.ts";
+import * as GitHubRequestPolicy from "@t3tools/source-control-github/server/GitHubRequestPolicy";
+import * as GitHubRest from "@t3tools/source-control-github/server/GitHubRest";
+import * as ManagedProjectFolders from "../project/ManagedProjectFolders.ts";
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as Automation from "./GitHubPrAutomation.ts";
 import * as ScheduledTaskService from "./ScheduledTaskService.ts";
@@ -50,7 +52,7 @@ const withService = <A, E>(
     service: ScheduledTaskService.ScheduledTaskService["Service"];
     launches: Queue.Queue<ThreadLaunchService.ThreadLaunchInput>;
     hooks: Map<string, { id: number; config: { url: string; secret: string } }>;
-    calls: Array<GitHubApi.GitHubRestInput>;
+    calls: Array<GitHubRest.GitHubRestInput>;
   }) => Effect.Effect<A, E>,
   options: {
     failRepo?: string;
@@ -64,7 +66,7 @@ const withService = <A, E>(
   Effect.gen(function* () {
     const launches = yield* Queue.unbounded<ThreadLaunchService.ThreadLaunchInput>();
     const hooks = new Map<string, { id: number; config: { url: string; secret: string } }>();
-    const calls: Array<GitHubApi.GitHubRestInput> = [];
+    const calls: Array<GitHubRest.GitHubRestInput> = [];
     let sequence = 0;
     let launchCount = 0;
     const sql = yield* SqlClient.SqlClient;
@@ -99,7 +101,7 @@ const withService = <A, E>(
             stderrTruncated: false,
           }),
       }),
-      Layer.mock(GitHubApi.GitHubApi)({
+      Layer.mock(GitHubRest.GitHubRest)({
         rest: (request) =>
           Effect.gen(function* () {
             calls.push(request);
@@ -107,7 +109,7 @@ const withService = <A, E>(
             let response: unknown;
             if (request.method === "POST" || request.method === "PATCH") {
               if (name === options.failRepo)
-                return yield* new GitHubApi.GitHubApiResponseError({
+                return yield* new GitHubRequestPolicy.GitHubApiResponseError({
                   host: "github.com",
                   operation: "test",
                   status: 403,
@@ -118,7 +120,7 @@ const withService = <A, E>(
               response = hook;
             } else if (request.method === "DELETE") {
               if (name === options.failDeleteRepo)
-                return yield* new GitHubApi.GitHubApiResponseError({
+                return yield* new GitHubRequestPolicy.GitHubApiResponseError({
                   host: "github.com",
                   operation: "test",
                   status: 403,
@@ -167,6 +169,10 @@ const withService = <A, E>(
             Effect.andThen(options.gate ? Deferred.await(options.gate) : Effect.void),
             Effect.as({ threadId: "test-thread", resumed: false } as never),
           ),
+      }),
+      Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
+        namedProjectsRoot: "/projects",
+        isScratchProject: () => Effect.succeed(false),
       }),
       Layer.mock(ThreadManagementService.ThreadManagementService)({}),
       Layer.mock(SecretRequests.SecretRequests)({}),

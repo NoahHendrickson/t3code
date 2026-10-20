@@ -50,12 +50,13 @@ describe("fork guard: sidebar-v2-list-animation", () => {
     // Opening another thread is the frame the new chat view mounts. A kept
     // card removed in that frame fades late and the rows below slide up
     // unevenly; deferring the key the keep reads moves the removal into the
-    // quiet re-render after it. The highlight stays on the live key.
-    expect(sidebar).toContain("const keptRouteThreadKey = useDeferredValue(routeThreadKey);");
+    // quiet re-render after it. The highlight stays on the live key. The key is
+    // the row's (a subagent's parent card stays lit, upstream's subagent port).
+    expect(sidebar).toContain("const keptRouteThreadKey = useDeferredValue(routeRowThreadKey);");
     const keep = /threadsVisibleInProjectSection\(\{([\s\S]*?)\}\)/u.exec(sidebar)?.[1];
     expect(keep).toBeDefined();
     expect(keep).toContain("keptRouteThreadKey");
-    expect(keep).not.toContain("routeThreadKey");
-    expect(sidebar).toContain("isActive={routeThreadKey === threadKey}");
+    expect(keep).not.toMatch(/\brouteRowThreadKey\b|\brouteThreadKey\b/u);
+    expect(sidebar).toContain("isActive={routeRowThreadKey === threadKey}");
   });
 });

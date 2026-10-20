@@ -67,11 +67,11 @@ export interface LocalCheckoutBranchFollowDeps<ShellError = never, DispatchError
 }
 
 /** Returns the adopted branch, or null when the thread keeps its record. */
-export const followLocalCheckoutBranch = <ShellError, DispatchError>(
-  input: LocalCheckoutBranchFollowInput,
-  deps: LocalCheckoutBranchFollowDeps<ShellError, DispatchError>,
-): Effect.Effect<string | null> =>
-  Effect.gen(function* () {
+export const followLocalCheckoutBranch = Effect.fn("LocalCheckoutBranchFollower.follow")(
+  function* <ShellError, DispatchError>(
+    input: LocalCheckoutBranchFollowInput,
+    deps: LocalCheckoutBranchFollowDeps<ShellError, DispatchError>,
+  ) {
     const checkedOut = input.local.refName;
     if (checkedOut === null || input.local.isDefaultRef || isTemporaryWorktreeBranch(checkedOut)) {
       return null;
@@ -98,18 +98,21 @@ export const followLocalCheckoutBranch = <ShellError, DispatchError>(
       expectedWorktreePath: null,
     });
     return checkedOut;
-  }).pipe(
-    Effect.catchCause((cause) =>
-      Cause.hasInterruptsOnly(cause)
-        ? Effect.interrupt
-        : Effect.logWarning("local checkout branch follow skipped", {
-            threadId: input.threadId,
-            runId: input.runId,
-            cwd: input.cwd,
-            cause: Cause.pretty(cause),
-          }).pipe(Effect.as(null)),
+  },
+  (effect, input) =>
+    effect.pipe(
+      Effect.catchCause((cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Effect.interrupt
+          : Effect.logWarning("local checkout branch follow skipped", {
+              threadId: input.threadId,
+              runId: input.runId,
+              cwd: input.cwd,
+              cause: Cause.pretty(cause),
+            }).pipe(Effect.as(null)),
+      ),
     ),
-  );
+);
 
 export const layer = Layer.effect(
   LocalCheckoutBranchFollower,
