@@ -164,7 +164,8 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(pill).toContain(
       "const pendingProjectKey = useDraftProjectAssignmentPending(props.draftId);",
     );
-    expect(pill).toMatch(/const activeEntry =\s*pendingEntry \?\?/u);
+    // A pending "No project" pick shows too, ahead of the draft's old project.
+    expect(pill).toMatch(/const activeEntry = onNoProject\s*\? null\s*: \(pendingEntry \?\?/u);
   });
 
   it("puts the project chooser first in the composer's context row", () => {
@@ -214,10 +215,13 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(pill).toContain("toastManager.add({");
     // Same project list and member rule as the palette and the grouped header.
     expect(pill).toContain("buildSidebarProjectPickerEntries({");
-    // Upstream's scratch folder ("No project") is not an assignable project.
+    // Upstream's scratch folder is never listed as a project; it is offered as
+    // its own "No project" row, which points the draft at the scratch project.
     expect(pill).toContain(
       "!isScratchProject(project, scratchWorkspaceRootFor(project.environmentId))",
     );
+    expect(pill).toContain('<span className="min-w-0 truncate">No project</span>');
+    expect(pill).toMatch(/const project = await openScratchProject\(environmentId\);/u);
   });
 
   it("centers the draft composer and grows its prompt until the thread starts", () => {

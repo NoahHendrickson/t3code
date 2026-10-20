@@ -4783,7 +4783,12 @@
     The project is chosen from the first chip in the composer's context row
     (custom/DraftProjectPill), ahead of the workspace and branch chips and
     dressed like them: the row's CSS paints it as the same filled 24px chip
-    and its label collapses with theirs when the strip overflows. ChatView
+    and its label collapses with theirs when the strip overflows. Its menu
+    opens with a "No project" row: picking it opens the environment's scratch
+    project (upstream's projectless home, created by the server on first use)
+    and assigns the draft to it like any other pick, so a New agent draft can
+    become a projectless chat. The scratch folder itself is never listed as a
+    project. ChatView
     hands it to BranchToolbar through a fenced `leading` slot (the mirror of
     fork-composer-shell's `trailing`), or to the bare fallback strip while the
     draft has no project — and so no toolbar — yet. The headline shadow
