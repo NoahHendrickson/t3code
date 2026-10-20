@@ -294,6 +294,9 @@
     - .github/scripts/launch-isolation-check.sh
   shadows: []
   watch:
+    # Fenced env stub: fork CI sets GITHUB_REPOSITORY, which retargets release links.
+    - apps/web/src/components/desktopUpdate.toast.test.tsx
+    - apps/web/src/components/sidebar/SidebarUpdateReleaseNotes.test.tsx
     # ci.yml carries a fenced fork hunk: release_smoke lints the isolation
     # gate script on every PR, so a defect there costs a check, not a build.
     - .github/workflows/ci.yml

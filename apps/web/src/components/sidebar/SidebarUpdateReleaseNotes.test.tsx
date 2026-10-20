@@ -71,6 +71,11 @@ function renderNotes(state: DesktopUpdateState, openExternal = vi.fn().mockResol
 
 describe("SidebarUpdateReleaseNotes", () => {
   beforeEach(() => {
+    /* fork:begin fork-desktop-release — see .fork/customizations.yaml#fork-desktop-release
+       The fork's CI builds with GITHUB_REPOSITORY set to the fork, so the release
+       links point there; these cases expect the unconfigured default. */
+    vi.stubEnv("T3CODE_DESKTOP_UPDATE_REPOSITORY", "");
+    /* fork:end fork-desktop-release */
     testState.addToast.mockReset();
   });
 
