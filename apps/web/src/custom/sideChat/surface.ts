@@ -8,10 +8,12 @@
  * window's localStorage writes: every persisted store (composer drafts,
  * panels, terminals) writes its whole state on change, and two windows on
  * one origin would overwrite each other's — the side chat would erase the
- * main window's unsent drafts. The side chat reads the real storage, so it
- * opens with the user's theme and settings and sees later changes through
- * `storage` events, but keeps its own writes in memory. Side chats are
- * fresh every time, so nothing it would have persisted is worth keeping.
+ * main window's unsent drafts. The rule: a key the side chat has not
+ * written reads the real storage, current with the main window; a key it has
+ * written reads its own copy from then on. Copies live in memory, so they
+ * last until the window reloads, which it does for each fresh chat
+ * (SideChatShell). Client settings are not in localStorage on desktop;
+ * useSettings re-reads them when a window gains focus.
  */
 
 export function isSideChatSearch(search: string): boolean {
@@ -65,5 +67,4 @@ if (isSideChatSurface) {
     configurable: true,
     value: createWriteIsolatedStorage(window.localStorage),
   });
-  document.documentElement.setAttribute("data-side-chat", "");
 }

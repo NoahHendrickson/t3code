@@ -81,9 +81,6 @@ import { setForkSidebarVibrancy } from "../fork/ForkSidebarVibrancy.ts";
 /* fork:begin fork-glass-floor-color — see .fork/customizations.yaml#fork-glass-floor-color */
 import { installForkGlassFloorColorIpc } from "../fork/ForkGlassFloorColor.ts";
 /* fork:end fork-glass-floor-color */
-/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
-import { installForkSideChat } from "../fork/ForkSideChatWindow.ts";
-/* fork:end fork-side-chat */
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
 import { installVoiceInputIpc } from "../fork/voice/VoiceInputIpc.ts";
 /* fork:end fork-local-dictation */
@@ -176,7 +173,4 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   /* fork:begin fork-glass-floor-color — see .fork/customizations.yaml#fork-glass-floor-color */
   yield* installForkGlassFloorColorIpc();
   /* fork:end fork-glass-floor-color */
-  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
-  yield* installForkSideChat();
-  /* fork:end fork-side-chat */
 });

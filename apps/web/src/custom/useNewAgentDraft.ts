@@ -17,6 +17,7 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   DEFAULT_RUNTIME_MODE,
   DEFAULT_SERVER_SETTINGS,
+  type EnvironmentId,
   type ScopedProjectRef,
   type ServerSettings,
 } from "@t3tools/contracts";
@@ -151,14 +152,27 @@ export interface DraftProjectTarget {
   >;
 }
 
+/** A pick whose project may not exist yet: "No project" opens the scratch
+    project, which the server creates on first use. `pendingKey` stands in
+    for the project key until `resolve` settles; null means it could not be
+    opened (the opener reports why). */
+interface DeferredDraftProjectTarget {
+  readonly pendingKey: string;
+  readonly environmentId: EnvironmentId;
+  readonly resolve: () => Promise<DraftProjectTarget | null>;
+}
+
+type DraftProjectPick = DraftProjectTarget | DeferredDraftProjectTarget;
+
 /** The pick in flight per draft. Resolving a project's defaults yields to a
-    t3.json lookup, so two quick picks can settle out of order; only the
-    latest may write, or a slower earlier pick would overwrite a faster later
-    one's project, workspace defaults and model. The entry is the request
-    token (one per call, so re-picking the same project is still a new
-    request) and carries the target so the pill can show it and the composer
-    can hold Send while the draft still points at the previous project. */
-const latestAssignmentByDraftId = new Map<DraftId, { readonly entry: DraftProjectTarget }>();
+    t3.json lookup (and a deferred pick to opening its project first), so two
+    quick picks can settle out of order; only the latest may write, or a
+    slower earlier pick would overwrite a faster later one's project,
+    workspace defaults and model. The record is the request token (one per
+    call, so re-picking the same project is still a new request) and carries
+    the key so the pill can show the pick and the composer can hold Send while
+    the draft still points at the previous project. */
+const latestAssignmentByDraftId = new Map<DraftId, { readonly projectKey: string }>();
 const pendingAssignmentListeners = new Set<() => void>();
 
 function notifyPendingAssignmentChange(): void {
@@ -175,9 +189,7 @@ function subscribePendingAssignment(listener: () => void): () => void {
 /** The logical project key of the pick still resolving for a draft, or null
     when nothing is in flight. */
 export function readPendingDraftProjectKey(draftId: DraftId | null): string | null {
-  return draftId === null
-    ? null
-    : (latestAssignmentByDraftId.get(draftId)?.entry.group.projectKey ?? null);
+  return draftId === null ? null : (latestAssignmentByDraftId.get(draftId)?.projectKey ?? null);
 }
 
 /** `readPendingDraftProjectKey` as a subscription, for the pill's label and
@@ -207,38 +219,44 @@ export function useDraftProjectAssignmentPending(draftId: DraftId | null): strin
     `settings` are the project's own environment's. */
 export async function assignDraftProject(
   draftId: DraftId,
-  entry: DraftProjectTarget,
+  pick: DraftProjectPick,
   settings: ServerSettings,
 ): Promise<void> {
-  const request = { entry };
+  const request = { projectKey: "resolve" in pick ? pick.pendingKey : pick.group.projectKey };
   latestAssignmentByDraftId.set(draftId, request);
   notifyPendingAssignmentChange();
-  const project = entry.targetProject;
-  const projectRef: ScopedProjectRef = {
-    environmentId: project.environmentId,
-    projectId: project.id,
-  };
+  let entry: DraftProjectTarget | null = null;
   let projectSettings;
   let superseded = false;
   try {
-    // Same resolver and priority order as upstream's useHandleNewThread: the
-    // t3.json read is skipped when the project's own setting decides.
-    const consultProjectFile =
-      resolveProjectSettings(settings, project.id, project).settings.defaultThreadEnvMode === null;
-    const projectFile = consultProjectFile
-      ? await readT3ProjectFile(project.environmentId, project.workspaceRoot)
-      : null;
-    projectSettings = resolveProjectSettings(settings, project.id, project, projectFile).settings;
+    entry = "resolve" in pick ? await pick.resolve() : pick;
+    if (entry !== null) {
+      const project = entry.targetProject;
+      // Same resolver and priority order as upstream's useHandleNewThread:
+      // the t3.json read is skipped when the project's own setting decides.
+      const consultProjectFile =
+        resolveProjectSettings(settings, project.id, project).settings.defaultThreadEnvMode ===
+        null;
+      const projectFile = consultProjectFile
+        ? await readT3ProjectFile(project.environmentId, project.workspaceRoot)
+        : null;
+      projectSettings = resolveProjectSettings(settings, project.id, project, projectFile).settings;
+    }
   } finally {
     // The await yielded: a later pick may have superseded this one, in which
-    // case the in-flight entry is that pick's and stays until it settles.
+    // case the in-flight record is that pick's and stays until it settles.
     superseded = latestAssignmentByDraftId.get(draftId) !== request;
     if (!superseded) {
       latestAssignmentByDraftId.delete(draftId);
       notifyPendingAssignmentChange();
     }
   }
-  if (superseded) return;
+  if (superseded || entry === null || projectSettings === undefined) return;
+  const project = entry.targetProject;
+  const projectRef: ScopedProjectRef = {
+    environmentId: project.environmentId,
+    projectId: project.id,
+  };
   const { getComposerDraft, getDraftSession, setLogicalProjectDraftThreadId, setModelSelection } =
     useComposerDraftStore.getState();
   // The draft may have been promoted or discarded meanwhile — re-registering
@@ -274,16 +292,17 @@ export async function assignDraftProject(
     in, for the pill — the same reading upstream's handler makes. */
 export function useAssignDraftProject(): (
   draftId: DraftId,
-  entry: DraftProjectTarget,
+  pick: DraftProjectPick,
 ) => Promise<void> {
   const environmentServerConfigs = useAtomValue(environmentServerConfigsAtom);
   return useCallback(
-    (draftId, entry) =>
+    (draftId, pick) =>
       assignDraftProject(
         draftId,
-        entry,
-        environmentServerConfigs.get(entry.targetProject.environmentId)?.settings ??
-          DEFAULT_SERVER_SETTINGS,
+        pick,
+        environmentServerConfigs.get(
+          "resolve" in pick ? pick.environmentId : pick.targetProject.environmentId,
+        )?.settings ?? DEFAULT_SERVER_SETTINGS,
       ),
     [environmentServerConfigs],
   );

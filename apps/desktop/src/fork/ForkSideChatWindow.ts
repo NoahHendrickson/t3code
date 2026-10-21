@@ -8,29 +8,34 @@
  * also shows in the main window's sidebar.
  *
  * The window is created on the first press and then hidden rather than
- * closed, so later presses open instantly. Hiding asks the renderer for a
- * fresh chat, ready for the next open. On macOS it is a non-activating panel
- * at the normal window level: the shortcut puts it in front of whatever app
- * is active without pulling the main T3 window forward, and clicking another
+ * closed, so later presses open instantly. Hiding tells the renderer, which
+ * readies a fresh chat for the next open. It is a non-activating panel at the
+ * normal window level: the shortcut puts it in front of whatever app is
+ * active without pulling the main T3 window forward, and clicking another
  * window sends it behind like any other window.
+ *
+ * macOS only. Ctrl+Shift+Space, the chord's Windows and Linux form, is
+ * JetBrains' and VS Code's parameter hints and a common IME switch, and a
+ * global shortcut would take it from every app.
  */
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
+import * as Ref from "effect/Ref";
 
 import * as Electron from "electron";
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import { makeComponentLogger } from "../app/DesktopObservability.ts";
+import * as DesktopState from "../app/DesktopState.ts";
 import { getDesktopUrl } from "../electron/ElectronProtocol.ts";
-import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
-import { isForkAuxiliaryWindow, markForkAuxiliaryWindow } from "./ForkAuxiliaryWindows.ts";
+import * as DesktopWindow from "../window/DesktopWindow.ts";
+import { markForkAuxiliaryWindow } from "./ForkAuxiliaryWindows.ts";
 
 /** Not a macOS system shortcut, and not taken by T3's keymap, SnapShot,
     ChatGPT (⌥Space) or Claude (double ⌥). */
-const FORK_SIDE_CHAT_ACCELERATOR = "CommandOrControl+Shift+Space";
-/** Main → side-chat renderer: replace the open chat with a fresh one. */
+const FORK_SIDE_CHAT_ACCELERATOR = "Command+Shift+Space";
+/** Main → side-chat renderer: the window was hidden; ready the next chat. */
 const FORK_SIDE_CHAT_FRESH_CHANNEL = "fork:side-chat-fresh";
 
 const SIDE_CHAT_WIDTH = 560;
@@ -48,34 +53,30 @@ function sideChatUrl(applicationUrl: string): string {
 
 export const installForkSideChat = Effect.fn("desktop.fork.installSideChat")(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
+  if (environment.platform !== "darwin") return;
+  const state = yield* DesktopState.DesktopState;
+  const desktopWindow = yield* DesktopWindow.DesktopWindow;
   const electronWindow = yield* ElectronWindow.ElectronWindow;
-  const electronShell = yield* ElectronShell.ElectronShell;
   const electronTheme = yield* ElectronTheme.ElectronTheme;
-  const context = yield* Effect.context<ElectronShell.ElectronShell>();
-  const runPromise = Effect.runPromiseWith(context);
-  const isMac = environment.platform === "darwin";
+  // The app's context, so the shortcut's logs reach the desktop logger.
+  const runPromise = Effect.runPromiseWith(yield* Effect.context<never>());
   const applicationUrl = getDesktopUrl(environment.isDevelopment);
 
   let sideChat: Electron.BrowserWindow | null = null;
-  let quitting = false;
 
   const live = (): Electron.BrowserWindow | null =>
     sideChat !== null && !sideChat.isDestroyed() ? sideChat : null;
 
   const bringForward = (window: Electron.BrowserWindow) => {
-    if (isMac) {
-      // Front without activating the app (show() would), then key.
-      window.showInactive();
-    } else {
-      window.show();
-    }
+    // Front without activating the app (show() would), then key.
+    window.showInactive();
     window.focus();
   };
 
   const hide = (window: Electron.BrowserWindow) => {
     window.hide();
-    // Fresh every time: the next open starts a new chat. Asked for now, while
-    // hidden, so the open itself never shows the previous chat first.
+    // Asked for now, while hidden, so the next open never shows the previous
+    // chat first.
     window.webContents.send(FORK_SIDE_CHAT_FRESH_CHANNEL);
   };
 
@@ -93,20 +94,15 @@ export const installForkSideChat = Effect.fn("desktop.fork.installSideChat")(fun
       y: Math.round(cursorDisplay.y + (cursorDisplay.height - SIDE_CHAT_HEIGHT) / 2),
       show: false,
       title: "Side chat",
-      autoHideMenuBar: true,
+      type: "panel",
       fullscreenable: false,
       maximizable: false,
       minimizable: false,
       backgroundColor: shouldUseDarkColors ? "#0a0a0a" : "#ffffff",
-      ...(isMac
-        ? {
-            type: "panel",
-            titleBarStyle: "hiddenInset" as const,
-            // The main window's lights sit on its 52px header's axis; the side
-            // chat's header is the same chat header.
-            trafficLightPosition: { x: 16, y: 19 },
-          }
-        : {}),
+      titleBarStyle: "hiddenInset",
+      // The main window's lights sit on its 52px header's axis; the side
+      // chat's header is the same chat header.
+      trafficLightPosition: { x: 16, y: 19 },
       webPreferences: {
         preload: environment.preloadPath,
         contextIsolation: true,
@@ -117,24 +113,11 @@ export const installForkSideChat = Effect.fn("desktop.fork.installSideChat")(fun
     markForkAuxiliaryWindow(window);
     // A panel floats by default; the side chat should only come forward when
     // asked, and fall behind other windows once it loses focus.
-    if (isMac) window.setAlwaysOnTop(false);
-
-    window.webContents.setWindowOpenHandler(({ url }) => {
-      if (Option.isSome(ElectronShell.parseSafeExternalUrl(url))) {
-        void runPromise(electronShell.openExternal(url));
-      }
-      return { action: "deny" };
-    });
-    window.webContents.on("will-navigate", (event, url) => {
-      if (new URL(url).origin === new URL(applicationUrl).origin) return;
-      event.preventDefault();
-      if (Option.isSome(ElectronShell.parseSafeExternalUrl(url))) {
-        void runPromise(electronShell.openExternal(url));
-      }
-    });
+    window.setAlwaysOnTop(false);
+    yield* desktopWindow.wireRendererWindow(window);
     // The red button and ⌘W hide it; only quitting closes it.
     window.on("close", (event) => {
-      if (quitting) return;
+      if (Ref.getUnsafe(state.quitting)) return;
       event.preventDefault();
       hide(window);
     });
@@ -167,23 +150,6 @@ export const installForkSideChat = Effect.fn("desktop.fork.installSideChat")(fun
   );
 
   yield* Effect.sync(() => {
-    Electron.app.on("before-quit", () => {
-      quitting = true;
-    });
-    // A hidden side chat still counts as an open window, which would keep
-    // Windows and Linux running after the main window closes. Close it with
-    // the last real window so the app quits as it did before.
-    Electron.app.on("browser-window-created", (_event, created) => {
-      created.once("closed", () => {
-        if (isMac) return;
-        const window = live();
-        if (window === null) return;
-        const others = Electron.BrowserWindow.getAllWindows().filter(
-          (candidate) => !candidate.isDestroyed() && !isForkAuxiliaryWindow(candidate),
-        );
-        if (others.length === 0) window.destroy();
-      });
-    });
     Electron.app.on("will-quit", () => {
       Electron.globalShortcut.unregister(FORK_SIDE_CHAT_ACCELERATOR);
     });

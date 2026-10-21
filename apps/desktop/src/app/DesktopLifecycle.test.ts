@@ -97,6 +97,9 @@ function layerDesktopWindow(
     dispatchSnapShotEvent: () => Effect.void,
     zoomMain: () => Effect.void,
     syncAppearance: Effect.void,
+    // fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+    wireRendererWindow: () => Effect.void,
+    // fork:end fork-side-chat
   });
 }
 

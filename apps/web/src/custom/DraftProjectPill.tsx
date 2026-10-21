@@ -23,6 +23,7 @@
  * upstream wove into its headline.
  */
 import { scopedProjectKey } from "@t3tools/client-runtime/environment";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import type { EnvironmentId, ScopedProjectRef } from "@t3tools/contracts";
 import { useCallback, useMemo, type ReactNode } from "react";
@@ -52,6 +53,7 @@ import {
 import {
   buildSidebarProjectPickerEntries,
   buildSidebarProjectSnapshots,
+  type SidebarProjectPickerEntry,
 } from "~/sidebarProjectGrouping";
 import { useProjects, useThreadShells } from "~/state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
@@ -67,8 +69,45 @@ import { useAssignDraftProject, useDraftProjectAssignmentPending } from "./useNe
 const DRAFT_PROJECT_CHIP_CLASS_NAME =
   "min-w-0 max-w-72 font-normal text-muted-foreground/70 text-xs! hover:text-foreground/80 active:scale-100";
 
-/** The radio value of the "No project" row; never a logical project key. */
+/** The radio value of the "No project" row, and its pending key while the
+    scratch project opens; never a logical project key. */
 const NO_PROJECT_VALUE = "no-project";
+
+/** What the chip shows: nothing chosen yet, "No project", or a project.
+    `pending` while a pick is still moving the draft. */
+type DraftProjectSelection =
+  | { readonly kind: "unassigned" }
+  | { readonly kind: "no-project"; readonly pending: boolean }
+  | {
+      readonly kind: "project";
+      readonly entry: SidebarProjectPickerEntry | null;
+      readonly label: string;
+      readonly pending: boolean;
+    };
+
+/** A pick in flight shows ahead of where the draft still points. */
+function resolveDraftProjectSelection(input: {
+  readonly pendingProjectKey: string | null;
+  readonly pendingEntry: SidebarProjectPickerEntry | null;
+  readonly activeIsScratch: boolean;
+  readonly activeEntry: SidebarProjectPickerEntry | null;
+  readonly activeProjectTitle: string | null;
+}): DraftProjectSelection {
+  if (input.pendingProjectKey === NO_PROJECT_VALUE) return { kind: "no-project", pending: true };
+  if (input.pendingEntry !== null) {
+    return {
+      kind: "project",
+      entry: input.pendingEntry,
+      label: input.pendingEntry.group.displayName,
+      pending: true,
+    };
+  }
+  if (input.activeIsScratch) return { kind: "no-project", pending: false };
+  const label = input.activeEntry?.group.displayName ?? input.activeProjectTitle;
+  return label === null
+    ? { kind: "unassigned" }
+    : { kind: "project", entry: input.activeEntry, label, pending: false };
+}
 
 /** Upstream's collapsing chip label: hidden with its siblings when the strip overflows. */
 function DraftProjectChipLabel({ children }: { readonly children: ReactNode }) {
@@ -106,13 +145,19 @@ export function DraftProjectPill(props: {
   const { scratchWorkspaceRootFor, scratchEnvironmentId, openScratchProject } = useScratchProject();
   // The environment's scratch folder is upstream's "No project" home: it is
   // offered as its own row, never listed as a project.
-  const projects = useMemo(
-    () =>
-      allProjects.filter(
-        (project) => !isScratchProject(project, scratchWorkspaceRootFor(project.environmentId)),
-      ),
-    [allProjects, scratchWorkspaceRootFor],
-  );
+  const { projects, scratchProjects } = useMemo(() => {
+    const partition = {
+      projects: [] as EnvironmentProject[],
+      scratchProjects: [] as EnvironmentProject[],
+    };
+    for (const project of allProjects) {
+      (isScratchProject(project, scratchWorkspaceRootFor(project.environmentId))
+        ? partition.scratchProjects
+        : partition.projects
+      ).push(project);
+    }
+    return partition;
+  }, [allProjects, scratchWorkspaceRootFor]);
   const threads = useThreadShells();
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -124,27 +169,6 @@ export function DraftProjectPill(props: {
   const noProjectEnvironmentId = scratchEnvironmentId(
     props.activeProjectRef?.environmentId ?? primaryEnvironmentId,
   );
-  // Logical keys of the scratch projects, to recognise a "No project" pick
-  // while it resolves.
-  const noProjectKeys = useMemo(
-    () =>
-      new Set(
-        allProjects
-          .filter((project) =>
-            isScratchProject(project, scratchWorkspaceRootFor(project.environmentId)),
-          )
-          .map((project) => deriveLogicalProjectKeyFromSettings(project, projectGroupingSettings)),
-      ),
-    [allProjects, projectGroupingSettings, scratchWorkspaceRootFor],
-  );
-  const activeRefIsScratch =
-    props.activeProjectRef !== null &&
-    allProjects.some(
-      (project) =>
-        project.environmentId === props.activeProjectRef!.environmentId &&
-        project.id === props.activeProjectRef!.projectId &&
-        isScratchProject(project, scratchWorkspaceRootFor(project.environmentId)),
-    );
 
   const environmentLabelById = useMemo(
     () =>
@@ -190,27 +214,38 @@ export function DraftProjectPill(props: {
   // A pick shows on the pill the moment it is made; the draft itself moves
   // once the project's defaults resolve, and Send waits for that (the
   // composer reads the same pending state).
-  const pendingEntry =
-    pendingProjectKey === null ? null : (projectEntryByKey.get(pendingProjectKey) ?? null);
-  const onNoProject =
-    pendingProjectKey === null ? activeRefIsScratch : noProjectKeys.has(pendingProjectKey);
-  const activeEntry = onNoProject
-    ? null
-    : (pendingEntry ??
-      (props.activeProjectRef === null
-        ? null
-        : (projectPickerEntries.find((entry) =>
-            entry.group.memberProjectRefs.some(
-              (projectRef) =>
-                scopedProjectKey(projectRef) === scopedProjectKey(props.activeProjectRef!),
-            ),
-          ) ?? null)));
-  const activeProjectKey = onNoProject ? NO_PROJECT_VALUE : (activeEntry?.group.projectKey ?? "");
-  const label = onNoProject
-    ? "No project"
-    : (activeEntry?.group.displayName ?? props.activeProjectTitle ?? "Choose a project");
-  const hasResolvedProject =
-    onNoProject || pendingEntry !== null || props.activeProjectTitle !== null;
+  const activeKey =
+    props.activeProjectRef === null ? null : scopedProjectKey(props.activeProjectRef);
+  const selection = resolveDraftProjectSelection({
+    pendingProjectKey,
+    pendingEntry:
+      pendingProjectKey === null ? null : (projectEntryByKey.get(pendingProjectKey) ?? null),
+    activeIsScratch: scratchProjects.some(
+      (project) =>
+        scopedProjectKey({ environmentId: project.environmentId, projectId: project.id }) ===
+        activeKey,
+    ),
+    activeEntry:
+      projectPickerEntries.find((entry) =>
+        entry.group.memberProjectRefs.some(
+          (projectRef) => scopedProjectKey(projectRef) === activeKey,
+        ),
+      ) ?? null,
+    activeProjectTitle: props.activeProjectTitle,
+  });
+  const radioValue =
+    selection.kind === "no-project"
+      ? NO_PROJECT_VALUE
+      : selection.kind === "project"
+        ? (selection.entry?.group.projectKey ?? "")
+        : "";
+  const label =
+    selection.kind === "no-project"
+      ? "No project"
+      : selection.kind === "project"
+        ? selection.label
+        : "Choose a project";
+  const pending = selection.kind !== "unassigned" && selection.pending;
 
   const reportAssignFailure = (displayName: string, error: unknown) => {
     console.error(error);
@@ -221,16 +256,25 @@ export function DraftProjectPill(props: {
     });
   };
 
-  // The scratch project exists only once the server has made it, so it is
-  // opened first; openScratchProject reports its own failure.
-  const pickNoProject = async (draftId: DraftId, environmentId: EnvironmentId) => {
-    const project = await openScratchProject(environmentId);
-    if (!project) return;
-    await assignDraftProject(draftId, {
-      group: { projectKey: deriveLogicalProjectKeyFromSettings(project, projectGroupingSettings) },
-      targetProject: project,
+  // The scratch project exists only once the server has made it, so the pick
+  // opens it first, already pending; openScratchProject reports its own
+  // failure.
+  const pickNoProject = (draftId: DraftId, environmentId: EnvironmentId) =>
+    assignDraftProject(draftId, {
+      pendingKey: NO_PROJECT_VALUE,
+      environmentId,
+      resolve: async () => {
+        const project = await openScratchProject(environmentId);
+        return project === null
+          ? null
+          : {
+              group: {
+                projectKey: deriveLogicalProjectKeyFromSettings(project, projectGroupingSettings),
+              },
+              targetProject: project,
+            };
+      },
     }).catch((error: unknown) => reportAssignFailure("No project", error));
-  };
 
   if (projectPickerEntries.length === 0 && noProjectEnvironmentId === null) {
     return (
@@ -257,22 +301,22 @@ export function DraftProjectPill(props: {
             type="button"
             size="xs"
             variant="ghost"
-            aria-label={hasResolvedProject ? `Change project — ${label}` : "Choose a project"}
+            aria-label={selection.kind === "unassigned" ? label : `Change project — ${label}`}
             // No press-scale, like the branch chip: the popup aligns live to
             // this trigger and a momentary shrink drags it sideways.
             className={DRAFT_PROJECT_CHIP_CLASS_NAME}
             data-testid="draft-project-pill"
             data-composer-context-control
-            data-project-assigned={hasResolvedProject ? "true" : "false"}
-            aria-busy={pendingEntry !== null || undefined}
+            data-project-assigned={selection.kind === "unassigned" ? "false" : "true"}
+            aria-busy={pending || undefined}
           />
         }
       >
-        {onNoProject ? (
+        {selection.kind === "no-project" ? (
           <MessageSquareDashedIcon className="size-3 shrink-0" />
-        ) : activeEntry ? (
+        ) : selection.kind === "project" && selection.entry ? (
           <ProjectFavicon
-            project={activeEntry.targetProject}
+            project={selection.entry.targetProject}
             className="size-3 shrink-0"
             fallbackIcon={FolderIcon}
           />
@@ -288,9 +332,9 @@ export function DraftProjectPill(props: {
         className="max-h-80 min-w-48! w-max max-w-72 overflow-y-auto"
       >
         <MenuRadioGroup
-          value={activeProjectKey}
+          value={radioValue}
           onValueChange={(value) => {
-            if (value === activeProjectKey || !props.draftId) return;
+            if (value === radioValue || !props.draftId) return;
             if (value === NO_PROJECT_VALUE) {
               if (noProjectEnvironmentId !== null) {
                 void pickNoProject(props.draftId, noProjectEnvironmentId);
