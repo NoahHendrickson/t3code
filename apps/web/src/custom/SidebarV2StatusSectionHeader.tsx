@@ -8,8 +8,9 @@
  * cards' 12px inset so the label lines up with the titles under it. No mark,
  * no hairline, no chevron. The right side stays empty.
  *
- * The pinned block takes the same header while status grouping is on, so
- * every group in the list reads the same way; `section` is "pinned" there.
+ * The pinned block and the settled tail take the same header while status
+ * grouping is on, so every group in the list reads the same way; `section`
+ * is "pinned" or "settled" there.
  *
  * Clicking it collapses the section; the count is already on screen, so a
  * collapsed header needs nothing extra to say how many cards it hides. The
@@ -20,11 +21,11 @@ import { cn } from "~/lib/utils";
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "./sidebarV2CardAlignment";
 import {
   SIDEBAR_V2_STATUS_SECTION_LABELS,
-  type SidebarV2StatusSectionKey,
+  type SidebarV2StatusHeaderKey,
 } from "./sidebarV2StatusGrouping";
 
 export function SidebarV2StatusSectionHeader(props: {
-  readonly section: SidebarV2StatusSectionKey;
+  readonly section: SidebarV2StatusHeaderKey;
   readonly count: number;
   readonly isFirst: boolean;
   readonly collapsed: boolean;
