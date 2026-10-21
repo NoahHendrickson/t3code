@@ -8,6 +8,11 @@
  * Pinned, snoozed and settled keep their shelves; Idle ages into Settled
  * through the server's existing auto-settle.
  *
+ * Drafts — threads made with New thread that have not been sent yet — skip
+ * the status derivation and sit in a Drafts section of their own, painted
+ * above every other group, Pinned included. They never feed the Completed
+ * hold: a draft that is sent goes straight to Working, not through Idle.
+ *
  * A card's section comes from the same derivation as the mark it draws
  * (`resolveSidebarV2CardStatus`), so the two agree. One deliberate exception,
  * visible in `sidebarV2StatusBucketForKind`: a finished thread whose only
@@ -47,10 +52,12 @@ import {
 const SIDEBAR_V2_COLLAPSED_STATUS_SECTIONS_STORAGE_KEY =
   "t3code:fork:sidebar-v2-collapsed-status-sections:v1";
 
-export type SidebarV2StatusBucket = "input" | "done" | "working" | "idle";
+export type SidebarV2StatusBucket = "drafts" | "input" | "done" | "working" | "idle";
 
-/** Paint order: blocked agents first, then results to read, then live work. */
+/** Paint order: unsent drafts on top, then blocked agents, then results to
+    read, then live work. Sidebar.tsx lifts Drafts above the pinned block. */
 const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
+  "drafts",
   "input",
   "done",
   "working",
@@ -63,6 +70,7 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
 export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
 
 export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusSectionKey, string> = {
+  drafts: "Drafts",
   pinned: "Pinned",
   input: "Needs input",
   done: "Completed",
@@ -262,7 +270,8 @@ export function countSidebarV2Projects(
 /**
  * The whole status pipeline for the active list: each thread's bucket from
  * the same derivation as its card's mark, Completed holds applied, then the
- * sections. Sidebar.tsx calls this or project grouping, nothing in between.
+ * sections. Drafts bypass both and land in Drafts. Sidebar.tsx calls this or
+ * project grouping, nothing in between.
  */
 export function buildSidebarV2StatusSections(input: {
   readonly threads: readonly EnvironmentThreadShell[];
@@ -273,12 +282,15 @@ export function buildSidebarV2StatusSections(input: {
   readonly holds: SidebarV2CompletedHoldTracker;
   readonly projectRefIndex: ReadonlyMap<string, string>;
   readonly returnedAt?: ((thread: EnvironmentThreadShell) => number | undefined) | undefined;
+  /** Whether a thread key is an unsent client draft (custom/sidebarV2DraftRows). */
+  readonly isDraft: (threadKey: string) => boolean;
 }): SidebarV2StatusSection<EnvironmentThreadShell>[] {
   const keyByThread = new Map<EnvironmentThreadShell, string>();
   const buckets = new Map<string, SidebarV2StatusBucket>();
   for (const thread of input.threads) {
     const threadKey = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
     keyByThread.set(thread, threadKey);
+    if (input.isDraft(threadKey)) continue;
     const { kind } = resolveSidebarV2CardStatus(thread, {
       lastVisitedAt: resolveThreadLastVisitedAt(
         thread.lastVisitedAt,
@@ -298,7 +310,10 @@ export function buildSidebarV2StatusSections(input: {
   });
   return groupSidebarV2StatusSections({
     threads: input.threads,
-    bucketOf: (thread) => effective.get(keyByThread.get(thread)!) ?? "idle",
+    bucketOf: (thread) => {
+      const threadKey = keyByThread.get(thread)!;
+      return input.isDraft(threadKey) ? "drafts" : (effective.get(threadKey) ?? "idle");
+    },
     projectRefIndex: input.projectRefIndex,
     returnedAt: input.returnedAt,
   });

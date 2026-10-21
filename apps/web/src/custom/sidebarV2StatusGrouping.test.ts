@@ -1,10 +1,13 @@
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { resolveSidebarV2CardStatusKind } from "./sidebarV2CardStatus";
+import { buildSidebarDraftShell } from "./sidebarV2DraftRows";
 import { createProjectRefIndex } from "./sidebarV2ProjectGrouping";
 import { threadCardTitleRecedes } from "./sidebarV2RowPolicy";
 import {
+  buildSidebarV2StatusSections,
   countSidebarV2Projects,
   createSidebarV2CompletedHoldTracker,
   groupSidebarV2StatusSections,
@@ -209,6 +212,63 @@ describe("groupSidebarV2StatusSections", () => {
   });
 });
 
+describe("buildSidebarV2StatusSections", () => {
+  const environmentId = EnvironmentId.make("local");
+  const shell = (id: string, createdAt: string) =>
+    buildSidebarDraftShell({
+      draft: {
+        threadId: ThreadId.make(id),
+        environmentId,
+        projectId: ProjectId.make("p1"),
+        logicalProjectKey: "p1",
+        createdAt,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        branch: "main",
+        worktreePath: null,
+        envMode: "local",
+        startFromOrigin: false,
+        promotedTo: null,
+      },
+      modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
+    });
+  const keyOf = (id: string) => scopedThreadKey(scopeThreadRef(environmentId, ThreadId.make(id)));
+  const build = (
+    threads: ReturnType<typeof shell>[],
+    draftIds: readonly string[],
+    holds = createSidebarV2CompletedHoldTracker(HOLD_MS),
+  ) =>
+    buildSidebarV2StatusSections({
+      threads,
+      localLastVisitedAtById: {},
+      now: "2026-01-02T00:00:00.000Z",
+      openThreadKey: null,
+      holds,
+      projectRefIndex: createProjectRefIndex([]),
+      isDraft: (threadKey) => draftIds.some((id) => keyOf(id) === threadKey),
+    });
+
+  it("puts unsent drafts in a Drafts section ahead of every status, newest first", () => {
+    const result = build(
+      [
+        shell("older-draft", "2026-01-01T00:00:00.000Z"),
+        shell("server", "2026-01-01T12:00:00.000Z"),
+        shell("newer-draft", "2026-01-01T06:00:00.000Z"),
+      ],
+      ["older-draft", "newer-draft"],
+    );
+    expect(result.map((section) => section.status)).toEqual(["drafts", "idle"]);
+    expect(result[0]?.threads.map((thread) => thread.id)).toEqual(["newer-draft", "older-draft"]);
+  });
+
+  it("does not hold a draft in Completed once it reaches the server", () => {
+    const holds = createSidebarV2CompletedHoldTracker(HOLD_MS);
+    const thread = shell("sent", "2026-01-01T00:00:00.000Z");
+    build([thread], ["sent"], holds);
+    expect(build([thread], [], holds).map((section) => section.status)).toEqual(["idle"]);
+  });
+});
+
 describe("countSidebarV2Projects", () => {
   it("counts each logical project once and skips unresolved ones", () => {
     // "web" spans two checkouts; cards from either are one project.
@@ -246,6 +306,7 @@ describe("threadCardTitleRecedes under a status section", () => {
     expect(recedes("done")).toBe(false);
     expect(recedes("working")).toBe(true);
     expect(recedes("idle")).toBe(true);
+    expect(recedes("drafts")).toBe(true);
   });
 
   it("never dims the open or selected card", () => {

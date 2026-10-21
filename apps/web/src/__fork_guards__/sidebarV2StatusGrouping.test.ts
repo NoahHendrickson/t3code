@@ -56,6 +56,19 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(sidebar).toMatch(/pinnedThreads\.length > 0 &&[\s\S]{0,200}?!pinnedSectionShown/u);
   });
 
+  it("feeds drafts to the pipeline and paints Drafts above the pinned block", () => {
+    expect(sidebar).toContain("isDraft: (threadKey) => draftIdByThreadKey.has(threadKey),");
+    // Paint: the Drafts section comes before the Pinned header.
+    const draftsPaint = sidebar.indexOf("renderStatusSection(leadingSection, true)");
+    const pinnedHeader = sidebar.indexOf('section="pinned"');
+    expect(draftsPaint).toBeGreaterThan(-1);
+    expect(draftsPaint).toBeLessThan(pinnedHeader);
+    // Keyboard order matches: draft rows, then pinned, then the rest.
+    expect(sidebar).toMatch(
+      /orderedActiveThreads\.slice\(0, leadingDraftThreadCount\),\s*\.\.\.visiblePinnedThreads,\s*\.\.\.orderedActiveThreads\.slice\(leadingDraftThreadCount\)/u,
+    );
+  });
+
   it("keeps the Working shelf beta out of the way while status grouping is on", () => {
     expect(sidebar).toContain("const workingShelfActive = workingShelfEnabled && !statusGrouped;");
     expect(sidebar).toContain("workingShelfActive && isSidebarThreadWorking(thread)");

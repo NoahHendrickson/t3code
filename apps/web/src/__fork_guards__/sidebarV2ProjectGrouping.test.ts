@@ -61,9 +61,11 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // reorders the spreads (pinned after active) still contains every name
     // while breaking the paint/keyboard-order outcome.
     // Status grouping can collapse the pinned block, so the spread is the
-    // visible pinned rows (all of them in every other mode).
+    // visible pinned rows (all of them in every other mode). Its Drafts
+    // section lifts above pinned, so the active spread is the remainder after
+    // the draft rows (all of it in every other mode).
     const pinnedSpread = sidebar.indexOf("...visiblePinnedThreads,");
-    const activeSpread = sidebar.indexOf("...orderedActiveThreads,");
+    const activeSpread = sidebar.indexOf("...orderedActiveThreads.slice(leadingDraftThreadCount),");
     const snoozedSpread = sidebar.indexOf("...visibleSnoozedThreads,");
     expect(pinnedSpread).toBeGreaterThanOrEqual(0);
     expect(activeSpread).toBeGreaterThan(pinnedSpread);
