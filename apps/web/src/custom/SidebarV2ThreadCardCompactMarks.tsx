@@ -81,7 +81,7 @@ export function SidebarV2CompactCardLead(props: {
   return (
     <span className="flex size-4 shrink-0 items-center justify-center">
       {props.project ? (
-        <ProjectFavicon project={props.project} className="size-4 text-muted-foreground" />
+        <ProjectFavicon project={props.project} className="size-4" />
       ) : (
         <SidebarV2ProjectFolderMark className="size-4 text-muted-foreground" />
       )}

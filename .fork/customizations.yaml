@@ -715,10 +715,8 @@
     hover pin action to the card (owned by sidebar-v2-row-action-hit-area).
     Since the 2026-09-08 sync the favicon slot is built from the project
     record upstream hands down (ProjectFavicon's `project` prop, #10714), a
-    null project falling through to the meta's folder mark. Upstream's title
-    monogram (#11572) stands down wherever the fork passes its own
-    fallbackIcon (the draft project chip and the thread context readout);
-    the sidebar cards pass none and draw the monogram. Upstream's
+    null project falling through to the meta's folder mark. A favicon-less
+    project draws upstream's title monogram (#11572). Upstream's
     unsent-draft row tint and its "Discard draft" hover action are refused on
     purpose — the surface encodes interaction and nothing else, and the hover
     cell is fork-owned — while its pen marker is kept.
@@ -749,9 +747,6 @@
     # The fork customizes upstream's canonical Sidebar V2 implementation in place.
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/index.css
-    # Fenced: an explicit fallbackIcon (the draft project chip's folder mark)
-    # suppresses upstream's automatic title monogram (#11572).
-    - apps/web/src/components/ProjectFavicon.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
     - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
@@ -4898,6 +4893,10 @@
     - apps/web/src/components/ChatView.tsx
     # Fenced user-facing note on starting an agent and choosing its project.
     - docs/user/thread-sidebar.md
+    # Fenced: an explicit fallbackIcon (the project chip's folder mark, also
+    # the thread context readout's) suppresses upstream's automatic title
+    # monogram (#11572).
+    - apps/web/src/components/ProjectFavicon.tsx
   verify:
     - apps/web/src/__fork_guards__/forkNewAgentDraft.test.ts
     - apps/web/src/custom/newAgentDraft.test.ts
