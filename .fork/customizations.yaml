@@ -5163,6 +5163,29 @@
   verify:
     - apps/web/src/__fork_guards__/forkNewWorktreeDefaultBase.test.ts
 
+- id: fork-image-attachment-no-chip
+  intent: >
+    An attached image shows once in the composer: as its thumbnail above the
+    prompt. Upstream also inserts an inline chip (file name and size) into
+    the prompt text whenever the prompt is non-empty or the composer is in a
+    connecting, approval, question, or project-picker state, so the same
+    image read twice. The fork never auto-inserts that chip; the image still
+    sends from the thumbnail strip, exactly as upstream already does when it
+    skips the chip for an empty prompt. The trade-off is deliberate: the chip
+    was also the image's place in the prose the agent receives
+    (projectComposerContextForProvider turns it into a positional marker), so
+    "compare <img1> with <img2>" now arrives as text plus two unplaced
+    attachments, in staging order. Chips the user brings in on purpose
+    (pasting copied chips) are untouched, and file attachments keep their
+    chips since they have no thumbnail.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/web/src/components/chat/ChatComposer.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkImageAttachmentNoChip.test.ts
+
 - id: git-config-lock-retry
   intent: >
     A git config write retries briefly while another git process holds

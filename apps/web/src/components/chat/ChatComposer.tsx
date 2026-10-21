@@ -258,7 +258,9 @@ import {
 import { useOpenPrLink } from "~/lib/openPullRequestLink";
 import {
   collectInlineContextIds,
-  stripInlineContextReferences,
+  /* fork:begin fork-image-attachment-no-chip — see .fork/customizations.yaml#fork-image-attachment-no-chip
+     Upstream imports stripInlineContextReferences here for the image-chip gate. */
+  /* fork:end fork-image-attachment-no-chip */
   type ComposerContextReference,
   ensureInlineContextReferences,
   formatInlineContextReference,
@@ -5613,14 +5615,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     // large image is being compressed, and the attachments and errors belong
     // to the thread the paste happened in.
     const threadId = activeThreadId;
-    const imageAttachmentsGetChips =
-      !options?.skipImageInlineChip &&
-      (options?.selection !== undefined ||
-        isConnecting ||
-        isComposerApprovalState ||
-        pendingUserInputs.length > 0 ||
-        projectSelectionRequired ||
-        stripInlineContextReferences(promptRef.current).trim().length > 0);
+    /* fork:begin fork-image-attachment-no-chip — see .fork/customizations.yaml#fork-image-attachment-no-chip */
+    // The thumbnail strip already shows every staged image; an inline chip
+    // repeated it in the prompt.
+    const imageAttachmentsGetChips = false;
+    /* fork:end fork-image-attachment-no-chip */
 
     // Validation happens synchronously so concurrent pastes see each other:
     // accepted files reserve their attachment slots (via the pending counter)
