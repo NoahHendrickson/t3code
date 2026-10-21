@@ -11,6 +11,10 @@
  * own collapse and paging, and the hairline shelf header returns in the other
  * modes.
  *
+ * Drafts — threads made with New thread that have not been sent yet — sit in
+ * a Drafts section of their own, painted above every other group, Pinned
+ * included (`splitSidebarV2DraftsSection`).
+ *
  * A card's section comes from the same derivation as the mark it draws
  * (`resolveSidebarV2CardStatus`), so the two agree. One deliberate exception,
  * visible in `sidebarV2StatusBucketForKind`: a finished thread whose only
@@ -46,17 +50,19 @@ import { useSidebarV2CollapsedKeys, type SidebarV2ActiveSection } from "./sideba
 const SIDEBAR_V2_COLLAPSED_STATUS_SECTIONS_STORAGE_KEY =
   "t3code:fork:sidebar-v2-collapsed-status-sections:v1";
 
-export type SidebarV2StatusBucket = "input" | "done" | "working" | "idle";
+export type SidebarV2StatusBucket = "drafts" | "input" | "done" | "working" | "idle";
 
-/** Paint order: blocked agents first, then results to read, then live work. */
+/** Paint order: unsent drafts on top, then blocked agents, then results to
+    read, then live work. */
 const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
+  "drafts",
   "input",
   "done",
   "working",
   "idle",
 ];
 
-/** The sections the collapse store holds: the four status sections, plus the
+/** The sections the collapse store holds: the status sections, plus the
     pinned block, which takes a header of its own while status grouping is on
     so it reads as one more group. */
 export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
@@ -66,6 +72,7 @@ export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
 export type SidebarV2StatusHeaderKey = SidebarV2StatusSectionKey | "settled";
 
 export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusHeaderKey, string> = {
+  drafts: "Drafts",
   pinned: "Pinned",
   input: "Needs input",
   done: "Completed",
@@ -107,6 +114,22 @@ export function useSidebarV2CollapsedStatusSections() {
     SIDEBAR_V2_COLLAPSED_STATUS_SECTIONS_STORAGE_KEY,
     isStatusSectionKey,
   );
+}
+
+/**
+ * Splits the Drafts section off the painted sections by name, so Sidebar.tsx
+ * can paint it above the pinned block and flatten the rest as before.
+ */
+export function splitSidebarV2DraftsSection<
+  TSection extends { readonly kind: string; readonly status?: SidebarV2StatusBucket },
+>(sections: readonly TSection[]) {
+  const isDrafts = (section: TSection): section is Extract<TSection, { kind: "status" }> =>
+    section.kind === "status" && section.status === "drafts";
+  const draftsSection = sections.find(isDrafts) ?? null;
+  return {
+    draftsSection,
+    listSections: draftsSection === null ? sections : sections.filter((s) => !isDrafts(s)),
+  };
 }
 
 /** Folds a card's status kind into a section. Woke joins Completed: the
@@ -242,7 +265,8 @@ export function groupSidebarV2StatusSections<TThread extends SidebarV2StatusSect
 /**
  * The whole status pipeline for the active list: each thread's bucket from
  * the same derivation as its card's mark, Completed holds applied, then the
- * sections. Sidebar.tsx calls this or project grouping, nothing in between.
+ * sections, with drafts in Drafts. Sidebar.tsx calls this or project
+ * grouping, nothing in between.
  */
 export function buildSidebarV2StatusSections(input: {
   readonly threads: readonly EnvironmentThreadShell[];
@@ -252,6 +276,8 @@ export function buildSidebarV2StatusSections(input: {
   readonly openThreadKey: string | null;
   readonly holds: SidebarV2CompletedHoldTracker;
   readonly returnedAt?: ((thread: EnvironmentThreadShell) => number | undefined) | undefined;
+  /** Whether a thread key is an unsent client draft (custom/sidebarV2DraftRows). */
+  readonly isDraft: (threadKey: string) => boolean;
 }): SidebarV2StatusSection<EnvironmentThreadShell>[] {
   const keyByThread = new Map<EnvironmentThreadShell, string>();
   const buckets = new Map<string, SidebarV2StatusBucket>();
@@ -267,6 +293,8 @@ export function buildSidebarV2StatusSections(input: {
     });
     buckets.set(threadKey, sidebarV2StatusBucketForKind(kind));
   }
+  // Drafts feed the tracker like any thread: a draft shell has no run, so it
+  // derives as idle and can never start a hold. Only the paint overrides it.
   const effective = input.holds.apply({
     buckets,
     openThreadKey: input.openThreadKey,
@@ -277,7 +305,10 @@ export function buildSidebarV2StatusSections(input: {
   });
   return groupSidebarV2StatusSections({
     threads: input.threads,
-    bucketOf: (thread) => effective.get(keyByThread.get(thread)!) ?? "idle",
+    bucketOf: (thread) => {
+      const threadKey = keyByThread.get(thread)!;
+      return input.isDraft(threadKey) ? "drafts" : (effective.get(threadKey) ?? "idle");
+    },
     returnedAt: input.returnedAt,
   });
 }

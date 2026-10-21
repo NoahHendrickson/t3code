@@ -1,12 +1,16 @@
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { resolveSidebarV2CardStatusKind } from "./sidebarV2CardStatus";
+import { buildSidebarDraftShell } from "./sidebarV2DraftRows";
 import { threadCardTitleRecedes } from "./sidebarV2RowPolicy";
 import {
+  buildSidebarV2StatusSections,
   createSidebarV2CompletedHoldTracker,
   groupSidebarV2StatusSections,
   sidebarV2StatusBucketForKind,
+  splitSidebarV2DraftsSection,
   type SidebarV2StatusBucket,
 } from "./sidebarV2StatusGrouping";
 
@@ -191,6 +195,71 @@ describe("groupSidebarV2StatusSections", () => {
   });
 });
 
+describe("buildSidebarV2StatusSections", () => {
+  const environmentId = EnvironmentId.make("local");
+  const shell = (id: string, createdAt: string) =>
+    buildSidebarDraftShell({
+      draft: {
+        threadId: ThreadId.make(id),
+        environmentId,
+        projectId: ProjectId.make("p1"),
+        logicalProjectKey: "p1",
+        createdAt,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        branch: "main",
+        worktreePath: null,
+        envMode: "local",
+        startFromOrigin: false,
+        promotedTo: null,
+      },
+      modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
+    });
+  const keyOf = (id: string) => scopedThreadKey(scopeThreadRef(environmentId, ThreadId.make(id)));
+  const build = (threads: ReturnType<typeof shell>[], draftIds: readonly string[]) =>
+    buildSidebarV2StatusSections({
+      threads,
+      localLastVisitedAtById: {},
+      now: "2026-01-02T00:00:00.000Z",
+      openThreadKey: null,
+      holds: createSidebarV2CompletedHoldTracker(HOLD_MS),
+      isDraft: (threadKey) => draftIds.some((id) => keyOf(id) === threadKey),
+    });
+
+  it("puts unsent drafts in a Drafts section ahead of every status, newest first", () => {
+    const result = build(
+      [
+        shell("older-draft", "2026-01-01T00:00:00.000Z"),
+        shell("server", "2026-01-01T12:00:00.000Z"),
+        shell("newer-draft", "2026-01-01T06:00:00.000Z"),
+      ],
+      ["older-draft", "newer-draft"],
+    );
+    expect(result.map((section) => section.status)).toEqual(["drafts", "idle"]);
+    expect(result[0]?.threads.map((thread) => thread.id)).toEqual(["newer-draft", "older-draft"]);
+  });
+});
+
+describe("splitSidebarV2DraftsSection", () => {
+  it("takes the Drafts section out by name and keeps the rest in order", () => {
+    const sections = [
+      { kind: "status", status: "input" },
+      { kind: "status", status: "drafts" },
+      { kind: "status", status: "idle" },
+    ] as const;
+    const { draftsSection, listSections } = splitSidebarV2DraftsSection(sections);
+    expect(draftsSection).toBe(sections[1]);
+    expect(listSections.map((section) => section.status)).toEqual(["input", "idle"]);
+  });
+
+  it("leaves project sections whole", () => {
+    const sections = [{ kind: "project" }, { kind: "project" }] as const;
+    const { draftsSection, listSections } = splitSidebarV2DraftsSection(sections);
+    expect(draftsSection).toBeNull();
+    expect(listSections).toBe(sections);
+  });
+});
+
 describe("threadCardTitleRecedes under a status section", () => {
   const recedes = (statusSection: SidebarV2StatusBucket, isActive = false, isSelected = false) =>
     threadCardTitleRecedes({ isDone: false, isIdle: false, isActive, isSelected, statusSection });
@@ -200,6 +269,7 @@ describe("threadCardTitleRecedes under a status section", () => {
     expect(recedes("done")).toBe(false);
     expect(recedes("working")).toBe(true);
     expect(recedes("idle")).toBe(true);
+    expect(recedes("drafts")).toBe(true);
   });
 
   it("never dims the open or selected card", () => {

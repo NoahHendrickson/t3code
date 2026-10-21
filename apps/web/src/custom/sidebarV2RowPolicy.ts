@@ -51,9 +51,9 @@ import type { SidebarV2StatusBucket } from "./sidebarV2StatusGrouping";
  *
  * Under a status header (`sidebar-v2-status-grouping`) the section decides
  * instead: only Needs input and Completed titles stay at full strength, and
- * Working and Idle recede, since the header already says the agent is busy or
- * the thread is quiet. That reverses this rule on Working and Done, and only
- * while status grouping is on. */
+ * the rest recede, since the header already says the agent is busy, the
+ * thread is quiet, or nothing has been sent yet. That reverses this rule on
+ * Working and Done, and only while status grouping is on. */
 export function threadCardTitleRecedes(input: {
   /** The unread-done dot — an outcome reported but not yet opened. */
   readonly isDone: boolean;
@@ -66,7 +66,7 @@ export function threadCardTitleRecedes(input: {
 }): boolean {
   if (input.isActive || input.isSelected) return false;
   if (input.statusSection !== undefined) {
-    return input.statusSection === "working" || input.statusSection === "idle";
+    return input.statusSection !== "input" && input.statusSection !== "done";
   }
   return input.isDone || input.isIdle;
 }

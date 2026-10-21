@@ -40,7 +40,7 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(memo).toContain("holds: completedHolds");
     expect(memo).toContain("openThreadKey: statusOpenThreadKey");
     expect(sidebar).toContain('if (section.kind === "status")');
-    expect(sidebar).toContain("visibleActiveSections.flatMap((section) => section.threads)");
+    expect(sidebar).toContain("listSections.flatMap((section) => section.threads)");
     expect(sidebar).toContain("<SidebarV2StatusSectionHeader");
   });
 
@@ -54,6 +54,20 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(sidebar).toContain("...visiblePinnedThreads,");
     // The header replaces the divider; the other modes keep it.
     expect(sidebar).toMatch(/pinnedThreads\.length > 0 &&[\s\S]{0,200}?!pinnedSectionShown/u);
+  });
+
+  it("feeds drafts to the pipeline and paints Drafts above the pinned block", () => {
+    expect(sidebar).toContain("isDraft: (threadKey) => draftIdByThreadKey.has(threadKey),");
+    expect(sidebar).toContain("splitSidebarV2DraftsSection(visibleActiveSections)");
+    // Paint: the Drafts section comes before the Pinned header.
+    const draftsPaint = sidebar.indexOf("renderStatusSection(draftsSection, true)");
+    const pinnedHeader = sidebar.indexOf('section="pinned"');
+    expect(draftsPaint).toBeGreaterThan(-1);
+    expect(draftsPaint).toBeLessThan(pinnedHeader);
+    // Keyboard order matches: draft rows, then pinned, then the rest.
+    const draftsSpread = sidebar.indexOf("...(draftsSection?.threads ?? EMPTY_THREADS),");
+    expect(draftsSpread).toBeGreaterThan(-1);
+    expect(draftsSpread).toBeLessThan(sidebar.indexOf("...visiblePinnedThreads,"));
   });
 
   it("gives the settled tail the status header while status grouping is on", () => {
