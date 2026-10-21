@@ -180,7 +180,11 @@ describe("fork guard: fork-composer-shell", () => {
   });
 
   it("keeps collapsed-mobile controls on upstream theme-role tokens", () => {
-    expect([...chatComposer.matchAll(/text-placeholder/gu)]).toHaveLength(2);
+    // One placeholder carrier: the collapsed prompt row. Upstream #20391 keeps
+    // the composer expanded while a question is pending, which deleted the
+    // collapsed-mobile "Write custom answer" row that was the second.
+    expect([...chatComposer.matchAll(/text-placeholder/gu)]).toHaveLength(1);
+    expect(chatComposer).toContain('prompt.trim() ? "text-foreground" : "text-placeholder",');
     expect(chatComposer).not.toContain("text-muted-foreground/60");
     expect(chatComposer).not.toContain("text-muted-foreground/35");
     expect(chatComposer).toContain(
@@ -480,10 +484,10 @@ describe("fork guard: fork-composer-shell", () => {
   it("opens the workspace select above the context chip row", () => {
     // Assert independently — prop order must not matter to the guard.
     expect(envModeSelector).toMatch(/SelectPopup[^>]*alignItemWithTrigger=\{false\}/u);
-    // Toolbar only: in the thread details panel the select keeps upstream's side.
-    expect(envModeSelector).toMatch(
-      /SelectPopup[^>]*side=\{displayMode === "panel" \? undefined : "top"\}/u,
-    );
+    // Toolbar only by construction: upstream #16823 moved the thread details
+    // panel onto RunContextSelector, so this selector has no panel mode left.
+    expect(envModeSelector).toMatch(/SelectPopup[^>]*side="top"/u);
+    expect(envModeSelector).not.toContain("displayMode");
   });
 
   it("keeps context chips at 24px and the meter outside ghost geometry", () => {
@@ -840,7 +844,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(pill).toContain("readonly tasks: ReadonlyArray<PendingBackgroundWorkItem>;");
     expect(strip).toContain("readonly presentation: PendingBackgroundWorkPresentation;");
     expect(strip).toContain("tasks: input.presentation.items,");
-    expect(chatView).toContain("onOpenThread: onOpenRelatedThread,");
+    expect(chatView).toContain("onOpenThread: onOpenRelatedThreadStable,");
     // The live region sits beside the trigger: inside it, "Stopping..." is
     // presentational and never announced.
     expect(pill).toMatch(/<span role="status" className="sr-only">[\s\S]{0,80}<Popover>/u);

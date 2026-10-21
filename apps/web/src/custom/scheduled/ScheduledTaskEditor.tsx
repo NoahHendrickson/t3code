@@ -1,6 +1,9 @@
 import { ScheduledTaskModelPicker } from "./ScheduledTaskModelPicker";
 import { ScheduledTriggerTabs } from "./ScheduledTriggerTabs";
-import { scheduledTaskModelSelection } from "./scheduledTaskModel.logic";
+import {
+  scheduledTaskDraftSelection,
+  scheduledTaskModelSelection,
+} from "./scheduledTaskModel.logic";
 import type { AutomationDraft as DraftState } from "./githubAutomation.logic";
 import { Checkbox } from "~/components/ui/checkbox";
 /**
@@ -35,6 +38,7 @@ import {
   type ScheduledTask,
 } from "@t3tools/contracts";
 import { DEFAULT_WEBHOOK_PROMPT } from "@t3tools/client-runtime/scheduled-task-webhook";
+import { fileBasename } from "@t3tools/shared/path";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -49,7 +53,6 @@ import {
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { resolveWorkspaceDisplayName } from "~/components/BranchToolbar.logic";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { ComposerControl, ComposerSelectControl } from "~/components/chat/ComposerControl";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
@@ -121,18 +124,20 @@ export function useScheduledTaskModel(input: {
   const providers =
     useAtomValue(serverEnvironment.providersValueAtom(input.environmentId)) ??
     EMPTY_SERVER_PROVIDERS;
-  const instanceEntries = useMemo(
-    () =>
-      sortProviderInstanceEntries(
-        applyProviderInstanceSettings(deriveProviderInstanceEntries(providers), settings),
-      ),
-    [providers, settings],
+  const instanceEntries = sortProviderInstanceEntries(
+    applyProviderInstanceSettings(
+      deriveProviderInstanceEntries(providers),
+      settings,
+      input.project?.id ?? null,
+    ),
   );
   const firstInstance = instanceEntries[0];
   const activeSelection = scheduledTaskModelSelection(
-    input.draft.modelKey
-      ? splitModelKey(input.draft.modelKey)
-      : scheduledTaskDefaultModel(settings, input.project, instanceEntries),
+    scheduledTaskDraftSelection(
+      input.draft.modelKey ? splitModelKey(input.draft.modelKey) : null,
+      instanceEntries,
+      () => scheduledTaskDefaultModel(settings, input.project, instanceEntries),
+    ),
     input.draft.baseModelSelection,
   );
   const activeInstanceId =
@@ -234,6 +239,7 @@ export function ScheduledTaskEditor(props: ScheduledTaskEditorProps) {
             >
               <div data-fork-composer-model-controls="true" className="flex min-w-0 items-center">
                 <ScheduledTaskModelPicker
+                  environmentId={props.environmentId}
                   disabled={props.disabled}
                   activeInstanceId={model.activeInstanceId}
                   model={model.activeModel}
@@ -556,7 +562,9 @@ function RunsInPills(props: ScheduledTaskEditorProps) {
 
 function CheckoutPathPill(props: ScheduledTaskEditorProps) {
   const { draft, setDraft } = props;
-  const name = resolveWorkspaceDisplayName(draft.existingWorktreePath.trim() || null);
+  // The checkout folder's own name, as the toolbar labels a workspace.
+  const path = draft.existingWorktreePath.trim();
+  const name = path ? fileBasename(path) : null;
   return (
     <Popover>
       <PopoverTrigger

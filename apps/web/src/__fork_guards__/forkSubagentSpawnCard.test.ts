@@ -30,7 +30,7 @@ describe("fork guard: fork-subagent-spawn-card", () => {
     expect(timeline).not.toContain("return <V2SubagentGroup key={row.id} row={row} />;");
     // Upstream's grouped-batch cases click a collapsed group open; the fork
     // tree has no such state, and the fenced cases say so.
-    const timelineTest = readSibling("../components/chat/MessagesTimeline.test.tsx");
+    const timelineTest = readSibling("../components/chat/MessagesTimeline.browser.test.tsx");
     expect(timelineTest).toContain("fork:begin fork-subagent-spawn-card");
   });
 

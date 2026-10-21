@@ -517,8 +517,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const sidebarV2 = readSibling("../components/Sidebar.tsx");
     expect(sidebarV2).toContain("useState<ReadonlySet<string>>(EMPTY_PROJECT_SCOPE)");
     expect(sidebarV2).toContain("scopedProjectGroups.flatMap((group) =>");
-    expect(sidebarV2).toContain(
-      "if (allProjectSnapshotsReady && scopedProjectGroups.length !== projectScopeKeys.size) {",
+    // Upstream's prune also waits for project configs before dropping a key.
+    expect(sidebarV2).toMatch(
+      /allProjectSnapshotsReady &&\s*allProjectConfigsReady &&\s*scopedProjectGroups\.length !== projectScopeKeys\.size/u,
     );
     expect(sidebarV2).toContain("`${scopedProjectGroups.length} projects`");
     expect(sidebarV2).toContain("scopedProjectDisplayName={scopedProjectsLabel}");

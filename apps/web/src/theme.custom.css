@@ -2611,8 +2611,9 @@
    (--fork-outline-hover-bg), not upstream's black/white tints — the same
    lift every outline action and changed-files row already takes. Upstream
    composes every panel row, split half and icon action from one hover
-   surface string (threadDetailsPanelStyles.ts), and the fork appends its
-   hook to that string (fenced there): the lift keys on the hook, so it
+   surface string and the select row's halves from another
+   (threadDetailsPanelStyles.ts), and the fork appends its hook to both
+   (fenced there): the lift keys on the hook, so it
    reaches exactly those surfaces and never, say, the automations Switch
    in the same card, and no Tailwind group name is a contract. Upstream
    stacks a group tint under a segment tint so the hovered half of a split

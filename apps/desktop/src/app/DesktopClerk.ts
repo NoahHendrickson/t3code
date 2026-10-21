@@ -1,4 +1,5 @@
 import { createClerkBridge } from "@clerk/electron";
+import * as NodeURL from "node:url";
 import { storage } from "@clerk/electron/storage";
 // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
 import * as Electron from "electron";
@@ -14,13 +15,15 @@ import { codexAuthDeliveryUrl, readCodexAuthHandoff } from "@t3tools/shared/code
 import { receiveCodexAuthCallback, CodexAuthCallbackError } from "./CodexAuthCallback.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import { providerAuthReturnUrl } from "@t3tools/shared/providerAuthReturnUrl";
-import { HostProcessArguments } from "@t3tools/shared/hostProcess";
+import { promptLinkAppPath } from "@t3tools/shared/promptLinks";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import { clerkFrontendApiHostnameFromPublishableKey } from "@t3tools/shared/relayAuth";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopUserData from "./DesktopUserData.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
+import * as DesktopWebLinks from "./DesktopWebLinks.ts";
 
 declare const __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: string | undefined;
 
@@ -56,7 +59,10 @@ export class DesktopClerk extends Context.Service<
     readonly configure: Effect.Effect<
       void,
       never,
-      ElectronApp.ElectronApp | ElectronWindow.ElectronWindow | Scope.Scope
+      | ElectronApp.ElectronApp
+      | ElectronWindow.ElectronWindow
+      | DesktopWebLinks.DesktopWebLinks
+      | Scope.Scope
     >;
   }
 >()("@t3tools/desktop/app/DesktopClerk") {}
@@ -100,6 +106,7 @@ export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolea
     // fork:end fork-clerk-launch-resilience
     return createClerkBridge({
       storage: storage({ path: stateDir }),
+      manageSingleInstanceLock: false,
       passkeys: true,
       renderer: {
         scheme: ElectronProtocol.getDesktopScheme(isDevelopment),
@@ -121,10 +128,25 @@ export const make = Effect.gen(function* () {
   const electronApp = yield* ElectronApp.ElectronApp;
   const shell = yield* ElectronShell.ElectronShell;
 
-  // The SDK bridge acquires Electron's profile-scoped single-instance lock.
   // Must not yield: the bridge registers a scheme Electron rejects once ready.
   const userDataPath = yield* DesktopUserData.resolveUserDataPath(environment);
   yield* electronApp.setPath("userData", userDataPath);
+
+  // T3 owns the profile-scoped lock on every platform; Clerk skips it on macOS.
+  // Quit is asynchronous, so interrupt before the application runtime is built.
+  if (!(yield* electronApp.requestSingleInstanceLock)) {
+    yield* electronApp.quit;
+    return yield* Effect.interrupt;
+  }
+
+  // Retain launch arguments while asynchronous startup builds the application runtime.
+  const pendingSecondInstances: Array<readonly string[]> = [];
+  let handleSecondInstance = (argv: readonly string[]) => {
+    pendingSecondInstances.push(argv);
+  };
+  yield* electronApp.on("second-instance", (_event: unknown, argv: readonly string[]) => {
+    handleSecondInstance(argv);
+  });
 
   // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
   // A build with no baked Clerk publishable key cannot sign in, so the
@@ -138,17 +160,15 @@ export const make = Effect.gen(function* () {
   // including loud initialization AND cleanup failures, which must stay
   // fatal there rather than hide behind a warning — except its redundant
   // scheme re-registration, which createDesktopClerkBridge above suppresses
-  // so a post-"ready" layer build cannot die on it. The bridge now also
-  // carries the single-instance lock (acquired at creation), so the keyless
-  // path takes the lock directly in configure below.
-  let bridge: ReturnType<typeof createDesktopClerkBridge> | undefined;
+  // so a post-"ready" layer build cannot die on it. The single-instance lock
+  // is taken above on both paths, so skipping the bridge cannot drop it.
   if (desktopClerkFrontendApiHostname === undefined) {
     yield* Effect.logWarning(
       "No Clerk publishable key in this build; skipping the Clerk bridge (cloud sign-in unavailable).",
     );
   } else {
     // fork:end fork-clerk-launch-resilience
-    bridge = yield* Effect.acquireRelease(
+    yield* Effect.acquireRelease(
       Effect.try({
         try: () => createDesktopClerkBridge(environment.stateDir, environment.isDevelopment),
         catch: (cause) =>
@@ -177,26 +197,9 @@ export const make = Effect.gen(function* () {
     configure: Effect.gen(function* () {
       const electronApp = yield* ElectronApp.ElectronApp;
       const electronWindow = yield* ElectronWindow.ElectronWindow;
+      const webLinks = yield* DesktopWebLinks.DesktopWebLinks;
       const context = yield* Effect.context<ElectronWindow.ElectronWindow>();
       const runPromise = Effect.runPromiseWith(context);
-
-      // The SDK bridge holds Electron's single-instance lock (acquired at
-      // bridge creation) so OAuth deep-link callbacks on Windows/Linux are
-      // forwarded to the running app. In a secondary instance the bridge has
-      // already begun quitting the app; app.quit() is asynchronous, so stop
-      // bootstrap here before whenReady can fire.
-      // fork:begin fork-clerk-launch-resilience — keyless builds have no bridge
-      // With the bridge skipped nothing has taken the lock, so take it
-      // directly; the optional read keeps plain-Node unit imports safe, where
-      // the electron shim exposes no app object.
-      const isPrimaryInstance = bridge
-        ? bridge.isPrimaryInstance
-        : (Electron.app?.requestSingleInstanceLock() ?? true);
-      // fork:end fork-clerk-launch-resilience
-      if (!isPrimaryInstance) {
-        yield* electronApp.quit;
-        return yield* Effect.interrupt;
-      }
 
       const startProviderAuthHandoff = (value: string | undefined) => {
         if (!value) return false;
@@ -242,13 +245,39 @@ export const make = Effect.gen(function* () {
         );
         return true;
       };
-      const args = yield* HostProcessArguments;
-      args.some((value) => startProviderAuthHandoff(value));
+      const openAppLink = (value: string | undefined) => {
+        if (!value || promptLinkAppPath(value) === null) return false;
+        void runPromise(webLinks.receive(value));
+        return true;
+      };
+      const args = yield* HostProcess.Arguments;
+      args.some((value) => startProviderAuthHandoff(value) || openAppLink(value));
+      const openWebLink = (url: string) => {
+        if (!DesktopWebLinks.isWebLink(url)) return false;
+        void runPromise(webLinks.receive(url));
+        return true;
+      };
       yield* electronApp.on("open-url", (event: { preventDefault: () => void }, url: string) => {
-        if (startProviderAuthHandoff(url) || resumeProviderAuth(url)) event.preventDefault();
+        if (
+          startProviderAuthHandoff(url) ||
+          resumeProviderAuth(url) ||
+          openWebLink(url) ||
+          openAppLink(url)
+        )
+          event.preventDefault();
       });
-      yield* electronApp.on("second-instance", (_event: unknown, argv: readonly string[]) => {
-        if (argv?.some((value) => startProviderAuthHandoff(value) || resumeProviderAuth(value)))
+      yield* electronApp.on("open-file", (event: { preventDefault: () => void }, path: string) => {
+        if (!DesktopWebLinks.isWebPageFile(path)) return;
+        event.preventDefault();
+        void runPromise(webLinks.receive(NodeURL.pathToFileURL(path).href));
+      });
+      handleSecondInstance = (argv) => {
+        if (
+          argv?.some(
+            (value) =>
+              startProviderAuthHandoff(value) || resumeProviderAuth(value) || openAppLink(value),
+          )
+        )
           return;
         void runPromise(
           Effect.gen(function* () {
@@ -256,7 +285,8 @@ export const make = Effect.gen(function* () {
             if (Option.isSome(mainWindow)) yield* electronWindow.reveal(mainWindow.value);
           }),
         );
-      });
+      };
+      for (const argv of pendingSecondInstances.splice(0)) handleSecondInstance(argv);
     }).pipe(Effect.withSpan("desktop.clerk.configure")),
   });
 });

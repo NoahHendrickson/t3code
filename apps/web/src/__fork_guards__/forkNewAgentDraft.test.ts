@@ -80,9 +80,7 @@ describe("fork guard: fork-new-agent-draft", () => {
       /!rightPanelControlsAtRoot && !rightPanelControlsInPanel && !forkProjectlessDraft\s*\?\s*panelLayoutControls/u,
     );
     expect(chatView).toMatch(/\{forkProjectlessDraft \? null : \(\s*<ChatHeader/u);
-    expect(chatView).toContain(
-      "{forkProjectlessDraft ? null : <ThreadDetailsPanel {...threadDetailsPanelProps} />}",
-    );
+    expect(chatView).toMatch(/\{forkProjectlessDraft \? null : \(\s*<ThreadDetailsPanel\b/u);
   });
 
   it("keeps the prompt editable while the draft has no project", () => {
@@ -312,7 +310,7 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(chatView).toMatch(
       /void waitForDraftHeroTransition\(\)\.then\(\(\) => \{[\s\S]{0,200}?publishNow\(\);/u,
     );
-    expect(chatView).toContain("const resizeObserver = new ResizeObserver(updateHeight);");
+    expect(chatView).toMatch(/observeResize\([^)]*updateHeight/u);
   });
 
   it("keeps Usage as the chrome's fourth row", () => {

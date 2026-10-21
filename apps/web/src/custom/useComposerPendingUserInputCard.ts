@@ -6,7 +6,7 @@
  * override can stay presentational. Port upstream effect fixes here first.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
   derivePendingUserInputProgress,
@@ -78,27 +78,25 @@ export function useComposerPendingUserInputCard({
     progress.selectedOptionValues,
   ]);
 
-  // Clear auto-advance timer on unmount
+  // A pending auto-advance belongs to the question it was scheduled on. It must
+  // not fire once the user moves to another question, once responding is
+  // disabled (the operate scope can be withdrawn mid-timer, upstream #9786),
+  // or after unmount.
+  const activeQuestionId = activeQuestion?.id;
   useEffect(() => {
-    return () => {
+    const clearAutoAdvance = () => {
       if (autoAdvanceTimerRef.current !== null) {
         window.clearTimeout(autoAdvanceTimerRef.current);
+        autoAdvanceTimerRef.current = null;
       }
     };
-  }, []);
+    if (responseDisabled || activeQuestionId === undefined) clearAutoAdvance();
+    return clearAutoAdvance;
+  }, [activeQuestionId, responseDisabled]);
 
-  // A pending auto-advance must not fire once responding is disabled: the
-  // operate scope can be withdrawn mid-timer (upstream #9786).
-  useEffect(() => {
-    if (responseDisabled && autoAdvanceTimerRef.current !== null) {
-      window.clearTimeout(autoAdvanceTimerRef.current);
-      autoAdvanceTimerRef.current = null;
-    }
-  }, [responseDisabled]);
-
-  // Stable so the number-key listener below is not torn down and rebuilt on
-  // every render; everything it reads comes from the mirror or a setState.
-  const handleOptionSelection = useCallback((questionId: string, optionValue: string) => {
+  // Everything this reads comes from the mirror or a setState, so the compiler
+  // keeps it stable and the number-key listener below is not rebuilt per render.
+  const handleOptionSelection = (questionId: string, optionValue: string) => {
     const { activeQuestion: question, onToggleOption: toggle } = latestRef.current;
     if (latestRef.current.responseDisabled) return;
     if (question?.multiSelect) {
@@ -114,7 +112,7 @@ export function useComposerPendingUserInputCard({
       autoAdvanceTimerRef.current = null;
       latestRef.current.onAdvance();
     }, 200);
-  }, []);
+  };
 
   // Keyboard shortcut: number keys 1-9 select corresponding options when focus is
   // outside editable fields. Multi-select prompts toggle options in place; single-

@@ -21,6 +21,7 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
 import { parseCustomizations } from "./detect-drift.mjs";
+import { DEFERRED_LINT_RULES } from "./lint-deferred.mjs";
 
 const FORK_DIR = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
 const REPO_ROOT = NodePath.resolve(FORK_DIR, "..");
@@ -95,16 +96,14 @@ const LINTABLE = new Set([".ts", ".tsx", ".mjs"]);
 // ChatView.tsx — a fork-owned file by manifest — went from 9/13/13 to 10/20/16
 // on memo-dependencies / preserve-manual-memoization / refs between the two
 // sync points; the fork's hunks add one preserve and one refs on top.
-export const DEFERRED_RULES = new Map([
-  ["react(exhaustive-effect-dependencies)", 17],
-  ["react(immutability)", 0],
-  ["react(memo-dependencies)", 23],
-  ["react(preserve-manual-memoization)", 20],
-  ["react(purity)", 1],
-  ["react(refs)", 36],
-  ["react(set-state-in-effect)", 26],
-  ["react(static-components)", 2],
-]);
+// The table lives in lint-deferred.mjs, shared with the root vite.config.ts;
+// oxlint reports codes as `react(refs)` for the config's `react/refs`.
+export const DEFERRED_RULES = new Map(
+  DEFERRED_LINT_RULES.map(([rule, baseline]) => [
+    rule.replace(/^([^/]+)\/(.+)$/u, "$1($2)"),
+    baseline,
+  ]),
+);
 
 const isLintable = (path) => LINTABLE.has(NodePath.extname(path));
 
@@ -263,8 +262,8 @@ function main() {
 
   if (deferred.length > 0) {
     console.error(
-      `fork-lint: ${deferred.length} warning(s) under rules deferred since the 2026-09-08 ` +
-        `sync (see DEFERRED_RULES). Not blocking; burn them down in a follow-up.\n`,
+      `fork-lint: ${deferred.length} warning(s) under deferred rules (see lint-deferred.mjs). ` +
+        `Not blocking; burn them down in a follow-up.\n`,
     );
     for (const diagnostic of deferred) {
       console.error(describe(diagnostic));
