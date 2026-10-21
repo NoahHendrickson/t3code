@@ -72,19 +72,16 @@ export function SidebarV2ThreadCardCompactMarks(props: SidebarV2ThreadCardCompac
 }
 
 /** The project favicon a compact card's title leads with, at the slim rows'
-    16px, falling back to the repo line's folder mark — also for a thread whose
-    project record has not landed yet. */
+    16px. A favicon-less project draws upstream's title monogram, like the
+    repo line; the folder mark stands in only for a thread whose project
+    record has not landed yet. */
 export function SidebarV2CompactCardLead(props: {
   readonly project: ProjectFaviconProject | null;
 }) {
   return (
     <span className="flex size-4 shrink-0 items-center justify-center">
       {props.project ? (
-        <ProjectFavicon
-          project={props.project}
-          className="size-4 text-muted-foreground"
-          fallbackIcon={SidebarV2ProjectFolderMark}
-        />
+        <ProjectFavicon project={props.project} className="size-4 text-muted-foreground" />
       ) : (
         <SidebarV2ProjectFolderMark className="size-4 text-muted-foreground" />
       )}

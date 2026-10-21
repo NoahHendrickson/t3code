@@ -43,9 +43,9 @@ export interface SidebarV2ThreadCardMetaProps {
       design's folder mark (`SidebarV2ProjectFolderMark`) instead. A slot for
       the same reason `terminalSlot` is one: the favicon is an asset lookup
       keyed by environment and cwd, and that state stays on the row's side of
-      this seam. The app always passes ProjectFavicon with that same mark as
-      its no-asset fallback, so null is the test-side default, not the
-      favicon-less path. Required so a call site has to say `null` out loud —
+      this seam. The app passes ProjectFavicon, whose no-asset fallback is the
+      project's title monogram, so null means the project record has not
+      landed yet. Required so a call site has to say `null` out loud —
       see `terminalSlot`. */
   readonly projectIconSlot: ReactNode;
   readonly branch: string | null;
@@ -94,10 +94,8 @@ const REPO_ROW =
 const MARK = "size-3 shrink-0";
 
 /** The design's folder mark for the repo line, decorative like every other
-    mark on it. The meta draws it for a null `projectIconSlot`; the row hands
-    it to ProjectFavicon as `fallbackIcon` so a favicon-less project draws the
-    same glyph — with the `aria-hidden` ProjectFavicon's own fallback does not
-    set. */
+    mark on it. The meta draws it for a null `projectIconSlot`, and the
+    compact card's lead draws it for a project record that has not landed. */
 export function SidebarV2ProjectFolderMark(props: { readonly className?: string | undefined }) {
   return <FolderIcon aria-hidden className={props.className} />;
 }
