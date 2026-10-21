@@ -2762,10 +2762,18 @@ export default function Sidebar() {
      shown only while something is pinned, and it collapses the same way: the
      open thread stays visible. Flat and project modes keep the divider. */
   const pinnedSectionShown = statusGrouped && pinnedThreads.length > 0;
+  // The settled tail takes the same header in place of its hairline shelf.
+  const settledSectionShown = statusGrouped && settledThreads.length > 0;
   const pinnedCollapsed = pinnedSectionShown && collapsedStatusSections.has("pinned");
   const pinnedProjectCount = useMemo(
     () => (pinnedSectionShown ? countSidebarV2Projects(pinnedThreads, projectRefIndex) : 0),
     [pinnedSectionShown, pinnedThreads, projectRefIndex],
+  );
+  // The settled tail's project spread, for the same header. Counted from the
+  // whole tail, including rows still behind Show more.
+  const settledProjectCount = useMemo(
+    () => (settledSectionShown ? countSidebarV2Projects(settledThreads, projectRefIndex) : 0),
+    [projectRefIndex, settledSectionShown, settledThreads],
   );
   const keepCollapsedPinnedRow = useCallback(
     (thread: EnvironmentThreadShell) =>
@@ -5077,7 +5085,32 @@ export default function Sidebar() {
                         items.push(renderThreadRow(thread, "snoozed"));
                       }
                     }
-                    if (settledThreads.length > 0) {
+                    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+                       Same header as the status sections. The hairline shelf
+                       below stays for flat and project modes, and the tail's
+                       own expanded flag still decides which rows paint. */
+                    if (settledSectionShown) {
+                      items.push(
+                        <SidebarV2StatusSectionHeader
+                          key="status-section-header:settled"
+                          section="settled"
+                          count={settledThreads.length}
+                          projectCount={settledProjectCount}
+                          // First only when nothing painted above it, so it
+                          // takes the first-header air under the Projects row.
+                          isFirst={items.every((item) => item === null)}
+                          collapsed={!settledShelfExpanded}
+                          onToggleCollapsed={toggleSettledShelf}
+                        />,
+                      );
+                    }
+                    /* fork:end sidebar-v2-status-grouping */
+                    if (
+                      settledThreads.length > 0 &&
+                      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                      !settledSectionShown
+                      /* fork:end sidebar-v2-status-grouping */
+                    ) {
                       items.push(
                         <li
                           key="settled-shelf-header"

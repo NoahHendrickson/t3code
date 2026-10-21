@@ -5,8 +5,11 @@
  * The other answer to "how should the flat list read": instead of one stream,
  * the active cards split by who owns the next move — Needs input (an agent is
  * blocked on you), Completed (a result is ready to read), Working, and Idle.
- * Pinned, snoozed and settled keep their shelves; Idle ages into Settled
- * through the server's existing auto-settle.
+ * Snoozed keeps its shelf. Idle ages into Settled through the server's
+ * existing auto-settle. While status grouping is on, Pinned and Settled take
+ * this same header; Settled stays a time-ordered tail of slim rows, with its
+ * own collapse and paging, and the hairline shelf header returns in the other
+ * modes.
  *
  * Drafts — threads made with New thread that have not been sent yet — sit in
  * a Drafts section of their own, painted above every other group, Pinned
@@ -63,18 +66,23 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "idle",
 ];
 
-/** Every header status grouping draws: the status sections, plus the
+/** The sections the collapse store holds: the status sections, plus the
     pinned block, which takes a header of its own while status grouping is on
     so it reads as one more group. */
 export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
 
-export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusSectionKey, string> = {
+/** Every header status grouping draws. Settled takes one too, but collapses
+    through its own shelf flag, so it is a label here and not a section key. */
+export type SidebarV2StatusHeaderKey = SidebarV2StatusSectionKey | "settled";
+
+export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusHeaderKey, string> = {
   drafts: "Drafts",
   pinned: "Pinned",
   input: "Needs input",
   done: "Completed",
   working: "Working",
   idle: "Idle",
+  settled: "Settled",
 };
 
 /** How long a thread that came to rest stays in Completed after you leave it. */
@@ -110,7 +118,7 @@ export type SidebarV2ListSection<TThread> =
   | SidebarV2StatusSection<TThread>;
 
 const isStatusSectionKey = (key: string): key is SidebarV2StatusSectionKey =>
-  key in SIDEBAR_V2_STATUS_SECTION_LABELS;
+  key !== "settled" && key in SIDEBAR_V2_STATUS_SECTION_LABELS;
 
 export function useSidebarV2CollapsedStatusSections() {
   return useSidebarV2CollapsedKeys(
