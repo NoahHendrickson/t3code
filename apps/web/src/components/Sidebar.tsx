@@ -304,10 +304,7 @@ import { makeWorkspaceFileDropHandlers } from "./chat/workspaceFileDrop";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */
 import { SidebarV2StatusMark } from "~/custom/SidebarV2StatusIndicator";
-import {
-  SidebarV2ProjectFolderMark,
-  SidebarV2ThreadCardMeta,
-} from "~/custom/SidebarV2ThreadCardMeta";
+import { SidebarV2ThreadCardMeta } from "~/custom/SidebarV2ThreadCardMeta";
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "~/custom/sidebarV2CardAlignment";
 import { triggerModelName } from "~/custom/modelPickerDisplayName";
 import {
@@ -1561,21 +1558,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
      The flat card's repo line leads its project name with the same favicon
      the slim row and the project menu draw, at the line's 12px mark size.
      Pre-built here beside the terminal glyph and handed to the fork card as a
-     slot for the same reason. `text-current` keeps the no-asset fallback on
-     the line's muted tone rather than ProjectFavicon's icon-muted, and that
-     fallback is the design's folder mark itself, aria-hidden like every other
-     mark on the line. Upstream's ProjectFavicon now takes the project record
-     instead of an environment/cwd/faviconPath triple (#10714); a thread whose
-     project record has not landed yet hands the meta a null slot, which draws
-     the same folder mark. */
+     slot for the same reason. A favicon-less project draws upstream's title
+     monogram in the project's own hue, so a flat or status-grouped list still
+     tells projects apart at a glance; under a project header the line hides
+     the project and the header's folder names it. Upstream's ProjectFavicon
+     now takes the project record instead of an environment/cwd/faviconPath
+     triple (#10714); a thread whose project record has not landed yet hands
+     the meta a null slot, which draws SidebarV2ProjectFolderMark. */
   const projectIcon =
-    props.project === null ? null : (
-      <ProjectFavicon
-        project={props.project}
-        className="size-3 text-current"
-        fallbackIcon={SidebarV2ProjectFolderMark}
-      />
-    );
+    props.project === null ? null : <ProjectFavicon project={props.project} className="size-3" />;
   /* fork:end sidebar-v2-card-rows */
   const draftIndicator = hasUnsentDraft ? (
     <Tooltip>

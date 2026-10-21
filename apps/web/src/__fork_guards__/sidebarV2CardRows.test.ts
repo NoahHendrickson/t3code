@@ -120,19 +120,19 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     );
   });
 
-  it("leads the flat card's project with its favicon, folder mark as the fallback", () => {
+  it("leads the flat card's project with its favicon, title monogram as the fallback", () => {
     // 12px, like every other mark on the repo line (Figma 364:17299).
     // Flat mode names the project on every card, and the favicon is what the
     // slim rows and the project menu already use for it. The slot is built on
     // the row's side from the project record upstream hands down (#10714)
-    // beside the terminal glyph and handed in the same way, as one identifier. Its no-asset
-    // fallback is the meta's own folder mark, so a favicon-less project draws
-    // the design's glyph hidden from assistive tech like every other mark on
-    // the line — ProjectFavicon's default fallback is not hidden. The meta
-    // draws that same mark for a null slot.
+    // beside the terminal glyph and handed in the same way, as one identifier.
+    // No fallbackIcon: a favicon-less project draws upstream's title monogram
+    // (aria-hidden), which tells projects apart in a flat or status-grouped
+    // list where a shared folder glyph would not. The meta draws its folder
+    // mark only for a null slot.
     expect(sidebarV2).toContain("projectIconSlot={projectIcon}");
     expect(sidebarV2).toMatch(
-      /const projectIcon =[^;]*?<ProjectFavicon\s+project=\{props\.project\}\s+className="[^"]*"\s+fallbackIcon=\{SidebarV2ProjectFolderMark\}/u,
+      /const projectIcon =[^;]*?<ProjectFavicon\s+project=\{props\.project\}\s+className="[^"]*"\s+\/>/u,
     );
     const meta = readSibling("../custom/SidebarV2ThreadCardMeta.tsx");
     expect(meta).toContain("props.projectIconSlot ?? <SidebarV2ProjectFolderMark");
@@ -165,17 +165,6 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(sidebarV2).toContain(
       '"not-group-hover/v2-row:not-group-focus-within/v2-row:[&>span]:text-secondary-label"',
     );
-  });
-
-  it("keeps the folder mark over upstream's title monogram where the fork names one", () => {
-    // Upstream #11572 draws a monogram for any titled project before it looks
-    // at fallbackIcon, which would hide the card's folder mark entirely.
-    const favicon = readSibling("../components/ProjectFavicon.tsx");
-    expect(favicon).toContain(
-      "const fallbackProjectName = input.fallbackIcon ? undefined : project.title;",
-    );
-    expect(favicon).toContain("projectName={fallbackProjectName}");
-    expect(favicon).toContain("fallbackProjectName={fallbackProjectName}");
   });
 
   it("keeps upstream's terminal-status glyph on the card's repo line", () => {
@@ -221,8 +210,8 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(meta).toContain('const MARK = "size-3 shrink-0"');
     expect(meta).toContain("<WorktreeIcon aria-hidden className={MARK} />");
     expect(meta).toContain("<GitBranchIcon aria-hidden className={MARK} />");
-    // The folder mark is the exported SidebarV2ProjectFolderMark (also the
-    // favicon's no-asset fallback); it carries the aria-hidden, the meta the size.
+    // The folder mark is the exported SidebarV2ProjectFolderMark, drawn for a
+    // null project slot; it carries the aria-hidden, the meta the size.
     expect(meta).toContain("<FolderIcon aria-hidden className={props.className} />");
     expect(meta).toContain("<SidebarV2ProjectFolderMark className={MARK} />");
     expect(meta).toContain("<CloudIcon aria-hidden className={MARK} />");

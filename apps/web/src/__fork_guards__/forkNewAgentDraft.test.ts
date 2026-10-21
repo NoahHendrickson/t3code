@@ -316,4 +316,16 @@ describe("fork guard: fork-new-agent-draft", () => {
   it("keeps Usage as the chrome's fourth row", () => {
     expect(chromeRows).toContain("<SidebarV2UsageRow");
   });
+
+  it("keeps the folder mark over upstream's title monogram where the fork names one", () => {
+    // Upstream #11572 draws a monogram for any titled project before it looks
+    // at fallbackIcon, which would hide the draft project chip's and the
+    // thread context readout's folder marks.
+    const favicon = readSibling("../components/ProjectFavicon.tsx");
+    expect(favicon).toContain(
+      "const fallbackProjectName = input.fallbackIcon ? undefined : project.title;",
+    );
+    expect(favicon).toContain("projectName={fallbackProjectName}");
+    expect(favicon).toContain("fallbackProjectName={fallbackProjectName}");
+  });
 });
