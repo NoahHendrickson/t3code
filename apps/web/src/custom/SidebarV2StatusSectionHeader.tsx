@@ -6,11 +6,7 @@
  * cards: name and count semibold on the muted channel, a step under the card
  * title's 14px, and the count beside it fainter still. It starts on the
  * cards' 12px inset so the label lines up with the titles under it. No mark,
- * no hairline, no chevron.
- *
- * On the right, how many projects its cards span ("2 projects"), in the
- * count's style. With project grouping off this is the only place a
- * section's project spread shows at a glance.
+ * no hairline, no chevron. The right side stays empty.
  *
  * The pinned block and the settled tail take the same header while status
  * grouping is on, so every group in the list reads the same way; `section`
@@ -31,7 +27,6 @@ import {
 export function SidebarV2StatusSectionHeader(props: {
   readonly section: SidebarV2StatusHeaderKey;
   readonly count: number;
-  readonly projectCount: number;
   readonly isFirst: boolean;
   readonly collapsed: boolean;
   readonly onToggleCollapsed: () => void;
@@ -63,11 +58,6 @@ export function SidebarV2StatusSectionHeader(props: {
         <span className="shrink-0 font-semibold text-muted-foreground/60 tabular-nums">
           {props.count}
         </span>
-        {props.projectCount > 0 ? (
-          <span className="ml-auto shrink-0 font-semibold text-muted-foreground/60 tabular-nums">
-            {props.projectCount === 1 ? "1 project" : `${props.projectCount} projects`}
-          </span>
-        ) : null}
       </button>
     </li>
   );

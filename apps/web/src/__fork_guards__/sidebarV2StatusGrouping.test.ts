@@ -63,9 +63,7 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(sidebar).toMatch(/settledThreads\.length > 0 &&[\s\S]{0,200}?!settledSectionShown/u);
     expect(sidebar).toContain('section="settled"');
     expect(sidebar).toContain("count={settledThreads.length}");
-    expect(sidebar).toContain("projectCount={settledProjectCount}");
     expect(sidebar).toContain("collapsed={!settledShelfExpanded}");
-    expect(sidebar).toContain("countSidebarV2Projects(settledThreads, projectRefIndex)");
     // Flat and project modes keep the hairline shelf header.
     expect(sidebar).toContain('data-testid="sidebar-v2-settled-shelf-toggle"');
   });

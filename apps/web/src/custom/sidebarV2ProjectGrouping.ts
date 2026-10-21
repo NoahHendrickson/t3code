@@ -179,15 +179,6 @@ export function createProjectRefIndex(
   return index;
 }
 
-/** The logical project a thread belongs to, or undefined when its project
-    resolves to no group — the same lookup the sections bucket by. */
-export function resolveThreadProjectKey(
-  projectRefIndex: ReadonlyMap<string, string>,
-  thread: SidebarV2GroupableThread,
-): string | undefined {
-  return projectRefIndex.get(projectRefKey(thread.environmentId, thread.projectId));
-}
-
 /**
  * Splits already-sorted active threads into the sections the list paints.
  *
@@ -216,7 +207,8 @@ export function buildActiveThreadSections<
   const threadsByProjectKey = new Map<string, TThread[]>();
   for (const thread of input.threads) {
     const projectKey =
-      resolveThreadProjectKey(input.projectRefIndex, thread) ?? UNGROUPED_PROJECT_KEY;
+      input.projectRefIndex.get(projectRefKey(thread.environmentId, thread.projectId)) ??
+      UNGROUPED_PROJECT_KEY;
     const existing = threadsByProjectKey.get(projectKey);
     if (existing) {
       existing.push(thread);
