@@ -1,4 +1,3 @@
-import { createElement } from "react";
 /**
  * The per-row glyph in the layers rail. Figma's layers panel is scannable because the icon
  * says what KIND of thing a row is before you read its name; the tag is the only type
@@ -53,8 +52,7 @@ const FALLBACK_GLYPH = WRAPPED.get(Square)!;
 
 export function LayerTypeIcon({ tag, className }: { tag: string; className?: string }) {
   const Base = BY_TAG[tag];
-  return createElement((Base && WRAPPED.get(Base)) ?? FALLBACK_GLYPH, {
-    className,
-    "aria-hidden": true,
-  });
+  const Glyph = (Base && WRAPPED.get(Base)) ?? FALLBACK_GLYPH;
+  // oxlint-disable-next-line react/static-components -- Glyph is looked up from WRAPPED, built once at load, so a render never mints a component type.
+  return <Glyph className={className} aria-hidden />;
 }

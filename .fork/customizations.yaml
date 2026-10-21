@@ -419,7 +419,8 @@
     - apps/desktop/src/window/DesktopApplicationMenu.test.ts
     - t3.json
     - apps/desktop/src/main.ts
-    # The launcher's ownership marker: the fork's must not contain upstream's.
+    # The launcher's ownership marker (the fork's must not contain upstream's)
+    # and its moved notice, which names the fork.
     - apps/desktop/src/app/DesktopCliShim.ts
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
@@ -4035,7 +4036,7 @@
     additions are the composer vessel's radius, the 4% lift on its rows and
     split groups (upstream's hover utilities are !important, so the lift is
     too; it keys on fork-thread-details-lift, a hook fenced onto upstream's
-    one hover-surface class string in threadDetailsPanelStyles.ts, so it
+    two hover-surface class strings in threadDetailsPanelStyles.ts, so it
     reaches exactly the surfaces that compose it and not the automations
     Switch in the same card) and the vessel hairline on its section
     dividers. There is one rule

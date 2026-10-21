@@ -13,8 +13,9 @@ const { logInfo, logWarning } = makeComponentLogger("desktop-cli-shim");
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
 // Ownership of a `t3` link is decided by this marker, so the fork's must not
 // contain upstream's: otherwise either app would adopt, replace or delete the
-// other's command.
+// other's command. The moved notice names the app the user actually installed.
 export const MARKER = "Written by no3y Code: runs the desktop app's bundled t3 CLI.";
+const MOVED = "no3y Code has moved or been removed. Open the app once to update this command.";
 // fork:end fork-app-identity
 
 const SERVER_ENTRY = "apps/server/dist/bin.mjs";
@@ -23,8 +24,6 @@ const shellWord = (value: string) => `'${value.replaceAll("'", `'"'"'`)}'`;
 /** cmd.exe expands `%` even inside quotes; Windows paths cannot contain `"`. */
 const cmdText = (value: string) => value.replaceAll("%", "%%");
 const cmdWord = (value: string) => `"${cmdText(value)}"`;
-
-const MOVED = "T3 Code has moved or been removed. Open the app once to update this command.";
 
 export type CliShimTarget =
   | { readonly kind: "appimage"; readonly appImage: string; readonly executableName: string }

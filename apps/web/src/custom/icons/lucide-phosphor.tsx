@@ -281,9 +281,10 @@ export type LucideIcon = FC<LucideCompatProps>;
 export type LucideProps = LucideCompatProps;
 
 /**
- * lucide's `icons` record, keyed by PascalCase name. Only upstream's
- * `lib/lucideIconByName.ts` reads it, and the fork shadows that module, so this
- * keeps upstream's import type-correct rather than serving a lookup.
+ * lucide's `icons` record, left empty. Only upstream's
+ * `lib/lucideIconByName.ts` reads it, and the fork shadows that module with a
+ * lookup over this shim's `*Icon` exports, so this only keeps upstream's import
+ * type-correct.
  */
 export const icons: Record<string, LucideIcon> = {};
 
@@ -322,8 +323,6 @@ function icon(lucideName: string, Base: PhosphorIcon, weight: IconWeight): Lucid
     />
   );
   Wrapped.displayName = `Duotone(${Base.displayName ?? "Icon"})`;
-  icons[lucideName.replace(/(?:^|-)([a-z0-9])/g, (_, first: string) => first.toUpperCase())] ??=
-    Wrapped;
   return Wrapped;
 }
 

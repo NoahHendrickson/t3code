@@ -38,6 +38,7 @@ import {
   type ScheduledTask,
 } from "@t3tools/contracts";
 import { DEFAULT_WEBHOOK_PROMPT } from "@t3tools/client-runtime/scheduled-task-webhook";
+import { fileBasename } from "@t3tools/shared/path";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
@@ -559,17 +560,11 @@ function RunsInPills(props: ScheduledTaskEditorProps) {
   );
 }
 
-/** The checkout folder's own name, as the toolbar labels a workspace. */
-function checkoutDisplayName(path: string | null): string | null {
-  if (!path) return null;
-  const normalizedPath = path.replace(/[\\/]+$/, "");
-  if (normalizedPath.length === 0) return path;
-  return normalizedPath.split(/[\\/]/).at(-1) ?? normalizedPath;
-}
-
 function CheckoutPathPill(props: ScheduledTaskEditorProps) {
   const { draft, setDraft } = props;
-  const name = checkoutDisplayName(draft.existingWorktreePath.trim() || null);
+  // The checkout folder's own name, as the toolbar labels a workspace.
+  const path = draft.existingWorktreePath.trim();
+  const name = path ? fileBasename(path) : null;
   return (
     <Popover>
       <PopoverTrigger

@@ -1,6 +1,9 @@
 /* fork:begin fork-scheduled-task-effort — see .fork/customizations.yaml#fork-scheduled-task-effort */
 import { ScheduledTaskModelPicker } from "~/custom/scheduled/ScheduledTaskModelPicker";
-import { scheduledTaskModelSelection } from "~/custom/scheduled/scheduledTaskModel.logic";
+import {
+  scheduledTaskDraftSelection,
+  scheduledTaskModelSelection,
+} from "~/custom/scheduled/scheduledTaskModel.logic";
 /* fork:end fork-scheduled-task-effort */
 /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
 import { useNavigate } from "@tanstack/react-router";
@@ -1039,12 +1042,9 @@ function ScheduledTaskEditorForm({
   const draftSelection = draft.modelKey ? splitModelKey(draft.modelKey) : null;
   /* fork:begin fork-scheduled-task-effort — see .fork/customizations.yaml#fork-scheduled-task-effort */
   const activeSelection = scheduledTaskModelSelection(
-    draftSelection &&
-      instanceEntries.some(
-        (entry) => entry.instanceId === draftSelection.instanceId && entry.enabled,
-      )
-      ? draftSelection
-      : scheduledTaskDefaultModel(settings, selectedProject ?? null, instanceEntries),
+    scheduledTaskDraftSelection(draftSelection, instanceEntries, () =>
+      scheduledTaskDefaultModel(settings, selectedProject ?? null, instanceEntries),
+    ),
     draft.baseModelSelection,
   );
   /* fork:end fork-scheduled-task-effort */

@@ -2,14 +2,15 @@ const THREAD_DETAILS_PANEL_RESTING_BUTTON_SURFACE_CLASS = "bg-transparent shadow
 
 /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface
    `fork-thread-details-lift` is the hook theme.custom.css keys the fork's 4%
-   row lift on: every panel row, split half and icon action composes this
-   string, so the one class reaches exactly those and nothing else in the card. */
+   row lift on: every panel row, split half, select-row half and icon action
+   composes one of these two strings, so the one class reaches exactly those
+   and nothing else in the card. */
 const THREAD_DETAILS_PANEL_HOVER_SURFACE_CLASS =
   "fork-thread-details-lift hover:!bg-black/[0.035] data-pressed:!bg-black/[0.035] dark:hover:!bg-white/[0.08] dark:data-pressed:!bg-white/[0.08]";
-/* fork:end fork-popup-surface */
 
 const THREAD_DETAILS_PANEL_HALF_HOVER_SURFACE_CLASS =
-  "hover:bg-black/[0.035] dark:hover:bg-white/[0.08]";
+  "fork-thread-details-lift hover:bg-black/[0.035] dark:hover:bg-white/[0.08]";
+/* fork:end fork-popup-surface */
 
 const THREAD_DETAILS_PANEL_ROW_SURFACE_CLASS = `${THREAD_DETAILS_PANEL_RESTING_BUTTON_SURFACE_CLASS} ${THREAD_DETAILS_PANEL_HOVER_SURFACE_CLASS}`;
 const THREAD_DETAILS_PANEL_SPLIT_BUTTON_SURFACE_CLASS = `${THREAD_DETAILS_PANEL_ROW_SURFACE_CLASS} data-popup-open:!bg-black/[0.035] dark:data-popup-open:!bg-white/[0.08]`;
