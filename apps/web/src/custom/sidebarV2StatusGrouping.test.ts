@@ -4,11 +4,9 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { resolveSidebarV2CardStatusKind } from "./sidebarV2CardStatus";
 import { buildSidebarDraftShell } from "./sidebarV2DraftRows";
-import { createProjectRefIndex } from "./sidebarV2ProjectGrouping";
 import { threadCardTitleRecedes } from "./sidebarV2RowPolicy";
 import {
   buildSidebarV2StatusSections,
-  countSidebarV2Projects,
   createSidebarV2CompletedHoldTracker,
   groupSidebarV2StatusSections,
   sidebarV2StatusBucketForKind,
@@ -154,18 +152,6 @@ describe("groupSidebarV2StatusSections", () => {
     latestRun: null,
     latestUserAuthoredMessageAt: options.sentAt ?? null,
   });
-  const projectRefIndex = createProjectRefIndex([
-    {
-      projectKey: "one",
-      displayName: "One",
-      memberProjectRefs: [{ environmentId, projectId: "p1" }],
-    },
-    {
-      projectKey: "two",
-      displayName: "Two",
-      memberProjectRefs: [{ environmentId, projectId: "p2" }],
-    },
-  ]);
 
   it("orders sections input, done, working, idle and drops empty ones", () => {
     const result = groupSidebarV2StatusSections({
@@ -175,7 +161,6 @@ describe("groupSidebarV2StatusSections", () => {
         thread("input", "2026-01-01T00:00:00.000Z"),
       ],
       bucketOf: (entry) => entry.id as SidebarV2StatusBucket,
-      projectRefIndex,
     });
     expect(result.map((section) => section.status)).toEqual(["input", "working", "idle"]);
     expect(result.every((section) => section.kind === "status")).toBe(true);
@@ -190,7 +175,6 @@ describe("groupSidebarV2StatusSections", () => {
         thread("newer", "2026-01-05T00:00:00.000Z"),
       ],
       bucketOf: (entry) => (entry.id.endsWith("send") ? "working" : "idle"),
-      projectRefIndex,
     });
     expect(result.map((section) => section.threads.map((entry) => entry.id))).toEqual([
       ["new-send", "old-send"],
@@ -198,18 +182,16 @@ describe("groupSidebarV2StatusSections", () => {
     ]);
   });
 
-  it("counts each section's cards and projects while the section is whole", () => {
+  it("counts each section's cards while the section is whole", () => {
     const [section] = groupSidebarV2StatusSections({
       threads: [
-        thread("a", "2026-01-01T00:00:00.000Z", { projectId: "p1" }),
-        thread("b", "2026-01-01T00:00:00.000Z", { projectId: "p2" }),
-        thread("c", "2026-01-01T00:00:00.000Z", { projectId: "p1" }),
+        thread("a", "2026-01-01T00:00:00.000Z"),
+        thread("b", "2026-01-01T00:00:00.000Z"),
+        thread("c", "2026-01-01T00:00:00.000Z"),
       ],
       bucketOf: () => "idle",
-      projectRefIndex,
     });
     expect(section?.threadCount).toBe(3);
-    expect(section?.projectCount).toBe(2);
   });
 });
 
@@ -241,7 +223,6 @@ describe("buildSidebarV2StatusSections", () => {
       now: "2026-01-02T00:00:00.000Z",
       openThreadKey: null,
       holds: createSidebarV2CompletedHoldTracker(HOLD_MS),
-      projectRefIndex: createProjectRefIndex([]),
       isDraft: (threadKey) => draftIds.some((id) => keyOf(id) === threadKey),
     });
 
@@ -276,34 +257,6 @@ describe("splitSidebarV2DraftsSection", () => {
     const { draftsSection, listSections } = splitSidebarV2DraftsSection(sections);
     expect(draftsSection).toBeNull();
     expect(listSections).toBe(sections);
-  });
-});
-
-describe("countSidebarV2Projects", () => {
-  it("counts each logical project once and skips unresolved ones", () => {
-    // "web" spans two checkouts; cards from either are one project.
-    const projectRefIndex = createProjectRefIndex([
-      {
-        projectKey: "web",
-        displayName: "web",
-        memberProjectRefs: [
-          { environmentId: "local", projectId: "p1" },
-          { environmentId: "local", projectId: "p2" },
-        ],
-      },
-      {
-        projectKey: "api",
-        displayName: "api",
-        memberProjectRefs: [{ environmentId: "local", projectId: "p3" }],
-      },
-    ]);
-    const at = (projectId: string) => ({
-      environmentId: EnvironmentId.make("local"),
-      projectId: ProjectId.make(projectId),
-    });
-    expect(
-      countSidebarV2Projects([at("p3"), at("p2"), at("gone"), at("p1")], projectRefIndex),
-    ).toBe(2);
   });
 });
 

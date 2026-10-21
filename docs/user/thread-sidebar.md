@@ -174,8 +174,9 @@ to split active threads into **Needs input**, **Completed**, **Working**, and **
 input holds approvals, questions, and failed runs. A completed thread stays in **Completed**
 while you have it open and for five minutes after you leave it, then moves to **Idle**. Idle
 threads settle on the usual schedule. New threads you have not sent yet sit in a **Drafts**
-group at the very top, and pinned threads get a **Pinned** group of their own below it. This
-replaces **Group by project** and the Working
+group at the very top, pinned threads get a **Pinned** group of their own below it, and
+settled threads get a **Settled** group in the same style. This replaces **Group by project**
+and the Working
 section while it is on, and each device keeps its own choice.
 
 <!-- fork:end sidebar-v2-status-grouping -->

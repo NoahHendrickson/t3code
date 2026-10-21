@@ -322,7 +322,6 @@ import { resolveSidebarV2CardStatus } from "~/custom/sidebarV2CardStatus";
 import {
   buildSidebarV2StatusSections,
   splitSidebarV2DraftsSection,
-  countSidebarV2Projects,
   createSidebarV2CompletedHoldTracker,
   useSidebarV2CollapsedStatusSections,
   type SidebarV2ListSection,
@@ -2716,7 +2715,6 @@ export default function Sidebar() {
         now: snoozeNow,
         openThreadKey: statusOpenThreadKey,
         holds: completedHolds,
-        projectRefIndex,
         returnedAt: inboxReturns.returnedAt,
         isDraft: (threadKey) => draftIdByThreadKey.has(threadKey),
       });
@@ -2762,11 +2760,9 @@ export default function Sidebar() {
      shown only while something is pinned, and it collapses the same way: the
      open thread stays visible. Flat and project modes keep the divider. */
   const pinnedSectionShown = statusGrouped && pinnedThreads.length > 0;
+  // The settled tail takes the same header in place of its hairline shelf.
+  const settledSectionShown = statusGrouped && settledThreads.length > 0;
   const pinnedCollapsed = pinnedSectionShown && collapsedStatusSections.has("pinned");
-  const pinnedProjectCount = useMemo(
-    () => (pinnedSectionShown ? countSidebarV2Projects(pinnedThreads, projectRefIndex) : 0),
-    [pinnedSectionShown, pinnedThreads, projectRefIndex],
-  );
   const keepCollapsedPinnedRow = useCallback(
     (thread: EnvironmentThreadShell) =>
       keptRouteThreadKey !== null &&
@@ -4770,7 +4766,6 @@ export default function Sidebar() {
                           key={`status-section-header:${status}`}
                           section={status}
                           count={section.threadCount}
-                          projectCount={section.projectCount}
                           isFirst={isFirst}
                           collapsed={section.collapsed}
                           onToggleCollapsed={() => toggleStatusSectionCollapsed(status)}
@@ -4790,7 +4785,6 @@ export default function Sidebar() {
                           key="status-section-header:pinned"
                           section="pinned"
                           count={pinnedThreads.length}
-                          projectCount={pinnedProjectCount}
                           isFirst={draftsSection === null}
                           collapsed={pinnedCollapsed}
                           onToggleCollapsed={() => toggleStatusSectionCollapsed("pinned")}
@@ -5077,7 +5071,31 @@ export default function Sidebar() {
                         items.push(renderThreadRow(thread, "snoozed"));
                       }
                     }
-                    if (settledThreads.length > 0) {
+                    /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+                       Same header as the status sections. The hairline shelf
+                       below stays for flat and project modes, and the tail's
+                       own expanded flag still decides which rows paint. */
+                    if (settledSectionShown) {
+                      items.push(
+                        <SidebarV2StatusSectionHeader
+                          key="status-section-header:settled"
+                          section="settled"
+                          count={settledThreads.length}
+                          // First only when nothing painted above it, so it
+                          // takes the first-header air under the Projects row.
+                          isFirst={items.every((item) => item === null)}
+                          collapsed={!settledShelfExpanded}
+                          onToggleCollapsed={toggleSettledShelf}
+                        />,
+                      );
+                    }
+                    /* fork:end sidebar-v2-status-grouping */
+                    if (
+                      settledThreads.length > 0 &&
+                      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                      !settledSectionShown
+                      /* fork:end sidebar-v2-status-grouping */
+                    ) {
                       items.push(
                         <li
                           key="settled-shelf-header"

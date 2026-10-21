@@ -1060,21 +1060,23 @@
     no mark is Idle. The one deliberate exception is the commands-only
     Monitoring mark, visible in sidebarV2StatusBucketForKind: such a thread
     sits in Idle, because nothing will wake its agent and the command can run
-    for hours. Pinned, snoozed and settled keep their shelves, and Idle reaches
-    Settled through the server's existing auto-settle. While status grouping is
-    on the Working shelf beta stands down and its threads paint in the Working
-    section, and the pinned block takes a "Pinned" header of the same style in
-    place of its divider, shown only while something is pinned and collapsible
-    like the rest (the open thread stays visible). Flat and project modes keep
-    the divider.
+    for hours. Snoozed keeps its shelf, and Idle reaches Settled through the
+    server's existing auto-settle. While status grouping is on the Working
+    shelf beta stands down and its threads paint in the Working section, the
+    pinned block takes a "Pinned" header of the same style in place of its
+    divider, shown only while something is pinned and collapsible like the
+    rest (the open thread stays visible), and the settled tail takes a
+    "Settled" header of that same style in place of its hairline shelf header.
+    Settled still collapses through its own shelf (collapsed by default, the
+    open thread stays visible, paging unchanged) and its rows stay slim. Flat
+    and project modes keep the divider and the shelf header.
 
     Under a status header the section decides a card's title brightness
     (threadCardTitleRecedes's statusSection input): only Needs input and
     Completed titles are full strength, Working and Idle recede, and the open
     or selected card never does. Section headers are a muted semibold label
     with its count, a step under the card title's size, on the cards' inset,
-    with no mark, hairline or chevron, and how many projects the section spans
-    on its right ("2 projects", counted per logical project); clicking
+    with no mark, hairline or chevron, and nothing on the right; clicking
     collapses.
 
     buildSidebarV2StatusSections is the whole pipeline; the activeSections

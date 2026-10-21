@@ -5,8 +5,11 @@
  * The other answer to "how should the flat list read": instead of one stream,
  * the active cards split by who owns the next move — Needs input (an agent is
  * blocked on you), Completed (a result is ready to read), Working, and Idle.
- * Pinned, snoozed and settled keep their shelves; Idle ages into Settled
- * through the server's existing auto-settle.
+ * Snoozed keeps its shelf. Idle ages into Settled through the server's
+ * existing auto-settle. While status grouping is on, Pinned and Settled take
+ * this same header; Settled stays a time-ordered tail of slim rows, with its
+ * own collapse and paging, and the hairline shelf header returns in the other
+ * modes.
  *
  * Drafts — threads made with New thread that have not been sent yet — sit in
  * a Drafts section of their own, painted above every other group, Pinned
@@ -42,11 +45,7 @@ import { threadWokeAt } from "@t3tools/client-runtime/state/thread-settled";
 import { resolveThreadLastVisitedAt } from "~/components/Sidebar.logic";
 
 import { resolveSidebarV2CardStatus, type SidebarV2CardStatusKind } from "./sidebarV2CardStatus";
-import {
-  resolveThreadProjectKey,
-  useSidebarV2CollapsedKeys,
-  type SidebarV2ActiveSection,
-} from "./sidebarV2ProjectGrouping";
+import { useSidebarV2CollapsedKeys, type SidebarV2ActiveSection } from "./sidebarV2ProjectGrouping";
 
 const SIDEBAR_V2_COLLAPSED_STATUS_SECTIONS_STORAGE_KEY =
   "t3code:fork:sidebar-v2-collapsed-status-sections:v1";
@@ -63,45 +62,43 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "idle",
 ];
 
-/** Every header status grouping draws: the status sections, plus the
+/** The sections the collapse store holds: the four status sections, plus the
     pinned block, which takes a header of its own while status grouping is on
     so it reads as one more group. */
 export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
 
-export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusSectionKey, string> = {
+/** Every header status grouping draws. Settled takes one too, but collapses
+    through its own shelf flag, so it is a label here and not a section key. */
+export type SidebarV2StatusHeaderKey = SidebarV2StatusSectionKey | "settled";
+
+export const SIDEBAR_V2_STATUS_SECTION_LABELS: Record<SidebarV2StatusHeaderKey, string> = {
   drafts: "Drafts",
   pinned: "Pinned",
   input: "Needs input",
   done: "Completed",
   working: "Working",
   idle: "Idle",
+  settled: "Settled",
 };
 
 /** How long a thread that came to rest stays in Completed after you leave it. */
 const SIDEBAR_V2_COMPLETED_HOLD_MS = 5 * 60_000;
 
-/** The fields grouping, the inbox sorts and the project count read. */
+/** The fields grouping and the inbox sorts read. */
 export type SidebarV2StatusSectionThread = Pick<
   EnvironmentThreadShell,
-  | "id"
-  | "environmentId"
-  | "projectId"
-  | "createdAt"
-  | "unsettledAt"
-  | "latestRun"
-  | "latestUserAuthoredMessageAt"
+  "id" | "environmentId" | "createdAt" | "unsettledAt" | "latestRun" | "latestUserAuthoredMessageAt"
 >;
 
 /** One status section: headerless in project terms, named by its status, and
-    carrying the counts its header shows, taken from every card in it so a
-    collapsed section still says what it holds. */
+    carrying the card count its header shows, taken while the section is whole
+    so a collapsed header still says how many cards it hides. */
 export interface SidebarV2StatusSection<TThread> {
   readonly kind: "status";
   readonly header: null;
   readonly status: SidebarV2StatusBucket;
   readonly threads: readonly TThread[];
   readonly threadCount: number;
-  readonly projectCount: number;
 }
 
 /** Every section the active list can paint. */
@@ -110,7 +107,7 @@ export type SidebarV2ListSection<TThread> =
   | SidebarV2StatusSection<TThread>;
 
 const isStatusSectionKey = (key: string): key is SidebarV2StatusSectionKey =>
-  key in SIDEBAR_V2_STATUS_SECTION_LABELS;
+  key !== "settled" && key in SIDEBAR_V2_STATUS_SECTION_LABELS;
 
 export function useSidebarV2CollapsedStatusSections() {
   return useSidebarV2CollapsedKeys(
@@ -233,12 +230,11 @@ export type SidebarV2CompletedHoldTracker = ReturnType<typeof createSidebarV2Com
  * `SIDEBAR_V2_STATUS_BUCKET_ORDER`, dropping empty ones. Working keeps the
  * Working shelf's order (by your last send, so runs finishing and resuming do
  * not move a row); the others list the thread that most recently came back to
- * you first. Counts are taken here, while each section is whole.
+ * you first. The card count is taken here, while each section is whole.
  */
 export function groupSidebarV2StatusSections<TThread extends SidebarV2StatusSectionThread>(input: {
   readonly threads: readonly TThread[];
   readonly bucketOf: (thread: TThread) => SidebarV2StatusBucket;
-  readonly projectRefIndex: ReadonlyMap<string, string>;
   readonly returnedAt?: ((thread: TThread) => number | undefined) | undefined;
 }): SidebarV2StatusSection<TThread>[] {
   const byBucket = new Map<SidebarV2StatusBucket, TThread[]>();
@@ -261,25 +257,9 @@ export function groupSidebarV2StatusSections<TThread extends SidebarV2StatusSect
             ? sortWorkingThreadsBySend(threads)
             : sortInboxThreadsByReturn(threads, input.returnedAt),
         threadCount: threads.length,
-        projectCount: countSidebarV2Projects(threads, input.projectRefIndex),
       },
     ];
   });
-}
-
-/** How many logical projects a set of threads spans — one per project however
-    many checkouts its cards come from. Threads whose project resolves to no
-    group are not counted. */
-export function countSidebarV2Projects(
-  threads: ReadonlyArray<Pick<EnvironmentThreadShell, "environmentId" | "projectId">>,
-  projectRefIndex: ReadonlyMap<string, string>,
-): number {
-  const projectKeys = new Set<string>();
-  for (const thread of threads) {
-    const projectKey = resolveThreadProjectKey(projectRefIndex, thread);
-    if (projectKey !== undefined) projectKeys.add(projectKey);
-  }
-  return projectKeys.size;
 }
 
 /**
@@ -295,7 +275,6 @@ export function buildSidebarV2StatusSections(input: {
   readonly now: string;
   readonly openThreadKey: string | null;
   readonly holds: SidebarV2CompletedHoldTracker;
-  readonly projectRefIndex: ReadonlyMap<string, string>;
   readonly returnedAt?: ((thread: EnvironmentThreadShell) => number | undefined) | undefined;
   /** Whether a thread key is an unsent client draft (custom/sidebarV2DraftRows). */
   readonly isDraft: (threadKey: string) => boolean;
@@ -330,7 +309,6 @@ export function buildSidebarV2StatusSections(input: {
       const threadKey = keyByThread.get(thread)!;
       return input.isDraft(threadKey) ? "drafts" : (effective.get(threadKey) ?? "idle");
     },
-    projectRefIndex: input.projectRefIndex,
     returnedAt: input.returnedAt,
   });
 }
