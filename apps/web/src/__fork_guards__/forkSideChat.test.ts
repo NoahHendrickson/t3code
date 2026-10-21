@@ -93,7 +93,7 @@ describe("fork guard: fork-side-chat", () => {
 
   it("re-reads client settings when a desktop window gains focus", () => {
     expect(settings).toMatch(
-      /fork:begin fork-side-chat[\s\S]*?if \(isElectron\) window\.addEventListener\("focus", refreshClientSettingsOnFocus\);[\s\S]*?fork:end fork-side-chat/u,
+      /fork:begin fork-side-chat[\s\S]*?if \(isElectron && typeof window !== "undefined"\) \{\s*window\.addEventListener\("focus", refreshClientSettingsOnFocus\);[\s\S]*?fork:end fork-side-chat/u,
     );
   });
 

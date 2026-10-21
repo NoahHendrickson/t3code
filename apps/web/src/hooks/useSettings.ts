@@ -255,7 +255,9 @@ function refreshClientSettingsOnFocus(): void {
     if (JSON.stringify(next) !== JSON.stringify(requestedFrom)) replaceClientSettingsSnapshot(next);
   }).catch(() => undefined);
 }
-if (isElectron) window.addEventListener("focus", refreshClientSettingsOnFocus);
+if (isElectron && typeof window !== "undefined") {
+  window.addEventListener("focus", refreshClientSettingsOnFocus);
+}
 /* fork:end fork-side-chat */
 
 // ── Key sets for routing patches ─────────────────────────────────────
