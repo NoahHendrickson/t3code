@@ -321,6 +321,7 @@ import { SidebarV2StatusSectionHeader } from "~/custom/SidebarV2StatusSectionHea
 import { resolveSidebarV2CardStatus } from "~/custom/sidebarV2CardStatus";
 import {
   buildSidebarV2StatusSections,
+  splitSidebarV2DraftsSection,
   countSidebarV2Projects,
   createSidebarV2CompletedHoldTracker,
   useSidebarV2CollapsedStatusSections,
@@ -2808,6 +2809,15 @@ export default function Sidebar() {
       /* fork:end sidebar-v2-status-grouping */
     ],
   );
+  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
+     Drafts is the top group, above the pinned block, so it is split off by
+     name and painted on its own; the section loop and the flatten below read
+     the rest. Outside status grouping the rest is every section. */
+  const { draftsSection, listSections } = useMemo(
+    () => splitSidebarV2DraftsSection(visibleActiveSections),
+    [visibleActiveSections],
+  );
+  /* fork:end sidebar-v2-status-grouping */
   // Positional consumers read this: resolveAdjacentThreadId (arrow nav),
   // rangeSelectTo (shift-select) and planForwardNavigation (where you land
   // after settling or snoozing the thread you are viewing). It has to be the
@@ -2816,19 +2826,10 @@ export default function Sidebar() {
   // misaddress — but they are numbered from this list, so a stale order shows
   // them out of sequence down the screen.
   const orderedActiveThreads = useMemo(
-    () => visibleActiveSections.flatMap((section) => section.threads),
-    [visibleActiveSections],
+    () => listSections.flatMap((section) => section.threads),
+    [listSections],
   );
   /* fork:end sidebar-v2-project-grouping */
-  /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping
-     Drafts is the top group, above the pinned block. It is always the first
-     status section when present, so paint and keyboard order lift it out by
-     position rather than through a second sequence. */
-  const leadingSection = visibleActiveSections[0];
-  const draftsSectionShown =
-    leadingSection?.kind === "status" && leadingSection.status === "drafts";
-  const leadingDraftThreadCount = draftsSectionShown ? leadingSection.threads.length : 0;
-  /* fork:end sidebar-v2-status-grouping */
   // The Working shelf (beta) collapses the same way, with the same route
   // exception: sending a message folds the open thread into the shelf, and
   // its row must stay visible there.
@@ -2858,17 +2859,17 @@ export default function Sidebar() {
        The Working shelf (beta) paints after the sections, before snoozed. */
     () => [
       /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
-      ...orderedActiveThreads.slice(0, leadingDraftThreadCount),
-      ...visiblePinnedThreads,
-      ...orderedActiveThreads.slice(leadingDraftThreadCount),
+      ...(draftsSection?.threads ?? EMPTY_THREADS),
       /* fork:end sidebar-v2-status-grouping */
+      ...visiblePinnedThreads,
+      ...orderedActiveThreads,
       ...visibleWorkingThreads,
       ...visibleSnoozedThreads,
       ...renderedSettledThreads,
     ],
     [
       /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
-      leadingDraftThreadCount,
+      draftsSection,
       /* fork:end sidebar-v2-status-grouping */
       visiblePinnedThreads,
       orderedActiveThreads,
@@ -4760,7 +4761,7 @@ export default function Sidebar() {
                       ? orderedPinnedThreads.filter(keepCollapsedPinnedRow)
                       : orderedPinnedThreads;
                     const renderStatusSection = (
-                      section: Extract<(typeof visibleActiveSections)[number], { kind: "status" }>,
+                      section: NonNullable<typeof draftsSection>,
                       isFirst: boolean,
                     ) => {
                       const status = section.status;
@@ -4783,14 +4784,14 @@ export default function Sidebar() {
                     const items: ReactNode[] = [
                       /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
                       // Drafts paints first, above the pinned block.
-                      ...(draftsSectionShown ? renderStatusSection(leadingSection, true) : []),
+                      ...(draftsSection ? renderStatusSection(draftsSection, true) : []),
                       pinnedSectionShown ? (
                         <SidebarV2StatusSectionHeader
                           key="status-section-header:pinned"
                           section="pinned"
                           count={pinnedThreads.length}
                           projectCount={pinnedProjectCount}
-                          isFirst={!draftsSectionShown}
+                          isFirst={draftsSection === null}
                           collapsed={pinnedCollapsed}
                           onToggleCollapsed={() => toggleStatusSectionCollapsed("pinned")}
                         />
@@ -4878,7 +4879,7 @@ export default function Sidebar() {
                     // path either way — and it is the same sequence
                     // orderedActiveThreads flattens.
                     items.push(
-                      ...visibleActiveSections.flatMap((section, sectionIndex) => {
+                      ...listSections.flatMap((section, sectionIndex) => {
                         // Bound here rather than read off `section.header` inside the
                         // callback below: the narrowing does not survive into a
                         // closure, and the key the plus starts a thread from must be
@@ -4889,18 +4890,16 @@ export default function Sidebar() {
                         // `threads` here is the painted list, so a collapsed
                         // group that still shows the route thread counts as
                         // open — it painted a card.
-                        const previousSection = visibleActiveSections[sectionIndex - 1];
+                        const previousSection = listSections[sectionIndex - 1];
                         const afterOpenSection =
                           previousSection !== undefined && previousSection.threads.length > 0;
                         /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
                         if (section.kind === "status") {
-                          // Drafts already painted above the pinned block.
-                          if (draftsSectionShown && sectionIndex === 0) return [];
                           // Below a Drafts or Pinned header, the first status
                           // section takes the ordinary lead.
                           return renderStatusSection(
                             section,
-                            sectionIndex === 0 && !pinnedSectionShown,
+                            sectionIndex === 0 && !pinnedSectionShown && draftsSection === null,
                           );
                         }
                         /* fork:end sidebar-v2-status-grouping */

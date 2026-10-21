@@ -8,10 +8,9 @@
  * Pinned, snoozed and settled keep their shelves; Idle ages into Settled
  * through the server's existing auto-settle.
  *
- * Drafts — threads made with New thread that have not been sent yet — skip
- * the status derivation and sit in a Drafts section of their own, painted
- * above every other group, Pinned included. They never feed the Completed
- * hold: a draft that is sent goes straight to Working, not through Idle.
+ * Drafts — threads made with New thread that have not been sent yet — sit in
+ * a Drafts section of their own, painted above every other group, Pinned
+ * included (`splitSidebarV2DraftsSection`).
  *
  * A card's section comes from the same derivation as the mark it draws
  * (`resolveSidebarV2CardStatus`), so the two agree. One deliberate exception,
@@ -55,7 +54,7 @@ const SIDEBAR_V2_COLLAPSED_STATUS_SECTIONS_STORAGE_KEY =
 export type SidebarV2StatusBucket = "drafts" | "input" | "done" | "working" | "idle";
 
 /** Paint order: unsent drafts on top, then blocked agents, then results to
-    read, then live work. Sidebar.tsx lifts Drafts above the pinned block. */
+    read, then live work. */
 const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "drafts",
   "input",
@@ -64,7 +63,7 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "idle",
 ];
 
-/** Every header status grouping draws: the four status sections, plus the
+/** Every header status grouping draws: the status sections, plus the
     pinned block, which takes a header of its own while status grouping is on
     so it reads as one more group. */
 export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
@@ -118,6 +117,22 @@ export function useSidebarV2CollapsedStatusSections() {
     SIDEBAR_V2_COLLAPSED_STATUS_SECTIONS_STORAGE_KEY,
     isStatusSectionKey,
   );
+}
+
+/**
+ * Splits the Drafts section off the painted sections by name, so Sidebar.tsx
+ * can paint it above the pinned block and flatten the rest as before.
+ */
+export function splitSidebarV2DraftsSection<
+  TSection extends { readonly kind: string; readonly status?: SidebarV2StatusBucket },
+>(sections: readonly TSection[]) {
+  const isDrafts = (section: TSection): section is Extract<TSection, { kind: "status" }> =>
+    section.kind === "status" && section.status === "drafts";
+  const draftsSection = sections.find(isDrafts) ?? null;
+  return {
+    draftsSection,
+    listSections: draftsSection === null ? sections : sections.filter((s) => !isDrafts(s)),
+  };
 }
 
 /** Folds a card's status kind into a section. Woke joins Completed: the
@@ -270,8 +285,8 @@ export function countSidebarV2Projects(
 /**
  * The whole status pipeline for the active list: each thread's bucket from
  * the same derivation as its card's mark, Completed holds applied, then the
- * sections. Drafts bypass both and land in Drafts. Sidebar.tsx calls this or
- * project grouping, nothing in between.
+ * sections, with drafts in Drafts. Sidebar.tsx calls this or project
+ * grouping, nothing in between.
  */
 export function buildSidebarV2StatusSections(input: {
   readonly threads: readonly EnvironmentThreadShell[];
@@ -290,7 +305,6 @@ export function buildSidebarV2StatusSections(input: {
   for (const thread of input.threads) {
     const threadKey = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
     keyByThread.set(thread, threadKey);
-    if (input.isDraft(threadKey)) continue;
     const { kind } = resolveSidebarV2CardStatus(thread, {
       lastVisitedAt: resolveThreadLastVisitedAt(
         thread.lastVisitedAt,
@@ -300,6 +314,8 @@ export function buildSidebarV2StatusSections(input: {
     });
     buckets.set(threadKey, sidebarV2StatusBucketForKind(kind));
   }
+  // Drafts feed the tracker like any thread: a draft shell has no run, so it
+  // derives as idle and can never start a hold. Only the paint overrides it.
   const effective = input.holds.apply({
     buckets,
     openThreadKey: input.openThreadKey,

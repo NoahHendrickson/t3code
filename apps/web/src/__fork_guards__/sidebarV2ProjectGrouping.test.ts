@@ -51,21 +51,23 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // Collapse filters paint before flatten: keyboard order reads the same
     // visible sequence the list draws, not the unfiltered bucket list.
     expect(sidebar).toContain("const visibleActiveSections = useMemo(");
-    expect(sidebar).toContain("visibleActiveSections.flatMap((section) => section.threads)");
+    // Status grouping paints its Drafts section above the pinned block, so
+    // the loop and the flatten read the remaining `listSections` (every
+    // section in project and flat modes).
+    expect(sidebar).toContain("splitSidebarV2DraftsSection(visibleActiveSections)");
+    expect(sidebar).toContain("listSections.flatMap((section) => section.threads)");
     // Render call is multiline after format — pin the callback args, not a
     // single-line spelling prettier will keep rewriting.
-    expect(sidebar).toMatch(/visibleActiveSections\.flatMap\(\s*\(section,\s*sectionIndex\)\s*=>/u);
+    expect(sidebar).toMatch(/listSections\.flatMap\(\s*\(section,\s*sectionIndex\)\s*=>/u);
     // Pinned cards paint first and flat (upstream's pin block escapes
     // grouping on purpose); the grouped order follows them, and both feed
     // one keyboard order. Order asserted, not just presence: a merge that
     // reorders the spreads (pinned after active) still contains every name
     // while breaking the paint/keyboard-order outcome.
     // Status grouping can collapse the pinned block, so the spread is the
-    // visible pinned rows (all of them in every other mode). Its Drafts
-    // section lifts above pinned, so the active spread is the remainder after
-    // the draft rows (all of it in every other mode).
+    // visible pinned rows (all of them in every other mode).
     const pinnedSpread = sidebar.indexOf("...visiblePinnedThreads,");
-    const activeSpread = sidebar.indexOf("...orderedActiveThreads.slice(leadingDraftThreadCount),");
+    const activeSpread = sidebar.indexOf("...orderedActiveThreads,");
     const snoozedSpread = sidebar.indexOf("...visibleSnoozedThreads,");
     expect(pinnedSpread).toBeGreaterThanOrEqual(0);
     expect(activeSpread).toBeGreaterThan(pinnedSpread);
@@ -80,7 +82,7 @@ describe("fork guard: sidebar-v2-project-grouping", () => {
     // header from the same section whose threads follow it. Dropping this hunk
     // is the likeliest outcome of a merge that rewrites upstream's list body,
     // and it would leave a flat-looking sidebar over a grouped ordered list.
-    const start = sidebar.indexOf("...visibleActiveSections.flatMap(");
+    const start = sidebar.indexOf("...listSections.flatMap(");
     expect(start).toBeGreaterThanOrEqual(0);
     const end = sidebar.indexOf("/* fork:end sidebar-v2-project-grouping */", start);
     expect(end).toBeGreaterThan(start);

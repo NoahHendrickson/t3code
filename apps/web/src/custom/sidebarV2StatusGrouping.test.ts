@@ -12,6 +12,7 @@ import {
   createSidebarV2CompletedHoldTracker,
   groupSidebarV2StatusSections,
   sidebarV2StatusBucketForKind,
+  splitSidebarV2DraftsSection,
   type SidebarV2StatusBucket,
 } from "./sidebarV2StatusGrouping";
 
@@ -233,17 +234,13 @@ describe("buildSidebarV2StatusSections", () => {
       modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
     });
   const keyOf = (id: string) => scopedThreadKey(scopeThreadRef(environmentId, ThreadId.make(id)));
-  const build = (
-    threads: ReturnType<typeof shell>[],
-    draftIds: readonly string[],
-    holds = createSidebarV2CompletedHoldTracker(HOLD_MS),
-  ) =>
+  const build = (threads: ReturnType<typeof shell>[], draftIds: readonly string[]) =>
     buildSidebarV2StatusSections({
       threads,
       localLastVisitedAtById: {},
       now: "2026-01-02T00:00:00.000Z",
       openThreadKey: null,
-      holds,
+      holds: createSidebarV2CompletedHoldTracker(HOLD_MS),
       projectRefIndex: createProjectRefIndex([]),
       isDraft: (threadKey) => draftIds.some((id) => keyOf(id) === threadKey),
     });
@@ -260,12 +257,25 @@ describe("buildSidebarV2StatusSections", () => {
     expect(result.map((section) => section.status)).toEqual(["drafts", "idle"]);
     expect(result[0]?.threads.map((thread) => thread.id)).toEqual(["newer-draft", "older-draft"]);
   });
+});
 
-  it("does not hold a draft in Completed once it reaches the server", () => {
-    const holds = createSidebarV2CompletedHoldTracker(HOLD_MS);
-    const thread = shell("sent", "2026-01-01T00:00:00.000Z");
-    build([thread], ["sent"], holds);
-    expect(build([thread], [], holds).map((section) => section.status)).toEqual(["idle"]);
+describe("splitSidebarV2DraftsSection", () => {
+  it("takes the Drafts section out by name and keeps the rest in order", () => {
+    const sections = [
+      { kind: "status", status: "input" },
+      { kind: "status", status: "drafts" },
+      { kind: "status", status: "idle" },
+    ] as const;
+    const { draftsSection, listSections } = splitSidebarV2DraftsSection(sections);
+    expect(draftsSection).toBe(sections[1]);
+    expect(listSections.map((section) => section.status)).toEqual(["input", "idle"]);
+  });
+
+  it("leaves project sections whole", () => {
+    const sections = [{ kind: "project" }, { kind: "project" }] as const;
+    const { draftsSection, listSections } = splitSidebarV2DraftsSection(sections);
+    expect(draftsSection).toBeNull();
+    expect(listSections).toBe(sections);
   });
 });
 

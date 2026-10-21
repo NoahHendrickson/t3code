@@ -1048,10 +1048,10 @@
     both were ever stored on.
 
     Sections paint Needs input, Completed, Working, Idle, in that order.
-    Unsent drafts (sidebar-v2-draft-rows) skip the status derivation and the
-    Completed hold and sit in a Drafts section, the topmost group: it paints
-    above the Pinned header, and the keyboard order lifts its rows the same
-    way. Drafts titles recede like Idle. A
+    Unsent drafts (sidebar-v2-draft-rows) sit in a Drafts section, the
+    topmost group: splitSidebarV2DraftsSection takes it out by name, and it
+    paints above the Pinned header with its rows first in keyboard order.
+    Drafts titles recede like Idle. A
     card's mark and its section come from one derivation,
     resolveSidebarV2CardStatus in custom/sidebarV2CardStatus.ts: the row draws
     topStatus from it and the grouping buckets kind from it, so the ladder and
