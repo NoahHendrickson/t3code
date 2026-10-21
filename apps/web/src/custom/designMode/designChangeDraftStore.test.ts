@@ -3,7 +3,7 @@ import { type EnvironmentId, type ScopedThreadRef, ThreadId } from "@t3tools/con
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { deriveComposerSendState } from "../../components/ChatView.logic";
-import { ATTACHMENT_ONLY_BOOTSTRAP_PROMPT } from "../../components/chat/composerPromptHistory";
+import { ATTACHMENT_ONLY_BOOTSTRAP_PROMPT } from "@t3tools/shared/composerContextReferences";
 import { extractTrailingDesignChanges, withDesignChangesTrailing } from "./designChangeTranscript";
 import { forkDesignChanges, useDesignChangeDraftStore } from "./designChangeDraftStore";
 import { useDesignSentPreviews } from "./designSentPreviews";

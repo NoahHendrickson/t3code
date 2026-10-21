@@ -131,7 +131,7 @@
     - apps/desktop/vite.config.ts
     - apps/web/src/components/chat/ChatComposer.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
-    - apps/web/src/components/chat/ComposerPrimaryActions.test.tsx
+    - apps/web/src/components/chat/ComposerPrimaryActions.browser.test.tsx
     - apps/web/src/routes/__root.tsx
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
@@ -185,6 +185,8 @@
   files: []
   shadows: []
   watch:
+    # Fenced override pinning a pnpm-patched transitive dep for Release Smoke.
+    - pnpm-workspace.yaml
     - .github/workflows/ci.yml
     - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
@@ -292,6 +294,9 @@
     - .github/scripts/launch-isolation-check.sh
   shadows: []
   watch:
+    # Fenced env stub: fork CI sets GITHUB_REPOSITORY, which retargets release links.
+    - apps/web/src/components/desktopUpdate.toast.test.tsx
+    - apps/web/src/components/sidebar/SidebarUpdateReleaseNotes.test.tsx
     # ci.yml carries a fenced fork hunk: release_smoke lints the isolation
     # gate script on every PR, so a defect there costs a check, not a build.
     - .github/workflows/ci.yml
@@ -388,6 +393,7 @@
     .fork/notes/FORK-CUSTOMIZATION-DECISIONS.md.
   tier: 4
   files:
+    - apps/desktop/src/app/DesktopCliCommandForkIdentity.test.ts
     - apps/web/src/custom/forkBranding.ts
     - assets/fork/app-icon.icon/Assets/mark.svg
     - assets/fork/app-icon.icon/icon.json
@@ -410,9 +416,12 @@
     - assets/fork/n3-project-icon-180.png
   shadows: []
   watch:
+    - apps/desktop/src/window/DesktopApplicationMenu.test.ts
     - t3.json
     - apps/desktop/src/main.ts
-    - apps/desktop/src/app/DesktopApp.ts
+    # The launcher's ownership marker (the fork's must not contain upstream's)
+    # and its moved notice, which names the fork.
+    - apps/desktop/src/app/DesktopCliShim.ts
     - apps/desktop/src/app/DesktopAppIdentity.test.ts
     - apps/desktop/src/app/DesktopEnvironment.ts
     - apps/desktop/src/app/DesktopEnvironment.test.ts
@@ -426,6 +435,7 @@
     # Upstream's Windows profile migration test names its own legacy and V2
     # directories; fenced to the fork's pair.
     - apps/desktop/src/app/DesktopPreReadyFileSystem.test.ts
+    - apps/desktop/src/wsl/DesktopWslEnvironment.test.ts
     - apps/desktop/src/app/DesktopLegacyLocalStorage.ts
     - apps/desktop/src/legacyLocalStorageMerge.ts
     # The v0.0.32 pre-ready refactor: identity and state-dir logic that never
@@ -466,7 +476,7 @@
     - apps/desktop/src/app/DesktopAssets.ts
     - apps/desktop/src/app/DesktopAssets.test.ts
     - packages/shared/src/devHome.ts
-    - packages/shared/src/hostProcess.ts
+    - packages/shared/src/HostProcess.ts
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     # Shared web-icon override builder + apply path packaging reuses for
@@ -541,10 +551,11 @@
   tier: 1
   files:
     - apps/web/src/custom/icons/lucide-phosphor.tsx
-    # `lucide-react/dynamic` (project icons by name, upstream #9137) answered
-    # from the same table, so the picker only offers names that render.
-    - apps/web/src/custom/icons/lucide-phosphor-dynamic.tsx
-  shadows: []
+    # Project icons by name (upstream #9137) resolve from the shim's own
+    # `icons` table, so the picker only offers names that render.
+    - apps/web/src/overrides/lib/lucideIconByName.ts
+  shadows:
+    - apps/web/src/lib/lucideIconByName.ts
   watch:
     - apps/web/vite.config.ts
     - apps/web/tsconfig.json
@@ -1056,21 +1067,23 @@
     no mark is Idle. The one deliberate exception is the commands-only
     Monitoring mark, visible in sidebarV2StatusBucketForKind: such a thread
     sits in Idle, because nothing will wake its agent and the command can run
-    for hours. Pinned, snoozed and settled keep their shelves, and Idle reaches
-    Settled through the server's existing auto-settle. While status grouping is
-    on the Working shelf beta stands down and its threads paint in the Working
-    section, and the pinned block takes a "Pinned" header of the same style in
-    place of its divider, shown only while something is pinned and collapsible
-    like the rest (the open thread stays visible). Flat and project modes keep
-    the divider.
+    for hours. Snoozed keeps its shelf, and Idle reaches Settled through the
+    server's existing auto-settle. While status grouping is on the Working
+    shelf beta stands down and its threads paint in the Working section, the
+    pinned block takes a "Pinned" header of the same style in place of its
+    divider, shown only while something is pinned and collapsible like the
+    rest (the open thread stays visible), and the settled tail takes a
+    "Settled" header of that same style in place of its hairline shelf header.
+    Settled still collapses through its own shelf (collapsed by default, the
+    open thread stays visible, paging unchanged) and its rows stay slim. Flat
+    and project modes keep the divider and the shelf header.
 
     Under a status header the section decides a card's title brightness
     (threadCardTitleRecedes's statusSection input): only Needs input and
     Completed titles are full strength, Working and Idle recede, and the open
     or selected card never does. Section headers are a muted semibold label
     with its count, a step under the card title's size, on the cards' inset,
-    with no mark, hairline or chevron, and how many projects the section spans
-    on its right ("2 projects", counted per logical project); clicking
+    with no mark, hairline or chevron, and nothing on the right; clicking
     collapses.
 
     buildSidebarV2StatusSections is the whole pipeline; the activeSections
@@ -1561,7 +1574,7 @@
     - apps/web/src/hooks/useTheme.ts
     - apps/web/src/components/settings/SettingsPanels.tsx
     # Runs useSettingsRestore outside React; fenced to mock the fork palette hook.
-    - apps/web/src/components/settings/SettingsPanels.restore.test.tsx
+    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
     - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
   verify:
@@ -2074,7 +2087,7 @@
     - apps/web/src/main.tsx
     - apps/web/src/components/settings/SettingsPanels.tsx
     # Mocks the switch's hook, which the restore harness cannot run.
-    - apps/web/src/components/settings/SettingsPanels.restore.test.tsx
+    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
@@ -2349,7 +2362,7 @@
     - apps/desktop/src/window/DesktopWindow.ts
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx
-    - apps/web/src/components/SidebarStageBackdrop.test.tsx
+    - apps/web/src/components/SidebarStageBackdrop.browser.test.tsx
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     # Fenced: SidebarTrigger draws the SidebarSimple glyph open or shut, so the
@@ -2395,14 +2408,14 @@
   shadows: []
   watch:
     - apps/web/src/components/usage/UsagePage.tsx
-    - apps/web/src/components/usage/UsagePage.test.tsx
+    - apps/web/src/components/usage/UsagePage.browser.test.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/components/Sidebar.tsx
     - docs/user/usage.md
     - docs/user/thread-sidebar.md
   verify:
     - apps/web/src/__fork_guards__/forkUsagePopover.test.ts
-    - apps/web/src/components/usage/UsagePage.test.tsx
+    - apps/web/src/components/usage/UsagePage.browser.test.tsx
 
 - id: fork-usage-limits-surface
   intent: >
@@ -2436,6 +2449,8 @@
   shadows:
     - apps/web/src/components/usage/UsageLimitsPooled.tsx
   watch:
+    # Fenced mock entry and one skipped case (the fork meter draws no reset plate).
+    - apps/web/src/components/usage/UsageLimitsPooled.browser.test.tsx
     - apps/web/src/components/usage/UsagePage.tsx
   verify:
     - apps/web/src/__fork_guards__/forkUsageLimits.test.ts
@@ -2477,10 +2492,9 @@
   shadows: []
   watch:
     - apps/web/src/components/usage/UsagePage.tsx
-    - apps/web/src/components/usage/UsagePage.refresh.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkUsageTabs.test.ts
-    - apps/web/src/components/usage/UsagePage.refresh.test.tsx
+    - apps/web/src/components/usage/UsagePage.refresh.browser.test.tsx
 
 - id: fork-sidebar-scheduled-row
   intent: >
@@ -2554,7 +2568,7 @@
     - apps/server/src/orchestration-v2/ProjectionStore.ts
     - apps/server/src/orchestration-v2/ThreadLaunchService.ts
     - apps/server/src/orchestration-v2/ThreadForkService.ts
-    - apps/server/src/orchestration-v2/SubagentProjection.ts
+    - packages/provider-core/src/server/subagentProjection.ts
     - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
     - apps/server/src/orchestration-v2/ThreadForkService.test.ts
     - docs/user/thread-sidebar.md
@@ -2838,8 +2852,9 @@
     DesktopClerkForkRegistrarSuppression.test.ts; the keyless skip by
     DesktopClerkForkSkip.test.ts; and the packaged boot itself by
     fork-release.yml's launch isolation gate on every build, dry runs
-    included. The singleton-lock behavior in DesktopClerk.configure is
-    bridge-independent and preserved on both paths.
+    included. Upstream now takes the single-instance lock in DesktopClerk.make
+    before the bridge exists (the bridge runs with manageSingleInstanceLock:
+    false), so the lock is bridge-independent and held on both paths.
   tier: 4
   files:
     - apps/desktop/src/app/DesktopClerkForkSkip.test.ts
@@ -2970,6 +2985,8 @@
     - .fork/lint-owned.mjs
   shadows: []
   watch:
+    # Fenced list of fork files that still bail out of the React Compiler.
+    - apps/web/src/reactCompilerCoverage.test.ts
     # Carries the fenced step that runs the gate.
     - .github/workflows/ci.yml
     # lint.ignorePatterns lives here. An upstream addition that happens to
@@ -3257,10 +3274,7 @@
     # the one resting-layout assertion is fenced there to expect the fork's
     # neutralized answer; every other assertion is upstream's.
     - apps/web/src/components/composerFooterLayout.test.ts
-    # Its resting-layout assertion reads the scroll-collapse flag instead of
-    # the neutralized predicate.
-    - apps/web/src/components/chat/MessagesTimeline.test.tsx
-    - apps/web/src/components/chat/useComposerFocusState.test.tsx
+    - apps/web/src/components/chat/useComposerFocusState.browser.test.tsx
     # "The controls retreat…" names what stays once the thread starts.
     - docs/user/appearance.md
   verify:
@@ -3890,6 +3904,9 @@
   shadows:
     - apps/web/src/components/preview/PreviewPanel.tsx
   watch:
+    # Fenced queued-run edit: upstream moved queued-message editing out of
+    # ChatView (#20304); the design-change run split/re-append followed it.
+    - apps/web/src/components/chat/useQueuedRunEdit.ts
     # Fenced import of the DesignSourceResolver preload module beside the
     # upstream PickPreload entry — the whole desktop half of native source
     # recovery hangs off this one line.
@@ -3930,9 +3947,6 @@
     # where the tab's design-mode store entry, undo history and bridge memo go —
     # everything else in the feature sees an unmount it must survive.
     - apps/web/src/browser/desktopTabLifetime.ts
-    # Fenced mock adjustment: trailingActions is a fragment (toggle + menu)
-    # under the fork, so the mock finds the menu's props on a fragment child.
-    - apps/web/src/components/preview/PreviewView.test.tsx
     # Fenced attachment-pill row (ForkComposerDesignChanges) beside the
     # element-context chips. Also fenced under fork-composer-shell.
     - apps/web/src/components/chat/ChatComposer.tsx
@@ -4024,7 +4038,7 @@
     additions are the composer vessel's radius, the 4% lift on its rows and
     split groups (upstream's hover utilities are !important, so the lift is
     too; it keys on fork-thread-details-lift, a hook fenced onto upstream's
-    one hover-surface class string in threadDetailsPanelStyles.ts, so it
+    two hover-surface class strings in threadDetailsPanelStyles.ts, so it
     reaches exactly the surfaces that compose it and not the automations
     Switch in the same card) and the vessel hairline on its section
     dividers. There is one rule
@@ -4375,9 +4389,10 @@
     is pinned to a 24×24 square.
     Upstream's v0.0.33 disclosure header (#6773, collapse the question prompt
     from its header) is deliberately not ported: the fork card has its own
-    Questions header and no collapse affordance, and its tests assert the
+    Questions header and no collapse affordance, and its guard asserts the
     shared outcome — question and options visible without interaction —
-    instead of upstream's toggle markup. Revisit if long prompts start
+    instead of upstream's toggle markup (upstream's navigation and
+    permissions browser tests render the shadow too). Revisit if long prompts start
     crowding the fork card. Upstream's #8734 restyle of that header onto
     ComposerBanner rows was declined on the same grounds.
     Since upstream #7150 the panel renders in the attached top drawer, which
@@ -4404,10 +4419,6 @@
   shadows:
     - apps/web/src/components/chat/ComposerPendingUserInputPanel.tsx
   watch:
-    # Upstream's panel tests resolve through the alias to the shadow; fenced
-    # there to assert the fork card's contract (see the declined-disclosure
-    # note in intent).
-    - apps/web/src/components/chat/ComposerPendingUserInputPanel.test.tsx
     # data-fork-pending-user-input-action on Previous and Next/Submit; the
     # outline + 24px restyle hangs off those attributes.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
@@ -4532,6 +4543,8 @@
     - apps/web/src/components/chat/ProviderModelPicker.tsx
     - apps/web/src/components/chat/ModelPickerContent.tsx
   watch:
+    # Two fenced skips: upstream's legacy-favorite cases drive its popover roles.
+    - apps/web/src/components/chat/ProviderModelPicker.browser.test.tsx
     # Supplies the Menu, item and separator primitives the pages render.
     # Fenced: MenuPopup passes collisionAvoidance to its Positioner, so the
     # composer's menu can turn flipping off.
@@ -4759,7 +4772,7 @@
     # unused-marker on upstream's V2SubagentGroup.
     - apps/web/src/components/chat/MessagesTimeline.tsx
     # Fenced: the grouped-batch cases no longer click a collapsed group open.
-    - apps/web/src/components/chat/MessagesTimeline.test.tsx
+    - apps/web/src/components/chat/MessagesTimeline.browser.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkSubagentSpawnCard.test.ts
 
@@ -5158,13 +5171,16 @@
     2026-10-14 — so all but one launch failed "Workspace preparation failed
     during provision worktree" and rolled back a worktree that already
     existed. The retry (five attempts, 20ms doubling, jittered) outlasts a
-    sibling writer; a lock that persists still fails, with a detail naming
-    the lock instead of a bare non-zero status. The write pins LC_ALL=C so
-    the C-locale pattern matches on localized hosts, and the pattern needs
-    git's "File exists" cause: the same prefix introduces a permission
-    error, which is reported as is and never retried. Both merge-base
-    writes (worktree creation and first push) share the helper. Upstream
-    carries the same unretried write; drop this fence if it adopts a retry.
+    sibling writer. Upstream has since made the worktree-creation write
+    non-fatal, so a lock that persists there leaves no recorded base; on the
+    push path it still fails, with a detail naming the lock instead of a
+    bare non-zero status. The write pins LC_ALL=C so the C-locale pattern
+    matches on localized hosts, and the pattern needs git's "File exists"
+    cause: the same prefix introduces a permission error, which is reported
+    as is and never retried. All four merge-base / comparison-ref writes
+    (gh-merge-base and t3-merge-base-ref, at worktree creation and first
+    push) share the helper. Upstream carries the same unretried write; drop
+    this fence if it adopts a retry.
   tier: 4
   files: []
   shadows: []
@@ -5196,7 +5212,7 @@
   tier: 4
   files:
     - apps/web/src/custom/touchLongPressContextMenu.ts
-    - apps/web/src/custom/touchLongPressContextMenu.test.ts
+    - apps/web/src/custom/touchLongPressContextMenu.browser.test.ts
     - apps/web/src/custom/ForkReturnGlyph.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/custom/sidebarV2TrailingColumn.ts
@@ -5220,7 +5236,7 @@
     - apps/web/src/components/pullRequest/PullRequestListRow.tsx
   verify:
     - apps/web/src/__fork_guards__/forkTouchAffordances.test.ts
-    - apps/web/src/custom/touchLongPressContextMenu.test.ts
+    - apps/web/src/custom/touchLongPressContextMenu.browser.test.ts
 
 - id: fork-side-chat
   intent: >

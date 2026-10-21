@@ -209,7 +209,7 @@ describe("fork guard: fork-popup-surface", () => {
     expect(docked?.body).toContain("var(--fork-composer-vessel-bg)");
     expect(docked?.body).not.toContain("--fork-popup-glass-floor");
     expect(docked?.body).toMatch(/(?<!-webkit-)backdrop-filter:\s*none/u);
-    expect(chatView).toContain("forkGlassPopup: !isDraftHeroState,");
+    expect(chatView).toContain("forkGlassPopup={!isDraftHeroState}");
     // The details arm weighs four attributes. Bare inside the :is() it would
     // lend that weight to every menu, and the stage sheet's frosted popups
     // could not outrank this rule; :where() keeps it out of the count.
@@ -287,7 +287,7 @@ describe("fork guard: fork-popup-surface", () => {
     // top border inside a combobox popup, and this is the one that exists.
     // Upstream's orchestrator-V2 sync moved the picker popup into BranchPicker.
     const selector = readSibling("../components/BranchPicker.tsx");
-    const footerText = selector.indexOf("Start from origin");
+    const footerText = selector.indexOf("Start from remote");
     const footerLabel = selector.slice(selector.lastIndexOf("<label", footerText), footerText);
     expect(footerLabel).toMatch(/className="[^"]*\bborder-t\b[^"]*"/u);
     expect(selector.indexOf("<ComboboxPopup")).toBeLessThan(footerText);

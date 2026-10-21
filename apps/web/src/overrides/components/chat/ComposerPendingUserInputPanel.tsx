@@ -1,15 +1,18 @@
-import { type RuntimeRequestId } from "@t3tools/contracts";
+import { type RuntimeRequestId, type ScopedThreadRef } from "@t3tools/contracts";
 import { memo } from "react";
 import { CheckIcon } from "lucide-react";
 
 import { useComposerPendingUserInputCard } from "~/custom/useComposerPendingUserInputCard";
 import { ComposerBanner } from "./ComposerBanner";
+import ChatMarkdown from "../ChatMarkdown";
 import { cn } from "~/lib/utils";
 import { type PendingUserInputDraftAnswer } from "~/pendingUserInput";
 import { type PendingUserInput } from "~/session-logic";
 
 interface PendingUserInputPanelProps {
   pendingUserInputs: PendingUserInput[];
+  cwd: string | undefined;
+  threadRef: ScopedThreadRef;
   disabled?: boolean;
   respondingRequestIds: RuntimeRequestId[];
   answers: Record<string, PendingUserInputDraftAnswer>;
@@ -21,6 +24,8 @@ interface PendingUserInputPanelProps {
 
 export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserInputPanel({
   pendingUserInputs,
+  cwd,
+  threadRef,
   disabled = false,
   respondingRequestIds,
   answers,
@@ -37,6 +42,8 @@ export const ComposerPendingUserInputPanel = memo(function ComposerPendingUserIn
     <ComposerPendingUserInputCard
       key={activePrompt.requestId}
       prompt={activePrompt}
+      cwd={cwd}
+      threadRef={threadRef}
       disabled={disabled}
       isResponding={respondingRequestIds.includes(activePrompt.requestId)}
       answers={answers}
@@ -71,6 +78,8 @@ function OptionControl({ multiSelect, selected }: { multiSelect: boolean; select
 
 const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard({
   prompt,
+  cwd,
+  threadRef,
   disabled,
   isResponding,
   answers,
@@ -80,6 +89,8 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   onDismiss,
 }: {
   prompt: PendingUserInput;
+  cwd: string | undefined;
+  threadRef: ScopedThreadRef;
   disabled: boolean;
   isResponding: boolean;
   answers: Record<string, PendingUserInputDraftAnswer>;
@@ -142,7 +153,12 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       <ComposerBanner.Scroll>
         <div className="flex flex-col gap-6 wrap-anywhere">
           <div className="flex flex-col text-sm">
-            <p className="font-medium text-foreground">{activeQuestion.question}</p>
+            <ChatMarkdown
+              text={activeQuestion.question}
+              cwd={cwd}
+              threadRef={threadRef}
+              className="font-medium text-foreground"
+            />
             <p className="font-normal text-muted-foreground">
               {multiSelect ? "Select one or more" : "Select one"}
             </p>
@@ -171,7 +187,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                     handleOptionSelection(activeQuestion.id, optionValue);
                   }}
                   className={cn(
-                    "group flex w-full flex-col gap-1 rounded-lg border p-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-ring/40",
+                    "group flex w-full flex-col gap-1 rounded-lg border p-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring/40",
                     isSelected
                       ? "border-foreground/24 bg-foreground/8 text-foreground"
                       : "border-transparent hover:bg-foreground/4",

@@ -1,5 +1,5 @@
 import { ChevronsDownUpIcon } from "lucide-react";
-import { useMemo, useSyncExternalStore, type RefObject } from "react";
+import { useSyncExternalStore, type RefObject } from "react";
 
 import type { ComposerBannerStackItem } from "~/components/chat/ComposerBannerStack";
 import { shouldOfferResumeCompaction } from "~/components/chat/ContextWindowMeter.logic";
@@ -38,11 +38,14 @@ export function useResumeCompactionBanner(input: {
   readonly dismissed: boolean;
   readonly hidden: boolean;
   readonly provider: string | null | undefined;
+  /** Claude's prompt-cache lifetime for this thread; the offer appears once it lapses. */
+  readonly promptCacheTtlMs?: number | undefined;
   readonly nowMinute: string;
   readonly compactDisabledReason: string | null;
   readonly composerRef: RefObject<{ readonly compactContext: () => void } | null>;
 }): ComposerBannerStackItem | null {
-  const { threadId, contextWindow, dismissed, hidden, provider, nowMinute } = input;
+  const { threadId, contextWindow, dismissed, hidden, provider, promptCacheTtlMs, nowMinute } =
+    input;
   const { compactDisabledReason, composerRef } = input;
   const key = threadId && contextWindow ? `${threadId}:${contextWindow.updatedAt}` : null;
   const keyDismissed = useSyncExternalStore(
@@ -50,64 +53,53 @@ export function useResumeCompactionBanner(input: {
     () => key !== null && dismissedKeys.has(key),
   );
 
-  return useMemo(() => {
-    if (
-      key === null ||
-      contextWindow === null ||
-      keyDismissed ||
-      dismissed ||
-      hidden ||
-      !shouldOfferResumeCompaction({
-        provider,
-        usedTokens: contextWindow.usedTokens,
-        updatedAt: contextWindow.updatedAt,
-        now: `${nowMinute}:00.000Z`,
-      })
-    ) {
-      return null;
-    }
+  if (
+    key === null ||
+    contextWindow === null ||
+    keyDismissed ||
+    dismissed ||
+    hidden ||
+    !shouldOfferResumeCompaction({
+      provider,
+      usedTokens: contextWindow.usedTokens,
+      updatedAt: contextWindow.updatedAt,
+      promptCacheTtlMs,
+      now: `${nowMinute}:00.000Z`,
+    })
+  ) {
+    return null;
+  }
 
-    const compactDisabled = compactDisabledReason !== null;
-    const compactAction = (
-      <Button
-        size="xs"
-        variant="default"
-        data-fork-composer-notice-action="primary"
-        disabled={compactDisabled}
-        onClick={() => {
-          if (!compactDisabled) composerRef.current?.compactContext();
-        }}
-      >
-        Compact
-      </Button>
-    );
-    return {
-      id: `resume-compaction:${key}`,
-      variant: "info",
-      noticeCard: true,
-      icon: <ChevronsDownUpIcon />,
-      title: "Resume with less context",
-      description: `${formatContextWindowTokens(contextWindow.usedTokens)} tokens from an older session.`,
-      actions: compactDisabled ? (
-        <Tooltip>
-          <TooltipTrigger render={<span className="inline-flex">{compactAction}</span>} />
-          <TooltipPopup side="top">{compactDisabledReason}</TooltipPopup>
-        </Tooltip>
-      ) : (
-        compactAction
-      ),
-      dismissLabel: "Keep full history",
-      onDismiss: () => dismissResumeCompaction(key),
-    } satisfies ComposerBannerStackItem;
-  }, [
-    compactDisabledReason,
-    composerRef,
-    contextWindow,
-    dismissed,
-    hidden,
-    key,
-    keyDismissed,
-    nowMinute,
-    provider,
-  ]);
+  const compactDisabled = compactDisabledReason !== null;
+  const compactAction = (
+    <Button
+      size="xs"
+      variant="default"
+      data-fork-composer-notice-action="primary"
+      disabled={compactDisabled}
+      onClick={() => {
+        if (!compactDisabled) composerRef.current?.compactContext();
+      }}
+    >
+      Compact
+    </Button>
+  );
+  return {
+    id: `resume-compaction:${key}`,
+    variant: "info",
+    noticeCard: true,
+    icon: <ChevronsDownUpIcon />,
+    title: "Resume with less context",
+    description: `${formatContextWindowTokens(contextWindow.usedTokens)} tokens from an older session.`,
+    actions: compactDisabled ? (
+      <Tooltip>
+        <TooltipTrigger render={<span className="inline-flex">{compactAction}</span>} />
+        <TooltipPopup side="top">{compactDisabledReason}</TooltipPopup>
+      </Tooltip>
+    ) : (
+      compactAction
+    ),
+    dismissLabel: "Keep full history",
+    onDismiss: () => dismissResumeCompaction(key),
+  } satisfies ComposerBannerStackItem;
 }

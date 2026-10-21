@@ -22,7 +22,10 @@ const cards = readSibling("../custom/useThreadStateBanners.tsx");
 describe("fork-thread-state-cards", () => {
   it("draws no status line after the last message", () => {
     expect(chatView).not.toContain("<ThreadStatusLine");
-    expect(chatView).not.toMatch(/\bfooter=\{/u);
+    // Upstream's timeline footer now carries only the pending-handoff row.
+    const footer = chatView.slice(chatView.indexOf("footer={"), chatView.indexOf("footer={") + 400);
+    expect(footer).toContain("<HandoffRow");
+    expect(footer).not.toMatch(/threadStatusLine|ThreadStatusLine/u);
   });
 
   it("puts the settled, snoozed and woke cards in the composer banner stack", () => {

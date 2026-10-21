@@ -281,6 +281,21 @@ export type LucideIcon = FC<LucideCompatProps>;
 export type LucideProps = LucideCompatProps;
 
 /**
+ * lucide's `icons` record, left empty. Only upstream's
+ * `lib/lucideIconByName.ts` reads it, and the fork shadows that module with a
+ * lookup over this shim's `*Icon` exports, so this only keeps upstream's import
+ * type-correct.
+ */
+export const icons: Record<string, LucideIcon> = {};
+
+/** lucide also stamps the name re-kebabed from PascalCase, which glues a
+ *  trailing digit on ("mouse-pointer-2" → "lucide-mouse-pointer2"). */
+function withPascalKebabClass(classes: string, lucideName: string): string {
+  const pascalKebab = lucideName.replace(/-(\d)/g, "$1");
+  return pascalKebab === lucideName ? classes : `${classes} lucide-${pascalKebab}`;
+}
+
+/**
  * Pins a default weight while still letting a caller override it per usage.
  * Phosphor forwards unknown props to the `<svg>`, so upstream's `strokeWidth`
  * and Tailwind `size-*` classes pass through untouched — Phosphor renders
@@ -297,7 +312,7 @@ export type LucideProps = LucideCompatProps;
  * between two export names.
  */
 function icon(lucideName: string, Base: PhosphorIcon, weight: IconWeight): LucideIcon {
-  const lucideClasses = `lucide lucide-${lucideName}`;
+  const lucideClasses = withPascalKebabClass(`lucide lucide-${lucideName}`, lucideName);
   const Wrapped: LucideIcon = ({ weight: override, className, ...props }) => (
     // Cast bridges the `exactOptionalPropertyTypes` gap described above; the
     // shapes are structurally identical apart from explicit-undefined.
@@ -353,6 +368,9 @@ export const ArrowRight = icon("arrow-right", PhArrowRight, "bold");
 export const ArrowUpDownIcon = icon("arrow-up-down", PhArrowsDownUp, "bold");
 export const ArrowDownUpIcon = icon("arrow-down-up", PhArrowsDownUp, "bold");
 export const ArrowUpRightIcon = icon("arrow-up-right", PhArrowUpRight, "bold");
+export const ArrowUpRight = ArrowUpRightIcon;
+export const ArrowDown01Icon = icon("arrow-down-01", PhSortAscending, "bold");
+export const ArrowDown01 = ArrowDown01Icon;
 export const ArrowUpCircleIcon = icon("arrow-up-circle", PhArrowCircleUp, "duotone");
 export const CornerLeftUpIcon = icon("corner-left-up", PhArrowElbowLeftUp, "bold");
 export const Undo2Icon = icon("undo-2", PhArrowUUpLeft, "bold");
@@ -382,6 +400,8 @@ export const HistoryIcon = icon("history", PhClockCounterClockwise, "duotone");
 export const History = icon("history", PhClockCounterClockwise, "duotone");
 export const ClockIcon = icon("clock", PhClock, "duotone");
 export const AlarmClockIcon = icon("alarm-clock", PhAlarm, "duotone");
+export const AlarmClockCheckIcon = icon("alarm-clock-check", PhAlarm, "duotone");
+export const AlarmClockCheck = AlarmClockCheckIcon;
 export const AlarmClockOffIcon = icon("alarm-clock-off", PhBellSlash, "duotone");
 export const TriangleAlertIcon = icon("triangle-alert", PhWarning, "duotone");
 export const AlertTriangleIcon = icon("alert-triangle", PhWarning, "duotone");
@@ -500,6 +520,7 @@ export const EllipsisIcon = icon("ellipsis", PhDotsThree, "bold");
 export const MoreHorizontalIcon = EllipsisIcon;
 export const MoreVertical = icon("more-vertical", PhDotsThreeVertical, "bold");
 export const PlayIcon = icon("play", PhPlay, "duotone");
+export const Play = PlayIcon;
 export const ListChecksIcon = icon("list-checks", PhListChecks, "duotone");
 export const ListTodoIcon = icon("list-todo", PhListChecks, "duotone");
 // Figma FunnelSimple — lucide's ListFilter (three descending bars).
@@ -620,6 +641,7 @@ export const Code2Icon = icon("code-2", PhCodeSimple, "duotone");
 export const FolderCodeIcon = icon("folder-code", PhFolderSimple, "duotone");
 export const Gamepad2Icon = icon("gamepad-2", PhGameController, "duotone");
 export const Layers3Icon = icon("layers-3", PhStack, "duotone");
+export const Layers3 = Layers3Icon;
 export const MusicIcon = icon("music", PhMusicNotes, "duotone");
 export const ShoppingBagIcon = icon("shopping-bag", PhShoppingBag, "duotone");
 export const VideoIcon = icon("video", PhVideoCamera, "duotone");

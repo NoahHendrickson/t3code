@@ -187,7 +187,7 @@ describe("fork guard: fork-model-picker", () => {
     expect(content).toContain("setSearchQuery((query) => query + event.key);");
     // A query swaps any page for the flat results, provider shown inline.
     expect(content).toMatch(
-      /const renderPage = \(\) => \{\s*if \(isSearching\) \{\s*return searchResults\.length > 0 \?[\s\S]*?renderModelItem\(model, true\)/u,
+      /const renderPage = \(\) => \{\s*if \(isSearching\) \{\s*return \(\s*<>\s*\{searchResults\.length > 0 \? \(\s*searchResults\.map\(\(model\) => renderModelItem\(model, true\)\)/u,
     );
     expect(content).toContain(".filter((model) => matchesLockedProvider(model))");
     // Escape clears a query before it can close the menu.
@@ -205,7 +205,7 @@ describe("fork guard: fork-model-picker", () => {
       '"opacity-0 transition-opacity group-hover:opacity-100 group-data-highlighted:opacity-100"',
     );
     expect(content).toMatch(
-      /event\.preventDefault\(\);\s*event\.stopPropagation\(\);\s*toggleFavorite\(model\.instanceId, model\.slug\);/u,
+      /event\.preventDefault\(\);\s*event\.stopPropagation\(\);\s*void toggleFavorite\(model\.instanceId, model\.slug\);/u,
     );
     // The jump badge's fill is foreground-relative; a white wash vanishes on a
     // light popup.
@@ -287,9 +287,13 @@ describe("fork guard: fork-model-picker", () => {
     // Nothing between that read and the effect's dependency list may focus
     // the view; focusAt (the explicit, caller-driven focus) sits after it.
     const effectStart = tiptap.indexOf("const isFocused = Boolean(rootElement");
-    const effectEnd = tiptap.indexOf("}, [cursor, editor, richText, skillLabelFor, value]);");
+    const effectEnd = tiptap.indexOf("}, [", effectStart);
     expect(effectStart).toBeGreaterThan(0);
     expect(effectEnd).toBeGreaterThan(effectStart);
+    // That first dependency list is the controlled-update effect's own.
+    expect(tiptap.slice(effectEnd)).toMatch(
+      /^\}, \[\s*clampEditorCursor,\s*cursor,\s*editor,[\s\S]*?skillLabelFor,\s*value,\s*\]\);/u,
+    );
     expect(tiptap.slice(effectStart, effectEnd)).not.toMatch(/\.focus\(/u);
     // Effort is a slider over the model's own levels; its keys stay out of
     // the menu's navigation.

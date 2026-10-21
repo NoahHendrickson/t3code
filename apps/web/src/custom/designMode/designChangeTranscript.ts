@@ -48,14 +48,18 @@ export function splitTrailingDesignChangeRun(text: string): {
   return { promptText, run: text.slice(promptText.length).trimStart() };
 }
 
+/** Puts a held run back last, where the strip-first extraction expects it. */
+export function appendDesignChangeRun(prose: string, run: string): string {
+  if (run.length === 0) return prose;
+  return prose.length > 0 ? `${prose}\n\n${run}` : run;
+}
+
 export function withDesignChangesTrailing(
   text: string,
   serialize: (promptText: string) => string,
 ): string {
   const { promptText, run } = splitTrailingDesignChangeRun(text);
-  if (run.length === 0) return serialize(text);
-  const serialized = serialize(promptText);
-  return serialized.length > 0 ? `${serialized}\n\n${run}` : run;
+  return appendDesignChangeRun(serialize(promptText), run);
 }
 
 export interface DesignChangeBlockSummary {

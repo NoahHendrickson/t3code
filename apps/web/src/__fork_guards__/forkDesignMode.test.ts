@@ -372,11 +372,11 @@ describe("fork guard: design mode", () => {
       'import { ForkComposerDesignChanges } from "~/custom/designMode/ForkComposerDesignChanges"',
     );
     expect(chatComposer).toContain("<ForkComposerDesignChanges target={composerDraftTarget}");
-    // Pill-only sendability: the button's own sendState memo counts pending attachments.
+    // Pill-only sendability: the button's own send state counts pending attachments.
     expect(chatComposer).toContain(
       "const forkPendingDesignChangeCount = useForkPendingDesignChangeCount(composerDraftTarget)",
     );
-    expect(chatComposer).toContain("forkPendingDesignChangeCount,");
+    expect(chatComposer).toContain("(isEditingQueuedMessage ? 0 : forkPendingDesignChangeCount)");
     const chatView = read("src/components/ChatView.tsx");
     expect(chatView).toContain(
       'import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore"',
@@ -454,7 +454,9 @@ describe("fork guard: design mode", () => {
     expect(timeline).toContain(
       'import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript"',
     );
-    expect(timeline).toContain("() => extractTrailingDesignChanges(row.message.text),");
+    expect(timeline).toContain(
+      "const forkDesignChanges = extractTrailingDesignChanges(row.message.text);",
+    );
     expect(timeline).toContain("<ForkTranscriptDesignChanges");
     expect(timeline).toContain("blocks={forkDesignChanges.blocks}");
     // The verdict line's correlation key: the message's own id — the one stable identity
@@ -491,15 +493,19 @@ describe("fork guard: design mode", () => {
     expect(queue).toContain("{forkDesignChangeLabel}");
     // Editing a queued run seeds the composer with the prose only and re-appends
     // the held run on save, so the markup is never an editable string.
-    const chatView = read("src/components/ChatView.tsx");
-    expect(chatView).toContain(
+    // Upstream moved queued-run editing out of ChatView (#20304).
+    const queuedEdit = read("src/components/chat/useQueuedRunEdit.ts");
+    expect(queuedEdit).toContain(
       "const forkQueuedEdit = splitTrailingDesignChangeRun(request.text);",
     );
-    expect(chatView).toContain("setComposerDraftPrompt(target, forkQueuedEdit.promptText);");
-    expect(chatView).toContain("originalText: forkQueuedEdit.promptText,");
-    expect(chatView).toContain("forkDesignChangeRun: forkQueuedEdit.run,");
-    expect(chatView).toMatch(
-      /text:\s*forkQueuedEditText\.length === 0\s*\?\s*ATTACHMENT_ONLY_BOOTSTRAP_PROMPT\s*:\s*forkQueuedEditText,/u,
+    expect(queuedEdit).toContain("store.setPrompt(target, forkQueuedEdit.promptText);");
+    expect(queuedEdit).toContain("originalText: forkQueuedEdit.promptText,");
+    expect(queuedEdit).toContain("forkDesignChangeRun: forkQueuedEdit.run,");
+    expect(queuedEdit).toContain(
+      "const editText = appendDesignChangeRun(content.prompt.trim(), editing.forkDesignChangeRun);",
+    );
+    expect(queuedEdit).toMatch(
+      /text:\s*editText\.length === 0\s*\?\s*ATTACHMENT_ONLY_BOOTSTRAP_PROMPT\s*:\s*editText,/u,
     );
     // Split round-trip: the run is the raw wrapped tail, re-joinable verbatim.
     const markdown = "# Design change request\n\n## 1. <a> — src/x.tsx:1:1\n- y";

@@ -39,7 +39,7 @@ describe("fork guard: fork-touch-affordances", () => {
       [
         "[data-right-panel-tab-list] [data-active-tab]",
         "../components/RightPanelTabs.tsx",
-        "data-active-tab={active}",
+        "data-active-tab={props.active}",
       ],
       [".group\\/pr-row", "../components/pullRequest/PullRequestListRow.tsx", "group/pr-row"],
     ];
@@ -78,7 +78,7 @@ describe("fork guard: fork-touch-affordances", () => {
     expect(button).toContain(`"${NO_HOVER}group-data-[active-tab=true]/tab:block"`);
     // Both callers stamp the row the variants read.
     expect(readSibling("../components/RightPanelTabs.tsx")).toMatch(
-      /data-active-tab=\{active\}[\s\S]{0,600}?group\/tab/u,
+      /data-active-tab=\{props\.active\}[\s\S]{0,600}?group\/tab/u,
     );
     expect(readSibling("../components/ThreadTerminalDrawer.tsx")).toMatch(
       /data-active-tab=\{isActive\}[\s\S]{0,400}?group\/tab/u,

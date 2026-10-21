@@ -8,12 +8,10 @@
  * deliberately does NOT define __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__, so the
  * module under test resolves no hostname and takes the skip path.
  *
- * Upstream's bridge acquires Electron's single-instance lock at creation and
- * configure reads bridge.isPrimaryInstance; with the bridge skipped nothing
- * has taken the lock, so the fork takes it directly off Electron.app in
- * configure. The configure tests below pin that behavior on both outcomes —
- * a suite that only checked the service exists would pass with every keyless
- * launch silently admitting a second instance.
+ * Upstream takes Electron's single-instance lock itself, before the bridge
+ * exists, so skipping the bridge must not skip the lock. The lock tests below
+ * pin that on both outcomes — a suite that only checked the service exists
+ * would pass with every keyless launch silently admitting a second instance.
  */
 
 import { assert, describe, it } from "@effect/vitest";
@@ -32,9 +30,7 @@ const { createClerkBridgeMock, requestSingleInstanceLockMock, storageMock } = vi
   storageMock: vi.fn(),
 }));
 
-vi.mock("electron", () => ({
-  app: { requestSingleInstanceLock: requestSingleInstanceLockMock },
-}));
+vi.mock("electron", () => ({}));
 
 vi.mock("@clerk/electron", () => ({
   createClerkBridge: createClerkBridgeMock,
@@ -44,11 +40,14 @@ vi.mock("@clerk/electron/storage", () => ({
   storage: storageMock,
 }));
 
+import * as HostProcess from "@t3tools/shared/HostProcess";
+
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopClerk from "./DesktopClerk.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
+import * as DesktopWebLinks from "./DesktopWebLinks.ts";
 
 interface ConfigureProbe {
   readonly registeredEvents: string[];
@@ -61,6 +60,7 @@ function configureProbe(): ConfigureProbe {
   let quits = 0;
   const electronApp = {
     setPath: () => Effect.void,
+    requestSingleInstanceLock: Effect.sync(() => requestSingleInstanceLockMock()),
     quit: Effect.sync(() => {
       quits += 1;
     }),
@@ -100,21 +100,25 @@ const makeDesktopClerkLayer = (electronApp: ElectronApp.ElectronApp["Service"]) 
 };
 
 const runConfigure = (probe: ConfigureProbe) =>
-  Effect.gen(function* () {
-    const context = yield* Effect.scoped(Layer.build(makeDesktopClerkLayer(probe.electronApp)));
-    const service = Context.get(context, DesktopClerk.DesktopClerk);
-    return yield* Effect.exit(
-      Effect.scoped(
-        service.configure.pipe(
+  Effect.exit(
+    Effect.scoped(
+      Effect.gen(function* () {
+        const context = yield* Layer.build(makeDesktopClerkLayer(probe.electronApp));
+        const service = Context.get(context, DesktopClerk.DesktopClerk);
+        yield* service.configure.pipe(
           Effect.provideService(ElectronApp.ElectronApp, probe.electronApp),
           Effect.provideService(
             ElectronWindow.ElectronWindow,
             {} as unknown as ElectronWindow.ElectronWindow["Service"],
           ),
-        ),
-      ),
-    );
-  });
+          Effect.provideService(HostProcess.Arguments, ["t3"]),
+          Effect.provideService(DesktopWebLinks.DesktopWebLinks, {
+            receive: () => Effect.void,
+          } as unknown as DesktopWebLinks.DesktopWebLinks["Service"]),
+        );
+      }),
+    ),
+  );
 
 describe("DesktopClerk keyless-build skip", () => {
   beforeEach(() => {
@@ -130,6 +134,7 @@ describe("DesktopClerk keyless-build skip", () => {
     });
 
     return Effect.gen(function* () {
+      requestSingleInstanceLockMock.mockReturnValue(true);
       const probe = configureProbe();
       const context = yield* Effect.scoped(
         Layer.build(makeDesktopClerkLayer(probe.electronApp)),
@@ -149,22 +154,21 @@ describe("DesktopClerk keyless-build skip", () => {
     });
   });
 
-  it.effect("takes the lock directly and keeps the primary instance running", () =>
+  it.effect("still takes the lock and keeps the primary instance running", () =>
     Effect.gen(function* () {
       requestSingleInstanceLockMock.mockReturnValue(true);
       const probe = configureProbe();
 
       const exit = yield* runConfigure(probe);
 
-      // No bridge holds the lock on this path, so configure must have asked
-      // Electron for it — a `?? true` fallback that never asks would admit
-      // every second instance.
+      // The lock does not ride on the bridge, so the keyless path must still
+      // have asked Electron for it.
       assert.equal(requestSingleInstanceLockMock.mock.calls.length, 1);
       assert.isTrue(Exit.isSuccess(exit));
       assert.equal(probe.quits(), 0);
       // Deep-link forwarding survives the degraded path: the primary still
       // listens for provider auth hand-offs and second instances.
-      assert.deepEqual(probe.registeredEvents, ["open-url", "second-instance"]);
+      assert.includeMembers(probe.registeredEvents, ["second-instance", "open-url"]);
     }),
   );
 
@@ -177,7 +181,7 @@ describe("DesktopClerk keyless-build skip", () => {
 
       assert.equal(requestSingleInstanceLockMock.mock.calls.length, 1);
       // The secondary instance stops bootstrap before whenReady can fire:
-      // quit, then interrupt — and never registers the handler.
+      // quit, then interrupt — and never registers a handler.
       assert.equal(probe.quits(), 1);
       assert.isTrue(Exit.hasInterrupts(exit));
       assert.deepEqual(probe.registeredEvents, []);

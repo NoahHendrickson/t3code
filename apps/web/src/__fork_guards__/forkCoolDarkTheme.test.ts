@@ -139,14 +139,14 @@ describe("fork guard: fork-cool-dark-theme", () => {
     expect(settingsPanels).toMatch(
       /fork:begin fork-cool-dark-theme[^\n]*\n\s*\.\.\.\(isForkPalette\(appearance\)[^\n]*\n\s*\/\* fork:end fork-cool-dark-theme/u,
     );
+    // The React Compiler owns caching here (no dependency arrays to fence), so
+    // both panels — Restore Defaults and Appearance — read the palette from
+    // their own fenced adapter call.
     expect([
       ...settingsPanels.matchAll(
-        /fork:begin fork-cool-dark-theme[^\n]*\n\s*appearance,\n\s*\/\* fork:end fork-cool-dark-theme/gu,
+        /fork:begin fork-cool-dark-theme[^\n]*\n\s*const \{ appearance, setAppearance \} = useForkAppearance\(theme, setTheme\);\n\s*\/\* fork:end fork-cool-dark-theme/gu,
       ),
     ]).toHaveLength(2);
-    expect(settingsPanels).toMatch(
-      /fork:begin fork-cool-dark-theme[^\n]*\n\s*setAppearance,\n\s*\/\* fork:end fork-cool-dark-theme/u,
-    );
     // Restore Defaults clears every fork palette, not only Westworld.
     expect(settingsPanels).toMatch(
       /fork:begin fork-cool-dark-theme[^\n]*\n\s*if \(isForkPalette\(appearance\)\) setAppearance\("dark"\);\n\s*\/\* fork:end fork-cool-dark-theme/u,
@@ -360,11 +360,18 @@ describe("fork guard: fork-cool-dark-theme", () => {
     // positioned in ChatView, and must be isolated so z-index -1 stays above
     // the root fill.
     // Since the orchestrator-V2 sync the positioned wrapper is upstream's
-    // ChatCanvas; ChatView stamps the drop-target attribute onto it.
+    // ChatCanvas; ChatView stamps the drop-target attribute onto it through
+    // ThreadFindCanvas, which forwards its remaining props to ChatCanvas.
     const chatCanvas = readSibling("../components/chat/ChatCanvas.tsx");
     expect(chatCanvas).toContain('className="relative flex min-h-0 min-w-0 flex-1 flex-col"');
+    expect(chatCanvas).toMatch(/\{\.\.\.props\}[\s\S]{0,200}className="relative flex min-h-0/u);
+    expect(readSibling("../components/chat/ThreadFindProvider.tsx")).toContain(
+      "<ChatCanvas {...canvasProps} />",
+    );
     const chatView = readSibling("../components/ChatView.tsx");
-    expect(chatView).toMatch(/<ChatCanvas[\s\S]{0,300}data-chat-workspace-drop-target="true"/u);
+    expect(chatView).toMatch(
+      /<ThreadFindCanvas[\s\S]{0,900}data-chat-workspace-drop-target="true"/u,
+    );
     expect(
       NodeFS.existsSync(
         NodeURL.fileURLToPath(new URL("../custom/assets/westworld-thread.png", import.meta.url)),
