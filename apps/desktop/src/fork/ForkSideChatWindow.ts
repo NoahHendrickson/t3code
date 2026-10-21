@@ -29,9 +29,9 @@ import { isForkAuxiliaryWindow, markForkAuxiliaryWindow } from "./ForkAuxiliaryW
 
 /** Not a macOS system shortcut, and not taken by T3's keymap, SnapShot,
     ChatGPT (⌥Space) or Claude (double ⌥). */
-export const FORK_SIDE_CHAT_ACCELERATOR = "CommandOrControl+Shift+Space";
+const FORK_SIDE_CHAT_ACCELERATOR = "CommandOrControl+Shift+Space";
 /** Main → side-chat renderer: replace the open chat with a fresh one. */
-export const FORK_SIDE_CHAT_FRESH_CHANNEL = "fork:side-chat-fresh";
+const FORK_SIDE_CHAT_FRESH_CHANNEL = "fork:side-chat-fresh";
 
 const SIDE_CHAT_WIDTH = 560;
 const SIDE_CHAT_HEIGHT = 680;
@@ -40,7 +40,7 @@ const { logInfo, logWarning } = makeComponentLogger("fork-side-chat");
 
 /** The side chat's URL: the app root with the surface flag ahead of the hash,
     so it survives every hash-router navigation inside the window. */
-export function sideChatUrl(applicationUrl: string): string {
+function sideChatUrl(applicationUrl: string): string {
   const url = new URL(applicationUrl);
   url.searchParams.set("surface", "side-chat");
   return url.toString();
