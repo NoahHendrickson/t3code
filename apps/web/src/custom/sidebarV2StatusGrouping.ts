@@ -62,7 +62,7 @@ const SIDEBAR_V2_STATUS_BUCKET_ORDER: readonly SidebarV2StatusBucket[] = [
   "idle",
 ];
 
-/** The sections the collapse store holds: the four status sections, plus the
+/** The sections the collapse store holds: the status sections, plus the
     pinned block, which takes a header of its own while status grouping is on
     so it reads as one more group. */
 export type SidebarV2StatusSectionKey = SidebarV2StatusBucket | "pinned";
