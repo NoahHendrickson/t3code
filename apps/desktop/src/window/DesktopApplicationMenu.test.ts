@@ -91,6 +91,9 @@ const layerDesktopWindow = (selectedAction: Deferred.Deferred<string>) =>
     runMainContentsCommand: (command) =>
       Deferred.succeed(selectedAction, `main-${command}`).pipe(Effect.asVoid),
     syncAppearance: Effect.void,
+    // fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+    wireRendererWindow: () => Effect.void,
+    // fork:end fork-side-chat
   } satisfies DesktopWindow.DesktopWindow["Service"]);
 
 const layerElectronMenu = (

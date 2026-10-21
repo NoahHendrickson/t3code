@@ -81,6 +81,9 @@ function layerPool(labelRef: Ref.Ref<string>): Layer.Layer<DesktopBackendPool.De
           zoomMain: () => Effect.die("unexpected zoom"),
           runMainContentsCommand: () => Effect.die("unexpected main contents command"),
           syncAppearance: Effect.void,
+          // fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+          wireRendererWindow: () => Effect.void,
+          // fork:end fork-side-chat
         } satisfies DesktopWindow.DesktopWindow["Service"]),
       ),
     ),

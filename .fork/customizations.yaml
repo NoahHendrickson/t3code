@@ -4795,7 +4795,12 @@
     The project is chosen from the first chip in the composer's context row
     (custom/DraftProjectPill), ahead of the workspace and branch chips and
     dressed like them: the row's CSS paints it as the same filled 24px chip
-    and its label collapses with theirs when the strip overflows. ChatView
+    and its label collapses with theirs when the strip overflows. Its menu
+    opens with a "No project" row: picking it opens the environment's scratch
+    project (upstream's projectless home, created by the server on first use)
+    and assigns the draft to it like any other pick, so a New agent draft can
+    become a projectless chat. The scratch folder itself is never listed as a
+    project. ChatView
     hands it to BranchToolbar through a fenced `leading` slot (the mirror of
     fork-composer-shell's `trailing`), or to the bare fallback strip while the
     draft has no project — and so no toolbar — yet. The headline shadow
@@ -5235,3 +5240,82 @@
   verify:
     - apps/web/src/__fork_guards__/forkTouchAffordances.test.ts
     - apps/web/src/custom/touchLongPressContextMenu.browser.test.ts
+
+- id: fork-side-chat
+  intent: >
+    A system-wide shortcut, ⌘⇧Space, opens the desktop side chat: a small
+    window that is only a chat, for quick questions. macOS only: the chord's
+    Windows and Linux form, Ctrl+Shift+Space, is JetBrains' and VS Code's
+    parameter hints and a common IME switch, and a global shortcut would take
+    it from every app. Each side chat is an ordinary "No project" thread in
+    the primary environment, so it also appears in the main window's sidebar
+    and on every other client. The shortcut toggles: it hides the window when
+    the window is focused and brings it forward otherwise. The red button and
+    ⌘W hide it too. The window is a non-activating panel at the normal window
+    level, so the shortcut puts it in front of the active app without pulling
+    the main T3 window forward, and clicking another window sends it behind.
+
+    The chord was picked to collide with nothing on macOS: not a system
+    shortcut, not in T3's keymap, not SnapShot (both Shift keys), ChatGPT
+    (⌥Space) or Claude (double ⌥). If another app already owns it,
+    registration fails with a logged warning and the rest of the app is
+    unaffected. It is installed from the app bootstrap (DesktopApp.ts), after
+    Electron is ready.
+
+    The window gets the main window's renderer wiring — context menu, external
+    links, the navigation guard and the quit-confirm shortcut — from the one
+    function the main window uses: DesktopWindow's wireRendererWindow, lifted
+    out of createWindow unchanged. It closes only when the app's own
+    DesktopState.quitting is set. It is marked auxiliary
+    (fork/ForkAuxiliaryWindows.ts), and ElectronWindow leaves it out of every
+    lookup and broadcast but destroyAll: the "main or first window" fallback,
+    the focused-window target for menu actions, SnapShot and zoom, sendAll
+    (preview frames, update state) and the appearance sync.
+
+    The window loads the same renderer with `?surface=side-chat` ahead of the
+    hash. In that renderer the root (fenced in __root.tsx) mounts only the
+    appearance syncs, toasts, the confirm dialog host and the command
+    palette around custom/sideChat/SideChatShell: a sidebar provider with no
+    sidebar in it, around the normal chat routes. None of the app-wide
+    coordinators run there, because the main window already runs each of
+    them once; a second copy would double notifications and sounds, fight
+    over the dictation and SnapShot hotkeys, and auto-navigate the side chat
+    to the server's bootstrap thread.
+
+    Fresh every time: the shell renders nothing on `/`, so the index route's
+    landing (a draft in the most recent project) never races it, and starts
+    the window's No project draft itself. Hiding sends the fresh-chat signal
+    (forkDesktopBridge sideChat.onFresh): a draft is kept as it is — empty is
+    already fresh, and typed text waits for the next open — and any other
+    chat reloads the window back to `/`. ⌘N starts another draft in place.
+
+    The side chat's localStorage writes stay in memory (custom/sideChat/
+    surface.ts, the first import in main.tsx). Every persisted store writes
+    its whole state on change, so two windows on one origin would overwrite
+    each other; the side chat would erase the main window's unsent drafts. A
+    key it has not written reads the real storage; a key it has written reads
+    its own copy until the next reload. Client settings live behind the
+    desktop bridge, not localStorage, and each window persists its whole
+    snapshot, so useSettings re-reads them when a desktop window gains focus.
+  tier: 3
+  files:
+    - apps/desktop/src/fork/ForkSideChatWindow.ts
+    - apps/desktop/src/fork/ForkAuxiliaryWindows.ts
+    - apps/web/src/custom/sideChat/surface.ts
+    - apps/web/src/custom/sideChat/sideChatBridge.ts
+    - apps/web/src/custom/sideChat/SideChatShell.tsx
+  watch:
+    - apps/desktop/src/preload.ts
+    - apps/desktop/src/app/DesktopApp.ts
+    - apps/desktop/src/window/DesktopWindow.ts
+    - apps/desktop/src/electron/ElectronWindow.ts
+    # Test doubles of the DesktopWindow service carry wireRendererWindow.
+    - apps/desktop/src/app/DesktopLifecycle.test.ts
+    - apps/desktop/src/backend/DesktopBackendPool.test.ts
+    - apps/desktop/src/window/DesktopApplicationMenu.test.ts
+    - apps/web/src/main.tsx
+    - apps/web/src/routes/__root.tsx
+    - apps/web/src/hooks/useSettings.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkSideChat.test.ts
+    - apps/web/src/custom/sideChat/surface.test.ts

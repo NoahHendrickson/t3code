@@ -197,6 +197,44 @@ describe("assignDraftProject", () => {
     expect(session()?.logicalProjectKey).toBe("proj-b");
   });
 
+  it("holds a deferred pick pending while its project opens, and lets a later pick win", async () => {
+    readProjectFile.mockResolvedValue(null);
+    let openScratch!: (target: DraftProjectTarget | null) => void;
+    const noProject = assignDraftProject(
+      draftId,
+      {
+        pendingKey: "no-project",
+        environmentId,
+        resolve: () =>
+          new Promise((resolve) => {
+            openScratch = resolve;
+          }),
+      },
+      settings,
+    );
+    // Pending from the click, before the project exists: Send is held.
+    expect(readPendingDraftProjectKey(draftId)).toBe("no-project");
+
+    await assignDraftProject(draftId, target("b"), settings);
+    expect(session()?.logicalProjectKey).toBe("proj-b");
+
+    // The scratch project arriving late must not take the draft back.
+    openScratch(target("scratch"));
+    await noProject;
+    expect(session()?.logicalProjectKey).toBe("proj-b");
+    expect(readPendingDraftProjectKey(draftId)).toBeNull();
+  });
+
+  it("clears a deferred pick whose project could not be opened", async () => {
+    await assignDraftProject(
+      draftId,
+      { pendingKey: "no-project", environmentId, resolve: () => Promise.resolve(null) },
+      settings,
+    );
+    expect(readPendingDraftProjectKey(draftId)).toBeNull();
+    expect(session()?.logicalProjectKey).toBe(NEW_AGENT_DRAFT_LOGICAL_PROJECT_KEY);
+  });
+
   it("keeps the carried model unless the project has its own default", async () => {
     readProjectFile.mockResolvedValue(null);
     const store = useComposerDraftStore.getState();

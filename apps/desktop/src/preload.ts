@@ -510,5 +510,16 @@ contextBridge.exposeInMainWorld("forkDesktopBridge", {
     },
   },
   /* fork:end fork-glass-floor-color */
+  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+  // Mirrored by apps/web/src/custom/sideChat/sideChatBridge.ts. The channel is
+  // FORK_SIDE_CHAT_FRESH_CHANNEL in fork/ForkSideChatWindow.ts.
+  sideChat: {
+    onFresh: (listener: () => void): (() => void) => {
+      const receive = () => listener();
+      ipcRenderer.on("fork:side-chat-fresh", receive);
+      return () => ipcRenderer.removeListener("fork:side-chat-fresh", receive);
+    },
+  },
+  /* fork:end fork-side-chat */
 });
 /* fork:end fork-cool-darker-sidebar-vibrancy */

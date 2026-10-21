@@ -30,6 +30,9 @@ import {
   supportsSharedSettingsSync,
 } from "@t3tools/client-runtime/state/shared-settings";
 import { ensureLocalApi } from "~/localApi";
+/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+import { isElectron } from "~/env";
+/* fork:end fork-side-chat */
 import {
   getThemeDefinition,
   getThemePreviewSidebarArtwork,
@@ -242,6 +245,26 @@ export async function persistClientSettingsUpdate(
     }
   });
 }
+
+/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+   The desktop side chat is a second window on the same client settings, and
+   each window persists its whole snapshot. Re-reading them when a window
+   gains focus keeps either from writing back a snapshot the other has moved
+   past. A change made while the read is in flight wins over it. */
+function refreshClientSettingsOnFocus(): void {
+  if (clientSettingsHydrationStatus !== "ready") return;
+  const requestedFrom = getClientSettingsSnapshot();
+  void enqueueClientSettingsPersistence(async () => {
+    const persisted = await ensureLocalApi().persistence.getClientSettings();
+    if (!persisted || getClientSettingsSnapshot() !== requestedFrom) return;
+    const next = { ...DEFAULT_CLIENT_SETTINGS, ...persisted };
+    if (JSON.stringify(next) !== JSON.stringify(requestedFrom)) replaceClientSettingsSnapshot(next);
+  }).catch(() => undefined);
+}
+if (isElectron && typeof window !== "undefined") {
+  window.addEventListener("focus", refreshClientSettingsOnFocus);
+}
+/* fork:end fork-side-chat */
 
 const SERVER_SETTINGS_KEYS = new Set<string>(Struct.keys(ServerSettings.fields));
 

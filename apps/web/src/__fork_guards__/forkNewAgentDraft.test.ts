@@ -144,7 +144,9 @@ describe("fork guard: fork-new-agent-draft", () => {
     // behaviour is tested in custom/useNewAgentDraft.test.ts; this pins the
     // seam.
     expect(hooks).toContain("superseded = latestAssignmentByDraftId.get(draftId) !== request;");
-    expect(hooks).toContain("if (superseded) return;");
+    expect(hooks).toContain(
+      "if (superseded || entry === null || projectSettings === undefined) return;",
+    );
   });
 
   it("holds Send while a picked project's defaults resolve", () => {
@@ -162,7 +164,14 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(pill).toContain(
       "const pendingProjectKey = useDraftProjectAssignmentPending(props.draftId);",
     );
-    expect(pill).toMatch(/const activeEntry =\s*pendingEntry \?\?/u);
+    // A pending "No project" pick shows too, ahead of the draft's old project,
+    // and it is pending from the click: the scratch project opens inside the
+    // pick, not before it.
+    expect(pill).toContain(
+      'if (input.pendingProjectKey === NO_PROJECT_VALUE) return { kind: "no-project", pending: true };',
+    );
+    expect(pill).toMatch(/assignDraftProject\(draftId, \{\s*pendingKey: NO_PROJECT_VALUE,/u);
+    expect(pill).toContain("aria-busy={pending || undefined}");
   });
 
   it("puts the project chooser first in the composer's context row", () => {
@@ -212,10 +221,13 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(pill).toContain("toastManager.add({");
     // Same project list and member rule as the palette and the grouped header.
     expect(pill).toContain("buildSidebarProjectPickerEntries({");
-    // Upstream's scratch folder ("No project") is not an assignable project.
+    // Upstream's scratch folder is never listed as a project; it is offered as
+    // its own "No project" row, which points the draft at the scratch project.
     expect(pill).toContain(
-      "!isScratchProject(project, scratchWorkspaceRootFor(project.environmentId))",
+      "isScratchProject(project, scratchWorkspaceRootFor(project.environmentId))",
     );
+    expect(pill).toContain('<span className="min-w-0 truncate">No project</span>');
+    expect(pill).toMatch(/const project = await openScratchProject\(environmentId\);/u);
   });
 
   it("centers the draft composer and grows its prompt until the thread starts", () => {

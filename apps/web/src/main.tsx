@@ -1,3 +1,8 @@
+/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+   First import: it isolates the side chat window's localStorage writes
+   before any persisted store loads. */
+import "./custom/sideChat/surface";
+/* fork:end fork-side-chat */
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createHashHistory, createBrowserHistory } from "@tanstack/react-router";

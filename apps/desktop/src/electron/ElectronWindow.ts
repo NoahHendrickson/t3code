@@ -20,6 +20,9 @@ import {
   loadWindowsForegroundApi,
 } from "./WindowsForeground.ts";
 import { startWindowsForegroundFocusThread } from "./WindowsForegroundFocusThread.ts";
+/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+import { isForkAuxiliaryWindow } from "../fork/ForkAuxiliaryWindows.ts";
+/* fork:end fork-side-chat */
 
 function windowsForegroundFocusTarget(window: Electron.BrowserWindow) {
   return {
@@ -154,6 +157,13 @@ export const make = Effect.gen(function* () {
         cause,
       }),
   }).pipe(Effect.orDie);
+  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+     The app windows that menus, captures and broadcasts address. The side
+     chat shows none of them, so it is left out everywhere but destroyAll. */
+  const listAppWindows = listWindows.pipe(
+    Effect.map((windows) => windows.filter((window) => !isForkAuxiliaryWindow(window))),
+  );
+  /* fork:end fork-side-chat */
 
   const isWindowDestroyed = (window: Electron.BrowserWindow) =>
     Effect.try({
@@ -182,7 +192,9 @@ export const make = Effect.gen(function* () {
       return main;
     }
 
-    const first = Option.fromNullishOr((yield* listWindows)[0] ?? null);
+    /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+    const first = Option.fromNullishOr((yield* listAppWindows)[0] ?? null);
+    /* fork:end fork-side-chat */
     if (Option.isNone(first) || (yield* isWindowDestroyed(first.value))) {
       return Option.none<Electron.BrowserWindow>();
     }
@@ -201,6 +213,12 @@ export const make = Effect.gen(function* () {
           cause,
         }),
     }).pipe(Effect.orDie);
+    /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+       A focused side chat sends menu actions, SnapShot and zoom to the main window. */
+    if (Option.isSome(focused) && isForkAuxiliaryWindow(focused.value)) {
+      return yield* currentMainOrFirst;
+    }
+    /* fork:end fork-side-chat */
     if (Option.isSome(focused) && !(yield* isWindowDestroyed(focused.value))) {
       return focused;
     }
@@ -327,7 +345,10 @@ export const make = Effect.gen(function* () {
     sendAll:
       /* Window broadcasts run for streamed updates; avoid a span per broadcast. */
       Effect.fnUntraced(function* (channel, ...args) {
-        for (const window of yield* listWindows) {
+        /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+        const windows = yield* listAppWindows;
+        /* fork:end fork-side-chat */
+        for (const window of windows) {
           if (yield* isWindowDestroyed(window)) {
             continue;
           }
@@ -371,7 +392,9 @@ export const make = Effect.gen(function* () {
     syncAllAppearance: Effect.fn("desktop.electron.window.syncAllAppearance")(function* <E, R>(
       sync: (window: Electron.BrowserWindow) => Effect.Effect<void, E, R>,
     ) {
-      const windows = yield* listWindows;
+      /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+      const windows = yield* listAppWindows;
+      /* fork:end fork-side-chat */
       for (const window of windows) {
         if (yield* isWindowDestroyed(window)) {
           continue;
