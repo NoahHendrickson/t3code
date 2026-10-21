@@ -3,8 +3,9 @@
  * Fork guard — see `.fork/customizations.yaml#fork-image-attachment-no-chip`.
  *
  * A staged image shows only as its thumbnail. Upstream gates an inline chip
- * on `imageAttachmentsGetChips`; the fork pins it false, so a rename or a
- * second chip insertion path upstream turns this red.
+ * on `imageAttachmentsGetChips`; the fork pins it false. Every
+ * `imageContextReference` use is counted, so a rename or any new chip
+ * insertion path upstream turns this red.
  */
 
 import * as NodeFS from "node:fs";
@@ -22,5 +23,7 @@ describe("fork-image-attachment-no-chip", () => {
     expect(composer.match(/const imageAttachmentsGetChips\b/gu)).toHaveLength(1);
     expect(composer).toContain("if (storedImages.length > 0 && imageAttachmentsGetChips) {");
     expect(composer.match(/storedImages\.map\(imageContextReference\)/gu)).toHaveLength(1);
+    // The import, the gated insertion above, and removeComposerImage's lookup.
+    expect(composer.match(/\bimageContextReference\b/gu)).toHaveLength(3);
   });
 });

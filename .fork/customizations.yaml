@@ -5171,7 +5171,11 @@
     connecting, approval, question, or project-picker state, so the same
     image read twice. The fork never auto-inserts that chip; the image still
     sends from the thumbnail strip, exactly as upstream already does when it
-    skips the chip for an empty prompt. Chips the user brings in on purpose
+    skips the chip for an empty prompt. The trade-off is deliberate: the chip
+    was also the image's place in the prose the agent receives
+    (projectComposerContextForProvider turns it into a positional marker), so
+    "compare <img1> with <img2>" now arrives as text plus two unplaced
+    attachments, in staging order. Chips the user brings in on purpose
     (pasting copied chips) are untouched, and file attachments keep their
     chips since they have no thumbnail.
   tier: 4
