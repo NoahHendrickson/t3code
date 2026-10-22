@@ -146,7 +146,7 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(card?.body).not.toContain("--fork-composer-bg");
     expect(card?.body).toMatch(/background:\s*var\(--fork-popup-fill\);/u);
     // Under Glass the vessel beneath is already the popup material (its wash
-    // over the 73% floor), so the card lets it through instead of stacking a
+    // over the stage's floor), so the card lets it through instead of stacking a
     // second tint.
     const glassCard = cssRules(palettes).find(
       (rule) =>

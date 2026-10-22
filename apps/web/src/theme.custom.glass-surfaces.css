@@ -61,12 +61,12 @@
      The floor is only defined under desktop vibrancy; without the fallback,
      web and non-macOS Glass would void send's whole box-shadow. The neutral
      fallback has no hue, so its highlights read white. */
-  --fork-composer-action-glint: oklch(from var(--fork-popup-glass-floor, rgb(30 30 30)) 0.9 c h);
+  --fork-composer-action-glint: oklch(from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.9 c h);
   --fork-composer-action-light: oklch(
-    from var(--fork-popup-glass-floor, rgb(30 30 30)) 0.8 calc(c * 2) h
+    from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.8 calc(c * 2) h
   );
   --fork-composer-action-shade: oklch(
-    from var(--fork-popup-glass-floor, rgb(30 30 30)) 0.65 calc(c * 2) h
+    from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.65 calc(c * 2) h
   );
 }
 

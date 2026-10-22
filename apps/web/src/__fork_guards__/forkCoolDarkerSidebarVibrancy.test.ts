@@ -23,6 +23,7 @@ import {
 } from "../custom/forkSidebarVibrancy";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
+import { glassTokens } from "./glassTokens";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -531,7 +532,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     const panel = glassRules.find(
       (rule) =>
         rule.selector.includes('[data-sidebar-version="v2"]') &&
-        /--sidebar:[^;]*\/\s*\d+%/u.test(rule.body),
+        /--sidebar:\s*var\(--fork-glass-panel\)/u.test(rule.body),
     );
     expect(panel, "some glass rule must paint the translucent panel").toBeDefined();
     expect(
@@ -602,10 +603,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     // cast and the seam between them stops reading as a hard edge. It is not
     // glass: the transcript holds long-form text and has to survive a bright,
     // busy desktop, so its alpha stays high and well above the sidebar's.
-    const readAlpha = (body: string, token = "background-color") => {
-      const match = new RegExp(`${token}:\\s*rgb\\([^)]*/\\s*(\\d+)%\\s*\\)`, "u").exec(body);
-      return match?.[1] === undefined ? null : Number(match[1]);
-    };
+    const glass = glassTokens(theme);
 
     const stageRules = glassRules.filter(
       (rule) =>
@@ -620,11 +618,15 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       "the ramp must be scoped to the mask that licenses it, not to every inset",
     ).toBeDefined();
 
-    const stopsOf = (body: string) =>
-      [...body.matchAll(/rgb\((\d+) (\d+) (\d+)\s*\/\s*(\d+)%\)/gu)].map((match) => ({
-        tint: [match[1], match[2], match[3]],
-        alpha: Number(match[4]),
+    // Stops name the shared tokens, never a colour of their own: a literal stop
+    // is a second material, however close its value.
+    const STOP_ALPHA = { stage: glass.stage, panel: glass.panel } as const;
+    const stopsOf = (body: string) => {
+      expect(body, "glass stops must read the tokens, not state a colour").not.toMatch(/rgb\(\d/u);
+      return [...body.matchAll(/var\(--fork-glass-(stage|panel)\)/gu)].map((match) => ({
+        alpha: STOP_ALPHA[match[1] as keyof typeof STOP_ALPHA],
       }));
+    };
 
     // The chat stage is a gradient, thinning toward the floor where the cutoff
     // mask has already ended the transcript. Every stop keeps the flat fill's
@@ -655,17 +657,20 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
       /background-size:\s*100% 100%/u,
     );
 
-    // An absolute floor for every stop: below this the column stops being a
-    // reading surface.
+    // An absolute floor for every stop. A judgment, not a measurement: Glass
+    // was last approved by eye at a 64% panel and 74% stage on 2026-10-22,
+    // and nothing thinner has been read over a bright desktop. A retune may
+    // take a few points under that on its own; going further needs a fresh
+    // look before this number moves.
     const topAlpha = stops[0]?.alpha ?? 0;
     for (const stop of stops) {
       expect(stop.alpha, "no part of the stage may go below 60%").toBeGreaterThanOrEqual(60);
       expect(stop.alpha, "no stop may exceed the reading area").toBeLessThanOrEqual(topAlpha);
     }
 
-    const panel = glassPanelRule;
-    const panelAlpha = readAlpha(panel?.body ?? "", "--sidebar");
-    expect(panelAlpha, "the glass panel must declare an explicit alpha").not.toBeNull();
+    expect(glassPanelRule?.body).toMatch(/--sidebar:\s*var\(--fork-glass-panel\);/u);
+    const panelAlpha = glass.panel;
+    expect(panelAlpha, "the glass panel must declare an explicit alpha").toBeGreaterThan(0);
     // The READING AREA, not every stop: the gradient's lower stops sit below the
     // cutoff mask, where there is no long-form text to protect.
     expect(
@@ -684,17 +689,11 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     }
 
     // Neutral on purpose under glass: the palette's cool base reads as a cast
-    // fighting the wallpaper, so the tints flatten to R = G = B and let the
-    // desktop supply the hue. The opaque palette stays cool.
-    for (const stop of [...stops, ...stopsOf(inset?.body ?? "")]) {
-      expect(new Set(stop.tint).size, "glass tints must be neutral (R = G = B)").toBe(1);
-    }
-    // One triple across both fills: a stop that also shifts hue reads as a
-    // colour wash down the column rather than as the stage thinning, and the
-    // masked and unmasked stages have to be the same material.
-    expect(
-      new Set([...stops, ...stopsOf(inset?.body ?? "")].map((stop) => stop.tint.join(","))).size,
-    ).toBe(1);
+    // fighting the wallpaper, so the tint flattens to R = G = B and lets the
+    // desktop supply the hue. The opaque palette stays cool. One triple across
+    // every fill is structural now: the stops can only name the shared tint.
+    expect(glass.tint, "the glass tint is an rgb triple").toHaveLength(3);
+    expect(new Set(glass.tint).size, "the glass tint must be neutral (R = G = B)").toBe(1);
   });
 
   it("keeps sidebar fills translucent under glass so rows do not punch holes", () => {
@@ -705,8 +704,11 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     for (const token of ["--sidebar", "--sidebar-row-hover", "--sidebar-row-selected"]) {
       const declaration = new RegExp(`${token}:\\s*([^;]+);`, "u").exec(panel?.body ?? "");
       expect(declaration, `${token} missing from the glass panel`).not.toBeNull();
-      expect(declaration?.[1], `${token} must keep alpha under glass`).toMatch(/\/\s*\d+%/u);
+      expect(declaration?.[1], `${token} must keep alpha under glass`).toMatch(
+        /\/\s*\d+%|^var\(--fork-glass-panel\)$/u,
+      );
     }
+    expect(glassTokens(theme).panel, "the glass panel token must keep alpha").toBeLessThan(100);
   });
 
   it("lifts hover and selected fills with a wash instead of the opaque accent", () => {

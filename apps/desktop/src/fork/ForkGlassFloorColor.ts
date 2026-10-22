@@ -11,7 +11,7 @@
  * the file macOS records in its wallpaper store, shrunk to a thumbnail,
  * cropped to the strip under the sidebar using the window's bounds on its
  * display, averaged, and composited under the panel's own tint
- * (rgb(30 30 30) at 64%, theme.custom.palettes.css).
+ * (--fork-glass-tint at --fork-glass-panel-alpha, theme.custom.palettes.css).
  *
  * The store is `~/Library/Application Support/com.apple.wallpaper/Store/
  * Index.plist`, a binary plist whose choices embed their own binary plists
@@ -60,13 +60,15 @@ const FORK_GLASS_FLOOR_COLOR_CHANNEL = "fork:glass-floor-color";
 const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
 
 /**
- * The Glass panel tint the wallpaper shows through: rgb(30 30 30 / 64%) in
- * theme.custom.palettes.css. The alpha here runs 3% heavier than the
- * stylesheet's because the vibrancy material dims the wallpaper a little on
- * top of the tint: calibrated when the panel was 82% against the panel
- * measured on screen (rgb(51 33 41) on a purple wallpaper), which a plain
- * blend at the stylesheet's alpha overshot by ~8 levels. Move it with the
- * stylesheet. This is the one dial if the overlays drift from the panel.
+ * The Glass panel tint the wallpaper shows through: --fork-glass-tint at
+ * --fork-glass-panel-alpha in theme.custom.palettes.css, restated because the
+ * main process cannot read the stylesheet. The alpha here runs 3% heavier
+ * than the stylesheet's because the vibrancy material dims the wallpaper a
+ * little on top of the tint. That offset was calibrated once, with the panel
+ * at 82% (rgb(51 33 41) measured on a purple wallpaper, which a plain blend
+ * at the stylesheet's alpha overshot by ~8 levels), and is extrapolated to
+ * every alpha since; the material's dimming is multiplicative, so re-measure
+ * if the overlays drift from the panel. This is the one dial when they do.
  */
 const PANEL_TINT = 30;
 const PANEL_TINT_ALPHA = 0.67;
