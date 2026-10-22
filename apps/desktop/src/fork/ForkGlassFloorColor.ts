@@ -16,16 +16,17 @@
  * The store is `~/Library/Application Support/com.apple.wallpaper/Store/
  * Index.plist`, a binary plist whose choices embed their own binary plists
  * carrying a `file://` URL. Reading it needs no permission and no Finder
- * automation prompt; the trade is that it is undocumented. It is also an
- * estimate of *which* wallpaper: the store holds a choice per display and
- * per space plus an all-spaces default, and a screensaver (`Idle`) choice
- * beside each desktop one. This reads desktop choices only, and prefers a
- * per-display or per-space entry over the all-spaces default, but it does
- * not know which display or space the window is on, so a machine whose
- * spaces carry different wallpapers may get a neighbour's. A store this code
- * cannot read resolves `null` and the renderer keeps the palette's measured
- * token; dynamic and video wallpapers resolve `null` the same way, since
- * `sips` cannot thumbnail them to one frame worth trusting.
+ * automation prompt; the trade is that it is undocumented. The store holds a
+ * choice per display, per display in each space, plus defaults, and a
+ * screensaver (`Idle`) choice beside each desktop one. Which one is on
+ * screen is not recorded, but each choice's `LastUse` moves when macOS
+ * shows it, so this takes the most recently used desktop choice filed under
+ * the window's display, and the most recently used of any when the display
+ * cannot be named. File order is no guide: with two monitors the first entry
+ * is whichever display sorts first, not the one the window is on. A store
+ * this code cannot read resolves `null` and the renderer keeps the palette's
+ * measured token; dynamic and video wallpapers resolve `null` the same way,
+ * since `sips` cannot thumbnail them to one frame worth trusting.
  *
  * macOS only, main window only. The renderer asks once when glass turns on
  * and is then told about changes: the window moving or resizing (the strip
@@ -80,8 +81,18 @@ const WALLPAPER_STORE = NodePath.join(
   "Library/Application Support/com.apple.wallpaper/Store/Index.plist",
 );
 
-/** Top-level store sections, most specific first. */
-const STORE_SECTIONS = ["Displays", "Spaces", "AllSpacesAndDisplays", "SystemDefault"] as const;
+/**
+ * The store files choices under CoreGraphics display UUIDs, and Electron's
+ * display id on macOS is the CGDirectDisplayID they derive from. JXA's ObjC
+ * bridge calls ColorSync in-process and sends no Apple Events, so unlike a
+ * Finder or System Events script it raises no automation prompt.
+ */
+const DISPLAY_UUID_SCRIPT = `function run(argv) {
+  ObjC.import("ColorSync");
+  const uuid = $.CGDisplayCreateUUIDFromDisplayID(Number(argv[0]));
+  return uuid ? ObjC.castRefToObject($.CFUUIDCreateString(null, uuid)).js : "";
+}`;
+const DISPLAY_UUID = /^[0-9A-F]{8}(?:-[0-9A-F]{4}){3}-[0-9A-F]{12}$/u;
 
 const Request = Schema.Struct({ sidebarWidth: Schema.Number });
 const decodeRequest = Schema.decodeUnknownEffect(Request);
@@ -89,6 +100,12 @@ const decodeRequest = Schema.decodeUnknownEffect(Request);
 export type ForkGlassFloorColor = { readonly r: number; readonly g: number; readonly b: number };
 
 type Thumbnail = { readonly width: number; readonly height: number; readonly bgra: Buffer };
+
+type StoreChoice = {
+  readonly urls: ReadonlyArray<string>;
+  readonly lastUse: string;
+  readonly lastSet: string;
+};
 
 function execFile(file: string, args: ReadonlyArray<string>): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -117,41 +134,62 @@ function fileUrlsIn(xml: string): Array<string> {
   return urls;
 }
 
+function dateAfter(slice: string, key: string): string {
+  return new RegExp(`<key>${key}</key>\\s*<date>([^<]+)</date>`, "u").exec(slice)?.[1] ?? "";
+}
+
 /**
- * The XML between a top-level section key and the next one. plutil indents
- * top-level keys by exactly one tab, which is what tells `Displays` apart
- * from any nested key of the same name.
+ * The store's desktop (not screensaver) choices; with a display UUID, only
+ * those filed under it, in its own entry and in each space's. plutil sorts
+ * keys, so `Desktop` is the first key of a display's dict.
  */
-function storeSection(xml: string, name: string): string | null {
-  const start = xml.indexOf(`\n\t<key>${name}</key>`);
-  if (start < 0) return null;
-  const next = xml.indexOf("\n\t<key>", start + 1);
-  return xml.slice(start, next < 0 ? xml.length : next);
-}
-
-/** The desktop (not screensaver) choices of a section, as XML slices. */
-function desktopChoices(section: string): Array<string> {
-  const slices: Array<string> = [];
-  let at = 0;
-  for (;;) {
-    const start = section.indexOf("<key>Desktop</key>", at);
-    if (start < 0) break;
-    const idle = section.indexOf("<key>Idle</key>", start);
-    slices.push(section.slice(start, idle < 0 ? section.length : idle));
-    at = start + 1;
+function desktopChoices(xml: string, displayUuid: string | null): Array<StoreChoice> {
+  const opener =
+    displayUuid === null
+      ? /<key>Desktop<\/key>/gu
+      : new RegExp(`<key>${displayUuid}</key>\\s*<dict>\\s*<key>Desktop</key>`, "gu");
+  const choices: Array<StoreChoice> = [];
+  for (const match of xml.matchAll(opener)) {
+    const idle = xml.indexOf("<key>Idle</key>", match.index);
+    const slice = xml.slice(match.index, idle < 0 ? xml.length : idle);
+    choices.push({
+      urls: fileUrlsIn(slice),
+      lastUse: dateAfter(slice, "LastUse"),
+      lastSet: dateAfter(slice, "LastSet"),
+    });
   }
-  return slices;
+  return choices;
 }
 
-/** The current wallpaper's path from macOS's wallpaper store, or null. */
-async function readWallpaperPath(): Promise<string | null> {
+/** ISO 8601 UTC dates order as strings. */
+function newestFirst(a: StoreChoice, b: StoreChoice): number {
+  const [left, right] = a.lastUse === b.lastUse ? [a.lastSet, b.lastSet] : [a.lastUse, b.lastUse];
+  return left === right ? 0 : left < right ? 1 : -1;
+}
+
+/** The UUID the store files a display under, or null. */
+async function readDisplayUuid(displayId: number): Promise<string | null> {
+  try {
+    const output = await execFile("/usr/bin/osascript", [
+      "-l",
+      "JavaScript",
+      "-e",
+      DISPLAY_UUID_SCRIPT,
+      String(displayId),
+    ]);
+    const uuid = output.trim();
+    return DISPLAY_UUID.test(uuid) ? uuid : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The wallpaper on the given display from macOS's wallpaper store, or null. */
+async function readWallpaperPath(displayUuid: string | null): Promise<string | null> {
   const xml = await execFile("/usr/bin/plutil", ["-convert", "xml1", "-o", "-", WALLPAPER_STORE]);
-  const candidates: Array<string> = [];
-  for (const name of STORE_SECTIONS) {
-    const section = storeSection(xml, name);
-    if (section === null) continue;
-    for (const choice of desktopChoices(section)) candidates.push(...fileUrlsIn(choice));
-  }
+  const onDisplay = displayUuid === null ? [] : desktopChoices(xml, displayUuid);
+  const choices = onDisplay.length > 0 ? onDisplay : desktopChoices(xml, null);
+  const candidates = choices.toSorted(newestFirst).flatMap((choice) => choice.urls);
   // A store laid out unlike the one this was written against: anything at all.
   if (candidates.length === 0) candidates.push(...fileUrlsIn(xml));
   for (const url of candidates) {
@@ -255,19 +293,19 @@ async function computeFloorColor(
   window: Electron.BrowserWindow,
   sidebarWidth: number,
 ): Promise<ForkGlassFloorColor | null> {
-  const wallpaperPath = await readWallpaperPath();
+  const bounds = window.getBounds();
+  const display = Electron.screen.getDisplayMatching(bounds);
+  const wallpaperPath = await readWallpaperPath(await readDisplayUuid(display.id));
   if (wallpaperPath === null) return null;
   const thumbnail = await readWallpaperThumbnail(wallpaperPath);
   if (thumbnail === null) return null;
-  const bounds = window.getBounds();
-  const display = Electron.screen.getDisplayMatching(bounds).bounds;
   const strip = {
     x: bounds.x,
     y: bounds.y,
     width: Math.max(1, sidebarWidth),
     height: bounds.height,
   };
-  return sampleFloor(thumbnail, display, strip);
+  return sampleFloor(thumbnail, display.bounds, strip);
 }
 
 /**

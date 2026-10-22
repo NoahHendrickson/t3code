@@ -4246,7 +4246,9 @@
     process estimates it from the wallpaper image instead: the file macOS
     records in ~/Library/Application Support/com.apple.wallpaper/Store/
     Index.plist (read directly; no Finder automation, so no permission
-    prompt), shrunk with sips to a 96px thumbnail, cropped to the strip
+    prompt), choosing the most recently used desktop choice filed under the
+    window's display (its UUID from a JXA ColorSync call, which sends no
+    Apple Events), shrunk with sips to a 96px thumbnail, cropped to the strip
     under the sidebar from the window's bounds on its display, averaged,
     and composited under the panel tint (rgb(22 22 22), at 76% rather than
     the stylesheet's 73% because the vibrancy material dims the wallpaper a

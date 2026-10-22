@@ -49,10 +49,11 @@ describe("fork guard: fork-glass-floor-color", () => {
   });
 
   it("reads the wallpaper from macOS's store, never through Finder automation", () => {
-    // The store needs no permission prompt; an osascript route would raise
-    // one on first use.
+    // The store needs no permission prompt; scripting Finder or System Events
+    // would raise one on first use. The display UUID lookup is JXA calling
+    // ColorSync in-process, which sends no Apple Events.
     expect(desktopMethod).toContain("com.apple.wallpaper/Store/Index.plist");
-    expect(desktopMethod).not.toContain("osascript");
+    expect(desktopMethod).not.toMatch(/Application\(|tell application/u);
     // The strip under the sidebar, composited under the panel tint the
     // palette paints; the alpha runs 3% heavier than the stylesheet's,
     // calibrated against the panel measured on screen. Pinned as that
