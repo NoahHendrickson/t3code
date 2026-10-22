@@ -12,6 +12,7 @@ export function SegmentedTabs({ className, ...props }: ToggleGroup.Props) {
   return (
     <ToggleGroup
       {...props}
+      data-fork-segmented-tabs
       className={cn(
         "flex w-max items-center overflow-clip rounded-sm bg-muted p-0.5 dark:bg-white/6",
         className,

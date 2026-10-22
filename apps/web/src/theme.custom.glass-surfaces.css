@@ -157,10 +157,13 @@
   --fork-glass-rim: var(--fork-glass-halo), var(--fork-glass-light);
 }
 
-/* Every selected tab is a chip of the same glass: upstream's segmented
-   toggle groups and the fork's SegmentedTabs. Both sit on a track, a
-   lighter surface than the page, so they take the soft halo. The bordered
-   option pickers (outline) are not tabs and keep their look. */
+/* Every selected tab is a chip of the same glass: the selected segment of
+   any segmented toggle group (tabs, and the pickers drawn as tabs) and of
+   the fork's SegmentedTabs. Both sit on a track, a lighter surface than the
+   page, so they take the soft halo. The bordered option pickers (outline)
+   keep their look, and so does a lone segmented Toggle (search's match-case
+   and regex switches): an on/off button, not a tab, and only the group
+   stamps data-variant. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-slot="toggle"][data-variant="segmented"][data-pressed] {
   box-shadow:
@@ -185,6 +188,13 @@
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
     var(--fork-glass-halo-soft), var(--fork-glass-light);
+}
+
+/* Its track clips 2px out from the tab and the soft halo reaches 2.75px,
+   so the halo was cut where the tab meets the track's edge. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-segmented-tabs] {
+  overflow-clip-margin: 1px;
 }
 
 /* The composer as the same glass: the vessel is the pane, with the halo

@@ -1618,10 +1618,11 @@
     data-chat-composer-floating-layer upstream already stamps on them; the
     fork's own popups that are not composer layers (the draft's project
     menu, the liveness list, the thread sort and settings menus, the thread
-    details card) carry data-fork-glass-rim. Every selected tab, in a
-    segmented toggle group or the fork's SegmentedTabs, is one more chip of
-    it. The rules live in theme.custom.glass-surfaces.css, loaded after the
-    palettes sheet.
+    details card) carry data-fork-glass-rim. The selected segment of every
+    segmented toggle group (tabs, and the pickers drawn as tabs) and of the
+    fork's SegmentedTabs is one more chip of it; outline pickers and a lone
+    segmented Toggle keep their look. The rules live in
+    theme.custom.glass-surfaces.css, loaded after the palettes sheet.
     The send button (Figma 467:22121) has a translucent white face, white
     glyph and bright inset rim. Its highlight hues follow the existing
     wallpaper-derived --fork-popup-glass-floor, lifted in lightness and
@@ -1660,7 +1661,7 @@
     # Stamps the slot and variant the selected-tab rules key on.
     - apps/web/src/components/ui/toggle.tsx
     - apps/web/src/components/ui/toggle-group.tsx
-    # Stamps data-fork-segmented-tab.
+    # Stamps data-fork-segmented-tabs and data-fork-segmented-tab.
     - apps/web/src/custom/SegmentedTabs.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
