@@ -247,7 +247,9 @@
    overflow-clip-margin can't reach them: Chromium ignores it unless both axes
    clip. Padding moves the clip edge out instead, and the matching negative
    margin keeps the chips in place; useLabelsOverflow subtracts the padding
-   from the strip's width, so the label collapse measures the same room. */
+   from the strip's width, so the label collapse measures the same room.
+   4px clears --fork-glass-halo's reach (1px spread + 2px blur); grow it
+   with the halo, or the end chips clip again. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-context-row]
   [data-slot="composer-context-strip"] {
