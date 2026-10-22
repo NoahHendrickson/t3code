@@ -53,6 +53,21 @@
     rgb(0 0 0 / 18%) 88%,
     rgb(0 0 0 / 0%)
   );
+  /* Send's highlight hues (Figma 467:22121), lifted off the wallpaper floor.
+     Stop overrides the three channels on itself. The inset stack that reads
+     them, --fork-glass-send-light, is specified on the buttons: a custom
+     property substitutes var() where it is declared, so a copy here would
+     freeze send's hues onto stop. The halo they share is --fork-glass-halo.
+     The floor is only defined under desktop vibrancy; without the fallback,
+     web and non-macOS Glass would void send's whole box-shadow. The neutral
+     fallback has no hue, so its highlights read white. */
+  --fork-composer-action-glint: oklch(from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.9 c h);
+  --fork-composer-action-light: oklch(
+    from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.8 calc(c * 2) h
+  );
+  --fork-composer-action-shade: oklch(
+    from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.65 calc(c * 2) h
+  );
 }
 
 /* The context row's chips (project, branch, PR, liveness) and the control
@@ -171,15 +186,14 @@
   pointer-events: none;
 }
 
-/* Figma 467:22121's glass, tinted by the existing wallpaper estimate. The
-   floor includes the dark panel tint, so lift lightness and chroma for the
-   reflections while preserving its hue. Static inset glints avoid a backdrop
-   filter and leave ::after free for the collapsed phone's touch target. */
+/* Figma 467:22121. Send inherits the wallpaper hues from the root; stop
+   retints them red. The rim is not gated on :enabled: the flat-send rule
+   clears the shadow, and send is disabled whenever the prompt is empty, so
+   the resting button would otherwise have no edge. Upstream's opacity still
+   dims it. No backdrop-filter, and ::after stays the collapsed phone's
+   touch target. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
-  --fork-composer-action-glint: oklch(from var(--fork-popup-glass-floor) 0.9 c h);
-  --fork-composer-action-light: oklch(from var(--fork-popup-glass-floor) 0.8 calc(c * 2) h);
-  --fork-composer-action-shade: oklch(from var(--fork-popup-glass-floor) 0.65 calc(c * 2) h);
   background: rgb(255 255 255 / 10%);
   color: #ffffff;
 }
@@ -194,18 +208,18 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:not(:disabled),
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"],
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-fork-composer-action="stop"]:not(:disabled) {
-  box-shadow:
-    var(--tw-ring-offset-shadow, 0 0 #0000),
-    var(--tw-ring-shadow, 0 0 #0000),
+  [data-fork-composer-action="stop"] {
+  --fork-glass-send-light:
     inset 0 1px 1px -0.5px rgb(from var(--fork-composer-action-glint) r g b / 80%),
     inset 0 -1px 1px -0.5px rgb(from var(--fork-composer-action-glint) r g b / 40%),
     inset 2px 2px 2px rgb(from var(--fork-composer-action-light) r g b / 16%),
     inset -2px -2px 2px rgb(from var(--fork-composer-action-shade) r g b / 24%),
-    inset 0 0 4px rgb(from var(--fork-composer-action-light) r g b / 25%),
-    0 0 2px 1px rgb(0 0 0 / 24%);
+    inset 0 0 4px rgb(from var(--fork-composer-action-light) r g b / 25%);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--fork-glass-halo), var(--fork-glass-send-light);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
