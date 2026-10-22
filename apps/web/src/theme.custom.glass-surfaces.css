@@ -319,6 +319,16 @@
   pointer-events: none;
 }
 
+/* Docked inline under the desktop glass, the details card keeps no blur at
+   all: it sits over the cleared stage, where the palettes sheet drops its
+   backdrop-filter because the blur flattens to a grey slab there. That
+   includes the reflection band's. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-thread-details-panel="inline"]
+  [data-thread-details-card]::after {
+  content: none;
+}
+
 /* The thread details card's glint, brighter than the other popups': a card
    this large under a busy header read the default ring as faint. Same ring
    and fade, stronger stops; outranks the ring rule by the card's

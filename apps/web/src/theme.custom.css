@@ -2602,7 +2602,9 @@
    without a popup and takes the same branch. What is the panel's own here
    is the radius: the composer vessel's, because the panel docks under the
    header the way the composer sits under the transcript, and both are
-   cards on the stage; upstream's 22px read as a different object. */
+   cards on the stage; upstream's 22px read as a different object. Under
+   Glass the popup rim (theme.custom.glass-surfaces.css) rounds it to 12px
+   and drops its border, with the other glass popups. */
 :root[data-fork="noahhendrickson-t3code"].dark [data-thread-details-card].dropdown-glass {
   border-radius: var(--fork-composer-radius);
 }

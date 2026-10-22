@@ -2152,21 +2152,35 @@
     traffic lights' and the sidebar toggle's axis, which leaves the title
     7px inside the card's 8px top inset. The title sits 16px in from the
     card's left (sidebar open, wide window), the header's fixed controls
-    and the docked details card 16px in from its right, and the composer
-    20px off its foot. The controls' and the title's offsets do not apply
+    16px in from its right, and the composer 20px off its foot, its floor
+    dropped on every client since the cutoff mask already ends the
+    transcript above it. The docked details card keeps the layout's own
+    placement (threadDetailsCardLayout.ts), which its lane and overlap checks
+    are computed from. The controls' and the title's offsets do not apply
     under Windows' window-controls overlay, which sets its own.
+
+    The right panel sits in the gutter beside the card, so under the desktop
+    glass it adds the card's 33% over the 73% gutter and composites back to
+    the 82% reading value. On an opaque client the chat's structural
+    bg-background layers (the workspace root, the header, the messages
+    wrapper) clear so the gutter shows; slotted form controls keep their
+    fills. While a desktop tab floats over the chat the chat view gives up
+    its stacking context, as the picture sheet does, so the tab's chrome
+    stays above the webview.
   tier: 2
   files:
     - apps/web/src/theme.custom.glass-stage.css
   watch:
     # Imports the sheet after the palettes sheet (fenced).
     - apps/web/src/main.tsx
-    # The root the card paints on and the bg-background fills it clears.
+    # The root the card paints on, the workspace root and the bg-background
+    # fills it clears.
     - apps/web/src/components/ChatView.tsx
+    # The right panel's data-preview-panel-mode root, which takes its own
+    # fill beside the card.
+    - apps/web/src/components/preview/PreviewPanelShell.tsx
     # --workspace-topbar-height and the controls group's top/right variables.
     - apps/web/src/index.css
-    # The docked details card's inline right offset, overridden.
-    - apps/web/src/components/chat/ThreadDetailsCard.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlassStageCard.test.ts
 

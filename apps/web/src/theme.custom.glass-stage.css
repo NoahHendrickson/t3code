@@ -39,6 +39,17 @@
   isolation: isolate;
 }
 
+/* Except while a desktop tab floats over the chat: its webview is a fixed
+   element at the app root at z-index 48, and its chrome sits in the chat
+   view at 49 to paint over it, which only works outside a stacking context
+   of the chat view's own. The picture sheet carves the same exception
+   behind its switch; this one holds with the picture off. The card falls
+   under the inset's fill meanwhile. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]:has([data-preview-mini-player] [data-browser-surface-slot]) {
+  isolation: auto;
+}
+
 /* The pane. Opaque clients paint the stage's own colour on it; under the
    desktop glass the fill is set below. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
@@ -131,16 +142,20 @@
   border-color: var(--sidebar);
 }
 
-/* The header and the column's messages wrapper fill with an opaque
-   bg-background edge to edge, over the gutter. The desktop glass clears that
-   class across the inset already; an opaque client clears it in the chat
-   view, where the card paints the same colour underneath. The switch thumb is
-   a foreground fill. */
+/* On an opaque client the chat's structural layers fill with an opaque
+   bg-background edge to edge, over the gutter: the workspace root the chat
+   column sits in, and inside the column the header and the messages
+   wrapper. The desktop glass clears that class across the inset already;
+   here the card paints the same colour underneath. Slotted components keep
+   theirs: an input, textarea or checkbox pairs bg-background with its own
+   dark-mode fill, and the switch thumb is a foreground fill. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:not(
     [data-fork-sidebar-vibrancy="true"]
   )
-  [data-chat-column-maximized-away]
-  .bg-background:not([data-slot="switch-thumb"]) {
+  :is(
+    [data-slot="sidebar-inset"] .bg-background:has(> [data-chat-column]),
+    [data-chat-column-maximized-away] .bg-background:not([data-slot])
+  ) {
   background: none;
 }
 
@@ -178,21 +193,26 @@
 
 /* The composer stands 20px off the card's foot rather than sitting 8px
    above it. The overlay is the transcript cutoff's measure, so the
-   transcript ends higher with it. Not on a new agent's empty draft, which
-   centres the composer instead. */
+   transcript ends higher with it. Its floor goes on every client, as the
+   desktop glass already drops it: the cutoff mask ends the transcript above
+   the composer, so the floor only painted over the card's foot, its glint
+   and corners and the gutter beside it. Not on a new agent's empty draft,
+   which centres the composer instead. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero]) {
   padding-bottom: 4px;
+  background: none;
 }
 
-/* The details card docked in the chat column lines up under the controls,
-   16px inside the card's right edge. ThreadDetailsCard places it with an
-   inline right: 12px, hence the !important. The popover follows its
-   trigger and needs nothing. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away]
-  [data-thread-details-panel="inline"] {
-  right: 24px !important;
+/* The right panel sits in the gutter beside the card, not on it, so under
+   the desktop glass it would read at the gutter's 73%: below the reading
+   value text panels keep. It adds the card's 33% of the same tint and
+   composites back to 82%. As an image, under the vibrancy block's clear of
+   its colour. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-slot="sidebar-inset"]:has([data-chat-column-maximized-away])
+  [data-preview-panel-mode="inline"] {
+  background-image: linear-gradient(rgb(22 22 22 / 33%) 0 100%);
 }
 
 /* Beside a docked sidebar the card stands 3px off it rather than 8px, and

@@ -47,7 +47,7 @@ const MACOS_WINDOW_BUTTON_RADIUS = 7;
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
    21, not upstream's 16: the red light centres on the sidebar's nav icons
    (row px-3 inside the group's px-2, a 16px glyph, so centre 28 = 21 + 7). */
-const MACOS_WINDOW_BUTTON_X = 21;
+export const MACOS_WINDOW_BUTTON_X = 21;
 /* fork:end fork-sidebar-chrome */
 
 function syncMacosWindowButtons(window: Electron.BrowserWindow): void {
