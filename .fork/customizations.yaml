@@ -2467,8 +2467,7 @@
     in its compact mode (providers split by edge-to-edge dividers, no cards, text-xs, a
     4px meter), its clock taken on open. The list subscribes to the
     environment presentations only while the menu is open. Hidden when the
-    provider reports no session window and when the composer surface is
-    400px or narrower, where the mode row has already collapsed to ⋯.
+    provider reports no session window and when the mode row collapses to ⋯.
   tier: 4
   files:
     - apps/web/src/custom/ComposerUsageLimitsReadout.tsx
