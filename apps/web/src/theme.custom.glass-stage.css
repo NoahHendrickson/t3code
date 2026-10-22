@@ -108,10 +108,19 @@
 
 /* The stage ramp, moved onto the card: 82% for the top 70%, thinning to the
    panel's 73% at the floor, where the card adds nothing. Scoped to the cutoff
-   mask that licenses it, as the palettes sheet scopes the inset's ramp. */
+   mask that licenses it, as the palettes sheet scopes the inset's ramp.
+
+   Dithered, as the draft's picture is. Over the material those 9 points of
+   alpha are only 4-7 levels of 8-bit output, so undithered the bottom 30%
+   steps in horizontal bands ~40px tall, tinted where the channels step at
+   different heights. The top layer is ±1 level of binary noise whose grey
+   (0 or 110, mean 55) sits on the ramp's own reading value, so it breaks the
+   bands without shifting the card's tone. A static tile, painted once. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has(.fork-timeline-cutoff)::before {
   background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='d' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .43'/%3E%3CfeFuncG type='discrete' tableValues='0 .43'/%3E%3CfeFuncB type='discrete' tableValues='0 .43'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23d)' opacity='.02'/%3E%3C/svg%3E")
+      0 0 / 128px 128px,
     var(--fork-glass-stage-light),
     linear-gradient(to bottom, rgb(22 22 22 / 33%) 0 70%, rgb(22 22 22 / 0%) 100%);
 }
