@@ -182,7 +182,15 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:not(:disabled) {
+  [data-fork-composer-action="stop"] {
+  background: rgb(234 49 80 / 24%);
+  color: #ffffff;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:not(:disabled),
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="stop"]:not(:disabled) {
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000),
     var(--tw-ring-shadow, 0 0 #0000),
@@ -202,6 +210,16 @@
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:active:not(:disabled) {
   background: rgb(255 255 255 / 8%);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="stop"]:hover:not(:disabled) {
+  background: rgb(234 49 80 / 32%);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="stop"]:active:not(:disabled) {
+  background: rgb(234 49 80 / 20%);
 }
 
 /* The strip clips on x (upstream's label-collapse overflow) and the fork

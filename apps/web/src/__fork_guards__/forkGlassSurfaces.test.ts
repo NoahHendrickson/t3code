@@ -57,19 +57,34 @@ describe("fork guard: glass surfaces", () => {
     expect(sheet).toContain('[data-chat-composer-floating-layer="true"]');
   });
 
-  it("gives the send slot a translucent face and static coloured glass edges", () => {
+  it("gives send and stop translucent faces and shared static glass edges", () => {
     const send = '[data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]';
+    const stop = '[data-fork-composer-action="stop"]';
     const face = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, send]);
     expect(face).toMatch(/background:\s*rgb\(255 255 255 \/ 10%\)/u);
     expect(face).toMatch(/color:\s*#ffffff/u);
 
-    const light = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, `${send}:not(:disabled)`]);
+    const stopFace = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, stop]);
+    expect(stopFace).toMatch(/background:\s*rgb\(234 49 80 \/ 24%\)/u);
+    expect(stopFace).toMatch(/color:\s*#ffffff/u);
+    expect(readSibling("../components/chat/ComposerPrimaryActions.tsx")).toContain(
+      'data-fork-composer-action="stop"',
+    );
+
+    const light = ruleBodyFor(rules, [
+      `${MARKER}.dark${PALETTE}`,
+      `${send}:not(:disabled),`,
+      `${MARKER}.dark${PALETTE}`,
+      `${stop}:not(:disabled)`,
+    ]);
     expect(light).toContain("inset 2px 2px 2px rgb(248 112 157 / 16%)");
     expect(light).toContain("inset -2px -2px 2px rgb(122 79 249 / 24%)");
     expect(light).toContain("--tw-ring-shadow");
     expect(light).toContain("0 0 2px 1px rgb(0 0 0 / 24%)");
 
-    for (const rule of rules.filter((candidate) => candidate.selector.includes(send))) {
+    for (const rule of rules.filter(
+      (candidate) => candidate.selector.includes(send) || candidate.selector.includes(stop),
+    )) {
       // Phone hit areas and disabled semantics belong to the existing button.
       expect(rule.selector).not.toMatch(/::(?:before|after)/u);
       expect(rule.body).not.toMatch(

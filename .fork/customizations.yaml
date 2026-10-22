@@ -1625,6 +1625,8 @@
     approximate Figma's refraction without a backdrop filter. The shared
     send stamp covers expanded, collapsed-phone and dictation slots while
     preserving their geometry, touch targets and disabled state.
+    Stop shares the same glass rim and inner light, with a translucent red
+    face and white glyph so interrupt remains visually distinct from send.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
