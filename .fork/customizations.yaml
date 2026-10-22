@@ -89,7 +89,7 @@
     stop's left so stop keeps the right edge and never moves when a session
     starts (upstream's send while running keeps its place after stop). The
     check wears the send button's own class list and fork tone attribute,
-    so the flat white fill in dark applies to it too; the X is a ghost in
+    so the send styling applies to it too; the X is a ghost in
     send's 24px box in pure white, from theme.custom.css.
     Nothing animates: no tray, no slide or stagger, and no separate blue mic;
     the timeline appears in place. When the send slot
@@ -1620,6 +1620,21 @@
     menu, the liveness list, the thread sort and settings menus, the thread
     details card) carry data-fork-glass-rim. The rules live in
     theme.custom.glass-surfaces.css, loaded after the palettes sheet.
+    The send button (Figma 467:22121) has a translucent white face, white
+    glyph and bright inset rim. Its highlight hues follow the existing
+    wallpaper-derived --fork-popup-glass-floor, lifted in lightness and
+    chroma to reflect light instead of the panel's dark tint; the palette's
+    fallback applies when wallpaper sampling is unavailable. The floor exists
+    only under desktop vibrancy, so the reads carry a neutral fallback that
+    keeps send's rim, in white, on web and non-macOS Glass. Static shadows
+    approximate Figma's refraction without a backdrop filter. The shared
+    send stamp covers expanded, collapsed-phone and dictation slots while
+    preserving their geometry and touch targets. Disabled keeps upstream's
+    opacity and still draws the glass rim, because an empty prompt leaves
+    send disabled.
+    Stop shares the glass geometry with red-only rim and inner highlights,
+    a translucent red face and white glyph so interrupt remains visually
+    distinct from send regardless of the wallpaper.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
@@ -1636,8 +1651,13 @@
     # Stamps data-chat-composer-floating-layer on every composer popup, which
     # the glass rim keys on.
     - apps/web/src/components/chat/composerEventScope.ts
+    # Send and stop stamps the glass button rules key on.
+    - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    - apps/web/src/components/chat/ChatComposer.tsx
+    - apps/web/src/custom/voice/ForkDictationControl.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
+    - apps/web/src/__fork_guards__/forkGlassSurfaces.test.ts
     - apps/web/src/custom/forkTheme.test.ts
 
 - id: fork-cool-darker-sidebar-vibrancy
@@ -3224,11 +3244,12 @@
     vessel's own opaque fill and blurring a uniform solid is pure GPU cost.
     BranchToolbar's stitched-strip spacing is flattened in the named context
     row. Send and stop remain 24px square at 4px radius; dark builds use a
-    flat white send button with a black icon on every build, Dev and Nightly
-    included: upstream's stage art still renders inside the button (so its
-    artwork test and exports stand) but is stamped and hidden by the theme,
-    and the tone attribute is always "flat". Existing project components
-    supply all icons and controls; no Figma-exported assets are committed.
+    flat white send button with a black icon outside Glass on every build,
+    Dev and Nightly included: upstream's stage art still renders inside the
+    button (so its artwork test and exports stand) but is stamped and hidden
+    by the theme, and the tone attribute is always "flat". Existing project
+    components supply all icons and controls; no Figma-exported assets are
+    committed.
 
     Type follows the design system's dark tokens: the prompt is body/md — 14px
     on a 23px line at >=40rem with a full muted-foreground placeholder (16px

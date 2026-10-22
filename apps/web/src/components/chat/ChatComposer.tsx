@@ -7169,7 +7169,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     data-chat-composer-transition-actions="true"
                     /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances
                        The collapsed phone row sends (and resumes) with the same button
-                       the open composer does: theme.custom.css draws it off these stamps. */
+                       the open composer does: the send styling is drawn off these stamps. */
                     data-fork-composer-action="send"
                     data-fork-composer-send-tone="flat"
                     /* fork:end fork-touch-affordances */

@@ -201,8 +201,8 @@ export function ForkDictationPrimaryButton(props: {
         trigger={
           <button
             type="button"
-            // Keeps the send button's fork styling (the flat white fill in
-            // dark) while the second attribute names what it does now.
+            // Keeps the send button's fork styling while the second attribute
+            // names what it does now.
             data-fork-composer-action="send"
             data-fork-composer-send-tone="flat"
             data-fork-dictation-action={busy ? "done" : "dictate"}
