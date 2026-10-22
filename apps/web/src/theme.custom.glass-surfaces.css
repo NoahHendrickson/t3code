@@ -171,18 +171,24 @@
   pointer-events: none;
 }
 
-/* Figma 467:22121: a 10% white face with pink/purple inner light. Static
-   inset glints approximate its native glass refraction without a backdrop
-   filter in the composer. Paint on the host, leaving ::after available for
-   the collapsed phone button's expanded touch target. */
+/* Figma 467:22121's glass, tinted by the existing wallpaper estimate. The
+   floor includes the dark panel tint, so lift lightness and chroma for the
+   reflections while preserving its hue. Static inset glints avoid a backdrop
+   filter and leave ::after free for the collapsed phone's touch target. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
+  --fork-composer-action-glint: oklch(from var(--fork-popup-glass-floor) 0.9 c h);
+  --fork-composer-action-light: oklch(from var(--fork-popup-glass-floor) 0.8 calc(c * 2) h);
+  --fork-composer-action-shade: oklch(from var(--fork-popup-glass-floor) 0.65 calc(c * 2) h);
   background: rgb(255 255 255 / 10%);
   color: #ffffff;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="stop"] {
+  --fork-composer-action-glint: rgb(255 72 72);
+  --fork-composer-action-light: rgb(255 72 72);
+  --fork-composer-action-shade: rgb(234 49 49);
   background: rgb(234 49 80 / 24%);
   color: #ffffff;
 }
@@ -194,11 +200,11 @@
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000),
     var(--tw-ring-shadow, 0 0 #0000),
-    inset 0 1px 1px -0.5px rgb(255 255 255 / 80%),
-    inset 0 -1px 1px -0.5px rgb(255 255 255 / 40%),
-    inset 2px 2px 2px rgb(248 112 157 / 16%),
-    inset -2px -2px 2px rgb(122 79 249 / 24%),
-    inset 0 0 4px rgb(57 222 248 / 25%),
+    inset 0 1px 1px -0.5px rgb(from var(--fork-composer-action-glint) r g b / 80%),
+    inset 0 -1px 1px -0.5px rgb(from var(--fork-composer-action-glint) r g b / 40%),
+    inset 2px 2px 2px rgb(from var(--fork-composer-action-light) r g b / 16%),
+    inset -2px -2px 2px rgb(from var(--fork-composer-action-shade) r g b / 24%),
+    inset 0 0 4px rgb(from var(--fork-composer-action-light) r g b / 25%),
     0 0 2px 1px rgb(0 0 0 / 24%);
 }
 

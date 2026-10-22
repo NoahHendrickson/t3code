@@ -77,8 +77,21 @@ describe("fork guard: glass surfaces", () => {
       `${MARKER}.dark${PALETTE}`,
       `${stop}:not(:disabled)`,
     ]);
-    expect(light).toContain("inset 2px 2px 2px rgb(248 112 157 / 16%)");
-    expect(light).toContain("inset -2px -2px 2px rgb(122 79 249 / 24%)");
+    for (const tone of ["glint", "light", "shade"]) {
+      expect(face).toMatch(
+        new RegExp(
+          `--fork-composer-action-${tone}:\\s*oklch\\(from var\\(--fork-popup-glass-floor\\)`,
+        ),
+      );
+      const stopColor = new RegExp(
+        `--fork-composer-action-${tone}:\\s*rgb\\((\\d+) (\\d+) (\\d+)\\)`,
+      ).exec(stopFace);
+      expect(stopColor, `${tone} stays red rather than following the wallpaper`).not.toBeNull();
+      expect(Number(stopColor?.[1])).toBeGreaterThan(Number(stopColor?.[2]));
+      expect(stopColor?.[2]).toBe(stopColor?.[3]);
+      expect(light).toContain(`rgb(from var(--fork-composer-action-${tone}) r g b /`);
+    }
+    expect(stopFace).not.toContain("--fork-popup-glass-floor");
     expect(light).toContain("--tw-ring-shadow");
     expect(light).toContain("0 0 2px 1px rgb(0 0 0 / 24%)");
 

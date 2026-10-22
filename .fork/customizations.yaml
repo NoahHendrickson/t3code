@@ -1621,12 +1621,16 @@
     details card) carry data-fork-glass-rim. The rules live in
     theme.custom.glass-surfaces.css, loaded after the palettes sheet.
     The send button (Figma 467:22121) has a translucent white face, white
-    glyph, bright inset rim and pink/purple inner light. Static shadows
+    glyph and bright inset rim. Its highlight hues follow the existing
+    wallpaper-derived --fork-popup-glass-floor, lifted in lightness and
+    chroma to reflect light instead of the panel's dark tint; the palette's
+    fallback applies when wallpaper sampling is unavailable. Static shadows
     approximate Figma's refraction without a backdrop filter. The shared
     send stamp covers expanded, collapsed-phone and dictation slots while
     preserving their geometry, touch targets and disabled state.
-    Stop shares the same glass rim and inner light, with a translucent red
-    face and white glyph so interrupt remains visually distinct from send.
+    Stop shares the glass geometry with red-only rim and inner highlights,
+    a translucent red face and white glyph so interrupt remains visually
+    distinct from send regardless of the wallpaper.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
