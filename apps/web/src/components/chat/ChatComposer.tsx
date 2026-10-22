@@ -1341,9 +1341,8 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
             alignItemWithTrigger={false}
             {...composerFloatingLayerProps}
             /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
-               Glass's rim on the mode menu, and on its selected row
-               (theme.custom.palettes.css). */
-            data-fork-glass-rim
+               Glass draws the mode menu's selected row as a pane of glass
+               (theme.custom.glass-surfaces.css). */
             data-fork-glass-selection
             /* fork:end fork-composer-shell */
           >

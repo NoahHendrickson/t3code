@@ -364,9 +364,6 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           ? { side: "top" as const, collisionAvoidance: { side: "none" as const } }
           : {})}
         className={props.combined ? "w-64" : "w-56"}
-        // The composer's model and effort menu wears Glass's rim
-        // (theme.custom.palettes.css); Settings' pickers keep the plain menu.
-        data-fork-glass-rim={props.isComposerOwned || undefined}
       >
         <ModelPickerContent
           environmentId={props.environmentId}

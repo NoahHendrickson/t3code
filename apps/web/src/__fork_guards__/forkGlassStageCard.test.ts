@@ -33,6 +33,7 @@ const rules = cssRules(sheet);
 const palettes = readSibling("../theme.custom.palettes.css");
 
 const compact = (value: string) => value.replace(/\s+/gu, "");
+const flat = (value: string | undefined) => (value ?? "").replace(/\s+/gu, " ").trim();
 const alphaOf = (body: string | undefined) =>
   Number(/rgb\(22 22 22 \/ (\d+)%\)/u.exec(body ?? "")?.[1] ?? Number.NaN);
 
@@ -55,12 +56,21 @@ describe("fork guard: fork-glass-stage-card", () => {
     }
   });
 
-  it("paints the card 8px inside the chat view, under its content", () => {
+  it("paints the card inside the chat view at the root's inset, under its content", () => {
+    // One declaration of the inset, at the Glass root and outside the
+    // picture's switch; every reader takes it through var().
+    const tokens = rules.find((rule) => rule.body.includes("--fork-glass-card-inset:"));
+    expect(compact(tokens?.selector ?? "")).toBe(compact(`${GLASS}.dark${PALETTE}`));
+    expect(tokens?.body).toMatch(/--fork-glass-card-inset:\s*8px/u);
+    expect(tokens?.body).toContain("--fork-glass-card-inset-left: var(--fork-glass-card-inset)");
+    expect(readSibling("../theme.custom.glass.css")).not.toContain("--fork-glass-card-inset:");
     const card = rules.find(
       (rule) =>
         compact(rule.selector).endsWith(`${ROOT}::before`) && !rule.selector.includes(VIBRANCY),
     );
-    expect(card?.body).toMatch(/inset:\s*8px/u);
+    expect(flat(card?.body)).toContain(
+      "inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset-left);",
+    );
     expect(card?.body).toContain("z-index: -1");
     expect(card?.body).toContain("pointer-events: none");
     // The draft's picture paints over the card: a different radius lets the
@@ -72,11 +82,6 @@ describe("fork guard: fork-glass-stage-card", () => {
     );
     expect(radiusOf(card?.body)).toBeDefined();
     expect(radiusOf(picture?.body)).toBe(radiusOf(card?.body));
-    // And at the same inset, read through the picture sheet's token.
-    const pictureInset = /--fork-glass-card-inset:\s*([\w.]+)/u.exec(
-      readSibling("../theme.custom.glass.css"),
-    )?.[1];
-    expect(/inset:\s*([\w.]+)/u.exec(card?.body ?? "")?.[1]).toBe(pictureInset);
     const root = rules.find((rule) => compact(rule.selector).endsWith(ROOT));
     expect(root?.body).toContain("isolation: isolate");
   });

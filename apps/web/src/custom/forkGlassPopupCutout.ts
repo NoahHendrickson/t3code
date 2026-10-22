@@ -199,12 +199,9 @@ function draftCard(appRoot: HTMLElement): Rect | null {
   if (view === null) return null;
   const style = getComputedStyle(view);
   const inset = Number.parseFloat(style.getPropertyValue("--fork-glass-card-inset")) || 0;
-  // The stage card stands closer to a docked sidebar on its left
-  // (theme.custom.glass-stage.css); unset, the left is the shared inset.
-  // Zero and negative insets are real values here, so only an unset token
-  // falls back.
-  const ownLeft = Number.parseFloat(style.getPropertyValue("--fork-glass-card-inset-left"));
-  const left = Number.isFinite(ownLeft) ? ownLeft : inset;
+  // A docked sidebar brings the card's left side closer
+  // (theme.custom.glass-stage.css).
+  const left = Number.parseFloat(style.getPropertyValue("--fork-glass-card-inset-left")) || 0;
   const rect = view.getBoundingClientRect();
   return {
     x: rect.left + left,

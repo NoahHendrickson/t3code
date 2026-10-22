@@ -183,7 +183,7 @@ function ChromeLabeledAction({
       title={title}
       data-testid={testId}
       // Glass styles these rows' corners and active state like a thread card's
-      // (theme.custom.palettes.css).
+      // (theme.custom.glass-surfaces.css).
       data-fork-chrome-row=""
       {...rest}
     >

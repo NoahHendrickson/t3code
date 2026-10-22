@@ -19,6 +19,16 @@
    on source order and needs no specificity of its own. Marker- and
    palette-scoped, so no other palette sees any of it. */
 
+/* The card's inset from the chat view, read by the card, the draft's
+   picture and its frost copies (theme.custom.glass.css) and the popup
+   cutout (custom/forkGlassPopupCutout.ts). The left reads its own token,
+   which a docked sidebar overrides (below). At the root, outside the
+   picture's switch, so it holds with the picture off. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
+  --fork-glass-card-inset: 8px;
+  --fork-glass-card-inset-left: var(--fork-glass-card-inset);
+}
+
 /* The card's containing block and stacking context: its z-index -1 only lands
    above the inset's fill when the chat view is a stacking context. The
    picture sheet declares the same pair behind its switch; this one holds
@@ -35,10 +45,8 @@
   [data-chat-column-maximized-away]::before {
   content: "";
   position: absolute;
-  /* The picture sheet's --fork-glass-card-inset, which is gated on its
-     switch; the guard holds the two equal. The left side reads its own
-     token, set below while a sidebar is docked beside the card. */
-  inset: 8px 8px 8px var(--fork-glass-card-inset-left, 8px);
+  inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
+    var(--fork-glass-card-inset-left);
   z-index: -1;
   border-radius: 12px;
   pointer-events: none;
@@ -163,7 +171,7 @@
     [data-chat-column-maximized-away]
     [data-chat-header] {
     /* 16px inside the card on each side, whatever its left inset. */
-    padding-left: calc(var(--fork-glass-card-inset-left, 8px) + 16px);
+    padding-left: calc(var(--fork-glass-card-inset-left) + 16px);
     padding-right: 24px;
   }
 }
@@ -192,8 +200,8 @@
    card comes as near the 8px it keeps from the window as the layout allows:
    10px, from the list's 6px scrollbar gutter, the 1px seam and this inset.
    Neither can go further. The chat view's ancestors clip at its edge, and
-   the card's halo reaches 3px, so under 3px it is cut off on that side
-   (tried at 0 and -1px, both read as broken). And the gutter holds the
+   the card's halo reaches 3px, so under 3px it is cut off on that side.
+   And the gutter holds the
    scrollbar's width whether or not it shows. The top rows' and the
    Projects row's groups drop to the same 6px as the list's gutter, so every
    row still ends on one line. The picture, its frost copies and the popup

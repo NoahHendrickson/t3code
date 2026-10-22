@@ -148,7 +148,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       "position: relative; isolation: isolate; anchor-name: --fork-glass-card;",
     );
     expect(flat(root[1]?.body)).toBe(
-      '--fork-glass-card-inset: 8px; --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
+      '--fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
     );
     expect(flat(root[2]?.body)).toBe("--fork-glass-frost-floor: var(--fork-popup-glass-floor);");
     // A floating preview's chrome must out-stack its root-level webview, so
@@ -344,10 +344,10 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
         ),
       );
     }
-    // The left reads the stage card's own left inset, which stands closer to
-    // a docked sidebar (fork-glass-stage-card), falling back to the shared one.
+    // The left reads the stage card's own left inset, which a docked
+    // sidebar brings closer (fork-glass-stage-card).
     expect(flat(frost?.body)).toContain(
-      "left: calc( anchor(--fork-glass-card left) + var(--fork-glass-card-inset-left, var(--fork-glass-card-inset)) );",
+      "left: calc(anchor(--fork-glass-card left) + var(--fork-glass-card-inset-left));",
     );
     expect(frost?.body).toContain("z-index: -1");
     expect(frost?.body).toContain("pointer-events: none");

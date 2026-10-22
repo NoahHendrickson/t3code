@@ -1614,19 +1614,28 @@
     The composer, the chips above it, the menus they open and the composer's
     model and effort menu are the same glass: the halo, the glint and the
     sheens. The menus also take the reflection; the composer cannot, since
-    it may not carry a backdrop-filter. The menus are found by
-    data-fork-glass-rim (fork-composer-shell, fork-model-picker), as are the
-    thread sort and settings menus and the thread details card.
+    it may not carry a backdrop-filter. Composer popups are found by the
+    data-chat-composer-floating-layer upstream already stamps on them; the
+    fork's own popups that are not composer layers (the draft's project
+    menu, the liveness list, the thread sort and settings menus, the thread
+    details card) carry data-fork-glass-rim. The rules live in
+    theme.custom.glass-surfaces.css, loaded after the palettes sheet.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/theme.custom.glass-surfaces.css
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html
     # Fenced data-fork-glass-rim on the details card.
     - apps/web/src/components/chat/ThreadDetailsCard.tsx
+    # Imports the glass surfaces sheet after the palettes sheet (fenced).
+    - apps/web/src/main.tsx
+    # Stamps data-chat-composer-floating-layer on every composer popup, which
+    # the glass rim keys on.
+    - apps/web/src/components/chat/composerEventScope.ts
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
@@ -2114,17 +2123,17 @@
     one surface with the card set into it. Holds with the draft picture
     switched off; while the picture is on, it paints over this card.
 
-    Beside a docked sidebar the card's left inset is 3px, not 12px
-    (--fork-glass-card-inset-left on the chat view), and the sidebar's
-    groups give up their right padding (the list to 0 beside its 6px
-    scrollbar gutter, the top rows and the Projects row to 6px), so every
-    row ends 10px from the card against 8px from the window. Not closer:
-    the chat view's ancestors clip at its edge, and under ~3px the card's
-    halo is cut off on that side (tried at 0 and -1px, both read as
-    broken); the gutter holds the scrollbar's width whether or not it
-    shows. The picture, its frost copies and
-    custom/forkGlassPopupCutout.ts read the same token, falling back to the
-    shared inset.
+    The card's inset is declared once at the Glass root
+    (--fork-glass-card-inset, 8px, and --fork-glass-card-inset-left, which
+    follows it), outside the draft picture's switch; the card, the picture,
+    its frost copies and custom/forkGlassPopupCutout.ts all read those two
+    tokens. Beside a docked sidebar the left is 3px, not 8px, and the
+    sidebar's groups give up their right padding (the list to 0 beside its
+    6px scrollbar gutter, the top rows and the Projects row to 6px), so
+    every row ends 10px from the card against 8px from the window. Not
+    closer: the chat view's ancestors clip at its edge, and under ~3px the
+    card's halo is cut off on that side; the gutter holds the scrollbar's
+    width whether or not it shows.
 
     The card is a pane of the selected thread card's glass: a dark 1px halo,
     a device-pixel glint along the top and a dimmer one along the foot, a
@@ -2340,10 +2349,11 @@
 
     The header follows Figma node 157:4536. It is flat and transparent on every
     build, so the panel surface shows through with no stage artwork. Its native
-    macOS traffic lights start at x=16, y=19, which centres the 14pt lights at
-    26pt — the 52px header's axis, shared by the toggle, the brand, and the
-    workspace header's title (y=18 sat 1pt high). A 28px trigger starts at
-    x=80 and centres its 16px Phosphor SidebarSimple glyph in it. Non-macOS surfaces
+    macOS traffic lights start at x=21, y=19: x=21 centres the red light on
+    the sidebar's nav icons, and y=19 centres the 14pt lights at 26pt, the
+    52px header's axis, shared by the toggle, the brand, and the workspace
+    header's title. A 28px trigger starts at x=85, 10pt clear of the lights,
+    and centres its 16px Phosphor SidebarSimple glyph in it. Non-macOS surfaces
     keep the same safe-area variable and place the glyph at the ordinary 16px
     edge inset.
 
@@ -3294,7 +3304,7 @@
     - apps/web/src/components/composerFooterLayout.ts
   watch:
     # Carries the base row, the context/control rows, and contextStrip prop,
-    # and marks the mode menu data-fork-glass-rim / data-fork-glass-selection.
+    # and marks the mode menu data-fork-glass-selection.
     - apps/web/src/components/chat/ChatComposer.tsx
     # Centers the draft composer with the greeting above it and docks it once
     # the thread starts, passes BranchToolbar as contextStrip (with monitoring
@@ -3317,14 +3327,12 @@
     # align-item-with-trigger) so the glass menu clears the branch pill.
     # Locked checkout/env spans carry data-fork-context-chip so they keep the
     # filled pill when there is no interactive trigger (desktop selectors +
-    # mobile locked readout in BranchToolbar). Every popup a chip opens
-    # carries data-fork-glass-rim for Glass's rim.
+    # mobile locked readout in BranchToolbar).
     - apps/web/src/components/BranchToolbar.tsx
     - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
     - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
     # Stamps data-fork-pr-chip on the PR pill so it keeps its state colour
-    # and moves to the strip's far end, and data-fork-glass-rim on the
-    # branch combobox.
+    # and moves to the strip's far end.
     - apps/web/src/components/BranchToolbarBranchSelector.tsx
     # Owns the top-fade mask the cutoff below folds into its own layer stack.
     - apps/web/src/index.css

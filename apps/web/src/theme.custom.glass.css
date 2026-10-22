@@ -78,9 +78,6 @@
     :not([data-fork-glass-picture="off"])
   ).dark[data-fork-theme="cool-darker"]
   :is([data-chat-column-maximized-away], [data-fork-glass-frost]) {
-  /* The card's inset from the chat view, read by the picture and by every
-     frost copy's anchor() insets. */
-  --fork-glass-card-inset: 8px;
   /* Fades the picture toward the foot of the card, to a third rather than
      to nothing, so the foot keeps the picture. */
   --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%);
@@ -149,10 +146,10 @@
   content: "";
   position: absolute;
   inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
-    var(--fork-glass-card-inset-left, var(--fork-glass-card-inset));
+    var(--fork-glass-card-inset-left);
   z-index: -1;
   /* The stage card's radius (theme.custom.glass-stage.css), which this
-     picture paints over; the frame drew 8px. */
+     picture paints over. */
   border-radius: 12px;
   pointer-events: none;
   background:
@@ -395,10 +392,7 @@
     top: calc(anchor(--fork-glass-card top) + var(--fork-glass-card-inset));
     right: calc(anchor(--fork-glass-card right) + var(--fork-glass-card-inset));
     bottom: calc(anchor(--fork-glass-card bottom) + var(--fork-glass-card-inset));
-    left: calc(
-      anchor(--fork-glass-card left) +
-        var(--fork-glass-card-inset-left, var(--fork-glass-card-inset))
-    );
+    left: calc(anchor(--fork-glass-card left) + var(--fork-glass-card-inset-left));
     z-index: -1;
     pointer-events: none;
     border-radius: 0;

@@ -142,14 +142,7 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
           {shortcutLabel ? ` · ${shortcutLabel}` : null}
         </TooltipPopup>
       </Tooltip>
-      <SelectPopup
-        alignItemWithTrigger={false}
-        {...composerFloatingLayerProps}
-        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
-           A chip's popup wears the chips' glass rim (theme.custom.palettes.css). */
-        data-fork-glass-rim
-        /* fork:end fork-composer-shell */
-      >
+      <SelectPopup alignItemWithTrigger={false} {...composerFloatingLayerProps}>
         <SelectGroup>
           <SelectGroupLabel>Run on</SelectGroupLabel>
           {onAutoEnvironment && (

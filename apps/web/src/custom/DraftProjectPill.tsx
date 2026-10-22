@@ -332,7 +332,7 @@ export function DraftProjectPill(props: {
         data-fork-glass-rim
         // The popup caps the height and MenuPopup's own list scrolls inside
         // it. Scrolling the popup itself would carry its glass rim
-        // (theme.custom.palettes.css) away with the rows.
+        // (theme.custom.glass-surfaces.css) away with the rows.
         className="max-h-80 min-w-48! w-max max-w-72"
       >
         <MenuRadioGroup

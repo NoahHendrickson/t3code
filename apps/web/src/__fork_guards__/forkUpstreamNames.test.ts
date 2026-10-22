@@ -31,6 +31,8 @@ const webRoot = NodePath.join(webSrc, "..");
 const FORK_STYLESHEETS = [
   "theme.custom.css",
   "theme.custom.palettes.css",
+  "theme.custom.glass-surfaces.css",
+  "theme.custom.glass-stage.css",
   ...walk(NodePath.join(webSrc, "custom"))
     .filter((file) => file.endsWith(".css"))
     .map((file) => NodePath.relative(webSrc, file)),
