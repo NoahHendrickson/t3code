@@ -6621,9 +6621,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const composerModelControls = showProviderUnavailable ? null : (
     <>
       {/* fork:begin fork-composer-usage-limits — see .fork/customizations.yaml#fork-composer-usage-limits */}
-      {isComposerModelSlotCompact ? null : (
-        <ComposerUsageLimitsReadout usageLimits={selectedProviderStatus?.usageLimits} />
-      )}
+      <ComposerUsageLimitsReadout usageLimits={selectedProviderStatus?.usageLimits} />
       {/* fork:end fork-composer-usage-limits */}
       <ComposerModelPicker
         traitsInput={providerTraitsPickerInput}

@@ -34,7 +34,7 @@ export const ComposerUsageLimitsReadout = memo(function ComposerUsageLimitsReado
       <PopoverTrigger
         data-fork-composer-usage-limits="true"
         aria-label={`${session.label} limit: ${remaining}% left. Show usage limits`}
-        className="flex shrink-0 cursor-pointer items-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex shrink-0 cursor-pointer @max-[400px]/composer-surface:hidden items-center outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <UsageMeter remaining={remaining} className="h-1 w-7" />
       </PopoverTrigger>
