@@ -280,7 +280,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     );
     const tint = /--sidebar:\s*(rgb\(\d+ \d+ \d+ \/ (\d+)%\))/u.exec(panelTint?.body ?? "");
     expect(tint?.[1]).toBeDefined();
-    expect(Number(tint?.[2])).toBeGreaterThanOrEqual(70);
+    expect(Number(tint?.[2])).toBeGreaterThanOrEqual(60);
     expect(glassToken?.body).toContain(`--fork-glass-panel: ${tint?.[1]};`);
 
     const opaque = find(`${GLASS}:not(${VIBRANCY})[data-slot="sidebar-inset"]:has(${HERO})`);

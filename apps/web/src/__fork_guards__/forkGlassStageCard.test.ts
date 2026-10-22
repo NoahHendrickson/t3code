@@ -35,7 +35,7 @@ const palettes = readSibling("../theme.custom.palettes.css");
 const compact = (value: string) => value.replace(/\s+/gu, "");
 const flat = (value: string | undefined) => (value ?? "").replace(/\s+/gu, " ").trim();
 const alphaOf = (body: string | undefined) =>
-  Number(/rgb\(22 22 22 \/ (\d+)%\)/u.exec(body ?? "")?.[1] ?? Number.NaN);
+  Number(/rgb\(30 30 30 \/ (\d+)%\)/u.exec(body ?? "")?.[1] ?? Number.NaN);
 
 describe("fork guard: fork-glass-stage-card", () => {
   it("loads after the palettes sheet", () => {
@@ -87,7 +87,7 @@ describe("fork guard: fork-glass-stage-card", () => {
   });
 
   it("composites card over gutter back to the stage's reading value under the desktop glass", () => {
-    const panel = alphaOf(/--fork-glass-panel:\s*(rgb\(22 22 22 \/ \d+%\))/u.exec(palettes)?.[1]);
+    const panel = alphaOf(/--fork-glass-panel:\s*(rgb\(30 30 30 \/ \d+%\))/u.exec(palettes)?.[1]);
     const stage = alphaOf(
       cssRules(palettes).find(
         (rule) =>

@@ -407,7 +407,7 @@
 }
 
 /* The chat stage carries the same wallpaper cast as the sidebar, but weaker —
-   82% against the sidebar's 73%. Fully opaque it read as flat black butted
+   74% against the sidebar's 64%. Fully opaque it read as flat black butted
    against a coloured panel, and the seam between them was the loudest thing on
    screen; sharing the tint makes them read as one material at two depths. Both
    now state the same triple, so "sharing the tint" is literal and the alpha is
@@ -425,23 +425,22 @@
    the move to `fullscreen-ui` kept 15% of 99 (14.8) where 30% of 49 had been
    14.7 — so anyone changing FORK_VIBRANCY_MATERIAL has to redo the arithmetic.
 
-   The chat stage thins toward the floor: 82% for the top 70%, ramping to 73%.
-   The ramp is deliberately long — 9 points of alpha over ~300px — because the
+   The chat stage thins toward the floor: 74% for the top 70%, ramping to 64%.
+   The ramp is deliberately long — 10 points of alpha over ~300px — because the
    same travel over a short run reads as a band, and a hard stop reads as a
    seam.
 
    The floor is allowed under the panel, and only the floor. The guard used to
    hold the whole stage at or above the sidebar's alpha; that reasoning is about
    protecting long-form text, and the cutoff mask means there is none down here.
-   So the reading area still answers to it and the lower stops do not — at 73%
-   against a 73% panel the very bottom of the column meets the sidebar beside
-   it, which is the fade doing its job rather than a mistake. 70% remains the
-   absolute floor for any stop.
+   So the reading area still answers to it and the lower stops do not — at 64%
+   against a 64% panel the very bottom of the column meets the sidebar beside
+   it, which is the fade doing its job rather than a mistake. 60% remains the   absolute floor for any stop.
 
    That licence is the mask's, so the ramp is scoped to elements that have one.
    Settings, Usage and the empty state are the same inset with no transcript and
-   no cutoff, and a plain scrolling text panel there would have faded to 73%
-   under a 73% sidebar with nothing ending it. They keep the flat reading
+   no cutoff, and a plain scrolling text panel there would have faded to 64%
+   under a 64% sidebar with nothing ending it. They keep the flat reading
    value. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"] {
@@ -450,7 +449,7 @@
      would composite over #141618 and none of this would show. The flat version
      of this rule got away with it by overriding the colour directly. */
   background-color: transparent;
-  background-image: linear-gradient(to bottom, rgb(22 22 22 / 82%) 0 100%);
+  background-image: linear-gradient(to bottom, rgb(30 30 30 / 74%) 0 100%);
   /* The same element carries `surface-grain`, which is three declarations, not
      one: it sets background-image AND background-repeat: repeat AND a
      background-size of 128px. Overriding only the image leaves the other two
@@ -470,7 +469,7 @@
    turn does not put this rule in the invalidation path. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]:has(.fork-timeline-cutoff) {
-  background-image: linear-gradient(to bottom, rgb(22 22 22 / 82%) 0 70%, rgb(22 22 22 / 73%) 100%);
+  background-image: linear-gradient(to bottom, rgb(30 30 30 / 74%) 0 70%, rgb(30 30 30 / 64%) 100%);
 }
 
 /* Composer tokens live on the stage rule, not the v2 panel block: the composer
@@ -481,7 +480,7 @@
      Everything here is an alpha over what is behind it; a tinted fill anywhere
      stops the wallpaper at the composer's edge.
 
-     Reference values over an 85% stage (~34); the 73% floor where the
+     Reference values over an 85% stage (~34); the 64% floor where the
      composer sits lifts these a little:
 
        tray    white 6% over the stage           -> (47,47,47)
@@ -510,21 +509,21 @@
      transcript above the whole composer, the row included. */
   --fork-context-chip-bg: rgb(255 255 255 / 12%);
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
-  /* The panel as it reads ON SCREEN — the 73–82% tint with the wallpaper's
+  /* The panel as it reads ON SCREEN — the 64–74% tint with the wallpaper's
      light through it — not the tint itself. The surface-glass overlays
      (rules below) stand on this instead of the translucent panel: they sit
      over transcript inside #root, where the popup cutout cannot clear under
      them, so anything less than opaque shows the text through them, while a
      filter over the native material never blurs it. Measured off the running app between the sidebar's
      rows, 2026-09-17, against a purple wallpaper at the old 82% panel (it read
-     rgb(51 33 41)), then rescaled to the 73% panel through the desktop
+     rgb(51 33 41)), then rescaled to the 64% panel through the desktop
      estimate's own blend (ForkGlassFloorColor.ts). Only the fallback: on the
      desktop the wallpaper estimate replaces it. The one dial if the wallpaper
      changes and the overlays drift from the panel. */
-  --fork-popup-glass-floor: rgb(68 40 52);
+  --fork-popup-glass-floor: rgb(91 52 69);
   /* Hover and selected fills. The palette's --accent is an opaque cool
      #282d30, and under glass nothing it lands on is that colour any more: the
-     stage is the 82% neutral tint with the wallpaper's cast, the cards are 5%
+     stage is the 74% neutral tint with the wallpaper's cast, the cards are 5%
      washes, the popups are washes on the glass itself. An opaque cool fill on
      any of them reads as a bluish slab dropped onto the surface rather than
      the surface lifting under the pointer. A white wash lifts whatever is
@@ -551,7 +550,7 @@
   /* The docked panel's tint (--sidebar in the v2 glass block below),
      restated at the root for the new-agent draft's gutter and frost floor
      (theme.custom.glass.css). Retune both together. */
-  --fork-glass-panel: rgb(22 22 22 / 73%);
+  --fork-glass-panel: rgb(30 30 30 / 64%);
 }
 
 /* The floating preview's placeholder floats over the transcript, so it is
@@ -568,7 +567,7 @@
    rather than taste. It is an ordinary child of the inset, so anything it paints
    composites ON the stage and can only move it toward opaque — a wash here would
    make the panel less glassy than the column it docks into. The sidebar reaches
-   73% against an 82% stage only because it is a separate paint layer outside the
+   64% against a 74% stage only because it is a separate paint layer outside the
    inset entirely. Transparent is therefore the most glass available here, not
    the least effort.
 
@@ -631,7 +630,7 @@
 
 /* The user's sent bubble shares the card's fill (theme.custom.css paints
    `.bg-message` from --card, the same rung the card sits on). Under glass
-   --card is the 73% slab, so the bubble follows the card onto the 5% wash or
+   --card is the 64% slab, so the bubble follows the card onto the 5% wash or
    it reads as the one opaque block in a translucent column. Unlayered and
    marker-scoped on purpose: the bubble has no hover/focus fill to preserve,
    so the :where() note below does not apply. */
@@ -692,7 +691,7 @@
 
    Under glass it paints nothing at all, because alpha compounds. Any fill here
    sits ON the stage rather than replacing it, so the two multiply: the stage's
-   82% under an 82% scrim composites to 1 − (0.18 × 0.18) = 97%, against 82% for
+   74% under a 74% scrim composites to 1 − (0.26 × 0.26) = 93%, against 74% for
    the rest of the column. Lowering the scrim's alpha narrows that gap but can
    never close it — only zero matches the stage. Matching the stage's value was
    the intuitive fix and it is arithmetically the wrong one.
@@ -748,10 +747,10 @@
 }
 
 /* Popups under glass (theme.custom.css, fork-popup-surface) are the
-   cards on the stage, floating: the vessel wash over the stage's own 82%
+   cards on the stage, floating: the vessel wash over the stage's own 74%
    tint, straight on the native material, so a menu reads exactly like the
    docked thread details card (below), which is that wash over the stage
-   itself. The ramp's 73% floor read lighter and took more of the
+   itself. The ramp's 64% floor read lighter and took more of the
    wallpaper's colour than the stage around it. Nothing in the page
    shows through because nothing is painted there —
    custom/forkGlassPopupCutout.ts masks a popup-shaped hole out of #root and
@@ -798,7 +797,7 @@
   ) {
   background:
     linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg)),
-    rgb(22 22 22 / 82%);
+    rgb(30 30 30 / 74%);
   border-color: rgb(255 255 255 / 8%);
   box-shadow: 0 2px 16px rgb(0 0 0 / 25%);
   -webkit-backdrop-filter: none;
@@ -826,7 +825,7 @@
 
 /* The Questions card (theme.custom.css, fork-pending-user-input) wears the
    popup material too. It sits on the vessel, which is already that wash over
-   the 73% floor, so it paints nothing and lets the vessel through; the base
+   the 64% floor, so it paints nothing and lets the vessel through; the base
    dark fill would stack a second tint on it. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-vessel]
@@ -934,7 +933,7 @@
 
    Deliberately NOT done by redefining `--background` under the marker: every
    `bg-background` user would then paint its own translucent fill, and nested
-   ones would multiply — an 82% child over the 82% stage composites to 97%, which
+   ones would multiply — a 74% child over the 74% stage composites to 93%, which
    is the same compounding that forces the transcript scrim to paint nothing.
    Glass has to be exactly one layer, so the token stays opaque and the extra
    painters are cleared instead.
@@ -971,12 +970,12 @@
   background: transparent;
 }
 
-/* 73% is the glass level: the wallpaper reads clearly through the panel while
+/* 64% is the glass level: the wallpaper reads clearly through the panel while
    the tint keeps sidebar text legible over a bright desktop. This percentage is
    the only dial — raise it toward 100% for a more solid panel, lower it toward
    0% for more wallpaper.
 
-   The tint is the stage's own 22, not a lighter step: both surfaces are meant
+   The tint is the stage's own 30, not a lighter step: both surfaces are meant
    to read as one material at two depths, so they share a triple and differ only
    in alpha. Depth is the alpha's job, and a second value here only drifted the
    two apart in lightness.
@@ -1001,10 +1000,10 @@
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-wrapper"]:not([data-fork-sidebar-overlay="true"])
   [data-sidebar-version="v2"] {
-  --background: rgb(22 22 22 / 73%);
-  --card: rgb(22 22 22 / 73%);
-  --sidebar: rgb(22 22 22 / 73%);
-  --sidebar-stage-fade: rgb(22 22 22 / 73%);
+  --background: rgb(30 30 30 / 64%);
+  --card: rgb(30 30 30 / 64%);
+  --sidebar: rgb(30 30 30 / 64%);
+  --sidebar-stage-fade: rgb(30 30 30 / 64%);
   /* Opaque, unlike everything else in this block. A white wash here lets the
      wallpaper through the line itself, so the seam shimmers with whatever is
      behind the window and reads as a gap rather than an edge — and the only way
@@ -1020,8 +1019,8 @@
   --sidebar-border: #3f3f3f;
   /* index.css derives this as
      `color-mix(in srgb, var(--sidebar-muted-foreground) 60%, var(--sidebar))`,
-     so a translucent --sidebar leaks its alpha into the glyph: at a 73% panel
-     that lands at 89%, and the remaining 11% is wallpaper showing through the icon
+     so a translucent --sidebar leaks its alpha into the glyph: at a 64% panel
+     that lands at 86%, and the remaining 14% is wallpaper showing through the icon
      itself, which reads as the icons taking on the desktop's colour. Frozen to
      the value that mix resolves to against the opaque panel (#d0d4d6 60% over
      #181b1e) so icons stay glass-independent. Anything else derived from the
@@ -1046,12 +1045,12 @@
 
 /* The floating panel stays opaque (see the gate above), but it should not also
    be the only cool-tinted surface on screen. Under glass everything around it
-   is neutral rgb(22 22 22); the palette's #181b1e carries Glass's blue
+   is neutral rgb(30 30 30); the palette's #181b1e carries Glass's blue
    cast, so while floating the panel reads as a different material rather than
    as the same panel with its glass suspended.
 
-   #1f1f1f preserves the panel's earlier opaque fallback:
-   88% of the neutral tint over the material's ~99 sample lands at 31 per
+   #262626 keeps the floating panel on the docked one's lightness:
+   88% of the neutral tint over the material's ~99 sample lands at 38 per
    channel. The docked panel now lets slightly more wallpaper through, while
    this fallback keeps overlapping transcript text hidden.
 
@@ -1060,13 +1059,13 @@
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-wrapper"][data-fork-sidebar-overlay="true"]
   [data-sidebar-version="v2"] {
-  --background: #1f1f1f;
-  --card: #1f1f1f;
-  --sidebar: #1f1f1f;
-  --sidebar-stage-fade: #1f1f1f;
+  --background: #262626;
+  --card: #262626;
+  --sidebar: #262626;
+  --sidebar-stage-fade: #262626;
   /* The palette's cool #282d30 would be the one tinted fill on this neutral
-     panel; the docked block's wash over an opaque #1f1f1f resolves to a
-     neutral #303030 and keeps the hover the same material as the panel. */
+     panel; the docked block's wash over an opaque #262626 resolves to a
+     neutral #373737 and keeps the hover the same material as the panel. */
   --accent: rgb(255 255 255 / 8%);
 }
 

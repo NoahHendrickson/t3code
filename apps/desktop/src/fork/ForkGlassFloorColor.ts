@@ -11,7 +11,7 @@
  * the file macOS records in its wallpaper store, shrunk to a thumbnail,
  * cropped to the strip under the sidebar using the window's bounds on its
  * display, averaged, and composited under the panel's own tint
- * (rgb(22 22 22) at 73%, theme.custom.palettes.css).
+ * (rgb(30 30 30) at 64%, theme.custom.palettes.css).
  *
  * The store is `~/Library/Application Support/com.apple.wallpaper/Store/
  * Index.plist`, a binary plist whose choices embed their own binary plists
@@ -60,7 +60,7 @@ const FORK_GLASS_FLOOR_COLOR_CHANNEL = "fork:glass-floor-color";
 const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
 
 /**
- * The Glass panel tint the wallpaper shows through: rgb(22 22 22 / 73%) in
+ * The Glass panel tint the wallpaper shows through: rgb(30 30 30 / 64%) in
  * theme.custom.palettes.css. The alpha here runs 3% heavier than the
  * stylesheet's because the vibrancy material dims the wallpaper a little on
  * top of the tint: calibrated when the panel was 82% against the panel
@@ -68,8 +68,8 @@ const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
  * blend at the stylesheet's alpha overshot by ~8 levels. Move it with the
  * stylesheet. This is the one dial if the overlays drift from the panel.
  */
-const PANEL_TINT = 22;
-const PANEL_TINT_ALPHA = 0.76;
+const PANEL_TINT = 30;
+const PANEL_TINT_ALPHA = 0.67;
 /** Thumbnail width the wallpaper is shrunk to before sampling. */
 const SAMPLE_WIDTH = 96;
 /** Window moves and resizes arrive per frame; one recompute per settle. */
