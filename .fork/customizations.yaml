@@ -2197,6 +2197,8 @@
   tier: 2
   files:
     - apps/web/src/theme.custom.glass-stage.css
+    # The Automations page's card host and its named title and body.
+    - apps/web/src/custom/scheduled/ScheduledPage.tsx
   watch:
     # Imports the sheet after the palettes sheet (fenced).
     - apps/web/src/main.tsx

@@ -191,19 +191,13 @@
 @media (min-width: 768px) {
   :root[data-fork="noahhendrickson-t3code"]:not(.wco).dark[data-fork-theme="cool-darker"]
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]
-    [data-chat-column-maximized-away]
-    [data-chat-header] {
+    :is(
+      [data-chat-column-maximized-away] [data-chat-header],
+      [data-fork-stage-card] [data-fork-stage-card-title]
+    ) {
     /* 16px inside the card on each side, whatever its left inset. */
     padding-left: calc(var(--fork-glass-card-inset-left) + 16px);
     padding-right: 24px;
-  }
-
-  /* The Automations page's title, 16px inside the card as a thread's is. */
-  :root[data-fork="noahhendrickson-t3code"]:not(.wco).dark[data-fork-theme="cool-darker"]
-    [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]
-    [data-fork-stage-card]
-    > header {
-    padding-left: calc(var(--fork-glass-card-inset-left) + 16px);
   }
 }
 
@@ -213,8 +207,7 @@
    plus a margin would overflow the page. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-stage-card]
-  > header
-  + * {
+  [data-fork-stage-card-body] {
   width: auto;
   margin: 0 var(--fork-glass-card-inset) var(--fork-glass-card-inset)
     var(--fork-glass-card-inset-left);

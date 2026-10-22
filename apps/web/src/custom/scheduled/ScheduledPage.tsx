@@ -131,13 +131,13 @@ export function ScheduledPage() {
       {/* Glass sets the page on the stage card, as a chat view is
           (theme.custom.glass-stage.css). */}
       <div data-fork-stage-card="" className="flex min-h-0 flex-1 flex-col">
-        <WorkspacePageHeader electron={isElectron}>
+        <WorkspacePageHeader electron={isElectron} data-fork-stage-card-title="">
           <div className="flex min-w-0 items-center gap-2 text-sm">
             <ZapIcon className="size-4 text-muted-foreground" aria-hidden />
             <span className="font-medium">Automations</span>
           </div>
         </WorkspacePageHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea className="min-h-0 flex-1" data-fork-stage-card-body="">
           <WorkspacePageContainer width="wide">
             {search.task !== undefined && environmentId !== null ? (
               <ScheduledTaskDetail

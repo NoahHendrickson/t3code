@@ -112,8 +112,26 @@ describe("fork guard: fork-glass-stage-card", () => {
     expect(Math.abs(composite - stage)).toBeLessThanOrEqual(1);
   });
 
-  it("gives the Automations page a card host", () => {
-    expect(readSibling("../custom/scheduled/ScheduledPage.tsx")).toContain("data-fork-stage-card");
+  it("names the Automations page's host, title and body, and styles each by name", () => {
+    const page = readSibling("../custom/scheduled/ScheduledPage.tsx");
+    for (const part of [
+      "data-fork-stage-card",
+      "data-fork-stage-card-title",
+      "data-fork-stage-card-body",
+    ]) {
+      expect(page, `page lost ${part}`).toMatch(new RegExp(`\\b${part}=""`, "u"));
+    }
+    const title = rules.find((rule) => rule.selector.includes("[data-fork-stage-card-title]"));
+    expect(compact(title?.selector ?? "")).toContain("[data-chat-header]");
+    expect(title?.body).toContain("padding-left: calc(var(--fork-glass-card-inset-left) + 16px)");
+    const body = rules.find((rule) => rule.selector.includes("[data-fork-stage-card-body]"));
+    expect(body?.body).toContain("width: auto");
+    expect(flat(body?.body)).toContain(
+      "margin: 0 var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset-left);",
+    );
+    // By name, never by shape: a wrapped header or a banner between the two
+    // would silently detach a structural selector.
+    expect(sheet).not.toMatch(/\[data-fork-stage-card\]\s*>/u);
   });
 
   it("paints the gutter on both clients and drops the seam", () => {
