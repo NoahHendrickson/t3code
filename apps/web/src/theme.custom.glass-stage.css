@@ -144,17 +144,20 @@
 
 /* On an opaque client the chat's structural layers fill with an opaque
    bg-background edge to edge, over the gutter: the workspace root the chat
-   column sits in, and inside the column the header and the messages
-   wrapper. The desktop glass clears that class across the inset already;
-   here the card paints the same colour underneath. Slotted components keep
-   theirs: an input, textarea or checkbox pairs bg-background with its own
-   dark-mode fill, and the switch thumb is a foreground fill. */
+   column sits in, and inside the column the header, the messages wrapper
+   (the bg-background holding the timeline root) and the timeline's loading
+   fill. The desktop glass clears that class across the inset already; here
+   the card paints the same colour underneath. Named, not every
+   bg-background in the column: form controls pair it with their own fill,
+   and an MCP app's fullscreen frame stays a descendant of the transcript
+   in the top layer and needs its backing. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:not(
     [data-fork-sidebar-vibrancy="true"]
   )
   :is(
     [data-slot="sidebar-inset"] .bg-background:has(> [data-chat-column]),
-    [data-chat-column-maximized-away] .bg-background:not([data-slot])
+    [data-chat-column-maximized-away]
+      :is([data-chat-header], :has([data-timeline-root]), [data-timeline-loading]).bg-background
   ) {
   background: none;
 }
