@@ -139,6 +139,13 @@ describe("fork guard: glass surfaces", () => {
       /data-fork-composer-action="send"\s+data-fork-composer-send-tone="flat"/u,
     );
     expect(primaryActions).toContain('data-fork-composer-action="stop"');
+    // The selected-tab rules key on the slot and variant upstream's toggle
+    // group stamps, and on the fork's own SegmentedTab stamp.
+    expect(readSibling("../components/ui/toggle.tsx")).toContain('data-slot="toggle"');
+    expect(readSibling("../components/ui/toggle-group.tsx")).toContain(
+      "data-variant={resolvedVariant}",
+    );
+    expect(readSibling("../custom/SegmentedTabs.tsx")).toContain("data-fork-segmented-tab");
     for (const source of [
       "../components/chat/ChatComposer.tsx",
       "../custom/voice/ForkDictationControl.tsx",

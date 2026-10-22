@@ -157,6 +157,43 @@
   --fork-glass-rim: var(--fork-glass-halo), var(--fork-glass-light);
 }
 
+/* Every selected tab is a chip of the same glass: upstream's segmented
+   toggle groups and the fork's SegmentedTabs. Both sit on a track, a
+   lighter surface than the page, so they take the soft halo. The segmented
+   toggle's 1px border is transparent, so its light goes on ::after over the
+   border box, as on the chips; ::after is the coarse pointer's hit area, so
+   there the light stays inset. A SegmentedTab has no border, so its inset
+   light already lands on the edge. The bordered option pickers (outline)
+   are not tabs and keep their look. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :is(
+    [data-slot="toggle"][data-variant="segmented"][data-pressed],
+    [data-fork-segmented-tab][data-pressed]
+  ) {
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--fork-glass-halo-soft), var(--fork-glass-light);
+}
+
+@media (pointer: fine) {
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-slot="toggle"][data-variant="segmented"][data-pressed] {
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+      var(--fork-glass-halo-soft);
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    [data-slot="toggle"][data-variant="segmented"][data-pressed]::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    box-shadow: var(--fork-glass-light);
+    pointer-events: none;
+  }
+}
+
 /* The composer as the same glass: the vessel is the pane, with the halo
    round it and the glint, sheens and the popups' top and bottom glows on a
    ::after laid over everything inside. Over, because the prompt well covers
