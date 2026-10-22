@@ -162,7 +162,7 @@ describe("fork guard: fork-app-identity", () => {
     expect(windowsIco.readUInt32BE(ico256Offset + 16)).toBe(256);
 
     // Dev (`vp run dev`) serves apps/web/public — use the orange family there,
-    // while packaged builds stamp the green production family above.
+    // while packaged builds stamp the gradient production family above.
     for (const [source, target] of [
       ["assets/fork/n3-dev-web-favicon.ico", "apps/web/public/favicon.ico"],
       ["assets/fork/n3-dev-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
@@ -177,7 +177,7 @@ describe("fork guard: fork-app-identity", () => {
 
   it("uses the fork's layered Liquid Glass app icons on macOS", () => {
     type IconComposerProject = {
-      fill: { solid: string };
+      fill?: { solid: string };
       groups: Array<{
         layers: Array<{ glass?: boolean; "image-name": string }>;
         translucency?: { enabled: boolean };
@@ -189,8 +189,7 @@ describe("fork guard: fork-app-identity", () => {
     const developmentIcon = JSON.parse(
       read("assets/fork/dev-app-icon.icon/icon.json"),
     ) as IconComposerProject;
-    expect(productionIcon.fill.solid).toBe("srgb:0.00000,1.00000,0.56471,1.00000");
-    expect(developmentIcon.fill.solid).toBe("srgb:1.00000,0.41569,0.00000,1.00000");
+    expect(developmentIcon.fill?.solid).toBe("srgb:1.00000,0.41569,0.00000,1.00000");
     for (const icon of [productionIcon, developmentIcon]) {
       expect(icon.groups[0]?.layers[0]).toMatchObject({
         glass: false,
@@ -208,7 +207,6 @@ describe("fork guard: fork-app-identity", () => {
 
     const mark = read("assets/fork/app-icon.icon/Assets/mark.svg");
     expect(mark).toContain('viewBox="0 0 1024 1024"');
-    expect(mark).toContain('transform="translate(211.9989 211.9999)"');
     expect(
       NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/dev-app-icon.icon/Assets/mark.svg")),
     ).toEqual(
