@@ -1015,7 +1015,8 @@
      desktop behind it. Neutral like the rest of the glass set — see the panel
      tint below. This is the fork's flatten-alpha doctrine applying
      normally — the row washes are the exception, because they *want* to carry
-     wallpaper; a divider does not. */
+     wallpaper; a divider does not. The sidebar's short interior rules are
+     the one exception, see --fork-sidebar-rule below. */
   --border: #3f3f3f;
   --sidebar-border: #3f3f3f;
   /* index.css derives this as
@@ -1042,6 +1043,19 @@
   /* The panel's own block restates the palette's opaque --accent, which the
      chrome rows' pressed toggle and hover fills read; same slab, same wash. */
   --accent: rgb(255 255 255 / 8%);
+}
+
+/* The pinned divider and the Working / Settled shelf rules break the opaque
+   divider rule above, by request. At 60% the opaque #3f3f3f lands as a dark
+   bar over the glass; a short interior rule does not run long enough for the
+   wallpaper to shimmer through it, so it takes the popup separators' 12% light
+   alpha and reads as a hairline. Not gated on docking: over the floating
+   panel's opaque fill the same alpha is a light rule too, so the line does not
+   change character when the panel floats. The full-height seam keeps its own
+   opaque grey. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-app-sidebar] {
+  --fork-sidebar-rule: color-mix(in srgb, var(--contrast-sidebar-foreground) 12%, transparent);
 }
 
 /* The floating panel stays opaque (see the gate above), but it should not also

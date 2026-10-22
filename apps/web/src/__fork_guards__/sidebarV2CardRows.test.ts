@@ -306,6 +306,19 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(threadCardTitleClassName({ recedes: false })).toContain("text-foreground");
   });
 
+  it("draws the pinned divider and shelf rules from one theme token", () => {
+    // Two of the three are upstream lines, so a sync that rewrites them back
+    // to bg-sidebar-border/60 would otherwise bring back the dark bar on Glass.
+    expect(sidebarV2.match(/h-px [^"]*bg-\(--fork-sidebar-rule\)/gu)).toHaveLength(3);
+    expect(sidebarV2).not.toContain("bg-sidebar-border/60");
+    expect(theme).toContain(
+      "--fork-sidebar-rule: color-mix(in oklab, var(--color-sidebar-border) 60%, transparent);",
+    );
+    expect(readSibling("../theme.custom.palettes.css")).toMatch(
+      /\.dark\[data-fork-theme="cool-darker"\]\n {2}\[data-app-sidebar\] \{\n {2}--fork-sidebar-rule: color-mix\(in srgb, var\(--contrast-sidebar-foreground\) 12%, transparent\);/u,
+    );
+  });
+
   it("keeps row presentation policy out of the megacomponent", () => {
     // The policy is pure and fork-owned, so SidebarV2 carries call sites rather
     // than the rules. Inlining it back is the regression this catches.

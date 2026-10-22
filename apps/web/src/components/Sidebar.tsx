@@ -4903,11 +4903,9 @@ export default function Sidebar() {
                           data-testid="sidebar-v2-pinned-divider"
                           /* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
                          Margin derived off the list gap so halving that gap did
-                         not quietly tighten this hairline too. Dark takes the
-                         popup separators' 12% light alpha: --sidebar-border is
-                         an opaque grey, which reads as a dark bar on Glass. */
+                         not quietly tighten this hairline too. */
                           className={cn(
-                            "mx-2.5 h-px list-none bg-sidebar-border/60 dark:bg-foreground/12",
+                            "mx-2.5 h-px list-none bg-(--fork-sidebar-rule)",
                             SIDEBAR_V2_CARD_ALIGNMENT.pinnedDividerMargin,
                           )}
                           /* fork:end sidebar-v2-card-rows */
@@ -5046,7 +5044,7 @@ export default function Sidebar() {
                                 : `Working (${workingThreads.length})`}
                             </span>
                             {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
-                            <span className="h-px flex-1 bg-sidebar-border/60 dark:bg-foreground/12" />
+                            <span className="h-px flex-1 bg-(--fork-sidebar-rule)" />
                             {/* fork:end sidebar-v2-card-rows */}
                             <ChevronDownIcon
                               aria-hidden
@@ -5173,7 +5171,7 @@ export default function Sidebar() {
                                 : `Settled (${settledThreads.length})`}
                             </span>
                             {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
-                            <span className="h-px flex-1 bg-sidebar-border/60 dark:bg-foreground/12" />
+                            <span className="h-px flex-1 bg-(--fork-sidebar-rule)" />
                             {/* fork:end sidebar-v2-card-rows */}
                             <ChevronDownIcon
                               aria-hidden
