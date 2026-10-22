@@ -332,8 +332,14 @@ function ChromeAutomationsRow() {
       onClick={openScheduledTasks}
       trailing={
         live > 0 ? (
+          // The mark's centre sits on the Threads gear's below: 16px in from
+          // the shared edge. The row's px-3 puts the ~8px rain there already;
+          // the dots' 12px slot lands at 18px, so they borrow 2px of padding.
           <span
-            className="flex shrink-0 items-center gap-1.5 text-[0.75rem] leading-4 text-muted-foreground tabular-nums"
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 text-[0.75rem] leading-4 text-muted-foreground tabular-nums",
+              (needsYou > 0 || failed > 0) && "-me-0.5",
+            )}
             data-testid="sidebar-v2-scheduled-activity"
           >
             <span aria-hidden>{live}</span>
