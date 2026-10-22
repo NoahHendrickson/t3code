@@ -137,6 +137,11 @@ export function ThreadDetailsCard({
       )}
       style={placement ? { maxHeight: height } : undefined}
       data-thread-details-card
+      /* fork:begin fork-cool-darker-theme — see .fork/customizations.yaml#fork-cool-darker-theme
+         Glass's popup rim: the halo, the glint and the sheens. The card
+         scrolls its ScrollArea, never itself, so the rim's layers stay put. */
+      data-fork-glass-rim
+      /* fork:end fork-cool-darker-theme */
     >
       <ScrollArea scrollFade className="min-h-0">
         <div ref={setContentElement}>{children(density)}</div>

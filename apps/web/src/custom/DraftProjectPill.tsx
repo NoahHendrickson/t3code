@@ -329,7 +329,11 @@ export function DraftProjectPill(props: {
       <MenuPopup
         align="start"
         side="top"
-        className="max-h-80 min-w-48! w-max max-w-72 overflow-y-auto"
+        data-fork-glass-rim
+        // The popup caps the height and MenuPopup's own list scrolls inside
+        // it. Scrolling the popup itself would carry its glass rim
+        // (theme.custom.glass-surfaces.css) away with the rows.
+        className="max-h-80 min-w-48! w-max max-w-72"
       >
         <MenuRadioGroup
           value={radioValue}

@@ -1606,14 +1606,36 @@
     The sidebar's project chrome — the Projects row, each project header and
     each thread card's meta line — rests on white at 65% rather than the
     panel's opaque #8a8a8a muted ink.
+
+    The thread you are on is a pane of glass (Figma 532:6527): a hairline
+    glint on the top and bottom runs, a dark 1px halo, soft inner sheens, and
+    a reflection just inside the edges tinted by the icons in the card.
+
+    The composer, the chips above it, the menus they open and the composer's
+    model and effort menu are the same glass: the halo, the glint and the
+    sheens. The menus also take the reflection; the composer cannot, since
+    it may not carry a backdrop-filter. Composer popups are found by the
+    data-chat-composer-floating-layer upstream already stamps on them; the
+    fork's own popups that are not composer layers (the draft's project
+    menu, the liveness list, the thread sort and settings menus, the thread
+    details card) carry data-fork-glass-rim. The rules live in
+    theme.custom.glass-surfaces.css, loaded after the palettes sheet.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
     - apps/web/src/theme.custom.css
     - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/theme.custom.glass-surfaces.css
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html
+    # Fenced data-fork-glass-rim on the details card.
+    - apps/web/src/components/chat/ThreadDetailsCard.tsx
+    # Imports the glass surfaces sheet after the palettes sheet (fenced).
+    - apps/web/src/main.tsx
+    # Stamps data-chat-composer-floating-layer on every composer popup, which
+    # the glass rim keys on.
+    - apps/web/src/components/chat/composerEventScope.ts
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
@@ -2092,6 +2114,76 @@
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
     - apps/web/src/custom/forkGlassNewAgentPicture.test.ts
 
+- id: fork-glass-stage-card
+  intent: >
+    Under Glass every thread sits on the new-agent draft's stage, not only an
+    empty draft: the chat view is a rounded card 8px inside the stage, the
+    gutter round it takes the panel's colour (--fork-glass-panel) and the
+    seam between panel and gutter goes, so the panel and the gutter read as
+    one surface with the card set into it. Holds with the draft picture
+    switched off; while the picture is on, it paints over this card.
+
+    The card's inset is declared once at the Glass root
+    (--fork-glass-card-inset, 8px, and --fork-glass-card-inset-left, which
+    follows it), outside the draft picture's switch; the card, the picture,
+    its frost copies and custom/forkGlassPopupCutout.ts all read those two
+    tokens. Beside a docked sidebar the left is 3px, not 8px, and the
+    sidebar's groups give up their right padding (the list to 0 beside its
+    6px scrollbar gutter, the top rows and the Projects row to 6px), so
+    every row ends 10px from the card against 8px from the window. Not
+    closer: the chat view's ancestors clip at its edge, and under ~3px the
+    card's halo is cut off on that side; the gutter holds the scrollbar's
+    width whether or not it shows.
+
+    The card is a pane of the selected thread card's glass: a dark 1px halo,
+    a device-pixel glint along the top and a dimmer one along the foot, a
+    faint side hairline and soft sheens over a white 4% wash, all on the
+    chat view's ::before. Under the desktop glass the inset paints the gutter at the
+    panel's 73% and the card adds 33% of the same tint, compositing back to
+    the stage's 82% reading value, and carries the stage ramp to 73% at the
+    floor where a transcript is masked. The right panel and terminal drawers
+    are the chat view's siblings and sit in the gutter beside the card.
+
+    Loaded from main.tsx after the palettes sheet, so the gutter wins its tie
+    with the stage ramp on source order.
+
+    The content sits inside the card rather than on its edge. The header
+    keeps the shared topbar height, centred 26px down the window on the
+    traffic lights' and the sidebar toggle's axis, which leaves the title
+    7px inside the card's 8px top inset. The title sits 16px in from the
+    card's left (sidebar open, wide window), the header's fixed controls
+    16px in from its right, and the composer 20px off its foot, its floor
+    dropped on every client since the cutoff mask already ends the
+    transcript above it. The docked details card keeps the layout's own
+    placement (threadDetailsCardLayout.ts), which its lane and overlap checks
+    are computed from. The controls' and the title's offsets do not apply
+    under Windows' window-controls overlay, which sets its own.
+
+    The right panel sits in the gutter beside the card, so under the desktop
+    glass it adds the card's 33% over the 73% gutter and composites back to
+    the 82% reading value. On an opaque client the chat's structural
+    bg-background layers (the workspace root, the header, the messages
+    wrapper) clear so the gutter shows; slotted form controls keep their
+    fills. While a desktop tab floats over the chat the chat view gives up
+    its stacking context, as the picture sheet does, so the tab's chrome
+    stays above the webview.
+  tier: 2
+  files:
+    - apps/web/src/theme.custom.glass-stage.css
+  watch:
+    # Imports the sheet after the palettes sheet (fenced).
+    - apps/web/src/main.tsx
+    # The root the card paints on, the workspace root and the bg-background
+    # fills it clears.
+    - apps/web/src/components/ChatView.tsx
+    # The right panel's data-preview-panel-mode root, which takes its own
+    # fill beside the card.
+    - apps/web/src/components/preview/PreviewPanelShell.tsx
+    # --workspace-topbar-height and the controls group's top/right variables.
+    - apps/web/src/index.css
+  verify:
+    - apps/web/src/__fork_guards__/forkGlassStageCard.test.ts
+
 - id: fork-neutral-dark-theme
   intent: >
     Appearance offers Neutral Dark alongside System, Light, Dark, and Westworld.
@@ -2271,10 +2363,11 @@
 
     The header follows Figma node 157:4536. It is flat and transparent on every
     build, so the panel surface shows through with no stage artwork. Its native
-    macOS traffic lights start at x=16, y=19, which centres the 14pt lights at
-    26pt — the 52px header's axis, shared by the toggle, the brand, and the
-    workspace header's title (y=18 sat 1pt high). A 28px trigger starts at
-    x=80 and centres its 16px Phosphor SidebarSimple glyph in it. Non-macOS surfaces
+    macOS traffic lights start at x=21, y=19: x=21 centres the red light on
+    the sidebar's nav icons, and y=19 centres the 14pt lights at 26pt, the
+    52px header's axis, shared by the toggle, the brand, and the workspace
+    header's title. A 28px trigger starts at x=85, 10pt clear of the lights,
+    and centres its 16px Phosphor SidebarSimple glyph in it. Non-macOS surfaces
     keep the same safe-area variable and place the glyph at the ordinary 16px
     edge inset.
 
@@ -2358,7 +2451,10 @@
     # Fenced knip ignore: upstream's SidebarThreadHeader has no caller behind
     # the fork chrome rows.
     - knip.jsonc
+    # The red light sits at x=21, centred on the sidebar's nav icons.
     - apps/desktop/src/window/DesktopWindow.ts
+    # Its button-position asserts follow that x.
+    - apps/desktop/src/window/DesktopWindow.test.ts
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx
     - apps/web/src/components/SidebarStageBackdrop.browser.test.tsx
@@ -3221,7 +3317,8 @@
   shadows:
     - apps/web/src/components/composerFooterLayout.ts
   watch:
-    # Carries the base row, the context/control rows, and contextStrip prop.
+    # Carries the base row, the context/control rows, and contextStrip prop,
+    # and marks the mode menu data-fork-glass-selection.
     - apps/web/src/components/chat/ChatComposer.tsx
     # Centers the draft composer with the greeting above it and docks it once
     # the thread starts, passes BranchToolbar as contextStrip (with monitoring

@@ -94,7 +94,14 @@ export function ComposerBackgroundLivenessPill(props: ComposerBackgroundLiveness
             {label}
           </span>
         </PopoverTrigger>
-        <PopoverPopup side="top" align="start" sideOffset={6} width="sm" padding="compact">
+        <PopoverPopup
+          side="top"
+          align="start"
+          sideOffset={6}
+          width="sm"
+          padding="compact"
+          data-fork-glass-rim
+        >
           <ul data-fork-monitoring-tasks className="flex flex-col">
             {props.tasks.map((task) => {
               const childThreadId = task.childThreadId;

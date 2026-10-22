@@ -44,11 +44,18 @@ const TITLEBAR_HEIGHT = 40;
 // buttons are 14 points tall and do not scale with the renderer's zoom.
 const MACOS_WORKSPACE_TOPBAR_HEIGHT = 52;
 const MACOS_WINDOW_BUTTON_RADIUS = 7;
+/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
+   21, not upstream's 16: the red light centres on the sidebar's nav icons
+   (row px-3 inside the group's px-2, a 16px glyph, so centre 28 = 21 + 7). */
+export const MACOS_WINDOW_BUTTON_X = 21;
+/* fork:end fork-sidebar-chrome */
 
 function syncMacosWindowButtons(window: Electron.BrowserWindow): void {
   if (window.isDestroyed() || window.isFullScreen()) return;
   window.setWindowButtonPosition({
-    x: 16,
+    /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+    x: MACOS_WINDOW_BUTTON_X,
+    /* fork:end fork-sidebar-chrome */
     y: Math.round(
       (MACOS_WORKSPACE_TOPBAR_HEIGHT * window.webContents.getZoomFactor()) / 2 -
         MACOS_WINDOW_BUTTON_RADIUS,
@@ -245,7 +252,7 @@ function getWindowTitleBarOptions(
       /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
          52 / 2 - 7 = 19: the 14pt lights centre on the 52px header's axis. */
       trafficLightPosition: {
-        x: 16,
+        x: MACOS_WINDOW_BUTTON_X,
         y: MACOS_WORKSPACE_TOPBAR_HEIGHT / 2 - MACOS_WINDOW_BUTTON_RADIUS,
       },
       /* fork:end fork-sidebar-chrome */

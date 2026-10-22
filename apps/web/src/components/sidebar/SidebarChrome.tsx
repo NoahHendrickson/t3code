@@ -63,7 +63,7 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           renders only while the panel is shut.
 
           The left inset clears native traffic lights on macOS and centres the
-          16px glyph at x=94. Everywhere else it reduces to the
+          16px glyph at x=99. Everywhere else it reduces to the
           safe-area gutter. */}
       {/* oxlint-disable-next-line shadcn/no-arbitrary-values -- the inset is a runtime variable, not a scale value */}
       <div className="flex items-center pl-[var(--workspace-controls-left)]">

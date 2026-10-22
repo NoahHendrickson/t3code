@@ -890,7 +890,9 @@ describe("DesktopWindow", () => {
           assert.isDefined(position);
           const headerCenter = 26 * fakeWindow.window.webContents.getZoomFactor();
           assert.isAtMost(Math.abs(position.y + 7 - headerCenter), 0.5);
-          assert.equal(position.x, 16);
+          /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+          assert.equal(position.x, 21);
+          /* fork:end fork-sidebar-chrome */
         }
 
         fakeWindow.isFullScreen.mockReturnValue(true);
@@ -900,7 +902,9 @@ describe("DesktopWindow", () => {
 
         fakeWindow.isFullScreen.mockReturnValue(false);
         fakeWindow.windowListeners.get("leave-full-screen")?.();
-        assert.deepEqual(fakeWindow.setWindowButtonPosition.mock.lastCall, [{ x: 16, y: 19 }]);
+        /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
+        assert.deepEqual(fakeWindow.setWindowButtonPosition.mock.lastCall, [{ x: 21, y: 19 }]);
+        /* fork:end fork-sidebar-chrome */
       }).pipe(Effect.provide(layer));
     }),
   );

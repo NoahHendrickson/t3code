@@ -148,7 +148,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
       "position: relative; isolation: isolate; anchor-name: --fork-glass-card;",
     );
     expect(flat(root[1]?.body)).toBe(
-      '--fork-glass-card-inset: 8px; --fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
+      '--fork-glass-card-fade: linear-gradient(to bottom, #000 59%, rgb(0 0 0 / 35%) 94%); --fork-glass-card-scrim: linear-gradient(to bottom, rgb(12 12 14 / 55%), rgb(12 12 14 / 0%) 96px); --fork-glass-frost-image: url("./custom/assets/glass-hero-frost.png"); --fork-glass-frost-veil: 10%; --fork-glass-frost-floor: var(--fork-glass-panel); --fork-glass-frost-mask: var(--fork-glass-card-fade);',
     );
     expect(flat(root[2]?.body)).toBe("--fork-glass-frost-floor: var(--fork-popup-glass-floor);");
     // A floating preview's chrome must out-stack its root-level webview, so
@@ -193,7 +193,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // the pseudo-element that is inset and rounded, not the root.
     const art = find(`${GLASS}${ROOT}::after`);
     expect(art?.body).toMatch(/inset:\s*var\(--fork-glass-card-inset\)/u);
-    expect(art?.body).toMatch(/border-radius:\s*8px/u);
+    expect(art?.body).toMatch(/border-radius:\s*12px/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toContain("pointer-events: none");
     // A scrim from the top edge so the header reads over the sky, the fade
@@ -336,7 +336,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     const frost = find(`${GLASS}${DRAFT}${HOSTS}::before`);
     expect(frost?.atRules).toEqual(SUPPORTS);
     expect(frost?.body).toMatch(/position:\s*fixed/u);
-    for (const edge of ["top", "right", "bottom", "left"]) {
+    for (const edge of ["top", "right", "bottom"]) {
       expect(frost?.body).toMatch(
         new RegExp(
           `${edge}:\\s*calc\\(anchor\\(--fork-glass-card ${edge}\\) \\+ var\\(--fork-glass-card-inset\\)\\)`,
@@ -344,6 +344,11 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
         ),
       );
     }
+    // The left reads the stage card's own left inset, which a docked
+    // sidebar brings closer (fork-glass-stage-card).
+    expect(flat(frost?.body)).toContain(
+      "left: calc(anchor(--fork-glass-card left) + var(--fork-glass-card-inset-left));",
+    );
     expect(frost?.body).toContain("z-index: -1");
     expect(frost?.body).toContain("pointer-events: none");
     expect(frost?.body).toContain("background: var(--fork-glass-frost-layers);");

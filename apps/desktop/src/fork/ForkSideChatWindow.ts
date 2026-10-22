@@ -101,8 +101,8 @@ export const installForkSideChat = Effect.fn("desktop.fork.installSideChat")(fun
       backgroundColor: shouldUseDarkColors ? "#0a0a0a" : "#ffffff",
       titleBarStyle: "hiddenInset",
       // The main window's lights sit on its 52px header's axis; the side
-      // chat's header is the same chat header.
-      trafficLightPosition: { x: 16, y: 19 },
+      // chat's header is the same chat header, so its lights match.
+      trafficLightPosition: { x: DesktopWindow.MACOS_WINDOW_BUTTON_X, y: 19 },
       webPreferences: {
         preload: environment.preloadPath,
         contextIsolation: true,

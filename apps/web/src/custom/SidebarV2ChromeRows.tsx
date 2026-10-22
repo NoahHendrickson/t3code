@@ -182,6 +182,9 @@ function ChromeLabeledAction({
       aria-label={ariaLabel}
       title={title}
       data-testid={testId}
+      // Glass styles these rows' corners and active state like a thread card's
+      // (theme.custom.glass-surfaces.css).
+      data-fork-chrome-row=""
       {...rest}
     >
       <Icon className="size-4 shrink-0" />
@@ -209,6 +212,7 @@ function ChromeSearchRow(props: { readonly commandPaletteShortcutLabel: string |
       }
       className={CHROME_ACTION}
       data-testid="command-palette-trigger"
+      data-fork-chrome-row=""
       onClick={() => {
         if (isMobile) setOpenMobile(false);
         openCommandPalette();
@@ -576,7 +580,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
               </TooltipTrigger>
               <TooltipPopup side="right">{sortTooltip}</TooltipPopup>
             </Tooltip>
-            <MenuPopup align="end" className="min-w-48">
+            <MenuPopup align="end" data-fork-glass-rim data-fork-thread-sort className="min-w-48">
               <MenuRadioGroup
                 value={props.projectSortOrder}
                 onValueChange={(value) =>
@@ -622,7 +626,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
               </TooltipTrigger>
               <TooltipPopup side="right">{filterTooltip}</TooltipPopup>
             </Tooltip>
-            <MenuPopup align="end" className="min-w-56">
+            <MenuPopup align="end" data-fork-glass-rim className="min-w-56">
               {/* Above the scope list, not below it: with enough projects the
                   list scrolls, and a preference that decides how the whole
                   sidebar reads should not be the thing you have to scroll to.

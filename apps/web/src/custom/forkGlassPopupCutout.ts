@@ -197,13 +197,16 @@ export function frostPlacement(
 function draftCard(appRoot: HTMLElement): Rect | null {
   const view = appRoot.querySelector<HTMLElement>(DRAFT_CARD_SELECTOR);
   if (view === null) return null;
-  const inset =
-    Number.parseFloat(getComputedStyle(view).getPropertyValue("--fork-glass-card-inset")) || 0;
+  const style = getComputedStyle(view);
+  const inset = Number.parseFloat(style.getPropertyValue("--fork-glass-card-inset")) || 0;
+  // A docked sidebar brings the card's left side closer
+  // (theme.custom.glass-stage.css).
+  const left = Number.parseFloat(style.getPropertyValue("--fork-glass-card-inset-left")) || 0;
   const rect = view.getBoundingClientRect();
   return {
-    x: rect.left + inset,
+    x: rect.left + left,
     y: rect.top + inset,
-    width: rect.width - inset * 2,
+    width: rect.width - left - inset,
     height: rect.height - inset * 2,
   };
 }
