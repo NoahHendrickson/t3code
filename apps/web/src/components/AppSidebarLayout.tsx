@@ -60,12 +60,15 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { useThreadRouteRef } from "../hooks/useThreadRouteTarget";
 
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-   A 28px trigger starting at x=80 centers its 16px glyph at x=94, clear of
-   the native traffic-light group. Upstream's preload sets
-   --desktop-window-controls-inset to 90 native points divided by the zoom
-   factor, since the native buttons do not zoom; 8/9 of it is the fork's 80
-   points at any zoom (90px, so 80px, where the preload has not run). */
-const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "calc(var(--desktop-window-controls-inset, 90px) * 8 / 9)";
+   A 28px trigger starting at x=85 centers its 16px glyph at x=99, 10 points
+   clear of the native traffic-light group, which the desktop app moves to
+   x=21 so it lines up with the sidebar's icons (DesktopWindow.ts). Upstream's
+   preload sets --desktop-window-controls-inset to 90 native points divided
+   by the zoom factor, since the native buttons do not zoom; 17/18 of it is
+   the fork's 85 points at any zoom (90px, so 85px, where the preload has not
+   run). */
+const MACOS_TRAFFIC_LIGHTS_LEFT_INSET =
+  "calc(var(--desktop-window-controls-inset, 90px) * 17 / 18)";
 /* fork:end fork-sidebar-chrome */
 
 function subscribeToViewportWidth(onChange: () => void): () => void {

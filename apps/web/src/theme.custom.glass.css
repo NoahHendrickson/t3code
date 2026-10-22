@@ -148,9 +148,12 @@
   [data-chat-column-maximized-away]::after {
   content: "";
   position: absolute;
-  inset: var(--fork-glass-card-inset);
+  inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
+    var(--fork-glass-card-inset-left, var(--fork-glass-card-inset));
   z-index: -1;
-  border-radius: 8px;
+  /* The stage card's radius (theme.custom.glass-stage.css), which this
+     picture paints over; the frame drew 8px. */
+  border-radius: 12px;
   pointer-events: none;
   background:
     var(--fork-glass-card-scrim),
@@ -392,7 +395,10 @@
     top: calc(anchor(--fork-glass-card top) + var(--fork-glass-card-inset));
     right: calc(anchor(--fork-glass-card right) + var(--fork-glass-card-inset));
     bottom: calc(anchor(--fork-glass-card bottom) + var(--fork-glass-card-inset));
-    left: calc(anchor(--fork-glass-card left) + var(--fork-glass-card-inset));
+    left: calc(
+      anchor(--fork-glass-card left) +
+        var(--fork-glass-card-inset-left, var(--fork-glass-card-inset))
+    );
     z-index: -1;
     pointer-events: none;
     border-radius: 0;

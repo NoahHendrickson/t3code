@@ -1606,6 +1606,17 @@
     The sidebar's project chrome — the Projects row, each project header and
     each thread card's meta line — rests on white at 65% rather than the
     panel's opaque #8a8a8a muted ink.
+
+    The thread you are on is a pane of glass (Figma 532:6527): a hairline
+    glint on the top and bottom runs, a dark 1px halo, soft inner sheens, and
+    a reflection just inside the edges tinted by the icons in the card.
+
+    The composer, the chips above it, the menus they open and the composer's
+    model and effort menu are the same glass: the halo, the glint and the
+    sheens. The menus also take the reflection; the composer cannot, since
+    it may not carry a backdrop-filter. The menus are found by
+    data-fork-glass-rim (fork-composer-shell, fork-model-picker), as are the
+    thread sort and settings menus and the thread details card.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
@@ -1614,6 +1625,8 @@
   watch:
     - apps/web/src/components/settings/SettingsPanels.tsx
     - apps/web/index.html
+    # Fenced data-fork-glass-rim on the details card.
+    - apps/web/src/components/chat/ThreadDetailsCard.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
@@ -2092,6 +2105,62 @@
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
     - apps/web/src/custom/forkGlassNewAgentPicture.test.ts
 
+- id: fork-glass-stage-card
+  intent: >
+    Under Glass every thread sits on the new-agent draft's stage, not only an
+    empty draft: the chat view is a rounded card 8px inside the stage, the
+    gutter round it takes the panel's colour (--fork-glass-panel) and the
+    seam between panel and gutter goes, so the panel and the gutter read as
+    one surface with the card set into it. Holds with the draft picture
+    switched off; while the picture is on, it paints over this card.
+
+    Beside a docked sidebar the card's left inset is 3px, not 12px
+    (--fork-glass-card-inset-left on the chat view), and the sidebar's
+    groups give up their right padding (the list to 0 beside its 6px
+    scrollbar gutter, the top rows and the Projects row to 6px), so every
+    row ends 10px from the card against 8px from the window. Not closer:
+    the chat view's ancestors clip at its edge, and under ~3px the card's
+    halo is cut off on that side (tried at 0 and -1px, both read as
+    broken); the gutter holds the scrollbar's width whether or not it
+    shows. The picture, its frost copies and
+    custom/forkGlassPopupCutout.ts read the same token, falling back to the
+    shared inset.
+
+    The card is a pane of the selected thread card's glass: a dark 1px halo,
+    a device-pixel glint along the top and a dimmer one along the foot, a
+    faint side hairline and soft sheens over a white 4% wash, all on the
+    chat view's ::before. Under the desktop glass the inset paints the gutter at the
+    panel's 73% and the card adds 33% of the same tint, compositing back to
+    the stage's 82% reading value, and carries the stage ramp to 73% at the
+    floor where a transcript is masked. The right panel and terminal drawers
+    are the chat view's siblings and sit in the gutter beside the card.
+
+    Loaded from main.tsx after the palettes sheet, so the gutter wins its tie
+    with the stage ramp on source order.
+
+    The content sits inside the card rather than on its edge. The header
+    keeps the shared topbar height, centred 26px down the window on the
+    traffic lights' and the sidebar toggle's axis, which leaves the title
+    7px inside the card's 8px top inset. The title sits 16px in from the
+    card's left (sidebar open, wide window), the header's fixed controls
+    and the docked details card 16px in from its right, and the composer
+    20px off its foot. The controls' and the title's offsets do not apply
+    under Windows' window-controls overlay, which sets its own.
+  tier: 2
+  files:
+    - apps/web/src/theme.custom.glass-stage.css
+  watch:
+    # Imports the sheet after the palettes sheet (fenced).
+    - apps/web/src/main.tsx
+    # The root the card paints on and the bg-background fills it clears.
+    - apps/web/src/components/ChatView.tsx
+    # --workspace-topbar-height and the controls group's top/right variables.
+    - apps/web/src/index.css
+    # The docked details card's inline right offset, overridden.
+    - apps/web/src/components/chat/ThreadDetailsCard.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGlassStageCard.test.ts
+
 - id: fork-neutral-dark-theme
   intent: >
     Appearance offers Neutral Dark alongside System, Light, Dark, and Westworld.
@@ -2358,7 +2427,10 @@
     # Fenced knip ignore: upstream's SidebarThreadHeader has no caller behind
     # the fork chrome rows.
     - knip.jsonc
+    # The red light sits at x=21, centred on the sidebar's nav icons.
     - apps/desktop/src/window/DesktopWindow.ts
+    # Its button-position asserts follow that x.
+    - apps/desktop/src/window/DesktopWindow.test.ts
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx
     - apps/web/src/components/SidebarStageBackdrop.browser.test.tsx
@@ -3221,7 +3293,8 @@
   shadows:
     - apps/web/src/components/composerFooterLayout.ts
   watch:
-    # Carries the base row, the context/control rows, and contextStrip prop.
+    # Carries the base row, the context/control rows, and contextStrip prop,
+    # and marks the mode menu data-fork-glass-rim / data-fork-glass-selection.
     - apps/web/src/components/chat/ChatComposer.tsx
     # Centers the draft composer with the greeting above it and docks it once
     # the thread starts, passes BranchToolbar as contextStrip (with monitoring
@@ -3244,12 +3317,14 @@
     # align-item-with-trigger) so the glass menu clears the branch pill.
     # Locked checkout/env spans carry data-fork-context-chip so they keep the
     # filled pill when there is no interactive trigger (desktop selectors +
-    # mobile locked readout in BranchToolbar).
+    # mobile locked readout in BranchToolbar). Every popup a chip opens
+    # carries data-fork-glass-rim for Glass's rim.
     - apps/web/src/components/BranchToolbar.tsx
     - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
     - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
     # Stamps data-fork-pr-chip on the PR pill so it keeps its state colour
-    # and moves to the strip's far end.
+    # and moves to the strip's far end, and data-fork-glass-rim on the
+    # branch combobox.
     - apps/web/src/components/BranchToolbarBranchSelector.tsx
     # Owns the top-fade mask the cutoff below folds into its own layer stack.
     - apps/web/src/index.css

@@ -58,10 +58,13 @@ describe("fork guard: fork-sidebar-chrome", () => {
 
   it("matches the macOS control geometry from the header design", () => {
     expect(chrome).toContain("pl-[var(--workspace-controls-left)]");
-    // 80 native points: 8/9 of upstream's zoom-corrected 90.
-    expect(layout).toContain(
-      'MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "calc(var(--desktop-window-controls-inset, 90px) * 8 / 9)"',
-    );
+    // 85 native points: 17/18 of upstream's zoom-corrected 90, the toggle
+    // 10 points past the green light once the lights sit at x=21.
+    expect(layout).toContain("MACOS_TRAFFIC_LIGHTS_LEFT_INSET =");
+    expect(layout).toContain('"calc(var(--desktop-window-controls-inset, 90px) * 17 / 18)"');
+    // x=21 centres the red light on the sidebar's nav icons (centre 28).
+    expect(desktopWindow).toContain("const MACOS_WINDOW_BUTTON_X = 21;");
+    expect(desktopWindow).toContain("x: MACOS_WINDOW_BUTTON_X,");
     // y=19 centres the 14pt lights at 26pt, the 52px header's axis the
     // toggle, brand, and workspace title share; y=18 sat 1pt high.
     // The fence stays even if the number matches upstream — unfenced, a sync

@@ -13,6 +13,10 @@ import "./theme.custom.css";
 import "./theme.custom.palettes.css";
 import { applyForkMarker } from "./custom/forkMarker";
 /* fork:end fork-marker */
+/* fork:begin fork-glass-stage-card — see .fork/customizations.yaml#fork-glass-stage-card
+   After the palettes sheet, so its gutter wins ties against the stage ramp. */
+import "./theme.custom.glass-stage.css";
+/* fork:end fork-glass-stage-card */
 /* fork:begin fork-cool-dark-theme — see .fork/customizations.yaml#fork-cool-dark-theme */
 import { initializeForkTheme } from "./custom/forkTheme";
 /* fork:end fork-cool-dark-theme */

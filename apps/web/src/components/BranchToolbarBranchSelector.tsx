@@ -674,6 +674,10 @@ export function BranchToolbarBranchSelector({
         side: displayMode === "panel" ? "bottom" : "top",
         className: cn("flex flex-col", displayMode === "panel" ? "w-(--anchor-width)" : "w-80"),
         ...(displayMode === "toolbar" ? composerFloatingLayerProps : {}),
+        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+           A chip's popup wears the chips' glass rim (theme.custom.palettes.css). */
+        ...(displayMode === "toolbar" ? { "data-fork-glass-rim": true } : {}),
+        /* fork:end fork-composer-shell */
       }}
     >
       <div

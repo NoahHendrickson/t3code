@@ -193,7 +193,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // the pseudo-element that is inset and rounded, not the root.
     const art = find(`${GLASS}${ROOT}::after`);
     expect(art?.body).toMatch(/inset:\s*var\(--fork-glass-card-inset\)/u);
-    expect(art?.body).toMatch(/border-radius:\s*8px/u);
+    expect(art?.body).toMatch(/border-radius:\s*12px/u);
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toContain("pointer-events: none");
     // A scrim from the top edge so the header reads over the sky, the fade
@@ -336,7 +336,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     const frost = find(`${GLASS}${DRAFT}${HOSTS}::before`);
     expect(frost?.atRules).toEqual(SUPPORTS);
     expect(frost?.body).toMatch(/position:\s*fixed/u);
-    for (const edge of ["top", "right", "bottom", "left"]) {
+    for (const edge of ["top", "right", "bottom"]) {
       expect(frost?.body).toMatch(
         new RegExp(
           `${edge}:\\s*calc\\(anchor\\(--fork-glass-card ${edge}\\) \\+ var\\(--fork-glass-card-inset\\)\\)`,
@@ -344,6 +344,11 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
         ),
       );
     }
+    // The left reads the stage card's own left inset, which stands closer to
+    // a docked sidebar (fork-glass-stage-card), falling back to the shared one.
+    expect(flat(frost?.body)).toContain(
+      "left: calc( anchor(--fork-glass-card left) + var(--fork-glass-card-inset-left, var(--fork-glass-card-inset)) );",
+    );
     expect(frost?.body).toContain("z-index: -1");
     expect(frost?.body).toContain("pointer-events: none");
     expect(frost?.body).toContain("background: var(--fork-glass-frost-layers);");

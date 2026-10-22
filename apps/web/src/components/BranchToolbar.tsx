@@ -352,6 +352,11 @@ const RunContextSelector = memo(function RunContextSelector({
               : undefined
         }
         {...(!isPanel ? composerFloatingLayerProps : {})}
+        /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+           A chip's popup wears the chips' glass rim (theme.custom.palettes.css).
+           The panel row's menu is not a chip's. */
+        data-fork-glass-rim={!isPanel || undefined}
+        /* fork:end fork-composer-shell */
       >
         {availableEnvironments &&
         ((showEnvironmentPicker && onEnvironmentChange) || addTargets.length > 0) ? (
@@ -407,7 +412,12 @@ const RunContextSelector = memo(function RunContextSelector({
                       <span className="min-w-0 truncate">Add to another machine</span>
                     </span>
                   </MenuSubTrigger>
-                  <MenuSubPopup {...(!isPanel ? composerFloatingLayerProps : {})}>
+                  <MenuSubPopup
+                    {...(!isPanel ? composerFloatingLayerProps : {})}
+                    /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+                    data-fork-glass-rim={!isPanel || undefined}
+                    /* fork:end fork-composer-shell */
+                  >
                     {addTargets.map((target) => (
                       <MenuItem
                         key={target.environmentId}

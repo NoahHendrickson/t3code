@@ -48,6 +48,14 @@ const RUNTIME_VARIABLES = new Set<string>([
   "--available-width",
   "--available-height",
   "--transform-origin",
+  // Tailwind v4 registers its ring shadows with @property in the generated
+  // utilities. The Glass selected thread card lists them in its own
+  // box-shadow so focus and file-drag rings still draw.
+  "--tw-ring-offset-shadow",
+  "--tw-ring-shadow",
+  // The same for the shadow utility: the context chips' popups keep their
+  // drop shadow under Glass's rim through it.
+  "--tw-shadow",
 ]);
 
 /** Attributes a library stamps on the DOM at runtime, never in our JSX. */
