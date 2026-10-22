@@ -171,6 +171,39 @@
   pointer-events: none;
 }
 
+/* Figma 467:22121: a 10% white face with pink/purple inner light. Static
+   inset glints approximate its native glass refraction without a backdrop
+   filter in the composer. Paint on the host, leaving ::after available for
+   the collapsed phone button's expanded touch target. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
+  background: rgb(255 255 255 / 10%);
+  color: #ffffff;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:not(:disabled) {
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    inset 0 1px 1px -0.5px rgb(255 255 255 / 80%),
+    inset 0 -1px 1px -0.5px rgb(255 255 255 / 40%),
+    inset 2px 2px 2px rgb(248 112 157 / 16%),
+    inset -2px -2px 2px rgb(122 79 249 / 24%),
+    inset 0 0 4px rgb(57 222 248 / 25%),
+    0 0 2px 1px rgb(0 0 0 / 24%);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:hover:not(:disabled) {
+  background: rgb(255 255 255 / 14%);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:active:not(:disabled) {
+  background: rgb(255 255 255 / 8%);
+}
+
 /* The strip clips on x (upstream's label-collapse overflow) and the fork
    zeroes its padding, so the first chip's halo was cut on its left side. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]

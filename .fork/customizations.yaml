@@ -1620,6 +1620,11 @@
     menu, the liveness list, the thread sort and settings menus, the thread
     details card) carry data-fork-glass-rim. The rules live in
     theme.custom.glass-surfaces.css, loaded after the palettes sheet.
+    The send button (Figma 467:22121) has a translucent white face, white
+    glyph, bright inset rim and pink/purple inner light. Static shadows
+    approximate Figma's refraction without a backdrop filter. The shared
+    send stamp covers expanded, collapsed-phone and dictation slots while
+    preserving their geometry, touch targets and disabled state.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
@@ -1638,6 +1643,7 @@
     - apps/web/src/components/chat/composerEventScope.ts
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
+    - apps/web/src/__fork_guards__/forkGlassSurfaces.test.ts
     - apps/web/src/custom/forkTheme.test.ts
 
 - id: fork-cool-darker-sidebar-vibrancy
@@ -3224,8 +3230,8 @@
     vessel's own opaque fill and blurring a uniform solid is pure GPU cost.
     BranchToolbar's stitched-strip spacing is flattened in the named context
     row. Send and stop remain 24px square at 4px radius; dark builds use a
-    flat white send button with a black icon on every build, Dev and Nightly
-    included: upstream's stage art still renders inside the button (so its
+    flat white send button with a black icon outside Glass on every build,
+    Dev and Nightly included: upstream's stage art still renders inside the button (so its
     artwork test and exports stand) but is stamped and hidden by the theme,
     and the tone attribute is always "flat". Existing project components
     supply all icons and controls; no Figma-exported assets are committed.

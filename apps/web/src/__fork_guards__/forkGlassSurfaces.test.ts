@@ -18,7 +18,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
-import { cssRules } from "./cssRules";
+import { cssRules, ruleBodyFor } from "./cssRules";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -55,6 +55,42 @@ describe("fork guard: glass surfaces", () => {
       '"data-chat-composer-floating-layer": "true"',
     );
     expect(sheet).toContain('[data-chat-composer-floating-layer="true"]');
+  });
+
+  it("gives the send slot a translucent face and static coloured glass edges", () => {
+    const send = '[data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]';
+    const face = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, send]);
+    expect(face).toMatch(/background:\s*rgb\(255 255 255 \/ 10%\)/u);
+    expect(face).toMatch(/color:\s*#ffffff/u);
+
+    const light = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, `${send}:not(:disabled)`]);
+    expect(light).toContain("inset 2px 2px 2px rgb(248 112 157 / 16%)");
+    expect(light).toContain("inset -2px -2px 2px rgb(122 79 249 / 24%)");
+    expect(light).toContain("--tw-ring-shadow");
+    expect(light).toContain("0 0 2px 1px rgb(0 0 0 / 24%)");
+
+    for (const rule of rules.filter((candidate) => candidate.selector.includes(send))) {
+      // Phone hit areas and disabled semantics belong to the existing button.
+      expect(rule.selector).not.toMatch(/::(?:before|after)/u);
+      expect(rule.body).not.toMatch(
+        /(?:backdrop-filter|animation|pointer-events|opacity|width|height|border-radius):/u,
+      );
+      if (/:hover|:active/u.test(rule.selector)) {
+        expect(rule.selector).toContain(":not(:disabled)");
+      }
+    }
+  });
+
+  it("reaches the expanded, collapsed-phone and dictation send slots", () => {
+    for (const source of [
+      "../components/chat/ComposerPrimaryActions.tsx",
+      "../components/chat/ChatComposer.tsx",
+      "../custom/voice/ForkDictationControl.tsx",
+    ]) {
+      expect(readSibling(source)).toMatch(
+        /data-fork-composer-action="send"\s+data-fork-composer-send-tone="flat"/u,
+      );
+    }
   });
 
   it("matches the markup its selectors lean on", () => {
