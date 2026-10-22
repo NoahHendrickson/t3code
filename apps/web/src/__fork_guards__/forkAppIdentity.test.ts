@@ -180,7 +180,7 @@ describe("fork guard: fork-app-identity", () => {
       fill: { solid: string };
       groups: Array<{
         layers: Array<{ glass?: boolean; "image-name": string }>;
-        translucency: { enabled: boolean };
+        translucency?: { enabled: boolean };
       }>;
     };
     const productionIcon = JSON.parse(
@@ -196,12 +196,19 @@ describe("fork guard: fork-app-identity", () => {
         glass: false,
         "image-name": "mark.svg",
       });
-      expect(icon.groups[0]?.translucency.enabled).toBe(true);
+      expect(icon.groups[0]?.translucency?.enabled).toBe(true);
     }
+    // Production draws the Figma gradient as its own glass-off layer beneath
+    // the mark; development stays a solid orange tile.
+    expect(productionIcon.groups[1]?.layers[0]).toMatchObject({
+      glass: false,
+      "image-name": "background.png",
+    });
+    expect(developmentIcon.groups).toHaveLength(1);
 
     const mark = read("assets/fork/app-icon.icon/Assets/mark.svg");
     expect(mark).toContain('viewBox="0 0 1024 1024"');
-    expect(mark).toContain('transform="translate(112.0075 111.998) scale(1.3333333333)"');
+    expect(mark).toContain('transform="translate(211.9989 211.9999)"');
     expect(
       NodeFS.readFileSync(NodePath.join(repoRoot, "assets/fork/dev-app-icon.icon/Assets/mark.svg")),
     ).toEqual(
