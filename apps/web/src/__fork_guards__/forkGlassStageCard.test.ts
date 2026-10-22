@@ -110,6 +110,24 @@ describe("fork guard: fork-glass-stage-card", () => {
     expect(Math.abs(composite - stage)).toBeLessThanOrEqual(1);
   });
 
+  it("dithers the stage ramp, or it bands under the desktop glass", () => {
+    const ramp = rules.find(
+      (rule) =>
+        rule.selector.includes(VIBRANCY) &&
+        compact(rule.selector).endsWith(`${ROOT}:has(.fork-timeline-cutoff)::before`),
+    );
+    expect(flat(ramp?.body)).toMatch(/^background: var\(--fork-glass-stage-dither\) /u);
+    const tile = decodeURIComponent(
+      /--fork-glass-stage-dither:\s*url\("([^"]*)"\)/u.exec(sheet)?.[1] ?? "",
+    );
+    // Thresholded to two greys: a smooth noise would only add grain.
+    expect(tile.match(/type='discrete'/gu)).toHaveLength(3);
+    // Strong enough to break a level, faint enough not to read as texture.
+    const opacity = Number(/<rect [^>]*opacity='([\d.]+)'/u.exec(tile)?.[1]);
+    expect(opacity).toBeGreaterThan(0);
+    expect(opacity).toBeLessThanOrEqual(0.02);
+  });
+
   it("paints the gutter on both clients and drops the seam", () => {
     const gutters = rules.filter((rule) =>
       compact(rule.selector).endsWith(`[data-slot="sidebar-inset"]:has(${ROOT})`),
