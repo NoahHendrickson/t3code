@@ -140,8 +140,11 @@ describe("fork guard: glass surfaces", () => {
     );
     expect(primaryActions).toContain('data-fork-composer-action="stop"');
     // The selected-tab rules key on the slot and variant upstream's toggle
-    // group stamps, and on the fork's own SegmentedTab stamp.
-    expect(readSibling("../components/ui/toggle.tsx")).toContain('data-slot="toggle"');
+    // group stamps, and on the fork's own SegmentedTab stamp. The segmented
+    // toggle's light rides the ::before upstream positions.
+    const toggle = readSibling("../components/ui/toggle.tsx");
+    expect(toggle).toContain('data-slot="toggle"');
+    expect(toggle).toContain("before:pointer-events-none before:absolute");
     expect(readSibling("../components/ui/toggle-group.tsx")).toContain(
       "data-variant={resolvedVariant}",
     );
