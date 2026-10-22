@@ -26,7 +26,9 @@ function readSibling(relativePath: string): string {
 const GLASS = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const PALETTE = `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 const VIBRANCY = '[data-fork-sidebar-vibrancy="true"]';
-const ROOT = "[data-chat-column-maximized-away]";
+const CHAT = "[data-chat-column-maximized-away]";
+// The chat view, and the Automations page, which sits on the same card.
+const ROOT = `:is(${CHAT},[data-fork-stage-card])`;
 
 const sheet = readSibling("../theme.custom.glass-stage.css");
 const rules = cssRules(sheet);
@@ -78,7 +80,7 @@ describe("fork guard: fork-glass-stage-card", () => {
     const radiusOf = (body: string | undefined) =>
       /border-radius:\s*([\w.]+)/u.exec(body ?? "")?.[1];
     const picture = cssRules(readSibling("../theme.custom.glass.css")).find((rule) =>
-      compact(rule.selector).endsWith(`${ROOT}::after`),
+      compact(rule.selector).endsWith(`${CHAT}::after`),
     );
     expect(radiusOf(card?.body)).toBeDefined();
     expect(radiusOf(picture?.body)).toBe(radiusOf(card?.body));
@@ -108,6 +110,10 @@ describe("fork guard: fork-glass-stage-card", () => {
     // 1 − (1 − card)(1 − panel), within a point of rounding.
     const composite = 100 - ((100 - fill) * (100 - panel)) / 100;
     expect(Math.abs(composite - stage)).toBeLessThanOrEqual(1);
+  });
+
+  it("gives the Automations page a card host", () => {
+    expect(readSibling("../custom/scheduled/ScheduledPage.tsx")).toContain("data-fork-stage-card");
   });
 
   it("paints the gutter on both clients and drops the seam", () => {

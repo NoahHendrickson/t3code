@@ -128,28 +128,32 @@ export function ScheduledPage() {
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
-      <WorkspacePageHeader electron={isElectron}>
-        <div className="flex min-w-0 items-center gap-2 text-sm">
-          <ZapIcon className="size-4 text-muted-foreground" aria-hidden />
-          <span className="font-medium">Automations</span>
-        </div>
-      </WorkspacePageHeader>
-      <ScrollArea className="min-h-0 flex-1">
-        <WorkspacePageContainer width="wide">
-          {search.task !== undefined && environmentId !== null ? (
-            <ScheduledTaskDetail
-              environmentId={environmentId}
-              taskId={search.task}
-              tab={search.tab ?? "settings"}
-              starter={search.starter}
-            />
-          ) : search.view === "runs" ? (
-            <AllRuns environments={environments} />
-          ) : (
-            <TaskList environments={environments} />
-          )}
-        </WorkspacePageContainer>
-      </ScrollArea>
+      {/* Glass sets the page on the stage card, as a chat view is
+          (theme.custom.glass-stage.css). */}
+      <div data-fork-stage-card="" className="flex min-h-0 flex-1 flex-col">
+        <WorkspacePageHeader electron={isElectron}>
+          <div className="flex min-w-0 items-center gap-2 text-sm">
+            <ZapIcon className="size-4 text-muted-foreground" aria-hidden />
+            <span className="font-medium">Automations</span>
+          </div>
+        </WorkspacePageHeader>
+        <ScrollArea className="min-h-0 flex-1">
+          <WorkspacePageContainer width="wide">
+            {search.task !== undefined && environmentId !== null ? (
+              <ScheduledTaskDetail
+                environmentId={environmentId}
+                taskId={search.task}
+                tab={search.tab ?? "settings"}
+                starter={search.starter}
+              />
+            ) : search.view === "runs" ? (
+              <AllRuns environments={environments} />
+            ) : (
+              <TaskList environments={environments} />
+            )}
+          </WorkspacePageContainer>
+        </ScrollArea>
+      </div>
     </SidebarInset>
   );
 }

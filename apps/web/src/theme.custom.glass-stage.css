@@ -8,6 +8,11 @@
    a new agent's draft is empty; this sheet is the card underneath, for every
    thread and with the picture switched off.
 
+   The Automations page sits on the same card: its root carries
+   data-fork-stage-card, which the card, gutter, seam and docked-sidebar
+   rules take alongside the chat view. The rules about a transcript or a
+   composer stay the chat view's.
+
    The card is a pane of the same glass as the selected thread card: a dark
    1px halo, a device-pixel glint across the top and a dimmer one along the
    foot, both fading round the corners, a faint hairline down the sides, and
@@ -34,7 +39,7 @@
    picture sheet declares the same pair behind its switch; this one holds
    with the picture off. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away] {
+  :is([data-chat-column-maximized-away], [data-fork-stage-card]) {
   position: relative;
   isolation: isolate;
 }
@@ -53,7 +58,7 @@
 /* The pane. Opaque clients paint the stage's own colour on it; under the
    desktop glass the fill is set below. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away]::before {
+  :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
   content: "";
   position: absolute;
   inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
@@ -101,7 +106,7 @@
    exactly the opacity the vibrancy entry tuned it to. Same triple as the
    panel, so the two layers only ever differ in alpha. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away]::before {
+  :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
   background:
     var(--fork-glass-stage-light), linear-gradient(rgb(22 22 22 / 33%), rgb(22 22 22 / 33%));
 }
@@ -119,17 +124,17 @@
 /* The gutter: the inset round a chat view takes the panel's fill. Two rules
    because the two clients paint it differently — an opaque colour, or a
    gradient over the inset the vibrancy block has already cleared. Settings,
-   Usage and the other routes in the inset hold no chat view and keep the
-   stage as it was. */
+   Usage and the other routes in the inset hold no card and keep the stage
+   as it was. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:not(
     [data-fork-sidebar-vibrancy="true"]
   )
-  [data-slot="sidebar-inset"]:has([data-chat-column-maximized-away]) {
+  [data-slot="sidebar-inset"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card])) {
   background-color: var(--fork-glass-panel);
 }
 
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-inset"]:has([data-chat-column-maximized-away]) {
+  [data-slot="sidebar-inset"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card])) {
   background-image: linear-gradient(var(--fork-glass-panel) 0 100%);
 }
 
@@ -137,7 +142,7 @@
    line between them. The panel's own fill rather than a clear border, which
    under the desktop glass is a 1px strip of raw wallpaper. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-wrapper"]:has([data-chat-column-maximized-away])
+  [data-slot="sidebar-wrapper"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
   [data-slot="sidebar-container"][data-sidebar-version="v2"] {
   border-color: var(--sidebar);
 }
@@ -192,6 +197,27 @@
     padding-left: calc(var(--fork-glass-card-inset-left) + 16px);
     padding-right: 24px;
   }
+
+  /* The Automations page's title, 16px inside the card as a thread's is. */
+  :root[data-fork="noahhendrickson-t3code"]:not(.wco).dark[data-fork-theme="cool-darker"]
+    [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]
+    [data-fork-stage-card]
+    > header {
+    padding-left: calc(var(--fork-glass-card-inset-left) + 16px);
+  }
+}
+
+/* The Automations page scrolls inside the card, not across its gutter: its
+   rows would pass under the card's foot and the scrollbar run down the
+   window's edge outside it. Width auto, as the scroll area's full width
+   plus a margin would overflow the page. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-stage-card]
+  > header
+  + * {
+  width: auto;
+  margin: 0 var(--fork-glass-card-inset) var(--fork-glass-card-inset)
+    var(--fork-glass-card-inset-left);
 }
 
 /* The composer stands 20px off the card's foot rather than sitting 8px
@@ -236,7 +262,7 @@
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
       [data-fork-sidebar-overlay="true"]
     )
-    [data-chat-column-maximized-away] {
+    :is([data-chat-column-maximized-away], [data-fork-stage-card]) {
     --fork-glass-card-inset-left: 3px;
   }
 
@@ -244,7 +270,7 @@
   :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
       [data-fork-sidebar-overlay="true"]
-    ):has([data-chat-column-maximized-away])
+    ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
     [data-sidebar-version="v2"]
     [data-slot="sidebar-group"]:has([data-thread-item]) {
     padding-inline-end: 0;
@@ -253,7 +279,7 @@
   :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
       [data-fork-sidebar-overlay="true"]
-    ):has([data-chat-column-maximized-away])
+    ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
     [data-sidebar-version="v2"]
     [data-slot="sidebar-group"]:is(:has(> [data-fork-chrome-row]), [data-fork-projects-row]) {
     padding-inline-end: 6px;

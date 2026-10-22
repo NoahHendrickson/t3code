@@ -2167,6 +2167,13 @@
     Loaded from main.tsx after the palettes sheet, so the gutter wins its tie
     with the stage ramp on source order.
 
+    The Automations page (custom/scheduled/ScheduledPage.tsx) sits on the
+    same card: its root carries data-fork-stage-card, which the card, gutter,
+    seam and docked-sidebar rules take alongside the chat view. Its title
+    sits 16px inside the card and its scroll area is inset to the card, so
+    rows never scroll across the gutter. Settings and Usage keep the flat
+    stage.
+
     The content sits inside the card rather than on its edge. The header
     keeps the shared topbar height, centred 26px down the window on the
     traffic lights' and the sidebar toggle's axis, which leaves the title
