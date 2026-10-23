@@ -1706,16 +1706,14 @@
     repainting the window for Light, default Dark, Westworld and both Neutral
     palettes.
 
-    The material goes on the main window alone, not every BrowserWindow: the
+    The material goes on the window that asked, not every BrowserWindow: the
     preview picture-in-picture window and the WSL splash carry their own fills
     and none of the fork's CSS, so a previewed page without an opaque background
     would render see-through and restoring would repaint them with the app's
-    colour.
-    The desktop side chat (fork-side-chat) is the one exception: it runs the
-    same palette sync and CSS, is built with the material, and the handler
-    paints the window that asked when that window is auxiliary. It leaves the
-    ownership flag alone, which is the main window's: syncWindowAppearance
-    never visits the side chat.
+    colour. Only the main window and the desktop side chat (fork-side-chat)
+    run the palette sync that asks; the side chat is built with the material.
+    It leaves the ownership flag alone, which is the main window's:
+    syncWindowAppearance never visits the side chat.
 
     Glass also assumes the panel sits beside the chat column. In overlay mode
     (custom/narrowChatOverlay.ts, when pushing would take the chat column under
@@ -5466,8 +5464,7 @@
     DraftHeroHeadline shadow) reads "Got a question?". Under Glass the window
     is the one surface: surface.ts stamps data-fork-side-chat on the root, and
     the stage card fills the window with no gutter, corners or rim
-    (theme.custom.glass-stage.css). Hiding sends the
-    fresh-chat signal
+    (theme.custom.glass-stage.css). Hiding sends the fresh-chat signal
     (forkDesktopBridge sideChat.onFresh): a draft is kept as it is — empty is
     already fresh, and typed text waits for the next open — and any other
     chat reloads the window back to `/`. ⌘N starts another draft in place.

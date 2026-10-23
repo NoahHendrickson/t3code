@@ -64,10 +64,13 @@ describe("fork guard: fork-glass-stage-card", () => {
     expect(compact(tokens?.selector ?? "")).toBe(compact(`${GLASS}.dark${PALETTE}`));
     expect(tokens?.body).toMatch(/--fork-glass-card-inset:\s*8px/u);
     expect(tokens?.body).toContain("--fork-glass-card-inset-left: var(--fork-glass-card-inset)");
+    expect(tokens?.body).toMatch(/--fork-glass-card-radius:\s*12px/u);
     expect(readSibling("../theme.custom.glass.css")).not.toContain("--fork-glass-card-inset:");
     const card = rules.find(
       (rule) =>
-        compact(rule.selector).endsWith(`${ROOT}::before`) && !rule.selector.includes(VIBRANCY),
+        compact(rule.selector).endsWith(`${ROOT}::before`) &&
+        !rule.selector.includes(VIBRANCY) &&
+        !rule.selector.includes("data-fork-side-chat"),
     );
     expect(flat(card?.body)).toContain(
       "inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset-left);",
@@ -75,14 +78,12 @@ describe("fork guard: fork-glass-stage-card", () => {
     expect(card?.body).toContain("z-index: -1");
     expect(card?.body).toContain("pointer-events: none");
     // The draft's picture paints over the card: a different radius lets the
-    // card's corners show round it.
-    const radiusOf = (body: string | undefined) =>
-      /border-radius:\s*([\w.]+)/u.exec(body ?? "")?.[1];
+    // card's corners show round it, so both read the one token.
     const picture = cssRules(readSibling("../theme.custom.glass.css")).find((rule) =>
       compact(rule.selector).endsWith(`${CHAT}::after`),
     );
-    expect(radiusOf(card?.body)).toBeDefined();
-    expect(radiusOf(picture?.body)).toBe(radiusOf(card?.body));
+    expect(card?.body).toContain("border-radius: var(--fork-glass-card-radius);");
+    expect(picture?.body).toContain("border-radius: var(--fork-glass-card-radius);");
     const root = rules.find((rule) => compact(rule.selector).endsWith(ROOT));
     expect(root?.body).toContain("isolation: isolate");
   });

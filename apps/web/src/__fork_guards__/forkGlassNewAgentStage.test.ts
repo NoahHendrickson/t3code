@@ -193,7 +193,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     // the pseudo-element that is inset and rounded, not the root.
     const art = find(`${GLASS}${ROOT}::after`);
     expect(art?.body).toMatch(/inset:\s*var\(--fork-glass-card-inset\)/u);
-    expect(art?.body).toMatch(/border-radius:\s*12px/u);
+    expect(art?.body).toContain("border-radius: var(--fork-glass-card-radius);");
     expect(art?.body).toContain("z-index: -1");
     expect(art?.body).toContain("pointer-events: none");
     // A scrim from the top edge so the header reads over the sky, the fade

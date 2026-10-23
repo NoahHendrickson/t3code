@@ -1,10 +1,11 @@
 /**
  * Fork-owned desktop IPC — see `.fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy`.
  *
- * Turns native macOS vibrancy on and off for the main window so the Glass
- * sidebar can show the desktop wallpaper. The main window only — the preview
- * picture-in-picture window and the WSL splash carry their own fills and none of
- * the fork's CSS. Deliberately kept out of
+ * Turns native macOS vibrancy on and off for the window that asks, so the
+ * Glass sidebar can show the desktop wallpaper. Only the main window and the
+ * side chat (fork-side-chat) run the fork's renderer and its palette sync; the
+ * preview picture-in-picture window and the WSL splash carry their own fills
+ * and none of the fork's CSS, so they never ask. Deliberately kept out of
  * `packages/contracts` and out of the upstream `DesktopBridge`: the renderer
  * reaches it through the fork's own `forkDesktopBridge` key, so an upstream
  * sync never has to merge a contract this fork added.
@@ -70,33 +71,21 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
     // error — the palette is still selectable, it just paints solid.
     const enabled = request.enabled && platform === "darwin";
 
-    // The side chat (fork-side-chat) runs the same palette sync and carries the
-    // same CSS, so it paints its own window. It is built with the material and
-    // is left out of syncWindowAppearance, so the shared ownership flag below
-    // stays the main window's.
-    const sender = senderWindow(event);
-    if (sender !== null && !sender.isDestroyed() && isForkAuxiliaryWindow(sender)) {
-      sender.setVibrancy(enabled ? FORK_VIBRANCY_MATERIAL : null);
-      sender.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : opaqueWindowBackground());
-      return enabled;
-    }
-
-    // Set before painting, so an appearance sync racing this call sees the new
-    // owner and does not repaint the fill out from under the material.
-    setForkGlassActive(enabled);
-
-    // The main window only, not syncAllAppearance. That walks every
+    // The asking window only, not syncAllAppearance. That walks every
     // BrowserWindow, which includes the picture-in-picture preview window
     // (preview/Manager.ts, its own #111111 fill and no fork CSS) and the WSL
     // connecting splash. Handing those the material makes any previewed page
     // without an opaque background render see-through, and restoring would
-    // repaint them with the app's fill instead of their own. The sidebar lives
-    // in the main window; the blast radius should match.
-    const main = yield* electronWindow.main;
-    const restore = opaqueWindowBackground();
-    if (Option.isSome(main) && !main.value.isDestroyed()) {
-      main.value.setVibrancy(enabled ? FORK_VIBRANCY_MATERIAL : null);
-      main.value.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : restore);
+    // repaint them with the app's fill instead of their own.
+    const target = senderWindow(event) ?? Option.getOrNull(yield* electronWindow.main);
+    if (target !== null && !target.isDestroyed()) {
+      // The ownership flag belongs to the windows syncWindowAppearance walks,
+      // which leaves out the side chat. Set before painting, so an appearance
+      // sync racing this call sees the new owner and does not repaint the fill
+      // out from under the material.
+      if (!isForkAuxiliaryWindow(target)) setForkGlassActive(enabled);
+      target.setVibrancy(enabled ? FORK_VIBRANCY_MATERIAL : null);
+      target.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : opaqueWindowBackground());
     }
 
     yield* Effect.logDebug("fork sidebar vibrancy applied", {

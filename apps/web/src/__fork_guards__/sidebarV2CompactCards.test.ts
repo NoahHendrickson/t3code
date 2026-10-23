@@ -57,7 +57,7 @@ describe("fork guard: sidebar-v2-compact-cards", () => {
 
   it("gives a compact card a pill, not the shelf row's corner", () => {
     expect(sidebar).toContain(
-      'shape: variant === "card" ? (props.compact === true ? "pill" : "card") : "line"',
+      "shape: threadRowShape({ variant, compact: props.compact === true })",
     );
   });
 
