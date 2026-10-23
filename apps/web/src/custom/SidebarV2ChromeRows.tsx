@@ -339,12 +339,13 @@ function ChromeAutomationsRow() {
       onClick={openScheduledTasks}
       trailing={
         live > 0 ? (
-          // The offset rides on this span, not the status box: as the button's
-          // last span it inherits sidebarMenuButtonVariants' truncate, so a
-          // box pulled past this span's edge was clipped by its overflow.
+          // As the button's last span this inherits sidebarMenuButtonVariants'
+          // truncate, whose overflow clips the mark anywhere it inks past this
+          // 16px line box. overflow-visible! lifts the clip; the button's own
+          // overflow-hidden still bounds the row.
           <span
             className={cn(
-              "flex shrink-0 items-center gap-1.5 text-[0.75rem] leading-4 text-muted-foreground tabular-nums",
+              "flex shrink-0 items-center gap-1.5 overflow-visible! text-[0.75rem] leading-4 text-muted-foreground tabular-nums",
               SIDEBAR_V2_TRAILING_OFFSET.chromeStatus,
             )}
             data-testid="sidebar-v2-scheduled-activity"

@@ -159,7 +159,7 @@ export const make = Effect.gen(function* () {
   }).pipe(Effect.orDie);
   /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
      The app windows that menus, captures and broadcasts address. The side
-     chat shows none of them, so it is left out everywhere but destroyAll. */
+     chat shows none of them; only destroyAll and the appearance sync reach it. */
   const listAppWindows = listWindows.pipe(
     Effect.map((windows) => windows.filter((window) => !isForkAuxiliaryWindow(window))),
   );
@@ -392,9 +392,7 @@ export const make = Effect.gen(function* () {
     syncAllAppearance: Effect.fn("desktop.electron.window.syncAllAppearance")(function* <E, R>(
       sync: (window: Electron.BrowserWindow) => Effect.Effect<void, E, R>,
     ) {
-      /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
-      const windows = yield* listAppWindows;
-      /* fork:end fork-side-chat */
+      const windows = yield* listWindows;
       for (const window of windows) {
         if (yield* isWindowDestroyed(window)) {
           continue;

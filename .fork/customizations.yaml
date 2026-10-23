@@ -1696,7 +1696,7 @@
     The main process owns the material AND the window fill for as long as the
     glass is on. apps/desktop/src/fork/ForkSidebarVibrancy.ts registers a
     fork-only IPC method on the channel fork:set-sidebar-vibrancy that calls
-    setVibrancy + setBackgroundColor across every window, and returns what it
+    setVibrancy + setBackgroundColor on the window that asked, and returns what it
     actually applied — false on any non-darwin platform.
 
     The payload carries only `enabled`. The restore colour is resolved in the
@@ -1712,8 +1712,9 @@
     would render see-through and restoring would repaint them with the app's
     colour. Only the main window and the desktop side chat (fork-side-chat)
     run the palette sync that asks; the side chat is built with the material.
-    It leaves the ownership flag alone, which is the main window's:
-    syncWindowAppearance never visits the side chat.
+    A sender that no longer resolves paints nothing: falling back to the main
+    window would let a torn-down side chat repaint it. Only a call with no IPC
+    event at all means the main window.
 
     Glass also assumes the panel sits beside the chat column. In overlay mode
     (custom/narrowChatOverlay.ts, when pushing would take the chat column under
@@ -1750,8 +1751,10 @@
     syncWindowAppearance in window/DesktopWindow.ts writes the same fill on OS
     appearance changes. Two owners of one slot means the glass dies silently
     with the renderer's marker still set, so that write is gated on
-    fork/ForkGlassState.ts. The flag is its own module because both writers read
-    it and importing either from the other closes a cycle. It is deliberately NOT on packages/contracts'
+    fork/ForkGlassState.ts, per window: the main window and the side chat each
+    own their fill only while their own glass is on. The state is its own
+    module because both writers read it and importing either from the other
+    closes a cycle. It is deliberately NOT on packages/contracts'
     DesktopBridge: preload.ts exposes it on a separate forkDesktopBridge world
     key so upstream never has to merge a contract this fork invented, and it
     imports nothing from npm so it needs no preload alwaysBundle entry.
@@ -4278,7 +4281,8 @@
     reads on screen. Nothing can read that colour
     off the screen — it is the wallpaper drawn by macOS behind a transparent
     window, outside the page and outside capturePage — so the desktop main
-    process estimates it from the wallpaper image instead: the file
+    process estimates it from the wallpaper image instead, under the window
+    that asks (the main window or the side chat): the file
     NSWorkspace.desktopImageURLForScreen reports for the window's display
     and space (asked through JXA in osascript, which sends no Apple Events,
     so no Finder automation and no permission prompt), shrunk with sips to a 96px thumbnail, cropped to the strip
@@ -4307,6 +4311,8 @@
     - apps/desktop/src/preload.ts
     - apps/desktop/src/ipc/DesktopIpcHandlers.ts
     - apps/desktop/src/electron/ElectronWindow.ts
+    # forkSenderWindow, shared with the vibrancy call.
+    - apps/desktop/src/fork/ForkSidebarVibrancy.ts
   verify:
     - apps/web/src/__fork_guards__/forkGlassFloorColor.test.ts
 
@@ -5444,9 +5450,11 @@
     out of createWindow unchanged. It closes only when the app's own
     DesktopState.quitting is set. It is marked auxiliary
     (fork/ForkAuxiliaryWindows.ts), and ElectronWindow leaves it out of every
-    lookup and broadcast but destroyAll: the "main or first window" fallback,
-    the focused-window target for menu actions, SnapShot and zoom, sendAll
-    (preview frames, update state) and the appearance sync.
+    lookup and broadcast: the "main or first window" fallback, the
+    focused-window target for menu actions, SnapShot and zoom, and sendAll
+    (preview frames, update state). destroyAll and the appearance sync still
+    reach it; the sync repaints its opaque fill on an OS light/dark switch,
+    gated on its own glass like the main window's.
 
     The window loads the same renderer with `?surface=side-chat` ahead of the
     hash. In that renderer the root (fenced in __root.tsx) mounts only the
@@ -5462,8 +5470,11 @@
     landing (a draft in the most recent project) never races it, and starts
     the window's No project draft itself, whose headline (the
     DraftHeroHeadline shadow) reads "Got a question?". Under Glass the window
-    is the one surface: surface.ts stamps data-fork-side-chat on the root, and
-    the stage card fills the window with no gutter, corners or rim
+    is the one surface: it is built with the vibrancy material, its palette
+    sync paints its own window (fork-cool-darker-sidebar-vibrancy) and its
+    floor colour samples the wallpaper under it (fork-glass-floor-color);
+    surface.ts stamps data-fork-side-chat on the root, and the stage card
+    fills the window with no gutter, corners or rim
     (theme.custom.glass-stage.css). Hiding sends the fresh-chat signal
     (forkDesktopBridge sideChat.onFresh): a draft is kept as it is — empty is
     already fresh, and typed text waits for the next open — and any other
@@ -5496,6 +5507,11 @@
     - apps/web/src/main.tsx
     - apps/web/src/routes/__root.tsx
     - apps/web/src/hooks/useSettings.ts
+    # Its Glass: the per-window material, the full-window card and the headline.
+    - apps/desktop/src/fork/ForkSidebarVibrancy.ts
+    - apps/desktop/src/fork/ForkGlassState.ts
+    - apps/web/src/theme.custom.glass-stage.css
+    - apps/web/src/overrides/components/chat/DraftHeroHeadline.tsx
   verify:
     - apps/web/src/__fork_guards__/forkSideChat.test.ts
     - apps/web/src/custom/sideChat/surface.test.ts

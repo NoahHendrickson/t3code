@@ -6,7 +6,8 @@
  * seams in the web app. Each seam compiles on its own if a sync drops
  * another, so the pieces that must agree — the shortcut, the shared window
  * wiring, the surface flag, the fresh channel, the storage isolation, the
- * settings refresh and the root's side-chat branch — are pinned here.
+ * settings refresh, the root's side-chat branch and its Glass — are pinned
+ * here.
  */
 
 import * as NodeFS from "node:fs";
@@ -26,6 +27,9 @@ const main = readSibling("../main.tsx");
 const root = readSibling("../routes/__root.tsx");
 const shell = readSibling("../custom/sideChat/SideChatShell.tsx");
 const settings = readSibling("../hooks/useSettings.ts");
+const surface = readSibling("../custom/sideChat/surface.ts");
+const glassStage = readSibling("../theme.custom.glass-stage.css");
+const headline = readSibling("../overrides/components/chat/DraftHeroHeadline.tsx");
 
 describe("fork guard: fork-side-chat", () => {
   it("registers the global shortcut on macOS when the app boots", () => {
@@ -71,7 +75,34 @@ describe("fork guard: fork-side-chat", () => {
       /if \(Option\.isSome\(focused\) && isForkAuxiliaryWindow\(focused\.value\)\) \{\s*return yield\* currentMainOrFirst;/u,
     );
     // Preview frames and update state are not sent to it.
-    expect(electronWindow.match(/const windows = yield\* listAppWindows;/gu)).toHaveLength(2);
+    expect(electronWindow.match(/const windows = yield\* listAppWindows;/gu)).toHaveLength(1);
+    // The appearance sync is upstream's walk again: the side chat owns its
+    // glass per window, so an OS light/dark switch repaints its opaque fill.
+    expect(electronWindow).toMatch(
+      /syncAllAppearance: [\s\S]*?const windows = yield\* listWindows;\s*for \(const window of windows\)/u,
+    );
+  });
+
+  it("is one pane of Glass", () => {
+    // Construction-only, like the main window: a window built without the
+    // material can never gain it later.
+    expect(sideChatWindow).toMatch(
+      /vibrancy: FORK_VIBRANCY_MATERIAL,\s*visualEffectState: "active",/u,
+    );
+    // The stage card fills the window: no gutter, corners or rim.
+    expect(surface).toContain(
+      'document.documentElement.setAttribute("data-fork-side-chat", "true");',
+    );
+    expect(glassStage).toMatch(
+      /\[data-fork-side-chat="true"\][^{]*\{\s*--fork-glass-card-inset: 0px;\s*--fork-glass-card-radius: 0px;\s*\}/u,
+    );
+    expect(glassStage).toMatch(
+      /\[data-fork-side-chat="true"\][^{]*\[data-fork-stage-card\]\)::before \{\s*box-shadow: none;\s*\}/u,
+    );
+  });
+
+  it("asks for a quick question on a fresh side chat", () => {
+    expect(headline).toMatch(/isSideChatSurface\s*\?\s*"Got a question\?"/u);
   });
 
   it("sends a fresh chat on hide through the fork bridge", () => {

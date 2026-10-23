@@ -22,15 +22,17 @@
  * as `NSScreenNumber`. A screen with no file, or a file this code cannot
  * read, resolves `null` and the renderer keeps the palette's measured token.
  *
- * macOS only, main window only. The renderer asks once when glass turns on
- * and is then told about changes: the window moving or resizing (the strip
- * under the sidebar moves across the wallpaper) and the app regaining focus
- * (the cheapest signal that the wallpaper may have been changed meanwhile).
+ * macOS only. Each Glass window (the main window and the side chat) samples
+ * under itself: the window that asks is the one measured and followed. The
+ * renderer asks once when glass turns on and is then told about changes: the
+ * window moving or resizing (the strip under the sidebar moves across the
+ * wallpaper) and the window regaining focus (the cheapest signal that the
+ * wallpaper may have been changed meanwhile).
  * The expensive step — `sips` decoding a full-resolution wallpaper — runs
  * once per (path, mtime) and is cached, so a move or a refocus with the same
  * wallpaper is an `osascript`, a `stat` and an average over a 96px bitmap. The
- * listeners stay attached for the window's life but do nothing while glass
- * is off, read from the state the vibrancy IPC keeps. Kept off
+ * listeners stay attached for the window's life but do nothing while that
+ * window's glass is off, read from the state the vibrancy IPC keeps. Kept off
  * `DesktopBridge` and out of `packages/contracts`, on the fork's own bridge
  * key, like the vibrancy call this rides on.
  */
@@ -41,14 +43,13 @@ import * as NodePath from "node:path";
 
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import * as Electron from "electron";
 
-import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
 import { isForkGlassActive } from "./ForkGlassState.ts";
+import { forkSenderWindow } from "./ForkSidebarVibrancy.ts";
 
 const FORK_GLASS_FLOOR_COLOR_CHANNEL = "fork:glass-floor-color";
 const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
@@ -247,11 +248,11 @@ function followWindow(window: Electron.BrowserWindow, sidebarWidth: number): voi
   const recompute = () => {
     // Glass off means no one is listening and nothing to sample for; the
     // vibrancy IPC keeps this flag, so no second channel is needed.
-    if (!isForkGlassActive()) return;
+    if (!isForkGlassActive(window)) return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      if (inFlight || window.isDestroyed() || !isForkGlassActive()) return;
+      if (inFlight || window.isDestroyed() || !isForkGlassActive(window)) return;
       inFlight = true;
       void computeFloorColor(window, state.sidebarWidth)
         .then((color) => {
@@ -281,18 +282,16 @@ export const installForkGlassFloorColorIpc = Effect.fn("desktop.fork.installGlas
   function* () {
     const ipc = yield* DesktopIpc.DesktopIpc;
     const platform = yield* HostProcess.Platform;
-    const electronWindow = yield* ElectronWindow.ElectronWindow;
 
     yield* ipc.handle({
       channel: FORK_GLASS_FLOOR_COLOR_CHANNEL,
-      handler: Effect.fn("desktop.ipc.fork.glassFloorColor")(function* (raw) {
+      handler: Effect.fn("desktop.ipc.fork.glassFloorColor")(function* (raw, event) {
         const { sidebarWidth } = yield* decodeRequest(raw);
         // The wallpaper lookup and the vibrancy it feeds are macOS's; elsewhere
         // the renderer keeps the palette token, and null says so.
         if (platform !== "darwin") return null;
-        const main = yield* electronWindow.main;
-        if (Option.isNone(main) || main.value.isDestroyed()) return null;
-        const window = main.value;
+        const window = yield* forkSenderWindow(event);
+        if (window === null || window.isDestroyed()) return null;
         // Anything unreadable — the screen, the image, the display — resolves
         // null rather than failing the invoke; the renderer keeps its token.
         return yield* Effect.promise(() =>

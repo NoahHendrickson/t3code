@@ -23,7 +23,6 @@ import * as Electron from "electron";
 
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
-import { isForkAuxiliaryWindow } from "./ForkAuxiliaryWindows.ts";
 import { FORK_VIBRANCY_MATERIAL, setForkGlassActive } from "./ForkGlassState.ts";
 
 const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
@@ -48,12 +47,24 @@ function opaqueWindowBackground(): string {
   return Electron.nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff";
 }
 
-function senderWindow(
+/**
+ * The window a fork IPC call came from. Each Glass window (the main window and
+ * the side chat) paints and samples its own material, so the fork's
+ * per-window IPCs act on the sender. A sender that no longer resolves — its
+ * contents torn down mid-request, or a guest view — is no window at all, never
+ * another one. Only a call with no event, made outside Electron's IPC, means
+ * the main window.
+ */
+export const forkSenderWindow = Effect.fn("desktop.fork.senderWindow")(function* (
   event: DesktopIpc.DesktopIpcInvokeEvent | undefined,
-): Electron.BrowserWindow | null {
-  const contents = event === undefined ? undefined : Electron.webContents.fromId(event.sender.id);
+) {
+  if (event === undefined) {
+    const electronWindow = yield* ElectronWindow.ElectronWindow;
+    return Option.getOrNull(yield* electronWindow.main);
+  }
+  const contents = Electron.webContents.fromId(event.sender.id);
   return contents === undefined ? null : Electron.BrowserWindow.fromWebContents(contents);
-}
+});
 
 export const ForkSidebarVibrancyRequest = Schema.Struct({
   enabled: Schema.Boolean,
@@ -65,7 +76,6 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
   result: Schema.Boolean,
   handler: Effect.fn("desktop.ipc.fork.setSidebarVibrancy")(function* (request, event) {
     const platform = yield* HostProcess.Platform;
-    const electronWindow = yield* ElectronWindow.ElectronWindow;
 
     // Vibrancy is a macOS material. Asking for it anywhere else is not an
     // error — the palette is still selectable, it just paints solid.
@@ -77,13 +87,11 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
     // connecting splash. Handing those the material makes any previewed page
     // without an opaque background render see-through, and restoring would
     // repaint them with the app's fill instead of their own.
-    const target = senderWindow(event) ?? Option.getOrNull(yield* electronWindow.main);
+    const target = yield* forkSenderWindow(event);
     if (target !== null && !target.isDestroyed()) {
-      // The ownership flag belongs to the windows syncWindowAppearance walks,
-      // which leaves out the side chat. Set before painting, so an appearance
-      // sync racing this call sees the new owner and does not repaint the fill
-      // out from under the material.
-      if (!isForkAuxiliaryWindow(target)) setForkGlassActive(enabled);
+      // Set before painting, so an appearance sync racing this call sees the
+      // new owner and does not repaint the fill out from under the material.
+      setForkGlassActive(target, enabled);
       target.setVibrancy(enabled ? FORK_VIBRANCY_MATERIAL : null);
       target.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : opaqueWindowBackground());
     }

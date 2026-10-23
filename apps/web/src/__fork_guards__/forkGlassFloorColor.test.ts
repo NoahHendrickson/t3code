@@ -74,8 +74,14 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(desktopMethod).toContain(
       "const scale = Math.min(thumbnail.width / display.width, thumbnail.height / display.height);",
     );
-    // No sampling while glass is off, and no repeated full-size decode.
-    expect(desktopMethod).toContain("if (!isForkGlassActive()) return;");
+    // No sampling while this window's glass is off, and no repeated
+    // full-size decode.
+    expect(desktopMethod).toContain("if (!isForkGlassActive(window)) return;");
+    // The window that asks is the one sampled and followed: the side chat
+    // under the main window's strip would take the wrong hue, and following
+    // main with the side chat's sidebar width would skew main's too.
+    expect(desktopMethod).toContain("const window = yield* forkSenderWindow(event);");
+    expect(desktopMethod).not.toContain("electronWindow.main");
     expect(desktopMethod).toContain("thumbnailCache?.key === key");
     // The import sits in its own fence, not the vibrancy customization's.
     expect(desktopHandlers).toMatch(
