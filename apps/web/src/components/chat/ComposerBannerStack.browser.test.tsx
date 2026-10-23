@@ -92,7 +92,7 @@ it("keeps only the usage limit attached while an active goal waits in the collap
   const limit = page.getByText("Usage limit reached", { exact: true });
   const goal = page.getByText("Goal active", { exact: true });
 
-  expect(visibleBanners()).toHaveLength(1);
+  await expect.poll(visibleBanners).toHaveLength(1);
   await expect.element(limit).toBeVisible();
   await expect.element(goal).not.toBeVisible();
   expect(container.querySelector('[data-slot="composer-banner-attachment"]')?.textContent).toBe(

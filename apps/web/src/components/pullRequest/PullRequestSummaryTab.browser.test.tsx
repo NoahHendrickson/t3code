@@ -152,17 +152,20 @@ function commentTexts() {
 const filterButton = () =>
   container.querySelector<HTMLButtonElement>('[aria-label="Filter comments"]')!;
 
-function filterItem(label: string) {
-  const item = [...document.querySelectorAll('[role="menuitemcheckbox"]')].find((element) =>
+const findFilterItem = (label: string) =>
+  [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find((element) =>
     element.textContent?.includes(label),
-  ) as HTMLElement | undefined;
-  expect(item, `filter ${label}`).toBeDefined();
-  return item!;
+  );
+
+// The menu mounts its items after the click resolves; a busy runner can query too early.
+async function filterItem(label: string) {
+  await expect.poll(() => findFilterItem(label), { message: `filter ${label}` }).toBeDefined();
+  return findFilterItem(label)!;
 }
 
 async function toggleFilter(label: string) {
   if (!document.querySelector('[role="menuitemcheckbox"]')) await userEvent.click(filterButton());
-  await userEvent.click(filterItem(label));
+  await userEvent.click(await filterItem(label));
 }
 
 it("hides bot and resolved comments until the filter shows them, and remembers the choice", async () => {
@@ -222,7 +225,7 @@ it("hides bot and resolved comments until the filter shows them, and remembers t
   await render({ ...value, url: `${value.url}0`, number: 10 });
   expect(commentTexts()).toContain("Bot report 11");
   await userEvent.click(filterButton());
-  expect(filterItem("Bot comments").getAttribute("aria-checked")).toBe("true");
+  expect((await filterItem("Bot comments")).getAttribute("aria-checked")).toBe("true");
 });
 
 it("reveals whole older conversations with honest partial reply counts and a host link", async () => {
