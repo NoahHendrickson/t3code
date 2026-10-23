@@ -355,19 +355,21 @@
     build time via FORK_WEB_ICON_ASSETS + the shared applyWebIconOverrides
     path). The layered Icon Composer projects in assets/fork/app-icon.icon and
     assets/fork/dev-app-icon.icon are the Figma source of truth (file t3-fork,
-    node 168:6364), so the surrounding tile receives the system Liquid Glass
-    treatment on macOS without rasterizing the mark. Production keeps the Figma
-    green background; development uses orange so installed variants remain
-    distinguishable in the Dock. Glass stays off on the mark layer itself so
-    the pixel grid remains crisp; the system treatment belongs to the
-    surrounding tile. The macOS Dock
-    exports add only a transparent outer canvas around the rendered artwork,
-    preserving the pixel art while matching the standard Mac icon footprint.
-    The local dev splash and favicons use the same orange family, while packaged
-    builds stamp the green production family. The Linux PNG and Windows ICO are
-    derived from the release 1024 render (the ICO embeds PNG entries at
-    16–256px), so every packaged channel carries the same artwork. Filenames
-    still say n3-* for path stability.
+    node 556:28870), so the surrounding tile receives the system Liquid Glass
+    treatment on macOS without rasterizing the mark. Production puts the
+    Figma gradient (Assets/background.png, the frame-sized crop of its image
+    fill) on a glass-off layer under the mark; development keeps a solid
+    orange tile so installed variants remain distinguishable in the Dock.
+    Glass stays off on the mark layer itself so the pixel grid remains crisp
+    (glass on it melts the cells into blobs); the system treatment belongs to
+    the surrounding tile. Every raster, including the Linux PNG, the Windows
+    ICO and the apps/web/public dev copies, is rendered from these projects by
+    `node .fork/export-icons.ts` (macOS only; `--check` reports stale files),
+    so every packaged channel carries the same artwork. The macOS Dock exports
+    add only a transparent outer canvas around the rendered artwork, matching
+    the standard Mac icon footprint. The local dev splash and favicons use the
+    orange family, while packaged builds stamp the gradient production family.
+    Filenames still say n3-* for path stability.
     t3.json's iconPath stays assets/fork/n3-project-icon-180.png, never
     upstream's assets/dev/blueprint-*.
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
@@ -394,7 +396,9 @@
   tier: 4
   files:
     - apps/desktop/src/app/DesktopCliCommandForkIdentity.test.ts
+    - .fork/export-icons.ts
     - apps/web/src/custom/forkBranding.ts
+    - assets/fork/app-icon.icon/Assets/background.png
     - assets/fork/app-icon.icon/Assets/mark.svg
     - assets/fork/app-icon.icon/icon.json
     - assets/fork/dev-app-icon.icon/Assets/mark.svg
