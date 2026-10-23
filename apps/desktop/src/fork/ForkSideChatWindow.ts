@@ -31,6 +31,7 @@ import * as ElectronTheme from "../electron/ElectronTheme.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
 import { markForkAuxiliaryWindow } from "./ForkAuxiliaryWindows.ts";
+import { FORK_VIBRANCY_MATERIAL } from "./ForkGlassState.ts";
 
 /** Not a macOS system shortcut, and not taken by T3's keymap, SnapShot,
     ChatGPT (⌥Space) or Claude (double ⌥). */
@@ -98,6 +99,10 @@ export const installForkSideChat = Effect.fn("desktop.fork.installSideChat")(fun
       fullscreenable: false,
       maximizable: false,
       minimizable: false,
+      // Built with the Glass material like the main window (construction-only);
+      // the fill hides it until the renderer's palette sync clears it.
+      vibrancy: FORK_VIBRANCY_MATERIAL,
+      visualEffectState: "active",
       backgroundColor: shouldUseDarkColors ? "#0a0a0a" : "#ffffff",
       titleBarStyle: "hiddenInset",
       // The main window's lights sit on its 52px header's axis; the side

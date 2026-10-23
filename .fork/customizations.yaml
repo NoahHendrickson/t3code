@@ -1711,6 +1711,11 @@
     and none of the fork's CSS, so a previewed page without an opaque background
     would render see-through and restoring would repaint them with the app's
     colour.
+    The desktop side chat (fork-side-chat) is the one exception: it runs the
+    same palette sync and CSS, is built with the material, and the handler
+    paints the window that asked when that window is auxiliary. It leaves the
+    ownership flag alone, which is the main window's: syncWindowAppearance
+    never visits the side chat.
 
     Glass also assumes the panel sits beside the chat column. In overlay mode
     (custom/narrowChatOverlay.ts, when pushing would take the chat column under
@@ -5457,7 +5462,9 @@
 
     Fresh every time: the shell renders nothing on `/`, so the index route's
     landing (a draft in the most recent project) never races it, and starts
-    the window's No project draft itself. Hiding sends the fresh-chat signal
+    the window's No project draft itself, whose headline (the
+    DraftHeroHeadline shadow) reads "Got a question?". Hiding sends the
+    fresh-chat signal
     (forkDesktopBridge sideChat.onFresh): a draft is kept as it is — empty is
     already fresh, and typed text waits for the next open — and any other
     chat reloads the window back to `/`. ⌘N starts another draft in place.

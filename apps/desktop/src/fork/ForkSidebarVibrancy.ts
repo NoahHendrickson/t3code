@@ -22,6 +22,7 @@ import * as Electron from "electron";
 
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
+import { isForkAuxiliaryWindow } from "./ForkAuxiliaryWindows.ts";
 import { FORK_VIBRANCY_MATERIAL, setForkGlassActive } from "./ForkGlassState.ts";
 
 const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
@@ -46,6 +47,13 @@ function opaqueWindowBackground(): string {
   return Electron.nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff";
 }
 
+function senderWindow(
+  event: DesktopIpc.DesktopIpcInvokeEvent | undefined,
+): Electron.BrowserWindow | null {
+  const contents = event === undefined ? undefined : Electron.webContents.fromId(event.sender.id);
+  return contents === undefined ? null : Electron.BrowserWindow.fromWebContents(contents);
+}
+
 export const ForkSidebarVibrancyRequest = Schema.Struct({
   enabled: Schema.Boolean,
 });
@@ -54,13 +62,24 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
   channel: FORK_SET_SIDEBAR_VIBRANCY_CHANNEL,
   payload: ForkSidebarVibrancyRequest,
   result: Schema.Boolean,
-  handler: Effect.fn("desktop.ipc.fork.setSidebarVibrancy")(function* (request) {
+  handler: Effect.fn("desktop.ipc.fork.setSidebarVibrancy")(function* (request, event) {
     const platform = yield* HostProcess.Platform;
     const electronWindow = yield* ElectronWindow.ElectronWindow;
 
     // Vibrancy is a macOS material. Asking for it anywhere else is not an
     // error — the palette is still selectable, it just paints solid.
     const enabled = request.enabled && platform === "darwin";
+
+    // The side chat (fork-side-chat) runs the same palette sync and carries the
+    // same CSS, so it paints its own window. It is built with the material and
+    // is left out of syncWindowAppearance, so the shared ownership flag below
+    // stays the main window's.
+    const sender = senderWindow(event);
+    if (sender !== null && !sender.isDestroyed() && isForkAuxiliaryWindow(sender)) {
+      sender.setVibrancy(enabled ? FORK_VIBRANCY_MATERIAL : null);
+      sender.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : opaqueWindowBackground());
+      return enabled;
+    }
 
     // Set before painting, so an appearance sync racing this call sees the new
     // owner and does not repaint the fill out from under the material.
