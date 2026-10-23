@@ -11,7 +11,7 @@
  * the file macOS reports for the window's display, shrunk to a thumbnail,
  * cropped to the strip under the sidebar using the window's bounds on its
  * display, averaged, and composited under the panel's own tint
- * (rgb(22 22 22) at 73%, theme.custom.palettes.css).
+ * (--fork-glass-tint at --fork-glass-panel-alpha, theme.custom.palettes.css).
  *
  * The file comes from `NSWorkspace.desktopImageURLForScreen`, run as JXA in
  * a short-lived `osascript`: the ObjC bridge calls AppKit in-process and
@@ -54,16 +54,18 @@ const FORK_GLASS_FLOOR_COLOR_CHANNEL = "fork:glass-floor-color";
 const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
 
 /**
- * The Glass panel tint the wallpaper shows through: rgb(22 22 22 / 73%) in
- * theme.custom.palettes.css. The alpha here runs 3% heavier than the
- * stylesheet's because the vibrancy material dims the wallpaper a little on
- * top of the tint: calibrated when the panel was 82% against the panel
- * measured on screen (rgb(51 33 41) on a purple wallpaper), which a plain
- * blend at the stylesheet's alpha overshot by ~8 levels. Move it with the
- * stylesheet. This is the one dial if the overlays drift from the panel.
+ * The Glass panel tint the wallpaper shows through: --fork-glass-tint at
+ * --fork-glass-panel-alpha in theme.custom.palettes.css, restated because the
+ * main process cannot read the stylesheet. The alpha here runs 3% heavier
+ * than the stylesheet's because the vibrancy material dims the wallpaper a
+ * little on top of the tint. That offset was calibrated once, with the panel
+ * at 82% (rgb(51 33 41) measured on a purple wallpaper, which a plain blend
+ * at the stylesheet's alpha overshot by ~8 levels), and is extrapolated to
+ * every alpha since; the material's dimming is multiplicative, so re-measure
+ * if the overlays drift from the panel. This is the one dial when they do.
  */
-const PANEL_TINT = 22;
-const PANEL_TINT_ALPHA = 0.76;
+const PANEL_TINT = 30;
+const PANEL_TINT_ALPHA = 0.67;
 /** Thumbnail width the wallpaper is shrunk to before sampling. */
 const SAMPLE_WIDTH = 96;
 /** Window moves and resizes arrive per frame; one recompute per settle. */

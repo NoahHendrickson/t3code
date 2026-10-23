@@ -15,6 +15,7 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { FORK_GLASS_FLOOR_TOKEN, syncForkGlassFloorColor } from "../custom/forkGlassFloorColor";
+import { glassTokens } from "./glassTokens";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -57,10 +58,13 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(desktopMethod).not.toMatch(/Application\(|tell application/u);
     // The strip under the sidebar, composited under the panel tint the
     // palette paints; the alpha runs 3% heavier than the stylesheet's,
-    // calibrated against the panel measured on screen. Pinned as that
-    // relationship, so a tint change that forgets the estimate fails here.
-    expect(desktopMethod).toContain("const PANEL_TINT = 22;");
-    const sidebarAlpha = Number(/--sidebar: rgb\(22 22 22 \/ (\d+)%\);/u.exec(palettes)?.[1]);
+    // calibrated once against the panel measured on screen and extrapolated
+    // since. Pinned as that relationship to the stylesheet's tokens, so a
+    // retune that forgets the estimate fails here.
+    const glass = glassTokens(palettes);
+    expect(new Set(glass.tint).size, "the glass tint is neutral").toBe(1);
+    expect(desktopMethod).toContain(`const PANEL_TINT = ${glass.tint[0]};`);
+    const sidebarAlpha = glass.panel;
     const estimateAlpha = Number(/const PANEL_TINT_ALPHA = ([\d.]+);/u.exec(desktopMethod)?.[1]);
     expect(sidebarAlpha, "the panel tint must be declared").toBeGreaterThan(0);
     expect(estimateAlpha).toBeCloseTo((sidebarAlpha + 3) / 100, 5);

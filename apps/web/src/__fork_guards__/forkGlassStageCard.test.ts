@@ -18,6 +18,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules } from "./cssRules";
+import { glassTokens } from "./glassTokens";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -36,8 +37,6 @@ const palettes = readSibling("../theme.custom.palettes.css");
 
 const compact = (value: string) => value.replace(/\s+/gu, "");
 const flat = (value: string | undefined) => (value ?? "").replace(/\s+/gu, " ").trim();
-const alphaOf = (body: string | undefined) =>
-  Number(/rgb\(22 22 22 \/ (\d+)%\)/u.exec(body ?? "")?.[1] ?? Number.NaN);
 
 describe("fork guard: fork-glass-stage-card", () => {
   it("loads after the palettes sheet", () => {
@@ -89,26 +88,28 @@ describe("fork guard: fork-glass-stage-card", () => {
   });
 
   it("composites card over gutter back to the stage's reading value under the desktop glass", () => {
-    const panel = alphaOf(/--fork-glass-panel:\s*(rgb\(22 22 22 \/ \d+%\))/u.exec(palettes)?.[1]);
-    const stage = alphaOf(
-      cssRules(palettes).find(
-        (rule) =>
-          rule.selector.includes(VIBRANCY) &&
-          rule.selector.includes('[data-slot="sidebar-inset"]') &&
-          !rule.selector.includes(":has(") &&
-          rule.body.includes("background-image:"),
-      )?.body,
+    const { panel, stage, card } = glassTokens(palettes);
+    // Gutter, stage and card all paint the one tint at their own alpha.
+    expect(palettes).toContain(
+      "--fork-glass-panel: rgb(var(--fork-glass-tint) / var(--fork-glass-panel-alpha));",
     );
-    const fill = alphaOf(
-      rules.find(
-        (rule) =>
-          rule.selector.includes(VIBRANCY) && compact(rule.selector).endsWith(`${ROOT}::before`),
-      )?.body,
+    const inset = cssRules(palettes).find(
+      (rule) =>
+        rule.selector.includes(VIBRANCY) &&
+        rule.selector.includes('[data-slot="sidebar-inset"]') &&
+        !rule.selector.includes(":has(") &&
+        rule.body.includes("background-image:"),
     );
+    expect(inset?.body).toContain("var(--fork-glass-stage)");
+    const fill = rules.find(
+      (rule) =>
+        rule.selector.includes(VIBRANCY) && compact(rule.selector).endsWith(`${ROOT}::before`),
+    );
+    expect(fill?.body).toContain("rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha))");
     expect(panel).toBeGreaterThan(0);
     expect(stage).toBeGreaterThan(panel);
     // 1 − (1 − card)(1 − panel), within a point of rounding.
-    const composite = 100 - ((100 - fill) * (100 - panel)) / 100;
+    const composite = 100 - ((100 - card) * (100 - panel)) / 100;
     expect(Math.abs(composite - stage)).toBeLessThanOrEqual(1);
   });
 

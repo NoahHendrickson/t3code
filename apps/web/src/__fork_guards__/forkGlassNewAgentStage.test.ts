@@ -270,18 +270,20 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     expect(sidebarHex).toBeDefined();
     expect(opaqueToken?.body).toContain(`--fork-glass-panel: ${sidebarHex};`);
 
+    // Under the glass the docked panel and the gutter read one token.
     const panelTint = paletteRules.find(
       (rule) =>
         rule.selector.includes(VIBRANCY) &&
-        /--sidebar:\s*rgb\(\d+ \d+ \d+ \/ \d+%\)/u.test(rule.body),
+        rule.selector.includes('[data-sidebar-version="v2"]') &&
+        rule.selector.includes(':not([data-fork-sidebar-overlay="true"])'),
     );
+    expect(panelTint?.body).toMatch(/--sidebar:\s*var\(--fork-glass-panel\);/u);
     const glassToken = paletteRules.find(
       (rule) => rule.selector.includes(VIBRANCY) && rule.body.includes("--fork-glass-panel:"),
     );
-    const tint = /--sidebar:\s*(rgb\(\d+ \d+ \d+ \/ (\d+)%\))/u.exec(panelTint?.body ?? "");
-    expect(tint?.[1]).toBeDefined();
-    expect(Number(tint?.[2])).toBeGreaterThanOrEqual(70);
-    expect(glassToken?.body).toContain(`--fork-glass-panel: ${tint?.[1]};`);
+    expect(glassToken?.body).toContain(
+      "--fork-glass-panel: rgb(var(--fork-glass-tint) / var(--fork-glass-panel-alpha));",
+    );
 
     const opaque = find(`${GLASS}:not(${VIBRANCY})[data-slot="sidebar-inset"]:has(${HERO})`);
     expect(flat(opaque?.body)).toBe("background-color: var(--fork-glass-panel);");

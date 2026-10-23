@@ -1720,13 +1720,14 @@
     panel is itself what triggers overlay at most window sizes, so the two
     always appear together.
 
-    While it floats it paints an opaque neutral #1f1f1f rather than falling back
+    While it floats it paints an opaque neutral #262626 rather than falling back
     to the palette's #181b1e. Opaque is the point of the gate; the cool cast is
-    not, and against neighbouring surfaces that are all neutral rgb(22 22 22) it
+    not, and against neighbouring surfaces that are all the neutral glass tint it
     read as a different material instead of the same panel with its glass
-    suspended. #1f1f1f preserves the earlier opaque fallback (88% of the
-    neutral tint over the material's ~99 sample). The docked panel now lets
-    slightly more wallpaper through while the floating panel stays opaque.
+    suspended. #262626 is 88% of the neutral tint over the material's ~99
+    sample, the earlier fallback's derivation moved onto the new tint. It sits
+    darker than the docked panel on purpose: 88% is the opacity at which
+    overlapping transcript text stops reading through.
     The seam colour is deliberately NOT gated on overlay: the tint asks what is behind the panel, which overlay changes, while
     the seam asks how loud its edge is, which it does not.
 
@@ -1771,20 +1772,23 @@
 
     Glass is the one place the fork's flatten-alpha doctrine is suspended: an
     opaque row fill over a translucent panel renders as a rectangle of missing
-    wallpaper. The sidebar panel is a single rgb(22 22 22 / 73%) tint and rows
+    wallpaper. The tint and its alphas are declared once (--fork-glass-tint,
+    --fork-glass-{panel,stage,card}-alpha) and every surface reads them.
+    The sidebar panel is that tint at the panel alpha and rows
     lift with white washes (5% hover, 8% active/selected) so the glass survives
-    selection. The chat stage is a vertical gradient, rgb(22 22 22 / 82%) for its
-    top 70% easing to 73% across the bottom third where the cutoff mask has already
+    selection. The chat stage is a vertical gradient, the stage alpha for its
+    top 70% easing to the panel's across the bottom third where the cutoff mask has already
     ended the transcript. That ramp is scoped to insets that carry the mask
     (:has(.fork-timeline-cutoff)); Settings, Usage and the empty state are the
-    same element with no transcript to end, so they keep a flat 82%. SidebarInset
+    same element with no transcript to end, so they keep the flat stage alpha. SidebarInset
     carries bg-background, so the rule clears background-color explicitly — a
     background-image alone composites over that opaque fill and the glass does
     nothing. Panel and stage share one triple, so both surfaces carry a single
     cast and differ only in depth, and the seam between them reads as depth
     rather than as two materials.
-    The guard pins the relationships rather than any literal value: every stage
-    stop >= 70%, the reading area never below the sidebar's, and every stop of an
+    The guard pins the relationships rather than any literal value, plus one
+    judged floor (every stage stop >= 60%, a few points under the 64% last
+    approved by eye on 2026-10-22): the reading area never below the sidebar's, and every stop of an
     unmasked inset never below it either. The licence to dip under the panel
     belongs to the fade below the mask, and only there.
 
@@ -1792,8 +1796,8 @@
     to take the glass, and it paints NOTHING rather than taking a tint. The panel
     is an ordinary child of the inset, so anything it paints composites ON the
     stage and can only move it toward opaque — a wash there would make it less
-    glassy than the column it docks into, and the sidebar reaches 73% against an
-    82% stage only by being a paint layer outside the inset entirely. So
+    glassy than the column it docks into, and the sidebar is thinner than the
+    stage only by being a paint layer outside the inset entirely. So
     --fork-design-surface is transparent, and its fields take the context chips'
     12% for the chips' own reason: with the surface painting nothing they sit on
     the bare stage, one layer lower than a composer ring. --muted matches the
@@ -1813,13 +1817,13 @@
     constant. On "under-window" (a flat ~49 grey) the usable range was roughly
     60-90%: 91%, 97% and 98% all rendered as no glass at all rather than as
     subtle glass. "fullscreen-ui" returns ~99 and carries colour, so the same
-    contribution needs a much higher alpha — the stage tops out at 82% and
+    contribution needs a much higher alpha — the stage tops out in the 70s and
     reads as glass. Changing FORK_VIBRANCY_MATERIAL invalidates every number
     here; hold the desktop's contribution constant and redo the arithmetic.
 
     Alpha compounds down the tree. Anything painting a fill ON the stage
-    multiplies with it — an 82% scrim over the 82% stage composites to 97%
-    against the stage's own 82%, which is why the composer band stayed visibly
+    multiplies with it — a scrim at the stage's alpha a over the stage composites
+    to 1 − (1 − a)² against the stage's own a, which is why the composer band stayed visibly
     flatter than the column no matter what value the scrim used. Only zero
     matches the stage, so [data-chat-composer-overlay] paints `background:
     none` under glass and the timeline cutoff mask ends the transcript above the
@@ -1827,7 +1831,7 @@
     Glass's new-agent draft (fork-glass-new-agent-stage) re-confirmed this on
     2026-10-08 — blur(40px) on the vessel blurred the picture in capturePage
     and not on screen — and bakes its frost instead; its gutter meets the
-    panel's 73% because a draft has no transcript to keep legible.
+    panel's alpha because a draft has no transcript to keep legible.
 
     backdrop-filter and the native material are alternatives, not layers. The
     NSVisualEffectView sits behind the window, outside anything the page
@@ -1995,13 +1999,13 @@
 
     Around the card the stage takes the panel's colour through one shared
     token: --fork-glass-panel, declared in the palettes sheet beside the v2
-    panel's --sidebar once per client (#181b1e opaque, the rgb(22 22 22 /
-    73%) tint under the glass marker), so a retuned panel moves the gutter
+    panel's --sidebar once per client (#181b1e opaque, the
+    --fork-glass-panel tint under the glass marker), so a retuned panel moves the gutter
     and the frost floor with it. Two inset rules because the two clients
     paint it differently — an opaque colour, or a gradient over the cleared
     inset, since an opaque fill under the marker would cover the material;
     a draft has no transcript to keep legible, which is the only reason the
-    stage's 82% reading value exists, so meeting the panel's 73% costs
+    stage's reading value exists, so meeting the panel's alpha costs
     nothing the vibrancy guard protects. The v2 container's seam takes the
     panel's own fill (--sidebar) while a draft is open, read through the
     sidebar wrapper's :has() because the panel is the inset's sibling — not
@@ -2174,8 +2178,9 @@
     a device-pixel glint along the top and a dimmer one along the foot, a
     faint side hairline and soft sheens over a white 4% wash, all on the
     chat view's ::before. Under the desktop glass the inset paints the gutter at the
-    panel's 73% and the card adds 33% of the same tint, compositing back to
-    the stage's 82% reading value, and carries the stage ramp to 73% at the
+    panel's alpha and the card adds --fork-glass-card-alpha of the same tint,
+    compositing back to the stage's reading value, and carries the stage ramp
+    to the panel's alpha at the
     floor where a transcript is masked. That ramp's top layer is
     --fork-glass-stage-dither, a static tile of ±1-level binary noise: over
     the material the ramp spans only a few 8-bit levels and, undithered,
@@ -2205,8 +2210,8 @@
     under Windows' window-controls overlay, which sets its own.
 
     The right panel sits in the gutter beside the card, so under the desktop
-    glass it adds the card's 33% over the 73% gutter and composites back to
-    the 82% reading value. On an opaque client the chat's structural
+    glass it adds the card's alpha over the gutter and composites back to
+    the stage's reading value. On an opaque client the chat's structural
     bg-background layers (the workspace root, the header, the messages
     wrapper) clear so the gutter shows; slotted form controls keep their
     fills. While a desktop tab floats over the chat the chat view gives up
@@ -4191,7 +4196,7 @@
     their slot, not a stamp. Under Glass (theme.custom.palettes.css) the
     popups are off the utility clear and wear the composer control row's
     recipe — the vessel wash (--fork-composer-vessel-bg, 6% white under
-    Glass) over the stage's 73% floor tint — straight on the native material, because fork-glass-popup-cutout masks the page out
+    Glass) over the stage's floor tint — straight on the native material, because fork-glass-popup-cutout masks the page out
     from under them; they open without the fade-in so the fresh hole never
     flashes. A backdrop-filter still cannot help there: over the native
     material it never blurs the rows on screen (tested with plain squares
@@ -4275,10 +4280,10 @@
     and space (asked through JXA in osascript, which sends no Apple Events,
     so no Finder automation and no permission prompt), shrunk with sips to a 96px thumbnail, cropped to the strip
     under the sidebar from the window's bounds on its display, averaged,
-    and composited under the panel tint (rgb(22 22 22), at 76% rather than
-    the stylesheet's 73% because the vibrancy material dims the wallpaper a
-    little on top of the tint — calibrated against the panel measured on
-    screen). The renderer
+    and composited under the panel tint (--fork-glass-tint, at the panel
+    alpha plus 3% because the vibrancy material dims the wallpaper a little
+    on top of the tint; calibrated once against the panel measured on screen
+    at 82% and extrapolated since). The renderer
     asks once glass resolves on (chained on syncForkSidebarVibrancy's
     answer in forkTheme.ts), writes the estimate over the token as an
     inline style on the root, and follows the shell's change events —

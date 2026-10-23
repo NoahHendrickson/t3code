@@ -57,7 +57,7 @@
 
    A started thread loses nothing: its picture is already at opacity 0. On
    a draft the picture's z-index -1 falls into the outer context, under the
-   inset's fill — gone on an opaque client, dimmed behind the 73% panel tint
+   inset's fill — gone on an opaque client, dimmed behind the panel tint
    under the desktop glass — so the frost copies drop their image with it,
    leaving the hosts floor, veil, scrim and wash rather than patches of a
    picture the card no longer shows. The popup cutout's draft-card selector
@@ -220,13 +220,13 @@
 /* Around the card, the stage is the sidebar's own colour, so the panel and
    the gutter read as one surface the card is set into. --fork-glass-panel
    is the v2 panel's fill as the palettes sheet names it beside --sidebar:
-   #181b1e on an opaque client, the rgb(22 22 22 / 73%) tint under the
+   #181b1e on an opaque client, the --fork-glass-panel tint under the
    desktop glass. Two rules because the two clients paint it differently —
    an opaque colour, or a gradient over the cleared inset (the vibrancy
    block paints the inset with background-image, and an opaque fill there
    would cover the material). A draft has no transcript to keep legible,
-   which is the whole reason the stage's 82% reading value exists, so
-   meeting the panel's 73% here costs nothing the vibrancy guard protects. */
+   which is the whole reason the stage's reading value exists, so
+   meeting the panel's alpha here costs nothing the vibrancy guard protects. */
 :root[data-fork="noahhendrickson-t3code"]:where(
     :not([data-fork-glass-picture="off"])
   ).dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
