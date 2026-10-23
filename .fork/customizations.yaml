@@ -748,7 +748,10 @@
     data-thread-item={threadKey} so upstream's sweep can find rows under the
     pointer, and the sweep's verb badge draws with the fork's glyphs. The
     shelf headers keep their chevron (upstream moved its own headers to
-    CollapsibleSectionHeader and dropped the glyph).
+    CollapsibleSectionHeader and dropped the glyph). The pinned divider and
+    the Working and Settled shelf rules read one theme token,
+    --fork-sidebar-rule: upstream's --sidebar-border at 60% by default, a 12%
+    light alpha on Glass, where that opaque grey lands as a dark bar.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2StatusIndicator.tsx
