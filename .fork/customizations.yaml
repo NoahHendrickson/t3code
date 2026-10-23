@@ -2176,7 +2176,10 @@
     chat view's ::before. Under the desktop glass the inset paints the gutter at the
     panel's 73% and the card adds 33% of the same tint, compositing back to
     the stage's 82% reading value, and carries the stage ramp to 73% at the
-    floor where a transcript is masked. The right panel and terminal drawers
+    floor where a transcript is masked. That ramp's top layer is
+    --fork-glass-stage-dither, a static tile of ±1-level binary noise: over
+    the material the ramp spans only a few 8-bit levels and, undithered,
+    paints as horizontal bands. The right panel and terminal drawers
     are the chat view's siblings and sit in the gutter beside the card.
 
     Loaded from main.tsx after the palettes sheet, so the gutter wins its tie
