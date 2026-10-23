@@ -57,7 +57,8 @@ import type { SidebarV2Grouping } from "./sidebarV2ProjectGrouping";
 import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
 import { useThreadShells } from "~/state/entities";
 import { summarizeScheduledRunActivity } from "./scheduledRunActivity";
-import { SidebarV2StatusMark } from "./SidebarV2StatusIndicator";
+import { SidebarV2StatusMark, type SidebarV2TopStatusMark } from "./SidebarV2StatusIndicator";
+import { SIDEBAR_V2_CARD_ALIGNMENT } from "./sidebarV2CardAlignment";
 
 /** Structural on purpose: the four fields these rows read, no more. The row is
     generic over anything satisfying it, so the callbacks hand back upstream's
@@ -322,6 +323,12 @@ function ChromeAutomationsRow() {
   ]
     .filter((part) => part !== null)
     .join(", ");
+  const status: SidebarV2TopStatusMark =
+    needsYou > 0
+      ? { label: activityLabel, mark: "dot", tone: "approval" }
+      : failed > 0
+        ? { label: activityLabel, mark: "dot", tone: "failed" }
+        : { label: activityLabel, mark: "rain" };
   return (
     <ChromeLabeledAction
       icon={ZapIcon}
@@ -337,16 +344,16 @@ function ChromeAutomationsRow() {
             data-testid="sidebar-v2-scheduled-activity"
           >
             <span aria-hidden>{live}</span>
-            <SidebarV2StatusMark
-              status={
-                needsYou > 0
-                  ? { label: activityLabel, mark: "dot", tone: "approval" }
-                  : failed > 0
-                    ? { label: activityLabel, mark: "dot", tone: "failed" }
-                    : { label: activityLabel, mark: "rain" }
-              }
-              rainSeed="sidebar-v2-scheduled"
-            />
+            {/* The card's status box, so rain and dots centre on one axis. */}
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center",
+                SIDEBAR_V2_CARD_ALIGNMENT.statusBox,
+                SIDEBAR_V2_TRAILING_OFFSET.chromeStatus,
+              )}
+            >
+              <SidebarV2StatusMark status={status} rainSeed="sidebar-v2-scheduled" />
+            </span>
           </span>
         ) : null
       }

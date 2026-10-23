@@ -49,11 +49,13 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(customizations).toContain("- id: fork-glass-floor-color");
   });
 
-  it("reads the wallpaper from macOS's store, never through Finder automation", () => {
-    // The store needs no permission prompt; an osascript route would raise
-    // one on first use.
-    expect(desktopMethod).toContain("com.apple.wallpaper/Store/Index.plist");
-    expect(desktopMethod).not.toContain("osascript");
+  it("asks AppKit for the window's display wallpaper, never through Finder automation", () => {
+    // JXA calling NSWorkspace in-process sends no Apple Events, so no
+    // permission prompt; scripting Finder or System Events would raise one
+    // on first use. Per screen, so a second monitor's wallpaper never leaks in.
+    expect(desktopMethod).toContain("desktopImageURLForScreen(screen)");
+    expect(desktopMethod).toContain("readWallpaperPath(display.id)");
+    expect(desktopMethod).not.toMatch(/Application\(|tell application/u);
     // The strip under the sidebar, composited under the panel tint the
     // palette paints; the alpha runs 3% heavier than the stylesheet's,
     // calibrated once against the panel measured on screen and extrapolated

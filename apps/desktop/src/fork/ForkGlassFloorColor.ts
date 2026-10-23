@@ -8,24 +8,19 @@
  * instead of on a hand-measured constant. Nothing can read that colour off the screen: it is the desktop
  * wallpaper drawn by macOS behind a transparent window, outside the page and
  * outside `capturePage`. So it is rebuilt from the wallpaper image instead —
- * the file macOS records in its wallpaper store, shrunk to a thumbnail,
+ * the file macOS reports for the window's display, shrunk to a thumbnail,
  * cropped to the strip under the sidebar using the window's bounds on its
  * display, averaged, and composited under the panel's own tint
  * (--fork-glass-tint at --fork-glass-panel-alpha, theme.custom.palettes.css).
  *
- * The store is `~/Library/Application Support/com.apple.wallpaper/Store/
- * Index.plist`, a binary plist whose choices embed their own binary plists
- * carrying a `file://` URL. Reading it needs no permission and no Finder
- * automation prompt; the trade is that it is undocumented. It is also an
- * estimate of *which* wallpaper: the store holds a choice per display and
- * per space plus an all-spaces default, and a screensaver (`Idle`) choice
- * beside each desktop one. This reads desktop choices only, and prefers a
- * per-display or per-space entry over the all-spaces default, but it does
- * not know which display or space the window is on, so a machine whose
- * spaces carry different wallpapers may get a neighbour's. A store this code
- * cannot read resolves `null` and the renderer keeps the palette's measured
- * token; dynamic and video wallpapers resolve `null` the same way, since
- * `sips` cannot thumbnail them to one frame worth trusting.
+ * The file comes from `NSWorkspace.desktopImageURLForScreen`, run as JXA in
+ * a short-lived `osascript`: the ObjC bridge calls AppKit in-process and
+ * sends no Apple Events, so unlike a Finder or System Events script it raises
+ * no automation prompt. macOS answers for the screen and the space showing on
+ * it, so two monitors or spaces on different wallpapers each get their own.
+ * Electron's display id on macOS is the `CGDirectDisplayID` AppKit reports
+ * as `NSScreenNumber`. A screen with no file, or a file this code cannot
+ * read, resolves `null` and the renderer keeps the palette's measured token.
  *
  * macOS only, main window only. The renderer asks once when glass turns on
  * and is then told about changes: the window moving or resizing (the strip
@@ -33,7 +28,7 @@
  * (the cheapest signal that the wallpaper may have been changed meanwhile).
  * The expensive step — `sips` decoding a full-resolution wallpaper — runs
  * once per (path, mtime) and is cached, so a move or a refocus with the same
- * wallpaper is a `plutil`, a `stat` and an average over a 96px bitmap. The
+ * wallpaper is an `osascript`, a `stat` and an average over a 96px bitmap. The
  * listeners stay attached for the window's life but do nothing while glass
  * is off, read from the state the vibrancy IPC keeps. Kept off
  * `DesktopBridge` and out of `packages/contracts`, on the fork's own bridge
@@ -43,7 +38,6 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeFSP from "node:fs/promises";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
-import * as NodeURL from "node:url";
 
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
@@ -77,13 +71,17 @@ const SAMPLE_WIDTH = 96;
 /** Window moves and resizes arrive per frame; one recompute per settle. */
 const RECOMPUTE_DEBOUNCE_MS = 250;
 
-const WALLPAPER_STORE = NodePath.join(
-  NodeOS.homedir(),
-  "Library/Application Support/com.apple.wallpaper/Store/Index.plist",
-);
-
-/** Top-level store sections, most specific first. */
-const STORE_SECTIONS = ["Displays", "Spaces", "AllSpacesAndDisplays", "SystemDefault"] as const;
+const WALLPAPER_SCRIPT = `function run(argv) {
+  ObjC.import("AppKit");
+  const screens = $.NSScreen.screens;
+  for (let i = 0; i < screens.count; i++) {
+    const screen = screens.objectAtIndex(i);
+    if (screen.deviceDescription.objectForKey("NSScreenNumber").js !== Number(argv[0])) continue;
+    const url = $.NSWorkspace.sharedWorkspace.desktopImageURLForScreen(screen);
+    return url.isNil() ? "" : url.path.js;
+  }
+  return "";
+}`;
 
 const Request = Schema.Struct({ sidebarWidth: Schema.Number });
 const decodeRequest = Schema.decodeUnknownEffect(Request);
@@ -106,66 +104,23 @@ function execFile(file: string, args: ReadonlyArray<string>): Promise<string> {
   });
 }
 
-/** The `file://` URLs in the embedded choice plists of one XML slice, in order. */
-function fileUrlsIn(xml: string): Array<string> {
-  const urls: Array<string> = [];
-  for (const match of xml.matchAll(/<data>([\s\S]*?)<\/data>/gu)) {
-    const raw = Buffer.from((match[1] ?? "").replace(/\s+/gu, ""), "base64").toString("latin1");
-    // Path characters only: a file URL percent-encodes spaces, so this never
-    // reaches into the binary plist bytes around it.
-    const url = /file:\/\/[A-Za-z0-9_\-.~%+@(),/]+/u.exec(raw);
-    if (url) urls.push(url[0]);
+/** The wallpaper file macOS shows on the given display, or null. */
+async function readWallpaperPath(displayId: number): Promise<string | null> {
+  const output = await execFile("/usr/bin/osascript", [
+    "-l",
+    "JavaScript",
+    "-e",
+    WALLPAPER_SCRIPT,
+    String(displayId),
+  ]);
+  const path = output.trim();
+  if (path === "") return null;
+  try {
+    await NodeFSP.access(path);
+    return path;
+  } catch {
+    return null;
   }
-  return urls;
-}
-
-/**
- * The XML between a top-level section key and the next one. plutil indents
- * top-level keys by exactly one tab, which is what tells `Displays` apart
- * from any nested key of the same name.
- */
-function storeSection(xml: string, name: string): string | null {
-  const start = xml.indexOf(`\n\t<key>${name}</key>`);
-  if (start < 0) return null;
-  const next = xml.indexOf("\n\t<key>", start + 1);
-  return xml.slice(start, next < 0 ? xml.length : next);
-}
-
-/** The desktop (not screensaver) choices of a section, as XML slices. */
-function desktopChoices(section: string): Array<string> {
-  const slices: Array<string> = [];
-  let at = 0;
-  for (;;) {
-    const start = section.indexOf("<key>Desktop</key>", at);
-    if (start < 0) break;
-    const idle = section.indexOf("<key>Idle</key>", start);
-    slices.push(section.slice(start, idle < 0 ? section.length : idle));
-    at = start + 1;
-  }
-  return slices;
-}
-
-/** The current wallpaper's path from macOS's wallpaper store, or null. */
-async function readWallpaperPath(): Promise<string | null> {
-  const xml = await execFile("/usr/bin/plutil", ["-convert", "xml1", "-o", "-", WALLPAPER_STORE]);
-  const candidates: Array<string> = [];
-  for (const name of STORE_SECTIONS) {
-    const section = storeSection(xml, name);
-    if (section === null) continue;
-    for (const choice of desktopChoices(section)) candidates.push(...fileUrlsIn(choice));
-  }
-  // A store laid out unlike the one this was written against: anything at all.
-  if (candidates.length === 0) candidates.push(...fileUrlsIn(xml));
-  for (const url of candidates) {
-    const path = NodeURL.fileURLToPath(url);
-    try {
-      await NodeFSP.access(path);
-      return path;
-    } catch {
-      // A stale entry for a file that has since moved; keep looking.
-    }
-  }
-  return null;
 }
 
 let thumbnailCache: { readonly key: string; readonly thumbnail: Thumbnail } | null = null;
@@ -257,19 +212,19 @@ async function computeFloorColor(
   window: Electron.BrowserWindow,
   sidebarWidth: number,
 ): Promise<ForkGlassFloorColor | null> {
-  const wallpaperPath = await readWallpaperPath();
+  const bounds = window.getBounds();
+  const display = Electron.screen.getDisplayMatching(bounds);
+  const wallpaperPath = await readWallpaperPath(display.id);
   if (wallpaperPath === null) return null;
   const thumbnail = await readWallpaperThumbnail(wallpaperPath);
   if (thumbnail === null) return null;
-  const bounds = window.getBounds();
-  const display = Electron.screen.getDisplayMatching(bounds).bounds;
   const strip = {
     x: bounds.x,
     y: bounds.y,
     width: Math.max(1, sidebarWidth),
     height: bounds.height,
   };
-  return sampleFloor(thumbnail, display, strip);
+  return sampleFloor(thumbnail, display.bounds, strip);
 }
 
 /**
@@ -332,13 +287,13 @@ export const installForkGlassFloorColorIpc = Effect.fn("desktop.fork.installGlas
       channel: FORK_GLASS_FLOOR_COLOR_CHANNEL,
       handler: Effect.fn("desktop.ipc.fork.glassFloorColor")(function* (raw) {
         const { sidebarWidth } = yield* decodeRequest(raw);
-        // The wallpaper store and the vibrancy it feeds are macOS's; elsewhere
+        // The wallpaper lookup and the vibrancy it feeds are macOS's; elsewhere
         // the renderer keeps the palette token, and null says so.
         if (platform !== "darwin") return null;
         const main = yield* electronWindow.main;
         if (Option.isNone(main) || main.value.isDestroyed()) return null;
         const window = main.value;
-        // Anything unreadable — the store, the image, the display — resolves
+        // Anything unreadable — the screen, the image, the display — resolves
         // null rather than failing the invoke; the renderer keeps its token.
         return yield* Effect.promise(() =>
           computeFloorColor(window, sidebarWidth)
