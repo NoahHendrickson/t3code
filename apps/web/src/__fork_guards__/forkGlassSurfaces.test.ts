@@ -61,11 +61,14 @@ describe("fork guard: glass surfaces", () => {
     const send = '[data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]';
     const stop = '[data-fork-composer-action="stop"]';
     const face = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, send]);
-    expect(face).toMatch(/background:\s*rgb\(255 255 255 \/ 10%\)/u);
+    expect(face).toMatch(
+      /background-color:\s*rgb\(from var\(--fork-composer-action-light\) r g b \/ 18%\)/u,
+    );
+    expect(face).toContain("background-image:");
     expect(face).toMatch(/color:\s*#ffffff/u);
 
     const stopFace = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, stop]);
-    expect(stopFace).toMatch(/background:\s*rgb\(234 49 80 \/ 24%\)/u);
+    expect(stopFace).toMatch(/background:\s*rgb\(234 49 80 \/ 48%\)/u);
     expect(stopFace).toMatch(/color:\s*#ffffff/u);
 
     const root = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`]);
