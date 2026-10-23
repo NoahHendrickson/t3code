@@ -139,6 +139,31 @@ describe("fork guard: glass surfaces", () => {
       /data-fork-composer-action="send"\s+data-fork-composer-send-tone="flat"/u,
     );
     expect(primaryActions).toContain('data-fork-composer-action="stop"');
+    // The selected-tab rules key on the slot and variant upstream's toggle
+    // group stamps, and on the fork's own SegmentedTabs stamps. The segmented
+    // toggle's light rides the ::before upstream positions.
+    const toggle = readSibling("../components/ui/toggle.tsx");
+    expect(toggle).toContain('data-slot="toggle"');
+    expect(toggle).toContain("before:pointer-events-none before:absolute");
+    expect(readSibling("../components/ui/toggle-group.tsx")).toContain(
+      "data-variant={resolvedVariant}",
+    );
+    const segmentedTabs = readSibling("../custom/SegmentedTabs.tsx");
+    expect(segmentedTabs).toContain("data-fork-segmented-tabs");
+    expect(segmentedTabs).toContain("data-fork-segmented-tab\n");
+    const segmentedToggle = '[data-slot="toggle"][data-variant="segmented"][data-pressed]';
+    expect(ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, segmentedToggle])).toContain(
+      "var(--fork-glass-halo-soft)",
+    );
+    expect(
+      ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, `${segmentedToggle}::before`]),
+    ).toContain("var(--fork-glass-light)");
+    expect(
+      ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, "[data-fork-segmented-tab][data-pressed]"]),
+    ).toContain("var(--fork-glass-light)");
+    expect(
+      ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, "[data-fork-segmented-tabs]"]),
+    ).toContain("overflow-clip-margin");
     for (const source of [
       "../components/chat/ChatComposer.tsx",
       "../custom/voice/ForkDictationControl.tsx",
