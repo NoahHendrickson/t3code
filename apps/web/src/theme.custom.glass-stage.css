@@ -34,6 +34,23 @@
   --fork-glass-card-inset-left: var(--fork-glass-card-inset);
 }
 
+/* The desktop side chat (fork-side-chat) is already a surface on the
+   desktop, with no sidebar beside it to frame a card. The card fills the
+   window instead, so it is one pane of glass rather than a pane set inside
+   another. Its fill stays, for the transcript's reading value; the corners
+   and the rim go, as the window draws its own edge. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"] {
+  --fork-glass-card-inset: 0px;
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"]
+  :is([data-chat-column-maximized-away], [data-fork-stage-card])::before,
+:root[data-fork="noahhendrickson-t3code"][data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"]
+  [data-chat-column-maximized-away]::after {
+  border-radius: 0;
+  box-shadow: none;
+}
+
 /* The card's containing block and stacking context: its z-index -1 only lands
    above the inset's fill when the chat view is a stacking context. The
    picture sheet declares the same pair behind its switch; this one holds
@@ -205,7 +222,9 @@
    window-controls overlay, which sets its own. */
 :root[data-fork="noahhendrickson-t3code"]:not(.wco).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away] {
-  --workspace-controls-right: calc(env(safe-area-inset-right) + 24px);
+  --workspace-controls-right: calc(
+    env(safe-area-inset-right) + var(--fork-glass-card-inset) + 16px
+  );
 }
 
 /* And off the card's sides: upstream's 20px put the title 8px from the

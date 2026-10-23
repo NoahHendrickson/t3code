@@ -61,6 +61,9 @@ export const isSideChatSurface =
   typeof window !== "undefined" && isSideChatSearch(window.location.search);
 
 if (isSideChatSurface) {
+  // For the stylesheets: the Glass stage card fills this window instead of
+  // standing inside it (theme.custom.glass-stage.css).
+  document.documentElement.setAttribute("data-fork-side-chat", "true");
   // Window's attributes are configurable own properties of the global, so
   // this also covers bare `localStorage` references.
   Object.defineProperty(globalThis, "localStorage", {

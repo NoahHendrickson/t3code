@@ -5463,7 +5463,10 @@
     Fresh every time: the shell renders nothing on `/`, so the index route's
     landing (a draft in the most recent project) never races it, and starts
     the window's No project draft itself, whose headline (the
-    DraftHeroHeadline shadow) reads "Got a question?". Hiding sends the
+    DraftHeroHeadline shadow) reads "Got a question?". Under Glass the window
+    is the one surface: surface.ts stamps data-fork-side-chat on the root, and
+    the stage card fills the window with no gutter, corners or rim
+    (theme.custom.glass-stage.css). Hiding sends the
     fresh-chat signal
     (forkDesktopBridge sideChat.onFresh): a draft is kept as it is — empty is
     already fresh, and typed text waits for the next open — and any other
