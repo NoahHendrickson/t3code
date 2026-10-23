@@ -26,7 +26,9 @@ function readSibling(relativePath: string): string {
 const GLASS = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
 const PALETTE = `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 const VIBRANCY = '[data-fork-sidebar-vibrancy="true"]';
-const ROOT = "[data-chat-column-maximized-away]";
+const CHAT = "[data-chat-column-maximized-away]";
+// The chat view, and the Automations page, which sits on the same card.
+const ROOT = `:is(${CHAT},[data-fork-stage-card])`;
 
 const sheet = readSibling("../theme.custom.glass-stage.css");
 const rules = cssRules(sheet);
@@ -78,7 +80,7 @@ describe("fork guard: fork-glass-stage-card", () => {
     const radiusOf = (body: string | undefined) =>
       /border-radius:\s*([\w.]+)/u.exec(body ?? "")?.[1];
     const picture = cssRules(readSibling("../theme.custom.glass.css")).find((rule) =>
-      compact(rule.selector).endsWith(`${ROOT}::after`),
+      compact(rule.selector).endsWith(`${CHAT}::after`),
     );
     expect(radiusOf(card?.body)).toBeDefined();
     expect(radiusOf(picture?.body)).toBe(radiusOf(card?.body));
@@ -114,7 +116,7 @@ describe("fork guard: fork-glass-stage-card", () => {
     const ramp = rules.find(
       (rule) =>
         rule.selector.includes(VIBRANCY) &&
-        compact(rule.selector).endsWith(`${ROOT}:has(.fork-timeline-cutoff)::before`),
+        compact(rule.selector).endsWith(`${CHAT}:has(.fork-timeline-cutoff)::before`),
     );
     expect(flat(ramp?.body)).toMatch(/^background: var\(--fork-glass-stage-dither\) /u);
     const tile = decodeURIComponent(
@@ -126,6 +128,28 @@ describe("fork guard: fork-glass-stage-card", () => {
     const opacity = Number(/<rect [^>]*opacity='([\d.]+)'/u.exec(tile)?.[1]);
     expect(opacity).toBeGreaterThan(0);
     expect(opacity).toBeLessThanOrEqual(0.02);
+  });
+
+  it("names the Automations page's host, title and body, and styles each by name", () => {
+    const page = readSibling("../custom/scheduled/ScheduledPage.tsx");
+    for (const part of [
+      "data-fork-stage-card",
+      "data-fork-stage-card-title",
+      "data-fork-stage-card-body",
+    ]) {
+      expect(page, `page lost ${part}`).toMatch(new RegExp(`\\b${part}=""`, "u"));
+    }
+    const title = rules.find((rule) => rule.selector.includes("[data-fork-stage-card-title]"));
+    expect(compact(title?.selector ?? "")).toContain("[data-chat-header]");
+    expect(title?.body).toContain("padding-left: calc(var(--fork-glass-card-inset-left) + 16px)");
+    const body = rules.find((rule) => rule.selector.includes("[data-fork-stage-card-body]"));
+    expect(body?.body).toContain("width: auto");
+    expect(flat(body?.body)).toContain(
+      "margin: 0 var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset-left);",
+    );
+    // By name, never by shape: a wrapped header or a banner between the two
+    // would silently detach a structural selector.
+    expect(sheet).not.toMatch(/\[data-fork-stage-card\]\s*>/u);
   });
 
   it("paints the gutter on both clients and drops the seam", () => {
