@@ -4905,7 +4905,7 @@ export default function Sidebar() {
                          Margin derived off the list gap so halving that gap did
                          not quietly tighten this hairline too. */
                           className={cn(
-                            "mx-2.5 h-px list-none bg-sidebar-border/60",
+                            "mx-2.5 h-px list-none bg-(--fork-sidebar-rule)",
                             SIDEBAR_V2_CARD_ALIGNMENT.pinnedDividerMargin,
                           )}
                           /* fork:end sidebar-v2-card-rows */
@@ -5043,7 +5043,9 @@ export default function Sidebar() {
                                 ? "Working"
                                 : `Working (${workingThreads.length})`}
                             </span>
-                            <span className="h-px flex-1 bg-sidebar-border/60" />
+                            {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
+                            <span className="h-px flex-1 bg-(--fork-sidebar-rule)" />
+                            {/* fork:end sidebar-v2-card-rows */}
                             <ChevronDownIcon
                               aria-hidden
                               className={cn(
@@ -5168,7 +5170,9 @@ export default function Sidebar() {
                                 ? "Settled"
                                 : `Settled (${settledThreads.length})`}
                             </span>
-                            <span className="h-px flex-1 bg-sidebar-border/60" />
+                            {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
+                            <span className="h-px flex-1 bg-(--fork-sidebar-rule)" />
+                            {/* fork:end sidebar-v2-card-rows */}
                             <ChevronDownIcon
                               aria-hidden
                               className={cn(

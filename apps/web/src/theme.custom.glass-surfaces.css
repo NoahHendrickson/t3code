@@ -157,6 +157,46 @@
   --fork-glass-rim: var(--fork-glass-halo), var(--fork-glass-light);
 }
 
+/* Every selected tab is a chip of the same glass: the selected segment of
+   any segmented toggle group (tabs, and the pickers drawn as tabs) and of
+   the fork's SegmentedTabs. Both sit on a track, a lighter surface than the
+   page, so they take the soft halo. The bordered option pickers (outline)
+   keep their look, and so does a lone segmented Toggle (search's match-case
+   and regex switches): an on/off button, not a tab, and only the group
+   stamps data-variant. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-slot="toggle"][data-variant="segmented"][data-pressed] {
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--fork-glass-halo-soft);
+}
+
+/* The segmented toggle's 1px border is transparent, so the light goes over
+   the border box on the ::before upstream positions on every toggle and the
+   segmented variant leaves empty. Unlike ::after, it is no pointer's hit
+   area, so touch draws the same edge. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-slot="toggle"][data-variant="segmented"][data-pressed]::before {
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: var(--fork-glass-light);
+}
+
+/* A SegmentedTab has no border, so its inset light lands on the edge. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-segmented-tab][data-pressed] {
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--fork-glass-halo-soft), var(--fork-glass-light);
+}
+
+/* Its track clips 2px out from the tab and the soft halo reaches 2.75px,
+   so the halo was cut where the tab meets the track's edge. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-fork-segmented-tabs] {
+  overflow-clip-margin: 1px;
+}
+
 /* The composer as the same glass: the vessel is the pane, with the halo
    round it and the glint, sheens and the popups' top and bottom glows on a
    ::after laid over everything inside. Over, because the prompt well covers
@@ -243,11 +283,18 @@
 }
 
 /* The strip clips on x (upstream's label-collapse overflow) and the fork
-   zeroes its padding, so the first chip's halo was cut on its left side. */
+   zeroes its padding, so the end chips' halos were cut at the strip's edges.
+   overflow-clip-margin can't reach them: Chromium ignores it unless both axes
+   clip. Padding moves the clip edge out instead, and the matching negative
+   margin keeps the chips in place; useLabelsOverflow subtracts the padding
+   from the strip's width, so the label collapse measures the same room.
+   4px clears --fork-glass-halo's reach (1px spread + 2px blur); grow it
+   with the halo, or the end chips clip again. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-context-row]
   [data-slot="composer-context-strip"] {
-  overflow-clip-margin: 4px;
+  margin-inline: -4px;
+  padding-inline: 4px;
 }
 
 /* The popups the chips open and the composer's model, effort and mode

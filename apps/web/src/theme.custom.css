@@ -2903,6 +2903,16 @@
   background: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
 }
 
+/* ── Sidebar rules (sidebar-v2-card-rows) ───────────────────────────────────
+   The pinned divider and the Working / Settled shelf rules read one token, so
+   a palette retunes all three here instead of in Sidebar.tsx. The default is
+   upstream's bg-sidebar-border/60; Glass overrides it in
+   theme.custom.palettes.css. Declared on the sidebar because that is where
+   upstream recomputes the contrast tokens it reads. */
+:root[data-fork="noahhendrickson-t3code"] [data-app-sidebar] {
+  --fork-sidebar-rule: color-mix(in oklab, var(--color-sidebar-border) 60%, transparent);
+}
+
 /* A top border drawn inside a combobox popup is a divider of that popup, so
    it takes the separator's alpha too. Today that is one element: the branch
    picker's "Start from origin" footer, which splits itself off the list with

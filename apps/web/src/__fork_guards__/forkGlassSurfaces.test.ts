@@ -119,6 +119,22 @@ describe("fork guard: glass surfaces", () => {
     }
   });
 
+  it("moves the context strip's clip edge out past the end chips' halos", () => {
+    // overflow-clip-margin is ignored on a strip that clips only on x, so the
+    // clearance has to be padding. The margin must cancel it exactly or the
+    // chips shift off the row's edges.
+    const strip = ruleBodyFor(rules, [
+      `${MARKER}.dark${PALETTE}`,
+      "[data-fork-composer-context-row]",
+      '[data-slot="composer-context-strip"]',
+    ]);
+    const padding = /padding-inline:\s*(\d+)px/u.exec(strip)?.[1];
+    expect(padding).toBeDefined();
+    expect(Number(padding)).toBeGreaterThanOrEqual(3);
+    expect(strip).toMatch(new RegExp(`margin-inline:\\s*-${padding}px`, "u"));
+    expect(strip).not.toContain("overflow-clip-margin");
+  });
+
   it("matches the markup its selectors lean on", () => {
     // The two row shapes Glass rounds further.
     const rowPolicy = readSibling("../custom/sidebarV2RowPolicy.ts");
@@ -139,6 +155,31 @@ describe("fork guard: glass surfaces", () => {
       /data-fork-composer-action="send"\s+data-fork-composer-send-tone="flat"/u,
     );
     expect(primaryActions).toContain('data-fork-composer-action="stop"');
+    // The selected-tab rules key on the slot and variant upstream's toggle
+    // group stamps, and on the fork's own SegmentedTabs stamps. The segmented
+    // toggle's light rides the ::before upstream positions.
+    const toggle = readSibling("../components/ui/toggle.tsx");
+    expect(toggle).toContain('data-slot="toggle"');
+    expect(toggle).toContain("before:pointer-events-none before:absolute");
+    expect(readSibling("../components/ui/toggle-group.tsx")).toContain(
+      "data-variant={resolvedVariant}",
+    );
+    const segmentedTabs = readSibling("../custom/SegmentedTabs.tsx");
+    expect(segmentedTabs).toContain("data-fork-segmented-tabs");
+    expect(segmentedTabs).toContain("data-fork-segmented-tab\n");
+    const segmentedToggle = '[data-slot="toggle"][data-variant="segmented"][data-pressed]';
+    expect(ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, segmentedToggle])).toContain(
+      "var(--fork-glass-halo-soft)",
+    );
+    expect(
+      ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, `${segmentedToggle}::before`]),
+    ).toContain("var(--fork-glass-light)");
+    expect(
+      ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, "[data-fork-segmented-tab][data-pressed]"]),
+    ).toContain("var(--fork-glass-light)");
+    expect(
+      ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, "[data-fork-segmented-tabs]"]),
+    ).toContain("overflow-clip-margin");
     for (const source of [
       "../components/chat/ChatComposer.tsx",
       "../custom/voice/ForkDictationControl.tsx",

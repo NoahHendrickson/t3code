@@ -115,6 +115,11 @@ export const SIDEBAR_V2_TRAILING_OFFSET = {
   /** The chrome rows' trailing inset — the pe-3 that defines the axis. The
    *  24px button is flush with it, so nothing here either. */
   chromeRow: "",
+  /** The Automations row's status mark. Its 12px status box flush with the
+   *  chrome button's px-3 (row inset 8 + 12 = 20) centres at 26, 2px left of
+   *  the Threads gear beneath it. -me-0.5 pulls it the 2px back. Its own key,
+   *  not cardStatus: the two rest on different padding. */
+  chromeStatus: "-me-0.5",
 } as const;
 
 /**
