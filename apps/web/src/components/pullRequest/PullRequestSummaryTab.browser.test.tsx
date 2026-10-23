@@ -8,7 +8,7 @@ import {
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
-import { userEvent } from "vite-plus/test/browser";
+import { page, userEvent } from "vite-plus/test/browser";
 
 vi.mock(import("~/state/use-atom-command"), async (original) => ({
   ...(await original()),
@@ -152,20 +152,12 @@ function commentTexts() {
 const filterButton = () =>
   container.querySelector<HTMLButtonElement>('[aria-label="Filter comments"]')!;
 
-const findFilterItem = (label: string) =>
-  [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find((element) =>
-    element.textContent?.includes(label),
-  );
-
-// The menu mounts its items after the click resolves; a busy runner can query too early.
-async function filterItem(label: string) {
-  await expect.poll(() => findFilterItem(label), { message: `filter ${label}` }).toBeDefined();
-  return findFilterItem(label)!;
-}
+// A locator waits for the menu to mount its items; a direct query can run before it does.
+const filterItem = (label: string) => page.getByRole("menuitemcheckbox", { name: label });
 
 async function toggleFilter(label: string) {
   if (!document.querySelector('[role="menuitemcheckbox"]')) await userEvent.click(filterButton());
-  await userEvent.click(await filterItem(label));
+  await userEvent.click(filterItem(label));
 }
 
 it("hides bot and resolved comments until the filter shows them, and remembers the choice", async () => {
@@ -225,7 +217,7 @@ it("hides bot and resolved comments until the filter shows them, and remembers t
   await render({ ...value, url: `${value.url}0`, number: 10 });
   expect(commentTexts()).toContain("Bot report 11");
   await userEvent.click(filterButton());
-  expect((await filterItem("Bot comments")).getAttribute("aria-checked")).toBe("true");
+  await expect.element(filterItem("Bot comments")).toHaveAttribute("aria-checked", "true");
 });
 
 it("reveals whole older conversations with honest partial reply counts and a host link", async () => {

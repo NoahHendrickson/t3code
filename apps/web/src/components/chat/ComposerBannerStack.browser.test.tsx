@@ -3,14 +3,24 @@ import "../../index.css";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
-import { page, userEvent } from "vite-plus/test/browser";
+import { commands, page, userEvent } from "vite-plus/test/browser";
 
 import { ComposerBannerStack } from "./ComposerBannerStack";
+
+declare module "vite-plus/test/browser" {
+  interface BrowserCommands {
+    /** Defined in vite.config.ts. Moves Playwright's mouse off the page. */
+    resetPointer: () => Promise<void>;
+  }
+}
 
 let root: Root;
 let container: HTMLDivElement;
 
-beforeEach(() => {
+beforeEach(async () => {
+  // The stack expands on pointerenter, and a pointer left over it by an earlier test or
+  // file would expand it as it mounts.
+  await commands.resetPointer();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   container = document.createElement("div");
   document.body.append(container);
@@ -92,7 +102,7 @@ it("keeps only the usage limit attached while an active goal waits in the collap
   const limit = page.getByText("Usage limit reached", { exact: true });
   const goal = page.getByText("Goal active", { exact: true });
 
-  await expect.poll(visibleBanners).toHaveLength(1);
+  expect(visibleBanners()).toHaveLength(1);
   await expect.element(limit).toBeVisible();
   await expect.element(goal).not.toBeVisible();
   expect(container.querySelector('[data-slot="composer-banner-attachment"]')?.textContent).toBe(
