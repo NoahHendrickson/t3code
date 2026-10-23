@@ -283,11 +283,18 @@
 }
 
 /* The strip clips on x (upstream's label-collapse overflow) and the fork
-   zeroes its padding, so the first chip's halo was cut on its left side. */
+   zeroes its padding, so the end chips' halos were cut at the strip's edges.
+   overflow-clip-margin can't reach them: Chromium ignores it unless both axes
+   clip. Padding moves the clip edge out instead, and the matching negative
+   margin keeps the chips in place; useLabelsOverflow subtracts the padding
+   from the strip's width, so the label collapse measures the same room.
+   4px clears --fork-glass-halo's reach (1px spread + 2px blur); grow it
+   with the halo, or the end chips clip again. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-fork-composer-context-row]
   [data-slot="composer-context-strip"] {
-  overflow-clip-margin: 4px;
+  margin-inline: -4px;
+  padding-inline: 4px;
 }
 
 /* The popups the chips open and the composer's model, effort and mode

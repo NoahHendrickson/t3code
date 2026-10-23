@@ -119,6 +119,22 @@ describe("fork guard: glass surfaces", () => {
     }
   });
 
+  it("moves the context strip's clip edge out past the end chips' halos", () => {
+    // overflow-clip-margin is ignored on a strip that clips only on x, so the
+    // clearance has to be padding. The margin must cancel it exactly or the
+    // chips shift off the row's edges.
+    const strip = ruleBodyFor(rules, [
+      `${MARKER}.dark${PALETTE}`,
+      "[data-fork-composer-context-row]",
+      '[data-slot="composer-context-strip"]',
+    ]);
+    const padding = /padding-inline:\s*(\d+)px/u.exec(strip)?.[1];
+    expect(padding).toBeDefined();
+    expect(Number(padding)).toBeGreaterThanOrEqual(3);
+    expect(strip).toMatch(new RegExp(`margin-inline:\\s*-${padding}px`, "u"));
+    expect(strip).not.toContain("overflow-clip-margin");
+  });
+
   it("matches the markup its selectors lean on", () => {
     // The two row shapes Glass rounds further.
     const rowPolicy = readSibling("../custom/sidebarV2RowPolicy.ts");

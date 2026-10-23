@@ -762,9 +762,10 @@ describe("fork guard: fork-composer-shell", () => {
         rule.selector.includes('[data-slot="composer-context-strip"]') &&
         !/>\s*(?:\.flex|\*)/u.test(rule.selector),
     );
-    // The CSS belt is the single owner of the flattened strip geometry —
-    // upstream's className (negative margin, inset widths, clearance padding)
-    // ships untouched and every reset happens here.
+    // The CSS belt owns the flattened strip geometry — upstream's className
+    // (negative margin, inset widths, clearance padding) ships untouched and
+    // every reset happens here. Glass alone re-pads the inline edges to clear
+    // its chip halo, with a cancelling margin (forkGlassSurfaces pins it).
     expect(strip?.body).toMatch(/margin:\s*0/u);
     expect(strip?.body).toMatch(/padding:\s*0/u);
     expect(strip?.body).toMatch(/width:\s*auto/u);
