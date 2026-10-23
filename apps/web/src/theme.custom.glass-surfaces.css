@@ -570,7 +570,8 @@
 /* Glass rounds every thread row further than the other palettes, so the
    glint has a curve to fade round. Every row rather than only the current
    one, or a hovered row would change shape as it was opened. The classes
-   are custom/sidebarV2RowPolicy.ts's two row shapes. */
+   are custom/sidebarV2RowPolicy.ts's row shapes; the compact card's pill is
+   already as round as it gets. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   :is([data-thread-item] > .rounded-md, [data-fork-chrome-row]) {
@@ -615,6 +616,12 @@
   [data-sidebar-version="v2"]
   [data-thread-item]:has(> .rounded-\[16px\][aria-current="page"])::before {
   border-radius: 21px;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"]
+  [data-thread-item]:has(> .rounded-full[aria-current="page"])::before {
+  border-radius: 9999px;
 }
 
 /* An active top row lets its dark edge out, and on an opaque client takes
