@@ -48,8 +48,7 @@ import * as Schema from "effect/Schema";
 import * as Electron from "electron";
 
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
-import { isForkGlassActive } from "./ForkGlassState.ts";
-import { forkSenderWindow } from "./ForkSidebarVibrancy.ts";
+import { forkSenderWindow, isForkGlassActive } from "./ForkGlassState.ts";
 
 const FORK_GLASS_FLOOR_COLOR_CHANNEL = "fork:glass-floor-color";
 const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";

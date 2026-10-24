@@ -4311,8 +4311,8 @@
     - apps/desktop/src/preload.ts
     - apps/desktop/src/ipc/DesktopIpcHandlers.ts
     - apps/desktop/src/electron/ElectronWindow.ts
-    # forkSenderWindow, shared with the vibrancy call.
-    - apps/desktop/src/fork/ForkSidebarVibrancy.ts
+    # forkSenderWindow and the per-window glass state, shared with the vibrancy call.
+    - apps/desktop/src/fork/ForkGlassState.ts
   verify:
     - apps/web/src/__fork_guards__/forkGlassFloorColor.test.ts
 

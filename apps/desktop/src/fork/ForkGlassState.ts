@@ -9,9 +9,17 @@
  * it is on — the window goes opaque and no marker updates.
  *
  * Deliberately its own module rather than a field on either side: both of those
- * files need to read it, and importing one from the other closes a cycle.
+ * files need to read it, and importing one from the other closes a cycle. The
+ * floor-colour IPC reads it too, and resolves its window the same way the
+ * vibrancy call does, so the sender resolver lives here as well.
  */
-import type * as Electron from "electron";
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+
+import * as Electron from "electron";
+
+import * as ElectronWindow from "../electron/ElectronWindow.ts";
+import type * as DesktopIpc from "../ipc/DesktopIpc.ts";
 
 /**
  * The material the window is built with and switched to at runtime. It lives
@@ -50,3 +58,22 @@ export function setForkGlassActive(window: Electron.BrowserWindow, next: boolean
   if (next) glassWindows.add(window);
   else glassWindows.delete(window);
 }
+
+/**
+ * The window a fork IPC call came from. Each Glass window (the main window and
+ * the side chat) paints and samples its own material, so the fork's
+ * per-window IPCs act on the sender. A sender that no longer resolves — its
+ * contents torn down mid-request, or a guest view — is no window at all, never
+ * another one. Only a call with no event, made outside Electron's IPC, means
+ * the main window.
+ */
+export const forkSenderWindow = Effect.fn("desktop.fork.senderWindow")(function* (
+  event: DesktopIpc.DesktopIpcInvokeEvent | undefined,
+) {
+  if (event === undefined) {
+    const electronWindow = yield* ElectronWindow.ElectronWindow;
+    return Option.getOrNull(yield* electronWindow.main);
+  }
+  const contents = Electron.webContents.fromId(event.sender.id);
+  return contents === undefined ? null : Electron.BrowserWindow.fromWebContents(contents);
+});

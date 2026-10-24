@@ -132,4 +132,42 @@ describe("fork guard: fork-glass-floor-color", () => {
       delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
     }
   });
+
+  it("samples the whole side chat, and the sidebar strip everywhere else", async () => {
+    const widths: number[] = [];
+    (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge = {
+      glassFloorColor: {
+        read: async (sidebarWidth: number) => {
+          widths.push(sidebarWidth);
+          return null;
+        },
+        onChange: () => () => undefined,
+      },
+    };
+    const globals = globalThis as { document?: unknown; window?: unknown };
+    const saved = { document: globals.document, window: globals.window };
+    const dataset: Record<string, string> = {};
+    globals.document = {
+      documentElement: { dataset },
+      querySelector: () => null,
+    };
+    globals.window = { innerWidth: 431.6 };
+    const root = {
+      style: { setProperty: () => {}, removeProperty: () => {} },
+    } as unknown as HTMLElement;
+    try {
+      // The side chat has no sidebar; its glass is the whole window.
+      dataset.forkSideChat = "true";
+      await syncForkGlassFloorColor(true, root);
+      // The main window before its sidebar mounts keeps the default strip,
+      // not the whole window, or the estimate would follow the wrong width.
+      delete dataset.forkSideChat;
+      await syncForkGlassFloorColor(true, root);
+      expect(widths).toEqual([432, 256]);
+    } finally {
+      globals.document = saved.document;
+      globals.window = saved.window;
+      delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
+    }
+  });
 });

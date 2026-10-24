@@ -16,14 +16,12 @@
  */
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
 import * as Electron from "electron";
 
-import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopIpc from "../ipc/DesktopIpc.ts";
-import { FORK_VIBRANCY_MATERIAL, setForkGlassActive } from "./ForkGlassState.ts";
+import { FORK_VIBRANCY_MATERIAL, forkSenderWindow, setForkGlassActive } from "./ForkGlassState.ts";
 
 const FORK_SET_SIDEBAR_VIBRANCY_CHANNEL = "fork:set-sidebar-vibrancy";
 
@@ -47,25 +45,6 @@ function opaqueWindowBackground(): string {
   return Electron.nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff";
 }
 
-/**
- * The window a fork IPC call came from. Each Glass window (the main window and
- * the side chat) paints and samples its own material, so the fork's
- * per-window IPCs act on the sender. A sender that no longer resolves — its
- * contents torn down mid-request, or a guest view — is no window at all, never
- * another one. Only a call with no event, made outside Electron's IPC, means
- * the main window.
- */
-export const forkSenderWindow = Effect.fn("desktop.fork.senderWindow")(function* (
-  event: DesktopIpc.DesktopIpcInvokeEvent | undefined,
-) {
-  if (event === undefined) {
-    const electronWindow = yield* ElectronWindow.ElectronWindow;
-    return Option.getOrNull(yield* electronWindow.main);
-  }
-  const contents = Electron.webContents.fromId(event.sender.id);
-  return contents === undefined ? null : Electron.BrowserWindow.fromWebContents(contents);
-});
-
 export const ForkSidebarVibrancyRequest = Schema.Struct({
   enabled: Schema.Boolean,
 });
@@ -88,7 +67,8 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
     // without an opaque background render see-through, and restoring would
     // repaint them with the app's fill instead of their own.
     const target = yield* forkSenderWindow(event);
-    if (target !== null && !target.isDestroyed()) {
+    const painted = target !== null && !target.isDestroyed();
+    if (painted) {
       // Set before painting, so an appearance sync racing this call sees the
       // new owner and does not repaint the fill out from under the material.
       setForkGlassActive(target, enabled);
@@ -96,12 +76,15 @@ export const setForkSidebarVibrancy = DesktopIpc.makeIpcMethod({
       target.setBackgroundColor(enabled ? TRANSPARENT_BACKGROUND : opaqueWindowBackground());
     }
 
+    // The renderer stamps its Glass marker from this answer, so a window that
+    // was never painted must not report glass on.
+    const applied = enabled && painted;
     yield* Effect.logDebug("fork sidebar vibrancy applied", {
       requested: request.enabled,
-      applied: enabled,
+      applied,
       platform,
     });
 
-    return enabled;
+    return applied;
   }),
 });
