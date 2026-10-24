@@ -3,24 +3,14 @@ import "../../index.css";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vite-plus/test";
-import { commands, page, userEvent } from "vite-plus/test/browser";
+import { page, userEvent } from "vite-plus/test/browser";
 
 import { ComposerBannerStack } from "./ComposerBannerStack";
-
-declare module "vite-plus/test/browser" {
-  interface BrowserCommands {
-    /** Defined in vite.config.ts. Moves Playwright's mouse off the page. */
-    resetPointer: () => Promise<void>;
-  }
-}
 
 let root: Root;
 let container: HTMLDivElement;
 
-beforeEach(async () => {
-  // The stack expands on pointerenter, and a pointer left over it by an earlier test or
-  // file would expand it as it mounts.
-  await commands.resetPointer();
+beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   container = document.createElement("div");
   document.body.append(container);
