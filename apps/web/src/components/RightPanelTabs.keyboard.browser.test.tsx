@@ -1,12 +1,20 @@
 import { act, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { commands } from "vite-plus/test/browser";
 import {
   compileResolvedKeybindingsConfig,
   DEFAULT_RESOLVED_KEYBINDINGS,
 } from "@t3tools/shared/keybindings";
 
 import { RightPanelTabs } from "./RightPanelTabs";
+
+declare module "vite-plus/test/browser" {
+  interface BrowserCommands {
+    /** Defined in vite.config.ts. Moves Playwright's mouse off the page. */
+    resetPointer: () => Promise<void>;
+  }
+}
 
 vi.mock("~/hooks/useTheme", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
 vi.mock("~/browser/browserDefaults", () => ({ useBrowserDefaults: () => ({ profiles: [] }) }));
@@ -16,7 +24,11 @@ let container: HTMLDivElement;
 const addFiles = vi.fn();
 const noop = () => undefined;
 
-beforeEach(() => {
+beforeEach(async () => {
+  // A pointer left on the page by an earlier test or file hovers whichever menu item mounts
+  // under it, which moves focus onto that item. Base UI then does not hand focus back to the
+  // trigger when Escape closes the menu.
+  await commands.resetPointer();
   vi.useFakeTimers();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal(
@@ -203,13 +215,9 @@ describe("right panel new-tab shortcut", () => {
     expect(document.querySelector('[role="menu"]')).not.toBeNull();
     await press("Escape");
     expect(document.querySelector('[role="menu"]:not([data-closed])')).toBeNull();
-    // The menu hands focus back to its trigger once its close finishes, a few frames later.
-    // Timers are fake here, so advance them instead of polling in real time.
-    const trigger = container.querySelector('[aria-label="Add panel surface"]');
-    for (let frame = 0; frame < 10 && document.activeElement !== trigger; frame++) {
-      await act(() => vi.advanceTimersToNextFrame());
-    }
-    expect(document.activeElement).toBe(trigger);
+    expect(document.activeElement).toBe(
+      container.querySelector('[aria-label="Add panel surface"]'),
+    );
     input.remove();
   });
 
