@@ -310,6 +310,7 @@ import { triggerModelName } from "~/custom/modelPickerDisplayName";
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
+  threadRowShape,
   threadRowSurfaceClassName,
 } from "~/custom/sidebarV2RowPolicy";
 /* fork:end sidebar-v2-card-rows */
@@ -1429,9 +1430,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       recedes: variant === "card" ? cardRecedes : shouldRecede,
       /* fork:end sidebar-v2-card-rows */
       /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
-      // The two-line card takes the component set's 16px corner; a compact card
-      // is one line like a slim shelf row, so it takes the row's 8px.
-      shape: variant === "card" && props.compact !== true ? "card" : "line",
+      shape: threadRowShape({ variant, compact: props.compact === true }),
       /* fork:end sidebar-v2-compact-cards */
     }),
     // Upstream #13344: keyboard focus draws the same inset ring on every row.

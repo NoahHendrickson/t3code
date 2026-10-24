@@ -37,9 +37,15 @@ function readBridge(): ForkGlassFloorBridge | null {
     : null;
 }
 
-/** The sidebar's on-screen width, for the strip the shell samples. */
+/** The width of the strip the shell samples: the sidebar's, on screen. */
 function readSidebarWidth(): number {
   if (typeof document === "undefined") return 256;
+  // The side chat (fork-side-chat) has no sidebar: its glass is the whole
+  // window, so the strip is too. Keyed off the surface stamp rather than a
+  // missing container, which the main window also has before its sidebar mounts.
+  if (document.documentElement.dataset.forkSideChat === "true") {
+    return Math.max(1, Math.round(window.innerWidth));
+  }
   const container = document.querySelector<HTMLElement>('[data-slot="sidebar-container"]');
   const width = container?.getBoundingClientRect().width ?? 0;
   return width > 0 ? Math.round(width) : 256;

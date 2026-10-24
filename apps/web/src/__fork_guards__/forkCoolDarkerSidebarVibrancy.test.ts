@@ -41,6 +41,7 @@ const customizations = readSibling("../../../../.fork/customizations.yaml");
 const desktopHandlers = readSibling("../../../desktop/src/ipc/DesktopIpcHandlers.ts");
 const desktopPreload = readSibling("../../../desktop/src/preload.ts");
 const desktopMethod = readSibling("../../../desktop/src/fork/ForkSidebarVibrancy.ts");
+const glassState = readSibling("../../../desktop/src/fork/ForkGlassState.ts");
 
 /** Every glass rule in the theme, by the marker the renderer stamps. */
 const glassRules = themeRules.filter((rule) =>
@@ -572,14 +573,25 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     expect(new Set(channels).size, `the floating panel must be neutral, got ${fill}`).toBe(1);
   });
 
-  it("applies the material to the main window only", () => {
+  it("applies the material to the asking window only", () => {
     // syncAllAppearance walks every BrowserWindow, which includes the PiP
     // preview window (its own fill, no fork CSS) and the WSL splash. Handing
     // those the material makes a previewed page without an opaque background
     // render see-through, and restoring repaints them with the app's fill.
     expect(desktopMethod).not.toContain("electronWindow.syncAllAppearance");
-    expect(desktopMethod).toContain("electronWindow.main");
-    expect(desktopMethod).toContain("isDestroyed()");
+    expect(desktopMethod).toContain("const target = yield* forkSenderWindow(event);");
+    expect(desktopMethod).toContain("const painted = target !== null && !target.isDestroyed();");
+    // An unpainted window answers false, or the renderer would stamp its Glass
+    // marker over an opaque fill.
+    expect(desktopMethod).toContain("const applied = enabled && painted;");
+    // A sender that does not resolve paints nothing. Main is only the answer
+    // when there is no IPC event at all, never a fallback for a lost sender,
+    // or a torn-down side chat would repaint the main window.
+    expect(desktopMethod).not.toContain("electronWindow.main");
+    expect(glassState.match(/electronWindow\.main/gu)).toHaveLength(1);
+    expect(glassState).toMatch(
+      /if \(event === undefined\) \{[^}]*electronWindow\.main[^}]*\}\s*const contents = Electron\.webContents\.fromId\(event\.sender\.id\);\s*return contents === undefined \? null : Electron\.BrowserWindow\.fromWebContents\(contents\);/u,
+    );
 
     // The PiP window really does carry its own fill, so this is not theoretical.
     const previewManager = readSibling("../../../desktop/src/preview/Manager.ts");
@@ -872,15 +884,18 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
     // OS appearance change repaints the window opaque under a DOM that still
     // says glass is on — it dies with no marker update.
     const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
-    expect(desktopWindow).toContain("isForkGlassActive()");
+    // Per window: the main window and the side chat each own their fill while
+    // their own glass is on, so neither one's state gates the other's repaint.
     expect(desktopWindow).toMatch(
-      /if \(!isForkGlassActive\(\)\) \{[\s\S]{0,160}setBackgroundColor\(getInitialWindowBackgroundColor/u,
+      /if \(!isForkGlassActive\(window\)\) \{[\s\S]{0,160}setBackgroundColor\(getInitialWindowBackgroundColor/u,
     );
-    // The flag lives apart from both writers; importing either from the other
-    // closes a cycle.
-    const glassState = readSibling("../../../desktop/src/fork/ForkGlassState.ts");
-    expect(glassState).toContain("export function isForkGlassActive");
-    expect(desktopMethod).toContain("setForkGlassActive(enabled)");
+    // The state lives apart from both writers; importing either from the
+    // other closes a cycle.
+    expect(glassState).toContain("new WeakSet<Electron.BrowserWindow>()");
+    expect(glassState).toContain(
+      "export function isForkGlassActive(window: Electron.BrowserWindow)",
+    );
+    expect(desktopMethod).toContain("setForkGlassActive(target, enabled);");
   });
 
   it("keeps the desktop method fork-owned and off the upstream contract", () => {
@@ -898,7 +913,7 @@ describe("fork guard: fork-cool-darker-sidebar-vibrancy", () => {
 
     // macOS-only, and the renderer is told what actually happened.
     expect(desktopMethod).toContain('platform === "darwin"');
-    expect(desktopMethod).toContain("return enabled;");
+    expect(desktopMethod).toContain("return applied;");
 
     // forkTheme drives it outside the synchronous chrome repaint, and owns the
     // palette decision so the helper imports nothing back — the cycle that

@@ -27,11 +27,28 @@
 /* The card's inset from the chat view, read by the card, the draft's
    picture and its frost copies (theme.custom.glass.css) and the popup
    cutout (custom/forkGlassPopupCutout.ts). The left reads its own token,
-   which a docked sidebar overrides (below). At the root, outside the
+   which a docked sidebar overrides (below). The radius is shared by the
+   card and the picture that paints over it. At the root, outside the
    picture's switch, so it holds with the picture off. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
   --fork-glass-card-inset: 8px;
   --fork-glass-card-inset-left: var(--fork-glass-card-inset);
+  --fork-glass-card-radius: 12px;
+}
+
+/* The desktop side chat (fork-side-chat) is already a surface on the
+   desktop, with no sidebar beside it to frame a card. The card fills the
+   window instead, so it is one pane of glass rather than a pane set inside
+   another. Its fill stays, for the transcript's reading value; the corners
+   and the rim go, as the window draws its own edge. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"] {
+  --fork-glass-card-inset: 0px;
+  --fork-glass-card-radius: 0px;
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"]
+  :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
+  box-shadow: none;
 }
 
 /* The card's containing block and stacking context: its z-index -1 only lands
@@ -64,7 +81,7 @@
   inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
     var(--fork-glass-card-inset-left);
   z-index: -1;
-  border-radius: 12px;
+  border-radius: var(--fork-glass-card-radius);
   pointer-events: none;
   /* The light on the pane, layered over every fill. A broad glow down from
      the top edge and up from the foot, as a gradient rather than an inset
@@ -205,7 +222,9 @@
    window-controls overlay, which sets its own. */
 :root[data-fork="noahhendrickson-t3code"]:not(.wco).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away] {
-  --workspace-controls-right: calc(env(safe-area-inset-right) + 24px);
+  --workspace-controls-right: calc(
+    env(safe-area-inset-right) + var(--fork-glass-card-inset) + 16px
+  );
 }
 
 /* And off the card's sides: upstream's 20px put the title 8px from the

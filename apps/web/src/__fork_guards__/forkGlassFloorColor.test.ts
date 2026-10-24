@@ -74,8 +74,14 @@ describe("fork guard: fork-glass-floor-color", () => {
     expect(desktopMethod).toContain(
       "const scale = Math.min(thumbnail.width / display.width, thumbnail.height / display.height);",
     );
-    // No sampling while glass is off, and no repeated full-size decode.
-    expect(desktopMethod).toContain("if (!isForkGlassActive()) return;");
+    // No sampling while this window's glass is off, and no repeated
+    // full-size decode.
+    expect(desktopMethod).toContain("if (!isForkGlassActive(window)) return;");
+    // The window that asks is the one sampled and followed: the side chat
+    // under the main window's strip would take the wrong hue, and following
+    // main with the side chat's sidebar width would skew main's too.
+    expect(desktopMethod).toContain("const window = yield* forkSenderWindow(event);");
+    expect(desktopMethod).not.toContain("electronWindow.main");
     expect(desktopMethod).toContain("thumbnailCache?.key === key");
     // The import sits in its own fence, not the vibrancy customization's.
     expect(desktopHandlers).toMatch(
@@ -123,6 +129,44 @@ describe("fork guard: fork-glass-floor-color", () => {
       listeners[0]?.({ r: 9, g: 9, b: 9 });
       expect(style.has(FORK_GLASS_FLOOR_TOKEN)).toBe(false);
     } finally {
+      delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
+    }
+  });
+
+  it("samples the whole side chat, and the sidebar strip everywhere else", async () => {
+    const widths: number[] = [];
+    (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge = {
+      glassFloorColor: {
+        read: async (sidebarWidth: number) => {
+          widths.push(sidebarWidth);
+          return null;
+        },
+        onChange: () => () => undefined,
+      },
+    };
+    const globals = globalThis as { document?: unknown; window?: unknown };
+    const saved = { document: globals.document, window: globals.window };
+    const dataset: Record<string, string> = {};
+    globals.document = {
+      documentElement: { dataset },
+      querySelector: () => null,
+    };
+    globals.window = { innerWidth: 431.6 };
+    const root = {
+      style: { setProperty: () => {}, removeProperty: () => {} },
+    } as unknown as HTMLElement;
+    try {
+      // The side chat has no sidebar; its glass is the whole window.
+      dataset.forkSideChat = "true";
+      await syncForkGlassFloorColor(true, root);
+      // The main window before its sidebar mounts keeps the default strip,
+      // not the whole window, or the estimate would follow the wrong width.
+      delete dataset.forkSideChat;
+      await syncForkGlassFloorColor(true, root);
+      expect(widths).toEqual([432, 256]);
+    } finally {
+      globals.document = saved.document;
+      globals.window = saved.window;
       delete (globalThis as { forkDesktopBridge?: unknown }).forkDesktopBridge;
     }
   });

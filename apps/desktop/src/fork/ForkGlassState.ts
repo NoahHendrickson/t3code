@@ -1,16 +1,25 @@
 /**
- * Fork glass ownership flag — see
+ * Fork glass ownership — see
  * `.fork/customizations.yaml#fork-cool-darker-sidebar-vibrancy`.
  *
  * Two places write `BrowserWindow.setBackgroundColor`: this fork's vibrancy
  * handler and `syncWindowAppearance` in `window/DesktopWindow.ts`, which repaints
- * the opaque theme fill whenever the OS appearance changes. Without a shared
- * flag the second one silently kills the glass while the renderer still believes
+ * the opaque theme fill whenever the OS appearance changes. Without shared
+ * state the second one silently kills the glass while the renderer still believes
  * it is on — the window goes opaque and no marker updates.
  *
  * Deliberately its own module rather than a field on either side: both of those
- * files need to read it, and importing one from the other closes a cycle.
+ * files need to read it, and importing one from the other closes a cycle. The
+ * floor-colour IPC reads it too, and resolves its window the same way the
+ * vibrancy call does, so the sender resolver lives here as well.
  */
+import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
+
+import * as Electron from "electron";
+
+import * as ElectronWindow from "../electron/ElectronWindow.ts";
+import type * as DesktopIpc from "../ipc/DesktopIpc.ts";
 
 /**
  * The material the window is built with and switched to at runtime. It lives
@@ -32,14 +41,39 @@
  */
 export const FORK_VIBRANCY_MATERIAL = "fullscreen-ui" as const;
 
-let active = false;
+/**
+ * Windows currently painted with the vibrancy material. Per window, because
+ * the main window and the side chat (fork-side-chat) each run their own
+ * palette sync and each own their fill while their glass is on.
+ */
+const glassWindows = new WeakSet<Electron.BrowserWindow>();
 
-/** True while a window is currently painted with the vibrancy material. */
-export function isForkGlassActive(): boolean {
-  return active;
+/** True while this window is painted with the vibrancy material. */
+export function isForkGlassActive(window: Electron.BrowserWindow): boolean {
+  return glassWindows.has(window);
 }
 
 /** Only `ForkSidebarVibrancy` should call this — it owns the material. */
-export function setForkGlassActive(next: boolean): void {
-  active = next;
+export function setForkGlassActive(window: Electron.BrowserWindow, next: boolean): void {
+  if (next) glassWindows.add(window);
+  else glassWindows.delete(window);
 }
+
+/**
+ * The window a fork IPC call came from. Each Glass window (the main window and
+ * the side chat) paints and samples its own material, so the fork's
+ * per-window IPCs act on the sender. A sender that no longer resolves — its
+ * contents torn down mid-request, or a guest view — is no window at all, never
+ * another one. Only a call with no event, made outside Electron's IPC, means
+ * the main window.
+ */
+export const forkSenderWindow = Effect.fn("desktop.fork.senderWindow")(function* (
+  event: DesktopIpc.DesktopIpcInvokeEvent | undefined,
+) {
+  if (event === undefined) {
+    const electronWindow = yield* ElectronWindow.ElectronWindow;
+    return Option.getOrNull(yield* electronWindow.main);
+  }
+  const contents = Electron.webContents.fromId(event.sender.id);
+  return contents === undefined ? null : Electron.BrowserWindow.fromWebContents(contents);
+});

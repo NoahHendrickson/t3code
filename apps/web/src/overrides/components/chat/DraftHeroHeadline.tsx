@@ -9,14 +9,16 @@
  * context row (custom/DraftProjectPill, ahead of the workspace and branch
  * chips — ChatView mounts it there), so the headline is just the sentence.
  * A draft already on the no-project home reads upstream's "What should we
- * work on?". This file keeps upstream's prop surface and the `h1`, so
- * ChatView's call site and the mobile view-transition wrapper around it are
- * untouched.
+ * work on?", except in the desktop side chat (fork-side-chat), which is for
+ * quick questions and asks "Got a question?". This file keeps upstream's prop
+ * surface and the `h1`, so ChatView's call site and the mobile
+ * view-transition wrapper around it are untouched.
  */
 import type { DraftId } from "~/composerDraftStore";
 import type { ScopedProjectRef } from "@t3tools/contracts";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 
+import { isSideChatSurface } from "~/custom/sideChat/surface";
 import { useScratchProject } from "~/hooks/useScratchProject";
 import { useProjects } from "~/state/entities";
 
@@ -47,7 +49,9 @@ export function DraftHeroHeadline({
   return (
     <h1 className="w-full text-center font-normal text-2xl text-foreground tracking-tight sm:text-3xl">
       {isScratchDraft
-        ? "What should we work on?"
+        ? isSideChatSurface
+          ? "Got a question?"
+          : "What should we work on?"
         : hasResolvedProject
           ? "What should we build?"
           : "Choose a project to start"}

@@ -148,9 +148,7 @@
   inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
     var(--fork-glass-card-inset-left);
   z-index: -1;
-  /* The stage card's radius (theme.custom.glass-stage.css), which this
-     picture paints over. */
-  border-radius: 12px;
+  border-radius: var(--fork-glass-card-radius);
   pointer-events: none;
   background:
     var(--fork-glass-card-scrim),

@@ -285,7 +285,7 @@ function syncWindowAppearance(
     // renderer, so the palette keeps claiming glass over a solid window. The
     // fork handler owns the fill for as long as it owns the material, and
     // restores this colour itself when the glass goes off.
-    if (!isForkGlassActive()) {
+    if (!isForkGlassActive(window)) {
       window.setBackgroundColor(getInitialWindowBackgroundColor(shouldUseDarkColors));
     }
     /* fork:end fork-cool-darker-sidebar-vibrancy */

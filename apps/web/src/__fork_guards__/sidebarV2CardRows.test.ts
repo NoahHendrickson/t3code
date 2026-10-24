@@ -30,6 +30,7 @@ import {
 import {
   threadCardTitleClassName,
   threadCardTitleRecedes,
+  threadRowShape,
   threadRowSurfaceClassName,
 } from "../custom/sidebarV2RowPolicy";
 import { SidebarV2ThreadCardMeta } from "../custom/SidebarV2ThreadCardMeta";
@@ -284,14 +285,21 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.metaLine).toBe(16);
   });
 
-  it("gives a card 16px corners and a one-line row 8px", () => {
+  it("gives a card 16px corners, a shelf row 8px and a compact card a pill", () => {
     // --radius is 10px, so neither is a rounded-* token: the card's is the
-    // component set's literal (364:17299) and the one-line rows keep --radius-md.
-    const at = (shape: "card" | "line") =>
-      threadRowSurfaceClassName({ isActive: false, isSelected: false, recedes: false, shape });
-    expect(at("card")).toContain("rounded-[16px]");
-    expect(at("line")).toContain("rounded-md");
-    expect(at("line")).not.toContain("rounded-[16px]");
+    // component set's literal (364:17299) and slim shelf rows keep --radius-md.
+    const at = (variant: "card" | "slim", compact: boolean) =>
+      threadRowSurfaceClassName({
+        isActive: false,
+        isSelected: false,
+        recedes: false,
+        shape: threadRowShape({ variant, compact }),
+      });
+    expect(at("card", false)).toContain("rounded-[16px]");
+    expect(at("slim", false)).toContain("rounded-md");
+    expect(at("slim", true)).toContain("rounded-md");
+    expect(at("slim", false)).not.toContain("rounded-[16px]");
+    expect(at("card", true)).toContain("rounded-full");
   });
 
   it("lifts receded titles via a dedicated token, not the shared muted channel", () => {

@@ -84,20 +84,36 @@ export function threadCardTitleRecedes(input: {
  * Corners are a literal, not a radius step: the component set draws a card at
  * 16px (Figma 364:17299, "thread card v3") and `--radius` is 10px here, so no
  * `rounded-*` token lands on it — `rounded-xl` is 14 and `rounded-2xl` 20.
- * One-line rows (slim shelf rows and compact cards) keep `rounded-md`; a 16px
- * corner on a row that dense reads as a pill rather than as a card. */
+ * Slim shelf rows keep `rounded-md`. A compact card is a pill: fully round,
+ * so one line in the card list reads as a card folded down rather than as a
+ * shelf row. */
+const THREAD_ROW_RADIUS = {
+  card: "rounded-[16px]",
+  compactCard: "rounded-full",
+  shelfRow: "rounded-md",
+} as const;
+
+export type ThreadRowShape = keyof typeof THREAD_ROW_RADIUS;
+
+export function threadRowShape(input: {
+  readonly variant: "card" | "slim";
+  readonly compact: boolean;
+}): ThreadRowShape {
+  if (input.variant === "slim") return "shelfRow";
+  return input.compact ? "compactCard" : "card";
+}
+
 export function threadRowSurfaceClassName(input: {
   readonly isActive: boolean;
   readonly isSelected: boolean;
   /** The variant's own recede rule — the card policy for cards, upstream's
       slim-shelf rule for shelves. See the note at the top of this file. */
   readonly recedes: boolean;
-  /** The two-line card, or a one-line row: a slim shelf row or a compact card. */
-  readonly shape: "card" | "line";
+  readonly shape: ThreadRowShape;
 }): string {
   return cn(
     "group/v2-row relative w-full cursor-pointer overflow-hidden text-left outline-none select-none",
-    input.shape === "card" ? "rounded-[16px]" : "rounded-md",
+    THREAD_ROW_RADIUS[input.shape],
     input.isActive
       ? "bg-sidebar-row-active text-sidebar-foreground"
       : input.isSelected
