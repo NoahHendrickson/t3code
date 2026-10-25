@@ -2072,10 +2072,9 @@
    and columns 0–3 are stored: the curve repeats every π, and columns 4–6 play
    2/1/0 in reverse (see `helixColumnProfile`).
 
-   GENERATED, do not hand-edit: `__fork_guards__/sidebarV2Helix.test.ts`
-   re-derives every stop from `helixAlpha` and fails if this table drifts. The
-   stops are the curve sampled every 0.25%, thinned wherever linear
-   interpolation stays within 0.01 opacity. */
+   GENERATED, do not hand-edit: the generator lives in
+   `__fork_guards__/sidebarV2Helix.test.ts`, which rebuilds these blocks from
+   `helixAlpha` and fails, printing the expected CSS, if they drift. */
 @keyframes sidebar-v2-helix-0 {
   0% {
     opacity: 0;

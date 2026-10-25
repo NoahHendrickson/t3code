@@ -320,24 +320,22 @@ function SidebarV2WorkingHelix({ seed }: { seed: string }) {
             cell.animationClass,
             "motion-reduce:animate-none",
           )}
-          style={
-            {
-              // Reduce Motion gets the chip's still frame (t = 0.6), taken at
-              // this row's own offset so frozen rows differ from each other.
-              opacity: helixAlpha(
-                cell.column,
-                (0.6 + offset) * HELIX_SPEED - cell.row * HELIX_ROW_LAG,
-              ),
-              animationDuration: `${HELIX_LOOP.toFixed(4)}s`,
-              animationDirection: cell.reverse ? "reverse" : undefined,
-              // Wrapped to (-loop, 0]: a positive delay would show the
-              // still-frame opacity until the animation started.
-              animationDelay: `${(
-                ((((cell.lagSeconds - offset) % HELIX_LOOP) + HELIX_LOOP) % HELIX_LOOP) -
-                HELIX_LOOP
-              ).toFixed(4)}s`,
-            } as CSSProperties
-          }
+          style={{
+            // Reduce Motion gets the chip's still frame (t = 0.6), taken at
+            // this row's own offset so frozen rows differ from each other.
+            opacity: helixAlpha(
+              cell.column,
+              (0.6 + offset) * HELIX_SPEED - cell.row * HELIX_ROW_LAG,
+            ),
+            animationDuration: `${HELIX_LOOP.toFixed(4)}s`,
+            animationDirection: cell.reverse ? "reverse" : undefined,
+            // Wrapped to (-loop, 0]: a positive delay would show the
+            // still-frame opacity until the animation started.
+            animationDelay: `${(
+              ((((cell.lagSeconds - offset) % HELIX_LOOP) + HELIX_LOOP) % HELIX_LOOP) -
+              HELIX_LOOP
+            ).toFixed(4)}s`,
+          }}
         />
       ))}
     </svg>

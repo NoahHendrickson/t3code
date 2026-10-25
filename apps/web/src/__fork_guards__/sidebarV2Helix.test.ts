@@ -2,10 +2,11 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-working-mark`.
  *
- * The helix keyframes are a generated table like the rain's, so this re-derives
- * every stop from `helixAlpha` and fails if the committed CSS drifts. It also
- * pins the Appearance row that switches between the two marks, since a sync
- * that takes upstream's SettingsPanels compiles clean without it.
+ * The helix keyframes are a generated table, and this file holds the
+ * generator: it rebuilds every block from `helixAlpha` and fails, printing the
+ * expected CSS, if the committed table drifts. It also pins the Appearance row
+ * that switches between the two marks, since a sync that takes upstream's
+ * SettingsPanels compiles clean without it.
  */
 
 import * as NodeFS from "node:fs";
@@ -26,7 +27,6 @@ function read(relativePath: string): string {
 
 const COLUMNS = 7;
 const PROFILES = 4;
-const ROUNDING_TOLERANCE = 5e-4;
 
 interface Stop {
   readonly percent: number;
@@ -62,6 +62,48 @@ function interpolate(stops: Stop[], percent: number): number {
   return stops.at(-1)?.opacity ?? 0;
 }
 
+/** The generator for the committed table: sample the curve every 0.25%, round
+    to three decimals, then keep only the stops linear interpolation needs to
+    stay within 0.01 opacity (Douglas–Peucker). Changing the helix means
+    changing `helixAlpha`, running this file, and pasting the blocks it prints. */
+function generateKeyframes(profile: number): string {
+  const step = 0.25;
+  const tolerance = 0.01;
+  const points = Array.from({ length: 100 / step + 1 }, (_, index) => ({
+    percent: index * step,
+    opacity: Math.round(curve(profile, index * step) * 1000) / 1000,
+  }));
+  const keep = new Set([0, points.length - 1]);
+  const thin = (from: number, to: number): void => {
+    const start = points[from];
+    const end = points[to];
+    if (start === undefined || end === undefined) return;
+    let worst = -1;
+    let error = tolerance;
+    for (let index = from + 1; index < to; index++) {
+      const point = points[index];
+      if (point === undefined) continue;
+      const t = (point.percent - start.percent) / (end.percent - start.percent);
+      const distance = Math.abs(start.opacity + (end.opacity - start.opacity) * t - point.opacity);
+      if (distance > error) {
+        error = distance;
+        worst = index;
+      }
+    }
+    if (worst < 0) return;
+    keep.add(worst);
+    thin(from, worst);
+    thin(worst, to);
+  };
+  thin(0, points.length - 1);
+  const stops = [...keep]
+    .toSorted((a, b) => a - b)
+    .map((index) => points[index])
+    .filter((point) => point !== undefined)
+    .map((point) => `  ${point.percent}% {\n    opacity: ${point.opacity};\n  }`);
+  return `@keyframes sidebar-v2-helix-${profile} {\n${stops.join("\n")}\n}`;
+}
+
 describe("fork guard: sidebar-v2 helix keyframes", () => {
   const css = read("src/theme.custom.css");
 
@@ -75,25 +117,12 @@ describe("fork guard: sidebar-v2 helix keyframes", () => {
     expect(css).not.toContain(`@keyframes sidebar-v2-helix-${PROFILES} {`);
   });
 
-  it("re-derives every stop from helixAlpha", () => {
-    const drifted: string[] = [];
-    let samples = 0;
+  it("commits exactly what the generator produces", () => {
     for (let profile = 0; profile < PROFILES; profile++) {
-      const stops = keyframeStops(css, profile);
-      expect(stops[0]?.percent).toBe(0);
-      expect(stops.at(-1)?.percent).toBe(100);
-      for (const stop of stops) {
-        samples++;
-        const expected = curve(profile, stop.percent);
-        if (Math.abs(expected - stop.opacity) > ROUNDING_TOLERANCE) {
-          drifted.push(
-            `helix-${profile} @ ${stop.percent}%: css ${stop.opacity}, curve ${expected}`,
-          );
-        }
-      }
+      expect(css, `sidebar-v2-helix-${profile} drifted; paste the expected block`).toContain(
+        generateKeyframes(profile),
+      );
     }
-    expect(drifted).toEqual([]);
-    expect(samples).toBeGreaterThan(60);
   });
 
   it("draws every column's full twist from the stored half-twist profiles", () => {
