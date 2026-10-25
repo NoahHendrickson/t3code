@@ -538,6 +538,10 @@ interface MessagesTimelineProps {
   topFadeEnabled?: boolean;
   historyControls?: MessagesTimelineHistoryControls | undefined;
   loadEarlier?: CitationHistoryPage | null;
+  /* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */
+  /** False while a cached or remembered timeline stands in for the syncing thread. */
+  forkTimelineSynced?: boolean;
+  /* fork:end fork-transcript-row-motion */
   findPositionReaderRef?: React.RefObject<ThreadFindPositionReader | null>;
   findExpanded?: boolean;
   findQuery?: string;
@@ -631,6 +635,9 @@ const ConversationTimeline = memo(function ConversationTimeline({
   topFadeEnabled = false,
   historyControls,
   loadEarlier = null,
+  /* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */
+  forkTimelineSynced = true,
+  /* fork:end fork-transcript-row-motion */
 }: MessagesTimelineProps) {
   const listIdentityKey = displayThreadKey ?? routeThreadKey;
   // The remembered position is a snapshot taken when the list identity changes;
@@ -880,7 +887,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
   });
   const rows = useStableRows(rawRows, listIdentityKey);
   /* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */
-  const rowMotion = useTimelineRowMotion(rows, listIdentityKey);
+  const rowMotion = useTimelineRowMotion(rows, listIdentityKey, forkTimelineSynced);
   /* fork:end fork-transcript-row-motion */
   // Run status/timestamps churn on every stream event; the shared row context
   // must not change with them or every timeline row re-renders per event.
@@ -1476,7 +1483,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
   const renderItem = ({ item }: { item: MessagesTimelineRow }) => (
     <TimelineRowCtx value={sharedState}>
       {/* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */}
-      <ForkTimelineRowFrame motion={rowMotion} rowId={item.id}>
+      <ForkTimelineRowFrame motion={rowMotion} row={item}>
         {/* fork:end fork-transcript-row-motion */}
         <div
           className="@container/chat-lane chat-content-lane overflow-x-clip"

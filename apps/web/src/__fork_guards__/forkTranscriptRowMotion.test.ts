@@ -2,10 +2,9 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-transcript-row-motion`.
  *
- * The row motion keys off ids it cannot import: the trailing live row ids in
- * MessagesTimeline.logic.ts. A sync that renames them, or takes upstream's
- * renderItem and drops the frame, compiles clean and silently stops the
- * motion — this pins both.
+ * A sync that takes upstream's renderItem, drops the synced prop, or turns on
+ * recycleItems compiles clean and silently breaks the motion — this pins all
+ * three.
  */
 
 import * as NodeFS from "node:fs";
@@ -17,16 +16,27 @@ function readSibling(relativePath: string): string {
 }
 
 const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
-const logic = readSibling("../components/chat/MessagesTimeline.logic.ts");
+const chatView = readSibling("../components/ChatView.tsx");
 
 describe("fork guard: fork-transcript-row-motion", () => {
   it("wraps every timeline row in the motion frame", () => {
-    expect(timeline).toContain("const rowMotion = useTimelineRowMotion(rows, listIdentityKey);");
-    expect(timeline).toContain("<ForkTimelineRowFrame motion={rowMotion} rowId={item.id}>");
+    expect(timeline).toContain(
+      "const rowMotion = useTimelineRowMotion(rows, listIdentityKey, forkTimelineSynced);",
+    );
+    expect(timeline).toContain("<ForkTimelineRowFrame motion={rowMotion} row={item}>");
   });
 
-  it("still names the live rows the slide keys on", () => {
-    expect(logic).toContain('const LIVE_ACTIVITY_ROW_ID = "live-activity-row";');
-    expect(logic).toContain('id: "working-indicator-row"');
+  it("tells the timeline when it shows a stand-in snapshot", () => {
+    expect(chatView).toContain(
+      "forkTimelineSynced={!paintOnlyDisplayedTimeline && threadSyncPhase === null}",
+    );
+  });
+
+  it("keeps the conversation list's containers keyed by row", () => {
+    // The live-line slide watches its own container; with recycleItems on,
+    // LegendList hands that container to other rows.
+    const list = timeline.match(/<LegendList<MessagesTimelineRow>[^]*?\n\s*\/>/u)?.[0];
+    expect(list).toBeDefined();
+    expect(list).not.toContain("recycleItems");
   });
 });
