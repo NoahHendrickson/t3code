@@ -484,11 +484,15 @@
    layer from a variable that stays 0px while that class is absent — a
    zero-height layer contributes nothing.
 
-   The transcript draws no scrollbar. It ran the full column height at the
-   stage's edge, down past where the mask ends the content, so it read as a
-   stray rail beside the composer; the minimap is the transcript's position
-   indicator. ChatCanvas measures the gutter, so the lane padding absorbs the
-   width the scrollbar gave back. */
+   The transcript draws no scrollbar, by request: it ran the full column
+   height at the stage's edge, down past where the mask ends the content, and
+   read as a stray rail beside the composer. That is a real tradeoff, not a
+   handoff — the minimap only appears with two or more user turns on a fine
+   pointer, so a single-prompt run or a touch device has no position indicator
+   or drag target. The mask no longer exempts a scrollbar lane, so hiding the
+   scrollbar is what keeps the cutoff whole; the guard pins both spellings.
+   ChatCanvas measures the gutter, so the lane padding absorbs the width the
+   scrollbar gave back. */
 :root[data-fork="noahhendrickson-t3code"] {
   /* Gap to the pills, then the two halves of the ramp — see the note above on
      why it is split rather than linear. */
@@ -579,8 +583,10 @@
 /* The name must match the variable upstream's own `topbar-scroll-fade`
    utility reads (index.css). An unknown name here does not just lose the top
    fade: it makes the whole mask-size declaration invalid at computed-value
-   time and every layer falls back to `auto`, stretching the top fade over the
-   whole column. The guard reads the name out of index.css so a rename fails CI instead. */
+   time and every layer falls back to `auto`. Both gradients then cover the
+   whole column and, composited with `add`, each fills in where the other is
+   transparent — the cutoff vanishes and the transcript paints straight
+   through the composer. The guard reads the name out of index.css so a rename fails CI instead. */
 :root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff.topbar-scroll-fade {
   --fork-timeline-top-fade: var(--workspace-titlebar-scroll-fade-height);
 }

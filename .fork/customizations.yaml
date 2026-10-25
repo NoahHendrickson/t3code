@@ -3270,6 +3270,8 @@
     unresolved name there invalidates the whole mask-size declaration and the
     transcript paints straight through the composer, so the guard derives the
     name from index.css rather than pinning it.
+    The transcript scroller draws no scrollbar (both spellings); the cutoff
+    mask has no scrollbar-lane exemption, so that is what keeps it whole.
     The docked composer overlay paints an opaque page-colored floor (soft fade
     over its top edge) so timeline rows cannot read through the composer once
     that upstream vessel is gone. The fork vessel paints `--fork-composer-vessel-bg`

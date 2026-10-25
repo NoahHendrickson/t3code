@@ -908,6 +908,16 @@ describe("fork guard: fork-composer-shell", () => {
     expect(cutoff?.body).toMatch(/(?<!-webkit-)mask-image:/u);
     expect(cutoff?.body).toContain("-webkit-mask-image:");
 
+    // The mask no longer exempts a scrollbar lane, so the transcript must draw
+    // no scrollbar at all. Drop either spelling and the rail comes back, fading
+    // out under the bottom ramp beside the composer.
+    expect(cutoff?.body).toMatch(/scrollbar-width:\s*none/u);
+    const webkitScrollbar = rules.find((rule) =>
+      rule.selector.includes(".fork-timeline-cutoff::-webkit-scrollbar"),
+    );
+    expect(webkitScrollbar?.selector).toContain(MARKER);
+    expect(webkitScrollbar?.body).toMatch(/display:\s*none/u);
+
     // ChatView stamps the value the mask reads, from the composer overlay's
     // published height. Upstream's ChatCanvas owns the chat column and takes no
     // ref, so the stamp reaches it from the overlay element.
@@ -941,8 +951,8 @@ describe("fork guard: fork-composer-shell", () => {
     // name. Pinning a literal here is how the cutoff broke once: upstream
     // renamed --topbar-scroll-fade-height, the guard kept matching the stale
     // text, and the unresolved var() invalidated mask-size at computed-value
-    // time — every layer went `auto`, the solid third layer covered the
-    // scroller, and the transcript painted through the composer.
+    // time — every layer went `auto` and covered the whole scroller, and the
+    // transcript painted through the composer.
     const indexCss = readSibling("../index.css");
     const utility = /@utility topbar-scroll-fade \{([^}]*)\}/u.exec(indexCss)?.[1] ?? "";
     const upstreamFadeVar = /var\((--[a-z-]*scroll-fade-height)\)/u.exec(utility)?.[1];
