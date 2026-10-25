@@ -49,6 +49,9 @@ import { notificationChildThreadId } from "@t3tools/client-runtime/state/thread-
 import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript";
 import { ForkTranscriptDesignChanges } from "~/custom/designMode/ForkTranscriptDesignChanges";
 /* fork:end fork-design-mode */
+/* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */
+import { ForkTimelineRowFrame, useTimelineRowMotion } from "~/custom/forkTimelineRowMotion";
+/* fork:end fork-transcript-row-motion */
 /* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain */
 import { SidebarV2WorkingRain } from "~/custom/SidebarV2StatusIndicator";
 /* fork:end fork-chat-working-rain */
@@ -876,6 +879,9 @@ const ConversationTimeline = memo(function ConversationTimeline({
     worktreeSetup,
   });
   const rows = useStableRows(rawRows, listIdentityKey);
+  /* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */
+  const rowMotion = useTimelineRowMotion(rows, listIdentityKey);
+  /* fork:end fork-transcript-row-motion */
   // Run status/timestamps churn on every stream event; the shared row context
   // must not change with them or every timeline row re-renders per event.
   const runs = useStableHandoffRuns(runsProp);
@@ -1469,14 +1475,18 @@ const ConversationTimeline = memo(function ConversationTimeline({
   // sharedState to the rows that stay.
   const renderItem = ({ item }: { item: MessagesTimelineRow }) => (
     <TimelineRowCtx value={sharedState}>
-      <div className="messages-timeline-row-frame">
+      {/* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */}
+      <ForkTimelineRowFrame motion={rowMotion} rowId={item.id}>
+        {/* fork:end fork-transcript-row-motion */}
         <div
           className="@container/chat-lane chat-content-lane overflow-x-clip"
           data-timeline-root="true"
         >
           <TimelineRowContent row={item} />
         </div>
-      </div>
+        {/* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */}
+      </ForkTimelineRowFrame>
+      {/* fork:end fork-transcript-row-motion */}
     </TimelineRowCtx>
   );
   const listExtraData = { identity: listIdentityKey, rowCount: rows.length, sharedState };

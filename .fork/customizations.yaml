@@ -5515,3 +5515,30 @@
   verify:
     - apps/web/src/__fork_guards__/forkSideChat.test.ts
     - apps/web/src/custom/sideChat/surface.test.ts
+
+- id: fork-transcript-row-motion
+  intent: >
+    Rows appended to the end of a live transcript (a response, the sent user
+    message, the thinking/working line) fade in while sliding down 6px, and
+    the trailing live activity line slides down to its new slot instead of
+    jumping when a row lands above it. One-shot transform/opacity WAAPI
+    animations, skipped under reduced motion. "New" means the row id first
+    appeared in the data after the thread primed, past the last row already
+    there, so virtualized remounts, thread switches and "Load earlier" stay
+    still. The slide runs on LegendList's positioned container (it paints
+    with contain: paint, which would clip a transform on the row frame) and
+    keys off its style.top mutations; it depends on LegendList keying that
+    container by row id and on the live row ids in MessagesTimeline.logic.ts.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkTimelineRowMotion.tsx
+  shadows: []
+  watch:
+    # Fenced import, the motion hook beside useStableRows, and the frame
+    # standing in for renderItem's messages-timeline-row-frame div.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+    # Owns LIVE_ACTIVITY_ROW_ID and the working row id the slide keys on.
+    - apps/web/src/components/chat/MessagesTimeline.logic.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkTranscriptRowMotion.test.ts
+    - apps/web/src/custom/forkTimelineRowMotion.test.ts
