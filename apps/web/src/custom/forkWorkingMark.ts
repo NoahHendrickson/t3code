@@ -21,11 +21,9 @@ export const FORK_WORKING_MARK_LABELS: Record<ForkWorkingMark, string> = {
   rain: "Pixel rain",
 };
 
-export function isForkWorkingMark(value: unknown): value is ForkWorkingMark {
-  return value === "helix" || value === "rain";
-}
-
 const ForkWorkingMarkSchema = Schema.Literals(FORK_WORKING_MARKS);
+
+export const isForkWorkingMark = Schema.is(ForkWorkingMarkSchema);
 
 export function useForkWorkingMark(): [ForkWorkingMark, (mark: ForkWorkingMark) => void] {
   return useLocalStorage(STORAGE_KEY, DEFAULT_FORK_WORKING_MARK, ForkWorkingMarkSchema);

@@ -328,7 +328,7 @@ function ChromeAutomationsRow() {
       ? { label: activityLabel, mark: "dot", tone: "approval" }
       : failed > 0
         ? { label: activityLabel, mark: "dot", tone: "failed" }
-        : { label: activityLabel, mark: "rain" };
+        : { label: activityLabel, mark: "working" };
   return (
     <ChromeLabeledAction
       icon={ZapIcon}
@@ -358,7 +358,7 @@ function ChromeAutomationsRow() {
                 SIDEBAR_V2_CARD_ALIGNMENT.statusBox,
               )}
             >
-              <SidebarV2StatusMark status={status} rainSeed="sidebar-v2-scheduled" />
+              <SidebarV2StatusMark status={status} seed="sidebar-v2-scheduled" />
             </span>
           </span>
         ) : null

@@ -99,7 +99,7 @@ function ForkSubagentMemberRow(props: {
   const content = (
     <>
       <span aria-hidden className="flex shrink-0 items-center py-1">
-        <SidebarV2StatusMark status={memberStatus(member.mark)} rainSeed={member.id} idle="dot" />
+        <SidebarV2StatusMark status={memberStatus(member.mark)} seed={member.id} idle="dot" />
       </span>
       <span className="flex min-w-0 flex-1 flex-col items-start">
         <span className="w-full min-w-0 truncate text-foreground">{member.title}</span>
@@ -151,8 +151,8 @@ function ForkSubagentMemberRow(props: {
     settle on the hollow idle circle: nothing pending, nothing to report. */
 function memberStatus(mark: ForkSubagentMark): SidebarV2TopStatusMark | null {
   switch (mark) {
-    case "rain":
-      return { label: "Working", mark: "rain" };
+    case "working":
+      return { label: "Working", mark: "working" };
     case "done":
       return { label: "Completed", mark: "dot", tone: "done" };
     case "failed":

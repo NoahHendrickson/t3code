@@ -12,7 +12,11 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
-import { HELIX_ANIMATION_CLASS, helixAlpha } from "~/custom/SidebarV2StatusIndicator";
+import {
+  HELIX_ANIMATION_CLASS,
+  helixAlpha,
+  helixColumnProfile,
+} from "~/custom/SidebarV2StatusIndicator";
 
 const webRoot = NodePath.resolve(NodeURL.fileURLToPath(new URL(".", import.meta.url)), "../..");
 
@@ -21,6 +25,7 @@ function read(relativePath: string): string {
 }
 
 const COLUMNS = 7;
+const PROFILES = 4;
 const ROUNDING_TOLERANCE = 5e-4;
 
 interface Stop {
@@ -39,9 +44,9 @@ function keyframeStops(css: string, column: number): Stop[] {
   }));
 }
 
-/** A keyframe's progress is one full twist of the strand phase. */
+/** A keyframe's progress is half a twist of the strand phase. */
 function curve(column: number, percent: number): number {
-  return helixAlpha(column, (percent / 100) * 2 * Math.PI);
+  return helixAlpha(column, (percent / 100) * Math.PI);
 }
 
 function interpolate(stops: Stop[], percent: number): number {
@@ -60,48 +65,53 @@ function interpolate(stops: Stop[], percent: number): number {
 describe("fork guard: sidebar-v2 helix keyframes", () => {
   const css = read("src/theme.custom.css");
 
-  it("backs every column class with a keyframe", () => {
-    expect(HELIX_ANIMATION_CLASS).toHaveLength(COLUMNS);
+  it("backs every profile class with a keyframe", () => {
+    expect(HELIX_ANIMATION_CLASS).toHaveLength(PROFILES);
     for (const className of HELIX_ANIMATION_CLASS) {
       const name = /animate-\[([a-z0-9-]+)_/.exec(className)?.[1];
       expect(name).toBeTruthy();
       expect(css).toContain(`@keyframes ${name} {`);
     }
-    expect(css).not.toContain(`@keyframes sidebar-v2-helix-${COLUMNS} {`);
+    expect(css).not.toContain(`@keyframes sidebar-v2-helix-${PROFILES} {`);
   });
 
   it("re-derives every stop from helixAlpha", () => {
     const drifted: string[] = [];
     let samples = 0;
-    for (let column = 0; column < COLUMNS; column++) {
-      const stops = keyframeStops(css, column);
+    for (let profile = 0; profile < PROFILES; profile++) {
+      const stops = keyframeStops(css, profile);
       expect(stops[0]?.percent).toBe(0);
       expect(stops.at(-1)?.percent).toBe(100);
       for (const stop of stops) {
         samples++;
-        const expected = curve(column, stop.percent);
+        const expected = curve(profile, stop.percent);
         if (Math.abs(expected - stop.opacity) > ROUNDING_TOLERANCE) {
           drifted.push(
-            `helix-${column} @ ${stop.percent}%: css ${stop.opacity}, curve ${expected}`,
+            `helix-${profile} @ ${stop.percent}%: css ${stop.opacity}, curve ${expected}`,
           );
         }
       }
     }
     expect(drifted).toEqual([]);
-    expect(samples).toBeGreaterThan(150);
+    expect(samples).toBeGreaterThan(60);
   });
 
-  it("tracks the curve once the browser interpolates between stops", () => {
-    // The 0.08 cutoff is a hard step the table can only approximate across one
-    // 0.25% sample, so the max error is dominated by those edges; the mean is
-    // what says the motion is intact.
+  it("draws every column's full twist from the stored half-twist profiles", () => {
+    // End to end over a whole 2π twist: each column plays its mapped profile,
+    // backwards for 4–6, looping every π. This is what pins both shortcuts —
+    // the π period and the column mirror — against the reference curve. The
+    // 0.08 cutoff is a hard step the table can only approximate across one
+    // 0.25% sample, so the mean, not the max, says the motion is intact.
     let sum = 0;
     let count = 0;
     for (let column = 0; column < COLUMNS; column++) {
-      const stops = keyframeStops(css, column);
-      for (let step = 0; step <= 4000; step++) {
-        const percent = (step / 4000) * 100;
-        sum += Math.abs(interpolate(stops, percent) - curve(column, percent));
+      const { index, reverse } = helixColumnProfile(column);
+      const stops = keyframeStops(css, index);
+      for (let step = 0; step <= 8000; step++) {
+        const phase = (step / 8000) * 2 * Math.PI;
+        const progress = ((phase / Math.PI) * 100) % 100;
+        const shown = interpolate(stops, reverse ? 100 - progress : progress);
+        sum += Math.abs(shown - helixAlpha(column, phase));
         count++;
       }
     }

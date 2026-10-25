@@ -31,7 +31,7 @@ export type ComposerBackgroundLivenessPillProps = ComposerBackgroundLivenessPill
     | {
         readonly kind: "working";
         /** Stable seed for the working mark so remounts keep the same phase. */
-        readonly rainSeed: string;
+        readonly seed: string;
         readonly liveCount: number;
       }
   );
@@ -61,7 +61,7 @@ export function ComposerBackgroundLivenessPill(props: ComposerBackgroundLiveness
   const label = resolveLivenessLabel(props);
   const mark: ReactNode =
     props.kind === "working" ? (
-      <SidebarV2WorkingMark seed={props.rainSeed} />
+      <SidebarV2WorkingMark seed={props.seed} />
     ) : (
       <SidebarV2MonitoringMark />
     );
