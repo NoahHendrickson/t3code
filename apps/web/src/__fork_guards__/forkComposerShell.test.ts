@@ -827,7 +827,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(pill).toContain("export function ComposerBackgroundLivenessPill");
     expect(pill).toContain('readonly kind: "monitoring"');
     expect(pill).toContain('readonly kind: "working"');
-    expect(pill).toContain("SidebarV2WorkingRain");
+    expect(pill).toContain("SidebarV2WorkingMark");
     expect(pill).toContain("SidebarV2MonitoringMark");
     expect(pill).toContain("StopSquareIcon");
     expect(pill).toContain('role="status"');

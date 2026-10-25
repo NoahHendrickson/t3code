@@ -50,7 +50,7 @@ import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTr
 import { ForkTranscriptDesignChanges } from "~/custom/designMode/ForkTranscriptDesignChanges";
 /* fork:end fork-design-mode */
 /* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain */
-import { SidebarV2WorkingRain } from "~/custom/SidebarV2StatusIndicator";
+import { SidebarV2WorkingMark } from "~/custom/SidebarV2StatusIndicator";
 /* fork:end fork-chat-working-rain */
 import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
 import {
@@ -3654,13 +3654,13 @@ function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "workin
       <div
         /* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain
            Upstream's row has no leading mark and baseline-aligns its text; the
-           rain glyph needs centring and a gap or it sits high, flush against
+           working mark needs centring and a gap or it sits high, flush against
            "Working for". */
         className="flex h-6 min-w-0 items-center gap-2 px-1 text-sm leading-relaxed text-muted-foreground tabular-nums"
         /* fork:end fork-chat-working-rain */
       >
         {/* fork:begin fork-chat-working-rain — see .fork/customizations.yaml#fork-chat-working-rain */}
-        <SidebarV2WorkingRain seed={row.id} />
+        <SidebarV2WorkingMark seed={row.id} />
         {/* fork:end fork-chat-working-rain */}
         <span
           ref={shimmer ? observeVisibleAnimation : undefined}
