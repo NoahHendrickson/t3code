@@ -28,7 +28,7 @@ import * as DateTime from "effect/DateTime";
 
 export type ForkSubagentItem = Extract<OrchestrationV2TurnItem, { readonly type: "subagent" }>;
 export type ForkSubagentStatus = OrchestrationV2TurnItem["status"];
-export type ForkSubagentMark = "rain" | "idle" | "done" | "failed" | "stopped";
+export type ForkSubagentMark = "working" | "idle" | "done" | "failed" | "stopped";
 
 export interface ForkSubagentTreeRow {
   readonly id: string;
@@ -79,9 +79,9 @@ const STATUS_WORD: Record<ForkSubagentStatus, string> = {
 };
 
 const STATUS_MARK: Record<ForkSubagentStatus, ForkSubagentMark> = {
-  pending: "rain",
-  running: "rain",
-  waiting: "rain",
+  pending: "working",
+  running: "working",
+  waiting: "working",
   idle: "idle",
   completed: "done",
   failed: "failed",

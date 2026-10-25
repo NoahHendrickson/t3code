@@ -5,7 +5,7 @@ import { type ReactNode } from "react";
 
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 
-import { SidebarV2MonitoringMark, SidebarV2WorkingRain } from "./SidebarV2StatusIndicator";
+import { SidebarV2MonitoringMark, SidebarV2WorkingMark } from "./SidebarV2StatusIndicator";
 import { StopSquareIcon } from "./StopSquareIcon";
 
 export type ComposerBackgroundLivenessKind = "monitoring" | "working";
@@ -30,8 +30,8 @@ export type ComposerBackgroundLivenessPillProps = ComposerBackgroundLivenessPill
     | { readonly kind: "monitoring" }
     | {
         readonly kind: "working";
-        /** Stable seed for the working rain so remounts keep the same phase. */
-        readonly rainSeed: string;
+        /** Stable seed for the working mark so remounts keep the same phase. */
+        readonly seed: string;
         readonly liveCount: number;
       }
   );
@@ -52,7 +52,7 @@ function resolveLivenessLabel(props: ComposerBackgroundLivenessPillProps): strin
 /**
  * Context-row chip for background liveness (monitoring watch or working
  * fleets). Sits to the right of the branch pill: leading mark + label + a
- * small stop square. Working uses the sidebar rain (accepted always-on
+ * small stop square. Working uses the sidebar working mark (accepted always-on
  * composer repaint — same SVG opacity contract as the sidebar mark, but the
  * composer has no content-visibility escape); monitoring reuses
  * `SidebarV2MonitoringMark`. See `.fork/customizations.yaml#fork-composer-shell`.
@@ -61,7 +61,7 @@ export function ComposerBackgroundLivenessPill(props: ComposerBackgroundLiveness
   const label = resolveLivenessLabel(props);
   const mark: ReactNode =
     props.kind === "working" ? (
-      <SidebarV2WorkingRain seed={props.rainSeed} />
+      <SidebarV2WorkingMark seed={props.seed} />
     ) : (
       <SidebarV2MonitoringMark />
     );

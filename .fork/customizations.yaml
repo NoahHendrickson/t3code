@@ -611,7 +611,8 @@
     the box is never empty — idle draws a hollow muted ring rather than
     falling back to a variable-width relative-time string. The marks inside
     keep their own sizes and centre in the box. The mark's form carries the
-    state, per the component set — falling pixels while the agent runs, a
+    state, per the component set — falling pixels (or the DNA helix, see
+    fork-working-mark) while the agent runs, a
     10px filled dot for Done and the same circle hollow for Idle, Phosphor's
     half-filled circle for Approval and Input (one amber for both: each means
     "waiting on you"), the filled warning circle for Failed, a slow white
@@ -4795,8 +4796,8 @@
     The transcript's "Working for …" row leads with the same falling pixel
     rain the Sidebar V2 thread cards draw while an agent runs, instead of
     upstream's three staggered pulsing dots — one "agent is working" mark
-    across sidebar and chat. The mark is the fork-owned SidebarV2WorkingRain
-    (emerald, 14px, keyframes in theme.custom.css via sidebar-v2-card-rows),
+    across sidebar and chat. The mark is the fork-owned SidebarV2WorkingMark
+    (rain or helix per fork-working-mark; keyframes in theme.custom.css),
     seeded with the working row's stable id; the timer text beside it is
     untouched, but the row centres its items with an 8px gap (upstream's
     baseline-aligned, gapless row has no leading mark to space). Reduced
@@ -4810,6 +4811,30 @@
     - apps/web/src/components/chat/MessagesTimeline.tsx
   verify:
     - apps/web/src/__fork_guards__/forkChatWorkingRain.test.ts
+
+- id: fork-working-mark
+  intent: >
+    Settings → Appearance → Interface → Working indicator picks which mark a
+    running agent draws everywhere the fork shows one (Sidebar V2 rows, the
+    transcript working row, the composer liveness pill, subagent members):
+    the pixel rain or a 7x7 DNA helix from the "Sequencing" thinking chip.
+    The helix is the default. The choice is device-local (localStorage), not a
+    contracts setting, and Restore defaults resets it. Both marks are SVG
+    rects driven by generated CSS keyframes with a per-thread phase offset —
+    never a per-frame canvas or requestAnimationFrame loop — and both keep a
+    still frame under reduced motion. The helix is drawn at 12px because the
+    card status box is 12px wide and clips.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkWorkingMark.ts
+    - apps/web/src/custom/SidebarV2StatusIndicator.tsx
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Fenced import, state, restore-defaults entry and the Interface row.
+    - apps/web/src/components/settings/SettingsPanels.tsx
+  verify:
+    - apps/web/src/__fork_guards__/sidebarV2Helix.test.ts
 
 - id: mobile-current-checkout-branch
   intent: >

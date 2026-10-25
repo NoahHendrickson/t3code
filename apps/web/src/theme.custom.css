@@ -8,8 +8,9 @@
  *
  * `@keyframes` are the one exception: they are global by definition and cannot
  * be scoped to a selector. The fork-owned ones are prefixed `sidebar-v2-`
- * (`sidebar-v2-rain-*`, `sidebar-v2-dev-server-pulse`,
- * `sidebar-v2-monitoring-pulse`) so the names cannot collide with upstream's.
+ * (`sidebar-v2-rain-*`, `sidebar-v2-helix-*`,
+ * `sidebar-v2-dev-server-pulse`, `sidebar-v2-monitoring-pulse`) so the names
+ * cannot collide with upstream's.
  *
  * `@font-face` is the second exception, for the same reason: a face
  * *registration* is global — there is no selector to hang it off. What matters
@@ -2069,6 +2070,288 @@
   }
   100% {
     opacity: 0.135;
+  }
+}
+
+/* DNA helix: the alternate "working" indicator (Settings → Appearance), from
+   the "Sequencing" thinking chip. Two strands cross a 7x7 grid; every row runs
+   the same per-column alpha curve (`helixAlpha` in
+   `custom/SidebarV2StatusIndicator.tsx`), a fixed phase behind the row above,
+   so the chip's per-frame canvas decomposes into per-column alpha profiles
+   with a per-row delay — no per-frame JS, as with the rain. Only half a twist
+   and columns 0–3 are stored: the curve repeats every π, and columns 4–6 play
+   2/1/0 in reverse (see `helixColumnProfile`).
+
+   GENERATED, do not hand-edit: the generator lives in
+   `__fork_guards__/sidebarV2Helix.test.ts`, which rebuilds these blocks from
+   `helixAlpha` and fails, printing the expected CSS, if they drift. */
+@keyframes sidebar-v2-helix-0 {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0;
+  }
+  35.25% {
+    opacity: 0.173;
+  }
+  45.25% {
+    opacity: 0.248;
+  }
+  51.5% {
+    opacity: 0.271;
+  }
+  58.75% {
+    opacity: 0.251;
+  }
+  69.5% {
+    opacity: 0.172;
+  }
+  69.75% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes sidebar-v2-helix-1 {
+  0% {
+    opacity: 0;
+  }
+  17.5% {
+    opacity: 0;
+  }
+  17.75% {
+    opacity: 0.174;
+  }
+  21.5% {
+    opacity: 0.236;
+  }
+  24.25% {
+    opacity: 0.307;
+  }
+  27.25% {
+    opacity: 0.416;
+  }
+  30.5% {
+    opacity: 0.57;
+  }
+  33% {
+    opacity: 0.479;
+  }
+  35% {
+    opacity: 0.427;
+  }
+  40.5% {
+    opacity: 0.342;
+  }
+  44.75% {
+    opacity: 0.315;
+  }
+  48.75% {
+    opacity: 0.311;
+  }
+  56% {
+    opacity: 0.356;
+  }
+  60% {
+    opacity: 0.423;
+  }
+  63.75% {
+    opacity: 0.533;
+  }
+  66.75% {
+    opacity: 0.676;
+  }
+  68.25% {
+    opacity: 0.775;
+  }
+  69.5% {
+    opacity: 0.877;
+  }
+  69.75% {
+    opacity: 0.875;
+  }
+  73.75% {
+    opacity: 0.602;
+  }
+  77.5% {
+    opacity: 0.413;
+  }
+  81.75% {
+    opacity: 0.271;
+  }
+  87% {
+    opacity: 0.175;
+  }
+  87.25% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes sidebar-v2-helix-2 {
+  0% {
+    opacity: 0.182;
+  }
+  0.5% {
+    opacity: 0.174;
+  }
+  0.75% {
+    opacity: 0;
+  }
+  4.25% {
+    opacity: 0;
+  }
+  4.5% {
+    opacity: 0.175;
+  }
+  6.75% {
+    opacity: 0.214;
+  }
+  9% {
+    opacity: 0.273;
+  }
+  11% {
+    opacity: 0.35;
+  }
+  13.25% {
+    opacity: 0.475;
+  }
+  13.5% {
+    opacity: 0.476;
+  }
+  16% {
+    opacity: 0.355;
+  }
+  18.75% {
+    opacity: 0.27;
+  }
+  21.75% {
+    opacity: 0.213;
+  }
+  25.25% {
+    opacity: 0.174;
+  }
+  25.5% {
+    opacity: 0;
+  }
+  69.5% {
+    opacity: 0;
+  }
+  69.75% {
+    opacity: 0.173;
+  }
+  73.75% {
+    opacity: 0.219;
+  }
+  76.75% {
+    opacity: 0.281;
+  }
+  79% {
+    opacity: 0.353;
+  }
+  81.25% {
+    opacity: 0.459;
+  }
+  82.75% {
+    opacity: 0.557;
+  }
+  84% {
+    opacity: 0.662;
+  }
+  85.25% {
+    opacity: 0.794;
+  }
+  86.5% {
+    opacity: 0.959;
+  }
+  86.75% {
+    opacity: 0.957;
+  }
+  88% {
+    opacity: 0.796;
+  }
+  89.75% {
+    opacity: 0.617;
+  }
+  91% {
+    opacity: 0.516;
+  }
+  92.5% {
+    opacity: 0.419;
+  }
+  94% {
+    opacity: 0.344;
+  }
+  96% {
+    opacity: 0.27;
+  }
+  100% {
+    opacity: 0.182;
+  }
+}
+@keyframes sidebar-v2-helix-3 {
+  0% {
+    opacity: 1;
+  }
+  1% {
+    opacity: 0.848;
+  }
+  2.25% {
+    opacity: 0.694;
+  }
+  3.25% {
+    opacity: 0.593;
+  }
+  4.75% {
+    opacity: 0.474;
+  }
+  6.5% {
+    opacity: 0.371;
+  }
+  8.75% {
+    opacity: 0.28;
+  }
+  11.25% {
+    opacity: 0.215;
+  }
+  13.75% {
+    opacity: 0.175;
+  }
+  14% {
+    opacity: 0;
+  }
+  86% {
+    opacity: 0;
+  }
+  86.25% {
+    opacity: 0.175;
+  }
+  88.75% {
+    opacity: 0.215;
+  }
+  91.25% {
+    opacity: 0.28;
+  }
+  93.5% {
+    opacity: 0.371;
+  }
+  95.25% {
+    opacity: 0.474;
+  }
+  96.5% {
+    opacity: 0.571;
+  }
+  97.75% {
+    opacity: 0.694;
+  }
+  98.75% {
+    opacity: 0.814;
+  }
+  100% {
+    opacity: 1;
   }
 }
 

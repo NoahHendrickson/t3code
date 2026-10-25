@@ -50,7 +50,7 @@ export type SidebarV2CardStatusKind =
     `mark` so the dot branch cannot be handed the `working` tone, which has no
     dot rendering. */
 export type SidebarV2CardTopStatus =
-  | { label: string; tone: "working"; mark: "rain" }
+  | { label: string; tone: "working"; mark: "working" }
   | { label: string; tone: SidebarV2DotTone; mark: "dot" | "woke" }
   | { label: "Waiting" | "Monitoring"; mark: "monitoring" }
   | null;
@@ -98,7 +98,7 @@ function sidebarV2CardTopStatus(
   switch (kind) {
     case "working":
       // A native /goal keeps the agent going across turns until it is met.
-      return { label: options.goalActive ? "Goal" : "Working", tone: "working", mark: "rain" };
+      return { label: options.goalActive ? "Goal" : "Working", tone: "working", mark: "working" };
     case "waiting":
       return { label: "Waiting", mark: "monitoring" };
     case "approval":

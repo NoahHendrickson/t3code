@@ -5432,7 +5432,7 @@ export default function ChatView(props: ChatViewProps) {
     return renderComposerLivenessPill(
       resolveComposerLivenessPillProps({
         presentation,
-        rainSeed: `${activeThread.environmentId}:${activeThread.id}`,
+        seed: `${activeThread.environmentId}:${activeThread.id}`,
         stopping: isStoppingBackgroundWork,
         canStop: canOperateThread,
         onStop: () => void handleStopBackgroundWorkStable(),

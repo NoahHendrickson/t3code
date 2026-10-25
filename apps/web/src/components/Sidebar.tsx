@@ -1655,7 +1655,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             <span className="pointer-events-none flex size-[14px] shrink-0 items-center justify-center overflow-hidden">
               <SidebarV2StatusMark
                 status={topStatus}
-                rainSeed={threadKey}
+                seed={threadKey}
                 idle={showDiscardDraft ? "draft" : "empty"}
               />
             </span>
@@ -2076,7 +2076,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                 >
                   <SidebarV2StatusMark
                     status={topStatus}
-                    rainSeed={threadKey}
+                    seed={threadKey}
                     idle={showDiscardDraft ? "draft" : "dot"}
                   />
                 </span>

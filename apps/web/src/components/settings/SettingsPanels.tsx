@@ -92,6 +92,15 @@ import {
 /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
 import { useForkGlassNewAgentPicture } from "../../custom/forkGlassNewAgentPicture";
 /* fork:end fork-glass-new-agent-stage */
+/* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
+import {
+  DEFAULT_FORK_WORKING_MARK,
+  FORK_WORKING_MARK_LABELS,
+  FORK_WORKING_MARKS,
+  isForkWorkingMark,
+  useForkWorkingMark,
+} from "../../custom/forkWorkingMark";
+/* fork:end fork-working-mark */
 import { useLocalStorage } from "../../hooks/useLocalStorage";
 import {
   useScopedSettings,
@@ -551,6 +560,10 @@ export function useSettingsRestore(onRestored?: () => void) {
   // Only while Glass shows the row: elsewhere the switch is hidden and inert.
   const glassNewAgentPictureChanged = appearance === COOL_DARKER_THEME && !glassNewAgentPicture;
   /* fork:end fork-glass-new-agent-stage */
+  /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
+  const [workingMark, setWorkingMark] = useForkWorkingMark();
+  const workingMarkChanged = workingMark !== DEFAULT_FORK_WORKING_MARK;
+  /* fork:end fork-working-mark */
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
 
@@ -568,6 +581,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
     ...(glassNewAgentPictureChanged ? ["New agent picture"] : []),
     /* fork:end fork-glass-new-agent-stage */
+    /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
+    ...(workingMarkChanged ? ["Working indicator"] : []),
+    /* fork:end fork-working-mark */
     ...(!followSystem ? ["Follow system"] : []),
     ...(themeHalves !== null ? ["Theme mix"] : []),
     ...(settings.appearanceContrast !== DEFAULT_UNIFIED_SETTINGS.appearanceContrast
@@ -712,6 +728,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
     if (glassNewAgentPictureChanged) setGlassNewAgentPicture(true);
     /* fork:end fork-glass-new-agent-stage */
+    /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
+    if (workingMarkChanged) setWorkingMark(DEFAULT_FORK_WORKING_MARK);
+    /* fork:end fork-working-mark */
 
     // Only touch the theme keys that are actually dirty, so a theme-storage
     // failure cannot block restoring unrelated settings. Preferences are
@@ -1130,6 +1149,9 @@ export function AppearanceSettingsPanel() {
   /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
   const [glassNewAgentPicture, setGlassNewAgentPicture] = useForkGlassNewAgentPicture();
   /* fork:end fork-glass-new-agent-stage */
+  /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
+  const [workingMark, setWorkingMark] = useForkWorkingMark();
+  /* fork:end fork-working-mark */
   const customThemes = useCustomThemes();
   const [isImportThemeOpen, setIsImportThemeOpen] = useState(false);
   const settings = useScopedSettings();
@@ -1236,6 +1258,39 @@ export function AppearanceSettingsPanel() {
           />
         ) : null}
         {/* fork:end fork-glass-new-agent-stage */}
+        {/* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */}
+        <SettingsRow
+          title="Working indicator"
+          description="The mark shown while an agent is working."
+          resetAction={
+            workingMark === DEFAULT_FORK_WORKING_MARK ? null : (
+              <SettingResetButton
+                label="working indicator"
+                onClick={() => setWorkingMark(DEFAULT_FORK_WORKING_MARK)}
+              />
+            )
+          }
+          control={
+            <Select
+              value={workingMark}
+              onValueChange={(value) => {
+                if (isForkWorkingMark(value)) setWorkingMark(value);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-44" aria-label="Working indicator">
+                <SelectValue>{FORK_WORKING_MARK_LABELS[workingMark]}</SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                {FORK_WORKING_MARKS.map((mark) => (
+                  <SelectItem hideIndicator key={mark} value={mark}>
+                    {FORK_WORKING_MARK_LABELS[mark]}
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          }
+        />
+        {/* fork:end fork-working-mark */}
 
         <SettingsRow
           {...searchableSetting("setting-appearance-contrast")}

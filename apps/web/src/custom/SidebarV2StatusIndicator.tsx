@@ -12,6 +12,7 @@ import {
 } from "./icons/lucide-phosphor";
 import type { CSSProperties } from "react";
 import { cn } from "~/lib/utils";
+import { useForkWorkingMark } from "./forkWorkingMark";
 
 /** The trailing slot of a Sidebar V2 card row's title line, and this module
     owns every status form that can land in it. Every status resolves to one
@@ -180,7 +181,7 @@ const CELLS = COLUMNS.flatMap((column, col) =>
     visibly different widths depending on each one's subpixel offset. SVG keeps
     the fractional geometry and antialiases it, which is what the native Canvas
     does too, so every drop stays exactly square. */
-export function SidebarV2WorkingRain({ seed }: { seed: string }) {
+function SidebarV2WorkingRain({ seed }: { seed: string }) {
   const offset = rainOffsetSeconds(seed);
   return (
     <svg
@@ -221,6 +222,134 @@ export function SidebarV2WorkingRain({ seed }: { seed: string }) {
         />
       ))}
     </svg>
+  );
+}
+
+// DNA helix, from the "Sequencing" thinking chip: a 7x7 grid in a 56-unit box
+// with a 2-unit gap, square cells. Two strands cross each row as sin/cos of one
+// phase, and each row trails the one above it by a fixed phase step, so the
+// strands twist down the grid.
+//
+// Drawn at 12px rather than the chip's 16/24 because the card's status box is
+// 12px wide and clips; every other working slot is 14px and centres it.
+const HELIX_GRID = 7;
+const HELIX_BOX = 56;
+const HELIX_GAP = 2;
+const HELIX_CELL = (HELIX_BOX - (HELIX_GRID - 1) * HELIX_GAP) / HELIX_GRID;
+const HELIX_SIZE = 12;
+
+/** Radians per second, and the phase each row trails the one above it by. */
+const HELIX_SPEED = 3.2;
+const HELIX_ROW_LAG = 0.785;
+/** One keyframe loop. The curve repeats every half twist (π, not 2π): moving
+    the phase by π swaps the two strands along with their depth weights, which
+    leaves the `max` in `helixAlpha` unchanged. */
+const HELIX_LOOP = Math.PI / HELIX_SPEED;
+
+/** The drawn opacity of a cell in `column` at strand phase `phase`. Each strand
+    lights the cells nearest it with an exponential falloff, dimmed while it is
+    on the far side of the twist; cells under 0.08 are not drawn at all, and lit
+    ones sit on a 10% floor — the chip's `cellN`. Every row runs the same curve,
+    only phase-shifted, so this one function is what the generated
+    `sidebar-v2-helix-*` keyframes in `theme.custom.css` sample and
+    `__fork_guards__/sidebarV2Helix.test.ts` re-derives. */
+export function helixAlpha(column: number, phase: number): number {
+  const sin = Math.sin(phase);
+  const cos = Math.cos(phase);
+  const alpha = Math.max(
+    Math.exp(-Math.abs(column - (3 + 2.45 * sin)) * 2.4) * (0.4 + 0.6 * (0.5 + 0.5 * cos)),
+    Math.exp(-Math.abs(column - (3 - 2.45 * sin)) * 2.4) * (0.4 + 0.6 * (0.5 - 0.5 * cos)),
+  );
+  return alpha > 0.08 ? 0.1 + 0.9 * alpha : 0;
+}
+
+/** Profiles for columns 0–3 only, spelled out for Tailwind like the rain's.
+    The grid is mirror-symmetric in time — column `6 - c` at phase φ is column
+    `c` at -φ — so columns 4–6 play the 2/1/0 profiles in reverse, which with
+    the same delay is exactly the negated phase. */
+export const HELIX_ANIMATION_CLASS = [
+  "animate-[sidebar-v2-helix-0_linear_infinite]",
+  "animate-[sidebar-v2-helix-1_linear_infinite]",
+  "animate-[sidebar-v2-helix-2_linear_infinite]",
+  "animate-[sidebar-v2-helix-3_linear_infinite]",
+] as const;
+
+/** Which profile a column plays, and whether backwards. */
+export function helixColumnProfile(column: number): { index: number; reverse: boolean } {
+  return column <= 3 ? { index: column, reverse: false } : { index: 6 - column, reverse: true };
+}
+
+const HELIX_CELLS = Array.from({ length: HELIX_GRID * HELIX_GRID }, (_, index) => {
+  const column = index % HELIX_GRID;
+  const row = Math.floor(index / HELIX_GRID);
+  const profile = helixColumnProfile(column);
+  return {
+    id: `${column}:${row}`,
+    column,
+    row,
+    x: column * (HELIX_CELL + HELIX_GAP),
+    y: row * (HELIX_CELL + HELIX_GAP),
+    lagSeconds: (row * HELIX_ROW_LAG) / HELIX_SPEED,
+    animationClass: HELIX_ANIMATION_CLASS[profile.index],
+    reverse: profile.reverse,
+  };
+});
+
+/** CSS keyframes rather than the chip's per-frame canvas, so a working row
+    costs no requestAnimationFrame loop — the same SVG opacity contract as the
+    rain, seeded by the same per-thread offset. */
+function SidebarV2WorkingHelix({ seed }: { seed: string }) {
+  const offset = rainOffsetSeconds(seed);
+  return (
+    <svg
+      aria-hidden
+      className="block size-3 shrink-0"
+      width={HELIX_SIZE}
+      height={HELIX_SIZE}
+      viewBox={`0 0 ${HELIX_BOX} ${HELIX_BOX}`}
+    >
+      {HELIX_CELLS.map((cell) => (
+        <rect
+          key={cell.id}
+          x={cell.x}
+          y={cell.y}
+          width={HELIX_CELL}
+          height={HELIX_CELL}
+          className={cn(
+            "fill-sidebar-v2-status-working",
+            cell.animationClass,
+            "motion-reduce:animate-none",
+          )}
+          style={{
+            // Reduce Motion gets the chip's still frame (t = 0.6), taken at
+            // this row's own offset so frozen rows differ from each other.
+            opacity: helixAlpha(
+              cell.column,
+              (0.6 + offset) * HELIX_SPEED - cell.row * HELIX_ROW_LAG,
+            ),
+            animationDuration: `${HELIX_LOOP.toFixed(4)}s`,
+            animationDirection: cell.reverse ? "reverse" : undefined,
+            // Wrapped to (-loop, 0]: a positive delay would show the
+            // still-frame opacity until the animation started.
+            animationDelay: `${(
+              ((((cell.lagSeconds - offset) % HELIX_LOOP) + HELIX_LOOP) % HELIX_LOOP) -
+              HELIX_LOOP
+            ).toFixed(4)}s`,
+          }}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/** The working mark every surface draws — sidebar rows, the chat working row,
+    the composer pill — in the form picked under Settings → Appearance. */
+export function SidebarV2WorkingMark({ seed }: { seed: string }) {
+  const [mark] = useForkWorkingMark();
+  return mark === "helix" ? (
+    <SidebarV2WorkingHelix seed={seed} />
+  ) : (
+    <SidebarV2WorkingRain seed={seed} />
   );
 }
 
@@ -296,7 +425,7 @@ export function SidebarV2MonitoringMark() {
 }
 
 export type SidebarV2TopStatusMark =
-  | { readonly label: string; readonly mark: "rain"; readonly tone?: "working" }
+  | { readonly label: string; readonly mark: "working"; readonly tone?: "working" }
   | { readonly label: string; readonly mark: "monitoring" }
   | { readonly label: string; readonly mark: "woke"; readonly tone?: SidebarV2DotTone }
   | { readonly label: string; readonly mark: "dot"; readonly tone: SidebarV2DotTone };
@@ -304,7 +433,7 @@ export type SidebarV2TopStatusMark =
 /** One mark renderer for card and slim rows so monitoring is never a second path. */
 export function SidebarV2StatusMark(props: {
   readonly status: SidebarV2TopStatusMark | null;
-  readonly rainSeed: string;
+  readonly seed: string;
   /** Card rows draw the idle dot; slim leaves the slot empty. Unpromoted
       drafts use the pencil as their idle glyph. */
   readonly idle?: "dot" | "empty" | "draft";
@@ -334,8 +463,8 @@ export function SidebarV2StatusMark(props: {
       <span role="status" className="sr-only">
         {status.label}
       </span>
-      {status.mark === "rain" ? (
-        <SidebarV2WorkingRain seed={props.rainSeed} />
+      {status.mark === "working" ? (
+        <SidebarV2WorkingMark seed={props.seed} />
       ) : status.mark === "monitoring" ? (
         <SidebarV2MonitoringMark />
       ) : status.mark === "woke" ? (

@@ -22,7 +22,7 @@ export const READ_ONLY_CONTEXT_CHIP_CLASS_NAME =
  * rain. The roster rides along as is for the pill's list. */
 export function resolveComposerLivenessPillProps(input: {
   readonly presentation: PendingBackgroundWorkPresentation;
-  readonly rainSeed: string;
+  readonly seed: string;
   readonly stopping: boolean;
   readonly canStop: boolean;
   readonly onStop: () => void;
@@ -40,7 +40,7 @@ export function resolveComposerLivenessPillProps(input: {
   }
   return {
     kind: "working",
-    rainSeed: input.rainSeed,
+    seed: input.seed,
     liveCount: input.presentation.items.filter((item) => item.kind === "subagent").length,
     ...shared,
   };

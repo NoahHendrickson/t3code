@@ -2,7 +2,7 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-chat-working-rain`.
  *
- * The transcript's working row draws the Sidebar V2 pixel rain, not
+ * The transcript's working row draws the Sidebar V2 working mark, not
  * upstream's three pulsing dots. A sync that takes upstream's
  * WorkingTimelineRow compiles clean and silently splits the working
  * vocabulary back into two marks — this pins the swap.
@@ -19,12 +19,12 @@ function readSibling(relativePath: string): string {
 const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
 
 describe("fork guard: fork-chat-working-rain", () => {
-  it("renders the sidebar rain in the working row", () => {
+  it("renders the sidebar working mark in the working row", () => {
     expect(timeline).toContain('from "~/custom/SidebarV2StatusIndicator"');
-    expect(timeline).toContain("<SidebarV2WorkingRain seed={row.id} />");
+    expect(timeline).toContain("<SidebarV2WorkingMark seed={row.id} />");
   });
 
-  it("centres the rain beside the timer with a gap", () => {
+  it("centres the working mark beside the timer with a gap", () => {
     // Upstream's row is `h-6 items-baseline` with no gap (it has no leading
     // mark); the SVG's synthesised baseline is its bottom edge, so taking that
     // container verbatim rides the glyph high and flush against "Working for".
