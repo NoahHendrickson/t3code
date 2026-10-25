@@ -482,9 +482,17 @@
    comes and goes with the banner above the timeline, and mask layers cannot be
    composed across rules, so the fork owns the whole mask and drives the top
    layer from a variable that stays 0px while that class is absent — a
-   zero-height layer contributes nothing. The third layer is upstream's: it
-   holds the scrollbar gutter at full opacity so the fade never eats the
-   scrollbar. */
+   zero-height layer contributes nothing.
+
+   The transcript draws no scrollbar, by request: it ran the full column
+   height at the stage's edge, down past where the mask ends the content, and
+   read as a stray rail beside the composer. That is a real tradeoff, not a
+   handoff — the minimap only appears with two or more user turns on a fine
+   pointer, so a single-prompt run or a touch device has no position indicator
+   or drag target. The mask no longer exempts a scrollbar lane, so hiding the
+   scrollbar is what keeps the cutoff whole; the guard pins both spellings.
+   ChatCanvas measures the gutter, so the lane padding absorbs the width the
+   scrollbar gave back. */
 :root[data-fork="noahhendrickson-t3code"] {
   /* Gap to the pills, then the two halves of the ramp — see the note above on
      why it is split rather than linear. */
@@ -534,14 +542,12 @@
       rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
       rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
       black var(--fork-timeline-cutoff-tail-end)
-    ),
-    linear-gradient(black, black);
-  -webkit-mask-position: top, bottom, right;
+    );
+  -webkit-mask-position: top, bottom;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size:
     100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade)),
-    var(--app-scrollbar-width) 100%;
+    100% calc(100% - var(--fork-timeline-top-fade));
   mask-image:
     linear-gradient(
       to bottom,
@@ -561,22 +567,26 @@
       rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
       rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
       black var(--fork-timeline-cutoff-tail-end)
-    ),
-    linear-gradient(black, black);
-  mask-position: top, bottom, right;
+    );
+  mask-position: top, bottom;
   mask-repeat: no-repeat;
   mask-size:
     100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade)),
-    var(--app-scrollbar-width) 100%;
+    100% calc(100% - var(--fork-timeline-top-fade));
+  scrollbar-width: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff::-webkit-scrollbar {
+  display: none;
 }
 
 /* The name must match the variable upstream's own `topbar-scroll-fade`
    utility reads (index.css). An unknown name here does not just lose the top
    fade: it makes the whole mask-size declaration invalid at computed-value
-   time, every layer falls back to `auto`, and the solid third layer then
-   covers the element — the transcript paints straight through the composer.
-   The guard reads the name out of index.css so a rename fails CI instead. */
+   time and every layer falls back to `auto`. Both gradients then cover the
+   whole column and, composited with `add`, each fills in where the other is
+   transparent — the cutoff vanishes and the transcript paints straight
+   through the composer. The guard reads the name out of index.css so a rename fails CI instead. */
 :root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff.topbar-scroll-fade {
   --fork-timeline-top-fade: var(--workspace-titlebar-scroll-fade-height);
 }
