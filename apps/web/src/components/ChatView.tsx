@@ -8612,6 +8612,9 @@ export default function ChatView(props: ChatViewProps) {
                 routeThreadKey={displayedTimelineKey}
                 displayThreadKey={displayedTimelineKey}
                 paintOnly={paintOnlyDisplayedTimeline}
+                /* fork:begin fork-transcript-row-motion — see .fork/customizations.yaml#fork-transcript-row-motion */
+                forkTimelineSynced={!paintOnlyDisplayedTimeline && threadSyncPhase === null}
+                /* fork:end fork-transcript-row-motion */
                 onOpenTurnDiff={
                   paintOnlyDisplayedTimeline ? noopHeldTurnDiff : onOpenTurnDiffStable
                 }

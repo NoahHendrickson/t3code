@@ -5517,3 +5517,36 @@
   verify:
     - apps/web/src/__fork_guards__/forkSideChat.test.ts
     - apps/web/src/custom/sideChat/surface.test.ts
+
+- id: fork-transcript-row-motion
+  intent: >
+    Rows appended to the end of a live transcript (a response, the sent user
+    message, the thinking/working line) fade in while sliding down 6px, and
+    the live activity line slides down to its new slot instead of jumping
+    when a row lands above it. One-shot transform/opacity WAAPI animations,
+    skipped under reduced motion. "New" means the row id first appeared in
+    the data after the synced thread primed, past the last row already there,
+    so virtualized remounts, thread switches, "Load earlier", the cached or
+    remembered snapshot ChatView shows while a thread syncs, and large
+    catch-up batches all stay still. The slide runs on LegendList's
+    positioned container (it paints with contain: paint, which would clip a
+    transform on the row frame) and keys off its style.top mutations, which
+    relies on the conversation list leaving recycleItems off so that
+    container belongs to one row.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkTimelineRowMotion.tsx
+  shadows: []
+  watch:
+    # Fenced import, the synced prop, the motion hook beside useStableRows,
+    # and the frame standing in for renderItem's messages-timeline-row-frame
+    # div. The list must keep recycleItems off.
+    - apps/web/src/components/chat/MessagesTimeline.tsx
+    # Row order the tail walk assumes: live rows at the end, followed at most
+    # by an expanded group's details row.
+    - apps/web/src/components/chat/MessagesTimeline.logic.ts
+    # Passes forkTimelineSynced from the thread sync phase.
+    - apps/web/src/components/ChatView.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkTranscriptRowMotion.test.ts
+    - apps/web/src/custom/forkTimelineRowMotion.test.ts
