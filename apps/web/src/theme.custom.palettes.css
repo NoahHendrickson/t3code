@@ -288,6 +288,12 @@
   /* Opaque sibling of the Neutral Dark composer fill — see default-dark note. */
   --fork-context-chip-bg: rgb(75 73 70);
   --fork-context-chip-bg-hover: #54524e;
+  /* Popups open flat rather than on the shared dark frost (fork-popup-surface):
+     over a warm stage the blurred, saturated backdrop read as glass, which
+     belongs to Glass. */
+  --fork-popup-fill: var(--popover);
+  --fork-popup-border: var(--border);
+  --fork-popup-filter: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
@@ -313,55 +319,29 @@
   --sidebar-row-selected: #44423f;
 }
 
-/* Popups open flat on the palette's own --popover rather than the shared dark
-   frost (theme.custom.css, fork-popup-surface): over a warm stage the blurred,
-   saturated backdrop read as glass, which belongs to Glass. Same arms as the
-   frost rule; the palette attribute outweighs it. --fork-popup-fill carries
-   the flat fill to the surfaces that borrow the popup material. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
-  --fork-popup-fill: var(--popover);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
-  :is(
-    :is(
-      [data-slot="menu-popup"],
-      [data-slot="menu-sub-content"],
-      [data-slot="popover-popup"],
-      [data-slot="tooltip-popup"],
-      [data-slot="dialog-popup"]
-    ).dropdown-glass,
-    [data-slot="select-popup"] > .dropdown-glass,
-    .dropdown-glass:has(> [data-slot="combobox-popup"]),
-    [data-thread-details-card].dropdown-glass
-  ) {
-  border-color: var(--border);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
-
-/* An unchecked checkbox is a flat white hairline. Upstream's dark recipe — an
-   --input/32 fill, a white top highlight on ::before and a drop shadow — read
-   as a raised bevel on the flat popups above. Checked and invalid boxes keep
+/* Every unchecked checkbox in the palette, popups and settings alike, is a
+   flat white hairline: upstream's dark recipe — an --input/32 fill, a white
+   top highlight on ::before and a drop shadow — reads as a raised bevel on
+   Neutral Dark's flat surfaces. Checked, indeterminate and invalid boxes keep
    upstream's look. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
-  [data-slot="checkbox"]:not([data-checked], [aria-invalid="true"]) {
+  [data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"]) {
   border-color: rgb(255 255 255 / 16%);
   background: transparent;
   box-shadow: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
-  [data-slot="checkbox"]:not([data-checked], [aria-invalid="true"])::before {
+  [data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"])::before {
   box-shadow: none;
 }
 
 /* ---------------------------------------------------------------------------
    Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
 
-   Same true-neutral family as Neutral Dark, pushed down: chat stage #1a1a1a
-   (slightly darker than Neutral Dark's #2c2a27), sidebar #212121 (much darker
-   than Neutral Dark's #34322f, still a step lighter than the stage). Composer
+   A true-neutral counterpart to Neutral Dark, pushed down: chat stage #1a1a1a
+   (well below Neutral Dark's #2c2a27), sidebar #212121 (much darker than
+   Neutral Dark's #34322f, still a step lighter than the stage). Composer
    vessel sits a step above the sidebar (#252525) so the control row (mode /
    model / effort) contrasts against the stage; prompt/chips lift from that
    vessel. */

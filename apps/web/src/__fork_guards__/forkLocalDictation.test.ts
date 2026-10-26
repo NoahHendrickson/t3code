@@ -407,7 +407,7 @@ describe("fork local dictation", () => {
     const frost = cssRules(theme).find(
       (rule) =>
         rule.selector.includes('[data-slot="tooltip-popup"]') &&
-        /backdrop-filter: blur\(\d+px\)/u.test(rule.body),
+        rule.body.includes("backdrop-filter: var(--fork-popup-filter)"),
     );
     expect(frost?.selector).toContain(".dropdown-glass");
     expect(frost?.selector).not.toContain("data-fork-glass-tooltip");

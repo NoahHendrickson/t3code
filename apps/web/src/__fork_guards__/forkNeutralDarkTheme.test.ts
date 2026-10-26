@@ -158,17 +158,33 @@ describe("fork guard: fork-neutral-dark-theme", () => {
     expect(indexHtml).toContain("fork:begin fork-neutral-dark-theme");
   });
 
-  it("opens popups flat on --popover instead of the shared dark frost", () => {
-    const fill = themeRules.find(
-      (rule) => rule.selector === NEUTRAL_STAGE[0] && rule.body.includes("--fork-popup-fill"),
-    );
-    expect(fill?.body).toContain("--fork-popup-fill: var(--popover)");
-    const popup = themeRules.find(
+  it("opens popups flat by overriding the shared frost's tokens", () => {
+    const stage = ruleBodyFor(themeRules, NEUTRAL_STAGE);
+    expect(stage).toContain("--fork-popup-fill: var(--popover)");
+    expect(stage).toContain("--fork-popup-border: var(--border)");
+    expect(stage).toContain("--fork-popup-filter: none");
+    // Restating the frost rule's arms would let a new arm stay frosted here.
+    const restated = themeRules.filter(
       (rule) =>
-        NEUTRAL_STAGE.every((part) => rule.selector.includes(part)) &&
+        rule.selector.includes(`[${FORK_THEME_ATTRIBUTE}="${NEUTRAL_DARK_THEME}"]`) &&
         rule.selector.includes(".dropdown-glass"),
     );
-    expect(popup?.body).toMatch(/(?:^|;)\s*backdrop-filter:\s*none/u);
+    expect(restated).toHaveLength(0);
+  });
+
+  it("draws unchecked checkboxes as a flat hairline", () => {
+    const checkbox = ruleBodyFor(themeRules, [
+      ...NEUTRAL_STAGE,
+      '[data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"])',
+    ]);
+    expect(checkbox).toContain("border-color: rgb(255 255 255 / 16%)");
+    expect(checkbox).toContain("background: transparent");
+    expect(checkbox).toContain("box-shadow: none");
+    const highlight = ruleBodyFor(themeRules, [
+      ...NEUTRAL_STAGE,
+      '[data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"])::before',
+    ]);
+    expect(highlight).toContain("box-shadow: none");
   });
 
   it("does not leak Neutral Dark fills into light mode", () => {
@@ -182,6 +198,8 @@ describe("fork guard: fork-neutral-dark-theme", () => {
       "#44423f",
       "#494744",
       "#4b4946",
+      "#54524e",
+      "#5c5a57",
     ];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),

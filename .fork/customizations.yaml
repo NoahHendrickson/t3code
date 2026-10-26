@@ -2260,11 +2260,11 @@
     text. theme.custom.palettes.css uses the same two-block stage + v2 panel
     pattern as Westworld. index.html pre-paints #2c2a27 so the load flash matches.
     The sidebar stays opaque solid — wallpaper glass belongs to Neutral Darker.
-    Popups open flat on --popover #403e3b (a step above --card #383633) with no
-    backdrop-filter; the shared dark frost (fork-popup-surface) reads as glass,
-    which belongs to Glass.
-    An unchecked checkbox is a flat white-16% hairline with no fill, highlight
-    or shadow.
+    Popups open flat on --popover #403e3b (a step above --card #383633) by
+    overriding the shared frost's tokens (--fork-popup-fill / -border /
+    -filter); the frost (fork-popup-surface) reads as glass, which belongs to
+    Glass. Every unchecked checkbox in the palette is a flat white-16% hairline
+    with no fill, highlight or shadow.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
@@ -2279,11 +2279,11 @@
 
 - id: fork-neutral-darker-theme
   intent: >
-    Appearance offers Neutral Darker as a deeper sibling of Neutral Dark.
-    True-neutral grays only. Chat stage #1a1a1a (darker than Neutral Dark's
-    #2c2a27); sidebar #212121 (much darker than Neutral Dark's #34322f, still a
-    step lighter than the stage). Stage --card/--popover match the
-    sidebar (#212121) so menus open at the same lift. Composer vessel sits a
+    Appearance offers Neutral Darker as a true-neutral counterpart to the warm
+    Neutral Dark, pushed down. True-neutral grays only. Chat stage #1a1a1a
+    (well below Neutral Dark's #2c2a27); sidebar #212121 (much darker than
+    Neutral Dark's #34322f, still a step lighter than the stage). Stage
+    --card/--popover match the sidebar (#212121) so menus open at the same lift. Composer vessel sits a
     step above the sidebar at #252525 so the control row contrasts against the
     stage; prompt/chips lift from that vessel. Must not alter Neutral Dark,
     Westworld, or default Dark fills.
