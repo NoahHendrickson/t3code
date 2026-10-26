@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-const STORAGE_KEY = "t3code:fork:glass-new-agent-picture:v1";
-const ATTRIBUTE = "data-fork-glass-picture";
+const STORAGE_KEY = "t3code:fork:test-switch:v1";
+const ATTRIBUTE = "data-fork-test-switch";
 
 function stubBrowser(stored: string | null) {
   const values = new Map<string, string>(stored === null ? [] : [[STORAGE_KEY, stored]]);
@@ -31,26 +31,30 @@ function stubBrowser(stored: string | null) {
   return { attributes, fireStorage, storageListeners };
 }
 
-// The initializer runs once per module instance, so each case loads its own.
 async function initialize() {
-  vi.resetModules();
-  const module = await import("./forkGlassNewAgentPicture");
-  expect(module.FORK_GLASS_PICTURE_OFF_ATTRIBUTE).toBe(ATTRIBUTE);
-  return module.initializeForkGlassNewAgentPicture;
+  const Schema = await import("effect/Schema");
+  const { createForkRootSetting } = await import("./forkRootSetting");
+  return createForkRootSetting({
+    storageKey: STORAGE_KEY,
+    attribute: ATTRIBUTE,
+    schema: Schema.Boolean,
+    defaultValue: true,
+    attributeValue: (enabled) => (enabled ? null : "off"),
+  }).initialize;
 }
 
-describe("initializeForkGlassNewAgentPicture", () => {
+describe("createForkRootSetting", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("leaves the stage on when nothing is stored", async () => {
+  it("leaves the root on when nothing is stored", async () => {
     const { attributes } = stubBrowser(null);
     (await initialize())();
     expect(attributes.has(ATTRIBUTE)).toBe(false);
   });
 
-  it("stamps the root off before first render when the picture is switched off", async () => {
+  it("stamps the root off before first render when switched off", async () => {
     const { attributes } = stubBrowser("false");
     (await initialize())();
     expect(attributes.get(ATTRIBUTE)).toBe("off");
@@ -75,5 +79,47 @@ describe("initializeForkGlassNewAgentPicture", () => {
     init();
     init();
     expect(storageListeners).toHaveLength(1);
+  });
+});
+
+describe("the Glass settings", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function stamp(glass3d: string | null) {
+    vi.resetModules();
+    const values = new Map([["t3code:fork:glass-new-agent-picture:v1", "true"]]);
+    if (glass3d !== null) values.set("t3code:fork:glass-3d:v1", glass3d);
+    const attributes = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: { getItem: (key: string) => values.get(key) ?? null },
+      addEventListener: () => {},
+    });
+    vi.stubGlobal("document", {
+      documentElement: {
+        setAttribute: (name: string, value: string) => attributes.set(name, value),
+        removeAttribute: (name: string) => attributes.delete(name),
+      },
+    });
+    const glass3dModule = await import("./forkGlass3d");
+    const picture = await import("./forkGlassNewAgentPicture");
+    glass3dModule.initializeForkGlass3d();
+    picture.initializeForkGlassNewAgentPicture();
+    return Object.fromEntries(attributes);
+  }
+
+  it("stamps nothing at Full, the picture on", async () => {
+    expect(await stamp(null)).toEqual({});
+    expect(await stamp('"full"')).toEqual({});
+  });
+
+  it("stamps the 3D mode short of Full", async () => {
+    expect(await stamp('"selection"')).toEqual({ "data-fork-glass-3d": "selection" });
+    expect(await stamp('"off"')).toEqual({ "data-fork-glass-3d": "off" });
+  });
+
+  it("reads an unknown stored value as Full", async () => {
+    expect(await stamp("false")).toEqual({});
   });
 });

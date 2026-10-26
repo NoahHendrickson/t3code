@@ -2158,7 +2158,7 @@
   verify:
     - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
-    - apps/web/src/custom/forkGlassNewAgentPicture.test.ts
+    - apps/web/src/custom/forkRootSetting.test.ts
 
 - id: fork-glass-stage-card
   intent: >
@@ -2171,7 +2171,8 @@
 
     The card's inset is declared once at the Glass root
     (--fork-glass-card-inset, 8px, and --fork-glass-card-inset-left, which
-    follows it), outside the draft picture's switch; the card, the picture,
+    follows it) in the palettes sheet, outside the draft picture's and the
+    3D switches; the card, the picture,
     its frost copies and custom/forkGlassPopupCutout.ts all read those two
     tokens. Beside a docked sidebar the left is 3px, not 8px, and the
     sidebar's groups give up their right padding (the list to 0 beside its
@@ -4836,6 +4837,48 @@
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Helix.test.ts
 
+- id: fork-glass-3d
+  intent: >
+    Settings → Appearance → Interface → 3D glass (shown only under Glass)
+    picks how much of Glass gets depth. Full (default): the stage card a
+    thread sits in (fork-glass-stage-card) and the glints, sheens and halos
+    on selected rows, chips, tabs, the send/stop buttons and popups
+    (theme.custom.glass-surfaces.css). Selected items only: just the selected
+    thread card and the active top sidebar rows. Off: the flat stage and
+    fills Glass had before #203. The lighter tint (#214) and everything else
+    stays in every mode. The setting stamps data-fork-glass-3d="selection" or
+    "off" on the root before first render (absent at Full). The sheets nest
+    under parents that carry the gate through a zero-specificity :where():
+    the stage sheet needs Full; the surfaces sheet keeps source order across
+    alternating parents, the tokens and selected rows under "not off" and
+    everything else under Full. & takes a parent's specificity, so every rule
+    ranks as it did flat. The card-inset and radius tokens are shared with the
+    new-agent picture and live in the palettes sheet, outside the setting,
+    with a rule that returns the picture's corners to 8px short of Full. Both
+    Glass settings are configurations of custom/forkRootSetting.ts:
+    device-local (localStorage) like the palette, and Restore defaults resets
+    them. The macOS traffic-light position from #203 is theme-independent and
+    stays.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkGlass3d.ts
+    - apps/web/src/custom/forkRootSetting.ts
+    - apps/web/src/custom/forkRootSetting.test.ts
+    - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/theme.custom.glass-stage.css
+    - apps/web/src/theme.custom.glass-surfaces.css
+    - apps/web/src/theme.custom.glass.css
+  shadows: []
+  watch:
+    # Fenced import and initializer call.
+    - apps/web/src/main.tsx
+    # Fenced import, state, restore-defaults entry and the Interface row.
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGlass3d.test.ts
+    - apps/web/src/custom/forkRootSetting.test.ts
+
 - id: mobile-current-checkout-branch
   intent: >
     A thread QUEUED OFFLINE from Mobile in Current checkout mode records the
@@ -5581,22 +5624,23 @@
     Settings on Glass wears the same controls as the rest of the app. Its
     menus, popovers, selects and comboboxes open on the composer popups'
     glass rim (halo, glint ring, sheens, 12px corners, 8px rows); its outline
-    buttons and select triggers are the composer's chips (chip fill, no
-    hairline, the glass light on the border box, the soft halo), outline
-    toggles and destructive-outline excepted, with the fill, hairline and
-    hover in Tailwind's utilities layer at the replaced utilities' weight so
-    the trigger's focus and invalid borders still win; its groups take the stage card's 5% white wash under
-    desktop vibrancy instead of upstream's 40% --card, which composited
-    darker than the stage; and its active section is drawn as the sidebar's
-    selected row. The popups portal out of the page, so the open Settings
-    route stamps data-fork-settings on the root (a :root:has() would put the
-    whole document on the invalidation path), and the rim's Settings arm sits
-    in :where() so it adds no weight to the rim rules, which nest under one
-    copy of the rim's popup list. Glass only; every other palette keeps
-    upstream's Settings. Scoped to Settings because that is the surface that
-    was audited, not because the look is Settings-specific: dialogs and the
-    diff and PR panels still wear upstream's controls, and widening this to
-    all of Glass should replace the route stamp rather than add a second.
+    buttons and select triggers are the composer's chips, outline toggles and
+    destructive-outline excepted; its groups take the stage card's 5% white
+    wash under desktop vibrancy instead of upstream's 40% --card, which
+    composited darker than the stage; and its active section is drawn as the
+    sidebar's selected row. The chips' fill, no hairline and hover hold with
+    3D glass off (palettes sheet) and sit in Tailwind's utilities layer at
+    the replaced utilities' weight, so the trigger's focus and invalid
+    borders still win; their halo and light, like the rim, need Full 3D
+    (glass surfaces sheet). The popups portal out of the page, so the open
+    Settings route stamps data-fork-settings on the root (a :root:has() would
+    put the whole document on the invalidation path), and the rim's Settings
+    arm sits in :where() so it adds no weight to the rim rules, which nest
+    under one copy of the rim's popup list. Glass only; every other palette
+    keeps upstream's Settings. Scoped to Settings because that is the surface
+    that was audited, not because the look is Settings-specific: dialogs and
+    the diff and PR panels still wear upstream's controls, and widening this
+    to all of Glass should replace the route stamp rather than add a second.
   tier: 4
   files:
     - apps/web/src/custom/forkSettingsGlass.ts
