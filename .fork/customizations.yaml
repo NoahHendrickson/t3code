@@ -5575,3 +5575,37 @@
   verify:
     - apps/web/src/__fork_guards__/forkTranscriptRowMotion.test.ts
     - apps/web/src/custom/forkTimelineRowMotion.test.ts
+
+- id: fork-settings-glass
+  intent: >
+    Settings on Glass wears the same controls as the rest of the app. Its
+    menus, popovers, selects and comboboxes open on the composer popups'
+    glass rim (halo, glint ring, sheens, 12px corners, 8px rows); its outline
+    buttons and select triggers are the composer's chips (chip fill, no
+    hairline, the glass light on the border box, the soft halo), outline
+    toggles excepted; its groups take the stage card's 5% white wash under
+    desktop vibrancy instead of upstream's 40% --card, which composited
+    darker than the stage; and its active section is drawn as the sidebar's
+    selected row. The popups portal out of the page, so the open Settings
+    route stamps data-fork-settings on the root (a :root:has() would put the
+    whole document on the invalidation path), and the rim's Settings arm sits
+    in :where() so it adds no weight to the rim rules. Glass only; every
+    other palette keeps upstream's Settings.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkSettingsGlass.ts
+    - apps/web/src/theme.custom.glass-surfaces.css
+    - apps/web/src/theme.custom.palettes.css
+  shadows: []
+  watch:
+    # Fenced useForkSettingsMarker() in SettingsContentLayout.
+    - apps/web/src/routes/settings.tsx
+    # Fenced data-fork-chrome-row on the section buttons.
+    - apps/web/src/components/settings/SettingsSidebarNav.tsx
+    # The chip rule keys on the dark:bg-input/32 wash both variants paint.
+    - apps/web/src/components/ui/button.tsx
+    - apps/web/src/components/ui/select.tsx
+    # The card wash keys on bg-card/40.
+    - apps/web/src/components/settings/SettingsGroup.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkSettingsGlass.test.ts

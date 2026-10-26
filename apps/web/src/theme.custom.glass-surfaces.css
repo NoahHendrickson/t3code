@@ -323,7 +323,12 @@
    menus: every composer popup carries data-chat-composer-floating-layer
    (useComposerMenuProps), and the fork's own popups that are not composer
    layers (the draft's project menu, the liveness list, the thread sort and
-   settings menus, the thread details card) carry data-fork-glass-rim. The
+   settings menus, the thread details card) carry data-fork-glass-rim.
+   While Settings is open (fork-settings-glass, a root attribute because
+   these portal out of the page) every menu, popover, select and combobox
+   joins them, so its dropdowns are the composer's. That arm sits in
+   :where() to add no weight: the thread sort menu outranks these rules by
+   one attribute. The
    marker lands on the popup, but the glass is on the popup itself for menu
    and popover, on its child for select and on its wrapper for combobox.
 
@@ -349,7 +354,19 @@
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]))
+    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
+    :where(
+      :root[data-fork-settings]
+        :is(
+          :is(
+            [data-slot="menu-popup"],
+            [data-slot="menu-sub-content"],
+            [data-slot="popover-popup"]
+          ).dropdown-glass,
+          [data-slot="select-popup"] > .dropdown-glass,
+          .dropdown-glass:has(> [data-slot="combobox-popup"])
+        )
+    )
   ) {
   border-width: 0;
   border-radius: 12px;
@@ -364,7 +381,19 @@
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]))
+    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
+    :where(
+      :root[data-fork-settings]
+        :is(
+          :is(
+            [data-slot="menu-popup"],
+            [data-slot="menu-sub-content"],
+            [data-slot="popover-popup"]
+          ).dropdown-glass,
+          [data-slot="select-popup"] > .dropdown-glass,
+          .dropdown-glass:has(> [data-slot="combobox-popup"])
+        )
+    )
   ) {
   box-shadow:
     0 2px 16px rgb(0 0 0 / 25%),
@@ -381,7 +410,19 @@
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]))
+    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
+    :where(
+      :root[data-fork-settings]
+        :is(
+          :is(
+            [data-slot="menu-popup"],
+            [data-slot="menu-sub-content"],
+            [data-slot="popover-popup"]
+          ).dropdown-glass,
+          [data-slot="select-popup"] > .dropdown-glass,
+          .dropdown-glass:has(> [data-slot="combobox-popup"])
+        )
+    )
   )[data-fork-glass-frost] {
   outline: none;
 }
@@ -401,7 +442,19 @@
   :where(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]))
+    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
+    :where(
+      :root[data-fork-settings]
+        :is(
+          :is(
+            [data-slot="menu-popup"],
+            [data-slot="menu-sub-content"],
+            [data-slot="popover-popup"]
+          ).dropdown-glass,
+          [data-slot="select-popup"] > .dropdown-glass,
+          .dropdown-glass:has(> [data-slot="combobox-popup"])
+        )
+    )
   )
   :is(
     [data-slot="menu-item"],
@@ -417,7 +470,19 @@
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]))
+    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
+    :where(
+      :root[data-fork-settings]
+        :is(
+          :is(
+            [data-slot="menu-popup"],
+            [data-slot="menu-sub-content"],
+            [data-slot="popover-popup"]
+          ).dropdown-glass,
+          [data-slot="select-popup"] > .dropdown-glass,
+          .dropdown-glass:has(> [data-slot="combobox-popup"])
+        )
+    )
   )::before {
   content: "";
   position: absolute;
@@ -444,7 +509,19 @@
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]))
+    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
+    :where(
+      :root[data-fork-settings]
+        :is(
+          :is(
+            [data-slot="menu-popup"],
+            [data-slot="menu-sub-content"],
+            [data-slot="popover-popup"]
+          ).dropdown-glass,
+          [data-slot="select-popup"] > .dropdown-glass,
+          .dropdown-glass:has(> [data-slot="combobox-popup"])
+        )
+    )
   ):not([data-fork-glass-frost])::after {
   content: "";
   position: absolute;
@@ -683,4 +760,38 @@
   [data-fork-thread-sort]
   [data-slot="menu-radio-item"] {
   border-radius: 12px;
+}
+
+/* Settings' bordered controls (fork-settings-glass): upstream's outline
+   buttons and select triggers, a hairline box on a wash of --input, are the
+   composer's chips here: the chip fill, no hairline, and the glass light on
+   the border box. Keyed on the wash both variants share, and on button or
+   anchor so text inputs, which carry it too, keep their wells. Outline
+   toggles are option pickers and keep their look, as everywhere on Glass.
+   The light rides the ::before both components already position; the soft
+   halo, as the controls sit on a card. Unlayered, so the hover is restated
+   rather than left to upstream's utilities. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+  :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"]) {
+  border-color: rgb(255 255 255 / 0%);
+  background-color: var(--fork-context-chip-bg);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--fork-glass-halo-soft);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+  :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"])::before {
+  inset: -1px;
+  border-radius: inherit;
+  box-shadow: var(--fork-glass-light);
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+  :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"]):is(
+    :hover,
+    [data-pressed],
+    [data-popup-open]
+  ):not(:disabled, [data-disabled]) {
+  background-color: var(--fork-context-chip-bg-hover);
 }

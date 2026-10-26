@@ -342,6 +342,11 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                       <SidebarMenuButton
                         isActive={isActive}
                         onClick={() => handleSectionClick(item.to)}
+                        /* fork:begin fork-settings-glass — see .fork/customizations.yaml#fork-settings-glass
+                           Glass draws the active section like the main sidebar's
+                           active top rows (theme.custom.glass-surfaces.css). */
+                        data-fork-chrome-row=""
+                        /* fork:end fork-settings-glass */
                       >
                         <Icon />
                         <span className="truncate">{item.label}</span>
