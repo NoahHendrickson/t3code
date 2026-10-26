@@ -5583,14 +5583,20 @@
     glass rim (halo, glint ring, sheens, 12px corners, 8px rows); its outline
     buttons and select triggers are the composer's chips (chip fill, no
     hairline, the glass light on the border box, the soft halo), outline
-    toggles excepted; its groups take the stage card's 5% white wash under
+    toggles and destructive-outline excepted, with the fill, hairline and
+    hover in Tailwind's utilities layer at the replaced utilities' weight so
+    the trigger's focus and invalid borders still win; its groups take the stage card's 5% white wash under
     desktop vibrancy instead of upstream's 40% --card, which composited
     darker than the stage; and its active section is drawn as the sidebar's
     selected row. The popups portal out of the page, so the open Settings
     route stamps data-fork-settings on the root (a :root:has() would put the
     whole document on the invalidation path), and the rim's Settings arm sits
-    in :where() so it adds no weight to the rim rules. Glass only; every
-    other palette keeps upstream's Settings.
+    in :where() so it adds no weight to the rim rules, which nest under one
+    copy of the rim's popup list. Glass only; every other palette keeps
+    upstream's Settings. Scoped to Settings because that is the surface that
+    was audited, not because the look is Settings-specific: dialogs and the
+    diff and PR panels still wear upstream's controls, and widening this to
+    all of Glass should replace the route stamp rather than add a second.
   tier: 4
   files:
     - apps/web/src/custom/forkSettingsGlass.ts

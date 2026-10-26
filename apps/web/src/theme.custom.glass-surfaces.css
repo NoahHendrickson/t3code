@@ -323,14 +323,15 @@
    menus: every composer popup carries data-chat-composer-floating-layer
    (useComposerMenuProps), and the fork's own popups that are not composer
    layers (the draft's project menu, the liveness list, the thread sort and
-   settings menus, the thread details card) carry data-fork-glass-rim.
-   While Settings is open (fork-settings-glass, a root attribute because
-   these portal out of the page) every menu, popover, select and combobox
-   joins them, so its dropdowns are the composer's. That arm sits in
-   :where() to add no weight: the thread sort menu outranks these rules by
-   one attribute. The
-   marker lands on the popup, but the glass is on the popup itself for menu
-   and popover, on its child for select and on its wrapper for combobox.
+   settings menus, the thread details card) carry data-fork-glass-rim. While
+   Settings is open (fork-settings-glass) its menus, popovers, selects and
+   comboboxes join them too, keyed on the root attribute the open route
+   stamps, since they portal out of the page. That arm sits in :where() so
+   it adds no weight: the thread sort menu outranks these rules by one
+   attribute. The glass is on the popup itself for menu and popover, on its
+   child for select and on its wrapper for combobox, hence three arms each.
+   The list is written once and the rules nest under it; & keeps the list's
+   :is() specificity.
 
    The whole card recipe, at a popup's size:
    - The card's 12px radius, with rows at 8px so the 4px list inset stays
@@ -350,81 +351,101 @@
    scrolling one scrollbars. No such popup scrolls its glass box (lists
    scroll inside it), so the layers stay put. Popover's ::before is
    upstream's top highlight, which the ring replaces. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  :is(
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
-    :where(
-      :root[data-fork-settings]
-        :is(
-          :is(
-            [data-slot="menu-popup"],
-            [data-slot="menu-sub-content"],
-            [data-slot="popover-popup"]
-          ).dropdown-glass,
-          [data-slot="select-popup"] > .dropdown-glass,
-          .dropdown-glass:has(> [data-slot="combobox-popup"])
-        )
+:is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
+:is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
+.dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
+:where(
+  :root[data-fork-settings]
+    :is(
+      :is(
+        [data-slot="menu-popup"],
+        [data-slot="menu-sub-content"],
+        [data-slot="popover-popup"]
+      ).dropdown-glass,
+      [data-slot="select-popup"] > .dropdown-glass,
+      .dropdown-glass:has(> [data-slot="combobox-popup"])
     )
-  ) {
-  border-width: 0;
-  border-radius: 12px;
-  box-shadow: var(--tw-shadow, 0 0 #0000), var(--fork-glass-halo), var(--fork-glass-sheen);
-}
+) {
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] & {
+    border-width: 0;
+    border-radius: 12px;
+    box-shadow: var(--tw-shadow, 0 0 #0000), var(--fork-glass-halo), var(--fork-glass-sheen);
+  }
 
-/* Under the desktop glass the palettes sheet replaces every popup's shadow
-   with its own lighter drop shadow, at a selector one attribute heavier
-   than the rule above. This ties it and wins on source order, keeping that
-   drop shadow beside the halo and sheens. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  :is(
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
-    :where(
-      :root[data-fork-settings]
-        :is(
-          :is(
-            [data-slot="menu-popup"],
-            [data-slot="menu-sub-content"],
-            [data-slot="popover-popup"]
-          ).dropdown-glass,
-          [data-slot="select-popup"] > .dropdown-glass,
-          .dropdown-glass:has(> [data-slot="combobox-popup"])
-        )
-    )
-  ) {
-  box-shadow:
-    0 2px 16px rgb(0 0 0 / 25%),
-    var(--fork-glass-halo),
-    var(--fork-glass-sheen);
-}
+  /* Under the desktop glass the palettes sheet replaces every popup's shadow
+     with its own lighter drop shadow, at a selector one attribute heavier
+     than the rule above. This ties it and wins on source order, keeping that
+     drop shadow beside the halo and sheens. */
+  :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    & {
+    box-shadow:
+      0 2px 16px rgb(0 0 0 / 25%),
+      var(--fork-glass-halo),
+      var(--fork-glass-sheen);
+  }
 
-/* Frosted over a new agent's draft (theme.custom.glass.css), the popup
-   draws its hairline as an inset outline. Beside the halo it read as a
-   thick double edge, so these popups drop it; the glint ring sits above
-   the frost copy and carries the edge. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  body
-  :is(
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
-    :where(
-      :root[data-fork-settings]
-        :is(
-          :is(
-            [data-slot="menu-popup"],
-            [data-slot="menu-sub-content"],
-            [data-slot="popover-popup"]
-          ).dropdown-glass,
-          [data-slot="select-popup"] > .dropdown-glass,
-          .dropdown-glass:has(> [data-slot="combobox-popup"])
-        )
-    )
-  )[data-fork-glass-frost] {
-  outline: none;
+  /* Frosted over a new agent's draft (theme.custom.glass.css), the popup
+     draws its hairline as an inset outline. Beside the halo it read as a
+     thick double edge, so these popups drop it; the glint ring sits above
+     the frost copy and carries the edge. */
+  :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    body
+    &[data-fork-glass-frost] {
+    outline: none;
+  }
+
+  /* The rows' 8px, set on the rows: index.css inlines rounded-sm as
+     calc(var(--radius) - 4px), so a --radius-sm override never reaches them.
+     In :where() so the menus below that round their rows further win on
+     source order. */
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    :where(&)
+    :is(
+      [data-slot="menu-item"],
+      [data-slot="menu-radio-item"],
+      [data-slot="menu-checkbox-item"],
+      [data-slot="select-item"],
+      [data-slot="combobox-item"]
+    ):not([data-fork-model-picker] *) {
+    border-radius: 8px;
+  }
+
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    padding: 0.5px;
+    border-radius: inherit;
+    background: linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 22%),
+      rgb(255 255 255 / 0%) 8px calc(100% - 8px),
+      rgb(255 255 255 / 10%)
+    );
+    box-shadow: none;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+
+  /* A frosted popup's ::after is its frost copy (theme.custom.glass.css),
+     which already shows a blurred picture through the glass. */
+  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+    &:not([data-fork-glass-frost])::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    /* Gentler than the card's: the highlighted row is a large grey slab right
+       under the top edge, and at the card's strength it turned into a bright
+       strip rather than a tint. */
+    backdrop-filter: blur(12px) saturate(4) brightness(1.2);
+    mask: linear-gradient(rgb(0 0 0 / 26%), #0000 6px calc(100% - 6px), rgb(0 0 0 / 18%));
+    pointer-events: none;
+  }
 }
 
 /* The model picker keeps its own squarer geometry (fork-model-picker: 8px
@@ -432,108 +453,6 @@
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-chat-composer-floating-layer="true"][data-slot="menu-popup"]:has([data-fork-model-picker]) {
   border-radius: 8px;
-}
-
-/* The rows' 8px, set on the rows: index.css inlines rounded-sm as
-   calc(var(--radius) - 4px), so a --radius-sm override never reaches them.
-   In :where() so the menus below that round their rows further win on
-   source order. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  :where(
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
-    :where(
-      :root[data-fork-settings]
-        :is(
-          :is(
-            [data-slot="menu-popup"],
-            [data-slot="menu-sub-content"],
-            [data-slot="popover-popup"]
-          ).dropdown-glass,
-          [data-slot="select-popup"] > .dropdown-glass,
-          .dropdown-glass:has(> [data-slot="combobox-popup"])
-        )
-    )
-  )
-  :is(
-    [data-slot="menu-item"],
-    [data-slot="menu-radio-item"],
-    [data-slot="menu-checkbox-item"],
-    [data-slot="select-item"],
-    [data-slot="combobox-item"]
-  ):not([data-fork-model-picker] *) {
-  border-radius: 8px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  :is(
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
-    :where(
-      :root[data-fork-settings]
-        :is(
-          :is(
-            [data-slot="menu-popup"],
-            [data-slot="menu-sub-content"],
-            [data-slot="popover-popup"]
-          ).dropdown-glass,
-          [data-slot="select-popup"] > .dropdown-glass,
-          .dropdown-glass:has(> [data-slot="combobox-popup"])
-        )
-    )
-  )::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  padding: 0.5px;
-  border-radius: inherit;
-  background: linear-gradient(
-    to bottom,
-    rgb(255 255 255 / 22%),
-    rgb(255 255 255 / 0%) 8px calc(100% - 8px),
-    rgb(255 255 255 / 10%)
-  );
-  box-shadow: none;
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
-  pointer-events: none;
-}
-
-/* A frosted popup's ::after is its frost copy (theme.custom.glass.css),
-   which already shows a blurred picture through the glass. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  :is(
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
-    :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
-    .dropdown-glass:has(> :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"])),
-    :where(
-      :root[data-fork-settings]
-        :is(
-          :is(
-            [data-slot="menu-popup"],
-            [data-slot="menu-sub-content"],
-            [data-slot="popover-popup"]
-          ).dropdown-glass,
-          [data-slot="select-popup"] > .dropdown-glass,
-          .dropdown-glass:has(> [data-slot="combobox-popup"])
-        )
-    )
-  ):not([data-fork-glass-frost])::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  /* Gentler than the card's: the highlighted row is a large grey slab right
-     under the top edge, and at the card's strength it turned into a bright
-     strip rather than a tint. */
-  backdrop-filter: blur(12px) saturate(4) brightness(1.2);
-  mask: linear-gradient(rgb(0 0 0 / 26%), #0000 6px calc(100% - 6px), rgb(0 0 0 / 18%));
-  pointer-events: none;
 }
 
 /* Docked inline under the desktop glass, the details card keeps no blur at
@@ -764,34 +683,53 @@
 
 /* Settings' bordered controls (fork-settings-glass): upstream's outline
    buttons and select triggers, a hairline box on a wash of --input, are the
-   composer's chips here: the chip fill, no hairline, and the glass light on
-   the border box. Keyed on the wash both variants share, and on button or
-   anchor so text inputs, which carry it too, keep their wells. Outline
-   toggles are option pickers and keep their look, as everywhere on Glass.
-   The light rides the ::before both components already position; the soft
-   halo, as the controls sit on a card. Unlayered, so the hover is restated
-   rather than left to upstream's utilities. */
+   composer's chips here: the chip fill, no hairline, the glass light on the
+   border box and the soft halo, as they sit on a card. Keyed on the wash both
+   variants share, on button or anchor so text inputs, which carry it too,
+   keep their wells. Outline toggles are option pickers and keep their look,
+   as everywhere on Glass, and destructive-outline keeps its red hover.
+
+   The fill, hairline and hover join Tailwind's utilities layer at the weight
+   of the utilities they replace (dark: adds an :is(.dark *)), the card
+   wash's doctrine in theme.custom.palettes.css, so the trigger's focus and
+   invalid borders still win. The light and halo carry no state and stay
+   unlayered, on the ::before both components already position. */
+@layer utilities {
+  :where(
+    :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+      :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
+  ).dark\:bg-input\/32 {
+    border-color: rgb(255 255 255 / 0%);
+  }
+
+  :where(
+      :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+        :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
+    ).dark\:bg-input\/32:is(.dark *) {
+    background-color: var(--fork-context-chip-bg);
+  }
+
+  :where(
+      :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+        :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
+    ).dark\:bg-input\/32:is(.dark *):is(:hover, [data-pressed], [data-popup-open]) {
+    background-color: var(--fork-context-chip-bg-hover);
+  }
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
-  :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"]) {
-  border-color: rgb(255 255 255 / 0%);
-  background-color: var(--fork-context-chip-bg);
+  :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"], .text-destructive-foreground) {
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
     var(--fork-glass-halo-soft);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
-  :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"])::before {
+  :is(button, a).dark\:bg-input\/32:not(
+    [data-slot="toggle"],
+    .text-destructive-foreground
+  )::before {
   inset: -1px;
   border-radius: inherit;
   box-shadow: var(--fork-glass-light);
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
-  :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"]):is(
-    :hover,
-    [data-pressed],
-    [data-popup-open]
-  ):not(:disabled, [data-disabled]) {
-  background-color: var(--fork-context-chip-bg-hover);
 }

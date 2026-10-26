@@ -6,12 +6,12 @@
  * rather than a `:root:has()` query, which would put every DOM change in the
  * app on the style-invalidation path.
  */
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 export const FORK_SETTINGS_ATTRIBUTE = "data-fork-settings";
 
 export function useForkSettingsMarker(): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
     root.setAttribute(FORK_SETTINGS_ATTRIBUTE, "");
     return () => root.removeAttribute(FORK_SETTINGS_ATTRIBUTE);

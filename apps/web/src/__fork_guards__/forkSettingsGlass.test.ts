@@ -22,7 +22,8 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const surfaces = cssRules(readSibling("../theme.custom.glass-surfaces.css"));
+const surfacesSheet = readSibling("../theme.custom.glass-surfaces.css");
+const surfaces = cssRules(surfacesSheet);
 const SETTINGS = `:root[${FORK_SETTINGS_ATTRIBUTE}]`;
 
 describe("fork guard: settings glass", () => {
@@ -31,19 +32,22 @@ describe("fork guard: settings glass", () => {
   });
 
   it("puts Settings' dropdowns on the glass rim without outweighing it", () => {
-    const rim = surfaces.find(
-      (rule) =>
-        rule.selector.includes("[data-fork-glass-rim]") &&
-        rule.selector.includes(SETTINGS) &&
-        rule.body.includes("border-radius: 12px"),
+    // The rim's popup list is written once and its rules nest under it, so
+    // the Settings arm cannot reach some of the rim and not the rest.
+    expect(surfacesSheet.split(SETTINGS)).toHaveLength(2);
+    const list = surfacesSheet.slice(
+      surfacesSheet.lastIndexOf("*/", surfacesSheet.indexOf(SETTINGS)),
+      surfacesSheet.indexOf("{", surfacesSheet.indexOf(SETTINGS)),
     );
-    expect(rim, "the rim's popup rule must carry the Settings arm").toBeDefined();
+    expect(list).toContain("[data-fork-glass-rim]");
     for (const slot of ["menu-popup", "popover-popup", "select-popup", "combobox-popup"]) {
-      expect(rim?.selector).toContain(`[data-slot="${slot}"]`);
+      expect(list).toContain(`[data-slot="${slot}"]`);
     }
     // The thread sort menu outranks the rim by one attribute; a weighted arm
     // would flatten its 18px corners back to 12px.
-    expect(rim?.selector).toMatch(/:where\(\s*:root\[data-fork-settings\]/u);
+    expect(list).toMatch(/:where\(\s*:root\[data-fork-settings\]/u);
+    const radius = surfaces.find((rule) => rule.body.includes("border-radius: 12px"));
+    expect(radius?.selector.replace(/\s+/gu, " ")).toMatch(/cool-darker"\] &$/u);
   });
 
   it("draws outline buttons and select triggers as the composer's chips", () => {
@@ -54,6 +58,10 @@ describe("fork guard: settings glass", () => {
         rule.body.includes("--fork-context-chip-bg"),
     );
     expect(chip, "the chip rule keys on the wash both variants share").toBeDefined();
+    // Layered, so the trigger's focus and invalid borders still win.
+    expect(chip?.atRules).toContain("@layer utilities");
+    // destructive-outline shares the wash and keeps its red hover.
+    expect(chip?.selector).toContain(".text-destructive-foreground");
     expect(readSibling("../components/ui/button.tsx")).toMatch(
       /outline:\s*\n?\s*"[^"]*dark:bg-input\/32/u,
     );
