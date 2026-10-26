@@ -13,7 +13,9 @@
  * So: strip comments, then walk the braces, and return only leaf rules (blocks
  * whose body contains no further block). Every selector a fork guard cares
  * about is a leaf; the at-rules that wrap them are recorded on `atRules` so a
- * guard can pin media scoping without a coincidence-detector regex.
+ * guard can pin media scoping without a coincidence-detector regex. A leaf
+ * nested in a style rule comes back with its selector resolved against its
+ * parents, so a guard reads a nested sheet as it would the flat one.
  *
  * This is not a CSS parser and does not want to be. It is enough to answer
  * "which selector does this declaration sit under" and "which at-rules wrap
@@ -53,11 +55,41 @@ function matchingClose(source: string, open: number, end: number): number {
   return -1;
 }
 
+// Splits at commas outside parentheses and brackets.
+function selectorList(selector: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let from = 0;
+  for (let index = 0; index < selector.length; index += 1) {
+    const char = selector[index];
+    if (char === "(" || char === "[") depth += 1;
+    else if (char === ")" || char === "]") depth -= 1;
+    else if (char === "," && depth === 0) {
+      parts.push(selector.slice(from, index).trim());
+      from = index + 1;
+    }
+  }
+  parts.push(selector.slice(from).trim());
+  return parts;
+}
+
+// A nested selector written out against its parent, as the browser reads
+// it: `&` is the parent, and a part without one descends from it. A parent
+// list goes in :is(), which ranks as its most specific member.
+function resolveNested(parent: string | null, selector: string): string {
+  if (parent === null) return selector;
+  const outer = selectorList(parent).length > 1 ? `:is(${parent})` : parent;
+  return selectorList(selector)
+    .map((part) => (part.includes("&") ? part.replaceAll("&", outer) : `${outer} ${part}`))
+    .join(",\n");
+}
+
 function parseBlock(
   source: string,
   start: number,
   end: number,
   atRules: ReadonlyArray<string>,
+  parent: string | null = null,
 ): CssRule[] {
   const rules: CssRule[] = [];
   let index = start;
@@ -77,13 +109,14 @@ function parseBlock(
 
     const body = source.slice(open + 1, close);
     if (header.startsWith("@")) {
-      rules.push(...parseBlock(source, open + 1, close, [...atRules, header]));
+      rules.push(...parseBlock(source, open + 1, close, [...atRules, header], parent));
     } else if (!body.includes("{")) {
-      rules.push({ selector: header, body, atRules });
+      rules.push({ selector: resolveNested(parent, header), body, atRules });
     } else {
-      // Nested non-at block (not used by theme.custom.css today). Step inside
-      // without recording the outer selector, same as the previous walker.
-      rules.push(...parseBlock(source, open + 1, close, atRules));
+      // A nesting parent: its children come back with their selectors
+      // resolved against it. Declarations of its own beside them are not
+      // recorded.
+      rules.push(...parseBlock(source, open + 1, close, atRules, resolveNested(parent, header)));
     }
     index = close + 1;
   }
@@ -134,4 +167,20 @@ export function declarationHex(body: string, prop: string): string {
 export function parseHex(hex: string): readonly [number, number, number] {
   const value = Number.parseInt(hex.slice(1), 16);
   return [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff];
+}
+
+/** Headers of the top-level blocks, at-rules included, in source order. */
+export function topLevelHeaders(css: string): ReadonlyArray<string> {
+  const source = stripComments(css);
+  const headers: string[] = [];
+  let index = 0;
+  while (index < source.length) {
+    const open = source.indexOf("{", index);
+    if (open < 0) break;
+    const close = matchingClose(source, open, source.length);
+    if (close < 0) break;
+    headers.push(source.slice(index, open).trim());
+    index = close + 1;
+  }
+  return headers;
 }

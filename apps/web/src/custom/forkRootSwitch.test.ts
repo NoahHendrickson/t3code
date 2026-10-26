@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-const STORAGE_KEY = "t3code:fork:glass-new-agent-picture:v1";
-const ATTRIBUTE = "data-fork-glass-picture";
+const STORAGE_KEY = "t3code:fork:test-switch:v1";
+const ATTRIBUTE = "data-fork-test-switch";
 
 function stubBrowser(stored: string | null) {
   const values = new Map<string, string>(stored === null ? [] : [[STORAGE_KEY, stored]]);
@@ -31,26 +31,23 @@ function stubBrowser(stored: string | null) {
   return { attributes, fireStorage, storageListeners };
 }
 
-// The initializer runs once per module instance, so each case loads its own.
 async function initialize() {
-  vi.resetModules();
-  const module = await import("./forkGlassNewAgentPicture");
-  expect(module.FORK_GLASS_PICTURE_OFF_ATTRIBUTE).toBe(ATTRIBUTE);
-  return module.initializeForkGlassNewAgentPicture;
+  const { createForkRootSwitch } = await import("./forkRootSwitch");
+  return createForkRootSwitch({ storageKey: STORAGE_KEY, attribute: ATTRIBUTE }).initialize;
 }
 
-describe("initializeForkGlassNewAgentPicture", () => {
+describe("createForkRootSwitch", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("leaves the stage on when nothing is stored", async () => {
+  it("leaves the root on when nothing is stored", async () => {
     const { attributes } = stubBrowser(null);
     (await initialize())();
     expect(attributes.has(ATTRIBUTE)).toBe(false);
   });
 
-  it("stamps the root off before first render when the picture is switched off", async () => {
+  it("stamps the root off before first render when switched off", async () => {
     const { attributes } = stubBrowser("false");
     (await initialize())();
     expect(attributes.get(ATTRIBUTE)).toBe("off");
@@ -75,5 +72,37 @@ describe("initializeForkGlassNewAgentPicture", () => {
     init();
     init();
     expect(storageListeners).toHaveLength(1);
+  });
+});
+
+describe("the Glass switches", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("each stamp their own attribute from their own key", async () => {
+    vi.resetModules();
+    const values = new Map([
+      ["t3code:fork:glass-3d:v1", "false"],
+      ["t3code:fork:glass-new-agent-picture:v1", "true"],
+    ]);
+    const attributes = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: { getItem: (key: string) => values.get(key) ?? null },
+      addEventListener: () => {},
+    });
+    vi.stubGlobal("document", {
+      documentElement: {
+        setAttribute: (name: string, value: string) => attributes.set(name, value),
+        removeAttribute: (name: string) => attributes.delete(name),
+      },
+    });
+    const glass3d = await import("./forkGlass3d");
+    const picture = await import("./forkGlassNewAgentPicture");
+    glass3d.initializeForkGlass3d();
+    picture.initializeForkGlassNewAgentPicture();
+    expect(Object.fromEntries(attributes)).toEqual({
+      [glass3d.FORK_GLASS_3D_OFF_ATTRIBUTE]: "off",
+    });
   });
 });

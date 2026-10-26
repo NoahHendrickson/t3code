@@ -24,347 +24,296 @@
    on source order and needs no specificity of its own. Marker- and
    palette-scoped, so no other palette sees any of it.
 
-   Every rule but the inset tokens stands down while the 3D switch is off
-   (custom/forkGlass3d.ts), leaving the flat stage the palettes sheet
-   paints. :where() keeps the gate out of the specificity above. */
-
-/* The card's inset from the chat view, read by the card, the draft's
-   picture and its frost copies (theme.custom.glass.css) and the popup
-   cutout (custom/forkGlassPopupCutout.ts). The left reads its own token,
-   which a docked sidebar overrides (below). The radius is shared by the
-   card and the picture that paints over it. At the root, outside the
-   picture's switch, so it holds with the picture off, and outside the 3D
-   switch, so the picture keeps its insets with the card gone. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
-  --fork-glass-card-inset: 8px;
-  --fork-glass-card-inset-left: var(--fork-glass-card-inset);
-  --fork-glass-card-radius: 12px;
-}
-
-/* With 3D off there is no card for the picture to match, so it takes the
-   8px corners it had before the card. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-glass-3d="off"].dark[data-fork-theme="cool-darker"] {
-  --fork-glass-card-radius: 8px;
-}
-
-/* The desktop side chat (fork-side-chat) is already a surface on the
-   desktop, with no sidebar beside it to frame a card. The card fills the
-   window instead, so it is one pane of glass rather than a pane set inside
-   another. Its fill stays, for the transcript's reading value; the corners
-   and the rim go, as the window draws its own edge. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  )[data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"] {
-  --fork-glass-card-inset: 0px;
-  --fork-glass-card-radius: 0px;
-}
-
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  )[data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"]
-  :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
-  box-shadow: none;
-}
-
-/* The card's containing block and stacking context: its z-index -1 only lands
-   above the inset's fill when the chat view is a stacking context. The
-   picture sheet declares the same pair behind its switch; this one holds
-   with the picture off. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]
-  :is([data-chat-column-maximized-away], [data-fork-stage-card]) {
-  position: relative;
-  isolation: isolate;
-}
-
-/* Except while a desktop tab floats over the chat: its webview is a fixed
-   element at the app root at z-index 48, and its chrome sits in the chat
-   view at 49 to paint over it, which only works outside a stacking context
-   of the chat view's own. The picture sheet carves the same exception
-   behind its switch; this one holds with the picture off. The card falls
-   under the inset's fill meanwhile. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away]:has([data-preview-mini-player] [data-browser-surface-slot]) {
-  isolation: auto;
-}
-
-/* The pane. Opaque clients paint the stage's own colour on it; under the
-   desktop glass the fill is set below. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]
-  :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
-  content: "";
-  position: absolute;
-  inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
-    var(--fork-glass-card-inset-left);
-  z-index: -1;
-  border-radius: var(--fork-glass-card-radius);
-  pointer-events: none;
-  /* The light on the pane, layered over every fill. A broad glow down from
-     the top edge and up from the foot, as a gradient rather than an inset
-     shadow: a shadow's blur spills round the sides too, and down a full
-     window height that read as a lit band with a hard inner edge. The stops
-     ease out instead of running straight to nothing, so the glow ends
-     without a line. Then a white wash, so the pane reads level with the
-     panel rather than a step darker; it lightens without thinning the fill. */
-  --fork-glass-stage-light:
-    linear-gradient(
-      to bottom,
-      rgb(255 255 255 / 5%),
-      rgb(255 255 255 / 3.2%) 6px,
-      rgb(255 255 255 / 1.8%) 12px,
-      rgb(255 255 255 / 0.8%) 18px,
-      rgb(255 255 255 / 0.25%) 24px,
-      rgb(255 255 255 / 0%) 32px calc(100% - 32px),
-      rgb(255 255 255 / 0.2%) calc(100% - 24px),
-      rgb(255 255 255 / 0.6%) calc(100% - 18px),
-      rgb(255 255 255 / 1.4%) calc(100% - 12px),
-      rgb(255 255 255 / 2.6%) calc(100% - 6px),
-      rgb(255 255 255 / 4%)
-    ),
-    linear-gradient(rgb(255 255 255 / 4%), rgb(255 255 255 / 4%));
-  /* Dither for the stage ramp (below): a static tile of binary grey, 0 or
-     110 at 2%, so ±1 level of 8-bit output. Its mean of 55 sits near the
-     ramp's reading value, which follows the wallpaper under the material, so
-     it can shift the card's tone by 0.02 × |55 − output|: about a level at
-     most. Not the grain this palette drops (--surface-grain, theme.custom.css):
-     that lay over opaque fills the palette freezes, where it is drift; this
-     lies over a translucent ramp, where it is what keeps the ramp smooth. */
-  --fork-glass-stage-dither: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='d' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .43'/%3E%3CfeFuncG type='discrete' tableValues='0 .43'/%3E%3CfeFuncB type='discrete' tableValues='0 .43'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23d)' opacity='.02'/%3E%3C/svg%3E");
-  background: var(--fork-glass-stage-light), var(--background);
-  box-shadow:
-    0 0 2px 1px rgb(0 0 0 / 35%),
-    inset 0 0.5px 0 rgb(255 255 255 / 28%),
-    inset 0 -0.5px 0 rgb(255 255 255 / 12%),
-    inset 0 0 0 0.5px rgb(255 255 255 / 6%),
-    inset 0 3px 4px -3px rgb(255 255 255 / 10%),
-    inset 0 -3px 4px -3px rgb(255 255 255 / 8%);
-}
-
-/* Under the desktop glass the stage's reading value is a composite, not one
-   fill. The inset now paints the gutter at the panel's alpha (below), and the
-   card adds the difference over it at --fork-glass-card-alpha, chosen so
-   card over gutter composites to the stage's reading value, so the transcript keeps
-   exactly the opacity the vibrancy entry tuned it to. Same triple as the
-   panel, so the two layers only ever differ in alpha. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
-  background:
-    var(--fork-glass-stage-light),
-    linear-gradient(
-      rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha)),
-      rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha))
-    );
-}
-
-/* The stage ramp, moved onto the card: the stage alpha for the top 70%,
-   thinning to the panel's at the floor, where the card adds nothing. Scoped
-   to the cutoff mask that licenses it, as the palettes sheet scopes the
-   inset's ramp.
-
-   Dithered, as the draft's picture is: over the material that step from the
-   stage alpha to the panel's is only a handful of levels of 8-bit output, so
-   undithered the bottom 30% steps in horizontal bands ~40px tall, tinted
-   where the channels step at different heights. The dither token's tile is
-   set on the card above. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away]:has(.fork-timeline-cutoff)::before {
-  background:
-    var(--fork-glass-stage-dither) 0 0 / 128px 128px,
-    var(--fork-glass-stage-light),
-    linear-gradient(
-      to bottom,
-      rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha)) 0 70%,
-      rgb(var(--fork-glass-tint) / 0%) 100%
-    );
-}
-
-/* The gutter: the inset round a chat view takes the panel's fill. Two rules
-   because the two clients paint it differently — an opaque colour, or a
-   gradient over the inset the vibrancy block has already cleared. Settings,
-   Usage and the other routes in the inset hold no card and keep the stage
-   as it was. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
-  [data-slot="sidebar-inset"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card])) {
-  background-color: var(--fork-glass-panel);
-}
-
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-inset"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card])) {
-  background-image: linear-gradient(var(--fork-glass-panel) 0 100%);
-}
-
-/* No seam while the gutter matches the panel: the card's edge is the only
-   line between them. The panel's own fill rather than a clear border, which
-   under the desktop glass is a 1px strip of raw wallpaper. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-wrapper"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
-  [data-slot="sidebar-container"][data-sidebar-version="v2"] {
-  border-color: var(--sidebar);
-}
-
-/* On an opaque client the chat's structural layers fill with an opaque
-   bg-background edge to edge, over the gutter: the workspace root the chat
-   column sits in, and inside the column the header, the messages wrapper
-   (the bg-background holding the timeline root) and the timeline's loading
-   fill. The desktop glass clears that class across the inset already; here
-   the card paints the same colour underneath. Named, not every
-   bg-background in the column: form controls pair it with their own fill,
-   and an MCP app's fullscreen frame stays a descendant of the transcript
-   in the top layer and needs its backing. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
-  :is(
-    [data-slot="sidebar-inset"] .bg-background:has(> [data-chat-column]),
-    [data-chat-column-maximized-away]
-      :is([data-chat-header], :has([data-timeline-root]), [data-timeline-loading]).bg-background
-  ) {
-  background: none;
-}
-
-/* The header stays at the shared topbar height, centred 26px down the
-   window: the axis the traffic lights, the collapsed sidebar's toggle and
-   the sidebar's own top row all sit on, so the title lines up with them
-   whether the sidebar is open or closed. The card's 8px top inset leaves
-   the title about 7px inside the card's edge. */
-
-/* The header's controls are a fixed group pinned to the window by these
-   variables (index.css), so they move with the card here rather than with
-   the header: in to sit 16px inside the card's right edge, as the title
-   sits 16px inside its left. On the chat view, which the group descends
-   from, so no other route's controls move. Not under Windows'
-   window-controls overlay, which sets its own. */
-:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])):not(
-    .wco
-  ).dark[data-fork-theme="cool-darker"]
-  [data-chat-column-maximized-away] {
-  --workspace-controls-right: calc(
-    env(safe-area-inset-right) + var(--fork-glass-card-inset) + 16px
-  );
-}
-
-/* And off the card's sides: upstream's 20px put the title 8px from the
-   card's edge. Only with the sidebar open on a wide window, where the
-   header's left padding is its own; collapsed, or with the sidebar as a
-   sheet, it clears the traffic lights instead. */
-@media (min-width: 768px) {
-  :root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])):not(
-      .wco
-    ).dark[data-fork-theme="cool-darker"]
-    [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]
-    :is(
-      [data-chat-column-maximized-away] [data-chat-header],
-      [data-fork-stage-card] [data-fork-stage-card-title]
-    ) {
-    /* 16px inside the card on each side, whatever its left inset. */
-    padding-left: calc(var(--fork-glass-card-inset-left) + 16px);
-    padding-right: 24px;
+   The whole sheet nests under one parent that stands down while the 3D
+   switch is off (custom/forkGlass3d.ts), leaving the flat stage the
+   palettes sheet paints. & takes the parent's specificity and :where()
+   adds none, so every rule ranks as it would written out flat. The card's
+   inset and radius are shared with the new-agent picture and live in the
+   palettes sheet. */
+:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])) {
+  /* The desktop side chat (fork-side-chat) is already a surface on the
+     desktop, with no sidebar beside it to frame a card. The card fills the
+     window instead, so it is one pane of glass rather than a pane set inside
+     another. Its fill stays, for the transcript's reading value; the corners
+     and the rim go, as the window draws its own edge. */
+  &[data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"] {
+    --fork-glass-card-inset: 0px;
+    --fork-glass-card-radius: 0px;
   }
-}
 
-/* The Automations page scrolls inside the card, not across its gutter: its
-   rows would pass under the card's foot and the scrollbar run down the
-   window's edge outside it. Width auto, as the scroll area's full width
-   plus a margin would overflow the page. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]
-  [data-fork-stage-card]
-  [data-fork-stage-card-body] {
-  width: auto;
-  margin: 0 var(--fork-glass-card-inset) var(--fork-glass-card-inset)
-    var(--fork-glass-card-inset-left);
-}
+  &[data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"]
+    :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
+    box-shadow: none;
+  }
 
-/* The composer stands 20px off the card's foot rather than sitting 8px
-   above it. The overlay is the transcript cutoff's measure, so the
-   transcript ends higher with it. Its floor goes on every client, as the
-   desktop glass already drops it: the cutoff mask ends the transcript above
-   the composer, so the floor only painted over the card's foot, its glint
-   and corners and the gutter beside it. Not on a new agent's empty draft,
-   which centres the composer instead. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  ).dark[data-fork-theme="cool-darker"]
-  [data-chat-composer-overlay="true"]:not([data-draft-hero]) {
-  padding-bottom: 4px;
-  background: none;
-}
-
-/* The right panel sits in the gutter beside the card, not on it, so under
-   the desktop glass it would read at the gutter's alpha: below the reading
-   value text panels keep. It adds the card's alpha of the same tint and
-   composites back to the stage's. As an image, under the vibrancy block's clear of
-   its colour. */
-:root[data-fork="noahhendrickson-t3code"]:where(
-    :not([data-fork-glass-3d="off"])
-  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-inset"]:has([data-chat-column-maximized-away])
-  [data-preview-panel-mode="inline"] {
-  background-image: linear-gradient(
-    rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha)) 0 100%
-  );
-}
-
-/* Beside a docked sidebar the card stands 3px off it rather than 8px, and
-   the sidebar's groups give up their right padding, so a row's space to the
-   card comes as near the 8px it keeps from the window as the layout allows:
-   10px, from the list's 6px scrollbar gutter, the 1px seam and this inset.
-   Neither can go further. The chat view's ancestors clip at its edge, and
-   the card's halo reaches 3px, so under 3px it is cut off on that side.
-   And the gutter holds the
-   scrollbar's width whether or not it shows. The top rows' and the
-   Projects row's groups drop to the same 6px as the list's gutter, so every
-   row still ends on one line. The picture, its frost copies and the popup
-   cutout read the inset token. Collapsed, floating or on a narrow window
-   there is no sidebar beside the card: it keeps the full inset and the
-   sidebar its padding. */
-@media (min-width: 768px) {
-  :root[data-fork="noahhendrickson-t3code"]:where(
-      :not([data-fork-glass-3d="off"])
-    ).dark[data-fork-theme="cool-darker"]
-    [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
-      [data-fork-sidebar-overlay="true"]
-    )
+  /* The card's containing block and stacking context: its z-index -1 only lands
+     above the inset's fill when the chat view is a stacking context. The
+     picture sheet declares the same pair behind its switch; this one holds
+     with the picture off. */
+  &.dark[data-fork-theme="cool-darker"]
     :is([data-chat-column-maximized-away], [data-fork-stage-card]) {
-    --fork-glass-card-inset-left: 3px;
+    position: relative;
+    isolation: isolate;
   }
 
-  /* The thread list: its end padding is 8px less the measured gutter. */
-  :root[data-fork="noahhendrickson-t3code"]:where(
-      :not([data-fork-glass-3d="off"])
-    ).dark[data-fork-theme="cool-darker"]
-    [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
-      [data-fork-sidebar-overlay="true"]
-    ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
-    [data-sidebar-version="v2"]
-    [data-slot="sidebar-group"]:has([data-thread-item]) {
-    padding-inline-end: 0;
+  /* Except while a desktop tab floats over the chat: its webview is a fixed
+     element at the app root at z-index 48, and its chrome sits in the chat
+     view at 49 to paint over it, which only works outside a stacking context
+     of the chat view's own. The picture sheet carves the same exception
+     behind its switch; this one holds with the picture off. The card falls
+     under the inset's fill meanwhile. */
+  &.dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]:has([data-preview-mini-player] [data-browser-surface-slot]) {
+    isolation: auto;
   }
 
-  :root[data-fork="noahhendrickson-t3code"]:where(
-      :not([data-fork-glass-3d="off"])
-    ).dark[data-fork-theme="cool-darker"]
-    [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
-      [data-fork-sidebar-overlay="true"]
-    ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
-    [data-sidebar-version="v2"]
-    [data-slot="sidebar-group"]:is(:has(> [data-fork-chrome-row]), [data-fork-projects-row]) {
-    padding-inline-end: 6px;
+  /* The pane. Opaque clients paint the stage's own colour on it; under the
+     desktop glass the fill is set below. */
+  &.dark[data-fork-theme="cool-darker"]
+    :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
+    content: "";
+    position: absolute;
+    inset: var(--fork-glass-card-inset) var(--fork-glass-card-inset) var(--fork-glass-card-inset)
+      var(--fork-glass-card-inset-left);
+    z-index: -1;
+    border-radius: var(--fork-glass-card-radius);
+    pointer-events: none;
+    /* The light on the pane, layered over every fill. A broad glow down from
+       the top edge and up from the foot, as a gradient rather than an inset
+       shadow: a shadow's blur spills round the sides too, and down a full
+       window height that read as a lit band with a hard inner edge. The stops
+       ease out instead of running straight to nothing, so the glow ends
+       without a line. Then a white wash, so the pane reads level with the
+       panel rather than a step darker; it lightens without thinning the fill. */
+    --fork-glass-stage-light:
+      linear-gradient(
+        to bottom,
+        rgb(255 255 255 / 5%),
+        rgb(255 255 255 / 3.2%) 6px,
+        rgb(255 255 255 / 1.8%) 12px,
+        rgb(255 255 255 / 0.8%) 18px,
+        rgb(255 255 255 / 0.25%) 24px,
+        rgb(255 255 255 / 0%) 32px calc(100% - 32px),
+        rgb(255 255 255 / 0.2%) calc(100% - 24px),
+        rgb(255 255 255 / 0.6%) calc(100% - 18px),
+        rgb(255 255 255 / 1.4%) calc(100% - 12px),
+        rgb(255 255 255 / 2.6%) calc(100% - 6px),
+        rgb(255 255 255 / 4%)
+      ),
+      linear-gradient(rgb(255 255 255 / 4%), rgb(255 255 255 / 4%));
+    /* Dither for the stage ramp (below): a static tile of binary grey, 0 or
+       110 at 2%, so ±1 level of 8-bit output. Its mean of 55 sits near the
+       ramp's reading value, which follows the wallpaper under the material, so
+       it can shift the card's tone by 0.02 × |55 − output|: about a level at
+       most. Not the grain this palette drops (--surface-grain, theme.custom.css):
+       that lay over opaque fills the palette freezes, where it is drift; this
+       lies over a translucent ramp, where it is what keeps the ramp smooth. */
+    --fork-glass-stage-dither: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='d' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='discrete' tableValues='0 .43'/%3E%3CfeFuncG type='discrete' tableValues='0 .43'/%3E%3CfeFuncB type='discrete' tableValues='0 .43'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23d)' opacity='.02'/%3E%3C/svg%3E");
+    background: var(--fork-glass-stage-light), var(--background);
+    box-shadow:
+      0 0 2px 1px rgb(0 0 0 / 35%),
+      inset 0 0.5px 0 rgb(255 255 255 / 28%),
+      inset 0 -0.5px 0 rgb(255 255 255 / 12%),
+      inset 0 0 0 0.5px rgb(255 255 255 / 6%),
+      inset 0 3px 4px -3px rgb(255 255 255 / 10%),
+      inset 0 -3px 4px -3px rgb(255 255 255 / 8%);
+  }
+
+  /* Under the desktop glass the stage's reading value is a composite, not one
+     fill. The inset now paints the gutter at the panel's alpha (below), and the
+     card adds the difference over it at --fork-glass-card-alpha, chosen so
+     card over gutter composites to the stage's reading value, so the transcript keeps
+     exactly the opacity the vibrancy entry tuned it to. Same triple as the
+     panel, so the two layers only ever differ in alpha. */
+  &[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
+    background:
+      var(--fork-glass-stage-light),
+      linear-gradient(
+        rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha)),
+        rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha))
+      );
+  }
+
+  /* The stage ramp, moved onto the card: the stage alpha for the top 70%,
+     thinning to the panel's at the floor, where the card adds nothing. Scoped
+     to the cutoff mask that licenses it, as the palettes sheet scopes the
+     inset's ramp.
+
+     Dithered, as the draft's picture is: over the material that step from the
+     stage alpha to the panel's is only a handful of levels of 8-bit output, so
+     undithered the bottom 30% steps in horizontal bands ~40px tall, tinted
+     where the channels step at different heights. The dither token's tile is
+     set on the card above. */
+  &[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    [data-chat-column-maximized-away]:has(.fork-timeline-cutoff)::before {
+    background:
+      var(--fork-glass-stage-dither) 0 0 / 128px 128px,
+      var(--fork-glass-stage-light),
+      linear-gradient(
+        to bottom,
+        rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha)) 0 70%,
+        rgb(var(--fork-glass-tint) / 0%) 100%
+      );
+  }
+
+  /* The gutter: the inset round a chat view takes the panel's fill. Two rules
+     because the two clients paint it differently — an opaque colour, or a
+     gradient over the inset the vibrancy block has already cleared. Settings,
+     Usage and the other routes in the inset hold no card and keep the stage
+     as it was. */
+  &.dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
+    [data-slot="sidebar-inset"]:has(
+      :is([data-chat-column-maximized-away], [data-fork-stage-card])
+    ) {
+    background-color: var(--fork-glass-panel);
+  }
+
+  &[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    [data-slot="sidebar-inset"]:has(
+      :is([data-chat-column-maximized-away], [data-fork-stage-card])
+    ) {
+    background-image: linear-gradient(var(--fork-glass-panel) 0 100%);
+  }
+
+  /* No seam while the gutter matches the panel: the card's edge is the only
+     line between them. The panel's own fill rather than a clear border, which
+     under the desktop glass is a 1px strip of raw wallpaper. */
+  &.dark[data-fork-theme="cool-darker"]
+    [data-slot="sidebar-wrapper"]:has(
+      :is([data-chat-column-maximized-away], [data-fork-stage-card])
+    )
+    [data-slot="sidebar-container"][data-sidebar-version="v2"] {
+    border-color: var(--sidebar);
+  }
+
+  /* On an opaque client the chat's structural layers fill with an opaque
+     bg-background edge to edge, over the gutter: the workspace root the chat
+     column sits in, and inside the column the header, the messages wrapper
+     (the bg-background holding the timeline root) and the timeline's loading
+     fill. The desktop glass clears that class across the inset already; here
+     the card paints the same colour underneath. Named, not every
+     bg-background in the column: form controls pair it with their own fill,
+     and an MCP app's fullscreen frame stays a descendant of the transcript
+     in the top layer and needs its backing. */
+  &.dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
+    :is(
+      [data-slot="sidebar-inset"] .bg-background:has(> [data-chat-column]),
+      [data-chat-column-maximized-away]
+        :is([data-chat-header], :has([data-timeline-root]), [data-timeline-loading]).bg-background
+    ) {
+    background: none;
+  }
+
+  /* The header stays at the shared topbar height, centred 26px down the
+     window: the axis the traffic lights, the collapsed sidebar's toggle and
+     the sidebar's own top row all sit on, so the title lines up with them
+     whether the sidebar is open or closed. The card's 8px top inset leaves
+     the title about 7px inside the card's edge. */
+
+  /* The header's controls are a fixed group pinned to the window by these
+     variables (index.css), so they move with the card here rather than with
+     the header: in to sit 16px inside the card's right edge, as the title
+     sits 16px inside its left. On the chat view, which the group descends
+     from, so no other route's controls move. Not under Windows'
+     window-controls overlay, which sets its own. */
+  &:not(.wco).dark[data-fork-theme="cool-darker"] [data-chat-column-maximized-away] {
+    --workspace-controls-right: calc(
+      env(safe-area-inset-right) + var(--fork-glass-card-inset) + 16px
+    );
+  }
+
+  /* And off the card's sides: upstream's 20px put the title 8px from the
+     card's edge. Only with the sidebar open on a wide window, where the
+     header's left padding is its own; collapsed, or with the sidebar as a
+     sheet, it clears the traffic lights instead. */
+  @media (min-width: 768px) {
+    &:not(.wco).dark[data-fork-theme="cool-darker"]
+      [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]
+      :is(
+        [data-chat-column-maximized-away] [data-chat-header],
+        [data-fork-stage-card] [data-fork-stage-card-title]
+      ) {
+      /* 16px inside the card on each side, whatever its left inset. */
+      padding-left: calc(var(--fork-glass-card-inset-left) + 16px);
+      padding-right: 24px;
+    }
+  }
+
+  /* The Automations page scrolls inside the card, not across its gutter: its
+     rows would pass under the card's foot and the scrollbar run down the
+     window's edge outside it. Width auto, as the scroll area's full width
+     plus a margin would overflow the page. */
+  &.dark[data-fork-theme="cool-darker"] [data-fork-stage-card] [data-fork-stage-card-body] {
+    width: auto;
+    margin: 0 var(--fork-glass-card-inset) var(--fork-glass-card-inset)
+      var(--fork-glass-card-inset-left);
+  }
+
+  /* The composer stands 20px off the card's foot rather than sitting 8px
+     above it. The overlay is the transcript cutoff's measure, so the
+     transcript ends higher with it. Its floor goes on every client, as the
+     desktop glass already drops it: the cutoff mask ends the transcript above
+     the composer, so the floor only painted over the card's foot, its glint
+     and corners and the gutter beside it. Not on a new agent's empty draft,
+     which centres the composer instead. */
+  &.dark[data-fork-theme="cool-darker"] [data-chat-composer-overlay="true"]:not([data-draft-hero]) {
+    padding-bottom: 4px;
+    background: none;
+  }
+
+  /* The right panel sits in the gutter beside the card, not on it, so under
+     the desktop glass it would read at the gutter's alpha: below the reading
+     value text panels keep. It adds the card's alpha of the same tint and
+     composites back to the stage's. As an image, under the vibrancy block's clear of
+     its colour. */
+  &[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    [data-slot="sidebar-inset"]:has([data-chat-column-maximized-away])
+    [data-preview-panel-mode="inline"] {
+    background-image: linear-gradient(
+      rgb(var(--fork-glass-tint) / var(--fork-glass-card-alpha)) 0 100%
+    );
+  }
+
+  /* Beside a docked sidebar the card stands 3px off it rather than 8px, and
+     the sidebar's groups give up their right padding, so a row's space to the
+     card comes as near the 8px it keeps from the window as the layout allows:
+     10px, from the list's 6px scrollbar gutter, the 1px seam and this inset.
+     Neither can go further. The chat view's ancestors clip at its edge, and
+     the card's halo reaches 3px, so under 3px it is cut off on that side.
+     And the gutter holds the
+     scrollbar's width whether or not it shows. The top rows' and the
+     Projects row's groups drop to the same 6px as the list's gutter, so every
+     row still ends on one line. The picture, its frost copies and the popup
+     cutout read the inset token. Collapsed, floating or on a narrow window
+     there is no sidebar beside the card: it keeps the full inset and the
+     sidebar its padding. */
+  @media (min-width: 768px) {
+    &.dark[data-fork-theme="cool-darker"]
+      [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
+        [data-fork-sidebar-overlay="true"]
+      )
+      :is([data-chat-column-maximized-away], [data-fork-stage-card]) {
+      --fork-glass-card-inset-left: 3px;
+    }
+
+    /* The thread list: its end padding is 8px less the measured gutter. */
+    &.dark[data-fork-theme="cool-darker"]
+      [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
+        [data-fork-sidebar-overlay="true"]
+      ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
+      [data-sidebar-version="v2"]
+      [data-slot="sidebar-group"]:has([data-thread-item]) {
+      padding-inline-end: 0;
+    }
+
+    &.dark[data-fork-theme="cool-darker"]
+      [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
+        [data-fork-sidebar-overlay="true"]
+      ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
+      [data-sidebar-version="v2"]
+      [data-slot="sidebar-group"]:is(:has(> [data-fork-chrome-row]), [data-fork-projects-row]) {
+      padding-inline-end: 6px;
+    }
   }
 }

@@ -29,12 +29,7 @@ function readSibling(relativePath: string): string {
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]:where(:not([${FORK_GLASS_3D_OFF_ATTRIBUTE}="off"]))`;
 const PALETTE = `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 
-// The formatter wraps the gate across lines; fold it back so the selectors
-// below match it.
-const sheet = readSibling("../theme.custom.glass-surfaces.css").replace(
-  /:where\(\s*:not\(\[data-fork-glass-3d="off"\]\)\s*\)/gu,
-  `:where(:not([${FORK_GLASS_3D_OFF_ATTRIBUTE}="off"]))`,
-);
+const sheet = readSibling("../theme.custom.glass-surfaces.css");
 const rules = cssRules(sheet);
 
 describe("fork guard: glass surfaces", () => {
@@ -151,7 +146,7 @@ describe("fork guard: glass surfaces", () => {
     expect(rowPolicy).toContain('"rounded-[16px]"');
     expect(rowPolicy).toContain('"rounded-md"');
     expect(sheet).toContain("[data-thread-item] > .rounded-md");
-    expect(sheet).toContain("[data-thread-item]\n  > .rounded-\\[16px\\]");
+    expect(sheet).toContain("[data-thread-item]\n    > .rounded-\\[16px\\]");
     // The sort menu pads MenuPopup's list, its popup's only child.
     expect(readSibling("../components/ui/menu.tsx")).toMatch(
       /<div className="max-h-\(--available-height\) w-full overflow-y-auto p-1">\{children\}<\/div>\s*<\/MenuPrimitive\.Popup>/u,
