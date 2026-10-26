@@ -19,7 +19,9 @@ export interface ForkRootSetting<T> {
   readonly useValue: () => [T, (value: T) => void];
 }
 
-export function createForkRootSetting<T, E>(options: {
+// Primitives only: every read decodes storage afresh, and useSyncExternalStore
+// needs a snapshot that compares equal while nothing changed.
+export function createForkRootSetting<T extends string | number | boolean, E>(options: {
   readonly storageKey: string;
   readonly attribute: string;
   readonly schema: Schema.Codec<T, E>;

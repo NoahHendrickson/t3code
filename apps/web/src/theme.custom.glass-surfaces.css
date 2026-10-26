@@ -566,16 +566,18 @@
     pointer-events: none;
   }
 
-  /* The dark edge, 1px proud of the row with its radius plus that 1px. The
-     thread card draws it from its li (below); the top rows stop clipping
-     (their labels truncate themselves) and draw it on their own ::after. */
+  /* The dark edge, 1px proud of the row. The thread card draws it from its
+     li (below); the top rows stop clipping (their labels truncate
+     themselves) and draw it on their own ::after, a pill like the rows
+     (palettes sheet). */
   &.dark[data-fork-theme="cool-darker"]
-    :is([data-sidebar-version="v2"] [data-fork-chrome-row][data-active="true"])::after {
+    [data-sidebar-version="v2"]
+    [data-fork-chrome-row][data-active="true"]::after {
     content: "";
     position: absolute;
     inset: -1px;
     padding: 1px;
-    border-radius: 13px;
+    border-radius: 9999px;
     background: var(--fork-glass-dark-edge);
     mask:
       linear-gradient(#000 0 0) content-box exclude,
@@ -637,13 +639,6 @@
   &.dark[data-fork-theme="cool-darker"]
     [data-sidebar-version="v2"]
     [data-thread-item]:has(> .rounded-full[aria-current="page"])::before {
-    border-radius: 9999px;
-  }
-
-  /* The top rows are pills (palettes sheet), so their dark edge is too. */
-  &.dark[data-fork-theme="cool-darker"]
-    [data-sidebar-version="v2"]
-    [data-fork-chrome-row][data-active="true"]::after {
     border-radius: 9999px;
   }
 
