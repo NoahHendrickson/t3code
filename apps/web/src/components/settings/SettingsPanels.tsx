@@ -93,7 +93,13 @@ import {
 import { useForkGlassNewAgentPicture } from "../../custom/forkGlassNewAgentPicture";
 /* fork:end fork-glass-new-agent-stage */
 /* fork:begin fork-glass-3d — see .fork/customizations.yaml#fork-glass-3d */
-import { useForkGlass3d } from "../../custom/forkGlass3d";
+import {
+  DEFAULT_FORK_GLASS_3D_MODE,
+  FORK_GLASS_3D_MODE_LABELS,
+  FORK_GLASS_3D_MODES,
+  isForkGlass3dMode,
+  useForkGlass3d,
+} from "../../custom/forkGlass3d";
 /* fork:end fork-glass-3d */
 /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
 import {
@@ -566,7 +572,7 @@ export function useSettingsRestore(onRestored?: () => void) {
   /* fork:begin fork-glass-3d — see .fork/customizations.yaml#fork-glass-3d */
   const [glass3d, setGlass3d] = useForkGlass3d();
   // Only while Glass shows the row, as with the picture above.
-  const glass3dChanged = appearance === COOL_DARKER_THEME && !glass3d;
+  const glass3dChanged = appearance === COOL_DARKER_THEME && glass3d !== DEFAULT_FORK_GLASS_3D_MODE;
   /* fork:end fork-glass-3d */
   /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
   const [workingMark, setWorkingMark] = useForkWorkingMark();
@@ -740,7 +746,7 @@ export function useSettingsRestore(onRestored?: () => void) {
     if (glassNewAgentPictureChanged) setGlassNewAgentPicture(true);
     /* fork:end fork-glass-new-agent-stage */
     /* fork:begin fork-glass-3d — see .fork/customizations.yaml#fork-glass-3d */
-    if (glass3dChanged) setGlass3d(true);
+    if (glass3dChanged) setGlass3d(DEFAULT_FORK_GLASS_3D_MODE);
     /* fork:end fork-glass-3d */
     /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
     if (workingMarkChanged) setWorkingMark(DEFAULT_FORK_WORKING_MARK);
@@ -1279,18 +1285,33 @@ export function AppearanceSettingsPanel() {
         {appearance === COOL_DARKER_THEME ? (
           <SettingsRow
             title="3D glass"
-            description="Set threads on a glass card and give selected items depth."
+            description="Which parts of Glass get depth."
             resetAction={
-              glass3d ? null : (
-                <SettingResetButton label="3D glass" onClick={() => setGlass3d(true)} />
+              glass3d === DEFAULT_FORK_GLASS_3D_MODE ? null : (
+                <SettingResetButton
+                  label="3D glass"
+                  onClick={() => setGlass3d(DEFAULT_FORK_GLASS_3D_MODE)}
+                />
               )
             }
             control={
-              <Switch
-                checked={glass3d}
-                onCheckedChange={(checked) => setGlass3d(Boolean(checked))}
-                aria-label="Use 3D glass"
-              />
+              <Select
+                value={glass3d}
+                onValueChange={(value) => {
+                  if (isForkGlass3dMode(value)) setGlass3d(value);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-44" aria-label="3D glass">
+                  <SelectValue>{FORK_GLASS_3D_MODE_LABELS[glass3d]}</SelectValue>
+                </SelectTrigger>
+                <SelectPopup align="end" alignItemWithTrigger={false}>
+                  {FORK_GLASS_3D_MODES.map((mode) => (
+                    <SelectItem hideIndicator key={mode} value={mode}>
+                      {FORK_GLASS_3D_MODE_LABELS[mode]}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
             }
           />
         ) : null}

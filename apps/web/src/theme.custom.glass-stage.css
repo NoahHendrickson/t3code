@@ -24,13 +24,13 @@
    on source order and needs no specificity of its own. Marker- and
    palette-scoped, so no other palette sees any of it.
 
-   The whole sheet nests under one parent that stands down while the 3D
-   switch is off (custom/forkGlass3d.ts), leaving the flat stage the
-   palettes sheet paints. & takes the parent's specificity and :where()
+   The whole sheet nests under one parent that holds only while the 3D
+   glass setting is Full (custom/forkGlass3d.ts); otherwise the palettes
+   sheet's flat stage shows. & takes the parent's specificity and :where()
    adds none, so every rule ranks as it would written out flat. The card's
    inset and radius are shared with the new-agent picture and live in the
    palettes sheet. */
-:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])) {
+:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d])) {
   /* The desktop side chat (fork-side-chat) is already a surface on the
      desktop, with no sidebar beside it to frame a card. The card fills the
      window instead, so it is one pane of glass rather than a pane set inside

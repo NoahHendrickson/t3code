@@ -11,15 +11,20 @@
  * The attribute is the one place the state lives in the DOM; no component
  * subscribes to it.
  */
-import { createForkRootSwitch } from "./forkRootSwitch";
+import * as Schema from "effect/Schema";
+
+import { createForkRootSetting } from "./forkRootSetting";
 
 /** Stamped on the root while the picture is off; the stage sheet's rules require its absence. */
 export const FORK_GLASS_PICTURE_OFF_ATTRIBUTE = "data-fork-glass-picture";
 
 export const {
   initialize: initializeForkGlassNewAgentPicture,
-  useEnabled: useForkGlassNewAgentPicture,
-} = createForkRootSwitch({
+  useValue: useForkGlassNewAgentPicture,
+} = createForkRootSetting({
   storageKey: "t3code:fork:glass-new-agent-picture:v1",
   attribute: FORK_GLASS_PICTURE_OFF_ATTRIBUTE,
+  schema: Schema.Boolean,
+  defaultValue: true,
+  attributeValue: (enabled) => (enabled ? null : "off"),
 });

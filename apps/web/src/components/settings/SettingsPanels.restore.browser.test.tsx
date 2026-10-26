@@ -54,7 +54,7 @@ vi.mock("../../custom/forkGlassNewAgentPicture", async (importOriginal) => ({
 /* fork:begin fork-glass-3d — see .fork/customizations.yaml#fork-glass-3d */
 vi.mock("../../custom/forkGlass3d", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../custom/forkGlass3d")>()),
-  useForkGlass3d: () => [true, vi.fn()],
+  useForkGlass3d: () => ["full", vi.fn()],
 }));
 /* fork:end fork-glass-3d */
 vi.mock(import("../../localApi"), async (original) => ({

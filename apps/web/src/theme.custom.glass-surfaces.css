@@ -7,10 +7,11 @@
    here that ties with a palettes rule wins on source order. Every selector
    is marker- and palette-scoped, so no other palette sees any of it.
 
-   The whole sheet nests under one parent that stands down while the 3D
-   switch is off (custom/forkGlass3d.ts). & takes the parent's specificity
-   and :where() adds none, so every rule ranks as it would written out
-   flat. */
+   The 3D glass setting (custom/forkGlass3d.ts) gates the sheet through
+   its parents, kept in source order: the tokens and the selected rows hold
+   unless 3D is off, so "Selected items only" keeps them; everything else
+   needs Full. & takes a parent's specificity and :where() adds none, so
+   every rule ranks as it would written out flat. */
 :root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])) {
   /* The glass, once, at the root: the popups portal out of the row and the
      sort menu out of the sidebar, so nothing finer would reach them all.
@@ -74,7 +75,9 @@
       from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.65 calc(c * 2) h
     );
   }
+}
 
+:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d])) {
   /* The context row's chips (project, branch, PR, liveness) and the control
      row's mode chip ("Full access"). No reflection band: the glyphs are
      white, so it would only haze them. The ring variables keep focus rings
@@ -502,13 +505,15 @@
     padding: 6px 10px;
     border-radius: 10px;
   }
+}
 
+:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])) {
   /* The thread you are on, as a pane of glass (Figma t3-fork 532:6527, "thread
      card v3", State=Selected), and every row that wears the same selected
      state: the active rows above the list (Search, New agent, Usage,
-     Automations) and the thread sort menu's current option, which portals to
-     the body. Light on glass is a hairline glint over a soft sheen, never a
-     lit border.
+     Automations). The thread sort menu's current option wears the same, with
+     the popups (below). Light on glass is a hairline glint over a soft sheen,
+     never a lit border.
 
      Gated on the palette, not on vibrancy: the depth reads on the web's solid
      panel too. Only the fill waits for real glass (below), because a white
@@ -518,8 +523,7 @@
   &.dark[data-fork-theme="cool-darker"]
     :is(
       [data-sidebar-version="v2"]
-        :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]),
-      [data-fork-thread-sort] [data-slot="menu-radio-item"][data-checked]
+        :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"])
     ) {
     position: relative;
     box-shadow:
@@ -530,8 +534,7 @@
   &.dark[data-fork-theme="cool-darker"]
     :is(
       [data-sidebar-version="v2"]
-        :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]),
-      [data-fork-thread-sort] [data-slot="menu-radio-item"][data-checked]
+        :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"])
     )::before {
     content: "";
     position: absolute;
@@ -564,14 +567,10 @@
   }
 
   /* The dark edge, 1px proud of the row with its radius plus that 1px. The
-     thread card draws it from its li (below); the top rows and the sort
-     option stop clipping (their labels truncate themselves) and draw it on
-     their own ::after. */
+     thread card draws it from its li (below); the top rows stop clipping
+     (their labels truncate themselves) and draw it on their own ::after. */
   &.dark[data-fork-theme="cool-darker"]
-    :is(
-      [data-sidebar-version="v2"] [data-fork-chrome-row][data-active="true"],
-      [data-fork-thread-sort] [data-slot="menu-radio-item"][data-checked]
-    )::after {
+    :is([data-sidebar-version="v2"] [data-fork-chrome-row][data-active="true"])::after {
     content: "";
     position: absolute;
     inset: -1px;
@@ -663,6 +662,46 @@
     [data-sidebar-version="v2"]
     :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]) {
     background-color: rgb(255 255 255 / 6%);
+  }
+}
+
+:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d])) {
+  /* The thread sort menu's current option wears the selected rows' glass
+     (above), with the rest of the popup glass rather than with the rows. */
+  &.dark[data-fork-theme="cool-darker"]
+    [data-fork-thread-sort]
+    [data-slot="menu-radio-item"][data-checked] {
+    position: relative;
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+      var(--fork-glass-selected-shadow);
+  }
+
+  &.dark[data-fork-theme="cool-darker"]
+    [data-fork-thread-sort]
+    [data-slot="menu-radio-item"][data-checked]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+    border-radius: inherit;
+    box-shadow: var(--fork-glass-selected-glint);
+    pointer-events: none;
+  }
+
+  &.dark[data-fork-theme="cool-darker"]
+    [data-fork-thread-sort]
+    [data-slot="menu-radio-item"][data-checked]::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    padding: 1px;
+    border-radius: 13px;
+    background: var(--fork-glass-dark-edge);
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
   }
 
   /* The thread sort menu: a thread row's 12px corners on its rows, inside a

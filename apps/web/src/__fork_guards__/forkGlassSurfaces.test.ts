@@ -16,7 +16,7 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
-import { FORK_GLASS_3D_OFF_ATTRIBUTE } from "../custom/forkGlass3d";
+import { FORK_GLASS_3D_ATTRIBUTE } from "../custom/forkGlass3d";
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules, ruleBodyFor } from "./cssRules";
@@ -25,8 +25,11 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-// Every rule stands down with the 3D switch off (forkGlass3d.test.ts).
-const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]:where(:not([${FORK_GLASS_3D_OFF_ATTRIBUTE}="off"]))`;
+const FORK_ROOT = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
+// The chips, buttons, tabs and popups need Full 3D; the tokens hold with
+// selected items only (forkGlass3d.test.ts).
+const MARKER = `${FORK_ROOT}:where(:not([${FORK_GLASS_3D_ATTRIBUTE}]))`;
+const TOKENS = `${FORK_ROOT}:where(:not([${FORK_GLASS_3D_ATTRIBUTE}="off"]))`;
 const PALETTE = `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 
 const sheet = readSibling("../theme.custom.glass-surfaces.css");
@@ -44,7 +47,7 @@ describe("fork guard: glass surfaces", () => {
   it("scopes every rule to the fork marker and Glass", () => {
     expect(rules.length).toBeGreaterThan(0);
     for (const rule of rules) {
-      expect(rule.selector, `unscoped rule "${rule.selector}"`).toContain(MARKER);
+      expect(rule.selector, `unscoped rule "${rule.selector}"`).toContain(FORK_ROOT);
       expect(rule.selector, `not scoped to Glass "${rule.selector}"`).toContain(PALETTE);
       // Under the desktop glass a transparent fill is a hole to the raw
       // wallpaper; write a zero-alpha colour where a gradient needs one.
@@ -73,7 +76,7 @@ describe("fork guard: glass surfaces", () => {
     expect(stopFace).toMatch(/background:\s*rgb\(234 49 80 \/ 48%\)/u);
     expect(stopFace).toMatch(/color:\s*#ffffff/u);
 
-    const root = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`]);
+    const root = ruleBodyFor(rules, [`${TOKENS}.dark${PALETTE}`]);
     expect(stopFace).not.toContain("--fork-popup-glass-floor");
     for (const tone of ["glint", "light", "shade"]) {
       // The floor only exists under desktop vibrancy; without a fallback the

@@ -32,11 +32,18 @@ function stubBrowser(stored: string | null) {
 }
 
 async function initialize() {
-  const { createForkRootSwitch } = await import("./forkRootSwitch");
-  return createForkRootSwitch({ storageKey: STORAGE_KEY, attribute: ATTRIBUTE }).initialize;
+  const Schema = await import("effect/Schema");
+  const { createForkRootSetting } = await import("./forkRootSetting");
+  return createForkRootSetting({
+    storageKey: STORAGE_KEY,
+    attribute: ATTRIBUTE,
+    schema: Schema.Boolean,
+    defaultValue: true,
+    attributeValue: (enabled) => (enabled ? null : "off"),
+  }).initialize;
 }
 
-describe("createForkRootSwitch", () => {
+describe("createForkRootSetting", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -75,17 +82,15 @@ describe("createForkRootSwitch", () => {
   });
 });
 
-describe("the Glass switches", () => {
+describe("the Glass settings", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("each stamp their own attribute from their own key", async () => {
+  async function stamp(glass3d: string | null) {
     vi.resetModules();
-    const values = new Map([
-      ["t3code:fork:glass-3d:v1", "false"],
-      ["t3code:fork:glass-new-agent-picture:v1", "true"],
-    ]);
+    const values = new Map([["t3code:fork:glass-new-agent-picture:v1", "true"]]);
+    if (glass3d !== null) values.set("t3code:fork:glass-3d:v1", glass3d);
     const attributes = new Map<string, string>();
     vi.stubGlobal("window", {
       localStorage: { getItem: (key: string) => values.get(key) ?? null },
@@ -97,12 +102,24 @@ describe("the Glass switches", () => {
         removeAttribute: (name: string) => attributes.delete(name),
       },
     });
-    const glass3d = await import("./forkGlass3d");
+    const glass3dModule = await import("./forkGlass3d");
     const picture = await import("./forkGlassNewAgentPicture");
-    glass3d.initializeForkGlass3d();
+    glass3dModule.initializeForkGlass3d();
     picture.initializeForkGlassNewAgentPicture();
-    expect(Object.fromEntries(attributes)).toEqual({
-      [glass3d.FORK_GLASS_3D_OFF_ATTRIBUTE]: "off",
-    });
+    return Object.fromEntries(attributes);
+  }
+
+  it("stamps nothing at Full, the picture on", async () => {
+    expect(await stamp(null)).toEqual({});
+    expect(await stamp('"full"')).toEqual({});
+  });
+
+  it("stamps the 3D mode short of Full", async () => {
+    expect(await stamp('"selection"')).toEqual({ "data-fork-glass-3d": "selection" });
+    expect(await stamp('"off"')).toEqual({ "data-fork-glass-3d": "off" });
+  });
+
+  it("reads an unknown stored value as Full", async () => {
+    expect(await stamp("false")).toEqual({});
   });
 });

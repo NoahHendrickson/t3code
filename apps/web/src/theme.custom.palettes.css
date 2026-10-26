@@ -215,9 +215,9 @@
   --fork-glass-card-radius: 12px;
 }
 
-/* With 3D off (custom/forkGlass3d.ts) there is no card for the picture to
-   match, so it takes the 8px corners it had before the card. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-glass-3d="off"].dark[data-fork-theme="cool-darker"] {
+/* Short of Full 3D (custom/forkGlass3d.ts) there is no card for the
+   picture to match, so it takes the 8px corners it had before the card. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-glass-3d].dark[data-fork-theme="cool-darker"] {
   --fork-glass-card-radius: 8px;
 }
 
@@ -251,7 +251,7 @@
 }
 
 /* Glass's top sidebar rows (Search, New agent, Usage, Automations, …) are
-   pills, hovered or active, with 3D on or off. */
+   pills, hovered or active, whatever the 3D glass setting. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-fork-chrome-row] {
