@@ -6,7 +6,10 @@
  * cards: name and count semibold on the muted channel, a step under the card
  * title's 14px, and the count beside it fainter still. It starts on the
  * cards' 12px inset so the label lines up with the titles under it. No mark,
- * no hairline, no chevron. The right side stays empty.
+ * no hairline. A small filled caret on the right edge shows only while the
+ * header is hovered or keyboard-focused, pointing at what a click does: up to
+ * collapse an open section, down to expand a closed one. It is always laid
+ * out, so appearing never shifts the row.
  *
  * The pinned block and the settled tail take the same header while status
  * grouping is on, so every group in the list reads the same way; `section`
@@ -19,6 +22,7 @@
 import { cn } from "~/lib/utils";
 
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "./sidebarV2CardAlignment";
+import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
 import {
   SIDEBAR_V2_STATUS_SECTION_LABELS,
   type SidebarV2StatusHeaderKey,
@@ -40,7 +44,7 @@ export function SidebarV2StatusSectionHeader(props: {
         data-testid="sidebar-v2-status-section-toggle"
         data-status={props.section}
         className={cn(
-          "flex w-full cursor-pointer items-center gap-1.5 text-left text-[0.8125rem] leading-4",
+          "group/status flex w-full cursor-pointer items-center gap-1.5 text-left text-[0.8125rem] leading-4",
           SIDEBAR_V2_CARD_ALIGNMENT.cardPad,
           // The first header still needs air under the Projects row: the list
           // has no top padding, and this label has no 32px row of its own the
@@ -58,6 +62,24 @@ export function SidebarV2StatusSectionHeader(props: {
         <span className="shrink-0 font-semibold text-muted-foreground/60 tabular-nums">
           {props.count}
         </span>
+        <svg
+          aria-hidden
+          viewBox="0 0 14 14"
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth={1}
+          strokeLinejoin="round"
+          className={cn(
+            "ms-auto size-3.5 shrink-0 text-muted-foreground transition-transform invisible group-hover/status:visible group-focus-visible/status:visible",
+            SIDEBAR_V2_TRAILING_OFFSET.statusCaret,
+            !props.collapsed && "rotate-180",
+          )}
+        >
+          {/* An 11 x 5.5 caret, inset half the stroke so the round joins soften
+              the corners without growing it. Centred on the box, so the 180°
+              flip stays in place and the trailing offset still holds. */}
+          <path d="M2.71 4.75H11.29L7 9.04Z" />
+        </svg>
       </button>
     </li>
   );

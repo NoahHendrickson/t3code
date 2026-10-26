@@ -15,6 +15,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { cn } from "../lib/utils";
 import { CHROME_ROW_ICON_TINT } from "../custom/SidebarV2ChromeRows";
+import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
@@ -25,6 +26,7 @@ const chrome = readSibling("../components/sidebar/SidebarChrome.tsx");
 const legacySidebar = readSibling("../components/LegacySidebar.tsx");
 const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
 const sidebarPrimitive = readSibling("../components/ui/sidebar.tsx");
+const themeRules = cssRules(readSibling("../theme.custom.css"));
 
 describe("fork guard: fork-sidebar-chrome", () => {
   it("still offers a toggle while the sidebar is collapsed", () => {
@@ -527,5 +529,17 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).toContain("`${scopedProjectGroups.length} projects`");
     expect(sidebarV2).toContain("scopedProjectDisplayName={scopedProjectsLabel}");
     expect(sidebarV2).toContain("onProjectScopeChange={setProjectScopeKeys}");
+  });
+
+  it("holds the footer icons off the bottom edge by the side inset", () => {
+    // Upstream's py-1 left Settings / Pull Requests 4px off the window's
+    // rounded bottom corner while they stood 8px off its side.
+    const footer = themeRules.find(
+      (rule) =>
+        rule.selector.includes('[data-fork="noahhendrickson-t3code"]') &&
+        rule.selector.includes('[data-slot="sidebar-footer"]'),
+    );
+    expect(footer?.body).toContain("padding-bottom: var(--sidebar-content-inset)");
+    expect(sidebarPrimitive).toContain('data-slot="sidebar-footer"');
   });
 });

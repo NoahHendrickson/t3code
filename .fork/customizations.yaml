@@ -1090,8 +1090,10 @@
     Completed titles are full strength, Working and Idle recede, and the open
     or selected card never does. Section headers are a muted semibold label
     with its count, a step under the card title's size, on the cards' inset,
-    with no mark, hairline or chevron, and nothing on the right; clicking
-    collapses.
+    with no mark or hairline; clicking collapses. A small filled caret on the
+    right edge appears only while the header is hovered or keyboard-focused,
+    pointing at what a click does (up collapses an open section, down expands
+    a closed one), so the toggle is discoverable without resting chrome.
 
     buildSidebarV2StatusSections is the whole pipeline; the activeSections
     memo dispatches to it or to project grouping, and both return
@@ -2502,6 +2504,12 @@
     not upstream's. Upstream's brand/pill wrap-and-clip fix and the MorphIcon
     trigger morph are declined: the fork's pill hides under its own container
     query and its trigger draws one glyph.
+
+    The footer (Settings / Pull Requests, and the settings sidebar's Back row)
+    sits as far off the window's bottom edge as off its side: the bottom
+    padding is --sidebar-content-inset, not upstream's py-1, which left the
+    icons 4px from the rounded corner. theme.custom.css sets it on the
+    sidebar-footer slot, so ui/sidebar.tsx keeps upstream's classes.
   tier: 4
   files:
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
@@ -2511,6 +2519,7 @@
     - apps/web/src/custom/SidebarBrandMark.tsx
     - apps/web/src/custom/SidebarBrandWordmark.tsx
     - apps/web/src/custom/assets/sidebar-stage-dither-dev.png
+    - apps/web/src/theme.custom.css
   shadows: []
   watch:
     # Fenced knip ignore: upstream's SidebarThreadHeader has no caller behind

@@ -177,12 +177,16 @@ describe("fork guard: sidebar-v2-row-action-hit-area", () => {
     expect(offsets).toMatch(/shelfChevron:\s*""/u);
     expect(offsets).toMatch(/chromeRow:\s*""/u);
     expect(offsets).toMatch(/chromeStatus:\s*"-me-0\.5"/u);
+    expect(offsets).toMatch(/statusCaret:\s*"-me-0\.75"/u);
     expect(sidebarV2).toContain("SIDEBAR_V2_TRAILING_OFFSET.cardActions");
     expect(sidebarV2).toContain("SIDEBAR_V2_TRAILING_OFFSET.cardStatus");
     expect(trailingColumn).toContain("SIDEBAR_V2_TRAILING_OFFSET.slimActions");
     expect(groupHeader).toContain("SIDEBAR_V2_TRAILING_OFFSET.headerPlus");
     expect(chromeRows).toContain("SIDEBAR_V2_TRAILING_OFFSET.chromeRow");
     expect(chromeRows).toContain("SIDEBAR_V2_TRAILING_OFFSET.chromeStatus");
+    expect(readSibling("../custom/SidebarV2StatusSectionHeader.tsx")).toContain(
+      "SIDEBAR_V2_TRAILING_OFFSET.statusCaret",
+    );
     // Working (upstream #13926, ported in the 2026-10-02 sync), Snoozed and
     // Settled shelves each carry the chevron.
     const shelfChevrons = [...sidebarV2.matchAll(/SIDEBAR_V2_TRAILING_OFFSET\.shelfChevron/gu)];

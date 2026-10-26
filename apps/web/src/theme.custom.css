@@ -168,6 +168,18 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Sidebar footer inset — see `.fork/customizations.yaml#fork-sidebar-chrome`.
+
+   Upstream's footer is px-inset / py-1, so the Settings / Pull Requests icons
+   sat 4px off the window's bottom edge, crowding its rounded corner while
+   standing 8px off the side. The bottom takes the side's inset so the icons
+   hold the same gap on both edges. Covers the main and settings sidebars,
+   which share the primitive. */
+:root[data-fork="noahhendrickson-t3code"] [data-slot="sidebar-footer"] {
+  padding-bottom: var(--sidebar-content-inset);
+}
+
+/* ---------------------------------------------------------------------------
    Workspace header split pills — see
    `.fork/customizations.yaml#fork-workspace-header`.
 
