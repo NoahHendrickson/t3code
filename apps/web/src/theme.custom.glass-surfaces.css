@@ -588,10 +588,10 @@
      glint has a curve to fade round. Every row rather than only the current
      one, or a hovered row would change shape as it was opened. The classes
      are custom/sidebarV2RowPolicy.ts's row shapes; the compact card's pill is
-     already as round as it gets. */
+     already as round as it gets, as are the top rows (palettes sheet). */
   &.dark[data-fork-theme="cool-darker"]
     [data-sidebar-version="v2"]
-    :is([data-thread-item] > .rounded-md, [data-fork-chrome-row]) {
+    :is([data-thread-item] > .rounded-md) {
     border-radius: 12px;
   }
 
@@ -638,6 +638,13 @@
   &.dark[data-fork-theme="cool-darker"]
     [data-sidebar-version="v2"]
     [data-thread-item]:has(> .rounded-full[aria-current="page"])::before {
+    border-radius: 9999px;
+  }
+
+  /* The top rows are pills (palettes sheet), so their dark edge is too. */
+  &.dark[data-fork-theme="cool-darker"]
+    [data-sidebar-version="v2"]
+    [data-fork-chrome-row][data-active="true"]::after {
     border-radius: 9999px;
   }
 

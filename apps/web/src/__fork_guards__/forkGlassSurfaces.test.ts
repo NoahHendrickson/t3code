@@ -140,6 +140,20 @@ describe("fork guard: glass surfaces", () => {
     expect(strip).not.toContain("overflow-clip-margin");
   });
 
+  it("keeps the top sidebar rows pills with 3D on or off", () => {
+    // Outside the 3D switch, so both modes share it; hover and active share it
+    // too, so a row keeps its shape as it opens.
+    const palettes = cssRules(readSibling("../theme.custom.palettes.css"));
+    const root = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"].dark${PALETTE}`;
+    expect(
+      ruleBodyFor(palettes, [root, '[data-sidebar-version="v2"]', "[data-fork-chrome-row]"]),
+    ).toContain("border-radius: 9999px;");
+    // The 3D sheet rounds thread rows to 12px but leaves the top rows alone.
+    expect(
+      rules.some((rule) => /12px/u.test(rule.body) && rule.selector.includes("chrome-row")),
+    ).toBe(false);
+  });
+
   it("matches the markup its selectors lean on", () => {
     // The two row shapes Glass rounds further.
     const rowPolicy = readSibling("../custom/sidebarV2RowPolicy.ts");

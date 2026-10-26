@@ -250,6 +250,14 @@
   --sidebar-row-selected: #2c3134;
 }
 
+/* Glass's top sidebar rows (Search, New agent, Usage, Automations, …) are
+   pills, hovered or active, with 3D on or off. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"]
+  [data-fork-chrome-row] {
+  border-radius: 9999px;
+}
+
 /* Project chrome — the Projects row, every project header and each thread
    card's meta line (project chip, branch, model) — rests on white at 65%
    instead of the panel's #8a8a8a, so the labels, marks and icon buttons tint
