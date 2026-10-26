@@ -120,6 +120,10 @@ export const SIDEBAR_V2_TRAILING_OFFSET = {
    *  the Threads gear beneath it. -me-0.5 pulls it the 2px back. Its own key,
    *  not cardStatus: the two rest on different padding. */
   chromeStatus: "-me-0.5",
+  /** The status section header's caret. Its 14px glyph flush with the
+   *  header's px-3 (list pad 8 + 12 = 20) centres at 27, 3px left of the card
+   *  status marks beneath it. -me-0.75 pulls it the 3px back. */
+  statusCaret: "-me-0.75",
 } as const;
 
 /**

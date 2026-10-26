@@ -65,7 +65,7 @@ const FORK_GLASS_FLOOR_COLOR_CHANGED_CHANNEL = "fork:glass-floor-color-changed";
  * if the overlays drift from the panel. This is the one dial when they do.
  */
 const PANEL_TINT = 30;
-const PANEL_TINT_ALPHA = 0.67;
+const PANEL_TINT_ALPHA = 0.63;
 /** Thumbnail width the wallpaper is shrunk to before sampling. */
 const SAMPLE_WIDTH = 96;
 /** Window moves and resizes arrive per frame; one recompute per settle. */

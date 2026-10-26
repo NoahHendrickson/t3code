@@ -468,9 +468,9 @@
    these and restates the tint and panel alpha; its guard ties them here. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"] {
   --fork-glass-tint: 30 30 30;
-  --fork-glass-panel-alpha: 64%;
-  --fork-glass-stage-alpha: 74%;
-  --fork-glass-card-alpha: 28%;
+  --fork-glass-panel-alpha: 60%;
+  --fork-glass-stage-alpha: 68%;
+  --fork-glass-card-alpha: 20%;
   --fork-glass-panel: rgb(var(--fork-glass-tint) / var(--fork-glass-panel-alpha));
   --fork-glass-stage: rgb(var(--fork-glass-tint) / var(--fork-glass-stage-alpha));
 }
