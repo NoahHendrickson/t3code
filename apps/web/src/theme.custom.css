@@ -3267,7 +3267,7 @@
 
 /* The user's sent bubble takes the same fill as the card above it. Upstream
    paints `bg-message` → --message-surface → --accent; on every fork palette
-   that is the secondary/hover step (cool #353a3d, neutral #383838), one rung
+   that is the secondary/hover step (cool #353a3d, neutral dark #42403d), one rung
    brighter than the changed-files card, so the two surfaces in the same
    column disagreed.
 

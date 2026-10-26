@@ -2246,20 +2246,25 @@
 - id: fork-neutral-dark-theme
   intent: >
     Appearance offers Neutral Dark alongside System, Light, Dark, and Westworld.
-    Neutral Dark is a true-neutral gray palette from Figma t3-fork node
-    264:11816 — no cool undertone. Selecting it must not replace or alter
-    default Dark (#191919 / #1e1e1e) or Westworld (#26272c).
+    Neutral Dark is a warm-gray palette keyed off the sidebar #34322f (it began
+    as the true-neutral Figma t3-fork node 264:11816). Selecting it must not
+    replace or alter default Dark (#191919 / #1e1e1e) or Westworld (#26272c).
 
     Neutral Dark reuses the fork palette overlay in custom/forkTheme.ts
     (t3code:fork-theme = neutral-dark, upstream theme = dark,
-    data-fork-theme="neutral-dark"). Stage #1f1f1f, sidebar panel #2a2a2a
-    (slightly darker than Figma's #2e2e2e), composer vessel #323232 (a step
-    above the panel), prompt surface #3d3d3d (frosted), context chips #414141,
-    row hover/selected as opaque white-8% lifts (#383838 / #3a3a3a), borders
-    #3f3f3f. Accents stay monochrome (white primary/ring) with neutral muted
+    data-fork-theme="neutral-dark"). Sidebar panel #34322f, stage #2c2a27 (a
+    darker shade of the sidebar), composer vessel #3c3a37 (a step above the
+    panel), prompt surface #474542 (frosted), context chips #4b4946, row
+    hover/selected as opaque lifts (#42403d / #44423f), borders #494744.
+    Accents stay monochrome (white primary/ring) with neutral muted
     text. theme.custom.palettes.css uses the same two-block stage + v2 panel
-    pattern as Westworld. index.html pre-paints #1f1f1f so the load flash matches.
+    pattern as Westworld. index.html pre-paints #2c2a27 so the load flash matches.
     The sidebar stays opaque solid — wallpaper glass belongs to Neutral Darker.
+    Popups open flat on --popover #403e3b (a step above --card #383633) with no
+    backdrop-filter; the shared dark frost (fork-popup-surface) reads as glass,
+    which belongs to Glass.
+    An unchecked checkbox is a flat white-16% hairline with no fill, highlight
+    or shadow.
   tier: 2
   files:
     - apps/web/src/custom/forkTheme.ts
@@ -2275,9 +2280,9 @@
 - id: fork-neutral-darker-theme
   intent: >
     Appearance offers Neutral Darker as a deeper sibling of Neutral Dark.
-    True-neutral grays only. Chat stage #1a1a1a (slightly darker than Neutral
-    Dark's #1f1f1f); sidebar #212121 (much darker than Neutral Dark's #2a2a2a,
-    still a step lighter than the stage). Stage --card/--popover match the
+    True-neutral grays only. Chat stage #1a1a1a (darker than Neutral Dark's
+    #2c2a27); sidebar #212121 (much darker than Neutral Dark's #34322f, still a
+    step lighter than the stage). Stage --card/--popover match the
     sidebar (#212121) so menus open at the same lift. Composer vessel sits a
     step above the sidebar at #252525 so the control row contrasts against the
     stage; prompt/chips lift from that vessel. Must not alter Neutral Dark,

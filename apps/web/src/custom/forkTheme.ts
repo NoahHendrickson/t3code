@@ -44,7 +44,7 @@ export const COOL_DARKER_BACKGROUND = "#141618";
 export const NEUTRAL_DARK_THEME = "neutral-dark" as const;
 export const NEUTRAL_DARK_LABEL = "Neutral Dark";
 /** Pre-paint / overscroll colour for Neutral Dark — matches stage `--background`. */
-export const NEUTRAL_DARK_BACKGROUND = "#1f1f1f";
+export const NEUTRAL_DARK_BACKGROUND = "#2c2a27";
 
 export const NEUTRAL_DARKER_THEME = "neutral-darker" as const;
 export const NEUTRAL_DARKER_LABEL = "Neutral Darker";
