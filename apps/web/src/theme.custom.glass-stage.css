@@ -22,18 +22,29 @@
    Loaded after the palettes sheet (main.tsx), so where a rule here meets a
    palettes rule of equal weight, as the gutter meets the stage ramp, it wins
    on source order and needs no specificity of its own. Marker- and
-   palette-scoped, so no other palette sees any of it. */
+   palette-scoped, so no other palette sees any of it.
+
+   Every rule but the inset tokens stands down while the 3D switch is off
+   (custom/forkGlass3d.ts), leaving the flat stage the palettes sheet
+   paints. :where() keeps the gate out of the specificity above. */
 
 /* The card's inset from the chat view, read by the card, the draft's
    picture and its frost copies (theme.custom.glass.css) and the popup
    cutout (custom/forkGlassPopupCutout.ts). The left reads its own token,
    which a docked sidebar overrides (below). The radius is shared by the
    card and the picture that paints over it. At the root, outside the
-   picture's switch, so it holds with the picture off. */
+   picture's switch, so it holds with the picture off, and outside the 3D
+   switch, so the picture keeps its insets with the card gone. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
   --fork-glass-card-inset: 8px;
   --fork-glass-card-inset-left: var(--fork-glass-card-inset);
   --fork-glass-card-radius: 12px;
+}
+
+/* With 3D off there is no card for the picture to match, so it takes the
+   8px corners it had before the card. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-glass-3d="off"].dark[data-fork-theme="cool-darker"] {
+  --fork-glass-card-radius: 8px;
 }
 
 /* The desktop side chat (fork-side-chat) is already a surface on the
@@ -41,12 +52,16 @@
    window instead, so it is one pane of glass rather than a pane set inside
    another. Its fill stays, for the transcript's reading value; the corners
    and the rim go, as the window draws its own edge. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"] {
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"] {
   --fork-glass-card-inset: 0px;
   --fork-glass-card-radius: 0px;
 }
 
-:root[data-fork="noahhendrickson-t3code"][data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-side-chat="true"].dark[data-fork-theme="cool-darker"]
   :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
   box-shadow: none;
 }
@@ -55,7 +70,9 @@
    above the inset's fill when the chat view is a stacking context. The
    picture sheet declares the same pair behind its switch; this one holds
    with the picture off. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is([data-chat-column-maximized-away], [data-fork-stage-card]) {
   position: relative;
   isolation: isolate;
@@ -67,14 +84,18 @@
    of the chat view's own. The picture sheet carves the same exception
    behind its switch; this one holds with the picture off. The card falls
    under the inset's fill meanwhile. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has([data-preview-mini-player] [data-browser-surface-slot]) {
   isolation: auto;
 }
 
 /* The pane. Opaque clients paint the stage's own colour on it; under the
    desktop glass the fill is set below. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
   content: "";
   position: absolute;
@@ -130,7 +151,9 @@
    card over gutter composites to the stage's reading value, so the transcript keeps
    exactly the opacity the vibrancy entry tuned it to. Same triple as the
    panel, so the two layers only ever differ in alpha. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is([data-chat-column-maximized-away], [data-fork-stage-card])::before {
   background:
     var(--fork-glass-stage-light),
@@ -150,7 +173,9 @@
    undithered the bottom 30% steps in horizontal bands ~40px tall, tinted
    where the channels step at different heights. The dither token's tile is
    set on the card above. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away]:has(.fork-timeline-cutoff)::before {
   background:
     var(--fork-glass-stage-dither) 0 0 / 128px 128px,
@@ -167,14 +192,16 @@
    gradient over the inset the vibrancy block has already cleared. Settings,
    Usage and the other routes in the inset hold no card and keep the stage
    as it was. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:not(
-    [data-fork-sidebar-vibrancy="true"]
-  )
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
   [data-slot="sidebar-inset"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card])) {
   background-color: var(--fork-glass-panel);
 }
 
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card])) {
   background-image: linear-gradient(var(--fork-glass-panel) 0 100%);
 }
@@ -182,7 +209,9 @@
 /* No seam while the gutter matches the panel: the card's edge is the only
    line between them. The panel's own fill rather than a clear border, which
    under the desktop glass is a 1px strip of raw wallpaper. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-wrapper"]:has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
   [data-slot="sidebar-container"][data-sidebar-version="v2"] {
   border-color: var(--sidebar);
@@ -197,9 +226,9 @@
    bg-background in the column: form controls pair it with their own fill,
    and an MCP app's fullscreen frame stays a descendant of the transcript
    in the top layer and needs its backing. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]:not(
-    [data-fork-sidebar-vibrancy="true"]
-  )
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]:not([data-fork-sidebar-vibrancy="true"])
   :is(
     [data-slot="sidebar-inset"] .bg-background:has(> [data-chat-column]),
     [data-chat-column-maximized-away]
@@ -220,7 +249,9 @@
    sits 16px inside its left. On the chat view, which the group descends
    from, so no other route's controls move. Not under Windows'
    window-controls overlay, which sets its own. */
-:root[data-fork="noahhendrickson-t3code"]:not(.wco).dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])):not(
+    .wco
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-column-maximized-away] {
   --workspace-controls-right: calc(
     env(safe-area-inset-right) + var(--fork-glass-card-inset) + 16px
@@ -232,7 +263,9 @@
    header's left padding is its own; collapsed, or with the sidebar as a
    sheet, it clears the traffic lights instead. */
 @media (min-width: 768px) {
-  :root[data-fork="noahhendrickson-t3code"]:not(.wco).dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])):not(
+      .wco
+    ).dark[data-fork-theme="cool-darker"]
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]
     :is(
       [data-chat-column-maximized-away] [data-chat-header],
@@ -248,7 +281,9 @@
    rows would pass under the card's foot and the scrollbar run down the
    window's edge outside it. Width auto, as the scroll area's full width
    plus a margin would overflow the page. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-stage-card]
   [data-fork-stage-card-body] {
   width: auto;
@@ -263,7 +298,9 @@
    the composer, so the floor only painted over the card's foot, its glint
    and corners and the gutter beside it. Not on a new agent's empty draft,
    which centres the composer instead. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-composer-overlay="true"]:not([data-draft-hero]) {
   padding-bottom: 4px;
   background: none;
@@ -274,7 +311,9 @@
    value text panels keep. It adds the card's alpha of the same tint and
    composites back to the stage's. As an image, under the vibrancy block's clear of
    its colour. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-inset"]:has([data-chat-column-maximized-away])
   [data-preview-panel-mode="inline"] {
   background-image: linear-gradient(
@@ -296,7 +335,9 @@
    there is no sidebar beside the card: it keeps the full inset and the
    sidebar its padding. */
 @media (min-width: 768px) {
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-3d="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
       [data-fork-sidebar-overlay="true"]
     )
@@ -305,7 +346,9 @@
   }
 
   /* The thread list: its end padding is 8px less the measured gutter. */
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-3d="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
       [data-fork-sidebar-overlay="true"]
     ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))
@@ -314,7 +357,9 @@
     padding-inline-end: 0;
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-3d="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-slot="sidebar-wrapper"][data-sidebar-state="expanded"]:not(
       [data-fork-sidebar-overlay="true"]
     ):has(:is([data-chat-column-maximized-away], [data-fork-stage-card]))

@@ -5,13 +5,17 @@
    halo, a device-pixel glint on the top and bottom runs and a soft sheen
    just inside them. Loaded after the palettes sheet (main.tsx), so a rule
    here that ties with a palettes rule wins on source order. Every selector
-   is marker- and palette-scoped, so no other palette sees any of it. */
+   is marker- and palette-scoped, so no other palette sees any of it, and
+   stands down while the 3D switch is off (custom/forkGlass3d.ts); :where()
+   keeps that gate out of the specificity. */
 
 /* The glass, once, at the root: the popups portal out of the row and the
    sort menu out of the sidebar, so nothing finer would reach them all.
    An inset hairline offset half a pixel draws a crescent that thins away
    round the corners. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"] {
   --fork-glass-halo: 0 0 2px 1px rgb(0 0 0 / 25%);
   /* For a pane on a lighter surface than the stage: the mode chip on the
      vessel, a selected row on its menu. */
@@ -84,7 +88,9 @@
    monitoring pill has no border and its ::after sits flush; its own label
    and stop buttons match the chip selector and are left out, or they would
    draw a pill inside the pill. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is(
     [data-fork-composer-context-row]
       :is(
@@ -101,7 +107,9 @@
 }
 
 @media (pointer: fine) {
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-3d="off"])
+    ).dark[data-fork-theme="cool-darker"]
     :is(
       [data-fork-composer-context-row]
         :is(
@@ -119,7 +127,9 @@
       var(--fork-glass-halo);
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-3d="off"])
+    ).dark[data-fork-theme="cool-darker"]
     :is(
       [data-fork-composer-context-row]
         :is(button, [data-slot="button"], [data-fork-context-chip], [data-fork-pr-chip]):not(
@@ -135,7 +145,9 @@
     pointer-events: none;
   }
 
-  :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  :root[data-fork="noahhendrickson-t3code"]:where(
+      :not([data-fork-glass-3d="off"])
+    ).dark[data-fork-theme="cool-darker"]
     [data-fork-composer-context-row]
     [data-fork-monitoring-pill]::after {
     content: "";
@@ -151,7 +163,9 @@
    context chips stand on, and its tinted fill made the full halo read as a
    dark smudge round it, so it takes the soft halo. The rim is restated so
    its var() picks this halo up, not the root's. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-mode-chip] {
   --fork-glass-halo: var(--fork-glass-halo-soft);
   --fork-glass-rim: var(--fork-glass-halo), var(--fork-glass-light);
@@ -164,7 +178,9 @@
    keep their look, and so does a lone segmented Toggle (search's match-case
    and regex switches): an on/off button, not a tab, and only the group
    stamps data-variant. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-slot="toggle"][data-variant="segmented"][data-pressed] {
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
@@ -175,7 +191,9 @@
    the border box on the ::before upstream positions on every toggle and the
    segmented variant leaves empty. Unlike ::after, it is no pointer's hit
    area, so touch draws the same edge. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-slot="toggle"][data-variant="segmented"][data-pressed]::before {
   inset: -1px;
   border-radius: inherit;
@@ -183,7 +201,9 @@
 }
 
 /* A SegmentedTab has no border, so its inset light lands on the edge. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-segmented-tab][data-pressed] {
   box-shadow:
     var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
@@ -192,7 +212,9 @@
 
 /* Its track clips 2px out from the tab and the soft halo reaches 2.75px,
    so the halo was cut where the tab meets the track's edge. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-segmented-tabs] {
   overflow-clip-margin: 1px;
 }
@@ -207,13 +229,17 @@
    out under the desktop glass (the note on vibrancy below). The prompt
    well keeps its full white hairline, at rest and on focus: it is the
    input's own edge, inside the pane, not the pane's. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-vessel] {
   position: relative;
   box-shadow: var(--fork-glass-halo);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-vessel]::after {
   content: "";
   position: absolute;
@@ -236,7 +262,9 @@
    corner. The two ends split the hue either way around the wheel, the way
    a prism fans light, so the corners never match. Hover and press move
    only the tint, so they never drop the streak. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"] {
   --fork-composer-send-streak: oklch(
     from var(--fork-popup-glass-floor, rgb(22 22 22)) 0.85 calc(c * 3) calc(h - 50)
@@ -260,7 +288,9 @@
   color: #ffffff;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="stop"] {
   --fork-composer-action-glint: rgb(255 72 72);
   --fork-composer-action-light: rgb(255 72 72);
@@ -269,9 +299,13 @@
   color: #ffffff;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"],
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="stop"] {
   --fork-glass-send-light:
     inset 0 1px 1px -0.5px rgb(from var(--fork-composer-action-glint) r g b / 80%),
@@ -284,22 +318,30 @@
     var(--fork-glass-halo), var(--fork-glass-send-light);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:hover:not(:disabled) {
   background-color: rgb(from var(--fork-composer-action-light) r g b / 26%);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="send"][data-fork-composer-send-tone="flat"]:active:not(:disabled) {
   background-color: rgb(from var(--fork-composer-action-light) r g b / 12%);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="stop"]:hover:not(:disabled) {
   background: rgb(234 49 80 / 56%);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-action="stop"]:active:not(:disabled) {
   background: rgb(234 49 80 / 40%);
 }
@@ -312,7 +354,9 @@
    from the strip's width, so the label collapse measures the same room.
    4px clears --fork-glass-halo's reach (1px spread + 2px blur); grow it
    with the halo, or the end chips clip again. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-composer-context-row]
   [data-slot="composer-context-strip"] {
   margin-inline: -4px;
@@ -345,7 +389,9 @@
    scrolling one scrollbars. No such popup scrolls its glass box (lists
    scroll inside it), so the layers stay put. Popover's ::before is
    upstream's top highlight, which the ring replaces. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
@@ -360,7 +406,9 @@
    with its own lighter drop shadow, at a selector one attribute heavier
    than the rule above. This ties it and wins on source order, keeping that
    drop shadow beside the halo and sheens. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
@@ -376,7 +424,9 @@
    draws its hairline as an inset outline. Beside the halo it read as a
    thick double edge, so these popups drop it; the glint ring sits above
    the frost copy and carries the edge. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   body
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
@@ -388,7 +438,9 @@
 
 /* The model picker keeps its own squarer geometry (fork-model-picker: 8px
    corners, 4px rows on an 8px inset). */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-chat-composer-floating-layer="true"][data-slot="menu-popup"]:has([data-fork-model-picker]) {
   border-radius: 8px;
 }
@@ -397,7 +449,9 @@
    calc(var(--radius) - 4px), so a --radius-sm override never reaches them.
    In :where() so the menus below that round their rows further win on
    source order. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :where(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
@@ -413,7 +467,9 @@
   border-radius: 8px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
@@ -440,7 +496,9 @@
 
 /* A frosted popup's ::after is its frost copy (theme.custom.glass.css),
    which already shows a blurred picture through the glass. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is(
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]).dropdown-glass,
     :is([data-fork-glass-rim], [data-chat-composer-floating-layer="true"]) > .dropdown-glass,
@@ -463,7 +521,9 @@
    all: it sits over the cleared stage, where the palettes sheet drops its
    backdrop-filter because the blur flattens to a grey slab there. That
    includes the reflection band's. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-thread-details-panel="inline"]
   [data-thread-details-card]::after {
   content: none;
@@ -473,7 +533,9 @@
    this large under a busy header read the default ring as faint. Same ring
    and fade, stronger stops; outranks the ring rule by the card's
    attribute. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-thread-details-card][data-fork-glass-rim].dropdown-glass::before {
   background: linear-gradient(
     to bottom,
@@ -489,19 +551,25 @@
    lands on the edge. A wider inset and roomier rows, rounded further so the
    glint has a curve to fade round; every row, or a hovered row would change
    shape as it was picked. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-glass-selection]
   [data-slot="select-item"]:is([data-selected], [data-checked]) {
   box-shadow: var(--fork-glass-halo-soft), var(--fork-glass-light);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-glass-selection]
   [data-slot="select-list"] {
   padding: 6px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-glass-selection]
   [data-slot="select-item"] {
   padding: 6px 10px;
@@ -520,7 +588,9 @@
    wash over an opaque panel is what the flatten-alpha doctrine rules out.
    The shadow list carries Tailwind's ring variables so focus and file-drag
    rings still draw on top. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is(
     [data-sidebar-version="v2"]
       :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]),
@@ -532,7 +602,9 @@
     var(--fork-glass-selected-shadow);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is(
     [data-sidebar-version="v2"]
       :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]),
@@ -554,7 +626,9 @@
    It stops short of the content's 8px padding, so no text is ever under
    the blur, and it is the only backdrop-filter in the list. Above the
    card's z-10 content layer, or the backdrop holds only the fill. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-thread-item]
   > [aria-current="page"]::after {
@@ -572,7 +646,9 @@
    thread card draws it from its li (below); the top rows and the sort
    option stop clipping (their labels truncate themselves) and draw it on
    their own ::after. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   :is(
     [data-sidebar-version="v2"] [data-fork-chrome-row][data-active="true"],
     [data-fork-thread-sort] [data-slot="menu-radio-item"][data-checked]
@@ -594,13 +670,17 @@
    one, or a hovered row would change shape as it was opened. The classes
    are custom/sidebarV2RowPolicy.ts's row shapes; the compact card's pill is
    already as round as it gets. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   :is([data-thread-item] > .rounded-md, [data-fork-chrome-row]) {
   border-radius: 12px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-thread-item]
   > .rounded-\[16px\] {
@@ -612,14 +692,18 @@
    exactly the card's box, so the halo was clipped away whole. The current
    row is the one exempt, and its li draws the dark edge, since the card's
    own pseudo-elements are taken and it clips past its edge. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-thread-item]:has(> [aria-current="page"]) {
   position: relative;
   content-visibility: visible;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-thread-item]:has(> [aria-current="page"])::before {
   content: "";
@@ -634,13 +718,17 @@
   pointer-events: none;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-thread-item]:has(> .rounded-\[16px\][aria-current="page"])::before {
   border-radius: 21px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-thread-item]:has(> .rounded-full[aria-current="page"])::before {
   border-radius: 9999px;
@@ -648,7 +736,9 @@
 
 /* An active top row lets its dark edge out, and on an opaque client takes
    the thread row's active step rather than the rows' hover step. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
   [data-fork-chrome-row][data-active="true"] {
   overflow: visible;
@@ -656,7 +746,9 @@
 }
 
 /* Figma's 6% white, under the panel's real glass only. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  )[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
   [data-slot="sidebar-wrapper"]:not([data-fork-sidebar-overlay="true"])
   [data-sidebar-version="v2"]
   :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]) {
@@ -668,18 +760,24 @@
    round), and an 18px popup so the inset stays concentric. The popup rule
    outranks the rim's by the extra attribute; the rows tie with the rim's
    rows and win on source order. MenuPopup's list is its one child div. */
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-glass-rim][data-fork-thread-sort].dropdown-glass {
   border-radius: 18px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-thread-sort]
   > div {
   padding: 6px;
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+:root[data-fork="noahhendrickson-t3code"]:where(
+    :not([data-fork-glass-3d="off"])
+  ).dark[data-fork-theme="cool-darker"]
   [data-fork-thread-sort]
   [data-slot="menu-radio-item"] {
   border-radius: 12px;

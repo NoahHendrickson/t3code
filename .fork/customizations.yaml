@@ -4836,6 +4836,37 @@
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Helix.test.ts
 
+- id: fork-glass-3d
+  intent: >
+    Settings → Appearance → Interface → 3D glass (shown only under Glass, on
+    by default) turns off Glass's depth: the stage card a thread sits in
+    (fork-glass-stage-card) and the glints, sheens and halos on selected rows,
+    chips, tabs, the send/stop buttons and popups (theme.custom.glass-surfaces.css).
+    Off, Glass goes back to the flat stage and fills it had before #203; the
+    lighter tint (#214) and everything else stays. The switch stamps
+    data-fork-glass-3d="off" on the root before first render, and every rule
+    in both sheets requires its absence through a zero-specificity :where(),
+    except the card-inset tokens, which the new-agent picture still reads
+    (its corners go back to 8px). Device-local (localStorage) like the
+    palette, and Restore defaults resets it. The macOS traffic-light position
+    from #203 is theme-independent and stays.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkGlass3d.ts
+    - apps/web/src/custom/forkGlass3d.test.ts
+    - apps/web/src/theme.custom.glass-stage.css
+    - apps/web/src/theme.custom.glass-surfaces.css
+    - apps/web/src/theme.custom.glass.css
+  shadows: []
+  watch:
+    # Fenced import and initializer call.
+    - apps/web/src/main.tsx
+    # Fenced import, state, restore-defaults entry and the Interface row.
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGlass3d.test.ts
+
 - id: mobile-current-checkout-branch
   intent: >
     A thread QUEUED OFFLINE from Mobile in Current checkout mode records the

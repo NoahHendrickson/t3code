@@ -16,6 +16,7 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+import { FORK_GLASS_3D_OFF_ATTRIBUTE } from "../custom/forkGlass3d";
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules, ruleBodyFor } from "./cssRules";
@@ -24,10 +25,16 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
+// Every rule stands down with the 3D switch off (forkGlass3d.test.ts).
+const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]:where(:not([${FORK_GLASS_3D_OFF_ATTRIBUTE}="off"]))`;
 const PALETTE = `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 
-const sheet = readSibling("../theme.custom.glass-surfaces.css");
+// The formatter wraps the gate across lines; fold it back so the selectors
+// below match it.
+const sheet = readSibling("../theme.custom.glass-surfaces.css").replace(
+  /:where\(\s*:not\(\[data-fork-glass-3d="off"\]\)\s*\)/gu,
+  `:where(:not([${FORK_GLASS_3D_OFF_ATTRIBUTE}="off"]))`,
+);
 const rules = cssRules(sheet);
 
 describe("fork guard: glass surfaces", () => {

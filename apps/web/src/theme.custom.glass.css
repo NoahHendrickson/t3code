@@ -364,9 +364,10 @@
      an outer shadow 3px deep, which a clip at the border box cut away. Their
      clip steps out by that much; the frost copy shows in the ring, at the
      chips' bare wash and the vessel's 5%, under the halo. The header pills
-     wear no halo and an 18% wash, so they keep the tight clip. */
-  :root[data-fork="noahhendrickson-t3code"]:where(
-      :not([data-fork-glass-picture="off"])
+     wear no halo and an 18% wash, so they keep the tight clip. With 3D off
+     there is no halo, so the clip stays at the border box. */
+  :root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-picture="off"])):where(
+      :not([data-fork-glass-3d="off"])
     ).dark[data-fork-theme="cool-darker"]
     [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero])
     [data-fork-composer-stack="true"]
