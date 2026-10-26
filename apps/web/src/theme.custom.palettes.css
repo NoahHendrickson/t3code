@@ -203,6 +203,24 @@
   --fork-glass-panel: #181b1e;
 }
 
+/* The card's inset from the chat view and its radius: shared geometry for
+   the stage card (theme.custom.glass-stage.css), the new-agent picture and
+   its frost copies (theme.custom.glass.css) and the popup cutout
+   (custom/forkGlassPopupCutout.ts). The left reads its own token, which a
+   docked sidebar overrides on the card. Here rather than in either sheet,
+   so it holds with either switch off. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"] {
+  --fork-glass-card-inset: 8px;
+  --fork-glass-card-inset-left: var(--fork-glass-card-inset);
+  --fork-glass-card-radius: 12px;
+}
+
+/* Short of Full 3D (custom/forkGlass3d.ts) there is no card for the
+   picture to match, so it takes the 8px corners it had before the card. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-glass-3d].dark[data-fork-theme="cool-darker"] {
+  --fork-glass-card-radius: 8px;
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"] {
   --background: #181b1e;
@@ -230,6 +248,14 @@
   --sidebar-row-hover: #282d30;
   --sidebar-row-active: #2c3134;
   --sidebar-row-selected: #2c3134;
+}
+
+/* Glass's top sidebar rows (Search, New agent, Usage, Automations, …) are
+   pills, hovered or active, whatever the 3D glass setting. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"]
+  [data-fork-chrome-row] {
+  border-radius: 9999px;
 }
 
 /* Project chrome — the Projects row, every project header and each thread

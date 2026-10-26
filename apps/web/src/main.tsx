@@ -27,6 +27,9 @@ import { initializeForkTheme } from "./custom/forkTheme";
 /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
 import { initializeForkGlassNewAgentPicture } from "./custom/forkGlassNewAgentPicture";
 /* fork:end fork-glass-new-agent-stage */
+/* fork:begin fork-glass-3d — see .fork/customizations.yaml#fork-glass-3d */
+import { initializeForkGlass3d } from "./custom/forkGlass3d";
+/* fork:end fork-glass-3d */
 /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances */
 import { installTouchLongPressContextMenu } from "./custom/touchLongPressContextMenu";
 /* fork:end fork-touch-affordances */
@@ -58,6 +61,9 @@ initializeForkTheme();
 /* fork:begin fork-glass-new-agent-stage — see .fork/customizations.yaml#fork-glass-new-agent-stage */
 initializeForkGlassNewAgentPicture();
 /* fork:end fork-glass-new-agent-stage */
+/* fork:begin fork-glass-3d — see .fork/customizations.yaml#fork-glass-3d */
+initializeForkGlass3d();
+/* fork:end fork-glass-3d */
 /* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances */
 installTouchLongPressContextMenu();
 /* fork:end fork-touch-affordances */

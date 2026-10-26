@@ -2158,7 +2158,7 @@
   verify:
     - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
-    - apps/web/src/custom/forkGlassNewAgentPicture.test.ts
+    - apps/web/src/custom/forkRootSetting.test.ts
 
 - id: fork-glass-stage-card
   intent: >
@@ -2171,7 +2171,8 @@
 
     The card's inset is declared once at the Glass root
     (--fork-glass-card-inset, 8px, and --fork-glass-card-inset-left, which
-    follows it), outside the draft picture's switch; the card, the picture,
+    follows it) in the palettes sheet, outside the draft picture's and the
+    3D switches; the card, the picture,
     its frost copies and custom/forkGlassPopupCutout.ts all read those two
     tokens. Beside a docked sidebar the left is 3px, not 8px, and the
     sidebar's groups give up their right padding (the list to 0 beside its
@@ -4835,6 +4836,48 @@
     - apps/web/src/components/settings/SettingsPanels.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Helix.test.ts
+
+- id: fork-glass-3d
+  intent: >
+    Settings → Appearance → Interface → 3D glass (shown only under Glass)
+    picks how much of Glass gets depth. Full (default): the stage card a
+    thread sits in (fork-glass-stage-card) and the glints, sheens and halos
+    on selected rows, chips, tabs, the send/stop buttons and popups
+    (theme.custom.glass-surfaces.css). Selected items only: just the selected
+    thread card and the active top sidebar rows. Off: the flat stage and
+    fills Glass had before #203. The lighter tint (#214) and everything else
+    stays in every mode. The setting stamps data-fork-glass-3d="selection" or
+    "off" on the root before first render (absent at Full). The sheets nest
+    under parents that carry the gate through a zero-specificity :where():
+    the stage sheet needs Full; the surfaces sheet keeps source order across
+    alternating parents, the tokens and selected rows under "not off" and
+    everything else under Full. & takes a parent's specificity, so every rule
+    ranks as it did flat. The card-inset and radius tokens are shared with the
+    new-agent picture and live in the palettes sheet, outside the setting,
+    with a rule that returns the picture's corners to 8px short of Full. Both
+    Glass settings are configurations of custom/forkRootSetting.ts:
+    device-local (localStorage) like the palette, and Restore defaults resets
+    them. The macOS traffic-light position from #203 is theme-independent and
+    stays.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkGlass3d.ts
+    - apps/web/src/custom/forkRootSetting.ts
+    - apps/web/src/custom/forkRootSetting.test.ts
+    - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/theme.custom.glass-stage.css
+    - apps/web/src/theme.custom.glass-surfaces.css
+    - apps/web/src/theme.custom.glass.css
+  shadows: []
+  watch:
+    # Fenced import and initializer call.
+    - apps/web/src/main.tsx
+    # Fenced import, state, restore-defaults entry and the Interface row.
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGlass3d.test.ts
+    - apps/web/src/custom/forkRootSetting.test.ts
 
 - id: mobile-current-checkout-branch
   intent: >

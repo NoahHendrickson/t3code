@@ -16,6 +16,7 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+import { FORK_GLASS_3D_ATTRIBUTE } from "../custom/forkGlass3d";
 import { COOL_DARKER_THEME, FORK_THEME_ATTRIBUTE } from "../custom/forkTheme";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { cssRules, ruleBodyFor } from "./cssRules";
@@ -24,7 +25,11 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
+const FORK_ROOT = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
+// The chips, buttons, tabs and popups need Full 3D; the tokens hold with
+// selected items only (forkGlass3d.test.ts).
+const MARKER = `${FORK_ROOT}:where(:not([${FORK_GLASS_3D_ATTRIBUTE}]))`;
+const TOKENS = `${FORK_ROOT}:where(:not([${FORK_GLASS_3D_ATTRIBUTE}="off"]))`;
 const PALETTE = `[${FORK_THEME_ATTRIBUTE}="${COOL_DARKER_THEME}"]`;
 
 const sheet = readSibling("../theme.custom.glass-surfaces.css");
@@ -42,7 +47,7 @@ describe("fork guard: glass surfaces", () => {
   it("scopes every rule to the fork marker and Glass", () => {
     expect(rules.length).toBeGreaterThan(0);
     for (const rule of rules) {
-      expect(rule.selector, `unscoped rule "${rule.selector}"`).toContain(MARKER);
+      expect(rule.selector, `unscoped rule "${rule.selector}"`).toContain(FORK_ROOT);
       expect(rule.selector, `not scoped to Glass "${rule.selector}"`).toContain(PALETTE);
       // Under the desktop glass a transparent fill is a hole to the raw
       // wallpaper; write a zero-alpha colour where a gradient needs one.
@@ -71,7 +76,7 @@ describe("fork guard: glass surfaces", () => {
     expect(stopFace).toMatch(/background:\s*rgb\(234 49 80 \/ 48%\)/u);
     expect(stopFace).toMatch(/color:\s*#ffffff/u);
 
-    const root = ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`]);
+    const root = ruleBodyFor(rules, [`${TOKENS}.dark${PALETTE}`]);
     expect(stopFace).not.toContain("--fork-popup-glass-floor");
     for (const tone of ["glint", "light", "shade"]) {
       // The floor only exists under desktop vibrancy; without a fallback the
@@ -138,13 +143,27 @@ describe("fork guard: glass surfaces", () => {
     expect(strip).not.toContain("overflow-clip-margin");
   });
 
+  it("keeps the top sidebar rows pills with 3D on or off", () => {
+    // Outside the 3D switch, so both modes share it; hover and active share it
+    // too, so a row keeps its shape as it opens.
+    const palettes = cssRules(readSibling("../theme.custom.palettes.css"));
+    const root = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"].dark${PALETTE}`;
+    expect(
+      ruleBodyFor(palettes, [root, '[data-sidebar-version="v2"]', "[data-fork-chrome-row]"]),
+    ).toContain("border-radius: 9999px;");
+    // The 3D sheet rounds thread rows to 12px but leaves the top rows alone.
+    expect(
+      rules.some((rule) => /12px/u.test(rule.body) && rule.selector.includes("chrome-row")),
+    ).toBe(false);
+  });
+
   it("matches the markup its selectors lean on", () => {
     // The two row shapes Glass rounds further.
     const rowPolicy = readSibling("../custom/sidebarV2RowPolicy.ts");
     expect(rowPolicy).toContain('"rounded-[16px]"');
     expect(rowPolicy).toContain('"rounded-md"');
     expect(sheet).toContain("[data-thread-item] > .rounded-md");
-    expect(sheet).toContain("[data-thread-item]\n  > .rounded-\\[16px\\]");
+    expect(sheet).toContain("[data-thread-item]\n    > .rounded-\\[16px\\]");
     // The sort menu pads MenuPopup's list, its popup's only child.
     expect(readSibling("../components/ui/menu.tsx")).toMatch(
       /<div className="max-h-\(--available-height\) w-full overflow-y-auto p-1">\{children\}<\/div>\s*<\/MenuPrimitive\.Popup>/u,

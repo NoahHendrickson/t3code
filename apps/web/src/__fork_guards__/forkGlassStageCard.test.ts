@@ -58,9 +58,11 @@ describe("fork guard: fork-glass-stage-card", () => {
   });
 
   it("paints the card inside the chat view at the root's inset, under its content", () => {
-    // One declaration of the inset, at the Glass root and outside the
-    // picture's switch; every reader takes it through var().
-    const tokens = rules.find((rule) => rule.body.includes("--fork-glass-card-inset:"));
+    // One declaration of the inset, at the Glass root in the palettes sheet
+    // and outside both switches; every reader takes it through var().
+    const tokens = cssRules(palettes).find((rule) =>
+      rule.body.includes("--fork-glass-card-inset:"),
+    );
     expect(compact(tokens?.selector ?? "")).toBe(compact(`${GLASS}.dark${PALETTE}`));
     expect(tokens?.body).toMatch(/--fork-glass-card-inset:\s*8px/u);
     expect(tokens?.body).toContain("--fork-glass-card-inset-left: var(--fork-glass-card-inset)");
