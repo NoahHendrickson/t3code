@@ -3,7 +3,7 @@
  * Fork guard — see `.fork/README.md` §4b and
  * `.fork/customizations.yaml#fork-neutral-dark-theme`.
  *
- * Neutral Dark is a selectable true-neutral dark palette. Losing the
+ * Neutral Dark is a selectable warm-gray dark palette. Losing the
  * preference wiring leaves the Appearance option as a dead label; losing the
  * CSS attribute selectors silently paints Neutral Dark with default Dark fills.
  */
@@ -95,12 +95,12 @@ describe("fork guard: fork-neutral-dark-theme", () => {
     const stage = ruleBodyFor(themeRules, NEUTRAL_STAGE);
     const panel = ruleBodyFor(themeRules, NEUTRAL_PANEL);
     expect(declarationHex(stage, "--background")).toBe(NEUTRAL_DARK_BACKGROUND);
-    expect(declarationHex(panel, "--background")).toBe("#2a2a2a");
-    expect(panel).toContain("--sidebar: #2a2a2a");
-    expect(panel).toContain("--sidebar-stage-fade: #2a2a2a");
-    expect(stage).toContain("--fork-composer-vessel-bg: #323232");
-    expect(stage).toContain("--fork-composer-bg: rgb(61 61 61 / 80%)");
-    expect(stage).toContain("--fork-context-chip-bg: rgb(65 65 65)");
+    expect(declarationHex(panel, "--background")).toBe("#34322f");
+    expect(panel).toContain("--sidebar: #34322f");
+    expect(panel).toContain("--sidebar-stage-fade: #34322f");
+    expect(stage).toContain("--fork-composer-vessel-bg: #3c3a37");
+    expect(stage).toContain("--fork-composer-bg: rgb(71 69 66 / 80%)");
+    expect(stage).toContain("--fork-context-chip-bg: rgb(75 73 70)");
   });
 
   it("keeps Neutral Dark lighter than the default Dark stage and distinct from Westworld", () => {
@@ -112,30 +112,33 @@ describe("fork guard: fork-neutral-dark-theme", () => {
     expect(neutralStage).toBe(NEUTRAL_DARK_BACKGROUND);
   });
 
-  it("keeps Neutral Dark truly neutral (R = G = B on stage)", () => {
-    const [r, g, b] = parseHex(
-      declarationHex(ruleBodyFor(themeRules, NEUTRAL_STAGE), "--background"),
-    );
-    expect(r).toBe(g);
-    expect(g).toBe(b);
+  it("paints the stage as a darker shade of the warm sidebar", () => {
+    const stage = parseHex(declarationHex(ruleBodyFor(themeRules, NEUTRAL_STAGE), "--background"));
+    const panel = parseHex(declarationHex(ruleBodyFor(themeRules, NEUTRAL_PANEL), "--background"));
+    const [r, g, b] = stage;
+    expect(r).toBeLessThan(panel[0]);
+    expect(g).toBeLessThan(panel[1]);
+    expect(b).toBeLessThan(panel[2]);
+    expect(r).toBeGreaterThan(g);
+    expect(g).toBeGreaterThan(b);
   });
 
   it("states Neutral Dark row fills as opaque values", () => {
     const panel = ruleBodyFor(themeRules, NEUTRAL_PANEL);
-    expect(panel).toContain("--sidebar-row-hover: #383838");
-    expect(panel).toContain("--sidebar-row-active: #3a3a3a");
-    expect(panel).toContain("--sidebar-row-selected: #3a3a3a");
+    expect(panel).toContain("--sidebar-row-hover: #42403d");
+    expect(panel).toContain("--sidebar-row-active: #44423f");
+    expect(panel).toContain("--sidebar-row-selected: #44423f");
     expect(panel).not.toMatch(
       /--sidebar-row-(?:hover|active|selected):[^;]*(?:color-mix|--alpha)/u,
     );
   });
 
-  it("keeps context chips on an opaque match of the Figma chip fill", () => {
+  it("keeps context chips on an opaque fill", () => {
     const contextRules = cssRules(theme).filter((rule) =>
       rule.body.includes("--fork-context-chip-bg:"),
     );
     const neutralDark = contextRules.find((rule) => rule.selector === NEUTRAL_STAGE[0]);
-    expect(neutralDark?.body).toContain("--fork-context-chip-bg: rgb(65 65 65)");
+    expect(neutralDark?.body).toContain("--fork-context-chip-bg: rgb(75 73 70)");
     expect(neutralDark?.body).not.toMatch(/--fork-context-chip-bg:[^;]*\//u);
   });
 
@@ -150,21 +153,53 @@ describe("fork guard: fork-neutral-dark-theme", () => {
     expect(indexHtml).toContain('setAttribute("data-fork-theme", activeForkPalette)');
     expect(indexHtml).toContain(`html.dark[${FORK_THEME_ATTRIBUTE}="neutral-dark"] body`);
     expect(indexHtml).toMatch(
-      /html\.dark\[data-fork-theme="neutral-dark"\] body\s*\{[^}]*background:\s*#1f1f1f/u,
+      /html\.dark\[data-fork-theme="neutral-dark"\] body\s*\{[^}]*background:\s*#2c2a27/u,
     );
     expect(indexHtml).toContain("fork:begin fork-neutral-dark-theme");
   });
 
+  it("opens popups flat by overriding the shared frost's tokens", () => {
+    const stage = ruleBodyFor(themeRules, NEUTRAL_STAGE);
+    expect(stage).toContain("--fork-popup-fill: var(--popover)");
+    expect(stage).toContain("--fork-popup-border: var(--border)");
+    expect(stage).toContain("--fork-popup-filter: none");
+    // Restating the frost rule's arms would let a new arm stay frosted here.
+    const restated = themeRules.filter(
+      (rule) =>
+        rule.selector.includes(`[${FORK_THEME_ATTRIBUTE}="${NEUTRAL_DARK_THEME}"]`) &&
+        rule.selector.includes(".dropdown-glass"),
+    );
+    expect(restated).toHaveLength(0);
+  });
+
+  it("draws unchecked checkboxes as a flat hairline", () => {
+    const checkbox = ruleBodyFor(themeRules, [
+      ...NEUTRAL_STAGE,
+      '[data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"])',
+    ]);
+    expect(checkbox).toContain("border-color: rgb(255 255 255 / 16%)");
+    expect(checkbox).toContain("background: transparent");
+    expect(checkbox).toContain("box-shadow: none");
+    const highlight = ruleBodyFor(themeRules, [
+      ...NEUTRAL_STAGE,
+      '[data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"])::before',
+    ]);
+    expect(highlight).toContain("box-shadow: none");
+  });
+
   it("does not leak Neutral Dark fills into light mode", () => {
     const neutralHexes = [
-      "#1f1f1f",
-      "#2a2a2a",
-      "#2e2e2e",
-      "#383838",
-      "#3a3a3a",
-      "#3d3d3d",
-      "#3f3f3f",
-      "#414141",
+      "#2c2a27",
+      "#34322f",
+      "#383633",
+      "#403e3b",
+      "#3c3a37",
+      "#42403d",
+      "#44423f",
+      "#494744",
+      "#4b4946",
+      "#54524e",
+      "#5c5a57",
     ];
     const lightRules = cssRules(theme).filter(
       (rule) => rule.selector.includes(MARKER) && !rule.selector.includes(".dark"),

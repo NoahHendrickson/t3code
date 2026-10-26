@@ -86,7 +86,7 @@ describe("fork guard: fork-popup-surface", () => {
   const frosts = cssRules(theme).filter(
     (candidate) =>
       candidate.selector.includes(".dropdown-glass") &&
-      /backdrop-filter: blur\(\d+px\)/u.test(candidate.body),
+      candidate.body.includes("backdrop-filter: var(--fork-popup-filter)"),
   );
   const frost = frosts[0];
 
@@ -109,10 +109,11 @@ describe("fork guard: fork-popup-surface", () => {
     expect(flat(fill?.body ?? "")).toContain(
       `--fork-popup-fill: linear-gradient( ${WASH}, ${WASH} ), color-mix(in srgb, var(--popover) 45%, transparent);`,
     );
+    expect(fill?.body).toContain(`--fork-popup-border: ${HAIRLINE};`);
+    expect(fill?.body).toContain("--fork-popup-filter: blur(28px) saturate(1.4);");
     expect(frost?.body).toMatch(/background:\s*var\(--fork-popup-fill\);/u);
-    expect(frost?.body).toContain(`border-color: ${HAIRLINE};`);
-    expect(frost?.body).toContain("backdrop-filter: blur(28px) saturate(1.4);");
-    expect(frost?.body).not.toContain("backdrop-filter: none");
+    expect(frost?.body).toContain("border-color: var(--fork-popup-border);");
+    expect(frost?.body).toContain("-webkit-backdrop-filter: var(--fork-popup-filter);");
     // No fork rule paints the popups with the opaque composer-stack fill.
     // Only Glass may use the vessel token, where it is a 6% wash.
     for (const sheet of [theme, palettes]) {

@@ -2855,9 +2855,12 @@
    paints --popover with !important where backdrop-filter is unsupported,
    which outranks anything declared here.
 
-   The fill is named once, --fork-popup-fill, so a surface that should read
-   as the popup material without the frost (the Questions card above the
-   composer, fork-pending-user-input) wears the same recipe. */
+   The fill, hairline and filter are named once (--fork-popup-fill,
+   --fork-popup-border, --fork-popup-filter), so a palette restyles every
+   arm by overriding the tokens rather than restating the selector, and a
+   surface that should read as the popup material without the frost (the
+   Questions card above the composer, fork-pending-user-input) wears the
+   same fill. */
 :root[data-fork="noahhendrickson-t3code"].dark {
   --fork-popup-fill:
     linear-gradient(
@@ -2865,6 +2868,8 @@
       color-mix(in srgb, var(--contrast-foreground) 8%, transparent)
     ),
     color-mix(in srgb, var(--popover) 45%, transparent);
+  --fork-popup-border: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
+  --fork-popup-filter: blur(28px) saturate(1.4);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
@@ -2881,9 +2886,9 @@
     [data-thread-details-card].dropdown-glass
   ) {
   background: var(--fork-popup-fill);
-  border-color: color-mix(in srgb, var(--contrast-foreground) 12%, transparent);
-  -webkit-backdrop-filter: blur(28px) saturate(1.4);
-  backdrop-filter: blur(28px) saturate(1.4);
+  border-color: var(--fork-popup-border);
+  -webkit-backdrop-filter: var(--fork-popup-filter);
+  backdrop-filter: var(--fork-popup-filter);
 }
 
 /* ── Thread details panel (fork-popup-surface) ──────────────────────────────
@@ -3267,7 +3272,7 @@
 
 /* The user's sent bubble takes the same fill as the card above it. Upstream
    paints `bg-message` → --message-surface → --accent; on every fork palette
-   that is the secondary/hover step (cool #353a3d, neutral #383838), one rung
+   that is the secondary/hover step (cool #353a3d, neutral dark #42403d), one rung
    brighter than the changed-files card, so the two surfaces in the same
    column disagreed.
 

@@ -76,7 +76,7 @@ describe("fork guard: fork-usage-popover", () => {
     const frost = cssRules(theme).find(
       (rule) =>
         rule.selector.includes('[data-slot="dialog-popup"]') &&
-        /backdrop-filter: blur\(\d+px\)/u.test(rule.body),
+        rule.body.includes("backdrop-filter: var(--fork-popup-filter)"),
     );
     expect(frost?.selector).toContain('[data-slot="popover-popup"]');
     expect(frost?.selector).toContain(".dropdown-glass");

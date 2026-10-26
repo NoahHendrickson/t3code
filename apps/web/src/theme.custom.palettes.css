@@ -277,74 +277,97 @@
 /* ---------------------------------------------------------------------------
    Neutral Dark — see `.fork/customizations.yaml#fork-neutral-dark-theme`.
 
-   Figma t3-fork node 264:11816: true-neutral grays (no cool undertone). Stage
-   #1f1f1f, sidebar #2a2a2a (slightly darker than the drawn #2e2e2e), composer
-   vessel #323232, prompt surface #3d3d3d, context chips #414141. Same two-block
+   Warm grays keyed off the sidebar #34322f; the stage is a darker shade of it
+   (#2c2a27). Composer vessel #3c3a37 sits a step above the sidebar, then prompt
+   surface #474542 and context chips #4b4946. Same two-block
    pattern and data-fork-theme keying as Westworld so Dark / Westworld /
    Neutral Dark can coexist. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"] {
-  --background: #1f1f1f;
-  --app-chrome-background: #1f1f1f;
+  --background: #2c2a27;
+  --app-chrome-background: #2c2a27;
   --foreground: #e8e8e8;
-  --card: #2e2e2e;
+  --card: #383633;
   --card-foreground: #e8e8e8;
-  --popover: #2e2e2e;
+  --popover: #403e3b;
   --popover-foreground: #e8e8e8;
   --primary: #ffffff;
-  --primary-foreground: #1f1f1f;
+  --primary-foreground: #2c2a27;
   --ring: #ffffff;
-  --secondary: #383838;
+  --secondary: #42403d;
   --secondary-foreground: #e8e8e8;
-  --muted: #383838;
+  --muted: #42403d;
   --muted-foreground: #9a9a9a;
-  --accent: #383838;
+  --accent: #42403d;
   --accent-foreground: #e8e8e8;
-  --border: #3f3f3f;
-  --input: #3f3f3f;
+  --border: #494744;
+  --input: #494744;
   --surface-grain: none;
-  --fork-pill-border: #4a4a4a;
+  --fork-pill-border: #54524e;
   --fork-pill-fg: #e8e8e8;
-  --fork-pill-hover: #383838;
+  --fork-pill-hover: #42403d;
   /* A step above the sidebar panel: the control row reads as part of the
      composer rather than as more chrome. */
-  --fork-composer-vessel-bg: #323232;
-  --fork-composer-bg: rgb(61 61 61 / 80%);
+  --fork-composer-vessel-bg: #3c3a37;
+  --fork-composer-bg: rgb(71 69 66 / 80%);
   --fork-composer-border: rgb(255 255 255 / 8%);
-  --fork-composer-border-focus: #525252;
+  --fork-composer-border-focus: #5c5a57;
   /* Opaque sibling of the Neutral Dark composer fill — see default-dark note. */
-  --fork-context-chip-bg: rgb(65 65 65);
-  --fork-context-chip-bg-hover: #4a4a4a;
+  --fork-context-chip-bg: rgb(75 73 70);
+  --fork-context-chip-bg-hover: #54524e;
+  /* Popups open flat rather than on the shared dark frost (fork-popup-surface):
+     over a warm stage the blurred, saturated backdrop read as glass, which
+     belongs to Glass. */
+  --fork-popup-fill: var(--popover);
+  --fork-popup-border: var(--border);
+  --fork-popup-filter: none;
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
   [data-sidebar-version="v2"] {
-  --background: #2a2a2a;
+  --background: #34322f;
   --foreground: #e8e8e8;
-  --card: #2a2a2a;
+  --card: #34322f;
   --card-foreground: #e8e8e8;
-  --sidebar: #2a2a2a;
+  --sidebar: #34322f;
   --sidebar-foreground: #e8e8e8;
-  --border: #3f3f3f;
-  --sidebar-border: #3f3f3f;
-  --sidebar-stage-fade: #2a2a2a;
-  --muted: #383838;
-  --accent: #383838;
+  --border: #494744;
+  --sidebar-border: #494744;
+  --sidebar-stage-fade: #34322f;
+  --muted: #42403d;
+  --accent: #42403d;
   --accent-foreground: #e8e8e8;
   --muted-foreground: #9a9a9a;
   --sidebar-muted-foreground: #d6d6d6;
   --fork-sidebar-card-title-receded: #b0b0b0;
-  --sidebar-control-surface: #414141;
-  --sidebar-row-hover: #383838;
-  --sidebar-row-active: #3a3a3a;
-  --sidebar-row-selected: #3a3a3a;
+  --sidebar-control-surface: #4b4946;
+  --sidebar-row-hover: #42403d;
+  --sidebar-row-active: #44423f;
+  --sidebar-row-selected: #44423f;
+}
+
+/* Every unchecked checkbox in the palette, popups and settings alike, is a
+   flat white hairline: upstream's dark recipe — an --input/32 fill, a white
+   top highlight on ::before and a drop shadow — reads as a raised bevel on
+   Neutral Dark's flat surfaces. Checked, indeterminate and invalid boxes keep
+   upstream's look. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"]) {
+  border-color: rgb(255 255 255 / 16%);
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="neutral-dark"]
+  [data-slot="checkbox"][data-unchecked]:not([aria-invalid="true"])::before {
+  box-shadow: none;
 }
 
 /* ---------------------------------------------------------------------------
    Neutral Darker — see `.fork/customizations.yaml#fork-neutral-darker-theme`.
 
-   Same true-neutral family as Neutral Dark, pushed down: chat stage #1a1a1a
-   (slightly darker than Neutral Dark's #1f1f1f), sidebar #212121 (much darker
-   than Neutral Dark's #2a2a2a, still a step lighter than the stage). Composer
+   A true-neutral counterpart to Neutral Dark, pushed down: chat stage #1a1a1a
+   (well below Neutral Dark's #2c2a27), sidebar #212121 (much darker than
+   Neutral Dark's #34322f, still a step lighter than the stage). Composer
    vessel sits a step above the sidebar (#252525) so the control row (mode /
    model / effort) contrasts against the stage; prompt/chips lift from that
    vessel. */
