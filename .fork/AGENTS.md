@@ -47,6 +47,14 @@ fork only ever reads from; there is no valid reason to open one.
    `/* fork:begin <id> — see .fork/customizations.yaml#<id> */` … `/* fork:end <id> */`, and add
    the file under `watch:` in the manifest.
 
+## Design defaults
+
+- **Dividers run full width**, edge to edge of the surface they divide: menus, popovers,
+  panels, cards. An inset rule needs an explicit ask. `MenuSeparator`'s default is upstream's
+  inset `mx-2`, so cancel every padding layer between it and the popup's edge: `-mx-1` as a
+  direct child of `MenuPopup` (its scroll wrapper pads 4px), `-mx-2` inside a further `p-1`
+  container, and so on.
+
 ## Dev state in a worktree moved (upstream a17cbc3b4)
 
 A linked git worktree no longer shares `~/.t3/dev`. Its dev state is the worktree's own gitignored

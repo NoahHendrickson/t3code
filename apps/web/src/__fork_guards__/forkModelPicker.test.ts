@@ -2,15 +2,15 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-model-picker`.
  *
- * Two shadows turn the model picker into a paged menu: ProviderModelPicker
- * swaps upstream's Popover for a Menu, and ModelPickerContent renders the
- * Favorites or providers page, then a provider's models in place. In the composer,
- * ComposerModelPicker adds the reasoning panel under the pages, replacing the
+ * Two shadows reshape the model picker: ProviderModelPicker swaps upstream's
+ * Popover for a Menu, and ModelPickerContent renders a provider dropdown, the
+ * search field and the chosen provider's models. In the composer,
+ * ComposerModelPicker adds the reasoning panel under the list, replacing the
  * separate traits picker. A sync that deletes either shadow
  * falls back to upstream's rail-and-list popover with no error, and a sync
  * that changes the props or helpers upstream wires between them breaks only at
  * runtime (relative imports type-check against upstream — see
- * overrides/README.md). Assert the outcomes the cascade and the wiring rely on.
+ * overrides/README.md). Assert the outcomes the layout and the wiring rely on.
  */
 
 import * as NodeFS from "node:fs";
@@ -136,37 +136,49 @@ describe("fork guard: fork-model-picker", () => {
     expect(content).toContain("const modelName = stripProviderName(displayName, {");
   });
 
-  it("pages from providers to a provider's models, favorites first", () => {
-    // Rows swap the page in place; no submenu ever portals out.
-    expect(content).not.toContain("<MenuSub");
-    expect(content).toContain('data-model-picker-page-link="true"');
+  it("scopes the list with a provider submenu above the search field", () => {
+    // A hover submenu, controlled so an option can close it alone.
     expect(content).toContain(
-      'target: { kind: "models", instanceId: entry.instanceId, legacy: false }',
+      "<MenuSub open={providerMenuOpen} onOpenChange={setProviderMenuOpen}>",
     );
-    expect(content).toContain('data-model-picker-back="true"');
-    expect(content).toContain('providerId: "favorites"');
+    expect(content).toMatch(/<MenuSubTrigger\s+openOnHover/u);
+    expect(content).toContain('data-model-picker-provider-trigger="true"');
+    // Its popup portals out, so it carries the picker's stamp (focus, wheel
+    // lock), the composer's floating layer (or focus moving in collapses the
+    // composer) and the corner hook.
+    const subPopupAt = content.indexOf("<MenuSubPopup");
+    const subPopup = content.slice(subPopupAt, content.indexOf("</MenuSubPopup>", subPopupAt));
+    expect(subPopup).toContain('data-model-picker-content="true"');
+    expect(subPopup).toContain("{...composerFloatingLayerProps}");
+    expect(subPopup).toContain("data-fork-model-picker=");
+    // Provider menu, then search, then the list.
+    const triggerAt = content.indexOf("{renderProviderMenu()}");
+    const searchAt = content.indexOf('aria-label="Search models"');
+    const listAt = content.indexOf("{renderModelList()}");
+    expect(triggerAt).toBeGreaterThan(-1);
+    expect(searchAt).toBeGreaterThan(triggerAt);
+    expect(listAt).toBeGreaterThan(searchAt);
+    // Favorites leads the options, then one per provider instance.
     expect(content.indexOf('providerId: "favorites"')).toBeLessThan(
-      content.indexOf("{providerEntries.map(renderProviderRow)}"),
+      content.indexOf("{providerEntries.map(renderProviderOption)}"),
     );
-    // The menu lands on Favorites when one can be picked, else on providers,
-    // and an empty Favorites page shows providers.
+    // Opens on Favorites when one can be picked, else the current provider,
+    // and an emptied Favorites shows the current provider.
     expect(content).toMatch(
-      /useState<ModelPickerPage>\(\(\) =>[^;]*\? FAVORITES_PAGE\s*: PROVIDERS_PAGE/u,
+      /useState<ModelPickerScope>\(\(\) =>[^;]*\? "favorites"\s*: props\.activeInstanceId/u,
     );
-    expect(content).toContain('storedPage.kind === "favorites" && favoriteModels.length === 0');
-    // Legacy models sit one page deeper, not inline.
-    expect(content).toContain('target: { kind: "models", instanceId, legacy: true }');
-    // A row swaps the page and focuses the search field only later: focusing
-    // it from the click races the menu's focus-out check against the removed
-    // row and closes the menu.
+    expect(content).toContain('storedScope === "favorites" && favoriteModels.length === 0');
+    // Legacy models sit behind an inline toggle.
+    expect(content).toContain('data-model-picker-legacy-toggle="true"');
+    // Choosing an option swaps the list and focuses the search field only
+    // later: focusing it from the click races the menu's focus-out check
+    // against the removed row and closes the menu.
     expect(content).toMatch(
-      /setStoredPage\(next\);\s*window\.requestAnimationFrame\(focusSearchInput\);\s*window\.setTimeout\(focusSearchInput, 0\);/u,
+      /setShowLegacy\(options\?\.showLegacy \?\? false\);\s*window\.requestAnimationFrame\(focusSearchInput\);\s*window\.setTimeout\(focusSearchInput, 0\);/u,
     );
     // The menu parks focus on the popup after a swap; typing still searches.
     expect(content).toContain("closest<HTMLElement>('[data-slot=\"menu-popup\"]')");
     expect(content).toContain("if (event.target === popup) redirectTypingToSearch(event);");
-    // Backspace held to clear a query stops at the empty field.
-    expect(content).toContain("if (!event.repeat) openPage(parentPage(page));");
     // Disabled providers keep pointer events so the reason tooltip opens.
     expect(content).toContain('input.disabled && "data-disabled:pointer-events-auto"');
     expect(content).toContain("describeUnavailableInstance(entry)");
@@ -176,18 +188,19 @@ describe("fork guard: fork-model-picker", () => {
 
   it("stamps the popup for shortcuts and the wheel lock", () => {
     expect(visibility).toContain('"[data-model-picker-content]"');
-    expect(content.match(/data-model-picker-content="true"/gu)?.length).toBe(1);
+    // The list and the provider submenu's popup.
+    expect(content.match(/data-model-picker-content="true"/gu)?.length).toBe(2);
     expect(content.match(/data-fork-model-picker="true"/gu)?.length).toBe(1);
   });
 
   it("searches every provider's models as one flat list", () => {
-    // Typing anywhere in the cascade lands in the search field, ahead of the
+    // Typing anywhere in the menu lands in the search field, ahead of the
     // menu's type-ahead.
     expect(content).toContain("onKeyDownCapture={redirectTypingToSearch}");
     expect(content).toContain("setSearchQuery((query) => query + event.key);");
-    // A query swaps any page for the flat results, provider shown inline.
+    // A query swaps the list for the flat results, provider shown inline.
     expect(content).toMatch(
-      /const renderPage = \(\) => \{\s*if \(isSearching\) \{\s*return \(\s*<>\s*\{searchResults\.length > 0 \? \(\s*searchResults\.map\(\(model\) => renderModelItem\(model, true\)\)/u,
+      /const renderModelList = \(\) => \{\s*if \(isSearching\) \{\s*return \(\s*<>\s*\{searchResults\.length > 0 \? \(\s*searchResults\.map\(\(model\) => renderModelItem\(model, true\)\)/u,
     );
     expect(content).toContain(".filter((model) => matchesLockedProvider(model))");
     // Escape clears a query before it can close the menu.
@@ -217,7 +230,7 @@ describe("fork guard: fork-model-picker", () => {
     expect(content).toContain('const jumpIndex = modelPickerJumpIndexFromCommand(command ?? "");');
     expect(content).toContain('window.addEventListener("keydown", onWindowKeyDown, true);');
     expect(content).toMatch(
-      /if \(isSearching\) return searchResults;\s*if \(page\.kind === "favorites"\) return favoriteModels;/u,
+      /if \(isSearching\) return searchResults;\s*if \(scope === "favorites"\) return favoriteModels;/u,
     );
   });
 

@@ -42,7 +42,12 @@ describe("fork guard: fork-glass-3d", () => {
     expect(selection.length).toBeGreaterThan(0);
     for (const rule of selection) {
       const isTokens = compact(rule.selector) === compact(`${NOT_OFF}${PALETTE}`);
-      const isSelectedRow = /\[data-thread-item\]|\[data-fork-chrome-row\]/u.test(rule.selector);
+      // The recent-project buttons keep their rim at selected items only by
+      // product choice (fork-sidebar-recent-projects).
+      const isSelectedRow =
+        /\[data-thread-item\]|\[data-fork-chrome-row\]|\[data-fork-recent-project\]/u.test(
+          rule.selector,
+        );
       expect(isTokens || isSelectedRow, `not a selected row: "${rule.selector}"`).toBe(true);
       expect(rule.selector, rule.selector).not.toContain("data-fork-thread-sort");
     }

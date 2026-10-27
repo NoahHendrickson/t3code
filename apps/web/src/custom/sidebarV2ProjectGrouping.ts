@@ -154,7 +154,7 @@ export interface SidebarV2ActiveSection<TThread> {
     module and discards it. The duplication is deliberate — importing a
     `components/` internal would widen a seam this file keeps structural — but
     the two must agree on what a ref key is. */
-function projectRefKey(environmentId: string, projectId: string): string {
+export function projectRefKey(environmentId: string, projectId: string): string {
   return `${environmentId}\u0000${projectId}`;
 }
 

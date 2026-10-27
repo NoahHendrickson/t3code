@@ -5,7 +5,7 @@
  * (theme.custom.glass-stage.css) and the glints, sheens and halos on the
  * selected rows, chips, tabs, buttons and popups
  * (theme.custom.glass-surfaces.css). Selected items only: just the selected
- * thread card and the active top sidebar rows. Off: the flat stage and fills
+ * thread card, the active top sidebar rows and the recent-project buttons. Off: the flat stage and fills
  * Glass had before either. The sheets key on the root attribute below.
  */
 import * as Schema from "effect/Schema";

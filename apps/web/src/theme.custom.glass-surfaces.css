@@ -673,6 +673,15 @@
     :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]) {
     background-color: rgb(255 255 255 / 6%);
   }
+
+  /* The sidebar's recent-project buttons (fork-sidebar-recent-projects),
+     with the rows above the list: shown at Selected items only too. They
+     have no border, so the inset light lands on the edge itself. */
+  &.dark[data-fork-theme="cool-darker"] [data-fork-recent-project] {
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+      var(--fork-glass-rim);
+  }
 }
 
 :root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d])) {

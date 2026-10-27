@@ -2,7 +2,7 @@
  * Fork replacement for the two legacy-favorite cases upstream's
  * ProviderModelPicker.browser.test.tsx skips behind `fork-model-picker`
  * (see `.fork/customizations.yaml#fork-model-picker`). The fork's picker is a
- * paged Base UI Menu, so these drive menu items and page links instead of
+ * Base UI Menu with a provider submenu, so these drive menu items instead of
  * upstream's provider buttons and listbox options.
  */
 import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@t3tools/contracts";
@@ -78,9 +78,9 @@ async function click(target: Parameters<typeof userEvent.click>[0]) {
 
 const menuItem = (name: RegExp) => page.getByRole("menuitem", { name });
 
-// With favorites set, the menu opens on its Favorites page. Upstream clicks
-// the provider straight away; here its row sits on the providers page, one
-// back row up.
+// With favorites set, the menu opens scoped to Favorites. Upstream clicks the
+// provider straight away; here it is an option of the provider submenu, whose
+// trigger names the current scope.
 async function openProviderPage(activeModel: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const entry = providerEntry("codex", "codex");
@@ -119,8 +119,7 @@ async function openProviderPage(activeModel: string) {
   );
   await click(document.querySelector("button")!);
   await click(menuItem(/^Favorites$/));
-  // The active provider's row also names its "Current" dot.
-  await click(menuItem(new RegExp(`^${entry.displayName}`)));
+  await click(menuItem(new RegExp(`^${entry.displayName}$`)));
 }
 
 describe("ProviderModelPicker legacy favorites (fork menu)", () => {
@@ -147,11 +146,11 @@ describe("ProviderModelPicker legacy favorites (fork menu)", () => {
     await expect.element(currentFavorite).toBeVisible();
 
     await click(legacyModels);
-    // The Legacy page leads with a back row of the same name.
+    // Legacy models expand inline under their toggle; the current list stays.
     await expect.element(legacyModels).toBeVisible();
     await expect.element(legacyFavorite).toBeVisible();
     await expect.element(menuItem(/Other legacy/)).toBeVisible();
-    await expect.element(current).not.toBeInTheDocument();
+    await expect.element(current).toBeVisible();
     expect(legacyFavorite.element().getBoundingClientRect().top).toBeGreaterThan(
       legacyModels.element().getBoundingClientRect().top,
     );

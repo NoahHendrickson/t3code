@@ -4,17 +4,16 @@
  *
  * Same export, same props as upstream, so ProviderModelPicker's import is
  * untouched; the four exported helpers are upstream's verbatim. The render
- * is the fork's: a paged menu. ProviderModelPicker's shadow hosts this in a
- * Base UI Menu; it opens on the Favorites page when there are favorites, whose
- * back row leads to the providers page: Favorites and one row per provider
- * instance. Clicking a row swaps the page for that provider's models (legacy
- * models one page deeper), led by a back row. Typing anywhere
- * lands in the search field, and a query swaps the page for one flat,
- * provider-agnostic list of matching models. Picking a model never closes the
- * menu from here; the host decides, since it may render more below the pages.
- * Upstream's multi-model draft (Shift-click or Shift+Enter toggles a model
- * into `selectedModels`) and its provider-cycling shortcuts page the same
- * way: the next provider's models replace the page in place.
+ * is the fork's, hosted by ProviderModelPicker's shadow in a Base UI Menu: a
+ * provider submenu (Favorites, then one option per provider instance), the
+ * search field, then the chosen scope's models, legacy ones behind an inline
+ * toggle. It opens on Favorites when there are favorites, else on the current
+ * model's provider. Typing anywhere lands in the search field, and a query
+ * swaps the list for one flat, provider-agnostic list of matching models.
+ * Picking a model never closes the menu from here; the host decides, since it
+ * may render more below the list. Upstream's multi-model draft (Shift-click
+ * or Shift+Enter toggles a model into `selectedModels`) works the same way,
+ * and its provider-cycling shortcuts step the provider menu.
  */
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
@@ -30,12 +29,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { Heart } from "@phosphor-icons/react";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, StarIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, SearchIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
 import { getProviderStatusMessage, hasProviderSetup } from "./ProviderStatusBanner";
 import { rankModelPickerSearch } from "./modelPickerSearch";
 import { getDisplayModelName, ModelEsque } from "./providerIconUtils";
-import { MenuItem, MenuSeparator } from "../ui/menu";
+import { MenuItem, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger } from "../ui/menu";
+import { composerFloatingLayerProps } from "./composerEventScope";
 import { Badge } from "../ui/badge";
 import { Kbd } from "../ui/kbd";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -187,24 +187,15 @@ function isTypedCharacter(event: TypedKeyEvent): boolean {
 
 const EMPTY_MODEL_JUMP_LABELS = new Map<string, string>();
 
-/** Every page shares one row: 32px, 4px corners, 12px medium label. */
+/** Every row shares one shape: 32px, 4px corners, 12px medium label. */
 const ROW_CLASS = "h-8 min-h-8 rounded-[4px] px-2 py-0 text-xs font-medium sm:min-h-8 sm:text-xs";
 /** Hidden at rest, shown while the row is hovered or keyboard-highlighted. */
 const HOVER_REVEAL_CLASS =
   "opacity-0 transition-opacity group-hover:opacity-100 group-data-highlighted:opacity-100";
 
-/** Which list the menu shows when no query is typed. */
-type ModelPickerPage =
-  | { readonly kind: "providers" }
-  | { readonly kind: "favorites" }
-  | { readonly kind: "models"; readonly instanceId: ProviderInstanceId; readonly legacy: boolean };
-
-const PROVIDERS_PAGE: ModelPickerPage = { kind: "providers" };
-const FAVORITES_PAGE: ModelPickerPage = { kind: "favorites" };
-
-function parentPage(page: ModelPickerPage): ModelPickerPage {
-  return page.kind === "models" && page.legacy ? { ...page, legacy: false } : PROVIDERS_PAGE;
-}
+/** Whose models the list shows when no query is typed: the provider menu's
+    value. */
+type ModelPickerScope = ProviderInstanceId | "favorites";
 
 const TOOLTIP_CLASS = "max-w-64 text-balance font-normal leading-snug";
 
@@ -376,20 +367,24 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     { favoriteModelKeys: favoritesSet, groupFavorites: false, instanceOrder },
   );
 
-  // The menu remounts on every open and lands once: on Favorites when one can
-  // be picked, else on the providers page. Favorites that load after the open
-  // join the providers page's Favorites row rather than swapping the page.
-  const [storedPage, setStoredPage] = useState<ModelPickerPage>(() =>
+  // The menu remounts on every open and picks its scope once: Favorites when
+  // one can be picked, else the current model's provider. Favorites that load
+  // after the open join the provider menu rather than swapping the list.
+  const [storedScope, setStoredScope] = useState<ModelPickerScope>(() =>
     favoriteModels.some((model) => !getModelDisabledReason?.(model.instanceId, model.slug))
-      ? FAVORITES_PAGE
-      : PROVIDERS_PAGE,
+      ? "favorites"
+      : props.activeInstanceId,
   );
-  // An empty Favorites page shows the providers page instead: the last star
-  // removed, or its providers gone.
-  const page =
-    storedPage.kind === "favorites" && favoriteModels.length === 0 ? PROVIDERS_PAGE : storedPage;
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false);
+  const [showLegacy, setShowLegacy] = useState(false);
+  // An emptied Favorites (the last star removed, or its providers gone) shows
+  // the current provider instead.
+  const scope =
+    storedScope === "favorites" && favoriteModels.length === 0
+      ? props.activeInstanceId
+      : storedScope;
 
-  const isLegacyPageModel = (model: ModelPickerItem) =>
+  const isLegacyModel = (model: ModelPickerItem) =>
     model.isLegacy === true && !favoritesSet.has(providerModelKey(model.instanceId, model.slug));
   const modelsForInstance = (instanceId: ProviderInstanceId) => {
     const models = sortProviderModelItems(
@@ -397,8 +392,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       { favoriteModelKeys: favoritesSet, groupFavorites: true, instanceOrder: [] },
     );
     return {
-      current: models.filter((model) => !isLegacyPageModel(model)),
-      legacy: models.filter(isLegacyPageModel),
+      current: models.filter((model) => !isLegacyModel(model)),
+      legacy: models.filter(isLegacyModel),
     };
   };
 
@@ -414,7 +409,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   // The providers the cycling shortcuts may land on: locked-out instances
   // never, unready ones only while they hold the selected model or can offer
-  // setup — the same rows the providers page leaves enabled.
+  // setup — the same options the provider menu leaves enabled.
   const lockedDisabledInstanceIds = (() => {
     if (props.lockedProvider === null) return undefined;
     const disabled = new Set<ProviderInstanceId>();
@@ -466,32 +461,29 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   // is checked a microtask later against a row the swap already removed,
   // which the menu reads as focus leaving. A frame and a tick later, the swap
   // and that check have both run.
-  const openPage = (next: ModelPickerPage) => {
-    setStoredPage(next);
+  const selectScope = (next: ModelPickerScope, options?: { showLegacy?: boolean }) => {
+    setStoredScope(next);
+    setProviderMenuOpen(false);
+    setShowLegacy(options?.showLegacy ?? false);
     window.requestAnimationFrame(focusSearchInput);
     window.setTimeout(focusSearchInput, 0);
   };
 
-  // A pick from search results clears the query onto the model's own page,
-  // so the menu (if the host keeps it open) shows the check on the new pick.
-  // Shift (`additive`) toggles the model into a multi-model draft and keeps
-  // the query, so one search can collect several models, as upstream's does.
+  // A pick from search results clears the query onto the model's own
+  // provider, so the menu (if the host keeps it open) shows the check on the
+  // new pick. Shift (`additive`) toggles the model into a multi-model draft
+  // and keeps the query, so one search can collect several models, as
+  // upstream's does.
   const chooseModel = (model: ModelPickerItem, additive = false) => {
     handleModelSelect(model.slug, model.instanceId, additive);
     if (!isSearching || additive) return;
     setSearchQuery("");
-    openPage({ kind: "models", instanceId: model.instanceId, legacy: isLegacyPageModel(model) });
+    selectScope(model.instanceId, { showLegacy: isLegacyModel(model) });
   };
 
-  // The page the cycling shortcuts step from: the open provider page, else
-  // the current provider. Favorites is skipped while there are none to show.
+  // The cycling shortcuts step the provider menu. Favorites is skipped while there
+  // are none to show.
   const cycleProvider = (direction: 1 | -1) => {
-    const from =
-      page.kind === "models"
-        ? page.instanceId
-        : page.kind === "favorites"
-          ? "favorites"
-          : props.activeInstanceId;
     const step = (selectedInstanceId: ProviderInstanceId | "favorites") =>
       adjacentModelPickerProvider({
         entries: providerEntries,
@@ -500,27 +492,20 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         disabledInstanceIds: lockedDisabledInstanceIds,
         selectableUnavailableInstanceIds,
       });
-    let next = step(from);
+    let next = step(scope);
     if (next === "favorites" && favoriteModels.length === 0) next = step("favorites");
     if (next === "favorites" && favoriteModels.length === 0) return;
     setSearchQuery("");
-    openPage(
-      next === "favorites" ? FAVORITES_PAGE : { kind: "models", instanceId: next, legacy: false },
-    );
+    selectScope(next);
   };
 
-  // ⌘1–9 jump through the list the user is most likely choosing from: the
-  // search results while searching, else the open page's models; the
-  // providers page falls back to Favorites, else the active provider.
+  // ⌘1–9 jump through the list on screen: the search results while
+  // searching, else the scope's models in the order they are listed.
   const jumpModels = (() => {
     if (isSearching) return searchResults;
-    if (page.kind === "favorites") return favoriteModels;
-    if (page.kind === "models") {
-      const { current, legacy } = modelsForInstance(page.instanceId);
-      return page.legacy ? legacy : current;
-    }
-    if (favoriteModels.length > 0) return favoriteModels;
-    return modelsForInstance(props.activeInstanceId).current;
+    if (scope === "favorites") return favoriteModels;
+    const { current, legacy } = modelsForInstance(scope);
+    return showLegacy ? [...current, ...legacy] : current;
   })();
   const jumpTargets = (() => {
     const targets: ModelPickerItem[] = [];
@@ -581,11 +566,12 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     event.preventDefault();
     event.stopPropagation();
     setSearchQuery((query) => query + event.key);
+    setProviderMenuOpen(false);
     focusSearchInput();
   };
 
-  // When a page swap removes the focused row, the menu parks focus on the
-  // popup itself, outside this content's own capture; catch typing there too.
+  // When a swap removes the focused row, the menu parks focus on the popup
+  // itself, outside this content's own capture; catch typing there too.
   useEffect(() => {
     const popup = contentRef.current?.closest<HTMLElement>('[data-slot="menu-popup"]');
     if (!popup) return;
@@ -603,6 +589,12 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       setSearchQuery("");
       return;
     }
+    if (event.key === "Escape" && providerMenuOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      setProviderMenuOpen(false);
+      return;
+    }
     if (event.key === "Enter") {
       event.preventDefault();
       event.stopPropagation();
@@ -610,19 +602,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         (model) => !getModelDisabledReason?.(model.instanceId, model.slug),
       );
       if (first) chooseModel(first, event.shiftKey);
-      return;
-    }
-    // With nothing typed, Backspace and ArrowLeft step back a page. A held
-    // key stops there: Backspace held to clear a query must not also leave
-    // the page once the field is empty.
-    if (
-      (event.key === "Backspace" || event.key === "ArrowLeft") &&
-      !searchQuery &&
-      page.kind !== "providers"
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!event.repeat) openPage(parentPage(page));
       return;
     }
     // Arrows, Escape (with nothing typed) and Tab drive the menu; everything
@@ -634,7 +613,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   // Models the manifest announces that an instance's installed CLI is too old
   // to run. A search spans every provider, so it explains gated matches from
-  // any of them; a provider's page explains its own.
+  // any of them; a provider's list explains its own.
   const renderUpdateRequiredNotices = (entries: ReadonlyArray<ProviderInstanceEntry>) =>
     entries.flatMap((entry) => {
       const notice = formatProviderUpdateRequiredNotice(entry.snapshot, searchQuery);
@@ -705,7 +684,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         key={modelKey}
         disabled={Boolean(disabledReason)}
         // The host closes the menu on a pick, or keeps it open for what it
-        // renders below the pages.
+        // renders below the list.
         closeOnClick={false}
         className={cn(ROW_CLASS, "group", disabledReason && "data-disabled:pointer-events-auto")}
         onClick={(event) => chooseModel(model, event.shiftKey)}
@@ -766,60 +745,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     );
   };
 
-  /** Leads every page past the first: the way back, titled with where you are. */
-  const renderBackRow = (title: ReactNode) => (
-    <>
-      <MenuItem
-        closeOnClick={false}
-        data-model-picker-back="true"
-        className={cn(ROW_CLASS, "gap-2")}
-        onClick={() => openPage(parentPage(page))}
-      >
-        <ChevronLeftIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        <span className="flex min-w-0 flex-1 items-center gap-2">{title}</span>
-      </MenuItem>
-      <MenuSeparator className="mx-0" />
-    </>
-  );
-
-  /** A row that swaps the menu to another page rather than choosing anything. */
-  const renderPageLink = (input: {
-    key: string;
-    label: ReactNode;
-    target: ModelPickerPage;
-    disabled?: boolean;
-    tooltip?: string;
-    trailing?: ReactNode;
-    providerId: string;
-  }) => (
-    <MenuItem
-      key={input.key}
-      disabled={input.disabled}
-      closeOnClick={false}
-      data-model-picker-provider={input.providerId}
-      data-model-picker-page-link="true"
-      className={cn(ROW_CLASS, input.disabled && "data-disabled:pointer-events-auto")}
-      onClick={() => openPage(input.target)}
-    >
-      {input.disabled && input.tooltip ? (
-        <Tooltip>
-          <TooltipTrigger render={<span className="flex min-w-0 flex-1 items-center gap-2" />}>
-            {input.label}
-          </TooltipTrigger>
-          <TooltipPopup side="right" sideOffset={8} align="center" className={TOOLTIP_CLASS}>
-            {input.tooltip}
-          </TooltipPopup>
-        </Tooltip>
-      ) : (
-        <span className="flex min-w-0 flex-1 items-center gap-2">{input.label}</span>
-      )}
-      {input.trailing}
-      {input.disabled ? null : (
-        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      )}
-    </MenuItem>
-  );
-
   const renderInstanceIcon = (entry: ProviderInstanceEntry) => (
     <ProviderInstanceIcon
       driverKind={entry.driverKind}
@@ -835,7 +760,45 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     />
   );
 
-  const renderProviderRow = (entry: ProviderInstanceEntry) => {
+  const favoritesIcon = <Heart weight="duotone" className="size-4 shrink-0" aria-hidden />;
+
+  /** One of the provider menu's options. It sets the scope rather than
+      choosing a model, so it never closes the menu. */
+  const renderScopeOption = (input: {
+    key: string;
+    label: ReactNode;
+    target: ModelPickerScope;
+    disabled?: boolean;
+    tooltip?: string;
+    providerId: string;
+  }) => (
+    <MenuItem
+      key={input.key}
+      disabled={input.disabled}
+      closeOnClick={false}
+      data-model-picker-provider={input.providerId}
+      className={cn(ROW_CLASS, input.disabled && "data-disabled:pointer-events-auto")}
+      onClick={() => selectScope(input.target)}
+    >
+      {input.disabled && input.tooltip ? (
+        <Tooltip>
+          <TooltipTrigger render={<span className="flex min-w-0 flex-1 items-center gap-2" />}>
+            {input.label}
+          </TooltipTrigger>
+          <TooltipPopup side="right" sideOffset={8} align="center" className={TOOLTIP_CLASS}>
+            {input.tooltip}
+          </TooltipPopup>
+        </Tooltip>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-2">{input.label}</span>
+      )}
+      {scope === input.target ? (
+        <CheckIcon className="size-4 shrink-0 text-foreground" aria-label="Selected" />
+      ) : null}
+    </MenuItem>
+  );
+
+  const renderProviderOption = (entry: ProviderInstanceEntry) => {
     const isUnavailable = !isProviderInstancePickerReady(entry);
     const isContextDisabled = !matchesLockedProvider(entry);
     const { current, legacy } = modelsForInstance(entry.instanceId);
@@ -843,7 +806,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       props.onOpenProviderSetup !== undefined &&
       shouldOfferModelPickerSetup(entry, modelOptionsByInstance.get(entry.instanceId) ?? []);
     // An unready instance still opens when it holds the selected model or
-    // can offer setup, so neither gets stranded behind a disabled row.
+    // can offer setup, so neither gets stranded behind a disabled option.
     const isDisabled =
       isContextDisabled ||
       (isUnavailable && current.length === 0 && legacy.length === 0 && !needsSetup);
@@ -851,10 +814,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       ? `${entry.displayName} is unavailable in this thread. Start a new thread to switch providers.`
       : describeUnavailableInstance(entry);
 
-    return renderPageLink({
+    return renderScopeOption({
       key: entry.instanceId,
       providerId: entry.instanceId,
-      target: { kind: "models", instanceId: entry.instanceId, legacy: false },
+      target: entry.instanceId,
       disabled: isDisabled,
       tooltip,
       label: (
@@ -863,50 +826,88 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           <span className="min-w-0 flex-1 truncate">{entry.displayName}</span>
         </>
       ),
-      trailing:
-        entry.instanceId === props.activeInstanceId ? (
-          <span className="size-1.5 shrink-0 rounded-full bg-foreground/60" aria-label="Current" />
-        ) : null,
     });
   };
 
-  const renderModelsPage = (instanceId: ProviderInstanceId, showLegacy: boolean) => {
+  const scopeEntry = scope === "favorites" ? undefined : entryByInstanceId.get(scope);
+
+  /** The provider menu: a submenu off a trigger naming the scope, opening on
+      hover like any submenu. Its popup portals out of this content, so it
+      carries the stamps itself: the picker's (focus, wheel lock), the
+      composer's floating layer (or moving focus into it would read as leaving
+      the composer and collapse it under the menu), and the corner hook on
+      its wrapper. Controlled so choosing an option can close it without
+      closing the menu. */
+  const renderProviderMenu = () => (
+    <MenuSub open={providerMenuOpen} onOpenChange={setProviderMenuOpen}>
+      <MenuSubTrigger
+        openOnHover
+        data-model-picker-provider-trigger="true"
+        className={cn(ROW_CLASS, "gap-2")}
+      >
+        {scope === "favorites" ? favoritesIcon : scopeEntry ? renderInstanceIcon(scopeEntry) : null}
+        <span className="min-w-0 flex-1 truncate">
+          {scope === "favorites" ? "Favorites" : (scopeEntry?.displayName ?? "Models")}
+        </span>
+      </MenuSubTrigger>
+      {/* The trigger sits 8px inside the menu (its 4px scroll padding plus this
+          content's p-1), so a flush submenu lands on the menu's edge, worst
+          when it flips to the left for lack of room. 12px clears it by 4px
+          either way; -8px lines the first option up with the trigger. */}
+      <MenuSubPopup
+        sideOffset={12}
+        alignOffset={-8}
+        className="w-56"
+        data-model-picker-content="true"
+        {...composerFloatingLayerProps}
+      >
+        <div className="flex flex-col p-1" data-fork-model-picker="providers">
+          {favoriteModels.length > 0
+            ? renderScopeOption({
+                key: "favorites",
+                providerId: "favorites",
+                target: "favorites",
+                label: (
+                  <>
+                    {favoritesIcon}
+                    <span className="min-w-0 flex-1 truncate">Favorites</span>
+                  </>
+                ),
+              })
+            : null}
+          {providerEntries.map(renderProviderOption)}
+        </div>
+      </MenuSubPopup>
+    </MenuSub>
+  );
+
+  const renderInstanceModels = (instanceId: ProviderInstanceId) => {
     const entry = entryByInstanceId.get(instanceId);
-    if (!entry) return null;
+    if (!entry) return <p className="px-2 py-2 text-xs text-muted-foreground">No models</p>;
     const { current, legacy } = modelsForInstance(instanceId);
-    if (showLegacy) {
-      return (
-        <>
-          {renderBackRow(<span className="min-w-0 flex-1 truncate">Legacy models</span>)}
-          {legacy.map((model) => renderModelItem(model, false))}
-        </>
-      );
-    }
     const needsSetup =
       props.onOpenProviderSetup !== undefined &&
       shouldOfferModelPickerSetup(entry, modelOptionsByInstance.get(instanceId) ?? []);
     return (
       <>
-        {renderBackRow(
-          <>
-            {renderInstanceIcon(entry)}
-            <span className="min-w-0 flex-1 truncate">{entry.displayName}</span>
-          </>,
-        )}
         {current.map((model) => renderModelItem(model, false))}
-        {legacy.length > 0
-          ? renderPageLink({
-              key: "legacy",
-              providerId: `${instanceId}:legacy`,
-              target: { kind: "models", instanceId, legacy: true },
-              label: <span className="min-w-0 flex-1 truncate">Legacy models</span>,
-              trailing: (
-                <span className="shrink-0 font-normal text-muted-foreground/70">
-                  {legacy.length}
-                </span>
-              ),
-            })
-          : null}
+        {legacy.length > 0 ? (
+          <MenuItem
+            closeOnClick={false}
+            aria-expanded={showLegacy}
+            data-model-picker-legacy-toggle="true"
+            className={cn(ROW_CLASS, "gap-2 text-muted-foreground")}
+            onClick={() => setShowLegacy((shown) => !shown)}
+          >
+            <span className="min-w-0 flex-1 truncate">Legacy models</span>
+            <span className="shrink-0 font-normal text-muted-foreground/70">{legacy.length}</span>
+            <ChevronDownIcon
+              className={cn("size-4 shrink-0 transition-transform", showLegacy && "rotate-180")}
+              aria-hidden
+            />
+          </MenuItem>
+        ) : null}
+        {showLegacy ? legacy.map((model) => renderModelItem(model, false)) : null}
         {needsSetup ? (
           <div className="px-2 py-1.5 text-xs leading-snug">
             <p className="line-clamp-3 text-muted-foreground">
@@ -931,9 +932,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     );
   };
 
-  const favoritesIcon = <Heart weight="duotone" className="size-4 shrink-0" aria-hidden />;
-
-  const renderPage = () => {
+  const renderModelList = () => {
     if (isSearching) {
       return (
         <>
@@ -946,53 +945,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         </>
       );
     }
-    if (page.kind === "models") return renderModelsPage(page.instanceId, page.legacy);
-    if (page.kind === "favorites") {
-      return (
-        <>
-          {renderBackRow(
-            <>
-              {favoritesIcon}
-              <span className="min-w-0 flex-1 truncate">Favorites</span>
-            </>,
-          )}
-          {favoriteModels.map((model) => renderModelItem(model, true))}
-        </>
-      );
-    }
-    return (
-      <>
-        {favoriteModels.length > 0
-          ? renderPageLink({
-              key: "favorites",
-              providerId: "favorites",
-              target: FAVORITES_PAGE,
-              label: (
-                <>
-                  {favoritesIcon}
-                  <span className="min-w-0 flex-1 truncate">Favorites</span>
-                </>
-              ),
-            })
-          : null}
-        {providerEntries.map(renderProviderRow)}
-      </>
-    );
-  };
-
-  // Rows keep the keys the old submenus answered to: ArrowRight opens a
-  // row's page, ArrowLeft steps back. The search field handles its own.
-  const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.target === searchInputRef.current || !(event.target instanceof HTMLElement)) return;
-    if (event.key === "ArrowLeft" && page.kind !== "providers") {
-      event.preventDefault();
-      openPage(parentPage(page));
-    } else if (event.key === "ArrowRight") {
-      const link = event.target.closest<HTMLElement>("[data-model-picker-page-link]");
-      if (!link) return;
-      event.preventDefault();
-      link.click();
-    }
+    if (scope === "favorites") return favoriteModels.map((model) => renderModelItem(model, true));
+    return renderInstanceModels(scope);
   };
 
   return (
@@ -1003,8 +957,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         data-model-picker-content="true"
         data-fork-model-picker="true"
         onKeyDownCapture={redirectTypingToSearch}
-        onKeyDown={handleRowKeyDown}
       >
+        {renderProviderMenu()}
+        {/* Edge to edge: this content's p-1 plus the popup's 4px scroll padding. */}
+        <MenuSeparator className="-mx-2" />
         <label className="flex h-8 shrink-0 items-center gap-2 rounded-[4px] border border-foreground/12 bg-foreground/4 px-2">
           <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <input
@@ -1013,12 +969,15 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
             placeholder="Search models"
             className="h-full min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setProviderMenuOpen(false);
+            }}
             onKeyDown={handleSearchKeyDown}
           />
         </label>
         {/* Scrolls on its own so whatever the host renders below stays put. */}
-        <div className="flex max-h-80 min-h-0 flex-col overflow-y-auto">{renderPage()}</div>
+        <div className="flex max-h-80 min-h-0 flex-col overflow-y-auto">{renderModelList()}</div>
       </div>
     </TooltipProvider>
   );

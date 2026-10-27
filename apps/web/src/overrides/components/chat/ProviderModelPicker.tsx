@@ -3,15 +3,15 @@
  * `.fork/customizations.yaml#fork-model-picker`.
  *
  * Upstream's file with three changes. The Popover shell becomes a Base UI
- * Menu, so the picker can page — Favorites or providers, then a provider's
- * models (ModelPickerContent's shadow renders the pages). Non-modal like the popover
+ * Menu holding a provider dropdown, search and the chosen provider's models
+ * (ModelPickerContent's shadow renders them). Non-modal like the popover
  * it replaces; upstream's own wheel/touch lock below still guards the page.
  * The trigger label drops the provider name ("Opus 5.5", not "Claude Opus
  * 5.5"). The composer's trigger hides the provider icon too, except where its
  * label collapses, and names Cursor instead ("Cursor Opus 5.5"); Settings
  * keeps the icon. And an optional `traits` slot (the
  * composer's ComposerModelPicker fills it) adds the reasoning label to the
- * trigger and its panel under the pages, keeping the menu open on a pick.
+ * trigger and its panel under the model list, keeping the menu open on a pick.
  *
  * The `compact` prop (dropped upstream in #11002, since restored) caps the
  * trigger's width from the fork's footer (custom/composerModelSlotCompact.ts)
@@ -75,7 +75,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   onOpenProviderSetup?: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason?: (instanceId: ProviderInstanceId, model: string) => string | null;
   onInstanceModelChange: (instanceId: ProviderInstanceId, model: string) => void;
-  /** The selected model's reasoning: a trigger label plus a panel under the model pages. */
+  /** The selected model's reasoning: a trigger label plus a panel under the model list. */
   traits?: { label: string; panel: ReactNode };
   /**
    * The composer's combined menu: a pick keeps it open (effort usually
@@ -396,7 +396,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 4px, so the rule pulls back out by the same amount. It ends at
                 the wrapper's padding box, so nothing scrolls sideways. */}
             <MenuSeparator className="-mx-1 my-0" />
-            {/* Stamped like the pages above, so the wheel lock lets the popup
+            {/* Stamped like the model list above, so the wheel lock lets the popup
                 scroll from here and modelPickerHoldsFocus counts the panel's
                 controls as inside the picker. */}
             <div data-model-picker-content="true">{props.traits.panel}</div>
