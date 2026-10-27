@@ -27,6 +27,9 @@ import {
   getThreadAutoSettlementSearchAvailability,
   isSettingsSearchScopeAvailable,
 } from "../components/settings/settingsSearch";
+/* fork:begin fork-settings-glass — see .fork/customizations.yaml#fork-settings-glass */
+import { useForkSettingsMarker } from "../custom/forkSettingsGlass";
+/* fork:end fork-settings-glass */
 
 function RestoreDeviceDefaultsButton({ onRestored }: { onRestored: () => void }) {
   const { changedSettingLabels, restoreDefaults } = useSettingsRestore(onRestored);
@@ -111,6 +114,9 @@ function SettingsContentLayout() {
   const location = useLocation();
   const navigateToMainApp = useNavigateToMainApp();
   useEscapeToGoBack(navigateToMainApp);
+  /* fork:begin fork-settings-glass — see .fork/customizations.yaml#fork-settings-glass */
+  useForkSettingsMarker();
+  /* fork:end fork-settings-glass */
   const { search, environment } = useSettingsScope();
   const contentScopeKey =
     location.pathname === "/settings/diagnostics" || location.pathname === "/settings/providers"

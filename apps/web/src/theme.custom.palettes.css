@@ -744,14 +744,52 @@
    Redefining `--card` under the marker looks like the tidier fix and is not one:
    index.css derives --surface-raised, --code-background and a ring inset from
    it, so a 5% wash would take the transcript's code blocks with it. Same trap
-   the --background note above describes. */
+   the --background note above describes.
+
+   Settings' groups paint `bg-card/40`, a 40% --card that composites darker
+   than the stage it sits on, so that fraction takes the same wash; :is()
+   keeps the tie with either utility. */
 @layer utilities {
   :where(
       :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
         [data-slot="sidebar-inset"]
     )
-    .bg-card {
+    :is(.bg-card, .bg-card\/40) {
     background-color: rgb(255 255 255 / 5%);
+  }
+}
+
+/* Settings' outline buttons and select triggers on Glass
+   (fork-settings-glass): a hairline box on a wash of --input upstream, the
+   composer's chips here, so the chip fill with no hairline and the chip
+   hover. Keyed on the wash both variants share, on button or anchor so text
+   inputs, which carry it too, keep their wells; outline toggles and
+   destructive-outline keep their look. The chips' depth is the glass
+   surfaces sheet's.
+
+   Same doctrine as the card wash above: these join the utilities layer at
+   the weight of what they replace (dark: adds an :is(.dark *)), so the
+   trigger's focus and invalid borders, a step heavier, still win. */
+@layer utilities {
+  :where(
+    :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+      :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
+  ).dark\:bg-input\/32 {
+    border-color: rgb(255 255 255 / 0%);
+  }
+
+  :where(
+      :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+        :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
+    ).dark\:bg-input\/32:is(.dark *) {
+    background-color: var(--fork-context-chip-bg);
+  }
+
+  :where(
+      :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+        :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
+    ).dark\:bg-input\/32:is(.dark *):is(:hover, [data-pressed], [data-popup-open]) {
+    background-color: var(--fork-context-chip-bg-hover);
   }
 }
 
