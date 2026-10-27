@@ -63,6 +63,18 @@ describe("fork guard: settings glass", () => {
     expect(fill?.atRules).toContain("@layer utilities");
     // destructive-outline shares the wash and keeps its red hover.
     expect(fill?.selector).toContain(".text-destructive-foreground");
+    // Below Full 3D nothing else edges the chip, so it keeps a hairline.
+    const hairline = cssRules(readSibling("../theme.custom.palettes.css")).find(
+      (rule) => settings(rule) && rule.body.includes("rgb(255 255 255 / 12%)"),
+    );
+    expect(hairline?.selector).toContain("[data-fork-glass-3d]");
+    expect(hairline?.atRules).toContain("@layer utilities");
+    // Upstream's top highlight would thicken just the hairline's top run.
+    const highlight = cssRules(readSibling("../theme.custom.palettes.css")).find(
+      (rule) => settings(rule) && rule.selector.endsWith("::before"),
+    );
+    expect(highlight?.body).toContain("box-shadow: none");
+    expect(highlight?.atRules).not.toContain("@layer utilities");
     const depth = surfaces.find(
       (rule) => settings(rule) && rule.body.includes("--fork-glass-halo-soft"),
     );
