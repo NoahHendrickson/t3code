@@ -5643,11 +5643,10 @@
     wash under desktop vibrancy instead of upstream's 40% --card, which
     composited darker than the stage; and its active section is drawn as the
     sidebar's selected row. The chips' fill and hover hold with 3D glass off
-    (palettes sheet); below Full 3D they keep a white 12% hairline, which Full
-    trades for the rim, so they never vanish into the card. These sit in
-    Tailwind's utilities layer at
-    the replaced utilities' weight, so the trigger's focus and invalid
-    borders still win; their halo and light, like the rim, need Full 3D
+    (palettes sheet); only Full 3D drops their hairline for the rim, so below
+    it they keep upstream's --input edge and never vanish into the card.
+    These sit in Tailwind's utilities layer at the replaced utilities' weight,
+    so the trigger's focus and invalid borders still win; their halo and light, like the rim, need Full 3D
     (glass surfaces sheet). The popups portal out of the page, so the open
     Settings route stamps data-fork-settings on the root (a :root:has() would
     put the whole document on the invalidation path), and the rim's Settings
