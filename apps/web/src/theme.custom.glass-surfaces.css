@@ -450,9 +450,10 @@
   /* The model picker keeps its own squarer geometry (fork-model-picker: 8px
      corners, 4px rows on an 8px inset). */
   &.dark[data-fork-theme="cool-darker"]
-    [data-chat-composer-floating-layer="true"][data-slot="menu-popup"]:has(
-      [data-fork-model-picker]
-    ) {
+    [data-chat-composer-floating-layer="true"]:is(
+      [data-slot="menu-popup"],
+      [data-slot="menu-sub-content"]
+    ):has([data-fork-model-picker]) {
     border-radius: 8px;
   }
 

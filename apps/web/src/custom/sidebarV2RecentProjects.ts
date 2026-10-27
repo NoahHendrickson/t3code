@@ -10,7 +10,7 @@
  */
 import { projectRefKey, type SidebarV2GroupableProject } from "./sidebarV2ProjectGrouping";
 
-export const SIDEBAR_V2_RECENT_PROJECT_LIMIT = 5;
+const SIDEBAR_V2_RECENT_PROJECT_LIMIT = 5;
 
 export interface SidebarV2RecentProjectThread {
   readonly environmentId: string;

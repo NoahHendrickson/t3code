@@ -461,7 +461,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   // is checked a microtask later against a row the swap already removed,
   // which the menu reads as focus leaving. A frame and a tick later, the swap
   // and that check have both run.
+  // A query hides the scope behind the flat results, so choosing a scope
+  // clears it.
   const selectScope = (next: ModelPickerScope, options?: { showLegacy?: boolean }) => {
+    setSearchQuery("");
     setStoredScope(next);
     setProviderMenuOpen(false);
     setShowLegacy(options?.showLegacy ?? false);
@@ -477,7 +480,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   const chooseModel = (model: ModelPickerItem, additive = false) => {
     handleModelSelect(model.slug, model.instanceId, additive);
     if (!isSearching || additive) return;
-    setSearchQuery("");
     selectScope(model.instanceId, { showLegacy: isLegacyModel(model) });
   };
 
@@ -495,7 +497,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     let next = step(scope);
     if (next === "favorites" && favoriteModels.length === 0) next = step("favorites");
     if (next === "favorites" && favoriteModels.length === 0) return;
-    setSearchQuery("");
     selectScope(next);
   };
 
@@ -794,6 +795,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       )}
       {scope === input.target ? (
         <CheckIcon className="size-4 shrink-0 text-foreground" aria-label="Selected" />
+      ) : input.target === props.activeInstanceId ? (
+        // Where the current model lives, when the list shows another scope.
+        <span className="size-1.5 shrink-0 rounded-full bg-foreground/60" aria-label="Current" />
       ) : null}
     </MenuItem>
   );

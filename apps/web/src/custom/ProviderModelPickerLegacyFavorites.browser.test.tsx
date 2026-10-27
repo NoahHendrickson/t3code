@@ -119,7 +119,8 @@ async function openProviderPage(activeModel: string) {
   );
   await click(document.querySelector("button")!);
   await click(menuItem(/^Favorites$/));
-  await click(menuItem(new RegExp(`^${entry.displayName}$`)));
+  // The active provider's option also names its "Current" dot.
+  await click(menuItem(new RegExp(`^${entry.displayName}`)));
 }
 
 describe("ProviderModelPicker legacy favorites (fork menu)", () => {

@@ -4627,7 +4627,8 @@
     scope and opens a submenu on hover (or click, or ArrowRight), set 12px out
     so it clears the menu on whichever side it opens, whose options
     are Favorites (heart, only when favorites exist), then one per enabled
-    provider instance with its glyph and name, a check on the chosen one. The
+    provider instance with its glyph and name, a check on the chosen one and,
+    when another scope is chosen, a dot on the current model's provider. The
     submenu is controlled so an option closes it without closing the menu, and
     its portaled popup carries the stamps itself: [data-model-picker-content],
     the composer's floating-layer attribute (focus moving into it must not
@@ -4638,7 +4639,7 @@
     swapping the list under the user. It opens on Favorites even when the
     current model is not a favorite, by product choice: one click to a
     favorite is the point. An emptied Favorites shows the current provider.
-    Choosing an option closes the submenu and swaps the list to that
+    Choosing an option clears any query, closes the submenu and swaps the list to that
     provider's current models; legacy models sit behind an inline "Legacy
     models" toggle at the end of the list. Escape closes an open submenu
     before it closes the menu. Choosing swaps the list without touching
@@ -5691,7 +5692,8 @@
     qualifies. A narrow sidebar scrolls the strip sideways instead of
     wrapping it. The strip reads thread shells itself, so the Sidebar.tsx call
     site passes only the project groups and the start handler. Each button
-    rests on a white 8% fill and brightens to 12% on hover; under Glass it
+    rests on a white 8% fill and brightens to 12% on hover (black 5% / 8% on
+    a light sidebar, where white would vanish); under Glass it
     also wears the composer chips' glass rim unless 3D glass is off, so
     Selected items only shows it as it shows the active rows above it.
   tier: 4

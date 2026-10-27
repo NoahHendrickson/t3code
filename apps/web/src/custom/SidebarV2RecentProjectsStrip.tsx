@@ -58,7 +58,7 @@ export function SidebarV2RecentProjectsStrip<
                   data-testid="sidebar-v2-recent-project"
                   // Glass draws its rim on this (theme.custom.glass-surfaces.css).
                   data-fork-recent-project=""
-                  className="flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-[6px] bg-white/8 px-1 text-muted-foreground hover:bg-white/12 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  className="flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-[6px] bg-black/5 px-1 text-muted-foreground hover:bg-black/8 dark:bg-white/8 dark:hover:bg-white/12 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   onClick={() => props.onStartAgent(project.projectKey)}
                 />
               }
