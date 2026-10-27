@@ -24,6 +24,7 @@ function readSibling(relativePath: string): string {
 
 const surfacesSheet = readSibling("../theme.custom.glass-surfaces.css");
 const surfaces = cssRules(surfacesSheet);
+const palettes = cssRules(readSibling("../theme.custom.palettes.css"));
 const SETTINGS = `:root[${FORK_SETTINGS_ATTRIBUTE}]`;
 
 describe("fork guard: settings glass", () => {
@@ -55,7 +56,7 @@ describe("fork guard: settings glass", () => {
     const settings = (rule: { selector: string }) =>
       rule.selector.includes(`[${FORK_SETTINGS_ATTRIBUTE}]`) &&
       rule.selector.includes("dark\\:bg-input\\/32");
-    const fill = cssRules(readSibling("../theme.custom.palettes.css")).find(
+    const fill = palettes.find(
       (rule) => settings(rule) && rule.body.includes("--fork-context-chip-bg"),
     );
     expect(fill, "the chip fill keys on the wash both variants share").toBeDefined();
@@ -63,6 +64,18 @@ describe("fork guard: settings glass", () => {
     expect(fill?.atRules).toContain("@layer utilities");
     // destructive-outline shares the wash and keeps its red hover.
     expect(fill?.selector).toContain(".text-destructive-foreground");
+    // Only Full 3D trades the hairline for the rim; below it nothing else
+    // edges the chip, and upstream's top highlight is dropped instead.
+    const atFull = /:not\(\s*\[data-fork-glass-3d\]\s*\)/u;
+    const noHairline = palettes.find(
+      (rule) => settings(rule) && rule.body.includes("border-color"),
+    );
+    expect(noHairline?.selector).toMatch(atFull);
+    expect(noHairline?.atRules).toContain("@layer utilities");
+    const highlight = palettes.find((rule) => settings(rule) && rule.selector.endsWith("::before"));
+    expect(highlight?.body).toContain("box-shadow: none");
+    expect(highlight?.selector).toContain("[data-fork-glass-3d]");
+    expect(highlight?.selector).not.toMatch(atFull);
     const depth = surfaces.find(
       (rule) => settings(rule) && rule.body.includes("--fork-glass-halo-soft"),
     );
@@ -74,7 +87,7 @@ describe("fork guard: settings glass", () => {
   });
 
   it("washes Settings' groups like every other card on the stage", () => {
-    const wash = cssRules(readSibling("../theme.custom.palettes.css")).find(
+    const wash = palettes.find(
       (rule) =>
         rule.selector.includes('[data-slot="sidebar-inset"]') &&
         rule.selector.includes(".bg-card\\/40"),

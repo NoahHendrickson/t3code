@@ -761,10 +761,12 @@
 
 /* Settings' outline buttons and select triggers on Glass
    (fork-settings-glass): a hairline box on a wash of --input upstream, the
-   composer's chips here, so the chip fill with no hairline and the chip
-   hover. Keyed on the wash both variants share, on button or anchor so text
-   inputs, which carry it too, keep their wells; outline toggles and
-   destructive-outline keep their look. The chips' depth is the glass
+   composer's chips here, so the chip fill and hover. Only Full 3D drops the
+   hairline, as the glass surfaces sheet's rim is the edge there; below Full
+   nothing else draws one and the chip vanished into the card. Keyed on the
+   wash both variants share, on button or anchor so text inputs, which carry
+   it too, keep their wells; outline toggles and destructive-outline keep
+   their look. The chips' depth is the glass
    surfaces sheet's.
 
    Same doctrine as the card wash above: these join the utilities layer at
@@ -772,7 +774,9 @@
    trigger's focus and invalid borders, a step heavier, still win. */
 @layer utilities {
   :where(
-    :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+    :root[data-fork="noahhendrickson-t3code"]:not(
+        [data-fork-glass-3d]
+      ).dark[data-fork-theme="cool-darker"][data-fork-settings]
       :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
   ).dark\:bg-input\/32 {
     border-color: rgb(255 255 255 / 0%);
@@ -791,6 +795,17 @@
     ).dark\:bg-input\/32:is(.dark *):is(:hover, [data-pressed], [data-popup-open]) {
     background-color: var(--fork-context-chip-bg-hover);
   }
+}
+
+/* Below Full 3D, upstream's 1px top highlight inside the hairline thickened
+   only its top run. Unlayered, as upstream already drops it in every focus,
+   invalid and pressed state. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-glass-3d].dark[data-fork-theme="cool-darker"][data-fork-settings]
+  :is(button, a):not(
+    [data-slot="toggle"],
+    .text-destructive-foreground
+  ).dark\:bg-input\/32::before {
+  box-shadow: none;
 }
 
 /* The transcript scrim (theme.custom.css, [data-chat-composer-overlay]) fades
