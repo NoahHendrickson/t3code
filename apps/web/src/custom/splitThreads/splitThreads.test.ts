@@ -90,20 +90,20 @@ describe("split pane slots", () => {
   it("keeps a thread in its slot when its partner opens, closes, or takes focus", () => {
     const single = assignSplitPaneSlots(EMPTY_SPLIT_PANE_SLOTS, [slot("a")]);
     const split = assignSplitPaneSlots(single, [slot("d", "draft-d"), slot("a")]);
-    expect(split).toEqual([slot("a"), slot("d", "draft-d")]);
+    expect(split).toEqual([slot("a"), slot("d", "draft-d"), null]);
     // The right pane popped out alone stays in its slot.
-    expect(assignSplitPaneSlots(split, [slot("d")])).toEqual([null, slot("d", "draft-d")]);
+    expect(assignSplitPaneSlots(split, [slot("d")])).toEqual([null, slot("d", "draft-d"), null]);
   });
 
   it("latches a promoted draft's key across focus changes", () => {
-    const split: SplitPaneSlots = [slot("a"), slot("d", "draft-d")];
+    const split: SplitPaneSlots = [slot("a"), slot("d", "draft-d"), null];
     // Unfocused after promotion, its view would carry no draft key any more.
     expect(assignSplitPaneSlots(split, [slot("a"), slot("d")])).toBe(split);
   });
 
   it("hands a departing thread's slot to the arriving one", () => {
-    const slots: SplitPaneSlots = [null, slot("d")];
-    expect(assignSplitPaneSlots(slots, [slot("c")])).toEqual([null, slot("c")]);
+    const slots: SplitPaneSlots = [null, slot("d"), null];
+    expect(assignSplitPaneSlots(slots, [slot("c")])).toEqual([null, slot("c"), null]);
   });
 
   it("fills a key once a thread first has a view", () => {
@@ -111,6 +111,22 @@ describe("split pane slots", () => {
     expect(assignSplitPaneSlots(slots, [slot("a", "draft-a")])).toEqual([
       slot("a", "draft-a"),
       null,
+      null,
+    ]);
+  });
+
+  it("keeps a floated thread in its slot as it floats, docks, and the column changes", () => {
+    const alone = assignSplitPaneSlots(EMPTY_SPLIT_PANE_SLOTS, [slot("f")]);
+    // Floated: the route goes back to p, and f stays where it was.
+    const floated = assignSplitPaneSlots(alone, [slot("p"), slot("f")]);
+    expect(floated).toEqual([slot("f"), slot("p"), null]);
+    // Docked beside p: the same two threads, so nothing moves.
+    expect(assignSplitPaneSlots(floated, [slot("p"), slot("f")])).toBe(floated);
+    // The column opens a split pair while f still floats: three slots.
+    expect(assignSplitPaneSlots(floated, [slot("q"), slot("r"), slot("f")])).toEqual([
+      slot("f"),
+      slot("q"),
+      slot("r"),
     ]);
   });
 });

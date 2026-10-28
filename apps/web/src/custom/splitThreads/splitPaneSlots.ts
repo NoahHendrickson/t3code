@@ -1,5 +1,5 @@
 /**
- * Which of the two pane slots each shown thread's ChatView lives in — see
+ * Which pane slot each shown thread's ChatView lives in — see
  * `.fork/customizations.yaml#fork-split-threads`.
  *
  * A thread keeps its slot, and its element key, for as long as it stays on
@@ -19,9 +19,12 @@ export interface SplitPaneSlot {
   readonly elementKey: string | null;
 }
 
-export type SplitPaneSlots = readonly [SplitPaneSlot | null, SplitPaneSlot | null];
+type SlotTuple = [SplitPaneSlot | null, SplitPaneSlot | null, SplitPaneSlot | null];
 
-export const EMPTY_SPLIT_PANE_SLOTS: SplitPaneSlots = [null, null];
+/** Two split panes and the floating window. */
+export type SplitPaneSlots = Readonly<SlotTuple>;
+
+export const EMPTY_SPLIT_PANE_SLOTS: SplitPaneSlots = [null, null, null];
 
 /** `shown` lists the focused thread first. `elementKey` is the key its view
     would carry now, or null when it has no view yet. */
@@ -29,7 +32,7 @@ export function assignSplitPaneSlots(
   previous: SplitPaneSlots,
   shown: readonly SplitPaneSlot[],
 ): SplitPaneSlots {
-  const next: [SplitPaneSlot | null, SplitPaneSlot | null] = [null, null];
+  const next: SlotTuple = [null, null, null];
   previous.forEach((slot, index) => {
     const stays = slot && shown.find((entry) => entry.threadKey === slot.threadKey);
     if (slot && stays) next[index] = { ...slot, elementKey: slot.elementKey ?? stays.elementKey };

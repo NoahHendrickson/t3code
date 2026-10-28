@@ -291,6 +291,7 @@ import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
 import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
 import { SplitAgentPill } from "~/custom/splitThreads/SplitAgentPill";
+import { FloatPaneButton } from "~/custom/splitThreads/FloatPaneButton";
 import { SplitPaneCloseButton } from "~/custom/splitThreads/SplitPaneCloseButton";
 /* fork:end fork-split-threads */
 import { stackedThreadToast, toastManager } from "./ui/toast";
@@ -1816,11 +1817,17 @@ export default function ChatView(props: ChatViewProps) {
   );
   const canReuseTerminal = activeThreadKnownSessionsRaw !== null;
   const previewPanelOpen = activeRightPanelKind === "preview" && browserAvailable;
-  const rightPanelOpen = rightPanelState.isOpen;
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  // The floating window is a transcript and a composer: the thread's right
+  // panel and terminal stay as the user left them and return when it docks.
+  const rightPanelOpen = rightPanelState.isOpen && !splitPane.floating;
+  /* fork:end fork-split-threads */
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   const activeTerminalDrawerPresence = usePanelPresence(
-    Boolean(activeThreadKey && terminalUiState.terminalOpen),
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    Boolean(activeThreadKey && terminalUiState.terminalOpen && !splitPane.floating),
+    /* fork:end fork-split-threads */
     true,
     panelAnimationsActive,
     activeThreadKey,
@@ -8491,6 +8498,15 @@ export default function ChatView(props: ChatViewProps) {
       />
     </div>
   );
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  // Only a started thread floats: a draft's promotion runs on its route, which
+  // the floating window never holds.
+  const floatPaneAction = splitPane.floating
+    ? splitPane.dock
+    : isServerThread
+      ? splitPane.float
+      : null;
+  /* fork:end fork-split-threads */
   const panelLayoutControls = (
     <div
       className={cn(
@@ -8517,7 +8533,18 @@ export default function ChatView(props: ChatViewProps) {
           />
         </span>
       ) : null}
-      <div className="pointer-events-auto flex h-full items-center">{panelToggleControls}</div>
+      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+          Float a started thread over the column. The floating window docks back,
+          and drops the panel toggles: its panels stay shut until it docks. */}
+      {floatPaneAction ? (
+        <div className="pointer-events-auto flex h-full items-center">
+          <FloatPaneButton floating={splitPane.floating} onPress={floatPaneAction} />
+        </div>
+      ) : null}
+      {splitPane.floating ? null : (
+        <div className="pointer-events-auto flex h-full items-center">{panelToggleControls}</div>
+      )}
+      {/* fork:end fork-split-threads */}
       {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
           The draft "Split agent" opened can be cancelled until it is sent. */}
       {splitPane.split && isLocalDraftThread && draftId && activeThreadRef ? (
@@ -9164,7 +9191,8 @@ export default function ChatView(props: ChatViewProps) {
             />
 
             {/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */}
-            {forkProjectlessDraft ? null : (
+            {/* fork-split-threads: the floating window leaves the details card out. */}
+            {forkProjectlessDraft || splitPane.floating ? null : (
               <ThreadDetailsPanel
                 /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
                 forkGlassPopup={!isDraftHeroState}

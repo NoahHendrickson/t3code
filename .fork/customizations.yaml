@@ -5713,6 +5713,24 @@
     store, and only a draft in the project it is minting into joins its
     source before the pair is written.
 
+    Any started thread can float: an icon left of the details toggle lifts it
+    into a window over the chat column, dragged by its header and resized
+    from its corners (custom/splitThreads/floatFrame, clamped into the column
+    on every layout, stored on release). The column keeps the thread's split
+    partner, or goes back to the route's previous thread (an unpersisted
+    history the split panes record). One thread floats at a time, never also
+    in a pair; the same icon in the window reads Dock and pairs it beside the
+    column's thread, and opening it in the column ends the float. The window
+    is a third pane slot, so floating and docking never remount its ChatView,
+    and it never takes the route: it is typed into while the column's thread
+    keeps window-level input. Drafts do not float, since promotion runs on
+    their route. On Glass the window is the docked details card's material
+    (its wash and hairline straight on the stage). It sits inside #root, so
+    no popup cutout opens beneath it and a backdrop-filter never blurs over
+    the native material; instead the column's panes, boxed while a window
+    floats, mask a rounded hole at its frame so only the stage is behind it.
+    Other themes paint it on the opaque popover.
+
     The route's thread is the focused pane. Pressing into the other pane
     navigates to its thread (replace), so the right panel, the sidebar
     highlight and every route-keyed global shortcut follow focus with no

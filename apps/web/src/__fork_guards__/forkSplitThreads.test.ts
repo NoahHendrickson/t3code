@@ -29,7 +29,7 @@ const panes = readSibling("../custom/splitThreads/SplitThreadPanes.tsx");
 describe("fork guard: fork-split-threads", () => {
   it("routes every chat view through the split panes", () => {
     expect(routeView).toMatch(
-      /fork:begin fork-split-threads[\s\S]*?<SplitThreadPanes layout=\{splitLayout\} focusedRef=\{routeThreadRef\} focusedView=\{view\} \/>[\s\S]*?fork:end fork-split-threads/u,
+      /fork:begin fork-split-threads[\s\S]*?<SplitThreadPanes\s+layout=\{splitLayout\}\s+focusedRef=\{routeThreadRef\}[\s\S]*?focusedView=\{view\}\s*\/>[\s\S]*?fork:end fork-split-threads/u,
     );
     // Upstream's bare {view} must not come back beside it, or the focused
     // ChatView would render twice.

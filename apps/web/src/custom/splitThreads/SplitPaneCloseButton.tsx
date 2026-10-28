@@ -34,8 +34,8 @@ export function SplitPaneCloseButton(props: {
   return (
     <Tooltip>
       <TooltipTrigger
-        // data-split-pane-close keeps a press here from first focusing the pane.
-        render={<span className="flex shrink-0" data-fork-panel-toggle data-split-pane-close />}
+        // data-split-pane-action keeps a press here from first focusing the pane.
+        render={<span className="flex shrink-0" data-fork-panel-toggle data-split-pane-action />}
       >
         <Button
           className="shrink-0 [-webkit-app-region:no-drag]"
