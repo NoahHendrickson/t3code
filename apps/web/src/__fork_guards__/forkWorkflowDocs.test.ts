@@ -50,6 +50,14 @@ describe("fork guard: fork-workflow-docs", () => {
     expect(changeScope).toBeLessThan(firstUpstreamIndex);
   });
 
+  it("keeps the PR screenshot waiver fenced in AGENTS.md", () => {
+    // Without it, upstream's before/after-images rule sends every PR agent off
+    // capturing evidence the maintainer never wants.
+    const agents = NodeFS.readFileSync(NodePath.join(repoRoot, "AGENTS.md"), "utf8");
+    expect(agents).toContain("fork:begin fork-pr-no-screenshots");
+    expect(agents).toContain("fork:end fork-pr-no-screenshots");
+  });
+
   it("keeps CLAUDE.md aliased to AGENTS.md so Claude agents get the same rules", () => {
     // Assert the committed object, not the working tree. What an agent gets
     // is whatever the clone materializes from this blob, and a checkout with
