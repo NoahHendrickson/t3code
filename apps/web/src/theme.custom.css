@@ -935,8 +935,11 @@
   display: none;
 }
 
+/* Stop is flat like send: upstream's drop shadow and inset highlight read as
+   a dark lip under the solid fill. Glass repaints it with its own lighting. */
 :root[data-fork="noahhendrickson-t3code"].dark [data-fork-composer-action="stop"] {
   background: #ea3150;
+  box-shadow: none;
 }
 
 /* The mode controls carry leading and interleaved vertical rules, which earned
