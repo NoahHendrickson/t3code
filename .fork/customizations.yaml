@@ -1126,6 +1126,9 @@
     # Shared with fork-sidebar-chrome and sidebar-v2-project-grouping; this
     # entry owns the grouping radio group.
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    # Shared with most fork entries; this entry owns only the status section
+    # caret rule.
+    - apps/web/src/theme.custom.css
   shadows: []
   watch:
     - docs/user/thread-sidebar.md

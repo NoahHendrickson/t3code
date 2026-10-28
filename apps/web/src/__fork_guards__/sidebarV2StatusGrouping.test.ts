@@ -14,16 +14,12 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
-import { cssRules } from "./cssRules";
-
 function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
 const sidebar = readSibling("../components/Sidebar.tsx");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
-const header = readSibling("../custom/SidebarV2StatusSectionHeader.tsx");
-const themeRules = cssRules(readSibling("../theme.custom.css"));
 
 describe("fork guard: sidebar-v2-status-grouping", () => {
   it("offers the option beside Group by project, exclusive with it", () => {
@@ -91,19 +87,15 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(sidebar).toContain("workingShelfActive && isSidebarThreadWorking(thread)");
   });
 
-  it("bounds the caret's section hover at the next header, shelf headers included", () => {
-    // The caret rule in theme.custom.css reads a section as the header's
-    // later siblings up to the next data-thread-selection-safe item. If the
-    // snoozed shelf header lost that marker, hovering a snoozed row would
-    // light the caret of the last status section above it.
-    expect(sidebar).toMatch(/key="snoozed-shelf-header"\s+data-thread-selection-safe/u);
-    const caretRule = themeRules.find(
-      (rule) =>
-        rule.selector.includes(
-          "[data-status-section-header]:has(~ li:not([data-thread-selection-safe]):hover)",
-        ) && rule.selector.includes(":has(~ [data-thread-selection-safe] ~ li:hover)"),
+  it("stamps the section rows the caret's hover walk reads", () => {
+    // theme.custom.css lights a header's caret while a later
+    // data-fork-status-section row before the next header is hovered.
+    expect(sidebar).toContain(
+      'data-fork-status-section={props.inStatusSection === true ? "" : undefined}',
     );
-    expect(caretRule?.body).toContain("visibility: visible");
-    expect(header).toContain("data-thread-selection-safe data-status-section-header");
+    expect(sidebar).toMatch(
+      /inStatusSection=\{\s*statusSection !== undefined \|\|\s*\(section === "settled" && settledSectionShown\)\s*\}/u,
+    );
+    expect(sidebar).toContain('data-fork-status-section={pinnedSectionShown ? "" : undefined}');
   });
 });

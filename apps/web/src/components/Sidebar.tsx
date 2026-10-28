@@ -992,6 +992,9 @@ type SidebarThreadRowProps = {
   /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
   // The status section the card paints under, when status grouping is on.
   statusSection?: SidebarV2StatusBucket | undefined;
+  // A row in a status-grouped section, Settled included, so the section's
+  // header lights its caret while the row is hovered.
+  inStatusSection?: boolean;
   /* fork:end sidebar-v2-status-grouping */
   providerEntryByInstanceId: ReadonlyMap<string, SidebarProviderEntry>;
   timestampFormat: TimestampFormat;
@@ -1630,6 +1633,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     return (
       <li
         data-thread-item={threadKey}
+        /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+        data-fork-status-section={props.inStatusSection === true ? "" : undefined}
+        /* fork:end sidebar-v2-status-grouping */
         {...(fileDropHandlers ?? {})}
         className="list-none [content-visibility:auto] [contain-intrinsic-size:auto_36px]"
       >
@@ -1797,6 +1803,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
          project header, which is what projectTitleHidden already says. */
       data-fork-project-section={props.projectTitleHidden === true ? "" : undefined}
       /* fork:end sidebar-v2-project-grouping */
+      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+      data-fork-status-section={props.inStatusSection === true ? "" : undefined}
+      /* fork:end sidebar-v2-status-grouping */
       ref={sortable?.setNodeRef}
       style={
         sortable
@@ -4781,6 +4790,10 @@ export default function Sidebar() {
                           /* fork:end sidebar-v2-compact-cards */
                           /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
                           statusSection={statusSection}
+                          inStatusSection={
+                            statusSection !== undefined ||
+                            (section === "settled" && settledSectionShown)
+                          }
                           /* fork:end sidebar-v2-status-grouping */
                           sortable={sortable}
                           sweepAction={actionSweep?.keys.has(threadKey) ? actionSweep.action : null}
@@ -4942,7 +4955,13 @@ export default function Sidebar() {
                       ) : null,
                       /* fork:end sidebar-v2-status-grouping */
                       renderedPinnedThreads.length > 0 ? (
-                        <li key="pinned-dnd" className="list-none">
+                        <li
+                          key="pinned-dnd"
+                          /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                          data-fork-status-section={pinnedSectionShown ? "" : undefined}
+                          /* fork:end sidebar-v2-status-grouping */
+                          className="list-none"
+                        >
                           <DndContext
                             sensors={pinnedDndSensors}
                             collisionDetection={closestCenter}
@@ -5298,7 +5317,12 @@ export default function Sidebar() {
                     return items;
                   })()}
                   {settledShelfExpanded && hiddenSettledCount > 0 ? (
-                    <li className="list-none">
+                    <li
+                      /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
+                      data-fork-status-section={settledSectionShown ? "" : undefined}
+                      /* fork:end sidebar-v2-status-grouping */
+                      className="list-none"
+                    >
                       <button
                         type="button"
                         onClick={showMoreSettled}

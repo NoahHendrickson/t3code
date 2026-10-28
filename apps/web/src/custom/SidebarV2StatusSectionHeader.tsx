@@ -37,7 +37,7 @@ export function SidebarV2StatusSectionHeader(props: {
   readonly onToggleCollapsed: () => void;
 }) {
   return (
-    <li data-thread-selection-safe data-status-section-header className="list-none">
+    <li data-thread-selection-safe data-fork-status-section-header="" className="list-none">
       <button
         type="button"
         onClick={props.onToggleCollapsed}
@@ -65,14 +65,14 @@ export function SidebarV2StatusSectionHeader(props: {
         </span>
         <svg
           aria-hidden
-          data-status-section-caret
+          data-fork-status-section-caret=""
           viewBox="0 0 14 14"
           fill="currentColor"
           stroke="currentColor"
           strokeWidth={1}
           strokeLinejoin="round"
           className={cn(
-            "invisible ms-auto size-3.5 shrink-0 text-muted-foreground",
+            "ms-auto size-3.5 shrink-0 text-muted-foreground",
             SIDEBAR_V2_TRAILING_OFFSET.statusCaret,
             !props.collapsed && "rotate-180",
           )}
