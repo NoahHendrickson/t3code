@@ -94,14 +94,27 @@ describe("fork guard: fork-desktop-release", () => {
     const workflow = readForkRelease();
     const build = readStepBlock(workflow, "Build desktop artifact");
     expect(build).toContain("--signed");
-    expect(build).toContain("fork releases must be signed and notarized");
+    expect(build).not.toMatch(/^\s+if:/mu);
     const verify = readStepBlock(workflow, "Verify signature and notarization");
-    expect(verify).toContain("spctl --assess --type execute");
+    expect(verify).toContain('grep -qx "TeamIdentifier=$EXPECTED_TEAM_ID"');
+    expect(verify).toContain('grep -q "source=Notarized Developer ID"');
     expect(verify).toContain("xcrun stapler validate");
     expect(verify).not.toMatch(/^\s+if:/mu);
     expect(workflow.indexOf("Verify signature and notarization")).toBeLessThan(
       workflow.indexOf("Collect release assets"),
     );
+    // Upstream's build script throws for a signed mac build without a
+    // provisioning profile. If a sync drops the fork's opt-in gate, every
+    // release fails halfway through a full build instead of at PR time.
+    const buildScript = NodeFS.readFileSync(
+      NodePath.join(repoRoot, "scripts/build-desktop-artifact.ts"),
+      "utf8",
+    );
+    const fence = buildScript.slice(
+      buildScript.indexOf("/* fork:begin fork-desktop-release"),
+      buildScript.indexOf("/* fork:end fork-desktop-release */"),
+    );
+    expect(fence).toContain("T3CODE_MACOS_PROVISIONING_PROFILE?.trim()");
   });
 
   it("keeps the launch isolation gate wired ahead of publishing", () => {

@@ -132,10 +132,16 @@ jobs:
             --verbose
 
       - name: Verify signature and notarization
-        # Gatekeeper's own verdict on the zip the in-app updater downloads, so
-        # a release that would still need the quarantine workaround, or that
-        # Squirrel.Mac would refuse, never publishes.
+        # Checks the zip the in-app updater downloads, so a release that would
+        # still need the quarantine workaround, or that Squirrel.Mac would
+        # refuse, never publishes. The output is matched rather than trusting
+        # exit codes: hosted runners may disable Gatekeeper, which makes spctl
+        # accept anything, and codesign --verify accepts ad-hoc signatures.
+        # Squirrel.Mac matches every future update against this team, so a
+        # certificate from any other team must never publish as latest.
         shell: bash
+        env:
+          EXPECTED_TEAM_ID: 4WDT6B6JDX
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -148,7 +154,20 @@ jobs:
           ditto -x -k "${zips[0]}" "$unpacked"
           apps=("$unpacked"/*.app)
           codesign --verify --deep --strict --verbose=2 "${apps[0]}"
-          spctl --assess --type execute --verbose=4 "${apps[0]}"
+          signer=$(codesign -dv "${apps[0]}" 2>&1)
+          echo "$signer"
+          if ! grep -qx "TeamIdentifier=$EXPECTED_TEAM_ID" <<<"$signer"; then
+            echo "App is not signed by team $EXPECTED_TEAM_ID." >&2
+            exit 1
+          fi
+          # Ephemeral runner; make sure the assessment is real, not an override.
+          sudo spctl --master-enable
+          assessment=$(spctl --assess --type execute --verbose=4 "${apps[0]}" 2>&1)
+          echo "$assessment"
+          if ! grep -q "source=Notarized Developer ID" <<<"$assessment"; then
+            echo "Gatekeeper did not report a notarized Developer ID app." >&2
+            exit 1
+          fi
           xcrun stapler validate "${apps[0]}"
 
       - name: Launch isolation check
@@ -214,7 +233,8 @@ jobs:
           body: |
             Signed and notarized macOS arm64 build of this fork, built from `${{ github.sha }}`.
 
-            Signed installs update themselves from Settings → Updates. If your
+            Signed installs update themselves: an update notice appears in the
+            sidebar, or check from Settings → General → About. If your
             installed copy predates signing (it needed the quarantine
             workaround), download this DMG and replace
             `"/Applications/no3y Code.app"` once by hand; it opens normally
