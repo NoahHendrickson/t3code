@@ -203,14 +203,15 @@
     AGENTS.md also carries the fork-authored Change Scope section, fenced as
     fork-change-scope, and it must sit ahead of upstream's first section
     heading: it is the scope contract an agent reads before upstream's own
-    guidance, not an appendix. A third fence, fork-pr-no-screenshots, sits
-    under upstream's before/after-images line in Pull requests and waives it
-    (and CONTRIBUTING.md's and the PR template's copies): the maintainer
-    checks UI visually, so agents must not spend time capturing PR evidence.
-    Upstream owns the rest of the document — a sync takes upstream's rewrite
-    wholesale and re-seats these fenced sections, Change Scope at the top,
-    the screenshot waiver under the images rule, and Fork Workflow at the
-    bottom.
+    guidance, not an appendix. A third fence, fork-pr-no-screenshots,
+    closes upstream's Pull requests list and waives its before/after-images
+    rule (and CONTRIBUTING.md's and the PR template's copies) unless the
+    maintainer asks: the maintainer checks UI visually, so agents should not
+    spend time capturing PR evidence. It names the rule it waives, so its
+    meaning does not depend on where it sits. Upstream owns the rest of the
+    document — a sync takes upstream's rewrite wholesale and re-seats these
+    fenced sections, Change Scope at the top, the screenshot waiver in Pull
+    requests, and Fork Workflow at the bottom.
     CLAUDE.md is a Tier-4 inline edit the fork owns outright, and it
     deliberately diverges from the blob upstream ships. Upstream's committed
     symlink target carries a trailing newline, so it names a file that cannot
