@@ -282,9 +282,6 @@ const cleanupFixture = (
     let openSessionCwd: string | null = null;
     let sessionLive = true;
     let fullStatusCalls = 0;
-    /* fork:begin fork-storage-cleanup-git-256 — see .fork/customizations.yaml#fork-storage-cleanup-git-256 */
-    let failingGitStderr: string | null = null;
-    /* fork:end fork-storage-cleanup-git-256 */
     let snapshotReads = 0;
     let events: Stream.Stream<OrchestrationV2DomainEvent> = Stream.empty;
     const activated = yield* Deferred.make<void>();
@@ -295,12 +292,7 @@ const cleanupFixture = (
           Effect.gen(function* () {
             if (editBeforeRemoval && input.args.includes("remove"))
               yield* fs.writeFileString(`${worktree}/tracked.txt`, "late edit\n");
-            /* fork:begin fork-storage-cleanup-git-256 — see .fork/customizations.yaml#fork-storage-cleanup-git-256 */
-            const result = yield* git.execute(input);
-            return failingGitStderr !== null && result.exitCode !== 0
-              ? { ...result, stderr: failingGitStderr }
-              : result;
-            /* fork:end fork-storage-cleanup-git-256 */
+            return yield* git.execute(input);
           }),
         statusDetailsLocal: (...args) => {
           fullStatusCalls++;
@@ -392,11 +384,6 @@ const cleanupFixture = (
     );
     return {
       service: Context.get(context, StorageCleanup.StorageCleanup),
-      /* fork:begin fork-storage-cleanup-git-256 — see .fork/customizations.yaml#fork-storage-cleanup-git-256 */
-      setFailingGitStderr: (stderr: string | null) => {
-        failingGitStderr = stderr;
-      },
-      /* fork:end fork-storage-cleanup-git-256 */
       repo,
       editBeforeRemoval: () => {
         editBeforeRemoval = true;
@@ -1705,23 +1692,6 @@ describe("storage cleanup reports and local file policies", () => {
       }),
     ),
   );
-  /* fork:begin fork-storage-cleanup-git-256 — see .fork/customizations.yaml#fork-storage-cleanup-git-256 */
-  it.live("keeps a worktree whose gitdir is gone under Git 2.56's message", () =>
-    runCleanupTest(
-      Effect.gen(function* () {
-        const { service, fs, worktree, setFailingGitStderr } = yield* cleanupFixture();
-        yield* fs.writeFileString(`${worktree}/.git`, "gitdir: /missing-git-directory\n");
-        setFailingGitStderr(
-          `fatal: gitfile does not point to a valid repository: ${worktree}/.git\n`,
-        );
-        expect((yield* service.runNow).entries[0]).toMatchObject({
-          outcome: "kept",
-          reason: "Repository or branch changed",
-        });
-      }),
-    ),
-  );
-  /* fork:end fork-storage-cleanup-git-256 */
   it("decodes reports from servers without size or project fields", () => {
     const report = decodeCleanupReport({
       trigger: "manual",

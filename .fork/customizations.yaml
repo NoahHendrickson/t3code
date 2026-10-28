@@ -5712,21 +5712,27 @@
   verify:
     - apps/web/src/__fork_guards__/forkSidebarRecentProjects.test.ts
 
-- id: fork-storage-cleanup-git-256
+- id: fork-git-256-non-repository
   intent: >
-    Storage cleanup treats a worktree whose .git file points at a missing
-    gitdir as "Repository or branch changed" and keeps it. Git 2.55 reports
-    that case as "not a git repository"; Git 2.56 says "gitfile does not point
-    to a valid repository", which upstream does not match yet, so on 2.56 the
-    worktree came back as a cleanup failure and storageCleanup.test.ts failed
-    on every CI runner with 2.56. Both messages are matched. Drop this entry
-    once upstream matches the new message.
+    Git 2.56 reports a worktree whose .git file points at a missing gitdir as
+    "gitfile does not point to a valid repository"; Git 2.55 said "not a git
+    repository", the only message upstream matches. On 2.56, storage cleanup
+    reported such a worktree as a cleanup failure instead of keeping it
+    ("Repository or branch changed"), GitVcsDriverCore status threw instead of
+    returning non-repository details, and classifyGitFailure lost the
+    not_a_repository reason. GitVcsDriverCore.isNonRepositoryGitStderr matches
+    both messages and is exported, so storage cleanup and GitManager call it
+    instead of their own copies of the string match. Drop this entry once
+    upstream matches the new message.
   tier: 4
   files: []
   shadows: []
   watch:
+    - apps/server/src/vcs/GitVcsDriverCore.ts
     - apps/server/src/storageCleanup.ts
-    # Fenced fixture knob and the Git 2.56 case.
-    - apps/server/src/storageCleanup.test.ts
+    - apps/server/src/git/GitManager.ts
+    # Table test over both Git messages.
+    - apps/server/src/vcs/GitVcsDriverCore.test.ts
   verify:
+    - apps/server/src/vcs/GitVcsDriverCore.test.ts
     - apps/server/src/storageCleanup.test.ts
