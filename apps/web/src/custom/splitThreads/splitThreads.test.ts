@@ -34,6 +34,16 @@ describe("split pairs", () => {
     expect(pairSplitThreads(pairs, a, a)).toBe(pairs);
   });
 
+  it("keeps only the newest pairs, so pairs deleted elsewhere cannot pile up", () => {
+    let pairs = pairSplitThreads([], ref("x0"), ref("y0"));
+    for (let index = 1; index <= 50; index += 1) {
+      pairs = pairSplitThreads(pairs, ref(`x${index}`), ref(`y${index}`));
+    }
+    expect(pairs).toHaveLength(50);
+    expect(findSplitPair(pairs, ref("x0"))).toBeNull();
+    expect(findSplitPair(pairs, ref("x50"))).not.toBeNull();
+  });
+
   it("pops either member out, leaving both on their own", () => {
     const pairs = pairSplitThreads([], a, b);
     expect(unpairSplitThread(pairs, b)).toEqual([]);

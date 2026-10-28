@@ -27,6 +27,11 @@ export function findSplitPair(
   return pairs.find((pair) => pairHas(pair, key)) ?? null;
 }
 
+/** Pairs are only dropped when one is popped out or its partner turns up
+    missing on screen, so a pair whose threads are deleted elsewhere would
+    otherwise stay stored forever. The oldest go first. */
+const MAX_SPLIT_PAIRS = 50;
+
 /** `a` takes the left pane, `b` the right. Pairing a thread with itself is a no-op. */
 export function pairSplitThreads(
   pairs: readonly SplitThreadPair[],
@@ -36,7 +41,9 @@ export function pairSplitThreads(
   const aKey = scopedThreadKey(a);
   const bKey = scopedThreadKey(b);
   if (aKey === bKey) return pairs;
-  return [...pairs.filter((pair) => !pairHas(pair, aKey) && !pairHas(pair, bKey)), { a, b }];
+  return [...pairs.filter((pair) => !pairHas(pair, aKey) && !pairHas(pair, bKey)), { a, b }].slice(
+    -MAX_SPLIT_PAIRS,
+  );
 }
 
 export function unpairSplitThread(

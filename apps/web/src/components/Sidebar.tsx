@@ -1807,8 +1807,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       {...(fileDropHandlers ?? {})}
       /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
          Dragged onto another card, this one opens beside it. */
-      {...(splitThreadDragSourceProps(threadKey, !sortable && !props.isPinned && !isRenaming) ??
-        {})}
+      {...splitThreadDragSourceProps(threadKey, !sortable && !props.isPinned && !isRenaming)}
       /* fork:end fork-split-threads */
       className={cn(
         "list-none [content-visibility:auto]",
@@ -4873,8 +4872,18 @@ export default function Sidebar() {
                       }
                       return (
                         <SidebarSplitPairRow key={splitRow.key}>
-                          {renderOneThreadRow(splitRow.left, section, options)}
-                          {renderOneThreadRow(splitRow.right, section, options)}
+                          {[splitRow.left, splitRow.right].map((card) =>
+                            renderOneThreadRow(
+                              card,
+                              section,
+                              // A partner from another project keeps its repo
+                              // line: the header above names the other project.
+                              card.environmentId === thread.environmentId &&
+                                card.projectId === thread.projectId
+                                ? options
+                                : { ...options, underProjectHeader: false },
+                            ),
+                          )}
                         </SidebarSplitPairRow>
                       );
                     };

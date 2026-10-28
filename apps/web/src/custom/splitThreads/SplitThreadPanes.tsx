@@ -189,19 +189,23 @@ export function SplitThreadPanes(props: {
   useLayoutEffect(() => {
     if (paletteComposerRef === null) return;
     const [first, second] = slotComposerRefs;
+    // A write from outside the panes is kept, and read when no slot is focused.
+    let assigned = paletteComposerRef.current;
     Object.defineProperty(paletteComposerRef, "current", {
       configurable: true,
       get: () => {
         const slot = focusedSlotRef.current;
-        return slot === null ? null : (slot === 0 ? first : second).current;
+        return (slot === null ? null : (slot === 0 ? first : second).current) ?? assigned;
       },
-      set: () => {},
+      set: (value: ChatComposerHandle | null) => {
+        assigned = value;
+      },
     });
     return () => {
       Object.defineProperty(paletteComposerRef, "current", {
         configurable: true,
         writable: true,
-        value: null,
+        value: assigned,
       });
     };
     // The slot refs are stable for this component's life.

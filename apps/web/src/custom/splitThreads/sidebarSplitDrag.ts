@@ -17,17 +17,23 @@ const DROP_TARGET_ATTRIBUTE = "data-fork-split-drop-target";
 let draggedThreadKey: string | null = null;
 
 export function splitThreadDragSourceProps(threadKey: string, enabled: boolean) {
-  if (!enabled) return null;
   return {
     // Decided per press, before the browser can start a drag: a press on the
     // row's hover actions begins the settle sweep, a pointer gesture a native
-    // drag would cancel, and touch keeps its long-press menu.
+    // drag would cancel, and touch keeps its long-press menu. Attached even
+    // while the row cannot be a source (renaming, pinned), so a press there
+    // turns off what an earlier press turned on.
     onPointerDownCapture: (event: PointerEvent<HTMLElement>) => {
       event.currentTarget.draggable =
+        enabled &&
         event.pointerType === "mouse" &&
         !(event.target instanceof Element && event.target.closest("button, a, input") !== null);
     },
     onDragStart: (event: DragEvent<HTMLElement>) => {
+      if (!enabled) {
+        event.preventDefault();
+        return;
+      }
       draggedThreadKey = threadKey;
       event.dataTransfer.setData(SPLIT_THREAD_DRAG_TYPE, threadKey);
       event.dataTransfer.effectAllowed = "link";
