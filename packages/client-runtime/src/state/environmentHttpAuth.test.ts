@@ -703,25 +703,25 @@ describe("authenticated environment HTTP requests", () => {
 
   it.effect("keeps the caller's timeout while waiting for renewal", () =>
     Effect.gen(function* () {
-      const harness = makeHarness(() => Response.json(SESSION));
+      const harness = makeHarness(() => Response.json(SHELL));
       const authorizing = yield* Deferred.make<void>();
       const remoteAuthorization = RemoteEnvironmentAuthorization.RemoteEnvironmentAuthorization.of({
         ...harness.remoteAuthorization,
         authorizeDpopHttp: () =>
           Deferred.succeed(authorizing, undefined).pipe(Effect.andThen(Effect.never)),
       });
-      const pending = yield* fetchEnvironmentSessionState({
+      const pending = yield* fetchEnvironmentShellSnapshot({
         ...harness.input,
         remoteAuthorization: Option.some(remoteAuthorization),
-        timeoutMs: 60_000,
+        timeoutMs: 100,
       }).pipe(Effect.provide(harness.httpLayer), Effect.flip, Effect.forkChild);
       yield* Deferred.await(authorizing);
-      yield* TestClock.adjust(60_000);
+      yield* TestClock.adjust(100);
 
       expect(yield* Fiber.join(pending)).toMatchObject({
         _tag: "RemoteEnvironmentAuthTimeoutError",
-        requestUrl: `${PREPARED.httpBaseUrl}/api/auth/session`,
-        timeoutMs: 60_000,
+        requestUrl: `${PREPARED.httpBaseUrl}/api/orchestration/shell`,
+        timeoutMs: 100,
       });
       expect(harness.calls).toEqual([]);
     }),
@@ -745,25 +745,27 @@ describe("authenticated environment HTTP requests", () => {
             Effect.andThen(harness.remoteAuthorization.authorizeDpopHttp(input)),
           ),
       });
-      const pending = yield* fetchEnvironmentSessionState({
+      const pending = yield* fetchEnvironmentShellSnapshot({
         ...harness.input,
         remoteAuthorization: Option.some(remoteAuthorization),
-        timeoutMs: 60_000,
+        timeoutMs: 100,
       }).pipe(Effect.provide(harness.httpLayer), Effect.flip, Effect.forkChild);
       yield* Deferred.await(authorizing);
-      yield* TestClock.adjust(15_000);
+      yield* TestClock.adjust(25);
       yield* Deferred.succeed(authorize, undefined);
       yield* Effect.promise(() => requested.promise);
-      yield* TestClock.adjust(45_000);
+      yield* TestClock.adjust(75);
 
       expect(yield* Fiber.join(pending)).toMatchObject({
         _tag: "RemoteEnvironmentAuthTimeoutError",
-        requestUrl: `${CURRENT_ORIGIN}/api/auth/session`,
-        timeoutMs: 60_000,
+        requestUrl: `${CURRENT_ORIGIN}/api/orchestration/shell`,
+        timeoutMs: 100,
       });
-      expect(harness.calls.map((call) => call.url)).toEqual([`${CURRENT_ORIGIN}/api/auth/session`]);
+      expect(harness.calls.map((call) => call.url)).toEqual([
+        `${CURRENT_ORIGIN}/api/orchestration/shell`,
+      ]);
       expect(harness.authorizations).toHaveLength(1);
-      response.resolve(Response.json(SESSION));
+      response.resolve(Response.json(SHELL));
     }),
   );
 
