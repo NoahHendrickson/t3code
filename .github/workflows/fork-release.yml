@@ -9,8 +9,13 @@ name: Fork Release
 # here entirely.
 #
 # This is the fork's own path to a downloadable build. It shares nothing with
-# upstream's pipeline but the build script, needs no secrets beyond the token
-# GitHub already provides, and only ever runs when a human dispatches it.
+# upstream's pipeline but the build script, signs and notarizes with the fork
+# owner's own Apple Developer ID, and only ever runs when a human dispatches it.
+#
+# Signing is required, not optional: installed apps update themselves from
+# these releases through Squirrel.Mac, which refuses any update not signed by
+# the same identity as the running app. An unsigned release here would be a
+# dead end for every signed install.
 
 on:
   workflow_dispatch:
@@ -20,9 +25,11 @@ on:
         required: true
         type: string
       prerelease:
-        description: "Mark the GitHub Release as a prerelease"
+        # Installed apps only see the repository's latest release, so a
+        # prerelease is skipped by the in-app updater.
+        description: "Mark the GitHub Release as a prerelease (installed apps will not update to it)"
         required: false
-        default: true
+        default: false
         type: boolean
       dry_run:
         description: "Build and run the launch isolation gate without publishing"
@@ -95,18 +102,73 @@ jobs:
 
       - name: Build desktop artifact
         shell: bash
+        env:
+          # Developer ID Application certificate (base64 .p12) and its password;
+          # electron-builder imports it into a temporary keychain.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # App Store Connect API key for notarization. APPLE_API_KEY holds the
+          # .p8 contents; electron-builder wants a path, written below.
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           set -euo pipefail
-          # Unsigned deliberately. The build script degrades on its own when the
-          # Apple secrets are absent ("macOS signing disabled"), so this needs no
-          # --signed handling to stay working; adding the secrets later is a
-          # contained change to this step alone.
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing repository secret $name; fork releases must be signed and notarized." >&2
+              exit 1
+            fi
+          done
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s' "$APPLE_API_KEY" > "$key_path"
+          export APPLE_API_KEY="$key_path"
           vp run dist:desktop:artifact \
             --platform mac \
             --target dmg \
             --arch arm64 \
             --build-version "${{ steps.meta.outputs.version }}" \
+            --signed \
             --verbose
+
+      - name: Verify signature and notarization
+        # Checks the zip the in-app updater downloads, so a release that would
+        # still need the quarantine workaround, or that Squirrel.Mac would
+        # refuse, never publishes. The output is matched rather than trusting
+        # exit codes: hosted runners may disable Gatekeeper, which makes spctl
+        # accept anything, and codesign --verify accepts ad-hoc signatures.
+        # Squirrel.Mac matches every future update against this team, so a
+        # certificate from any other team must never publish as latest.
+        shell: bash
+        env:
+          EXPECTED_TEAM_ID: 4WDT6B6JDX
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=(release/*.zip)
+          if [[ ${#zips[@]} -ne 1 ]]; then
+            echo "Expected one zip in release/, found ${#zips[@]}." >&2
+            exit 1
+          fi
+          unpacked="$RUNNER_TEMP/verify-app"
+          ditto -x -k "${zips[0]}" "$unpacked"
+          apps=("$unpacked"/*.app)
+          codesign --verify --deep --strict --verbose=2 "${apps[0]}"
+          signer=$(codesign -dv "${apps[0]}" 2>&1)
+          echo "$signer"
+          if ! grep -qx "TeamIdentifier=$EXPECTED_TEAM_ID" <<<"$signer"; then
+            echo "App is not signed by team $EXPECTED_TEAM_ID." >&2
+            exit 1
+          fi
+          # Ephemeral runner; make sure the assessment is real, not an override.
+          sudo spctl --master-enable
+          assessment=$(spctl --assess --type execute --verbose=4 "${apps[0]}" 2>&1)
+          echo "$assessment"
+          if ! grep -q "source=Notarized Developer ID" <<<"$assessment"; then
+            echo "Gatekeeper did not report a notarized Developer ID app." >&2
+            exit 1
+          fi
+          xcrun stapler validate "${apps[0]}"
 
       - name: Launch isolation check
         # The gate is a real script, not YAML prose: shellcheck-able, runnable
@@ -169,16 +231,14 @@ jobs:
           # not just the release that introduced them. Drop the prompt-stash
           # stanza only when installs at v0.1.5 or earlier no longer matter.
           body: |
-            Unsigned macOS arm64 build of this fork, built from `${{ github.sha }}`.
+            Signed and notarized macOS arm64 build of this fork, built from `${{ github.sha }}`.
 
-            macOS will refuse to open it on first launch because it is not
-            signed by an identified developer. To open it:
-
-            ```
-            xattr -dr com.apple.quarantine "/Applications/no3y Code.app"
-            ```
-
-            Or right-click the app and choose Open, then confirm.
+            Signed installs update themselves: an update notice appears in the
+            sidebar, or check from Settings → General → About. If your
+            installed copy predates signing (it needed the quarantine
+            workaround), download this DMG and replace
+            `"/Applications/no3y Code.app"` once by hand; it opens normally
+            and updates in place from then on.
 
             no3y Code keeps all state in its own `~/.t3-fork` and never touches
             the real T3 Code app's `~/.t3`. First launch therefore starts from

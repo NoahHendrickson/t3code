@@ -3925,13 +3925,25 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
   const stageProdResourcesDir = path.join(stageAppDir, "apps/desktop/prod-resources");
   yield* fs.copy(stageResourcesDir, stageProdResourcesDir);
 
-  const configuredMacPasskeySigning =
-    options.platform === "mac" && options.signed
-      ? yield* Effect.try({
-          try: () => resolveMacPasskeySigningConfiguration(loadRepoEnv({ repoRoot })),
-          catch: MacPasskeySigningConfigurationResolutionError.fromCause,
-        })
-      : undefined;
+  /* fork:begin fork-desktop-release — see .fork/customizations.yaml#fork-desktop-release */
+  // Passkey signing is opt-in: it needs an Associated Domains profile for the
+  // fork's bundle ID, and the Clerk RP domain's apple-app-site-association
+  // only lists upstream's team. Without a profile, sign with plain Developer
+  // ID entitlements instead of failing the build.
+  const passkeyEnv =
+    options.platform === "mac" && options.signed ? loadRepoEnv({ repoRoot }) : undefined;
+  const configuredMacPasskeySigning = passkeyEnv?.T3CODE_MACOS_PROVISIONING_PROFILE?.trim()
+    ? yield* Effect.try({
+        try: () => resolveMacPasskeySigningConfiguration(passkeyEnv),
+        catch: MacPasskeySigningConfigurationResolutionError.fromCause,
+      })
+    : undefined;
+  if (passkeyEnv && !configuredMacPasskeySigning) {
+    yield* Effect.log(
+      "[desktop-artifact] In-app browser passkeys: disabled (no T3CODE_MACOS_PROVISIONING_PROFILE).",
+    );
+  }
+  /* fork:end fork-desktop-release */
   const macPasskeySigning = configuredMacPasskeySigning
     ? {
         ...configuredMacPasskeySigning,
