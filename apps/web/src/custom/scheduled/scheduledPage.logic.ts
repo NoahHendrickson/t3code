@@ -136,18 +136,18 @@ interface LinkedPullRequest {
 
 /**
  * The pull request a run was about. A GitHub-triggered run names it in its
- * message id; any other run falls back to the PR its thread linked, then the
- * one discovered on its branch.
+ * message id; any other run, or one whose message id is unknown, falls back to
+ * the PR its thread linked, then the one discovered on its branch.
  */
 export function runPullRequest(
-  messageId: string,
+  messageId: string | null,
   thread: {
     readonly pullRequests?: ReadonlyArray<LinkedPullRequest> | undefined;
     readonly linkedPullRequest?: LinkedPullRequest | null | undefined;
     readonly branchPullRequest?: LinkedPullRequest | null | undefined;
   } | null,
 ): RunPullRequest | null {
-  const triggered = githubPrRunContext(messageId);
+  const triggered = messageId === null ? null : githubPrRunContext(messageId);
   const triggeredNumber = triggered ? Number(/\/pull\/(\d+)$/.exec(triggered.url)?.[1]) : NaN;
   if (triggered && Number.isInteger(triggeredNumber)) {
     return { number: triggeredNumber, label: triggered.label, url: triggered.url };

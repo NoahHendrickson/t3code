@@ -2738,8 +2738,10 @@
     Hovering it while any are live opens the thread hover card listing each
     run with its mark, its automation name, its thread title, its project
     and its pull request; the names and a GitHub-triggered run's PR come
-    from the task subscription and the newest runs page, read only while
-    the card is open.
+    from the task subscription and the newest runs page, read once the
+    card opens; a run older than that page falls back to its thread's PR.
+    The card shows six runs and counts the rest, since a tooltip cannot
+    scroll.
     The count comes from the shells the client already holds, with no new
     wire data or polling. A run opened from Automations carries a
     history-state flag, and the thread header shows a back arrow only for

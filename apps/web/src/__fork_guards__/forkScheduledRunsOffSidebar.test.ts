@@ -15,7 +15,10 @@ import { ProviderInstanceId, RunId, ScheduledTaskId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { filterSidebarV2VisibleThreads } from "../components/Sidebar.logic";
-import { summarizeScheduledRunActivity } from "../custom/scheduledRunActivity";
+import {
+  listScheduledRunActivity,
+  summarizeScheduledRunActivity,
+} from "../custom/scheduledRunActivity";
 import { makeThreadFixture } from "../test-fixtures";
 import type { Thread } from "../types";
 
@@ -83,21 +86,23 @@ describe("fork guard: fork-scheduled-runs-off-sidebar", () => {
 
   it("counts hidden runs in motion, waiting on you, or failed and unopened", () => {
     expect(
-      summarizeScheduledRunActivity([
-        automationRun("working", { runtime: runtime("running") }),
-        automationRun("approval", { hasPendingApprovals: true }),
-        automationRun("idle"),
-        failedRun("failed-never-opened", null),
-        failedRun("failed-opened-after", "2026-10-19T11:00:00.000Z"),
-        automationRun("archived", { runtime: runtime("running"), archivedAt: UPDATED_AT }),
-        automationRun("pinned", { runtime: runtime("running"), pinnedAt: UPDATED_AT }),
-        makeThreadFixture({ id: "mine" as Thread["id"], runtime: runtime("running") }),
-      ]),
+      summarizeScheduledRunActivity(
+        listScheduledRunActivity([
+          automationRun("working", { runtime: runtime("running") }),
+          automationRun("approval", { hasPendingApprovals: true }),
+          automationRun("idle"),
+          failedRun("failed-never-opened", null),
+          failedRun("failed-opened-after", "2026-10-19T11:00:00.000Z"),
+          automationRun("archived", { runtime: runtime("running"), archivedAt: UPDATED_AT }),
+          automationRun("pinned", { runtime: runtime("running"), pinnedAt: UPDATED_AT }),
+          makeThreadFixture({ id: "mine" as Thread["id"], runtime: runtime("running") }),
+        ]),
+      ),
     ).toEqual({ working: 1, needsYou: 1, failed: 1 });
   });
 
   it("reports live runs on the Automations row and opens All runs", () => {
-    expect(chromeRows).toContain("summarizeScheduledRunActivity(threads)");
+    expect(chromeRows).toContain("listScheduledRunActivity(threads)");
     expect(chromeRows).toContain('search: { view: "runs" }');
   });
 
