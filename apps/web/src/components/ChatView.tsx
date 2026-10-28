@@ -291,6 +291,7 @@ import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
 import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
 import { SplitAgentPill } from "~/custom/splitThreads/SplitAgentPill";
+import { SplitPaneCloseButton } from "~/custom/splitThreads/SplitPaneCloseButton";
 /* fork:end fork-split-threads */
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
@@ -8278,6 +8279,33 @@ export default function ChatView(props: ChatViewProps) {
   // readout. They never coexist (local draft vs server thread), and the
   // readout is null whenever upstream's strip is visible.
   const composerContextLeading = draftProjectPill ?? threadContextReadout;
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  // "Split agent" alone, "Pop out" in a split, right after the project and
+  // branch chips. Gated on the pill's own predicate so a null pill never
+  // keeps an empty context row mounted; the draft hero's centred composer
+  // has no split to offer.
+  const splitAgentPill =
+    !isDraftHeroState &&
+    activeThreadRef &&
+    activeProjectRef &&
+    (splitPane.split || (splitPane.canSplit && isServerThread)) ? (
+      <SplitAgentPill
+        threadRef={activeThreadRef}
+        projectRef={activeProjectRef}
+        branch={activeThread?.branch ?? null}
+        worktreePath={activeWorktreePath}
+        canStartSplit={isServerThread}
+      />
+    ) : null;
+  // The liveness pill keeps the row's last slot: stop stays where the hand knows it.
+  const composerContextTrailing =
+    splitAgentPill || composerLivenessPill ? (
+      <>
+        {splitAgentPill}
+        {composerLivenessPill}
+      </>
+    ) : null;
+  /* fork:end fork-split-threads */
   /**
    * The worktree/branch strip, as an element handed to ChatComposer's
    * `contextStrip` prop rather than rendered below the composer host. Every
@@ -8330,7 +8358,7 @@ export default function ChatView(props: ChatViewProps) {
             ? { composerControlsHostRef: setRestingComposerControlsHost }
             : {})}
           contextStripVisible={showComposerContextStrip}
-          {...(composerLivenessPill ? { trailing: composerLivenessPill } : {})}
+          {...(composerContextTrailing ? { trailing: composerContextTrailing } : {})}
           /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
           // Only into a visible strip: the hidden measuring strip below hands
           // the chip to the fallback instead, so it never renders twice.
@@ -8350,14 +8378,14 @@ export default function ChatView(props: ChatViewProps) {
           {toolbar}
           {renderComposerContextStripFallback({
             leading: composerContextLeading,
-            trailing: composerLivenessPill,
+            trailing: composerContextTrailing,
           })}
         </>
       );
     }
     return renderComposerContextStripFallback({
       leading: composerContextLeading,
-      trailing: composerLivenessPill,
+      trailing: composerContextTrailing,
     });
   })();
   /* fork:end fork-composer-shell */
@@ -8490,6 +8518,14 @@ export default function ChatView(props: ChatViewProps) {
         </span>
       ) : null}
       <div className="pointer-events-auto flex h-full items-center">{panelToggleControls}</div>
+      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+          The draft "Split agent" opened can be cancelled until it is sent. */}
+      {splitPane.split && isLocalDraftThread && draftId && activeThreadRef ? (
+        <div className="pointer-events-auto flex h-full items-center">
+          <SplitPaneCloseButton draftId={draftId} threadRef={activeThreadRef} />
+        </div>
+      ) : null}
+      {/* fork:end fork-split-threads */}
     </div>
   );
   const workspaceFileDropHandlers = makeWorkspaceFileDropHandlers({
@@ -8841,22 +8877,6 @@ export default function ChatView(props: ChatViewProps) {
                     </div>
                   ) : null}
                   {/* fork:end fork-composer-shell */}
-                  {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
-                      "Split agent" alone, "Pop out" in a split. Parked above the
-                      composer's right edge; the draft hero's headline owns this
-                      spot while a draft is centred. */}
-                  {!isDraftHeroState && activeThreadRef && activeProjectRef ? (
-                    <div className="absolute right-0 bottom-full pb-2">
-                      <SplitAgentPill
-                        threadRef={activeThreadRef}
-                        projectRef={activeProjectRef}
-                        branch={activeThread?.branch ?? null}
-                        worktreePath={activeWorktreePath}
-                        canStartSplit={isServerThread}
-                      />
-                    </div>
-                  ) : null}
-                  {/* fork:end fork-split-threads */}
                   <div
                     ref={draftHeroComposerAnchorRef}
                     className="relative z-10"
@@ -8877,7 +8897,7 @@ export default function ChatView(props: ChatViewProps) {
                          model-only strip never mounts here (see the strip note below). */
                       contextStrip={
                         showComposerContextStrip ||
-                        composerLivenessPill != null ||
+                        composerContextTrailing != null ||
                         composerContextLeading != null
                       }
                       /* fork:end fork-composer-shell */

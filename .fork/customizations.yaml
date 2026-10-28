@@ -5692,11 +5692,16 @@
 
 - id: fork-split-threads
   intent: >
-    Two threads can share the chat column side by side. A "Split agent" pill
-    above the composer's right edge (on a started thread, wide windows only)
-    opens a new draft on the same project, worktree and branch in a pane
-    beside the current thread; in a split the same pill reads "Pop out" and
-    dissolves the pair, leaving that thread on screen alone. Dragging one
+    Two threads can share the chat column side by side. A "Split agent" chip
+    beside the project and branch chips in the composer's context row (on a
+    started thread, wide windows only) opens a new draft on the same project,
+    worktree and branch in a pane beside the current thread; in a split the
+    same chip reads "Pop out" and dissolves the pair, leaving that thread on
+    screen alone. Both act on a mouse press rather than its release (the
+    click that follows is swallowed, since it lands on the other action),
+    so mounting the new pane overlaps the press. Until it is sent, a split
+    draft carries an X in its header that hands the route to the other pane,
+    dissolves the pair and discards the draft. Dragging one
     sidebar card onto another pairs them: the card dropped on keeps the left
     pane. Pairs are device-local (custom/splitThreads/splitThreadStore,
     localStorage): no server, contract or migration change, so other clients

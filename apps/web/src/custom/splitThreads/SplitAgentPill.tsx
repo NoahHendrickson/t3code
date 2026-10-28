@@ -1,5 +1,5 @@
 /**
- * The pill above the composer — see `.fork/customizations.yaml#fork-split-threads`.
+ * The pill in the composer's context row — see `.fork/customizations.yaml#fork-split-threads`.
  *
  * Alone, "Split agent" opens a new draft on this thread's project, worktree
  * and branch in a pane beside it. In a split the same spot reads "Pop out",
@@ -7,11 +7,13 @@
  */
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { ScopedProjectRef, ScopedThreadRef } from "@t3tools/contracts";
-import { Columns2Icon, ExternalLinkIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
+import { useRef, type MouseEvent, type PointerEvent } from "react";
 
 import { Button } from "~/components/ui/button";
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 
+import { NavigationArrowIcon } from "../icons/lucide-phosphor";
 import { useSplitPane } from "./splitPaneContext";
 import { usePendingSplitStore, useSplitThreadStore } from "./splitThreadStore";
 
@@ -27,10 +29,28 @@ export function SplitAgentPill(props: {
   const splitPane = useSplitPane();
   const handleNewThread = useNewThreadHandler();
   const unpair = useSplitThreadStore((state) => state.unpair);
+  // A mouse press acts on pointerdown, so mounting the new pane overlaps the
+  // press instead of waiting for the release. The click that release fires
+  // lands on the same button, which by then reads the other action, so it is
+  // swallowed. Keyboard (detail 0) and touch still act on click.
+  const actedOnPressRef = useRef(false);
+  const pressHandlers = (action: () => void) => ({
+    onPointerDown: (event: PointerEvent) => {
+      actedOnPressRef.current = event.pointerType === "mouse" && event.button === 0;
+      if (actedOnPressRef.current) action();
+    },
+    onClick: (event: MouseEvent) => {
+      if (event.detail > 0 && actedOnPressRef.current) {
+        actedOnPressRef.current = false;
+        return;
+      }
+      action();
+    },
+  });
 
   if (splitPane.split) {
     return (
-      <Button size="xs" variant="glass" onClick={() => unpair(threadRef)}>
+      <Button size="xs" variant="ghost" {...pressHandlers(() => unpair(threadRef))}>
         <ExternalLinkIcon className="size-3.5" />
         Pop out
       </Button>
@@ -55,8 +75,8 @@ export function SplitAgentPill(props: {
       .finally(() => usePendingSplitStore.setState({ pending: null }));
   };
   return (
-    <Button size="xs" variant="glass" onClick={splitAgent}>
-      <Columns2Icon className="size-3.5" />
+    <Button size="xs" variant="ghost" {...pressHandlers(splitAgent)}>
+      <NavigationArrowIcon className="size-3.5" />
       Split agent
     </Button>
   );

@@ -17,6 +17,9 @@ export interface SplitPaneState {
   readonly leading: boolean;
   /** The window is wide enough for two panes. */
   readonly canSplit: boolean;
+  /** Hands the route to the other pane's thread, so this one can close. A
+      no-op from the background pane, whose partner already holds the route. */
+  readonly focusPartner: () => Promise<void>;
 }
 
 export const SINGLE_PANE: SplitPaneState = {
@@ -24,6 +27,7 @@ export const SINGLE_PANE: SplitPaneState = {
   focused: true,
   leading: true,
   canSplit: false,
+  focusPartner: async () => {},
 };
 
 export const SplitPaneContext = createContext<SplitPaneState>(SINGLE_PANE);

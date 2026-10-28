@@ -23,6 +23,7 @@ import {
   useState,
   type ReactNode,
   type RefObject,
+  type SyntheticEvent,
 } from "react";
 
 import ChatView from "~/components/ChatView";
@@ -122,6 +123,21 @@ function viewKey(view: ReactNode): string | null {
 
 type ComposerRef = RefObject<ChatComposerHandle | null>;
 
+/** Puts a pane's thread on the route (replace): how focus moves between panes. */
+function navigateToPane(
+  navigate: ReturnType<typeof useNavigate>,
+  threadRef: ScopedThreadRef,
+  route: PaneRoute,
+): Promise<void> {
+  return route.kind === "draft"
+    ? navigate({ to: "/draft/$draftId", params: { draftId: route.draftId }, replace: true })
+    : navigate({
+        to: "/$environmentId/$threadId",
+        params: buildThreadRouteParams(threadRef),
+        replace: true,
+      });
+}
+
 function SplitPane(props: {
   readonly state: SplitPaneState;
   /** CSS order: left and right are drawn, not slotted. */
@@ -133,17 +149,12 @@ function SplitPane(props: {
 }) {
   const { state, threadRef, route } = props;
   const navigate = useNavigate();
-  const focusPane = () => {
+  const focusPane = (event: SyntheticEvent) => {
     if (state.focused || threadRef === null || route === null) return;
-    if (route.kind === "draft") {
-      void navigate({ to: "/draft/$draftId", params: { draftId: route.draftId }, replace: true });
-    } else {
-      void navigate({
-        to: "/$environmentId/$threadId",
-        params: buildThreadRouteParams(threadRef),
-        replace: true,
-      });
+    if (event.target instanceof Element && event.target.closest("[data-split-pane-close]")) {
+      return;
     }
+    void navigateToPane(navigate, threadRef, route);
   };
   const pending = state.split && !state.focused;
   return (
@@ -175,6 +186,7 @@ export function SplitThreadPanes(props: {
 }) {
   const { layout, focusedRef, focusedView } = props;
   const wide = useMediaQuery(SPLIT_THREADS_MIN_WIDTH_QUERY);
+  const navigate = useNavigate();
   // ChatView takes its composer handle from the command palette's context, so
   // two panes sharing it would send, attach and focus through whichever
   // composer mounted last. Each slot gives its ChatView a ref of its own that
@@ -246,7 +258,17 @@ export function SplitThreadPanes(props: {
     const view = focused ? focusedView : partner.view;
     const left = !split || slot.threadKey === scopedThreadKey(layout.left);
     const state: SplitPaneState = split
-      ? { split: true, focused, leading: left, canSplit: true }
+      ? {
+          split: true,
+          focused,
+          leading: left,
+          canSplit: true,
+          focusPartner: async () => {
+            if (focused && partnerRef !== null && partner.route !== null) {
+              await navigateToPane(navigate, partnerRef, partner.route);
+            }
+          },
+        }
       : { ...SINGLE_PANE, canSplit: wide };
     return (
       <SplitPane
