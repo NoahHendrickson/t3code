@@ -150,9 +150,14 @@ it.each([
   await click("Use reset");
   await click("Use credit");
   expect(consume).toHaveBeenCalledOnce();
-  // Both popups unmount once their exit animations finish.
-  await expect.poll(() => document.querySelector('[role="alertdialog"]')).toBeNull();
-  await expect.poll(() => document.querySelector('[data-slot="popover-popup"]')).toBeNull();
+  // Both popups unmount once their exit animations finish. A loaded CI runner has left the
+  // popover mid-exit (data-ending-style) past poll's 1s default, so allow longer.
+  await expect
+    .poll(() => document.querySelector('[role="alertdialog"]'), { timeout: 5_000 })
+    .toBeNull();
+  await expect
+    .poll(() => document.querySelector('[data-slot="popover-popup"]'), { timeout: 5_000 })
+    .toBeNull();
   const status = document.querySelector('[role="status"]');
   expect(status?.textContent).toBe("Alpha Using reset credit…");
   await click("Alpha:");
