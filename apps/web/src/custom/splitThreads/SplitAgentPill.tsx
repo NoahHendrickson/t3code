@@ -14,16 +14,21 @@ import { Button } from "~/components/ui/button";
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 
 import { NavigationArrowIcon } from "../icons/lucide-phosphor";
-import { useSplitPane } from "./splitPaneContext";
+import { useSplitPane, type SplitPaneState } from "./splitPaneContext";
 import { usePendingSplitStore, useSplitThreadStore } from "./splitThreadStore";
+
+/** Whether the pill shows: always in a split, and alone on a started thread
+    in a window wide enough (splitting a draft would only reopen the same
+    draft). Callers gate on it, so a null pill never holds an empty row open. */
+export function splitAgentPillShown(splitPane: SplitPaneState, startedThread: boolean): boolean {
+  return splitPane.split || (splitPane.canSplit && startedThread);
+}
 
 export function SplitAgentPill(props: {
   readonly threadRef: ScopedThreadRef;
   readonly projectRef: ScopedProjectRef;
   readonly branch: string | null;
   readonly worktreePath: string | null;
-  /** A started thread: splitting a draft would only reopen the same draft. */
-  readonly canStartSplit: boolean;
 }) {
   const { threadRef, projectRef, branch, worktreePath } = props;
   const splitPane = useSplitPane();
@@ -57,7 +62,6 @@ export function SplitAgentPill(props: {
     );
   }
 
-  if (!splitPane.canSplit || !props.canStartSplit) return null;
   const splitAgent = () => {
     usePendingSplitStore.setState({ pending: { source: threadRef, projectRef } });
     void handleNewThread(projectRef, {

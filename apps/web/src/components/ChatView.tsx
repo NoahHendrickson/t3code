@@ -290,9 +290,8 @@ import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
 import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
-import { SplitAgentPill } from "~/custom/splitThreads/SplitAgentPill";
-import { FloatPaneButton } from "~/custom/splitThreads/FloatPaneButton";
-import { SplitPaneCloseButton } from "~/custom/splitThreads/SplitPaneCloseButton";
+import { SplitAgentPill, splitAgentPillShown } from "~/custom/splitThreads/SplitAgentPill";
+import { SplitPaneHeaderControls } from "~/custom/splitThreads/SplitPaneHeaderControls";
 /* fork:end fork-split-threads */
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
@@ -3986,7 +3985,13 @@ export default function ChatView(props: ChatViewProps) {
   const activeRunningTurnId = activeRuntime?.activeRunId ?? null;
   useProactivePanels({
     threadRef: isServerThread ? activeThreadRef : null,
-    enabled: settings.proactivePanelsEnabled && !shouldUsePlanSidebarSheet,
+    enabled:
+      settings.proactivePanelsEnabled &&
+      !shouldUsePlanSidebarSheet &&
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      // The floating window shows no panels, and one opened from it docks it.
+      !splitPane.floating,
+    /* fork:end fork-split-threads */
     settingsHydrated: clientSettingsHydrated,
     threadDetailLoading,
     runningTurnId: activeRunningTurnId,
@@ -8288,20 +8293,17 @@ export default function ChatView(props: ChatViewProps) {
   const composerContextLeading = draftProjectPill ?? threadContextReadout;
   /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
   // "Split agent" alone, "Pop out" in a split, right after the project and
-  // branch chips. Gated on the pill's own predicate so a null pill never
-  // keeps an empty context row mounted; the draft hero's centred composer
-  // has no split to offer.
+  // branch chips. The draft hero's centred composer has no split to offer.
   const splitAgentPill =
     !isDraftHeroState &&
     activeThreadRef &&
     activeProjectRef &&
-    (splitPane.split || (splitPane.canSplit && isServerThread)) ? (
+    splitAgentPillShown(splitPane, isServerThread) ? (
       <SplitAgentPill
         threadRef={activeThreadRef}
         projectRef={activeProjectRef}
         branch={activeThread?.branch ?? null}
         worktreePath={activeWorktreePath}
-        canStartSplit={isServerThread}
       />
     ) : null;
   // The liveness pill keeps the row's last slot: stop stays where the hand knows it.
@@ -8498,15 +8500,6 @@ export default function ChatView(props: ChatViewProps) {
       />
     </div>
   );
-  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-  // Only a started thread floats: a draft's promotion runs on its route, which
-  // the floating window never holds.
-  const floatPaneAction = splitPane.floating
-    ? splitPane.dock
-    : isServerThread
-      ? splitPane.float
-      : null;
-  /* fork:end fork-split-threads */
   const panelLayoutControls = (
     <div
       className={cn(
@@ -8533,25 +8526,12 @@ export default function ChatView(props: ChatViewProps) {
           />
         </span>
       ) : null}
-      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
-          Float a started thread over the column. The floating window docks back,
-          and drops the panel toggles: its panels stay shut until it docks. */}
-      {floatPaneAction ? (
-        <div className="pointer-events-auto flex h-full items-center">
-          <FloatPaneButton floating={splitPane.floating} onPress={floatPaneAction} />
-        </div>
-      ) : null}
-      {splitPane.floating ? null : (
-        <div className="pointer-events-auto flex h-full items-center">{panelToggleControls}</div>
-      )}
-      {/* fork:end fork-split-threads */}
-      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
-          The draft "Split agent" opened can be cancelled until it is sent. */}
-      {splitPane.split && isLocalDraftThread && draftId && activeThreadRef ? (
-        <div className="pointer-events-auto flex h-full items-center">
-          <SplitPaneCloseButton draftId={draftId} threadRef={activeThreadRef} />
-        </div>
-      ) : null}
+      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */}
+      <SplitPaneHeaderControls
+        panelToggleControls={panelToggleControls}
+        draftId={isLocalDraftThread ? draftId : null}
+        threadRef={activeThreadRef}
+      />
       {/* fork:end fork-split-threads */}
     </div>
   );
@@ -8591,8 +8571,10 @@ export default function ChatView(props: ChatViewProps) {
                   reserveTitleBarControlInset &&
                     !inlineRightPanelOwnsTitleBar &&
                     /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-                    // Native window controls sit over the right pane only.
+                    // Native window controls sit over the right pane only,
+                    // and never over the floating window.
                     (!splitPane.split || !splitPane.leading) &&
+                    !splitPane.floating &&
                     /* fork:end fork-split-threads */
                     "wco:pr-(--workspace-native-controls-inset)",
                 )

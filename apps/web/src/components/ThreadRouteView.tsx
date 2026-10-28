@@ -215,9 +215,7 @@ export function ThreadRouteView({ target }: { target: ThreadRouteTarget }) {
       <SplitThreadPanes
         layout={splitLayout}
         focusedRef={routeThreadRef}
-        focusedRoute={
-          target.kind === "draft" ? { kind: "draft", draftId: target.draftId } : { kind: "server" }
-        }
+        focusedDraftId={target.kind === "draft" ? target.draftId : null}
         focusedView={view}
       />
       {/* fork:end fork-split-threads */}

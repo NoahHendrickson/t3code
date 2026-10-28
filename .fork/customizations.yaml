@@ -5700,8 +5700,9 @@
     screen alone. Both act on a mouse press rather than its release (the
     click that follows is swallowed, since it lands on the other action),
     so mounting the new pane overlaps the press. Until it is sent, a split
-    draft carries an X in its header that hands the route to the other pane,
-    dissolves the pair and discards the draft. Dragging one
+    draft carries an X in its header that hands the route to the other pane
+    and dissolves the pair; an empty draft is discarded, while one the user
+    has written in stays a draft of its own. Dragging one
     sidebar card onto another pairs them: the card dropped on keeps the left
     pane. Pairs are device-local (custom/splitThreads/splitThreadStore,
     localStorage): no server, contract or migration change, so other clients
@@ -5716,15 +5717,21 @@
     Any started thread can float: an icon left of the details toggle lifts it
     into a window over the chat column, dragged by its header and resized
     from its corners (custom/splitThreads/floatFrame, clamped into the column
-    on every layout, stored on release). The column keeps the thread's split
-    partner, or goes back to the route's previous thread (an unpersisted
-    history the split panes record). One thread floats at a time, never also
-    in a pair; the same icon in the window reads Dock and pairs it beside the
-    column's thread, and opening it in the column ends the float. The window
-    is a third pane slot, so floating and docking never remount its ChatView,
-    and it never takes the route: it is typed into while the column's thread
-    keeps window-level input. Drafts do not float, since promotion runs on
-    their route. On Glass the window is the docked details card's material
+    on every layout, stored on release; custom/splitThreads/floatWindow).
+    The column keeps the thread's split partner, or goes back to the route's
+    previous thread if it still exists (an unpersisted history the store
+    records on each arrival). The route's own thread floats once the route
+    has left it, drawn floating from that render, so neither it nor a window
+    it replaces drops out for a render. One thread floats at a time, never
+    also in a pair; the same icon in the window reads Dock and pairs it
+    beside the column's thread, and opening it in the column ends the float.
+    The window is a third pane slot, so floating and docking never remount
+    its ChatView, and it never takes the route. A press in it takes
+    window-level input (the pane context's focused flag) until a press back
+    in the column or either side changes thread. It shows no right panel,
+    terminal or details card; their state is kept, proactive panels hold off
+    while it floats, and a panel or terminal opened while it has input docks
+    it. Drafts do not float, since promotion runs on their route. On Glass the window is the docked details card's material
     (its wash and hairline straight on the stage). It sits inside #root, so
     no popup cutout opens beneath it and a backdrop-filter never blurs over
     the native material; instead the column's panes, boxed while a window
@@ -5736,7 +5743,7 @@
     highlight and every route-keyed global shortcut follow focus with no
     changes of their own. ThreadRouteView (fenced) hands every chat view
     through SplitThreadPanes, split or not: the wrappers are display:contents
-    outside a split, and each shown thread keeps one of two slots and its
+    outside a split, and each shown thread keeps one of three slots and its
     element key for as long as it is on screen (custom/splitThreads/
     splitPaneSlots), with left and right drawn by CSS order. So no ChatView
     remounts when a partner opens or closes, focus moves, the window narrows,
@@ -5790,6 +5797,10 @@
     - apps/web/src/custom/splitThreads/SplitThreadPanes.tsx
     - apps/web/src/custom/splitThreads/splitPaneSlots.ts
     - apps/web/src/custom/splitThreads/SplitAgentPill.tsx
+    - apps/web/src/custom/splitThreads/SplitPaneHeaderControls.tsx
+    - apps/web/src/custom/splitThreads/floatFrame.ts
+    - apps/web/src/custom/splitThreads/floatWindow.tsx
+    - apps/web/src/custom/splitThreads/floatThreads.test.ts
     - apps/web/src/custom/splitThreads/sidebarSplitRows.ts
     - apps/web/src/custom/splitThreads/sidebarSplitDrag.ts
     - apps/web/src/custom/splitThreads/SidebarSplitPairRow.tsx
@@ -5804,7 +5815,8 @@
   watch:
     # Fenced: the route thread's split layout and SplitThreadPanes in place of {view}.
     - apps/web/src/components/ThreadRouteView.tsx
-    # Fenced: focused-pane gates, titlebar insets per pane, and the pill.
+    # Fenced: focused-pane gates, titlebar insets per pane, the pill, the
+    # header controls and the floating window's hidden panels.
     - apps/web/src/components/ChatView.tsx
     # Fenced: the palette's find broadcast opens only the focused pane.
     - apps/web/src/components/chat/useThreadFind.ts
@@ -5816,6 +5828,7 @@
   verify:
     - apps/web/src/__fork_guards__/forkSplitThreads.test.ts
     - apps/web/src/custom/splitThreads/splitThreads.test.ts
+    - apps/web/src/custom/splitThreads/floatThreads.test.ts
 
 - id: fork-sidebar-recent-projects
   intent: >

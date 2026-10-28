@@ -4,13 +4,10 @@ import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { FLOAT_EDGE_GAP, moveFloatFrame, resizeFloatFrame, resolveFloatFrame } from "./floatFrame";
 import { findSplitPair } from "./splitThreadPairs";
-import {
-  noteRouteThread,
-  useRouteThreadHistoryStore,
-  useSplitThreadStore,
-} from "./splitThreadStore";
+import { useSplitThreadStore } from "./splitThreadStore";
 
 const ref = (id: string) => scopeThreadRef(EnvironmentId.make("env"), ThreadId.make(id));
+const server = { kind: "server" } as const;
 const column = { width: 1000, height: 800, top: 52 };
 
 describe("float frame", () => {
@@ -64,8 +61,14 @@ describe("float frame", () => {
 
 describe("floating a thread", () => {
   beforeEach(() => {
-    useSplitThreadStore.setState({ pairs: [], floating: null, floatFrame: null });
-    useRouteThreadHistoryStore.setState({ current: null, previous: null });
+    useSplitThreadStore.setState({
+      pairs: [],
+      floating: null,
+      floatFrame: null,
+      routeCurrent: null,
+      routePrevious: null,
+      pendingFloat: null,
+    });
   });
 
   it("takes a paired thread out of its pair, and docking pairs it again", () => {
@@ -84,10 +87,33 @@ describe("floating a thread", () => {
   });
 
   it("remembers the route's previous thread, not a re-visit of the current one", () => {
-    noteRouteThread({ ref: ref("p"), route: { kind: "server" } });
-    noteRouteThread({ ref: ref("f"), route: { kind: "server" } });
-    // The same thread changing route (a draft's promotion) is not a new visit.
-    noteRouteThread({ ref: ref("f"), route: { kind: "server" } });
-    expect(useRouteThreadHistoryStore.getState().previous?.ref).toEqual(ref("p"));
+    const { arrive } = useSplitThreadStore.getState();
+    arrive({ ref: ref("p"), route: server });
+    arrive({ ref: ref("f"), route: server });
+    arrive({ ref: ref("f"), route: server });
+    expect(useSplitThreadStore.getState().routePrevious?.ref).toEqual(ref("p"));
+  });
+
+  it("floats the route's thread only once the route has left it", () => {
+    const store = useSplitThreadStore.getState();
+    store.arrive({ ref: ref("p"), route: server });
+    store.arrive({ ref: ref("f"), route: server });
+    store.floatOnLeave(ref("f"));
+    expect(useSplitThreadStore.getState().floating).toBeNull();
+    store.arrive({ ref: ref("p"), route: server });
+    expect(useSplitThreadStore.getState().floating).toEqual(ref("f"));
+    // Floating the column's thread back to the floated one swaps them.
+    store.floatOnLeave(ref("p"));
+    store.arrive({ ref: ref("f"), route: server });
+    expect(useSplitThreadStore.getState().floating).toEqual(ref("p"));
+    expect(useSplitThreadStore.getState().pendingFloat).toBeNull();
+  });
+
+  it("ends a float when the route arrives at the floated thread", () => {
+    const store = useSplitThreadStore.getState();
+    store.arrive({ ref: ref("p"), route: server });
+    store.float(ref("f"));
+    store.arrive({ ref: ref("f"), route: server });
+    expect(useSplitThreadStore.getState().floating).toBeNull();
   });
 });
