@@ -162,12 +162,20 @@ describe("fork guard: fork-model-picker", () => {
     expect(content.indexOf('providerId: "favorites"')).toBeLessThan(
       content.indexOf("{providerEntries.map(renderProviderOption)}"),
     );
-    // Opens on Favorites when one can be picked, else the current provider,
-    // and an emptied Favorites shows the current provider.
+    // Opens on Favorites when one can be picked, else the current provider.
+    // A scope with nothing to show (emptied Favorites, a removed instance)
+    // resolves to Favorites, else the current provider, so the trigger and
+    // list always name a real scope.
     expect(content).toMatch(
       /useState<ModelPickerScope>\(\(\) =>[^;]*\? "favorites"\s*: props\.activeInstanceId/u,
     );
-    expect(content).toContain('storedScope === "favorites" && favoriteModels.length === 0');
+    expect(content).toMatch(
+      /if \(stored\) return stored;\s*if \(favoriteModels\.length > 0\) return "favorites";\s*return \(\s*entryByInstanceId\.get\(props\.activeInstanceId\)/u,
+    );
+    // Editing the query closes the provider submenu, in one place.
+    expect(content).toMatch(
+      /const setSearchQuery = \(next: SetStateAction<string>\) => \{\s*setSearchQueryState\(next\);\s*setProviderMenuOpen\(false\);/u,
+    );
     // Legacy models sit behind an inline toggle.
     expect(content).toContain('data-model-picker-legacy-toggle="true"');
     // Choosing an option swaps the list and focuses the search field only

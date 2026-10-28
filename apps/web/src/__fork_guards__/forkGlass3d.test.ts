@@ -6,7 +6,8 @@
  * The 3D glass setting (Full / Selected items only / Off) gates the stage
  * card and the glass surfaces by a root attribute, through parent rules
  * that carry the gate. A rule written outside those parents would ignore the
- * setting, and a rule in a selection parent that is not a selected row would
+ * setting, and a rule in a selection parent that is not a selected row (or
+ * the recent-project quick-start buttons, kept there by product choice) would
  * leak depth into "Selected items only".
  */
 
@@ -35,20 +36,21 @@ describe("fork guard: fork-glass-3d", () => {
     expect(topLevelHeaders(readSibling("../theme.custom.glass-stage.css"))).toEqual([FULL]);
   });
 
-  it("keeps only the tokens and the selected rows with selected items only", () => {
+  it("keeps only the tokens, the selected rows and the quick-start buttons with selected items only", () => {
     const sheet = readSibling("../theme.custom.glass-surfaces.css");
     expect(topLevelHeaders(sheet)).toEqual([NOT_OFF, FULL, NOT_OFF, FULL]);
     const selection = cssRules(sheet).filter((rule) => rule.selector.includes(NOT_OFF));
     expect(selection.length).toBeGreaterThan(0);
     for (const rule of selection) {
       const isTokens = compact(rule.selector) === compact(`${NOT_OFF}${PALETTE}`);
-      // The recent-project buttons keep their rim at selected items only by
-      // product choice (fork-sidebar-recent-projects).
-      const isSelectedRow =
-        /\[data-thread-item\]|\[data-fork-chrome-row\]|\[data-fork-recent-project\]/u.test(
-          rule.selector,
-        );
-      expect(isTokens || isSelectedRow, `not a selected row: "${rule.selector}"`).toBe(true);
+      const isSelectedRow = /\[data-thread-item\]|\[data-fork-chrome-row\]/u.test(rule.selector);
+      // The block's one named exception (fork-sidebar-recent-projects); a
+      // new chip belongs under Full, not on this list.
+      const isQuickStart = compact(rule.selector).endsWith("[data-fork-recent-project]");
+      expect(
+        isTokens || isSelectedRow || isQuickStart,
+        `not a selected row: "${rule.selector}"`,
+      ).toBe(true);
       expect(rule.selector, rule.selector).not.toContain("data-fork-thread-sort");
     }
   });

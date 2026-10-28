@@ -531,6 +531,11 @@
      the popups (below). Light on glass is a hairline glint over a soft sheen,
      never a lit border.
 
+     This block holds the tokens, those selected rows and one exception: the
+     sidebar's recent-project quick-start buttons, which keep their rim here
+     by product choice (end of block). Nothing else belongs here; other
+     surfaces wait for Full below.
+
      Gated on the palette, not on vibrancy: the depth reads on the web's solid
      panel too. Only the fill waits for real glass (below), because a white
      wash over an opaque panel is what the flatten-alpha doctrine rules out.
@@ -675,9 +680,10 @@
     background-color: rgb(255 255 255 / 6%);
   }
 
-  /* The sidebar's recent-project buttons (fork-sidebar-recent-projects),
-     with the rows above the list: shown at Selected items only too. They
-     have no border, so the inset light lands on the edge itself. */
+  /* The block's one non-selected surface: the sidebar's recent-project
+     buttons (fork-sidebar-recent-projects) sit with the rows above the list,
+     so they keep their rim at Selected items only too. They have no border,
+     so the inset light lands on the edge itself. */
   &.dark[data-fork-theme="cool-darker"] [data-fork-recent-project] {
     box-shadow:
       var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),

@@ -4870,8 +4870,9 @@
     "off" on the root before first render (absent at Full). The sheets nest
     under parents that carry the gate through a zero-specificity :where():
     the stage sheet needs Full; the surfaces sheet keeps source order across
-    alternating parents, the tokens and selected rows under "not off" and
-    everything else under Full. & takes a parent's specificity, so every rule
+    alternating parents, the tokens, selected rows and the recent-project
+    buttons (the one named exception) under "not off" and everything else
+    under Full. & takes a parent's specificity, so every rule
     ranks as it did flat. The card-inset and radius tokens are shared with the
     new-agent picture and live in the palettes sheet, outside the setting,
     with a rule that returns the picture's corners to 8px short of Full. Both
@@ -5686,9 +5687,10 @@
     one chip per recently active project, up to five, newest activity first:
     the project's icon then a plus. Clicking a chip starts a new agent already
     in that project through the same handler a project header's plus uses, so
-    both pick the same environment. Recency is a project's newest thread the
-    list would show (last user message, else last update); a project with no
-    such thread is not offered, and the strip renders nothing when no project
+    both pick the same environment. Recency is the sidebar's own Recent
+    project order (sortLogicalProjectsForSidebar) over the threads the list
+    would show, so the strip cannot disagree with it; a project with no such
+    thread is not offered, and the strip renders nothing when no project
     qualifies. A narrow sidebar scrolls the strip sideways instead of
     wrapping it. The strip reads thread shells itself, so the Sidebar.tsx call
     site passes only the project groups and the start handler. Each button
@@ -5700,11 +5702,11 @@
   files:
     - apps/web/src/custom/SidebarV2RecentProjectsStrip.tsx
     - apps/web/src/theme.custom.glass-surfaces.css
-    - apps/web/src/custom/sidebarV2RecentProjects.ts
-    - apps/web/src/custom/sidebarV2RecentProjects.test.ts
   shadows: []
   watch:
     # Fenced import and call site between the action rows and the Threads row.
     - apps/web/src/components/Sidebar.tsx
+    # The ranking the strip reuses.
+    - apps/web/src/components/Sidebar.logic.ts
   verify:
     - apps/web/src/__fork_guards__/forkSidebarRecentProjects.test.ts

@@ -6,36 +6,47 @@
  * a new agent already in that project, the same path a project header's plus
  * takes, so the two cannot disagree about which environment it lands in.
  *
+ * "Recent" is the sidebar's own Recent project order (sortLogicalProjectsForSidebar),
+ * over the threads the list would show, so the strip cannot disagree with it.
+ * A project with no such thread is not recent and is left out rather than
+ * padded in.
+ *
  * Reads the thread shells itself (as the Automations row does), so the
  * Sidebar.tsx call site passes only the project groups and the start action.
  */
 import { ProjectFavicon } from "~/components/ProjectFavicon";
-import { filterSidebarV2VisibleThreads } from "~/components/Sidebar.logic";
+import {
+  filterSidebarV2VisibleThreads,
+  sortLogicalProjectsForSidebar,
+} from "~/components/Sidebar.logic";
 import { SidebarGroup } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useThreadShells } from "~/state/entities";
 import { PlusIcon } from "./icons/lucide-phosphor";
 import type { SidebarV2ChromeProjectGroup } from "./SidebarV2ChromeRows";
-import { createProjectRefIndex, type SidebarV2GroupableProject } from "./sidebarV2ProjectGrouping";
-import {
-  pickSidebarV2RecentProjects,
-  rankSidebarV2RecentProjectKeys,
-} from "./sidebarV2RecentProjects";
+import type { SidebarV2GroupableProject } from "./sidebarV2ProjectGrouping";
+
+const RECENT_PROJECT_LIMIT = 5;
+
+const projectRefKey = (ref: { readonly environmentId: string; readonly projectId: string }) =>
+  `${ref.environmentId}:${ref.projectId}`;
 
 export function SidebarV2RecentProjectsStrip<
-  TProject extends SidebarV2ChromeProjectGroup & SidebarV2GroupableProject,
+  TProject extends SidebarV2ChromeProjectGroup &
+    SidebarV2GroupableProject & { readonly id: string; readonly title: string },
 >(props: {
   readonly projectGroups: ReadonlyArray<TProject>;
   readonly onStartAgent: (projectKey: string) => void;
 }) {
-  const threads = useThreadShells();
-  const recentProjects = pickSidebarV2RecentProjects(
-    rankSidebarV2RecentProjectKeys({
-      threads: filterSidebarV2VisibleThreads(threads, null),
-      projectRefIndex: createProjectRefIndex(props.projectGroups),
-    }),
-    props.projectGroups,
-  );
+  const threads = filterSidebarV2VisibleThreads(useThreadShells(), null);
+  const activeRefs = new Set(threads.map(projectRefKey));
+  const recentProjects = sortLogicalProjectsForSidebar(
+    props.projectGroups.filter((group) =>
+      group.memberProjectRefs.some((ref) => activeRefs.has(projectRefKey(ref))),
+    ),
+    threads,
+    "updated_at",
+  ).slice(0, RECENT_PROJECT_LIMIT);
   if (recentProjects.length === 0) return null;
 
   return (

@@ -27,7 +27,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { formatProviderUpdateRequiredNotice } from "@t3tools/client-runtime/providerUpdateRequiredModels";
 import { useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { KeyboardEvent, ReactNode, SetStateAction } from "react";
 import { Heart } from "@phosphor-icons/react";
 import { CheckIcon, ChevronDownIcon, SearchIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
@@ -224,7 +224,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onInstanceModelChange,
     onToggleModel,
   } = props;
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQueryState] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { favorites } = useEnvironmentModelPreferences(props.environmentId);
@@ -376,13 +376,32 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       : props.activeInstanceId,
   );
   const [providerMenuOpen, setProviderMenuOpen] = useState(false);
+  // Any edit to the query closes the provider submenu: a query hides the
+  // scope behind the flat results. Closed rather than derived from
+  // isSearching, which would pop the submenu back open when the query clears.
+  const setSearchQuery = (next: SetStateAction<string>) => {
+    setSearchQueryState(next);
+    setProviderMenuOpen(false);
+  };
   const [showLegacy, setShowLegacy] = useState(false);
-  // An emptied Favorites (the last star removed, or its providers gone) shows
-  // the current provider instead.
-  const scope =
-    storedScope === "favorites" && favoriteModels.length === 0
-      ? props.activeInstanceId
-      : storedScope;
+  // The stored scope can name nothing to show: an emptied Favorites (the last
+  // star removed, or its providers gone), or an instance that has since been
+  // removed (a thread still on it). Either falls back to Favorites if any,
+  // else the current model's provider, else the first listed, so the trigger
+  // and the list always have a real scope. Only a picker with no provider
+  // instances at all is left on an empty Favorites.
+  const scopeEntry = (() => {
+    const stored = storedScope === "favorites" ? undefined : entryByInstanceId.get(storedScope);
+    if (stored) return stored;
+    if (favoriteModels.length > 0) return "favorites";
+    return (
+      entryByInstanceId.get(props.activeInstanceId) ??
+      instanceEntries.find(isProviderInstancePickerVisible) ??
+      instanceEntries[0] ??
+      "favorites"
+    );
+  })();
+  const scope = scopeEntry === "favorites" ? "favorites" : scopeEntry.instanceId;
 
   const isLegacyModel = (model: ModelPickerItem) =>
     model.isLegacy === true && !favoritesSet.has(providerModelKey(model.instanceId, model.slug));
@@ -466,7 +485,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   const selectScope = (next: ModelPickerScope, options?: { showLegacy?: boolean }) => {
     setSearchQuery("");
     setStoredScope(next);
-    setProviderMenuOpen(false);
     setShowLegacy(options?.showLegacy ?? false);
     window.requestAnimationFrame(focusSearchInput);
     window.setTimeout(focusSearchInput, 0);
@@ -567,7 +585,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     event.preventDefault();
     event.stopPropagation();
     setSearchQuery((query) => query + event.key);
-    setProviderMenuOpen(false);
     focusSearchInput();
   };
 
@@ -833,8 +850,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     });
   };
 
-  const scopeEntry = scope === "favorites" ? undefined : entryByInstanceId.get(scope);
-
   /** The provider menu: a submenu off a trigger naming the scope, opening on
       hover like any submenu. Its popup portals out of this content, so it
       carries the stamps itself: the picker's (focus, wheel lock), the
@@ -849,9 +864,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         data-model-picker-provider-trigger="true"
         className={cn(ROW_CLASS, "gap-2")}
       >
-        {scope === "favorites" ? favoritesIcon : scopeEntry ? renderInstanceIcon(scopeEntry) : null}
+        {scopeEntry === "favorites" ? favoritesIcon : renderInstanceIcon(scopeEntry)}
         <span className="min-w-0 flex-1 truncate">
-          {scope === "favorites" ? "Favorites" : (scopeEntry?.displayName ?? "Models")}
+          {scopeEntry === "favorites" ? "Favorites" : scopeEntry.displayName}
         </span>
       </MenuSubTrigger>
       {/* The trigger sits 8px inside the menu (its 4px scroll padding plus this
@@ -885,9 +900,8 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     </MenuSub>
   );
 
-  const renderInstanceModels = (instanceId: ProviderInstanceId) => {
-    const entry = entryByInstanceId.get(instanceId);
-    if (!entry) return <p className="px-2 py-2 text-xs text-muted-foreground">No models</p>;
+  const renderInstanceModels = (entry: ProviderInstanceEntry) => {
+    const { instanceId } = entry;
     const { current, legacy } = modelsForInstance(instanceId);
     const needsSetup =
       props.onOpenProviderSetup !== undefined &&
@@ -949,8 +963,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
         </>
       );
     }
-    if (scope === "favorites") return favoriteModels.map((model) => renderModelItem(model, true));
-    return renderInstanceModels(scope);
+    if (scopeEntry === "favorites") {
+      return favoriteModels.map((model) => renderModelItem(model, true));
+    }
+    return renderInstanceModels(scopeEntry);
   };
 
   return (
@@ -975,7 +991,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
             value={searchQuery}
             onChange={(event) => {
               setSearchQuery(event.target.value);
-              setProviderMenuOpen(false);
             }}
             onKeyDown={handleSearchKeyDown}
           />
