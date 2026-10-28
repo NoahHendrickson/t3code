@@ -181,10 +181,11 @@ export function SplitThreadPanes(props: {
   // never changes (a send holds it across awaits), and the palette, which only
   // reads its ref, is pointed once at whichever slot is focused.
   const paletteComposerRef = useComposerHandleContext();
-  const slotComposerRefs = [
-    useRef<ChatComposerHandle | null>(null),
-    useRef<ChatComposerHandle | null>(null),
-  ] as const;
+  // One statement per ref: React Compiler caches an array literal on first
+  // render, hook calls and all, so later renders would skip both useRefs.
+  const firstSlotComposerRef = useRef<ChatComposerHandle | null>(null);
+  const secondSlotComposerRef = useRef<ChatComposerHandle | null>(null);
+  const slotComposerRefs = [firstSlotComposerRef, secondSlotComposerRef] as const;
   const focusedSlotRef = useRef<number | null>(null);
   useLayoutEffect(() => {
     if (paletteComposerRef === null) return;
