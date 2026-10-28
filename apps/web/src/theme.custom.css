@@ -180,6 +180,38 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Status section caret — see
+   `.fork/customizations.yaml#sidebar-v2-status-grouping`.
+
+   The caret shows while the pointer is anywhere in its section, not just on
+   the header. A section's rows are the header's following siblings in the
+   one flat list (wrapping them would move keyed rows between parents and
+   break the list's row motion), so "my section" is a hovered later sibling
+   with no other header between: every header and shelf header carries
+   data-thread-selection-safe, rows do not.
+
+   Hiding waits 100ms so crossing the 2px gap between cards does not blink
+   it; showing is immediate. That delay is why the rotation's transition is
+   declared here rather than with `transition-transform`. */
+:root[data-fork="noahhendrickson-t3code"] [data-status-section-caret] {
+  transition-property: rotate, visibility;
+  transition-duration: var(--default-transition-duration, 150ms), 0s;
+  transition-timing-function: var(--default-transition-timing-function, ease);
+  transition-delay: 0s, 100ms;
+}
+:root[data-fork="noahhendrickson-t3code"]
+  [data-status-section-header]:is(:hover, :has(:focus-visible))
+  [data-status-section-caret],
+:root[data-fork="noahhendrickson-t3code"]
+  [data-status-section-header]:has(~ li:not([data-thread-selection-safe]):hover):not(
+    :has(~ [data-thread-selection-safe] ~ li:hover)
+  )
+  [data-status-section-caret] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+/* ---------------------------------------------------------------------------
    Workspace header split pills — see
    `.fork/customizations.yaml#fork-workspace-header`.
 
