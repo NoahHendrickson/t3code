@@ -2735,6 +2735,11 @@
     waiting on an approval or a question, or failed and not opened since:
     the rain while they work, the amber dot once one waits on you, the failed
     dot for an unopened failure. While any are live the row opens All runs.
+    Hovering it while any are live opens the thread hover card listing each
+    run with its mark, its automation name, its thread title, its project
+    and its pull request; the names and a GitHub-triggered run's PR come
+    from the task subscription and the newest runs page, read only while
+    the card is open.
     The count comes from the shells the client already holds, with no new
     wire data or polling. A run opened from Automations carries a
     history-state flag, and the thread header shows a back arrow only for
@@ -2744,6 +2749,7 @@
   files:
     - apps/web/src/custom/scheduledRunsOffSidebar.ts
     - apps/web/src/custom/scheduledRunActivity.ts
+    - apps/web/src/custom/SidebarV2AutomationsHoverCard.tsx
     - apps/web/src/custom/scheduled/AutomationRunBackButton.tsx
   shadows: []
   watch:

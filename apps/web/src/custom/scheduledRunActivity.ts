@@ -34,18 +34,36 @@ function failureUnseen(thread: ScheduledRunActivityShell): boolean {
   return Date.parse(completedAt) > Date.parse(thread.lastVisitedAt);
 }
 
+export type ScheduledRunActivityKind = "working" | "needsYou" | "failed";
+
+/** The hidden runs the row counts, in roster order, each with the bucket it
+    counts in — what the row's hover card lists. */
+export function listScheduledRunActivity<T extends ScheduledRunActivityShell>(
+  threads: ReadonlyArray<T>,
+): Array<{ readonly thread: T; readonly kind: ScheduledRunActivityKind }> {
+  const runs: Array<{ readonly thread: T; readonly kind: ScheduledRunActivityKind }> = [];
+  for (const thread of threads) {
+    if (thread.archivedAt !== null || !isScheduledRunOffSidebar(thread)) continue;
+    const status = resolveSidebarThreadStatus(thread);
+    if (status === "working") runs.push({ thread, kind: "working" });
+    else if (status === "approval" || status === "input") runs.push({ thread, kind: "needsYou" });
+    else if ((status === "failed" || status === "limited") && failureUnseen(thread)) {
+      runs.push({ thread, kind: "failed" });
+    }
+  }
+  return runs;
+}
+
 export function summarizeScheduledRunActivity(
   threads: ReadonlyArray<ScheduledRunActivityShell>,
 ): ScheduledRunActivity {
   let working = 0;
   let needsYou = 0;
   let failed = 0;
-  for (const thread of threads) {
-    if (thread.archivedAt !== null || !isScheduledRunOffSidebar(thread)) continue;
-    const status = resolveSidebarThreadStatus(thread);
-    if (status === "working") working += 1;
-    else if (status === "approval" || status === "input") needsYou += 1;
-    else if ((status === "failed" || status === "limited") && failureUnseen(thread)) failed += 1;
+  for (const { kind } of listScheduledRunActivity(threads)) {
+    if (kind === "working") working += 1;
+    else if (kind === "needsYou") needsYou += 1;
+    else failed += 1;
   }
   return { working, needsYou, failed };
 }
