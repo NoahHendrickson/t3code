@@ -153,7 +153,7 @@ async function openLegacyPicker(activeModel: string) {
 
 describe("ProviderModelPicker", () => {
   /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
-     The shadow renders a Menu (menu items, back rows), not upstream's popover of
+     The shadow renders a Menu (menu items, a provider submenu), not upstream's popover of
      provider buttons and listbox options, so these cases cannot find their targets. */
   it.skip("hoists legacy favorites in provider order and returns an unfavorited model to legacy", async () => {
     /* fork:end fork-model-picker */
@@ -187,7 +187,7 @@ describe("ProviderModelPicker", () => {
   });
 
   /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker
-     The shadow renders a Menu (menu items, back rows), not upstream's popover of
+     The shadow renders a Menu (menu items, a provider submenu), not upstream's popover of
      provider buttons and listbox options, so these cases cannot find their targets. */
   it.skip("keeps unrelated legacy models collapsed when the active model is a favorite", async () => {
     /* fork:end fork-model-picker */

@@ -450,9 +450,10 @@
   /* The model picker keeps its own squarer geometry (fork-model-picker: 8px
      corners, 4px rows on an 8px inset). */
   &.dark[data-fork-theme="cool-darker"]
-    [data-chat-composer-floating-layer="true"][data-slot="menu-popup"]:has(
-      [data-fork-model-picker]
-    ) {
+    [data-chat-composer-floating-layer="true"]:is(
+      [data-slot="menu-popup"],
+      [data-slot="menu-sub-content"]
+    ):has([data-fork-model-picker]) {
     border-radius: 8px;
   }
 
@@ -529,6 +530,11 @@
      Automations). The thread sort menu's current option wears the same, with
      the popups (below). Light on glass is a hairline glint over a soft sheen,
      never a lit border.
+
+     This block holds the tokens, those selected rows and one exception: the
+     sidebar's recent-project quick-start buttons, which keep their rim here
+     by product choice (end of block). Nothing else belongs here; other
+     surfaces wait for Full below.
 
      Gated on the palette, not on vibrancy: the depth reads on the web's solid
      panel too. Only the fill waits for real glass (below), because a white
@@ -672,6 +678,16 @@
     [data-sidebar-version="v2"]
     :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"]) {
     background-color: rgb(255 255 255 / 6%);
+  }
+
+  /* The block's one non-selected surface: the sidebar's recent-project
+     buttons (fork-sidebar-recent-projects) sit with the rows above the list,
+     so they keep their rim at Selected items only too. They have no border,
+     so the inset light lands on the edge itself. */
+  &.dark[data-fork-theme="cool-darker"] [data-fork-recent-project] {
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+      var(--fork-glass-rim);
   }
 }
 

@@ -3,7 +3,7 @@
  * `.fork/customizations.yaml#fork-model-picker`.
  *
  * Wraps ProviderModelPicker and hands it the reasoning half: a panel under
- * the model pages where effort is a slider over the model's own levels, and
+ * the model list where effort is a slider over the model's own levels, and
  * every other trait keeps a compact control (a checkbox for on/off traits,
  * segments for the rest). The trigger reads "Opus 5.5 High". Writes go to the
  * same draft-store options, with the same Ultrathink prompt prefix, as
