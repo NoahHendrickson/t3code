@@ -45,6 +45,9 @@ import * as Settings from "./serverSettings.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import { isFilesystemRoot, managedWorktreesDirectories } from "./worktreesDirectory.ts";
 import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
+/* fork:begin fork-git-256-non-repository — see .fork/customizations.yaml#fork-git-256-non-repository */
+import { isNonRepositoryGitStderr } from "./vcs/GitVcsDriverCore.ts";
+/* fork:end fork-git-256-non-repository */
 import { withWorkspaceLease } from "./workspace/workspaceLease.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
@@ -478,7 +481,9 @@ const make = Effect.gen(function* () {
         );
       if (result === null) return null;
       if (result.exitCode === 0 || result.exitCode === allowedExitCode) return result;
-      if (result.stderr.toLowerCase().includes("not a git repository")) return null;
+      /* fork:begin fork-git-256-non-repository — see .fork/customizations.yaml#fork-git-256-non-repository */
+      if (isNonRepositoryGitStderr(result.stderr)) return null;
+      /* fork:end fork-git-256-non-repository */
       return yield* failure(
         result.stderr.trim().split(/\r?\n/)[0]?.slice(0, 1000) || "command failed",
       );

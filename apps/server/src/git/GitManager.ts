@@ -62,6 +62,9 @@ import {
   isSshRemoteUrl,
   type ChangeRequestTerminology,
 } from "@t3tools/shared/sourceControl";
+/* fork:begin fork-git-256-non-repository — see .fork/customizations.yaml#fork-git-256-non-repository */
+import { isNonRepositoryGitStderr } from "../vcs/GitVcsDriverCore.ts";
+/* fork:end fork-git-256-non-repository */
 import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import {
@@ -203,7 +206,9 @@ type GitActionProgressPayload = StripProgressContext<GitActionProgressEvent>;
 type GitActionProgressEmitter = (event: GitActionProgressPayload) => Effect.Effect<void, never>;
 
 function isNotGitRepositoryError(error: GitCommandError): boolean {
-  return error.message.toLowerCase().includes("not a git repository");
+  /* fork:begin fork-git-256-non-repository — see .fork/customizations.yaml#fork-git-256-non-repository */
+  return isNonRepositoryGitStderr(error.message);
+  /* fork:end fork-git-256-non-repository */
 }
 
 interface OpenPrInfo {

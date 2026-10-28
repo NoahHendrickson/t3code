@@ -42,6 +42,9 @@ import {
   windowsLongPathConfigEnv,
 } from "./GitVcsDriverCore.ts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
+/* fork:begin fork-git-256-non-repository — see .fork/customizations.yaml#fork-git-256-non-repository */
+import { isNonRepositoryGitStderr } from "./GitVcsDriverCore.ts";
+/* fork:end fork-git-256-non-repository */
 import { gitConfigEnv } from "./VcsProcess.ts";
 import { makeProcessProbe, processProbeSource } from "../testUtils/processProbe.ts";
 
@@ -346,6 +349,16 @@ it.effect("uses stable diagnostics for every parsed non-repository command", () 
     ]);
   }).pipe(Effect.provide(layer));
 });
+
+/* fork:begin fork-git-256-non-repository — see .fork/customizations.yaml#fork-git-256-non-repository */
+it.each([
+  ["Git 2.55", "fatal: not a git repository: /repo/.git/worktrees/w\n", true],
+  ["Git 2.56", "fatal: gitfile does not point to a valid repository: /repo/w/.git\n", true],
+  ["another failure", "fatal: ambiguous argument 'HEAD': unknown revision\n", false],
+])("classifies %s stderr as a non-repository", (_label, stderr, expected) => {
+  assert.strictEqual(isNonRepositoryGitStderr(stderr), expected);
+});
+/* fork:end fork-git-256-non-repository */
 
 it.effect("invalidates origin remote cache when a driver mutation adds origin", () =>
   Effect.gen(function* () {
