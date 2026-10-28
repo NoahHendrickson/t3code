@@ -22,9 +22,18 @@ const repoRoot = NodePath.resolve(
   "../../../..",
 );
 
+const agents = NodeFS.readFileSync(NodePath.join(repoRoot, "AGENTS.md"), "utf8");
+
+function fenceBody(id: string): string {
+  const begin = agents.indexOf(`fork:begin ${id} `);
+  const end = agents.indexOf(`fork:end ${id} `);
+  expect(begin).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(begin);
+  return agents.slice(begin, end);
+}
+
 describe("fork guard: fork-workflow-docs", () => {
   it("keeps the fenced Fork Workflow section in AGENTS.md", () => {
-    const agents = NodeFS.readFileSync(NodePath.join(repoRoot, "AGENTS.md"), "utf8");
     expect(agents).toContain("fork:begin fork-workflow");
     expect(agents).toContain("fork:end fork-workflow");
     expect(agents).toContain(".fork/AGENTS.md");
@@ -37,7 +46,6 @@ describe("fork guard: fork-workflow-docs", () => {
     // must hit before upstream's own guidance, not an appendix. The v0.0.30
     // sync initially re-attached it at the bottom of the rewritten doc, which
     // is what this catches.
-    const agents = NodeFS.readFileSync(NodePath.join(repoRoot, "AGENTS.md"), "utf8");
     expect(agents).toContain("fork:begin fork-change-scope");
     expect(agents).toContain("fork:end fork-change-scope");
     const changeScope = agents.indexOf("## Change Scope");
@@ -48,6 +56,14 @@ describe("fork guard: fork-workflow-docs", () => {
     const firstUpstreamIndex = agents.split("\n").slice(0, firstUpstreamSection).join("\n").length;
     expect(firstUpstreamSection).toBeGreaterThanOrEqual(0);
     expect(changeScope).toBeLessThan(firstUpstreamIndex);
+  });
+
+  it("keeps the PR screenshot waiver fenced in AGENTS.md", () => {
+    // Without it, upstream's before/after-images rule sends every PR agent off
+    // capturing evidence the maintainer never wants.
+    const waiver = fenceBody("fork-pr-no-screenshots");
+    expect(waiver).toContain("before/after images");
+    expect(waiver).toContain("unless the maintainer asks");
   });
 
   it("keeps CLAUDE.md aliased to AGENTS.md so Claude agents get the same rules", () => {
@@ -91,7 +107,6 @@ describe("fork guard: fork-workflow-docs", () => {
     // ENOENT thrown out of readFileSync.
     expect(NodeFS.existsSync(claudePath)).toBe(true);
     const claude = NodeFS.readFileSync(claudePath, "utf8");
-    const agents = NodeFS.readFileSync(NodePath.join(repoRoot, "AGENTS.md"), "utf8");
     expect(claude).toBe(agents);
   });
 });

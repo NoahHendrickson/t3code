@@ -134,6 +134,12 @@ For authorized mobile verification, a missing or outdated native client is a bui
 - One request is one PR. Split it only when the maintainer asks. Outside contributions follow the stricter [one problem per PR](CONTRIBUTING.md#one-problem) rule.
 - When babysitting: poll checks and comments newer than the last push, verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when the bots are green on the latest commit.
 
+<!-- fork:begin fork-pr-no-screenshots — see .fork/customizations.yaml#fork-workflow-docs -->
+
+- **In this fork, skip PR screenshots and videos unless the maintainer asks for them.** The maintainer checks UI changes visually, so upstream's before/after images and video rule does not apply here, and neither do the screenshot requirements in `CONTRIBUTING.md` and the PR template. Describe the change in words instead of capturing evidence or noting that it is missing.
+
+<!-- fork:end fork-pr-no-screenshots -->
+
 ## Documentation
 
 Most code changes do not need an internal documentation change. Agents can read the code.
