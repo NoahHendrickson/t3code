@@ -5711,3 +5711,22 @@
     - apps/web/src/components/Sidebar.logic.ts
   verify:
     - apps/web/src/__fork_guards__/forkSidebarRecentProjects.test.ts
+
+- id: fork-storage-cleanup-git-256
+  intent: >
+    Storage cleanup treats a worktree whose .git file points at a missing
+    gitdir as "Repository or branch changed" and keeps it. Git 2.55 reports
+    that case as "not a git repository"; Git 2.56 says "gitfile does not point
+    to a valid repository", which upstream does not match yet, so on 2.56 the
+    worktree came back as a cleanup failure and storageCleanup.test.ts failed
+    on every CI runner with 2.56. Both messages are matched. Drop this entry
+    once upstream matches the new message.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    - apps/server/src/storageCleanup.ts
+    # Fenced fixture knob and the Git 2.56 case.
+    - apps/server/src/storageCleanup.test.ts
+  verify:
+    - apps/server/src/storageCleanup.test.ts
