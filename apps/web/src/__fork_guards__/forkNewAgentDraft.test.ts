@@ -80,7 +80,9 @@ describe("fork guard: fork-new-agent-draft", () => {
       /!rightPanelControlsAtRoot && !rightPanelControlsInPanel && !forkProjectlessDraft\s*\?\s*panelLayoutControls/u,
     );
     expect(chatView).toMatch(/\{forkProjectlessDraft \? null : \(\s*<ChatHeader/u);
-    expect(chatView).toMatch(/\{forkProjectlessDraft \? null : \(\s*<ThreadDetailsPanel\b/u);
+    expect(chatView).toMatch(
+      /\{forkProjectlessDraft(?: \|\| splitPane\.floating)? \? null : \(\s*<ThreadDetailsPanel\b/u,
+    );
   });
 
   it("keeps the prompt editable while the draft has no project", () => {
@@ -192,7 +194,7 @@ describe("fork guard: fork-new-agent-draft", () => {
       /\{\.\.\.\(composerContextLeading && showComposerContextStrip\s*\?\s*\{ leading: composerContextLeading \}\s*:\s*\{\}\)\}/u,
     );
     expect(chatView).toMatch(
-      /renderComposerContextStripFallback\(\{\s*leading: composerContextLeading,\s*trailing: composerLivenessPill,\s*\}\)/u,
+      /renderComposerContextStripFallback\(\{\s*leading: composerContextLeading,\s*trailing: composerContextTrailing,\s*\}\)/u,
     );
     // The chip is the context row's leading value; a server thread's readout
     // is the other source (fork-composer-shell).
