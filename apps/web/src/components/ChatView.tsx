@@ -288,6 +288,10 @@ import {
 } from "lucide-react";
 import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
+import { SplitAgentPill } from "~/custom/splitThreads/SplitAgentPill";
+/* fork:end fork-split-threads */
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
 import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
@@ -1116,6 +1120,15 @@ export default function ChatView(props: ChatViewProps) {
     reserveTitleBarControlInset = true,
     forceExpandedMobileComposer = false,
   } = props;
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  // In a split only the focused pane answers window-level input and takes
+  // automatic composer focus; see custom/splitThreads/splitPaneContext.
+  const splitPane = useSplitPane();
+  const splitPaneFocusedRef = useRef(splitPane.focused);
+  useLayoutEffect(() => {
+    splitPaneFocusedRef.current = splitPane.focused;
+  }, [splitPane.focused]);
+  /* fork:end fork-split-threads */
   const canOperateThread = useEnvironmentScope(environmentId, AuthOrchestrationOperateScope);
   const canOperateTerminal = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
   const hasTerminalWriteAccess = () =>
@@ -3155,7 +3168,11 @@ export default function ChatView(props: ChatViewProps) {
     remoteOpenMode: remoteOpenState.mode,
   });
   useOpenFavoriteEditorShortcut({
-    enabled: showOpenInPicker,
+    enabled:
+      showOpenInPicker &&
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      splitPane.focused,
+    /* fork:end fork-split-threads */
     environmentId: activeThread?.environmentId ?? environmentId,
     keybindings,
     availableEditors,
@@ -3537,6 +3554,9 @@ export default function ChatView(props: ChatViewProps) {
     (activeTerminalGroup?.terminalIds.length ?? 0) >= MAX_TERMINALS_PER_GROUP;
 
   const focusComposer = () => {
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    if (!splitPaneFocusedRef.current) return;
+    /* fork:end fork-split-threads */
     composerRef.current?.focusAtEnd();
   };
   const focusComposerStable = useStableCallback(focusComposer);
@@ -4502,6 +4522,9 @@ export default function ChatView(props: ChatViewProps) {
         // the end on the next stream chunk. Clicking message text can leave
         // DOM focus on body, so these keys must also be heard at document.
         const handleKeyDown = (event: KeyboardEvent) => {
+          /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+          if (!splitPaneFocusedRef.current) return;
+          /* fork:end fork-split-threads */
           if (
             !(event.target instanceof Node) ||
             (!scrollNode.contains(event.target) &&
@@ -5902,7 +5925,11 @@ export default function ChatView(props: ChatViewProps) {
       if (!event.repeat) composerRef.current?.openControl(command);
     }) satisfies ChatShortcutHandler;
   useChatShortcuts({
-    enabled: activeThreadId !== null,
+    enabled:
+      activeThreadId !== null &&
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      splitPane.focused,
+    /* fork:end fork-split-threads */
     keybindings,
     scriptKeybindings,
     getShortcutContext: getShortcutContextStable,
@@ -6031,6 +6058,9 @@ export default function ChatView(props: ChatViewProps) {
   // A focused desktop browser page forwards these chords as menu actions.
   useEffect(() => {
     return window.desktopBridge?.onMenuAction((action) => {
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      if (!splitPaneFocusedRef.current) return;
+      /* fork:end fork-split-threads */
       if (action === "rightPanel.toggle") toggleRightPanelStable();
       else if (action === "rightPanel.toggleMaximized") toggleRightPanelMaximizedStable();
     });
@@ -6049,6 +6079,9 @@ export default function ChatView(props: ChatViewProps) {
     };
     const handler = (event: ClipboardEvent) => {
       if (!activeThreadId || isCommandPaletteOpen()) return;
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      if (!splitPaneFocusedRef.current) return;
+      /* fork:end fork-split-threads */
       if (getTerminalFocusOwner() !== null) return;
       if (composerRef.current?.isModelPickerOpen()) return;
       const text = pasteTextToFocusComposer(event);
@@ -8454,10 +8487,18 @@ export default function ChatView(props: ChatViewProps) {
                   "drag-region flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center px-3 sm:px-5",
                   reserveTitleBarControlInset &&
                     !inlineRightPanelOwnsTitleBar &&
+                    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+                    // Native window controls sit over the right pane only.
+                    (!splitPane.split || !splitPane.leading) &&
+                    /* fork:end fork-split-threads */
                     "wco:pr-(--workspace-native-controls-inset)",
                 )
               : "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center pl-(--workspace-gutter-start) pr-(--workspace-gutter-end)",
-            COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
+            /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+            // The traffic lights sit over the left pane only.
+            splitPane.leading &&
+              /* fork:end fork-split-threads */
+              COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
           )}
         >
           {isElectron && rightPanelControlsAtRoot ? (
@@ -8760,6 +8801,24 @@ export default function ChatView(props: ChatViewProps) {
                     </div>
                   ) : null}
                   {/* fork:end fork-composer-shell */}
+                  {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+                      "Split agent" alone, "Pop out" in a split. Parked above the
+                      composer's right edge; the draft hero's headline owns this
+                      spot while a draft is centred. */}
+                  {!isDraftHeroState &&
+                  activeThreadRef &&
+                  activeProjectRef &&
+                  (isServerThread || splitPane.split) ? (
+                    <div className="absolute right-0 bottom-full pb-2">
+                      <SplitAgentPill
+                        threadRef={activeThreadRef}
+                        projectRef={activeProjectRef}
+                        branch={activeThread?.branch ?? null}
+                        worktreePath={activeWorktreePath}
+                      />
+                    </div>
+                  ) : null}
+                  {/* fork:end fork-split-threads */}
                   <div
                     ref={draftHeroComposerAnchorRef}
                     className="relative z-10"

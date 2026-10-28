@@ -385,6 +385,19 @@ import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/too
 import { MiddleTruncate } from "./ui/middle-truncate";
 import { useComposerDraftStore, useThreadHasUnsentDraft } from "../composerDraftStore";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+import { SidebarSplitPairRow } from "~/custom/splitThreads/SidebarSplitPairRow";
+import {
+  makeSidebarSplitDropHandlers,
+  splitThreadDragSourceProps,
+} from "~/custom/splitThreads/sidebarSplitDrag";
+import {
+  orderSidebarSplitPairs,
+  resolveSidebarSplitRow,
+} from "~/custom/splitThreads/sidebarSplitRows";
+import { useSplitThreadStore } from "~/custom/splitThreads/splitThreadStore";
+import { useStableCallback } from "~/hooks/useStableCallback";
+/* fork:end fork-split-threads */
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -1795,6 +1808,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       }
       {...(sortable?.listeners ?? {})}
       {...(fileDropHandlers ?? {})}
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+         Dragged onto another card, this one opens beside it. */
+      {...(splitThreadDragSourceProps(threadKey, !sortable && !props.isPinned && !isRenaming) ??
+        {})}
+      /* fork:end fork-split-threads */
       className={cn(
         "list-none [content-visibility:auto]",
         sortable?.isDragging && "z-20 opacity-80",
@@ -2909,12 +2927,40 @@ export default function Sidebar() {
     ],
     /* fork:end sidebar-v2-project-grouping */
   );
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+     Pinned rows sort through dnd-kit and shelf rows carry their own actions,
+     so only active cards pair. Keyboard and shift-select order follow the
+     paint order, pairs adjacent. */
+  const splitPairs = useSplitThreadStore((state) => state.pairs);
+  const shelvedThreadKeys = new Set(
+    [...visibleSnoozedThreads, ...renderedSettledThreads].map((thread) =>
+      scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+    ),
+  );
+  const canPairInSidebar = (thread: EnvironmentThreadShell) =>
+    thread.pinnedAt == null &&
+    !shelvedThreadKeys.has(scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)));
+  /* fork:end fork-split-threads */
   const orderedThreadKeys = useMemo(
     () =>
-      orderedThreads.map((thread) =>
-        scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
-      ),
-    [orderedThreads],
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      orderSidebarSplitPairs({
+        threads: orderedThreads,
+        refOf: (thread) => scopeThreadRef(thread.environmentId, thread.id),
+        pairs: splitPairs,
+        canPair: (thread) =>
+          thread.pinnedAt == null &&
+          !shelvedThreadKeys.has(scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))),
+      })
+        /* fork:end fork-split-threads */
+        .map((thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))),
+    [
+      orderedThreads,
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      splitPairs,
+      shelvedThreadKeys,
+      /* fork:end fork-split-threads */
+    ],
   );
   // Rows call back into the click handler without carrying the ordered list as
   // a prop — a fresh array identity per shell update would defeat every row's
@@ -3008,6 +3054,25 @@ export default function Sidebar() {
     },
     [clearSelection, isMobile, router, setOpenMobile, setSelectionAnchor],
   );
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  const pairDroppedCard = useStableCallback((draggedKey: string, targetKey: string) => {
+    const dragged = parseScopedThreadKey(draggedKey);
+    const target = parseScopedThreadKey(targetKey);
+    if (!dragged || !target) return;
+    // The card dropped on keeps the left pane.
+    useSplitThreadStore.getState().pair(target, dragged);
+    if (routeThreadKey !== draggedKey && routeThreadKey !== targetKey) {
+      void navigateToThread(dragged);
+    }
+  });
+  const splitDropHandlers = makeSidebarSplitDropHandlers({
+    canPair: (threadKey) => {
+      const thread = threadByKey.get(threadKey);
+      return thread !== undefined && canPairInSidebar(thread);
+    },
+    onPair: pairDroppedCard,
+  });
+  /* fork:end fork-split-threads */
 
   const queuePendingFileDrop = useSidebarPendingFileDropStore((s) => s.queuePendingFileDrop);
   const clearPendingFileDrop = useSidebarPendingFileDropStore((s) => s.clearPendingFileDrop);
@@ -4634,10 +4699,17 @@ export default function Sidebar() {
                     // controls that opt back in, like the Woke pill.
                     actionSweep !== null && "**:pointer-events-none",
                   )}
+                  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+                  {...splitDropHandlers}
+                  /* fork:end fork-split-threads */
                 >
                   {/* fork:end sidebar-v2-card-rows */}
                   {(() => {
-                    const renderThreadRow = (
+                    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+                       renderOneThreadRow is upstream's renderThreadRow; the
+                       name now belongs to the split-aware wrapper below. */
+                    const renderOneThreadRow = (
+                      /* fork:end fork-split-threads */
                       thread: EnvironmentThreadShell,
                       section: SidebarSection,
                       options: {
@@ -4792,6 +4864,35 @@ export default function Sidebar() {
                         />
                       );
                     };
+                    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+                       A split pair paints as one row at its first member;
+                       custom/splitThreads/sidebarSplitRows decides. */
+                    const pairedThreadKeys = new Set<string>();
+                    const renderThreadRow = (
+                      thread: EnvironmentThreadShell,
+                      section: SidebarSection,
+                      options: Parameters<typeof renderOneThreadRow>[2] = {},
+                    ) => {
+                      const splitRow = resolveSidebarSplitRow({
+                        threadRef: scopeThreadRef(thread.environmentId, thread.id),
+                        pairs: splitPairs,
+                        threadByKey,
+                        canPair: (candidate) =>
+                          options.sortable === undefined && canPairInSidebar(candidate),
+                        paired: pairedThreadKeys,
+                      });
+                      if (splitRow.kind === "skip") return null;
+                      if (splitRow.kind === "single") {
+                        return renderOneThreadRow(thread, section, options);
+                      }
+                      return (
+                        <SidebarSplitPairRow key={splitRow.key}>
+                          {renderOneThreadRow(splitRow.left, section, options)}
+                          {renderOneThreadRow(splitRow.right, section, options)}
+                        </SidebarSplitPairRow>
+                      );
+                    };
+                    /* fork:end fork-split-threads */
                     // Pinned block: full cards above the inbox, closed by a
                     // thin divider (the pin glyphs carry the meaning, so no
                     // header text). Vanishes entirely at count 0. Pinned cards

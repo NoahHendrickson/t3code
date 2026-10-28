@@ -11,6 +11,7 @@ import {
   type DictationSession,
 } from "./forkDictationSession";
 import { readForkVoiceInputBridge } from "./forkVoiceInputBridge";
+import { useSplitPane } from "../splitThreads/splitPaneContext";
 
 const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };
 
@@ -114,11 +115,14 @@ export function useForkDictationController(input: DictationInput) {
     controller?.ownerChanged();
   }, [controller, input.ownerKey]);
 
-  // Registered once per mount; every callback reads the mirror, so the root
-  // hotkeys always reach the thread this composer is showing now.
+  // Registered while this composer's pane is focused (always, outside a
+  // split: fork-split-threads), so the root hotkeys reach the pane the user is
+  // in. Every callback reads the mirror, so they reach the thread this
+  // composer is showing now.
+  const paneFocused = useSplitPane().focused;
   useEffect(() => {
-    if (!controller) return;
-    const unregister = registerDictationComposer({
+    if (!controller || !paneFocused) return;
+    return registerDictationComposer({
       controller,
       canStart: () => !inputRef.current.disabled,
       contains: (target) => {
@@ -130,11 +134,8 @@ export function useForkDictationController(input: DictationInput) {
         inputRef.current.focusEditor();
       },
     });
-    return () => {
-      unregister();
-      controller.dispose();
-    };
-  }, [controller]);
+  }, [controller, paneFocused]);
+  useEffect(() => () => controller?.dispose(), [controller]);
 
   // Through the mirror, not the render scope: a caller that retains these
   // (memoizing ForkDictationControl, hoisting start into a command action)

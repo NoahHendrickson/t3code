@@ -263,7 +263,9 @@ describe("fork local dictation", () => {
     expect(theme).toMatch(/\[data-fork-dictation-timeline\]\s*\{[^}]*min-width:\s*96px/u);
     expect(controller).toContain("subscribeLevel");
     // The composer owns its session (built once, disposed on unmount) and
-    // registers it with the root hotkeys while mounted. The root host owns a
+    // registers it with the root hotkeys while mounted (while its pane is
+    // focused, in a split: fork-split-threads); the registration effect is
+    // declared first, so unmount unregisters before it disposes. The root host owns a
     // second, fallback session for taps with no composer to land in, presents
     // it as a toast whose transcript can be copied, and disposes it with
     // itself; closing a live toast by any route cancels through the toast's
@@ -271,7 +273,9 @@ describe("fork local dictation", () => {
     expect(session).toContain("new VoiceInputController");
     expect(controller).toContain("createDictationSession(bridge, {");
     expect(controller).toContain("registerDictationComposer({");
-    expect(controller).toMatch(/unregister\(\);\s*controller\.dispose\(\);/u);
+    expect(controller).toMatch(
+      /return registerDictationComposer\(\{[\s\S]*?useEffect\(\(\) => \(\) => controller\?\.dispose\(\), \[controller\]\);/u,
+    );
     expect(controller).not.toContain("addEventListener");
     expect(rootRoute).toContain("<ForkDictationHotkeyHost />");
     expect(hotkeyHost).toContain("createDictationFallback(bridge, createToastPresenter)");

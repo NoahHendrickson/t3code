@@ -23,6 +23,11 @@ import {
   resolveThreadRouteRenderState,
   type ThreadRouteTarget,
 } from "../threadRoutes";
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { SplitThreadPanes } from "~/custom/splitThreads/SplitThreadPanes";
+import { useSplitLayout } from "~/custom/splitThreads/splitThreadStore";
+/* fork:end fork-split-threads */
 
 /**
  * Plain server threads are unkeyed, so navigating between them reuses one instance as ChatView
@@ -163,6 +168,17 @@ export function ThreadRouteView({ target }: { target: ThreadRouteTarget }) {
     finalizePromotedDraftThreadByRef(target.threadRef);
   }, [draftThread, serverThreadStarted, target]);
 
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+     The route thread is the focused pane; a paired thread opens beside it. */
+  const routeThreadRef: ScopedThreadRef | null =
+    target.kind === "server"
+      ? target.threadRef
+      : draftSession
+        ? scopeThreadRef(draftSession.environmentId, draftSession.threadId)
+        : null;
+  const splitLayout = useSplitLayout(routeThreadRef, { isDraft: target.kind === "draft" });
+  /* fork:end fork-split-threads */
+
   let view: React.ReactNode = null;
   if (target.kind === "draft") {
     if (draftSession) {
@@ -190,7 +206,9 @@ export function ThreadRouteView({ target }: { target: ThreadRouteTarget }) {
 
   return (
     <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none md:h-dvh">
-      {view}
+      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */}
+      <SplitThreadPanes layout={splitLayout} focusedRef={routeThreadRef} focusedView={view} />
+      {/* fork:end fork-split-threads */}
     </SidebarInset>
   );
 }
