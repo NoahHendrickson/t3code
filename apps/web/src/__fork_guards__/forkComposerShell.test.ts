@@ -662,6 +662,11 @@ describe("fork guard: fork-composer-shell", () => {
     );
     expect(action?.body).toMatch(/height:\s*24px/u);
     expect(action?.body).toMatch(/border-radius:\s*4px/u);
+    // Stop is flat like send; upstream's shadows read as a dark bottom lip.
+    const stop = rules.find((rule) =>
+      rule.selector.endsWith('.dark [data-fork-composer-action="stop"]'),
+    );
+    expect(stop?.body).toMatch(/box-shadow:\s*none/u);
     // Upstream's attach-files button (#8236) mounts in the primary cluster;
     // the fork moves it to the control row. It is stamped by name like send
     // and stop. Never by position: ComposerPrimaryActions hoists a labelled
