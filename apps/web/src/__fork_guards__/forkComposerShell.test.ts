@@ -872,7 +872,8 @@ describe("fork guard: fork-composer-shell", () => {
     expect(branchToolbar).not.toMatch(/<ComposerSurface\.ContextStrip ref=\{setStripElement\}>/u);
     expect(chatView).toContain("resolveComposerLivenessPillProps");
     expect(chatView).toContain("renderComposerLivenessPill");
-    expect(chatView).toContain("trailing: composerLivenessPill");
+    expect(chatView).toContain("trailing: composerContextTrailing");
+    expect(chatView).toMatch(/const composerContextTrailing =[\s\S]*?\{composerLivenessPill\}/u);
     expect(chatView).not.toContain("backgroundLivenessBannerItem");
     expect(chatView).not.toContain('"Monitoring in the background"');
     expect(chatView).not.toContain('"Background work running"');

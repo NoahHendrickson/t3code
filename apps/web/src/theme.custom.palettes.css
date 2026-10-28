@@ -947,6 +947,37 @@
   backdrop-filter: none;
 }
 
+/* The floating thread window (fork-split-threads) is that card at a
+   window's size, with the details popover's soft drop shadow, since it
+   floats over the chat rather than docking beside it. It lives inside #root
+   too, so no cutout opens beneath it (fork-glass-popup-cutout); instead the
+   panes behind it cut their own rounded hole at its frame, leaving only the
+   stage under its wash, exactly what the card sits on. SplitThreadPanes
+   sets the frame on each pane in its own coordinates. */
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-fork-split-pane="floating"] {
+  background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg));
+  border-color: rgb(255 255 255 / 8%);
+  /* The hole below is drawn with this radius; keep the two together. */
+  border-radius: 14px;
+  box-shadow: 0 2px 16px rgb(0 0 0 / 25%);
+}
+
+:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+  [data-fork-float-behind] {
+  mask-image:
+    linear-gradient(#000 0 0),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' rx='14'/%3E%3C/svg%3E");
+  mask-size:
+    100% 100%,
+    var(--fork-float-hole-w, 0) var(--fork-float-hole-h, 0);
+  mask-position:
+    0 0,
+    var(--fork-float-hole-x, 0) var(--fork-float-hole-y, 0);
+  mask-repeat: no-repeat;
+  mask-composite: exclude;
+}
+
 /* The Questions card (theme.custom.css, fork-pending-user-input) wears the
    popup material too. It sits on the vessel, which is already that wash over
    the stage's floor, so it paints nothing and lets the vessel through; the base

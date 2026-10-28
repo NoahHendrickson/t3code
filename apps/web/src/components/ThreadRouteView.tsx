@@ -212,7 +212,12 @@ export function ThreadRouteView({ target }: { target: ThreadRouteTarget }) {
   return (
     <SidebarInset className="h-svh min-h-0 overflow-hidden overscroll-y-none md:h-dvh">
       {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */}
-      <SplitThreadPanes layout={splitLayout} focusedRef={routeThreadRef} focusedView={view} />
+      <SplitThreadPanes
+        layout={splitLayout}
+        focusedRef={routeThreadRef}
+        focusedDraftId={target.kind === "draft" ? target.draftId : null}
+        focusedView={view}
+      />
       {/* fork:end fork-split-threads */}
     </SidebarInset>
   );

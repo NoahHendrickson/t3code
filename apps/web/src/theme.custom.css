@@ -2928,6 +2928,29 @@
   --fork-popup-filter: blur(28px) saturate(1.4);
 }
 
+/* The floating thread window (fork-split-threads) is a dropdown-glass popup
+   that holds a whole transcript over live chat. Outside Glass it takes the
+   opaque popover floor instead of upstream's frost: a window this size must
+   read without the blur, and a blur this size would repaint under every
+   streamed token. The hairline is the popups'. On Glass it joins the popups'
+   own material, rim and all (theme.custom.palettes.css), which outranks this. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-split-pane="floating"] {
+  background: var(--popover);
+  border-color: var(--fork-popup-border, var(--border));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Its header is the window's drag handle, so it gives up the Electron
+   window-drag strip the header claims; with that strip, the OS would take
+   the press and move the app window. Unlayered, because the base
+   .drag-region rule is, and it outranks any layered utility. The window is
+   kept below the column's own title bar strip (floatFrame), since a later
+   drag rect overrides an earlier no-drag one wherever the two overlap. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-split-pane="floating"] .drag-region {
+  -webkit-app-region: no-drag;
+}
+
 :root[data-fork="noahhendrickson-t3code"].dark
   :is(
     :is(

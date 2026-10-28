@@ -290,7 +290,8 @@ import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
 import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
-import { SplitAgentPill } from "~/custom/splitThreads/SplitAgentPill";
+import { SplitAgentPill, splitAgentPillShown } from "~/custom/splitThreads/SplitAgentPill";
+import { SplitPaneHeaderControls } from "~/custom/splitThreads/SplitPaneHeaderControls";
 /* fork:end fork-split-threads */
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
@@ -1815,11 +1816,17 @@ export default function ChatView(props: ChatViewProps) {
   );
   const canReuseTerminal = activeThreadKnownSessionsRaw !== null;
   const previewPanelOpen = activeRightPanelKind === "preview" && browserAvailable;
-  const rightPanelOpen = rightPanelState.isOpen;
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  // The floating window is a transcript and a composer: the thread's right
+  // panel and terminal stay as the user left them and return when it docks.
+  const rightPanelOpen = rightPanelState.isOpen && !splitPane.floating;
+  /* fork:end fork-split-threads */
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
   const activeTerminalDrawerPresence = usePanelPresence(
-    Boolean(activeThreadKey && terminalUiState.terminalOpen),
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    Boolean(activeThreadKey && terminalUiState.terminalOpen && !splitPane.floating),
+    /* fork:end fork-split-threads */
     true,
     panelAnimationsActive,
     activeThreadKey,
@@ -3978,7 +3985,13 @@ export default function ChatView(props: ChatViewProps) {
   const activeRunningTurnId = activeRuntime?.activeRunId ?? null;
   useProactivePanels({
     threadRef: isServerThread ? activeThreadRef : null,
-    enabled: settings.proactivePanelsEnabled && !shouldUsePlanSidebarSheet,
+    enabled:
+      settings.proactivePanelsEnabled &&
+      !shouldUsePlanSidebarSheet &&
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      // The floating window shows no panels, and one opened from it docks it.
+      !splitPane.floating,
+    /* fork:end fork-split-threads */
     settingsHydrated: clientSettingsHydrated,
     threadDetailLoading,
     runningTurnId: activeRunningTurnId,
@@ -8278,6 +8291,30 @@ export default function ChatView(props: ChatViewProps) {
   // readout. They never coexist (local draft vs server thread), and the
   // readout is null whenever upstream's strip is visible.
   const composerContextLeading = draftProjectPill ?? threadContextReadout;
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  // "Split agent" alone, "Pop out" in a split, right after the project and
+  // branch chips. The draft hero's centred composer has no split to offer.
+  const splitAgentPill =
+    !isDraftHeroState &&
+    activeThreadRef &&
+    activeProjectRef &&
+    splitAgentPillShown(splitPane, isServerThread) ? (
+      <SplitAgentPill
+        threadRef={activeThreadRef}
+        projectRef={activeProjectRef}
+        branch={activeThread?.branch ?? null}
+        worktreePath={activeWorktreePath}
+      />
+    ) : null;
+  // The liveness pill keeps the row's last slot: stop stays where the hand knows it.
+  const composerContextTrailing =
+    splitAgentPill || composerLivenessPill ? (
+      <>
+        {splitAgentPill}
+        {composerLivenessPill}
+      </>
+    ) : null;
+  /* fork:end fork-split-threads */
   /**
    * The worktree/branch strip, as an element handed to ChatComposer's
    * `contextStrip` prop rather than rendered below the composer host. Every
@@ -8330,7 +8367,7 @@ export default function ChatView(props: ChatViewProps) {
             ? { composerControlsHostRef: setRestingComposerControlsHost }
             : {})}
           contextStripVisible={showComposerContextStrip}
-          {...(composerLivenessPill ? { trailing: composerLivenessPill } : {})}
+          {...(composerContextTrailing ? { trailing: composerContextTrailing } : {})}
           /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
           // Only into a visible strip: the hidden measuring strip below hands
           // the chip to the fallback instead, so it never renders twice.
@@ -8350,14 +8387,14 @@ export default function ChatView(props: ChatViewProps) {
           {toolbar}
           {renderComposerContextStripFallback({
             leading: composerContextLeading,
-            trailing: composerLivenessPill,
+            trailing: composerContextTrailing,
           })}
         </>
       );
     }
     return renderComposerContextStripFallback({
       leading: composerContextLeading,
-      trailing: composerLivenessPill,
+      trailing: composerContextTrailing,
     });
   })();
   /* fork:end fork-composer-shell */
@@ -8489,7 +8526,13 @@ export default function ChatView(props: ChatViewProps) {
           />
         </span>
       ) : null}
-      <div className="pointer-events-auto flex h-full items-center">{panelToggleControls}</div>
+      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */}
+      <SplitPaneHeaderControls
+        panelToggleControls={panelToggleControls}
+        draftId={isLocalDraftThread ? draftId : null}
+        threadRef={activeThreadRef}
+      />
+      {/* fork:end fork-split-threads */}
     </div>
   );
   const workspaceFileDropHandlers = makeWorkspaceFileDropHandlers({
@@ -8528,8 +8571,10 @@ export default function ChatView(props: ChatViewProps) {
                   reserveTitleBarControlInset &&
                     !inlineRightPanelOwnsTitleBar &&
                     /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-                    // Native window controls sit over the right pane only.
+                    // Native window controls sit over the right pane only,
+                    // and never over the floating window.
                     (!splitPane.split || !splitPane.leading) &&
+                    !splitPane.floating &&
                     /* fork:end fork-split-threads */
                     "wco:pr-(--workspace-native-controls-inset)",
                 )
@@ -8841,22 +8886,6 @@ export default function ChatView(props: ChatViewProps) {
                     </div>
                   ) : null}
                   {/* fork:end fork-composer-shell */}
-                  {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
-                      "Split agent" alone, "Pop out" in a split. Parked above the
-                      composer's right edge; the draft hero's headline owns this
-                      spot while a draft is centred. */}
-                  {!isDraftHeroState && activeThreadRef && activeProjectRef ? (
-                    <div className="absolute right-0 bottom-full pb-2">
-                      <SplitAgentPill
-                        threadRef={activeThreadRef}
-                        projectRef={activeProjectRef}
-                        branch={activeThread?.branch ?? null}
-                        worktreePath={activeWorktreePath}
-                        canStartSplit={isServerThread}
-                      />
-                    </div>
-                  ) : null}
-                  {/* fork:end fork-split-threads */}
                   <div
                     ref={draftHeroComposerAnchorRef}
                     className="relative z-10"
@@ -8877,7 +8906,7 @@ export default function ChatView(props: ChatViewProps) {
                          model-only strip never mounts here (see the strip note below). */
                       contextStrip={
                         showComposerContextStrip ||
-                        composerLivenessPill != null ||
+                        composerContextTrailing != null ||
                         composerContextLeading != null
                       }
                       /* fork:end fork-composer-shell */
@@ -9144,7 +9173,8 @@ export default function ChatView(props: ChatViewProps) {
             />
 
             {/* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */}
-            {forkProjectlessDraft ? null : (
+            {/* fork-split-threads: the floating window leaves the details card out. */}
+            {forkProjectlessDraft || splitPane.floating ? null : (
               <ThreadDetailsPanel
                 /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
                 forkGlassPopup={!isDraftHeroState}

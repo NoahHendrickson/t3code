@@ -16,6 +16,9 @@ export interface SplitThreadPair {
   readonly b: ScopedThreadRef;
 }
 
+export const sameThread = (a: ScopedThreadRef | null, b: ScopedThreadRef | null) =>
+  a !== null && b !== null && scopedThreadKey(a) === scopedThreadKey(b);
+
 const pairHas = (pair: SplitThreadPair, key: string) =>
   scopedThreadKey(pair.a) === key || scopedThreadKey(pair.b) === key;
 
