@@ -17,6 +17,9 @@ import {
 } from "./threadFind";
 import { subscribeThreadFindOpen } from "./threadFindActionBus";
 import { toastManager } from "../ui/toast";
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
+/* fork:end fork-split-threads */
 
 const EMPTY_SKILLS: readonly InlineSkill[] = [];
 
@@ -95,7 +98,11 @@ export function useThreadFind({
     });
   });
   const close = useStableCallback(() => setState(CLOSED_FIND));
-  useEffect(() => subscribeThreadFindOpen(open), [open]);
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+     The palette's find request is a window broadcast; only the focused pane opens. */
+  const paneFocused = useSplitPane().focused;
+  useEffect(() => (paneFocused ? subscribeThreadFindOpen(open) : undefined), [open, paneFocused]);
+  /* fork:end fork-split-threads */
 
   const remote = useServerResults(
     isOpen ? thread : null,

@@ -24,7 +24,7 @@ import {
   type ThreadRouteTarget,
 } from "../threadRoutes";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { SplitThreadPanes } from "~/custom/splitThreads/SplitThreadPanes";
 import { useSplitLayout } from "~/custom/splitThreads/splitThreadStore";
 /* fork:end fork-split-threads */
@@ -176,7 +176,12 @@ export function ThreadRouteView({ target }: { target: ThreadRouteTarget }) {
       : draftSession
         ? scopeThreadRef(draftSession.environmentId, draftSession.threadId)
         : null;
-  const splitLayout = useSplitLayout(routeThreadRef, { isDraft: target.kind === "draft" });
+  const splitLayout = useSplitLayout(
+    routeThreadRef,
+    target.kind === "draft" && draftSession
+      ? scopeProjectRef(draftSession.environmentId, draftSession.projectId)
+      : null,
+  );
   /* fork:end fork-split-threads */
 
   let view: React.ReactNode = null;

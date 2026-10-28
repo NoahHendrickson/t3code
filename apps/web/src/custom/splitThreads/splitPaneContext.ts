@@ -15,9 +15,16 @@ export interface SplitPaneState {
   readonly focused: boolean;
   /** The left pane, the only one that can sit under the macOS traffic lights. */
   readonly leading: boolean;
+  /** The window is wide enough for two panes. */
+  readonly canSplit: boolean;
 }
 
-export const SINGLE_PANE: SplitPaneState = { split: false, focused: true, leading: true };
+export const SINGLE_PANE: SplitPaneState = {
+  split: false,
+  focused: true,
+  leading: true,
+  canSplit: false,
+};
 
 export const SplitPaneContext = createContext<SplitPaneState>(SINGLE_PANE);
 

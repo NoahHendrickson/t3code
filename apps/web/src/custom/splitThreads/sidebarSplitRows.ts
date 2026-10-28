@@ -17,7 +17,6 @@ import type { ScopedThreadRef } from "@t3tools/contracts";
 import { findSplitPair, type SplitThreadPair } from "./splitThreadPairs";
 
 export type SidebarSplitRow<TThread> =
-  | { readonly kind: "single" }
   | { readonly kind: "skip" }
   | {
       readonly kind: "pair";
@@ -26,53 +25,53 @@ export type SidebarSplitRow<TThread> =
       readonly right: TThread;
     };
 
-export function resolveSidebarSplitRow<TThread>(input: {
-  readonly threadRef: ScopedThreadRef;
-  readonly pairs: readonly SplitThreadPair[];
-  /** The threads the list is showing, by thread key. */
-  readonly threadByKey: ReadonlyMap<string, TThread>;
-  readonly canPair: (thread: TThread) => boolean;
-  /** Keys already painted inside a pair during this render. Mutated. */
-  readonly paired: Set<string>;
-}): SidebarSplitRow<TThread> {
-  const key = scopedThreadKey(input.threadRef);
-  if (input.paired.has(key)) return { kind: "skip" };
-  const pair = findSplitPair(input.pairs, input.threadRef);
-  if (!pair) return { kind: "single" };
-  const leftKey = scopedThreadKey(pair.a);
-  const rightKey = scopedThreadKey(pair.b);
-  const left = input.threadByKey.get(leftKey);
-  const right = input.threadByKey.get(rightKey);
-  if (left === undefined || right === undefined) return { kind: "single" };
-  if (!input.canPair(left) || !input.canPair(right)) return { kind: "single" };
-  input.paired.add(leftKey);
-  input.paired.add(rightKey);
-  return { kind: "pair", key: `split:${leftKey}|${rightKey}`, left, right };
+export interface SidebarSplitModel<TThread> {
+  /** Paint, keyboard and shift-select order: the list's own order with each
+      pair's two cards adjacent, so a range never takes in a card that is not
+      between its ends on screen. */
+  readonly order: readonly TThread[];
+  /** The pair painted at a thread's row, or "skip" for the second member.
+      A thread with no entry paints as an ordinary card. */
+  readonly rows: ReadonlyMap<string, SidebarSplitRow<TThread>>;
+  /** Thread keys that may pair: the card drop target reads this too. */
+  readonly pairable: ReadonlySet<string>;
 }
 
-/** The list's keyboard and shift-select order with each pair adjacent, the
-    way resolveSidebarSplitRow paints it, so a range never takes in a card
-    that is not between its ends on screen. */
-export function orderSidebarSplitPairs<TThread>(input: {
+/** `threads` is the list in paint order. */
+export function buildSidebarSplitModel<TThread>(input: {
   readonly threads: readonly TThread[];
   readonly refOf: (thread: TThread) => ScopedThreadRef;
   readonly pairs: readonly SplitThreadPair[];
   readonly canPair: (thread: TThread) => boolean;
-}): readonly TThread[] {
-  if (input.pairs.length === 0) return input.threads;
-  const threadByKey = new Map(
-    input.threads.map((thread) => [scopedThreadKey(input.refOf(thread)), thread] as const),
-  );
-  const paired = new Set<string>();
-  return input.threads.flatMap((thread) => {
-    const row = resolveSidebarSplitRow({
-      threadRef: input.refOf(thread),
-      pairs: input.pairs,
-      threadByKey,
-      canPair: input.canPair,
-      paired,
-    });
-    if (row.kind === "skip") return [];
-    return row.kind === "pair" ? [row.left, row.right] : [thread];
-  });
+}): SidebarSplitModel<TThread> {
+  const keyOf = (thread: TThread) => scopedThreadKey(input.refOf(thread));
+  const threadByKey = new Map(input.threads.map((thread) => [keyOf(thread), thread] as const));
+  const pairable = new Set(input.threads.filter(input.canPair).map(keyOf));
+  const rows = new Map<string, SidebarSplitRow<TThread>>();
+  const order: TThread[] = [];
+  for (const thread of input.threads) {
+    const key = keyOf(thread);
+    if (rows.has(key)) continue;
+    const pair = pairable.has(key) ? findSplitPair(input.pairs, input.refOf(thread)) : null;
+    const leftKey = pair ? scopedThreadKey(pair.a) : null;
+    const rightKey = pair ? scopedThreadKey(pair.b) : null;
+    const left = leftKey === null ? undefined : threadByKey.get(leftKey);
+    const right = rightKey === null ? undefined : threadByKey.get(rightKey);
+    if (
+      leftKey === null ||
+      rightKey === null ||
+      left === undefined ||
+      right === undefined ||
+      !pairable.has(leftKey) ||
+      !pairable.has(rightKey)
+    ) {
+      order.push(thread);
+      continue;
+    }
+    const partnerKey = key === leftKey ? rightKey : leftKey;
+    rows.set(key, { kind: "pair", key: `split:${leftKey}|${rightKey}`, left, right });
+    rows.set(partnerKey, { kind: "skip" });
+    order.push(left, right);
+  }
+  return { order, rows, pairable };
 }

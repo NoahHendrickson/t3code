@@ -2,18 +2,13 @@ import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environ
 import { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { orderSidebarSplitPairs, resolveSidebarSplitRow } from "./sidebarSplitRows";
+import { buildSidebarSplitModel } from "./sidebarSplitRows";
 import {
   EMPTY_SPLIT_PANE_SLOTS,
   assignSplitPaneSlots,
   type SplitPaneSlots,
 } from "./splitPaneSlots";
-import {
-  pairSplitThreads,
-  pruneSplitPairs,
-  splitPartnerOf,
-  unpairSplitThread,
-} from "./splitThreadPairs";
+import { findSplitPair, pairSplitThreads, unpairSplitThread } from "./splitThreadPairs";
 
 const ref = (id: string) => scopeThreadRef(EnvironmentId.make("env"), ThreadId.make(id));
 const a = ref("a");
@@ -21,17 +16,17 @@ const b = ref("b");
 const c = ref("c");
 
 describe("split pairs", () => {
-  it("pairs two threads and finds each from the other", () => {
+  it("pairs two threads and finds the pair from either", () => {
     const pairs = pairSplitThreads([], a, b);
-    expect(splitPartnerOf(pairs, a)).toEqual(b);
-    expect(splitPartnerOf(pairs, b)).toEqual(a);
-    expect(splitPartnerOf(pairs, c)).toBeNull();
+    expect(findSplitPair(pairs, a)).toEqual({ a, b });
+    expect(findSplitPair(pairs, b)).toEqual({ a, b });
+    expect(findSplitPair(pairs, c)).toBeNull();
   });
 
   it("moves a thread that is already paired, freeing its old partner", () => {
     const pairs = pairSplitThreads(pairSplitThreads([], a, b), c, b);
     expect(pairs).toEqual([{ a: c, b }]);
-    expect(splitPartnerOf(pairs, a)).toBeNull();
+    expect(findSplitPair(pairs, a)).toBeNull();
   });
 
   it("does not pair a thread with itself", () => {
@@ -44,76 +39,35 @@ describe("split pairs", () => {
     expect(unpairSplitThread(pairs, b)).toEqual([]);
     expect(unpairSplitThread(pairs, c)).toBe(pairs);
   });
-
-  it("dissolves pairs whose member no longer exists", () => {
-    const pairs = pairSplitThreads(pairSplitThreads([], a, b), c, ref("d"));
-    const pruned = pruneSplitPairs(pairs, (candidate) => candidate.threadId !== "d");
-    expect(pruned).toEqual([{ a, b }]);
-    expect(pruneSplitPairs(pruned, () => true)).toBe(pruned);
-  });
 });
 
-describe("sidebar split rows", () => {
-  type Row = { readonly key: string; readonly pinned: boolean };
-  const row = (id: string, pinned = false): Row => ({ key: scopedThreadKey(ref(id)), pinned });
-  const showing = (...rows: Row[]) => new Map(rows.map((entry) => [entry.key, entry]));
-
-  it("paints the pair at its first member and skips the second", () => {
-    const pairs = pairSplitThreads([], a, b);
-    const threadByKey = showing(row("b"), row("c"), row("a"));
-    const paired = new Set<string>();
-    const resolve = (threadRef: typeof a) =>
-      resolveSidebarSplitRow({
-        threadRef,
-        pairs,
-        threadByKey,
-        canPair: (thread) => !thread.pinned,
-        paired,
-      });
-
-    const first = resolve(b);
-    expect(first).toMatchObject({ kind: "pair" });
-    // Left and right follow the panes, not the list order.
-    if (first.kind === "pair") {
-      expect(first.left.key).toBe(scopedThreadKey(a));
-      expect(first.right.key).toBe(scopedThreadKey(b));
-    }
-    expect(resolve(c)).toEqual({ kind: "single" });
-    expect(resolve(a)).toEqual({ kind: "skip" });
-  });
-
-  it("leaves a card alone when its partner is hidden or pinned", () => {
-    const pairs = pairSplitThreads([], a, b);
-    const hidden = resolveSidebarSplitRow({
-      threadRef: a,
-      pairs,
-      threadByKey: showing(row("a")),
-      canPair: () => true,
-      paired: new Set(),
-    });
-    expect(hidden).toEqual({ kind: "single" });
-
-    const pinned = resolveSidebarSplitRow({
-      threadRef: a,
-      pairs,
-      threadByKey: showing(row("a"), row("b", true)),
-      canPair: (thread) => !thread.pinned,
-      paired: new Set(),
-    });
-    expect(pinned).toEqual({ kind: "single" });
-  });
-});
-
-describe("sidebar split order", () => {
-  it("puts a pair side by side in keyboard order, so a range cannot skip a card", () => {
-    const threads = [a, c, b];
-    const ordered = orderSidebarSplitPairs({
+describe("sidebar split model", () => {
+  type Row = { readonly ref: typeof a; readonly pinned: boolean };
+  const row = (id: string, pinned = false): Row => ({ ref: ref(id), pinned });
+  const build = (threads: readonly Row[]) =>
+    buildSidebarSplitModel({
       threads,
-      refOf: (thread) => thread,
+      refOf: (thread) => thread.ref,
       pairs: pairSplitThreads([], a, b),
-      canPair: () => true,
+      canPair: (thread) => !thread.pinned,
     });
-    expect(ordered).toEqual([a, b, c]);
+
+  it("paints the pair at its first member, skips the second, and keeps them adjacent", () => {
+    const model = build([row("b"), row("c"), row("a")]);
+    const pair = model.rows.get(scopedThreadKey(b));
+    // Left and right follow the panes, not the list order.
+    expect(pair).toMatchObject({ kind: "pair", left: { ref: a }, right: { ref: b } });
+    expect(model.rows.get(scopedThreadKey(a))).toEqual({ kind: "skip" });
+    expect(model.rows.has(scopedThreadKey(c))).toBe(false);
+    // A shift-select range from a to b cannot take in c.
+    expect(model.order.map((thread) => thread.ref.threadId)).toEqual(["a", "b", "c"]);
+  });
+
+  it("leaves a card alone when its partner is hidden or cannot pair", () => {
+    expect(build([row("a"), row("c")]).rows.size).toBe(0);
+    const pinned = build([row("a"), row("b", true)]);
+    expect(pinned.rows.size).toBe(0);
+    expect(pinned.pairable.has(scopedThreadKey(b))).toBe(false);
   });
 });
 

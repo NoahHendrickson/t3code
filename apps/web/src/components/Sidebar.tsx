@@ -391,10 +391,7 @@ import {
   makeSidebarSplitDropHandlers,
   splitThreadDragSourceProps,
 } from "~/custom/splitThreads/sidebarSplitDrag";
-import {
-  orderSidebarSplitPairs,
-  resolveSidebarSplitRow,
-} from "~/custom/splitThreads/sidebarSplitRows";
+import { buildSidebarSplitModel } from "~/custom/splitThreads/sidebarSplitRows";
 import { useSplitThreadStore } from "~/custom/splitThreads/splitThreadStore";
 import { useStableCallback } from "~/hooks/useStableCallback";
 /* fork:end fork-split-threads */
@@ -2928,37 +2925,35 @@ export default function Sidebar() {
     /* fork:end sidebar-v2-project-grouping */
   );
   /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
-     Pinned rows sort through dnd-kit and shelf rows carry their own actions,
-     so only active cards pair. Keyboard and shift-select order follow the
-     paint order, pairs adjacent. */
+     One model for the pairs: what paints, the keyboard and shift-select
+     order, and which cards take a drop. Pinned rows sort through dnd-kit and
+     shelf rows carry their own actions, so only active cards pair. */
   const splitPairs = useSplitThreadStore((state) => state.pairs);
-  const shelvedThreadKeys = new Set(
-    [...visibleSnoozedThreads, ...renderedSettledThreads].map((thread) =>
-      scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
-    ),
-  );
-  const canPairInSidebar = (thread: EnvironmentThreadShell) =>
-    thread.pinnedAt == null &&
-    !shelvedThreadKeys.has(scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)));
+  const splitModel = useMemo(() => {
+    const shelvedThreadKeys = new Set(
+      [...visibleSnoozedThreads, ...renderedSettledThreads].map((thread) =>
+        scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+      ),
+    );
+    return buildSidebarSplitModel({
+      threads: orderedThreads,
+      refOf: (thread) => scopeThreadRef(thread.environmentId, thread.id),
+      pairs: splitPairs,
+      canPair: (thread) =>
+        thread.pinnedAt == null &&
+        !shelvedThreadKeys.has(scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))),
+    });
+  }, [orderedThreads, renderedSettledThreads, splitPairs, visibleSnoozedThreads]);
   /* fork:end fork-split-threads */
   const orderedThreadKeys = useMemo(
     () =>
       /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-      orderSidebarSplitPairs({
-        threads: orderedThreads,
-        refOf: (thread) => scopeThreadRef(thread.environmentId, thread.id),
-        pairs: splitPairs,
-        canPair: (thread) =>
-          thread.pinnedAt == null &&
-          !shelvedThreadKeys.has(scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))),
-      })
+      splitModel.order
         /* fork:end fork-split-threads */
         .map((thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))),
     [
-      orderedThreads,
       /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-      splitPairs,
-      shelvedThreadKeys,
+      splitModel,
       /* fork:end fork-split-threads */
     ],
   );
@@ -3066,10 +3061,7 @@ export default function Sidebar() {
     }
   });
   const splitDropHandlers = makeSidebarSplitDropHandlers({
-    canPair: (threadKey) => {
-      const thread = threadByKey.get(threadKey);
-      return thread !== undefined && canPairInSidebar(thread);
-    },
+    canPair: (threadKey) => splitModel.pairable.has(threadKey),
     onPair: pairDroppedCard,
   });
   /* fork:end fork-split-threads */
@@ -4866,23 +4858,17 @@ export default function Sidebar() {
                     };
                     /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
                        A split pair paints as one row at its first member;
-                       custom/splitThreads/sidebarSplitRows decides. */
-                    const pairedThreadKeys = new Set<string>();
+                       splitModel (custom/splitThreads/sidebarSplitRows) decides. */
                     const renderThreadRow = (
                       thread: EnvironmentThreadShell,
                       section: SidebarSection,
                       options: Parameters<typeof renderOneThreadRow>[2] = {},
                     ) => {
-                      const splitRow = resolveSidebarSplitRow({
-                        threadRef: scopeThreadRef(thread.environmentId, thread.id),
-                        pairs: splitPairs,
-                        threadByKey,
-                        canPair: (candidate) =>
-                          options.sortable === undefined && canPairInSidebar(candidate),
-                        paired: pairedThreadKeys,
-                      });
-                      if (splitRow.kind === "skip") return null;
-                      if (splitRow.kind === "single") {
+                      const splitRow = splitModel.rows.get(
+                        scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+                      );
+                      if (splitRow?.kind === "skip") return null;
+                      if (splitRow === undefined) {
                         return renderOneThreadRow(thread, section, options);
                       }
                       return (

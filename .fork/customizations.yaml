@@ -5686,9 +5686,12 @@
     pane. Pairs are device-local (custom/splitThreads/splitThreadStore,
     localStorage): no server, contract or migration change, so other clients
     and mobile show the two threads as ordinary cards. A thread belongs to at
-    most one pair; pairing it again moves it. A pair whose member is deleted,
-    archived or a discarded draft dissolves once the environment's snapshot
-    is live.
+    most one pair; pairing it again moves it. A pair whose partner is deleted
+    or a discarded draft dissolves when the split view finds it missing
+    (upstream's resolveThreadRouteRenderState, once the environment's snapshot
+    is live). A "Split agent" click in flight sits in a separate, unpersisted
+    store, and only a draft in the project it is minting into joins its
+    source before the pair is written.
 
     The route's thread is the focused pane. Pressing into the other pane
     navigates to its thread (replace), so the right panel, the sidebar
@@ -5702,27 +5705,38 @@
     or a sent split draft loses focus; a thread arriving takes the departing
     thread's slot, upstream's reuse of one ChatView across switches. The
     focused pane is ThreadRouteView's own element (promotion and redirects
-    stay upstream's). Each pane gives its ChatView a composer ref of its
-    own that never changes (a send holds it across awaits), and the command
-    palette, which only reads its ref, sees the focused pane's through a
-    getter; one shared ref would send and focus through the wrong composer. Below the lg breakpoint only the focused pane shows and the pill
-    hides; the pair is kept.
+    stay upstream's); the other pane decides whether its thread exists by
+    the same upstream rule, and the slot latch alone decides keys. Each slot
+    gives its ChatView a composer ref of its own that never changes (a send
+    holds it across awaits), and SplitThreadPanes points the command
+    palette's ref, which the palette only reads, at the focused slot through
+    one getter installed once; one shared ref would send and focus through
+    the wrong composer. Below the lg breakpoint only the focused pane shows
+    and the pill hides (the pane context's canSplit); the pair is kept.
 
-    Only the focused pane answers window-level input. ChatView (fenced) reads
-    custom/splitThreads/splitPaneContext and gates useChatShortcuts, the
-    paste-to-focus listener, desktop menu actions, the timeline's
-    document-level scroll keys, the open-in-editor shortcut and automatic
-    composer focus on it; ChatComposer (fenced) gates its stash shortcut, the
-    pending-question card its digit answers, and dictation registers only
-    the focused pane's composer. Each split pane has
+    Only the focused pane answers window-level input, in one style: each
+    effect that listens on the window guards on the pane context's focused
+    flag and lists it as a dependency. ChatView (fenced) does so for
+    useChatShortcuts, paste-to-focus, desktop menu actions, the timeline's
+    document-level scroll keys, the open-in-editor shortcut, and the
+    automatic refocus on window focus and SnapShot; thread-switch focus reads
+    the flag without depending on it, since focus moving into a pane is a
+    press there that a caret jump would take away. focusComposer itself is
+    not gated: a pane's own controls use it. The PR-link dialog host, a global
+    singleton, mounts only in the focused pane, and useThreadFind (fenced)
+    takes the palette's find broadcast only there. ChatComposer (fenced)
+    gates its stash shortcut, the pending-question card its digit answers,
+    and dictation registers only the focused pane's composer; a recording
+    left running in a pane that loses focus finishes there, into its draft. Each split pane has
     layout containment, so ChatView's fixed-position pieces (the header's
     panel toggles, Glass's frost) sit on their pane rather than both on the
     window; the left pane alone clears the macOS traffic lights and the right
     alone clears Windows' native controls.
 
-    In the sidebar a pair paints as one row of two cards at its first member
-    in paint order, and the other member's slot is skipped
-    (custom/splitThreads/sidebarSplitRows). Left and right follow the panes.
+    In the sidebar one memoized model (custom/splitThreads/sidebarSplitRows)
+    decides what paints, the keyboard order and which cards take a drop: a
+    pair paints as one row of two cards at its first member in paint order,
+    and the other member's slot is skipped. Left and right follow the panes.
     A partner the list is not showing leaves its card on its own. Only active
     cards pair: the pinned block sorts its cards with dnd-kit, and settled or
     snoozed rows carry their own un-settle and wake actions. Keyboard and
@@ -5754,6 +5768,8 @@
     - apps/web/src/components/ThreadRouteView.tsx
     # Fenced: focused-pane gates, titlebar insets per pane, and the pill.
     - apps/web/src/components/ChatView.tsx
+    # Fenced: the palette's find broadcast opens only the focused pane.
+    - apps/web/src/components/chat/useThreadFind.ts
     # Fenced: the stash shortcut answers only in the focused pane.
     - apps/web/src/components/chat/ChatComposer.tsx
     # Fenced: the card drag source, the list's drop handlers and the

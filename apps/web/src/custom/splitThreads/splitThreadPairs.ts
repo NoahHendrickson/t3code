@@ -27,15 +27,6 @@ export function findSplitPair(
   return pairs.find((pair) => pairHas(pair, key)) ?? null;
 }
 
-export function splitPartnerOf(
-  pairs: readonly SplitThreadPair[],
-  ref: ScopedThreadRef,
-): ScopedThreadRef | null {
-  const pair = findSplitPair(pairs, ref);
-  if (!pair) return null;
-  return scopedThreadKey(pair.a) === scopedThreadKey(ref) ? pair.b : pair.a;
-}
-
 /** `a` takes the left pane, `b` the right. Pairing a thread with itself is a no-op. */
 export function pairSplitThreads(
   pairs: readonly SplitThreadPair[],
@@ -54,16 +45,5 @@ export function unpairSplitThread(
 ): readonly SplitThreadPair[] {
   const key = scopedThreadKey(ref);
   const next = pairs.filter((pair) => !pairHas(pair, key));
-  return next.length === pairs.length ? pairs : next;
-}
-
-/** Drops every pair with a member that no longer exists (deleted, archived,
-    or a draft that was discarded), so its partner is a thread of its own
-    again instead of sitting beside an empty pane. */
-export function pruneSplitPairs(
-  pairs: readonly SplitThreadPair[],
-  exists: (ref: ScopedThreadRef) => boolean,
-): readonly SplitThreadPair[] {
-  const next = pairs.filter((pair) => exists(pair.a) && exists(pair.b));
   return next.length === pairs.length ? pairs : next;
 }

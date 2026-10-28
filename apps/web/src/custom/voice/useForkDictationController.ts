@@ -135,6 +135,14 @@ export function useForkDictationController(input: DictationInput) {
       },
     });
   }, [controller, paneFocused]);
+  // The hotkeys reach only the focused pane, so a recording left running in a
+  // pane that loses focus could not be stopped from the keyboard. It finishes
+  // there instead, into the draft it started in.
+  useEffect(() => {
+    if (!paneFocused && controller && isDictationLive(controller.currentState)) {
+      void controller.stop();
+    }
+  }, [controller, paneFocused]);
   useEffect(() => () => controller?.dispose(), [controller]);
 
   // Through the mirror, not the render scope: a caller that retains these

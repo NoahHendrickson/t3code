@@ -10,25 +10,23 @@ import type { ScopedProjectRef, ScopedThreadRef } from "@t3tools/contracts";
 import { Columns2Icon, ExternalLinkIcon } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
-import { useMediaQuery } from "~/hooks/useMediaQuery";
 import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 
 import { useSplitPane } from "./splitPaneContext";
-import { SPLIT_THREADS_MIN_WIDTH_QUERY } from "./SplitThreadPanes";
-import { useSplitThreadStore } from "./splitThreadStore";
+import { usePendingSplitStore, useSplitThreadStore } from "./splitThreadStore";
 
 export function SplitAgentPill(props: {
   readonly threadRef: ScopedThreadRef;
   readonly projectRef: ScopedProjectRef;
   readonly branch: string | null;
   readonly worktreePath: string | null;
+  /** A started thread: splitting a draft would only reopen the same draft. */
+  readonly canStartSplit: boolean;
 }) {
   const { threadRef, projectRef, branch, worktreePath } = props;
   const splitPane = useSplitPane();
-  const wide = useMediaQuery(SPLIT_THREADS_MIN_WIDTH_QUERY);
   const handleNewThread = useNewThreadHandler();
   const unpair = useSplitThreadStore((state) => state.unpair);
-  if (!wide) return null;
 
   if (splitPane.split) {
     return (
@@ -39,9 +37,9 @@ export function SplitAgentPill(props: {
     );
   }
 
+  if (!splitPane.canSplit || !props.canStartSplit) return null;
   const splitAgent = async () => {
-    const { setPendingSource, pair } = useSplitThreadStore.getState();
-    setPendingSource(threadRef);
+    usePendingSplitStore.setState({ pending: { source: threadRef, projectRef } });
     try {
       const opened = await handleNewThread(projectRef, {
         branch,
@@ -49,9 +47,13 @@ export function SplitAgentPill(props: {
         envMode: worktreePath ? "worktree" : "local",
         startFromOrigin: false,
       });
-      if (opened) pair(threadRef, scopeThreadRef(projectRef.environmentId, opened.threadId));
+      if (opened) {
+        useSplitThreadStore
+          .getState()
+          .pair(threadRef, scopeThreadRef(projectRef.environmentId, opened.threadId));
+      }
     } finally {
-      setPendingSource(null);
+      usePendingSplitStore.setState({ pending: null });
     }
   };
   return (
