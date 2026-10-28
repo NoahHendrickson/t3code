@@ -1,6 +1,15 @@
 import { ComposerSelectControl } from "./chat/ComposerControl";
 import { ComposerContextLabel } from "./ComposerContextLabel";
-import { FolderGit2Icon, FolderGitIcon, FolderIcon } from "lucide-react";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+// Workspace marks match the thread readout: the branch mark for a checkout,
+// the fork's worktree mark for any worktree. Aliased so upstream's call sites
+// stay untouched.
+import { GitBranchIcon as FolderIcon } from "../custom/icons/lucide-phosphor";
+import {
+  WorktreeIcon as FolderGit2Icon,
+  WorktreeIcon as FolderGitIcon,
+} from "../custom/icons/WorktreeIcon";
+/* fork:end fork-composer-shell */
 import { memo, type MouseEvent as ReactMouseEvent } from "react";
 
 import {

@@ -3425,6 +3425,8 @@
     # Locked checkout/env spans carry data-fork-context-chip so they keep the
     # filled pill when there is no interactive trigger (desktop selectors +
     # mobile locked readout in BranchToolbar).
+    # Both files alias the workspace icons: GitBranchIcon for a checkout,
+    # WorktreeIcon for any worktree, matching ThreadContextReadout.
     - apps/web/src/components/BranchToolbar.tsx
     - apps/web/src/components/BranchToolbarEnvModeSelector.tsx
     - apps/web/src/components/BranchToolbarEnvironmentSelector.tsx
