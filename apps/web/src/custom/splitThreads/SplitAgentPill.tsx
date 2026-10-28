@@ -38,26 +38,24 @@ export function SplitAgentPill(props: {
   }
 
   if (!splitPane.canSplit || !props.canStartSplit) return null;
-  const splitAgent = async () => {
+  const splitAgent = () => {
     usePendingSplitStore.setState({ pending: { source: threadRef, projectRef } });
-    try {
-      const opened = await handleNewThread(projectRef, {
-        branch,
-        worktreePath,
-        envMode: worktreePath ? "worktree" : "local",
-        startFromOrigin: false,
-      });
-      if (opened) {
+    void handleNewThread(projectRef, {
+      branch,
+      worktreePath,
+      envMode: worktreePath ? "worktree" : "local",
+      startFromOrigin: false,
+    })
+      .then((opened) => {
+        if (!opened) return;
         useSplitThreadStore
           .getState()
           .pair(threadRef, scopeThreadRef(projectRef.environmentId, opened.threadId));
-      }
-    } finally {
-      usePendingSplitStore.setState({ pending: null });
-    }
+      })
+      .finally(() => usePendingSplitStore.setState({ pending: null }));
   };
   return (
-    <Button size="xs" variant="glass" onClick={() => void splitAgent()}>
+    <Button size="xs" variant="glass" onClick={splitAgent}>
       <Columns2Icon className="size-3.5" />
       Split agent
     </Button>
