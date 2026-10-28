@@ -3,7 +3,7 @@
  * Fork guard — see `.fork/customizations.yaml#fork-desktop-release`.
  *
  * The fork's own release path. The build being correct is CI's job; what this
- * guards is the two properties that are dangerous to lose quietly:
+ * guards is the three properties that are dangerous to lose quietly:
  *
  *   1. It fires on `workflow_dispatch` and nothing else. A `schedule:` or
  *      `push:` trigger added here would publish releases from the fork
@@ -12,6 +12,7 @@
  *   2. It never publishes to a package registry. Fork builds carry upstream's
  *      package names, so an `npm publish` here would push fork artifacts to
  *      upstream's namespace.
+ *   3. Every release is signed and notarized, so installs can update in place.
  */
 
 import * as NodeFS from "node:fs";
@@ -83,6 +84,24 @@ describe("fork guard: fork-desktop-release", () => {
     expect(workflow).toContain("--platform mac");
     expect(workflow).toContain("--arch arm64");
     expect(workflow).toContain("--target dmg");
+  });
+
+  it("signs and notarizes every release", () => {
+    // Installs update in place through Squirrel.Mac, which rejects an update
+    // whose signature does not match the running app's. One unsigned release
+    // published as latest would strand every signed install on an update it
+    // can download but never apply.
+    const workflow = readForkRelease();
+    const build = readStepBlock(workflow, "Build desktop artifact");
+    expect(build).toContain("--signed");
+    expect(build).toContain("fork releases must be signed and notarized");
+    const verify = readStepBlock(workflow, "Verify signature and notarization");
+    expect(verify).toContain("spctl --assess --type execute");
+    expect(verify).toContain("xcrun stapler validate");
+    expect(verify).not.toMatch(/^\s+if:/mu);
+    expect(workflow.indexOf("Verify signature and notarization")).toBeLessThan(
+      workflow.indexOf("Collect release assets"),
+    );
   });
 
   it("keeps the launch isolation gate wired ahead of publishing", () => {

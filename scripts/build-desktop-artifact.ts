@@ -3925,13 +3925,22 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
   const stageProdResourcesDir = path.join(stageAppDir, "apps/desktop/prod-resources");
   yield* fs.copy(stageResourcesDir, stageProdResourcesDir);
 
+  /* fork:begin fork-desktop-release — see .fork/customizations.yaml#fork-desktop-release */
+  // Passkey signing is opt-in: it needs an Associated Domains profile for the
+  // fork's bundle ID, and the Clerk RP domain's apple-app-site-association
+  // only lists upstream's team. Without a profile, sign with plain Developer
+  // ID entitlements instead of failing the build.
+  const repoEnv = loadRepoEnv({ repoRoot });
   const configuredMacPasskeySigning =
-    options.platform === "mac" && options.signed
+    options.platform === "mac" &&
+    options.signed &&
+    (repoEnv.T3CODE_MACOS_PROVISIONING_PROFILE?.trim() ?? "") !== ""
       ? yield* Effect.try({
-          try: () => resolveMacPasskeySigningConfiguration(loadRepoEnv({ repoRoot })),
+          try: () => resolveMacPasskeySigningConfiguration(repoEnv),
           catch: MacPasskeySigningConfigurationResolutionError.fromCause,
         })
       : undefined;
+  /* fork:end fork-desktop-release */
   const macPasskeySigning = configuredMacPasskeySigning
     ? {
         ...configuredMacPasskeySigning,

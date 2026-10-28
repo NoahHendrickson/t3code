@@ -286,14 +286,21 @@
     the production Cloudflare relay, publishes the CLI to npm, signs with
     upstream's Apple and Azure certificates and announces to upstream's
     Discord; release-upstream-only gates all of that off here, so the fork
-    needs a path of its own. fork-release.yml builds macOS arm64 unsigned and
-    publishes to this repository's Releases, using only the automatic
-    GITHUB_TOKEN. Two properties matter more than the build itself: it runs on
-    workflow_dispatch alone, so no sync, tag or cron can ever publish from the
-    fork by surprise; and it must never grow a package-registry publish step,
-    because the fork builds under upstream's package names. Signing is absent
-    on purpose, not by oversight — the build script already degrades when the
-    Apple secrets are missing, so adding them later is a change to one step.
+    needs a path of its own. fork-release.yml builds macOS arm64, signs and
+    notarizes it with the fork owner's Developer ID (CSC_LINK,
+    CSC_KEY_PASSWORD, APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER
+    repository secrets), and publishes to this repository's Releases. Three
+    properties matter more than the build itself: it runs on workflow_dispatch
+    alone, so no sync, tag or cron can ever publish from the fork by surprise;
+    it must never grow a package-registry publish step, because the fork
+    builds under upstream's package names; and every release is signed,
+    because installs update in place through Squirrel.Mac, which rejects an
+    update whose signature does not match the running app. Releases default to
+    non-prerelease since the updater only reads the repository's latest
+    release. The fenced hunk in the build script makes passkey signing opt-in:
+    it needs an Associated Domains profile and an RP domain whose
+    apple-app-site-association lists the fork's team, and upstream's Clerk
+    domain only lists upstream's, so fork builds sign without it.
   tier: 1
   files:
     - .github/workflows/fork-release.yml
@@ -306,6 +313,8 @@
     # ci.yml carries a fenced fork hunk: release_smoke lints the isolation
     # gate script on every PR, so a defect there costs a check, not a build.
     - .github/workflows/ci.yml
+    # Fenced: passkey signing only when a provisioning profile is configured.
+    - scripts/build-desktop-artifact.ts
   verify:
     - apps/web/src/__fork_guards__/forkDesktopRelease.test.ts
 
