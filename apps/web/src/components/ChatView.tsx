@@ -288,6 +288,10 @@ import {
 } from "lucide-react";
 import { cn, randomUUID } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
+import { SplitAgentPill } from "~/custom/splitThreads/SplitAgentPill";
+/* fork:end fork-split-threads */
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
 import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
@@ -1116,6 +1120,12 @@ export default function ChatView(props: ChatViewProps) {
     reserveTitleBarControlInset = true,
     forceExpandedMobileComposer = false,
   } = props;
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+  // In a split only the focused pane answers window-level input and takes
+  // automatic composer focus: each such effect guards on splitPane.focused;
+  // see custom/splitThreads/splitPaneContext.
+  const splitPane = useSplitPane();
+  /* fork:end fork-split-threads */
   const canOperateThread = useEnvironmentScope(environmentId, AuthOrchestrationOperateScope);
   const canOperateTerminal = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
   const hasTerminalWriteAccess = () =>
@@ -3155,7 +3165,11 @@ export default function ChatView(props: ChatViewProps) {
     remoteOpenMode: remoteOpenState.mode,
   });
   useOpenFavoriteEditorShortcut({
-    enabled: showOpenInPicker,
+    enabled:
+      showOpenInPicker &&
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      splitPane.focused,
+    /* fork:end fork-split-threads */
     environmentId: activeThread?.environmentId ?? environmentId,
     keybindings,
     availableEditors,
@@ -3561,7 +3575,20 @@ export default function ChatView(props: ChatViewProps) {
     }
   };
   const onInterruptStable = useStableCallback(onInterrupt);
-  useEffect(() => subscribeSnapShotComposerFocus(focusComposerStable), [focusComposerStable]);
+  useEffect(
+    () =>
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      splitPane.focused
+        ? /* fork:end fork-split-threads */
+          subscribeSnapShotComposerFocus(focusComposerStable)
+        : undefined,
+    [
+      focusComposerStable,
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      splitPane.focused,
+      /* fork:end fork-split-threads */
+    ],
+  );
   const scheduleComposerFocus = () => {
     window.requestAnimationFrame(() => {
       focusComposer();
@@ -4588,7 +4615,10 @@ export default function ChatView(props: ChatViewProps) {
         scrollNode.addEventListener("pointerdown", handlePointerDown, {
           passive: true,
         });
-        document.addEventListener("keydown", handleKeyDown);
+        /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+        if (splitPane.focused)
+          /* fork:end fork-split-threads */
+          document.addEventListener("keydown", handleKeyDown);
         removeListeners = () => {
           scrollNode.removeEventListener("scroll", handleScroll);
           scrollNode.removeEventListener("wheel", handleWheel);
@@ -4612,6 +4642,9 @@ export default function ChatView(props: ChatViewProps) {
     composerRef,
     isTimelineAtLogicalEndStable,
     timelineRealContentOverflowsViewportStable,
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    splitPane.focused,
+    /* fork:end fork-split-threads */
   ]);
 
   const onTimelineAnchorReady = (messageId: MessageId, anchorIndex: number) => {
@@ -4783,16 +4816,26 @@ export default function ChatView(props: ChatViewProps) {
 
   useEffect(() => {
     if (!activeThread?.id || terminalUiState.terminalOpen) return;
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    if (!splitPane.focused) return;
+    /* fork:end fork-split-threads */
     const frame = window.requestAnimationFrame(() => {
       focusComposerStable();
     });
     return () => {
       window.cancelAnimationFrame(frame);
     };
+    // fork-split-threads: splitPane.focused is read, not a dependency. Focus
+    // moving into a pane is the user pressing somewhere in it, and pulling the
+    // caret into its composer then would take that press away.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [activeThread?.id, focusComposerStable, terminalUiState.terminalOpen]);
 
   useEffect(() => {
     if (!activeThread?.id || terminalUiState.terminalOpen || isMobileViewport) return;
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    if (!splitPane.focused) return;
+    /* fork:end fork-split-threads */
     let frame: number | null = null;
     const onWindowFocus = () => {
       if (frame !== null) window.cancelAnimationFrame(frame);
@@ -4812,7 +4855,15 @@ export default function ChatView(props: ChatViewProps) {
       window.removeEventListener("focus", onWindowFocus);
       if (frame !== null) window.cancelAnimationFrame(frame);
     };
-  }, [activeThread?.id, focusComposerStable, isMobileViewport, terminalUiState.terminalOpen]);
+  }, [
+    activeThread?.id,
+    focusComposerStable,
+    isMobileViewport,
+    terminalUiState.terminalOpen,
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    splitPane.focused,
+    /* fork:end fork-split-threads */
+  ]);
 
   useEffect(() => {
     if (!activeThread?.id) return;
@@ -5902,7 +5953,11 @@ export default function ChatView(props: ChatViewProps) {
       if (!event.repeat) composerRef.current?.openControl(command);
     }) satisfies ChatShortcutHandler;
   useChatShortcuts({
-    enabled: activeThreadId !== null,
+    enabled:
+      activeThreadId !== null &&
+      /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+      splitPane.focused,
+    /* fork:end fork-split-threads */
     keybindings,
     scriptKeybindings,
     getShortcutContext: getShortcutContextStable,
@@ -6030,15 +6085,27 @@ export default function ChatView(props: ChatViewProps) {
 
   // A focused desktop browser page forwards these chords as menu actions.
   useEffect(() => {
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    if (!splitPane.focused) return;
+    /* fork:end fork-split-threads */
     return window.desktopBridge?.onMenuAction((action) => {
       if (action === "rightPanel.toggle") toggleRightPanelStable();
       else if (action === "rightPanel.toggleMaximized") toggleRightPanelMaximizedStable();
     });
-  }, [toggleRightPanelStable, toggleRightPanelMaximizedStable]);
+  }, [
+    toggleRightPanelStable,
+    toggleRightPanelMaximizedStable,
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    splitPane.focused,
+    /* fork:end fork-split-threads */
+  ]);
 
   // Paste-to-focus: the resting composer blurs on a click into the timeline,
   // so a paste that follows has no editable target and would be dropped.
   useEffect(() => {
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    if (!splitPane.focused) return;
+    /* fork:end fork-split-threads */
     const keyHandler = (event: KeyboardEvent) => {
       if (
         shouldRedirectInputToComposer(event) &&
@@ -6071,7 +6138,13 @@ export default function ChatView(props: ChatViewProps) {
       window.removeEventListener("keydown", keyHandler, true);
       window.removeEventListener("paste", handler, true);
     };
-  }, [activeThreadId, composerRef]);
+  }, [
+    activeThreadId,
+    composerRef,
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    splitPane.focused,
+    /* fork:end fork-split-threads */
+  ]);
 
   const onRevertToTurnCount = async (
     turnCount: number,
@@ -8454,10 +8527,18 @@ export default function ChatView(props: ChatViewProps) {
                   "drag-region flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center px-3 sm:px-5",
                   reserveTitleBarControlInset &&
                     !inlineRightPanelOwnsTitleBar &&
+                    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+                    // Native window controls sit over the right pane only.
+                    (!splitPane.split || !splitPane.leading) &&
+                    /* fork:end fork-split-threads */
                     "wco:pr-(--workspace-native-controls-inset)",
                 )
               : "flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center pl-(--workspace-gutter-start) pr-(--workspace-gutter-end)",
-            COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
+            /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+            // The traffic lights sit over the left pane only.
+            splitPane.leading &&
+              /* fork:end fork-split-threads */
+              COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
           )}
         >
           {isElectron && rightPanelControlsAtRoot ? (
@@ -8760,6 +8841,22 @@ export default function ChatView(props: ChatViewProps) {
                     </div>
                   ) : null}
                   {/* fork:end fork-composer-shell */}
+                  {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+                      "Split agent" alone, "Pop out" in a split. Parked above the
+                      composer's right edge; the draft hero's headline owns this
+                      spot while a draft is centred. */}
+                  {!isDraftHeroState && activeThreadRef && activeProjectRef ? (
+                    <div className="absolute right-0 bottom-full pb-2">
+                      <SplitAgentPill
+                        threadRef={activeThreadRef}
+                        projectRef={activeProjectRef}
+                        branch={activeThread?.branch ?? null}
+                        worktreePath={activeWorktreePath}
+                        canStartSplit={isServerThread}
+                      />
+                    </div>
+                  ) : null}
+                  {/* fork:end fork-split-threads */}
                   <div
                     ref={draftHeroComposerAnchorRef}
                     className="relative z-10"
@@ -9253,7 +9350,10 @@ export default function ChatView(props: ChatViewProps) {
       ) : null}
 
       <RevertConfirmHost threadKey={routeThreadKey} onConfirm={onConfirmRevertStable} />
-      <LinkPullRequestDialogHost />
+      {/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+          A global singleton: with two panes, only the focused one hosts it. */}
+      {splitPane.focused ? <LinkPullRequestDialogHost /> : null}
+      {/* fork:end fork-split-threads */}
       <ThreadVisitWatermark threadRef={routeThreadRef} />
       <ExpandedImageDialogHost threadKey={routeThreadKey} />
     </div>

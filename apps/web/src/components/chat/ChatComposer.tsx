@@ -15,6 +15,9 @@ import {
 import { importPastedComposerText, readPastedComposerContext } from "../composerInlineTokenPaste";
 import { elementContextToPreviewAnnotation } from "../../lib/elementContext";
 import { RefreshIcon } from "~/components/ui/refresh-icon";
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
+/* fork:end fork-split-threads */
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
 import { ForkDictationGhostMic, ForkDictationNotices } from "~/custom/voice/ForkDictationControl";
 import { useForkDictationController } from "~/custom/voice/useForkDictationController";
@@ -5558,7 +5561,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     if (stashMenuClosesOn.prompt !== prompt || composerMenuOpen) setIsStashMenuOpen(false);
   }
 
+  /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+     Every pane's composer listens on the window; only the focused one stashes. */
+  const splitPaneFocused = useSplitPane().focused;
+  /* fork:end fork-split-threads */
   useEffect(() => {
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    if (!splitPaneFocused) return;
+    /* fork:end fork-split-threads */
     const handler = (event: globalThis.KeyboardEvent) => {
       const command = resolveShortcutCommand(event, keybindings, {
         context: {
@@ -5596,6 +5606,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     stashCurrentPromptStable,
     isRevertingCheckpoint,
     terminalOpen,
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    splitPaneFocused,
+    /* fork:end fork-split-threads */
   ]);
 
   const addComposerAttachments = async (

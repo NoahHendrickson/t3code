@@ -3378,3 +3378,13 @@
     inset: -4px;
   }
 }
+
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+   A card being dragged over to split with marks itself the way a file drag
+   does (upstream's ring-1 ring-inset ring-primary/70), as an outline so it
+   does not fight the card's own box-shadow rim. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-split-drop-target] > [role="button"] {
+  outline: 1px solid color-mix(in srgb, var(--primary) 70%, transparent);
+  outline-offset: -1px;
+}
+/* fork:end fork-split-threads */
