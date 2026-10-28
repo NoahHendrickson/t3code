@@ -180,6 +180,47 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Status section caret — see
+   `.fork/customizations.yaml#sidebar-v2-status-grouping`.
+
+   The caret shows while the pointer is anywhere in its section, not just on
+   the header. Same flat-list walk as the project header actions reveal
+   below, and the same invariant: a row belongs to the nearest preceding
+   header. Rows in a section carry data-fork-status-section (the pinned
+   block's wrapper and Settled's "Show more" too); the snoozed shelf's rows
+   carry nothing, so they never light the section above them.
+
+   Hover only where the pointer can hover: a tap would otherwise leave the
+   caret stuck up. Hiding waits 100ms so crossing the 2px gap between cards
+   does not blink it; showing is immediate. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-status-section-caret] {
+  visibility: hidden;
+  transition-property: rotate, visibility;
+  transition-duration: var(--default-transition-duration, 150ms), 0s;
+  transition-timing-function: var(--default-transition-timing-function, ease);
+  transition-delay: 0s, 100ms;
+}
+:root[data-fork="noahhendrickson-t3code"]
+  li[data-fork-status-section-header]:has(:focus-visible)
+  [data-fork-status-section-caret] {
+  visibility: visible;
+  transition-delay: 0s;
+}
+@media (hover: hover) {
+  :root[data-fork="noahhendrickson-t3code"]
+    li[data-fork-status-section-header]:hover
+    [data-fork-status-section-caret],
+  :root[data-fork="noahhendrickson-t3code"]
+    li[data-fork-status-section-header]:has(~ li[data-fork-status-section]:hover):not(
+      :has(~ li[data-fork-status-section-header] ~ li[data-fork-status-section]:hover)
+    )
+    [data-fork-status-section-caret] {
+    visibility: visible;
+    transition-delay: 0s;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    Workspace header split pills — see
    `.fork/customizations.yaml#fork-workspace-header`.
 

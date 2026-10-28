@@ -1106,7 +1106,8 @@
     or selected card never does. Section headers are a muted semibold label
     with its count, a step under the card title's size, on the cards' inset,
     with no mark or hairline; clicking collapses. A small filled caret on the
-    right edge appears only while the header is hovered or keyboard-focused,
+    right edge appears only while the pointer is over the header or any row in
+    its section, or the header is keyboard-focused,
     pointing at what a click does (up collapses an open section, down expands
     a closed one), so the toggle is discoverable without resting chrome.
 
@@ -1134,6 +1135,9 @@
     # Shared with fork-sidebar-chrome and sidebar-v2-project-grouping; this
     # entry owns the grouping radio group.
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    # Shared with most fork entries; this entry owns only the status section
+    # caret rule.
+    - apps/web/src/theme.custom.css
   shadows: []
   watch:
     - docs/user/thread-sidebar.md

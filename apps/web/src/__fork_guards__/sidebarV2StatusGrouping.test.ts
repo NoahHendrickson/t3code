@@ -86,4 +86,16 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
     expect(sidebar).toContain("const workingShelfActive = workingShelfEnabled && !statusGrouped;");
     expect(sidebar).toContain("workingShelfActive && isSidebarThreadWorking(thread)");
   });
+
+  it("stamps the section rows the caret's hover walk reads", () => {
+    // theme.custom.css lights a header's caret while a later
+    // data-fork-status-section row before the next header is hovered.
+    expect(sidebar).toContain(
+      'data-fork-status-section={props.inStatusSection === true ? "" : undefined}',
+    );
+    expect(sidebar).toMatch(
+      /inStatusSection=\{\s*statusSection !== undefined \|\|\s*\(section === "settled" && settledSectionShown\)\s*\}/u,
+    );
+    expect(sidebar).toContain('data-fork-status-section={pinnedSectionShown ? "" : undefined}');
+  });
 });

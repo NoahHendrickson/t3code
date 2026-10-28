@@ -7,9 +7,10 @@
  * title's 14px, and the count beside it fainter still. It starts on the
  * cards' 12px inset so the label lines up with the titles under it. No mark,
  * no hairline. A small filled caret on the right edge shows only while the
- * header is hovered or keyboard-focused, pointing at what a click does: up to
- * collapse an open section, down to expand a closed one. It is always laid
- * out, so appearing never shifts the row.
+ * pointer is over the header or any row in its section, or the header is
+ * keyboard-focused (`theme.custom.css` carries the rule), pointing at what a
+ * click does: up to collapse an open section, down to expand a closed one. It
+ * is always laid out, so appearing never shifts the row.
  *
  * The pinned block and the settled tail take the same header while status
  * grouping is on, so every group in the list reads the same way; `section`
@@ -36,7 +37,7 @@ export function SidebarV2StatusSectionHeader(props: {
   readonly onToggleCollapsed: () => void;
 }) {
   return (
-    <li data-thread-selection-safe className="list-none">
+    <li data-thread-selection-safe data-fork-status-section-header="" className="list-none">
       <button
         type="button"
         onClick={props.onToggleCollapsed}
@@ -44,7 +45,7 @@ export function SidebarV2StatusSectionHeader(props: {
         data-testid="sidebar-v2-status-section-toggle"
         data-status={props.section}
         className={cn(
-          "group/status flex w-full cursor-pointer items-center gap-1.5 text-left text-[0.8125rem] leading-4",
+          "flex w-full cursor-pointer items-center gap-1.5 text-left text-[0.8125rem] leading-4",
           SIDEBAR_V2_CARD_ALIGNMENT.cardPad,
           // The first header still needs air under the Projects row: the list
           // has no top padding, and this label has no 32px row of its own the
@@ -64,13 +65,14 @@ export function SidebarV2StatusSectionHeader(props: {
         </span>
         <svg
           aria-hidden
+          data-fork-status-section-caret=""
           viewBox="0 0 14 14"
           fill="currentColor"
           stroke="currentColor"
           strokeWidth={1}
           strokeLinejoin="round"
           className={cn(
-            "ms-auto size-3.5 shrink-0 text-muted-foreground transition-transform invisible group-hover/status:visible group-focus-visible/status:visible",
+            "ms-auto size-3.5 shrink-0 text-muted-foreground",
             SIDEBAR_V2_TRAILING_OFFSET.statusCaret,
             !props.collapsed && "rotate-180",
           )}
