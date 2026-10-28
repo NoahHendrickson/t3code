@@ -315,6 +315,9 @@ import {
 } from "~/custom/sidebarV2RowPolicy";
 /* fork:end sidebar-v2-card-rows */
 import { SidebarV2ChromeActionRows, SidebarV2ProjectScopeRow } from "~/custom/SidebarV2ChromeRows";
+/* fork:begin fork-sidebar-recent-projects — see .fork/customizations.yaml#fork-sidebar-recent-projects */
+import { SidebarV2RecentProjectsStrip } from "~/custom/SidebarV2RecentProjectsStrip";
+/* fork:end fork-sidebar-recent-projects */
 /* fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area */
 import {
   SIDEBAR_V2_ICON_BUTTON_CLASS,
@@ -4588,6 +4591,12 @@ export default function Sidebar() {
           onNewThread={handleNewThreadClick}
           onAddProject={openAddProjectCommandPalette}
         />
+        {/* fork:begin fork-sidebar-recent-projects — see .fork/customizations.yaml#fork-sidebar-recent-projects */}
+        <SidebarV2RecentProjectsStrip
+          projectGroups={projectGroups}
+          onStartAgent={handleNewThreadInProject}
+        />
+        {/* fork:end fork-sidebar-recent-projects */}
         <SidebarV2ProjectScopeRow
           projectGroups={projectGroups}
           projectScopeKeys={projectScopeKeys}
