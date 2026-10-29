@@ -295,8 +295,8 @@
   color: rgb(255 255 255 / 65%);
 }
 
-/* The footer's Settings and Pull Requests icons take the same white at 65%.
-   They ink from --sidebar-icon-color, not the muted channel, and the vibrancy
+/* The footer's icons (Settings, Pull Requests, the update pill at rest) take
+   the same white at 65%. They ink from --sidebar-icon-color, not the muted channel, and the vibrancy
    block freezes that to opaque #8a8a8a for the rest of the panel. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
