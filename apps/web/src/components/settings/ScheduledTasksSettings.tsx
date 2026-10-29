@@ -58,7 +58,7 @@ import { providerInstanceEntriesFor } from "../../providerInstances";
 import { usePrimaryCloudLinkState } from "../../cloud/primaryCloudLinkState";
 import { requestConfirmDialog } from "../../confirmDialog";
 import { webhookAddress } from "@t3tools/client-runtime/webhook-address";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import {
@@ -414,6 +414,22 @@ export function ScheduledTasksSettings(target: {
   const canCreate = useAtomValue(
     serverEnvironment.upsertScheduledTask.permissionAtom(defaultEnvironment?.environmentId ?? null),
   );
+  /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+     An "Open automation" link to a PR-review task opens it where it is edited, like a list click. */
+  if (
+    linkedTask?.schedule.type === "webhook" &&
+    linkedTask.schedule.github &&
+    linkedEnvironmentId !== undefined
+  ) {
+    return (
+      <Navigate
+        to="/scheduled"
+        search={{ env: linkedEnvironmentId, task: linkedTask.id }}
+        replace
+      />
+    );
+  }
+  /* fork:end fork-github-pr-automation */
   return (
     <SettingsPageContainer>
       <SettingsSection

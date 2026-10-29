@@ -69,9 +69,8 @@ import {
   type ScopedThreadRef,
   type ThreadId,
   ProviderInteractionMode,
-  /* fork:begin fork-resume-compaction-banner — see .fork/customizations.yaml#fork-resume-compaction-banner */
-  // Upstream imports ProviderInstanceId and resolveIdleCompaction for compact-on-send.
-  /* fork:end fork-resume-compaction-banner */
+  ProviderInstanceId,
+  resolveIdleCompaction,
   RuntimeMode,
 } from "@t3tools/contracts";
 import {
@@ -2606,7 +2605,14 @@ export default function ChatView(props: ChatViewProps) {
     threadId: activeThread?.id ?? null,
     contextWindow: activeContextWindow,
     dismissed: resumeCompactionPermanentlyDismissed || nativeResumeCompactionDismissed,
-    hidden: pendingUserInputs.length > 0 || phase === "running",
+    // "Compact idle threads: Never" turns the offer off, as it does upstream's.
+    hidden:
+      pendingUserInputs.length > 0 ||
+      phase === "running" ||
+      resolveIdleCompaction(
+        settings,
+        activeProviderInstanceId ?? ProviderInstanceId.make("claudeAgent"),
+      ) === "off",
     provider: selectedProvider,
     promptCacheTtlMs: activeThreadLiveTokenUsage?.promptCacheTtlMs,
     nowMinute,

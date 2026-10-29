@@ -38,7 +38,13 @@ const task: ScheduledTask = {
   runCount: 0,
 };
 
-const state = vi.hoisted(() => ({ connected: true, tasksLoaded: true }));
+// fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+const state = vi.hoisted(() => ({
+  connected: true,
+  tasksLoaded: true,
+  linkedTask: null as ScheduledTask | null,
+}));
+// fork:end fork-github-pr-automation
 
 function environment() {
   return {
@@ -85,7 +91,9 @@ vi.mock(import("../../state/server"), async (original) => {
 vi.mock(import("../../state/query"), async (original) => ({
   ...(await original()),
   useEnvironmentQuery: ((request: unknown) => ({
-    data: request === null ? null : { tasks: state.tasksLoaded ? [task] : [] },
+    // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+    data: request === null ? null : { tasks: state.tasksLoaded ? [state.linkedTask ?? task] : [] },
+    // fork:end fork-github-pr-automation
     error: null,
     isPending: false,
     refresh: vi.fn(),
@@ -133,6 +141,25 @@ describe("ScheduledTasksSettings", () => {
     await userEvent.click(page.getByRole("button", { name: "New task" }));
     await vi.waitFor(() => expect(screen.router?.state.location.pathname).toBe("/scheduled"));
     expect(screen.router?.state.location.search).toMatchObject({ task: "new" });
+  });
+
+  it("opens a linked PR-review task on the scheduled page", async () => {
+    state.connected = true;
+    state.tasksLoaded = true;
+    state.linkedTask = {
+      ...task,
+      schedule: { type: "webhook", signature: null, github: { repositories: [{ projectId }] } },
+    };
+    try {
+      await using screen = await render(<ScheduledTasksSettings taskId={task.id} />);
+      await vi.waitFor(() => expect(screen.router?.state.location.pathname).toBe("/scheduled"));
+      expect(screen.router?.state.location.search).toMatchObject({
+        env: environmentId,
+        task: task.id,
+      });
+    } finally {
+      state.linkedTask = null;
+    }
   });
   // fork:end fork-github-pr-automation
 });

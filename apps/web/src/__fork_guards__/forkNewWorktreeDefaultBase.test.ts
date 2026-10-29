@@ -29,7 +29,7 @@ describe("fork guard: fork-new-worktree-default-base", () => {
       chatView.indexOf("fork:end fork-new-worktree-default-base", start),
     );
     expect(fence.replace(/\s+/g, " ")).toContain(
-      '...(mode === "worktree" && draftThread?.envMode !== "worktree" ? { branch: null, worktreePath: null } : {}),',
+      '...(mode === "worktree" && (draftThread?.envMode !== "worktree" || draftThread?.worktreePath) ? { branch: null, worktreePath: null } : {}),',
     );
   });
 });

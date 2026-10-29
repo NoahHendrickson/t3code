@@ -53,6 +53,9 @@ import { installCommandPaletteCommands } from "./shortcuts/commandPaletteCommand
 import { registerOpenFavoriteEditorCommand } from "./components/chat/OpenInPickerShortcut";
 import { environmentThreadShells } from "./state/threads";
 import { resolveThreadRouteTarget } from "./threadRoutes";
+/* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+import { isSideChatSurface } from "./custom/sideChat/surface";
+/* fork:end fork-side-chat */
 
 /** Writes appearance settings onto the document, touching only the groups that changed. */
 function startClientAppearance(): void {
@@ -191,8 +194,15 @@ export function startAppServices(): AppRouter {
     threadRefsAtom: environmentThreadShells.threadRefsAtom,
     shellStateAtom: environmentShell.stateAtom,
   });
-  startMainAppLocationTracking(router);
+  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+  if (!isSideChatSurface) startMainAppLocationTracking(router);
+  /* fork:end fork-side-chat */
   startWorkspaceFocus(router);
+  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat
+     The side chat window is only a chat; the main window runs everything below once, so a
+     second copy would double notifications, sounds and app-wide toasts. */
+  if (isSideChatSurface) return router;
+  /* fork:end fork-side-chat */
   startBackgroundThreadAnnouncements(appAtomRegistry, router);
   startThreadVisitedMigration(appAtomRegistry);
   startSshPasswordPromptQueue();

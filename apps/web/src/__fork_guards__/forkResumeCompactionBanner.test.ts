@@ -32,6 +32,11 @@ describe("fork-resume-compaction-banner", () => {
 
   it("puts the resume card in the composer banner stack", () => {
     expect(chatView).toContain("const resumeCompactionBannerItem = useResumeCompactionBanner({");
+    // The "Compact idle threads: Never" setting hides the card, as it hides upstream's offer.
+    const banner = chatView.slice(chatView.indexOf("useResumeCompactionBanner({"));
+    expect(banner.slice(0, banner.indexOf("});"))).toMatch(
+      /resolveIdleCompaction\([\s\S]*?\) === "off"/u,
+    );
     expect(chatView.match(/\.\.\.resumeCompactionItems,/gu)).toHaveLength(2);
     expect(card).toContain('title: "Resume with less context"');
     expect(card).toContain('dismissLabel: "Keep full history"');

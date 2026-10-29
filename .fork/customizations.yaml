@@ -437,6 +437,7 @@
     - apps/desktop/src/window/DesktopApplicationMenu.test.ts
     - t3.json
     - apps/desktop/src/main.ts
+    - apps/desktop/src/app/DesktopStartupRecovery.ts
     # The launcher's ownership marker (the fork's must not contain upstream's)
     # and its moved notice, which names the fork.
     - apps/desktop/src/app/DesktopCliShim.ts
@@ -4092,6 +4093,8 @@
   shadows:
     - apps/web/src/components/preview/PreviewPanel.tsx
   watch:
+    # A multi-model send detaches and restores the pills with its cleared draft.
+    - apps/web/src/components/chat/useMultipleModelSend.ts
     # Fenced queued-run edit: upstream moved queued-message editing out of
     # ChatView (#20304); the design-change run split/re-append followed it.
     - apps/web/src/components/chat/useQueuedRunEdit.ts
@@ -5457,36 +5460,6 @@
   verify:
     - apps/web/src/__fork_guards__/forkImageAttachmentNoChip.test.ts
 
-- id: git-config-lock-retry
-  intent: >
-    A git config write retries briefly while another git process holds
-    .git/config.lock. Git takes that lock for every config write and gives
-    up at once when it is held, and T3 writes branch.<name>.gh-merge-base
-    right after `git worktree add`. Several thread launches in one
-    repository reach that write within the same millisecond — a GitHub
-    webhook fanning one PR event out to three review tasks did on
-    2026-10-14 — so all but one launch failed "Workspace preparation failed
-    during provision worktree" and rolled back a worktree that already
-    existed. The retry (five attempts, 20ms doubling, jittered) outlasts a
-    sibling writer. Upstream has since made the worktree-creation write
-    non-fatal, so a lock that persists there leaves no recorded base; on the
-    push path it still fails, with a detail naming the lock instead of a
-    bare non-zero status. The write pins LC_ALL=C so the C-locale pattern
-    matches on localized hosts, and the pattern needs git's "File exists"
-    cause: the same prefix introduces a permission error, which is reported
-    as is and never retried. All four merge-base / comparison-ref writes
-    (gh-merge-base and t3-merge-base-ref, at worktree creation and first
-    push) share the helper. Upstream carries the same unretried write; drop
-    this fence if it adopts a retry.
-  tier: 4
-  files: []
-  shadows: []
-  watch:
-    - apps/server/src/vcs/GitVcsDriverCore.ts
-    - apps/server/src/vcs/GitVcsDriverCore.test.ts
-  verify:
-    - apps/server/src/vcs/GitVcsDriverCore.test.ts
-
 - id: fork-touch-affordances
   intent: >
     Phone usability for controls that only a mouse could reach. On iOS
@@ -5619,6 +5592,7 @@
     - apps/desktop/src/window/DesktopApplicationMenu.test.ts
     - apps/web/src/main.tsx
     - apps/web/src/routes/__root.tsx
+    - apps/web/src/appInit.tsx
     - apps/web/src/hooks/useSettings.ts
     # Its Glass: the per-window material, the full-window card and the headline.
     - apps/desktop/src/fork/ForkSidebarVibrancy.ts
@@ -5827,6 +5801,9 @@
     - apps/web/src/theme.custom.css
   shadows: []
   watch:
+    # Find keeps one attached timeline per thread, so split panes do not steal it.
+    - apps/web/src/components/chat/threadFindStore.ts
+    - apps/web/src/components/chat/threadFindStore.test.ts
     # Fenced: the route thread's split layout and SplitThreadPanes in place of {view}.
     - apps/web/src/components/ThreadRouteView.tsx
     # Fenced: focused-pane gates, titlebar insets per pane, the pill, the

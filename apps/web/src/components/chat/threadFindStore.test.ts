@@ -28,6 +28,14 @@ describe("thread find store", () => {
   it("restarts an open query from the viewport of the timeline showing the thread", () => {
     const { navigate, readPosition, timeline } = setup();
     const detach = attachThreadFindTimeline(timeline);
+    // fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+    // A second split pane's timeline attaching later must not take this thread's slot.
+    const detachOther = attachThreadFindTimeline({
+      threadKey: "env-1:thread-2",
+      navigate: vi.fn(),
+      readPosition: vi.fn(),
+    });
+    // fork:end fork-split-threads
     openThreadFind(threadKey);
     // Opening find is manual navigation; reopening it is not.
     expect(navigate).toHaveBeenCalledTimes(1);
@@ -46,6 +54,9 @@ describe("thread find store", () => {
       requestId: 2,
     });
     detach();
+    // fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads
+    detachOther();
+    // fork:end fork-split-threads
   });
 
   it("opens a search result's find for a thread before its timeline shows it", () => {

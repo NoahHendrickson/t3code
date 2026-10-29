@@ -1141,13 +1141,10 @@ export function useComposerSend(input: ComposerSendInput) {
         readFileBlockReason: () => readLiveAttachmentCapabilities().fileBlockReason,
         buildOutgoingMessageContext,
         isCurrentSend: () => composerSendGenerationRef.current === sendGeneration,
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        forkDesignChangesSent: forkDesignSend.sent,
+        /* fork:end fork-design-mode */
       });
-      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
-         The pills leave with the rest of the draft, so a prompt sent while these threads start
-         cannot carry the same request again. No sent-preview record: preview tabs belong to the
-         draft's thread, and none of the started threads can answer for it. */
-      forkDesignChanges.detach(forkDesignChangeRef, forkDesignSend.sent);
-      /* fork:end fork-design-mode */
       return;
     }
     const optimisticAttachments = optimisticMessageAttachments(composerAttachmentsSnapshot);
@@ -1429,9 +1426,6 @@ export function useComposerSend(input: ComposerSendInput) {
         });
         // The restored draft clones its images, so the sent copies are no longer used.
         optimisticBlobPreviews.release(optimisticMessage);
-        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
-        forkDesignChanges.restore(forkDesignChangeRef, forkDesignSend.sent);
-        /* fork:end fork-design-mode */
         const retryComposerImages = restoreComposerDraft(composerDraftTarget, sendSnapshot);
         if (currentRouteThreadKeyRef.current === routeThreadKey) {
           promptRef.current = messageTextForSend;

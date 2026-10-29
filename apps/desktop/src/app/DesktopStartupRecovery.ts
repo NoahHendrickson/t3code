@@ -18,7 +18,10 @@ import * as DesktopEnvironment from "./DesktopEnvironment.ts";
 import * as DesktopObservability from "./DesktopObservability.ts";
 import * as DesktopState from "./DesktopState.ts";
 
-const RELEASES_URL = "https://github.com/pingdotgg/t3code/releases";
+// fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+// Fork builds are released from the fork's repo; upstream's tags are a different app.
+const RELEASES_URL = "https://github.com/NoahHendrickson/t3code/releases";
+// fork:end fork-app-identity
 const LAST_STARTED_VERSION_FILE = "desktop-last-started-version";
 // Buttons are plain links to this host; will-navigate cancels them and runs the action.
 const ACTION_ORIGIN = "https://startup-recovery.invalid";

@@ -394,6 +394,16 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain("messageIdForSend,");
     // Upstream's approval-decline path has its own pendingIdsBeforeDecline; only a bare name counts.
     expect(chatView).not.toMatch(/\bpendingIds\b/u);
+    // A multi-model send detaches the pills with the cleared draft and restores them with it.
+    const multiSend = read("src/components/chat/useMultipleModelSend.ts");
+    expect(multiSend).toContain(
+      "forkDesignChanges.detach({ environmentId, threadId }, forkDesignChangesSent);",
+    );
+    expect(multiSend).toContain(
+      "forkDesignChanges.restore({ environmentId, threadId }, forkDesignChangesSent);",
+    );
+    expect(chatView).not.toContain("forkDesignChanges.detach(");
+    expect(chatView).not.toContain("forkDesignChanges.restore(");
   });
 
   it("offers to resolve previews that were sent, claiming only what was measured", () => {

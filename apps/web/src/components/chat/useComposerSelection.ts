@@ -229,10 +229,10 @@ export function useComposerSelection(input: ComposerSelectionInput) {
           newWorktreesStartFromOrigin: activeProjectSettings.settings.newWorktreesStartFromOrigin,
         }),
         /* fork:begin fork-new-worktree-default-base — see .fork/customizations.yaml#fork-new-worktree-default-base
-           Entering New worktree drops the draft's carried branch: kept, it became the new base,
-           as the selector seeds the repo default only into an empty branch. Only on the way in:
-           Base UI re-fires onValueChange on a reselect, which must keep the user's base. */
-        ...(mode === "worktree" && draftThread?.envMode !== "worktree"
+           Entering New worktree (from local or a previous worktree's path) drops the carried
+           branch, which would become the new base. A reselect must keep the user's base. */
+        ...(mode === "worktree" &&
+        (draftThread?.envMode !== "worktree" || draftThread?.worktreePath)
           ? { branch: null, worktreePath: null }
           : {}),
         /* fork:end fork-new-worktree-default-base */

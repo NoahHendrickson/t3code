@@ -9,6 +9,9 @@ import { deriveThreadTitleSeed } from "@t3tools/client-runtime/operations";
 import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { useNavigate } from "@tanstack/react-router";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
+/* fork:end fork-design-mode */
 import { newMessageId } from "~/lib/utils";
 import { collapseExpandedComposerCursor } from "../../composer-logic";
 import {
@@ -96,6 +99,9 @@ export function useMultipleModelSend(input: MultipleModelSendInput) {
     readFileBlockReason,
     buildOutgoingMessageContext,
     isCurrentSend,
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+    forkDesignChangesSent,
+    /* fork:end fork-design-mode */
   }: {
     readonly threadId: ThreadId;
     readonly project: EnvironmentProject;
@@ -112,6 +118,9 @@ export function useMultipleModelSend(input: MultipleModelSendInput) {
     ) => ReturnType<typeof buildMessageContext>;
     /** False once a newer send from this composer started. */
     readonly isCurrentSend: () => boolean;
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+    readonly forkDesignChangesSent: ReturnType<typeof forkDesignChanges.takeForSend>["sent"];
+    /* fork:end fork-design-mode */
   }) => {
     const { attachments: attachmentsSnapshot, messageText } = sendSnapshot;
     const failedSelections: ModelSelection[] = [];
@@ -136,6 +145,11 @@ export function useMultipleModelSend(input: MultipleModelSendInput) {
       clearComposerDraftContent(composerDraftTarget);
       composerRef.current?.resetCursorState();
       clearedDraft = true;
+      /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+         The pills leave with the draft, so a prompt sent while these threads start cannot carry
+         the same request again. No sent-preview record: no started thread owns the preview tabs. */
+      forkDesignChanges.detach({ environmentId, threadId }, forkDesignChangesSent);
+      /* fork:end fork-design-mode */
       const clearedDraftSnapshot = useComposerDraftStore
         .getState()
         .getComposerDraft(composerDraftTarget);
@@ -233,6 +247,9 @@ export function useMultipleModelSend(input: MultipleModelSendInput) {
       appAtomRegistry.set(fanoutSelectionsAtom, failedSelections);
       if (clearedDraft) {
         restoreComposerDraft(composerDraftTarget, sendSnapshot);
+        /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+        forkDesignChanges.restore({ environmentId, threadId }, forkDesignChangesSent);
+        /* fork:end fork-design-mode */
         if (composerRef.current && currentRouteThreadKeyRef.current === routeThreadKey) {
           promptRef.current = messageText;
           composerRef.current.resetCursorState({

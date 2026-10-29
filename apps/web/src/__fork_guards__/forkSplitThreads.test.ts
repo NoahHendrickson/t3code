@@ -61,10 +61,15 @@ describe("fork guard: fork-split-threads", () => {
     // Upstream replaced the find broadcast with openThreadFind(threadKey) on the
     // palette's active thread, which is the focused pane's; nothing to gate.
     expect(threadFind).not.toContain("subscribeThreadFindOpen");
-    expect(dictation).toContain("if (!controller || !paneFocused) return;");
+    // One rule for every fork hook with a window listener: focused, and not behind Settings or Usage.
+    expect(readSibling("../custom/splitThreads/splitPaneContext.ts")).toContain(
+      "return useSplitPane().focused && !use(BackgroundThreadContext);",
+    );
+    expect(dictation).toContain("const ownsInput = useOwnsGlobalInput();");
+    expect(dictation).toContain("if (!controller || !ownsInput) return;");
     // A recording left running in a pane that loses focus finishes there.
     expect(dictation).toMatch(
-      /if \(paneFocused \|\| !controller\) return;[\s\S]{0,120}if \(phase === "recording"\) void controller\.stop\(\);/u,
+      /if \(ownsInput \|\| !controller\) return;[\s\S]{0,120}if \(phase === "recording"\) void controller\.stop\(\);/u,
     );
     // Each slot owns its ChatView's composer ref; the palette reads the focused one.
     expect(panes).toMatch(/ComposerHandleContext value=\{props\.composerRef\}/u);
@@ -75,7 +80,7 @@ describe("fork guard: fork-split-threads", () => {
       /fork:begin fork-split-threads[\s\S]*?if \(!splitPaneFocused\) return;[\s\S]*?composer\.stash/u,
     );
     expect(questionCard).toContain(
-      "if (!activeQuestion || responseDisabled || !paneFocused || backgroundThread) return;",
+      "if (!activeQuestion || responseDisabled || !ownsInput) return;",
     );
   });
 

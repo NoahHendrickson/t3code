@@ -6,15 +6,14 @@
  * override can stay presentational. Port upstream effect fixes here first.
  */
 
-import { use, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { BackgroundThreadContext } from "~/components/chat/backgroundThread";
 import {
   derivePendingUserInputProgress,
   type PendingUserInputDraftAnswer,
 } from "~/pendingUserInput";
 import { type PendingUserInput } from "~/session-logic";
-import { useSplitPane } from "./splitThreads/splitPaneContext";
+import { useOwnsGlobalInput } from "./splitThreads/splitPaneContext";
 
 export function useComposerPendingUserInputCard({
   prompt,
@@ -116,14 +115,12 @@ export function useComposerPendingUserInputCard({
     }, 200);
   };
 
-  // Keyboard shortcut: number keys 1-9 select corresponding options when focus is
-  // outside editable fields. Multi-select prompts toggle options in place; single-
-  // select prompts keep the existing auto-advance behavior.
-  // In a split only the focused pane's question takes them (fork-split-threads).
-  const paneFocused = useSplitPane().focused;
-  const backgroundThread = use(BackgroundThreadContext);
+  // Number keys 1-9 pick options when focus is outside editable fields: multi-select toggles
+  // in place, single-select auto-advances. Only the pane that owns window input takes them
+  // (focused in a split, not behind Settings or Usage: fork-split-threads).
+  const ownsInput = useOwnsGlobalInput();
   useEffect(() => {
-    if (!activeQuestion || responseDisabled || !paneFocused || backgroundThread) return;
+    if (!activeQuestion || responseDisabled || !ownsInput) return;
     const handler = (event: globalThis.KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target;
@@ -147,7 +144,7 @@ export function useComposerPendingUserInputCard({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activeQuestion, responseDisabled, handleOptionSelection, paneFocused, backgroundThread]);
+  }, [activeQuestion, responseDisabled, handleOptionSelection, ownsInput]);
 
   return {
     progress,

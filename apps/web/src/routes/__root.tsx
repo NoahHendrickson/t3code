@@ -195,16 +195,14 @@ function RootRouteBranch() {
      fight over the dictation and SnapShot hotkeys, and auto-navigate to the bootstrap thread. */
   if (isSideChatSurface) {
     return (
-      <ToastProvider>
-        <AnchoredToastProvider>
-          <ConfirmDialogHost />
-          <CommandPalette>
-            <SideChatShell>
-              <Outlet />
-            </SideChatShell>
-          </CommandPalette>
-        </AnchoredToastProvider>
-      </ToastProvider>
+      <>
+        <ConfirmDialogHost />
+        <CommandPalette>
+          <SideChatShell>
+            <Outlet />
+          </SideChatShell>
+        </CommandPalette>
+      </>
     );
   }
   /* fork:end fork-side-chat */

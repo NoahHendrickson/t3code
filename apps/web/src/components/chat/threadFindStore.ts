@@ -53,19 +53,25 @@ interface ThreadFindTimeline {
   readonly navigate: () => void;
 }
 
-let attachedTimeline: ThreadFindTimeline | null = null;
+/* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+// One slot per thread: split panes each attach a timeline, and the last to re-render must not
+// take find away from the focused pane.
+const attachedTimelines = new Map<string, ThreadFindTimeline>();
 
 function timelineFor(threadKey: string): ThreadFindTimeline | null {
-  return attachedTimeline?.threadKey === threadKey ? attachedTimeline : null;
+  return attachedTimelines.get(threadKey) ?? null;
 }
 
 /** Attaches the timeline showing a thread; returns the detach. */
 export function attachThreadFindTimeline(timeline: ThreadFindTimeline): () => void {
-  attachedTimeline = timeline;
+  attachedTimelines.set(timeline.threadKey, timeline);
   return () => {
-    if (attachedTimeline === timeline) attachedTimeline = null;
+    if (attachedTimelines.get(timeline.threadKey) === timeline) {
+      attachedTimelines.delete(timeline.threadKey);
+    }
   };
 }
+/* fork:end fork-split-threads */
 
 function readThreadFindPosition(threadKey: string, query: string): ThreadFindStart | undefined {
   return timelineFor(threadKey)?.readPosition(query);

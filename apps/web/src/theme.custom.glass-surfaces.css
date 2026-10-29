@@ -508,6 +508,7 @@
      glass light on the ::before both components already position. Toggles
      and destructive-outline keep upstream's look. */
   &.dark[data-fork-theme="cool-darker"][data-fork-settings]
+    [data-app-modal]
     :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"], .text-destructive-foreground) {
     & {
       box-shadow:
@@ -543,7 +544,7 @@
      rings still draw on top. */
   &.dark[data-fork-theme="cool-darker"]
     :is(
-      [data-sidebar-version="v2"]
+      :is([data-sidebar-version="v2"], [data-app-modal])
         :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"])
     ) {
     position: relative;
@@ -554,7 +555,7 @@
 
   &.dark[data-fork-theme="cool-darker"]
     :is(
-      [data-sidebar-version="v2"]
+      :is([data-sidebar-version="v2"], [data-app-modal])
         :is([data-thread-item] > [aria-current="page"], [data-fork-chrome-row][data-active="true"])
     )::before {
     content: "";
@@ -592,7 +593,7 @@
      themselves) and draw it on their own ::after, a pill like the rows
      (palettes sheet). */
   &.dark[data-fork-theme="cool-darker"]
-    [data-sidebar-version="v2"]
+    :is([data-sidebar-version="v2"], [data-app-modal])
     [data-fork-chrome-row][data-active="true"]::after {
     content: "";
     position: absolute;
@@ -666,7 +667,7 @@
   /* An active top row lets its dark edge out, and on an opaque client takes
      the thread row's active step rather than the rows' hover step. */
   &.dark[data-fork-theme="cool-darker"]
-    [data-sidebar-version="v2"]
+    :is([data-sidebar-version="v2"], [data-app-modal])
     [data-fork-chrome-row][data-active="true"] {
     overflow: visible;
     background-color: var(--sidebar-row-active);

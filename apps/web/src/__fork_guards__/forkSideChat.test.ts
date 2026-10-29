@@ -25,6 +25,7 @@ const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts"
 const desktopPreload = readSibling("../../../desktop/src/preload.ts");
 const main = readSibling("../main.tsx");
 const root = readSibling("../routes/__root.tsx");
+const appInit = readSibling("../appInit.tsx");
 const shell = readSibling("../custom/sideChat/SideChatShell.tsx");
 const settings = readSibling("../hooks/useSettings.ts");
 const surface = readSibling("../custom/sideChat/surface.ts");
@@ -146,8 +147,23 @@ describe("fork guard: fork-side-chat", () => {
       "<ForkDictationHotkeyHost",
       "<SnapShotCoordinator",
       "<AppSidebarLayout",
+      // RootRouteView already wraps every branch; a second pair shows each toast twice.
+      "<ToastProvider",
     ]) {
       expect(branch).not.toContain(coordinator);
+    }
+  });
+
+  it("starts the app-wide services only in the main window", () => {
+    const stop = appInit.indexOf("if (isSideChatSurface) return router;");
+    expect(stop).toBeGreaterThan(-1);
+    expect(appInit).toContain("if (!isSideChatSurface) startMainAppLocationTracking(router);");
+    for (const service of [
+      "startThreadNotifications(",
+      "startSlowRpcRequestToasts(",
+      "startDesktopUpdateLaunchNotice(",
+    ]) {
+      expect(appInit.indexOf(service), service).toBeGreaterThan(stop);
     }
   });
 });
