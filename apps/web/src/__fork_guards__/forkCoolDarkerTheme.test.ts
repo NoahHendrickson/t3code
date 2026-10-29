@@ -145,58 +145,57 @@ describe("fork guard: fork-cool-darker-theme", () => {
     );
   });
 
-  it("inks the project chrome, section headers and card meta and actions as white at 65%, on the derived token", () => {
-    const projectChrome = ruleBodyFor(themeRules, [
-      ...DARKER_PANEL,
-      ":is( [data-fork-projects-row], [data-fork-recent-projects], [data-fork-project-section-header], [data-fork-status-section-header], [data-fork-thread-card-meta], [data-fork-thread-card-actions], [data-fork-idle-mark] )",
-    ]);
+  it("states the panel's quiet ink once, as white at 65%", () => {
+    const panel = ruleBodyFor(themeRules, DARKER_PANEL);
+    expect(panel).toMatch(/\s--fork-glass-quiet-ink:\s*rgb\(255 255 255 \/ 65%\);/u);
+    // The panel's muted channel itself stays opaque for everything else.
+    expect(declarationHex(panel, "--muted-foreground")).toBe("#8a8a8a");
+  });
+
+  it("inks the opted-in sidebar chrome with the quiet ink", () => {
+    const quietInk = /:\s*var\(--fork-glass-quiet-ink\);/u;
+    const panel = ruleBodyFor(themeRules, DARKER_PANEL);
+    expect(panel).toMatch(new RegExp(`--fork-sidebar-card-title-receded${quietInk.source}`, "u"));
+    expect(panel).toMatch(new RegExp(`--color-gray-400${quietInk.source}`, "u"));
     // The derived token: text-muted-foreground reads it, and restating
     // --muted-foreground below [data-app-sidebar] would not re-derive it.
-    expect(projectChrome).toMatch(/\s--contrast-muted-foreground:\s*rgb\(255 255 255 \/ 65%\);/u);
-    // The draft pencil is drawn at muted/70, so it takes the white directly.
-    expect(ruleBodyFor(themeRules, [...DARKER_PANEL, "[data-fork-draft-mark]", "svg"])).toMatch(
-      /\scolor:\s*rgb\(255 255 255 \/ 65%\);/u,
+    expect(
+      ruleBodyFor(themeRules, [
+        ...DARKER_PANEL,
+        ":is( [data-fork-projects-row], [data-fork-recent-projects], [data-fork-project-section-header], [data-fork-status-section-header], [data-fork-thread-card-meta], [data-fork-thread-card-actions], [data-fork-idle-mark] )",
+      ]),
+    ).toMatch(new RegExp(`--contrast-muted-foreground${quietInk.source}`, "u"));
+    // The draft pencil is drawn at muted/70, so it takes the ink directly.
+    expect(ruleBodyFor(themeRules, [...DARKER_PANEL, "[data-fork-draft-pencil]"])).toMatch(
+      new RegExp(`\\scolor${quietInk.source}`, "u"),
     );
     // The footer icons ink from --sidebar-icon-color, so they take it there.
     expect(ruleBodyFor(themeRules, [...DARKER_PANEL, '[data-slot="sidebar-footer"]'])).toMatch(
-      /\s--sidebar-icon-color:\s*rgb\(255 255 255 \/ 65%\);/u,
-    );
-    // Gray project icons ink from gray-400, which only that colour uses.
-    const grayRule = themeRules.find(
-      (rule) =>
-        rule.selector.replace(/\s+/gu, " ").trim() === DARKER_PANEL.join(" ") &&
-        rule.body.includes("--color-gray-400"),
-    );
-    expect(grayRule?.body).toMatch(/\s--color-gray-400:\s*rgb\(255 255 255 \/ 65%\);/u);
-    // Receded titles read their own token, so they take the same white there.
-    expect(ruleBodyFor(themeRules, DARKER_PANEL)).toMatch(
-      /\s--fork-sidebar-card-title-receded:\s*rgb\(255 255 255 \/ 65%\);/u,
-    );
-    // The panel's muted channel itself stays opaque for everything else.
-    expect(declarationHex(ruleBodyFor(themeRules, DARKER_PANEL), "--muted-foreground")).toBe(
-      "#8a8a8a",
+      new RegExp(`--sidebar-icon-color${quietInk.source}`, "u"),
     );
     // Every hook has to exist for the rule to land on anything.
-    expect(readSibling("../custom/SidebarV2ChromeRows.tsx")).toContain('data-fork-projects-row=""');
-    expect(readSibling("../custom/SidebarV2ProjectGroupHeader.tsx")).toContain(
-      'data-fork-project-section-header=""',
-    );
-    expect(readSibling("../custom/SidebarV2ThreadCardMeta.tsx")).toContain(
-      'data-fork-thread-card-meta=""',
-    );
-    expect(readSibling("../custom/SidebarV2StatusSectionHeader.tsx")).toContain(
-      'data-fork-status-section-header=""',
-    );
-    expect(readSibling("../components/Sidebar.tsx")).toContain('data-fork-thread-card-actions=""');
-    expect(readSibling("../custom/SidebarV2StatusIndicator.tsx")).toContain(
-      'data-fork-draft-mark=""',
-    );
-    expect(readSibling("../custom/SidebarV2StatusIndicator.tsx")).toContain(
-      'data-fork-idle-mark=""',
-    );
-    expect(readSibling("../custom/SidebarV2RecentProjectsStrip.tsx")).toContain(
-      'data-fork-recent-projects=""',
-    );
+    for (const [file, hook] of [
+      ["../custom/SidebarV2ChromeRows.tsx", "data-fork-projects-row"],
+      ["../custom/SidebarV2RecentProjectsStrip.tsx", "data-fork-recent-projects"],
+      ["../custom/SidebarV2ProjectGroupHeader.tsx", "data-fork-project-section-header"],
+      ["../custom/SidebarV2StatusSectionHeader.tsx", "data-fork-status-section-header"],
+      ["../custom/SidebarV2ThreadCardMeta.tsx", "data-fork-thread-card-meta"],
+      ["../components/Sidebar.tsx", "data-fork-thread-card-actions"],
+      ["../custom/SidebarV2StatusIndicator.tsx", "data-fork-idle-mark"],
+      ["../custom/SidebarV2StatusIndicator.tsx", "data-fork-draft-pencil"],
+    ] as const) {
+      expect(readSibling(file), `${hook} in ${file}`).toContain(`${hook}=""`);
+    }
+  });
+
+  it("keeps gray-400 to the Gray project colour, since Glass repaints it", () => {
+    // Glass redefines --color-gray-400 for the whole v2 sidebar, which is only
+    // safe while nothing else in the web app draws with it.
+    const srcRoot = NodeURL.fileURLToPath(new URL("..", import.meta.url));
+    const users = (NodeFS.readdirSync(srcRoot, { recursive: true }) as string[])
+      .filter((file) => /\.tsx?$/u.test(file) && !/\.test\.tsx?$/u.test(file))
+      .filter((file) => NodeFS.readFileSync(`${srcRoot}/${file}`, "utf8").includes("gray-400"));
+    expect(users).toEqual(["projectIconColors.ts"]);
   });
 
   it("pre-paints Glass from the palette key so the load flash matches the stage", () => {

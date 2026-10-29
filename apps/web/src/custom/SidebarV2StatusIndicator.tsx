@@ -405,8 +405,8 @@ function SidebarV2WokeMark() {
 /** @public — part of the status-mark set the draft-rows guard asserts on. */
 export function SidebarV2DraftMark() {
   return (
-    <span aria-hidden data-fork-draft-mark="" className={MARK_SLOT_CLASS}>
-      <PenLineIcon className="size-2.5 text-muted-foreground/70" />
+    <span aria-hidden className={MARK_SLOT_CLASS}>
+      <PenLineIcon data-fork-draft-pencil="" className="size-2.5 text-muted-foreground/70" />
     </span>
   );
 }
