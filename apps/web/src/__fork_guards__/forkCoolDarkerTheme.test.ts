@@ -145,14 +145,33 @@ describe("fork guard: fork-cool-darker-theme", () => {
     );
   });
 
-  it("inks the project chrome and card meta as white at 65%, on the derived token", () => {
+  it("inks the project chrome, section headers and card meta and actions as white at 65%, on the derived token", () => {
     const projectChrome = ruleBodyFor(themeRules, [
       ...DARKER_PANEL,
-      ":is([data-fork-projects-row], [data-fork-project-section-header], [data-fork-thread-card-meta])",
+      ":is( [data-fork-projects-row], [data-fork-recent-projects], [data-fork-project-section-header], [data-fork-status-section-header], [data-fork-thread-card-meta], [data-fork-thread-card-actions], [data-fork-idle-mark] )",
     ]);
     // The derived token: text-muted-foreground reads it, and restating
     // --muted-foreground below [data-app-sidebar] would not re-derive it.
     expect(projectChrome).toMatch(/\s--contrast-muted-foreground:\s*rgb\(255 255 255 \/ 65%\);/u);
+    // The draft pencil is drawn at muted/70, so it takes the white directly.
+    expect(ruleBodyFor(themeRules, [...DARKER_PANEL, "[data-fork-draft-mark]", "svg"])).toMatch(
+      /\scolor:\s*rgb\(255 255 255 \/ 65%\);/u,
+    );
+    // The footer icons ink from --sidebar-icon-color, so they take it there.
+    expect(ruleBodyFor(themeRules, [...DARKER_PANEL, '[data-slot="sidebar-footer"]'])).toMatch(
+      /\s--sidebar-icon-color:\s*rgb\(255 255 255 \/ 65%\);/u,
+    );
+    // Gray project icons ink from gray-400, which only that colour uses.
+    const grayRule = themeRules.find(
+      (rule) =>
+        rule.selector.replace(/\s+/gu, " ").trim() === DARKER_PANEL.join(" ") &&
+        rule.body.includes("--color-gray-400"),
+    );
+    expect(grayRule?.body).toMatch(/\s--color-gray-400:\s*rgb\(255 255 255 \/ 65%\);/u);
+    // Receded titles read their own token, so they take the same white there.
+    expect(ruleBodyFor(themeRules, DARKER_PANEL)).toMatch(
+      /\s--fork-sidebar-card-title-receded:\s*rgb\(255 255 255 \/ 65%\);/u,
+    );
     // The panel's muted channel itself stays opaque for everything else.
     expect(declarationHex(ruleBodyFor(themeRules, DARKER_PANEL), "--muted-foreground")).toBe(
       "#8a8a8a",
@@ -164,6 +183,19 @@ describe("fork guard: fork-cool-darker-theme", () => {
     );
     expect(readSibling("../custom/SidebarV2ThreadCardMeta.tsx")).toContain(
       'data-fork-thread-card-meta=""',
+    );
+    expect(readSibling("../custom/SidebarV2StatusSectionHeader.tsx")).toContain(
+      'data-fork-status-section-header=""',
+    );
+    expect(readSibling("../components/Sidebar.tsx")).toContain('data-fork-thread-card-actions=""');
+    expect(readSibling("../custom/SidebarV2StatusIndicator.tsx")).toContain(
+      'data-fork-draft-mark=""',
+    );
+    expect(readSibling("../custom/SidebarV2StatusIndicator.tsx")).toContain(
+      'data-fork-idle-mark=""',
+    );
+    expect(readSibling("../custom/SidebarV2RecentProjectsStrip.tsx")).toContain(
+      'data-fork-recent-projects=""',
     );
   });
 

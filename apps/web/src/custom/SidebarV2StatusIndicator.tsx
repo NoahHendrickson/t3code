@@ -380,7 +380,7 @@ function SidebarV2StatusDot({ tone }: { tone: SidebarV2DotTone }) {
     mark in every state instead of switching between a mark and a string. */
 export function SidebarV2IdleMark() {
   return (
-    <span aria-hidden className={MARK_SLOT_CLASS}>
+    <span aria-hidden data-fork-idle-mark="" className={MARK_SLOT_CLASS}>
       <span className="size-2.5 rounded-full border border-muted-foreground" />
     </span>
   );
@@ -405,7 +405,7 @@ function SidebarV2WokeMark() {
 /** @public — part of the status-mark set the draft-rows guard asserts on. */
 export function SidebarV2DraftMark() {
   return (
-    <span aria-hidden className={MARK_SLOT_CLASS}>
+    <span aria-hidden data-fork-draft-mark="" className={MARK_SLOT_CLASS}>
       <PenLineIcon className="size-2.5 text-muted-foreground/70" />
     </span>
   );
