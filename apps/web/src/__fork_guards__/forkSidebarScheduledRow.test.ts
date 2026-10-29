@@ -44,7 +44,8 @@ describe("fork guard: fork-sidebar-scheduled-row", () => {
     expect(chromeRows).toContain(": { to: SCHEDULED_TASKS_PATH },");
     expect(route).toContain('createFileRoute("/scheduled")');
     // The row is a door, not a second list: nothing from the settings page
-    // is re-rendered in the sidebar.
+    // is re-rendered in the sidebar, and the row holds no task subscription.
+    // Only its hover card reads task names, while it is open.
     expect(chromeRows).not.toContain("ScheduledTasksSettings");
     expect(chromeRows).not.toContain("scheduledTasksLive");
   });

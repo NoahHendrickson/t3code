@@ -10,6 +10,7 @@
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 
 import { resolveSidebarThreadStatus } from "~/components/Sidebar.logic";
+import type { SidebarV2TopStatusMark } from "./SidebarV2StatusIndicator";
 import { isScheduledRunOffSidebar, type ScheduledRunRosterFields } from "./scheduledRunsOffSidebar";
 
 type ScheduledRunActivityShell = Parameters<typeof resolveSidebarThreadStatus>[0] &
@@ -34,18 +35,53 @@ function failureUnseen(thread: ScheduledRunActivityShell): boolean {
   return Date.parse(completedAt) > Date.parse(thread.lastVisitedAt);
 }
 
+export type ScheduledRunActivityKind = "working" | "needsYou" | "failed";
+
+/** The mark each bucket wears, on the row and on each run in its hover card. */
+export const SCHEDULED_RUN_ACTIVITY_MARKS: Record<
+  ScheduledRunActivityKind,
+  SidebarV2TopStatusMark
+> = {
+  working: { label: "Running", mark: "working" },
+  needsYou: { label: "Waiting on you", mark: "dot", tone: "approval" },
+  failed: { label: "Failed", mark: "dot", tone: "failed" },
+};
+
+export type ScheduledRunActivityEntry<
+  T extends ScheduledRunActivityShell = ScheduledRunActivityShell,
+> = {
+  readonly thread: T;
+  readonly kind: ScheduledRunActivityKind;
+};
+
+/** The hidden runs the row counts, in roster order, each with the bucket it
+    counts in — what the row's hover card lists. */
+export function listScheduledRunActivity<T extends ScheduledRunActivityShell>(
+  threads: ReadonlyArray<T>,
+): Array<ScheduledRunActivityEntry<T>> {
+  const runs: Array<ScheduledRunActivityEntry<T>> = [];
+  for (const thread of threads) {
+    if (thread.archivedAt !== null || !isScheduledRunOffSidebar(thread)) continue;
+    const status = resolveSidebarThreadStatus(thread);
+    if (status === "working") runs.push({ thread, kind: "working" });
+    else if (status === "approval" || status === "input") runs.push({ thread, kind: "needsYou" });
+    else if ((status === "failed" || status === "limited") && failureUnseen(thread)) {
+      runs.push({ thread, kind: "failed" });
+    }
+  }
+  return runs;
+}
+
 export function summarizeScheduledRunActivity(
-  threads: ReadonlyArray<ScheduledRunActivityShell>,
+  runs: ReadonlyArray<ScheduledRunActivityEntry>,
 ): ScheduledRunActivity {
   let working = 0;
   let needsYou = 0;
   let failed = 0;
-  for (const thread of threads) {
-    if (thread.archivedAt !== null || !isScheduledRunOffSidebar(thread)) continue;
-    const status = resolveSidebarThreadStatus(thread);
-    if (status === "working") working += 1;
-    else if (status === "approval" || status === "input") needsYou += 1;
-    else if ((status === "failed" || status === "limited") && failureUnseen(thread)) failed += 1;
+  for (const { kind } of runs) {
+    if (kind === "working") working += 1;
+    else if (kind === "needsYou") needsYou += 1;
+    else failed += 1;
   }
   return { working, needsYou, failed };
 }

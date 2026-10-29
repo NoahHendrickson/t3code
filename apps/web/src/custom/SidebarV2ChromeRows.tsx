@@ -56,7 +56,12 @@ import { cn } from "~/lib/utils";
 import type { SidebarV2Grouping } from "./sidebarV2ProjectGrouping";
 import { SIDEBAR_V2_TRAILING_OFFSET } from "./sidebarV2TrailingColumn";
 import { useThreadShells } from "~/state/entities";
-import { summarizeScheduledRunActivity } from "./scheduledRunActivity";
+import {
+  listScheduledRunActivity,
+  SCHEDULED_RUN_ACTIVITY_MARKS,
+  summarizeScheduledRunActivity,
+} from "./scheduledRunActivity";
+import { SidebarV2AutomationsHoverCard } from "./SidebarV2AutomationsHoverCard";
 import { SidebarV2StatusMark, type SidebarV2TopStatusMark } from "./SidebarV2StatusIndicator";
 import { SIDEBAR_V2_CARD_ALIGNMENT } from "./sidebarV2CardAlignment";
 
@@ -295,7 +300,8 @@ const SCHEDULED_TASKS_PATH = "/scheduled";
     so the row reports the live ones (fork-scheduled-runs-off-sidebar): a count
     with the rain while they work, the amber dot once one waits on you, the
     failed dot for a failure nobody has opened. While any are live the row
-    opens All runs, which lists newest first. */
+    opens All runs, which lists newest first, and hovering it lists them the
+    way a thread card's hover card describes its thread. */
 function ChromeAutomationsRow() {
   const navigate = useNavigate();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -303,10 +309,8 @@ function ChromeAutomationsRow() {
     select: (location) => location.pathname === SCHEDULED_TASKS_PATH,
   });
   const threads = useThreadShells();
-  const { working, needsYou, failed } = useMemo(
-    () => summarizeScheduledRunActivity(threads),
-    [threads],
-  );
+  const runs = useMemo(() => listScheduledRunActivity(threads), [threads]);
+  const { working, needsYou, failed } = summarizeScheduledRunActivity(runs);
   const live = working + needsYou + failed;
   const openScheduledTasks = useCallback(() => {
     if (isMobile) setOpenMobile(false);
@@ -323,13 +327,11 @@ function ChromeAutomationsRow() {
   ]
     .filter((part) => part !== null)
     .join(", ");
-  const status: SidebarV2TopStatusMark =
-    needsYou > 0
-      ? { label: activityLabel, mark: "dot", tone: "approval" }
-      : failed > 0
-        ? { label: activityLabel, mark: "dot", tone: "failed" }
-        : { label: activityLabel, mark: "working" };
-  return (
+  const status: SidebarV2TopStatusMark = {
+    ...SCHEDULED_RUN_ACTIVITY_MARKS[needsYou > 0 ? "needsYou" : failed > 0 ? "failed" : "working"],
+    label: activityLabel,
+  };
+  const row = (
     <ChromeLabeledAction
       icon={ZapIcon}
       label="Automations"
@@ -364,6 +366,15 @@ function ChromeAutomationsRow() {
         ) : null
       }
     />
+  );
+  return (
+    <Tooltip disabled={live === 0}>
+      <TooltipTrigger render={row} />
+      <SidebarV2AutomationsHoverCard
+        title={activityLabel.charAt(0).toUpperCase() + activityLabel.slice(1)}
+        runs={runs}
+      />
+    </Tooltip>
   );
 }
 
