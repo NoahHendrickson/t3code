@@ -152,12 +152,16 @@
     fork's CI there is pure spend — and since the mirror push authenticates
     with a deploy key (see fork-sync-mirror.yml), which unlike GITHUB_TOKEN
     does trigger push workflows, main must stay out of the push trigger list
-    or every hourly mirror advance schedules a full CI run.
+    or every hourly mirror advance schedules a full CI run. For the same
+    reason the agent context budget gate compares a PR with its base branch,
+    not main: the fork's own MCP tools make custom's budget larger than the
+    mirror's, so a main baseline would fail every fork PR.
   tier: 4
   files: []
   shadows: []
   watch:
     - .github/workflows/ci.yml
+    - .github/workflows/agent-context-budget.yml
   verify:
     - apps/web/src/__fork_guards__/ciOnCustom.test.ts
 

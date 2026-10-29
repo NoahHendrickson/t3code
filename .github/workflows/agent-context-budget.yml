@@ -22,6 +22,9 @@ jobs:
     env:
       BUDGET: apps/server/src/provider/agentContextBudget.json
       ALLOW_INCREASE: ${{ contains(github.event.pull_request.labels.*.name, 'agent-context-increase') }}
+      # fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom
+      BASE_REF: ${{ github.base_ref }}
+      # fork:end ci-on-custom
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -31,7 +34,9 @@ jobs:
 
       - name: Compare with main
         run: |
-          git fetch --quiet --depth=1 origin main
+          # fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom
+          git fetch --quiet --depth=1 origin "$BASE_REF"
+          # fork:end ci-on-custom
           if ! git cat-file -e "FETCH_HEAD:$BUDGET" 2>/dev/null; then
             echo "main has no agent context budget yet."
             exit 0
