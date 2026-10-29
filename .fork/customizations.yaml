@@ -5406,6 +5406,7 @@
     - apps/web/src/components/settings/ScheduledTasksSettings.tsx
     - apps/web/src/providerInstances.ts
     - apps/web/src/components/settings/scheduledTasksSettings.logic.ts
+    - apps/web/src/components/settings/ScheduledTasksSettings.browser.test.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGithubPrAutomation.test.ts
     - apps/server/src/scheduledTasks/GitHubPrAutomation.test.ts

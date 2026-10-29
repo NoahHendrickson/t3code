@@ -1,7 +1,7 @@
 import type { RuntimeMode } from "@t3tools/contracts";
 import { memo, type ComponentProps, type CSSProperties, type ReactNode } from "react";
 
-import { ComposerSelectControl } from "../components/chat/ComposerControl";
+import { ComposerControl } from "../components/chat/ComposerControl";
 import { cn } from "~/lib/utils";
 
 import "./ComposerShell.css";
@@ -199,15 +199,12 @@ export function getRuntimeModeChipStyle(runtimeMode: RuntimeMode): RuntimeModeCh
   return runtimeModeChipStyles[runtimeMode];
 }
 
-type ComposerRuntimeModeTriggerProps = Omit<
-  ComponentProps<typeof ComposerSelectControl>,
-  "style"
-> & {
+type ComposerRuntimeModeTriggerProps = Omit<ComponentProps<typeof ComposerControl>, "style"> & {
   runtimeMode: RuntimeMode;
   style?: CSSProperties;
 };
 
-/** The runtime select trigger with its mode-specific accent tokens. */
+/** The runtime mode chip with its mode-specific accent tokens. */
 export function ComposerRuntimeModeTrigger({
   className,
   runtimeMode,
@@ -215,7 +212,7 @@ export function ComposerRuntimeModeTrigger({
   ...props
 }: ComposerRuntimeModeTriggerProps) {
   return (
-    <ComposerSelectControl
+    <ComposerControl
       {...props}
       data-fork-composer-mode-chip="true"
       className={cn("font-medium", className)}

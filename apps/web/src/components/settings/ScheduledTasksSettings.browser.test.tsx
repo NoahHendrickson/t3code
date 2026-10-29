@@ -123,19 +123,16 @@ describe("ScheduledTasksSettings", () => {
     await expect.element(name).toHaveValue("Review stale issues");
   });
 
-  it("keeps an editor the user opened when the linked task loads later", async () => {
+  // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+  // New task opens the fork's scheduled page instead of this dialog, so upstream's
+  // "user-opened editor vs late-loading link" race cannot start here.
+  it("opens New task on the scheduled page", async () => {
     state.connected = true;
     state.tasksLoaded = false;
     await using screen = await render(<ScheduledTasksSettings taskId={task.id} />);
     await userEvent.click(page.getByRole("button", { name: "New task" }));
-    const dialog = page.getByRole("dialog");
-    const name = dialog.getByRole("textbox", { name: "Name" });
-    await userEvent.fill(name, "My draft");
-
-    state.tasksLoaded = true;
-    await screen.rerender(<ScheduledTasksSettings taskId={task.id} />);
-
-    await expect.element(dialog.getByRole("heading", { name: "New task" })).toBeInTheDocument();
-    await expect.element(name).toHaveValue("My draft");
+    await vi.waitFor(() => expect(screen.router?.state.location.pathname).toBe("/scheduled"));
+    expect(screen.router?.state.location.search).toMatchObject({ task: "new" });
   });
+  // fork:end fork-github-pr-automation
 });
