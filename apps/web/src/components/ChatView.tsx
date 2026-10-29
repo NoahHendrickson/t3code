@@ -2191,14 +2191,10 @@ export default function ChatView(props: ChatViewProps) {
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [
-    activeThread?.id,
-    focusComposerStable,
-    terminalUiState.terminalOpen,
-    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-    splitPane.focused,
-    /* fork:end fork-split-threads */
-  ]);
+    // fork-split-threads: splitPane.focused is read, not a dependency. Focus
+    // moving into a pane is a press there; pulling the caret away would eat it.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [activeThread?.id, focusComposerStable, terminalUiState.terminalOpen]);
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- window focus listener that refocuses the composer after the window regains focus
   useEffect(() => {

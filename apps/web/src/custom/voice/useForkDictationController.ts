@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { use, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   voiceInputBlocksSubmission,
   type VoiceInputState,
@@ -15,6 +15,7 @@ import {
   type DictationSession,
 } from "./forkDictationSession";
 import { readForkVoiceInputBridge } from "./forkVoiceInputBridge";
+import { BackgroundThreadContext } from "~/components/chat/backgroundThread";
 import { useSplitPane } from "../splitThreads/splitPaneContext";
 
 const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };
@@ -120,10 +121,9 @@ export function useForkDictationController(input: DictationInput) {
   }, [controller, input.ownerKey]);
 
   // Registered while this composer's pane is focused (always, outside a
-  // split: fork-split-threads), so the root hotkeys reach the pane the user is
-  // in. Every callback reads the mirror, so they reach the thread this
-  // composer is showing now.
-  const paneFocused = useSplitPane().focused;
+  // split: fork-split-threads) and not behind Settings or Usage, so the root
+  // hotkeys reach the composer on screen. Callbacks read the mirror.
+  const paneFocused = useSplitPane().focused && !use(BackgroundThreadContext);
   useEffect(() => {
     if (!controller || !paneFocused) return;
     return registerDictationComposer({
@@ -141,11 +141,12 @@ export function useForkDictationController(input: DictationInput) {
   }, [controller, paneFocused]);
   // The hotkeys reach only the focused pane, so a recording left running in a
   // pane that loses focus could not be stopped from the keyboard. It finishes
-  // there instead, into the draft it started in.
+  // there instead, into the draft it started in; one still preparing is dropped.
   useEffect(() => {
-    if (!paneFocused && controller && isDictationLive(controller.currentState)) {
-      void controller.stop();
-    }
+    if (paneFocused || !controller) return;
+    const { phase } = controller.currentState;
+    if (phase === "recording") void controller.stop();
+    else if (phase === "preparing") controller.cancel();
   }, [controller, paneFocused]);
   useEffect(() => () => controller?.dispose(), [controller]);
 

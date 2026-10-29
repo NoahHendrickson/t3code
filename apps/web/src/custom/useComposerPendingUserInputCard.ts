@@ -6,8 +6,9 @@
  * override can stay presentational. Port upstream effect fixes here first.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { use, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { BackgroundThreadContext } from "~/components/chat/backgroundThread";
 import {
   derivePendingUserInputProgress,
   type PendingUserInputDraftAnswer,
@@ -120,8 +121,9 @@ export function useComposerPendingUserInputCard({
   // select prompts keep the existing auto-advance behavior.
   // In a split only the focused pane's question takes them (fork-split-threads).
   const paneFocused = useSplitPane().focused;
+  const backgroundThread = use(BackgroundThreadContext);
   useEffect(() => {
-    if (!activeQuestion || responseDisabled || !paneFocused) return;
+    if (!activeQuestion || responseDisabled || !paneFocused || backgroundThread) return;
     const handler = (event: globalThis.KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target;
@@ -145,7 +147,7 @@ export function useComposerPendingUserInputCard({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activeQuestion, responseDisabled, handleOptionSelection, paneFocused]);
+  }, [activeQuestion, responseDisabled, handleOptionSelection, paneFocused, backgroundThread]);
 
   return {
     progress,

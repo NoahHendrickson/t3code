@@ -64,7 +64,7 @@ describe("fork guard: fork-split-threads", () => {
     expect(dictation).toContain("if (!controller || !paneFocused) return;");
     // A recording left running in a pane that loses focus finishes there.
     expect(dictation).toMatch(
-      /!paneFocused && controller && isDictationLive\(controller\.currentState\)[\s\S]{0,60}controller\.stop\(\)/u,
+      /if \(paneFocused \|\| !controller\) return;[\s\S]{0,120}if \(phase === "recording"\) void controller\.stop\(\);/u,
     );
     // Each slot owns its ChatView's composer ref; the palette reads the focused one.
     expect(panes).toMatch(/ComposerHandleContext value=\{props\.composerRef\}/u);
@@ -75,7 +75,7 @@ describe("fork guard: fork-split-threads", () => {
       /fork:begin fork-split-threads[\s\S]*?if \(!splitPaneFocused\) return;[\s\S]*?composer\.stash/u,
     );
     expect(questionCard).toContain(
-      "if (!activeQuestion || responseDisabled || !paneFocused) return;",
+      "if (!activeQuestion || responseDisabled || !paneFocused || backgroundThread) return;",
     );
   });
 

@@ -13,6 +13,7 @@
 import { act, memo, StrictMode, useLayoutEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { BackgroundThreadContext } from "~/components/chat/backgroundThread";
 import type { PendingUserInput } from "~/session-logic";
 import { useComposerPendingUserInputCard } from "../custom/useComposerPendingUserInputCard";
 
@@ -78,19 +79,36 @@ const Host = memo(function Host({
   return null;
 });
 
-async function renderQuestion(questionIndex: number, disabled = false) {
+async function renderQuestion(questionIndex: number, disabled = false, background = false) {
   await act(() => {
     root.render(
       <StrictMode>
-        <Host questionIndex={questionIndex} disabled={disabled} />
+        <BackgroundThreadContext value={background}>
+          <Host questionIndex={questionIndex} disabled={disabled} />
+        </BackgroundThreadContext>
       </StrictMode>,
     );
   });
 }
 
+class Element {
+  readonly tagName = "DIV";
+}
+
+function pressDigit(key: string) {
+  const event = Object.assign(new Event("keydown", { cancelable: true }), {
+    key,
+    metaKey: false,
+    ctrlKey: false,
+    altKey: false,
+  });
+  window.document.dispatchEvent(event);
+}
+
 beforeEach(() => {
   // The probe renders no host nodes, but ReactDOM still needs an event target.
-  const document = { nodeType: 9, addEventListener() {}, removeEventListener() {} };
+  // A real target, so the hook's number-key listener can be driven.
+  const document = Object.assign(new EventTarget(), { nodeType: 9 });
   const container = {
     nodeType: 1,
     tagName: "DIV",
@@ -115,6 +133,10 @@ beforeEach(() => {
     }),
   );
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  // The number-key listener narrows its target with these; the document matches none.
+  for (const name of ["HTMLElement", "HTMLInputElement", "HTMLTextAreaElement"]) {
+    vi.stubGlobal(name, Element);
+  }
   toggled = [];
   advances = 0;
   root = createRoot(container as unknown as HTMLElement);
@@ -184,6 +206,20 @@ describe("fork guard: pending user input question advance", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // Upstream keeps the thread mounted under Settings or Usage.
+  it("leaves number keys alone while the thread sits behind Settings or Usage", async () => {
+    await renderQuestion(0, false, true);
+    await act(async () => {
+      pressDigit("1");
+    });
+    expect(toggled).toEqual([]);
+    await renderQuestion(0);
+    await act(async () => {
+      pressDigit("1");
+    });
+    expect(toggled).toEqual([["q1", "zod"]]);
   });
 
   // Upstream #9786: a client without the operate scope sees the questions but
