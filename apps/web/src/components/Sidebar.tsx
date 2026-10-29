@@ -1989,6 +1989,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                     {hasHoverActions ? (
                       /* fork:end sidebar-v2-draft-rows */
                       <span
+                        /* fork:begin fork-cool-darker-theme — see .fork/customizations.yaml#fork-cool-darker-theme */
+                        data-fork-thread-card-actions=""
+                        /* fork:end fork-cool-darker-theme */
                         className={cn(
                           // Zero-width at rest so a settled row's title still runs
                           // the full width of the card when nothing is pointing at
