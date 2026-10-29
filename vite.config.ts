@@ -642,15 +642,10 @@ export default defineConfig({
       },
       /* fork:begin fork-lint-cleanliness — see .fork/customizations.yaml#fork-lint-cleanliness */
       {
-        // The fork's customizations are, by definition, a restyle of upstream's
-        // primitives from outside components/ui — tier-1 intents in
-        // .fork/customizations.yaml pin exact class lists on SidebarTrigger,
-        // Badge, the composer chips and the model menu, and theme.custom.css
-        // declares the fork-* classes these rules cannot see. Upstream's
-        // `@shadcn/lint` policy therefore does not describe fork-owned files;
-        // it stays on everywhere else so upstream-authored code keeps its gate.
-        // Fork lines inside upstream files carry an `oxlint-disable-next-line`
-        // instead, which reportUnusedDisableDirectives keeps honest.
+        // Fork-owned files restyle upstream primitives by design (pinned class
+        // lists in .fork/customizations.yaml, fork-* classes in theme.custom.css),
+        // so `@shadcn/lint` stays on only for upstream code. Fork lines inside
+        // upstream files use `oxlint-disable-next-line` instead.
         files: [
           "apps/web/src/custom/**",
           "apps/web/src/overrides/**",

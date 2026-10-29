@@ -129,13 +129,10 @@ export default defineConfig({
       outExtensions: () => ({ js: ".cjs" }),
       entry: ["src/preview-pick-preload.ts"],
       deps: {
-        // This preload runs sandboxed (WebviewPreferences.ts pins `sandbox=true`), so its
-        // limited `require` cannot resolve npm packages from the packaged ASAR. Anything
-        // left external here throws before the preload installs the picker or the design
-        // source resolver, taking the whole preview-pick path down. `bippy` rides along
-        // with react-grab: DesignSourceResolver imports it directly for the fiber walk.
-        // `@t3tools/*` is a workspace package and just as unresolvable from here —
-        // DesignSourceResult pulls in the shared design-props policy.
+        // Sandboxed preload (`sandbox=true`): its `require` cannot resolve npm or
+        // `@t3tools/*` packages from the ASAR, so anything left external throws and
+        // takes the preview-pick path down. DesignSourceResolver imports `bippy`
+        // directly; DesignSourceResult pulls in the shared design-props policy.
         alwaysBundle: (id) =>
           id === "react-grab" ||
           id.startsWith("react-grab/") ||
