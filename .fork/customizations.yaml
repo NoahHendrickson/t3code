@@ -5402,6 +5402,8 @@
     - apps/web/src/custom/scheduled/scheduledPage.logic.ts
   shadows: []
   watch:
+    # Builds GitHubRest ahead of the drivers so the automation shares the driver's sign-in.
+    - apps/server/src/sourceControl/builtInDrivers.ts
     - packages/contracts/src/scheduledTask.ts
     - packages/contracts/src/index.ts
     - apps/server/src/scheduledTasks/ScheduledTaskService.ts

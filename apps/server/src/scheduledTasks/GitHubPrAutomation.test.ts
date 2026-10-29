@@ -233,7 +233,18 @@ it.effect(
         );
         assert.equal(task.threadId, null);
         const callsBeforeRename = calls.length;
-        yield* service.upsert(input({ title: "Renamed" }));
+        // A coalesce window would dispatch the PR without its trigger, so saving drops it.
+        const { task: renamed } = yield* service.upsert(
+          input({
+            title: "Renamed",
+            schedule: {
+              type: "webhook",
+              github: { repositories: [{ projectId: "d2" }, { projectId: "no3y" }] },
+              dedupe: { coalesceKey: "{{body.pull_request.number}}", coalesceWindowSeconds: 10 },
+            },
+          }),
+        );
+        assert.equal(renamed.schedule.type === "webhook" && renamed.schedule.dedupe, undefined);
         assert.equal(calls.length, callsBeforeRename);
         assert.equal(calls.filter((call) => call.method === "POST").length, 2);
         yield* service.delete({ id: task.id });

@@ -1273,8 +1273,11 @@ export const layer = Layer.effect(
                 secret,
               });
             });
+        // Deliveries are already one per PR event, and the coalesced path dispatches
+        // without the PR trigger, so a GitHub task never keeps a stored dedupe.
+        const { dedupe: _dedupe, ...withoutDedupe } = schedule;
         schedule = {
-          ...schedule,
+          ...withoutDedupe,
           signature: { header: "x-hub-signature-256", encoding: "hex", prefix: "sha256=" },
           github: { repositories },
         };
