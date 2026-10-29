@@ -251,15 +251,6 @@
   gap: 6px;
 }
 
-/* Upstream's git progress readout (ThreadDetailsControl `multiline`) grows a
-   second output row while an action runs; the pin above would clip it to one.
-   Keyed on the fork's own stamp from GitActionsControl, not on a utility class:
-   the toolbar path renders Button size="sm-multiline", which carries min-h-8
-   and never h-auto, so a class selector matches nothing there. */
-:root[data-fork="noahhendrickson-t3code"] [data-fork-pill] > button[data-fork-pill-multiline] {
-  height: auto;
-}
-
 /* The `::before` overlay carries the variant's inset highlight and its own
    radius. With the fill gone it has nothing left to draw, and leaving it would
    trace a rounded-md ghost inside a pill. */
@@ -1062,16 +1053,6 @@
   [data-slot="composer-context-strip"]
   > * {
   flex: 0 1 auto;
-}
-
-/* An empty resting-controls host is still a flex item. The strip's 8px gap
-   then applies twice — checkout→host and host→branch — so the pills sit
-   16px apart while the row's pb-2 under them is 8px. Hide it until it
-   actually hosts relocated controls. */
-:root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-context-row]
-  [data-chat-resting-composer-controls-host="true"]:empty {
-  display: none;
 }
 
 /* The context chips are the filled controls above the surface (checkout /
@@ -2676,15 +2657,13 @@
    Colour is scheme-agnostic — the hairline token resolves to --border in
    light. The fill and the geometry are dark-only, like the vessel, so a light
    build keeps upstream's card. */
-:root[data-fork="noahhendrickson-t3code"]
-  :is([data-composer-banner-surface], [data-slot="composer-banner-peek"]) {
+:root[data-fork="noahhendrickson-t3code"] [data-composer-banner-surface] {
   --chat-composer-attached-outline: var(--fork-composer-border);
   --chat-composer-attached-tint: transparent;
   border-color: var(--fork-composer-border);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark
-  :is([data-composer-banner-surface], [data-slot="composer-banner-peek"]) {
+:root[data-fork="noahhendrickson-t3code"].dark [data-composer-banner-surface] {
   --chat-composer-attached-surface: var(--fork-composer-bg);
 }
 
@@ -2759,19 +2738,13 @@
   --composer-banner-padding-block: calc(var(--spacing) * 1);
 }
 
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-slot="composer-banner-peek"] {
-  border-radius: var(--fork-composer-radius) var(--fork-composer-radius) 0 0;
-}
-
 /* Notice metrics, Figma 467:33308, keyed on data-fork-composer-notice so
    Reconnect / Update / tasks / the rest of the drawer keep their density.
    The activity strip shares the 14/16 type and 16px icon but stays a status
    line at 16px padding — including when it is folded into the stack. */
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  :is([data-fork-composer-notice="true"], [data-chat-composer-activity-strip="true"]) {
+  [data-fork-composer-notice="true"] {
   --composer-banner-icon-column: 16px;
   font-size: 14px;
   line-height: 16px;
@@ -2785,12 +2758,6 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  [data-slot="composer-banner"][data-chat-composer-activity-strip="true"] {
-  padding: 16px 8px 16px 16px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
   [data-fork-composer-notice="true"]
   [data-composer-banner-row] {
   column-gap: 6px;
@@ -2798,31 +2765,12 @@
 
 :root[data-fork="noahhendrickson-t3code"].dark
   [data-fork-composer-vessel]
-  :is([data-fork-composer-notice="true"], [data-chat-composer-activity-strip="true"])
+  [data-fork-composer-notice="true"]
   [data-slot="composer-banner-icon"]
   > svg {
   display: block;
   width: 16px;
   height: 16px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-chat-composer-activity-strip="true"]
-  [data-slot="composer-banner-content"] {
-  gap: 4px;
-  /* Strip titles still ship leading-7 / sm:leading-6. Pin every descendant
-     so the 16px icon sits on the first line. */
-  line-height: 16px;
-}
-
-:root[data-fork="noahhendrickson-t3code"].dark
-  [data-fork-composer-vessel]
-  [data-chat-composer-activity-strip="true"]
-  [data-slot="composer-banner-content"]
-  * {
-  line-height: 16px;
-  align-items: center;
 }
 
 /* Notices stack title over description. Title is Regular at the source

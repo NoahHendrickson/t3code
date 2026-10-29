@@ -6,7 +6,7 @@ import {
   automationTaskToDraft,
 } from "../custom/scheduled/githubAutomation.logic";
 
-const task = Schema.decodeUnknownSync(ScheduledTask)({
+const task = Schema.decodeSync(ScheduledTask)({
   id: "scheduled-task:test",
   title: "Review PRs",
   prompt: "Review for bugs",

@@ -22,7 +22,7 @@ import {
   type ServerSettings,
 } from "@t3tools/contracts";
 import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
-import { useRouter } from "@tanstack/react-router";
+import { type AnyRouter, useRouter } from "@tanstack/react-router";
 import { useCallback, useSyncExternalStore } from "react";
 
 import { type DraftId, useComposerDraftStore } from "../composerDraftStore";
@@ -50,7 +50,19 @@ export function useStartNewAgentDraft(): (options?: {
   const router = useRouter();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   return useCallback(
-    async (options) => {
+    (options) => startNewAgentDraft(router, primaryEnvironmentId, options),
+    [primaryEnvironmentId, router],
+  );
+}
+
+/** The hook's body as a plain function, for the shortcut dispatcher (no React). */
+export async function startNewAgentDraft(
+  router: AnyRouter,
+  primaryEnvironmentId: EnvironmentId | null,
+  options?: { replace?: boolean },
+): Promise<DraftId | null> {
+  {
+    {
       if (primaryEnvironmentId === null) return null;
       const {
         applyStickyState,
@@ -136,9 +148,8 @@ export function useStartNewAgentDraft(): (options?: {
       }
       await navigateTo(draftId);
       return draftId;
-    },
-    [primaryEnvironmentId, router],
-  );
+    }
+  }
 }
 
 /** What a pick needs to know about its target: the logical key the draft

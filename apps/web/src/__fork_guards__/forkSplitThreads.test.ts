@@ -21,7 +21,8 @@ const routeView = readSibling("../components/ThreadRouteView.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const sidebar = readSibling("../components/Sidebar.tsx");
 const dictation = readSibling("../custom/voice/useForkDictationController.ts");
-const composer = readSibling("../components/chat/ChatComposer.tsx");
+// Upstream moved the stash shortcut into useComposerStash (registerCommands).
+const composerStash = readSibling("../components/chat/useComposerStash.ts");
 const questionCard = readSibling("../custom/useComposerPendingUserInputCard.ts");
 const threadFind = readSibling("../components/chat/useThreadFind.ts");
 const panes = readSibling("../custom/splitThreads/SplitThreadPanes.tsx");
@@ -45,17 +46,21 @@ describe("fork guard: fork-split-threads", () => {
     // the pane: the snap-shot focus subscription, the timeline scroll keys,
     // thread-switch and window-focus refocus, menu actions and paste-to-focus.
     expect(chatView).toMatch(/splitPane\.focused\s*\?[\s\S]{0,80}subscribeSnapShotComposerFocus/u);
-    expect(chatView).toMatch(
-      /if \(splitPane\.focused\)[\s\S]{0,80}document\.addEventListener\("keydown", handleKeyDown\)/u,
+    // The timeline scroll keys moved to timelineViewport's registerCommands observer,
+    // which only releases live follow; both panes may hear it harmlessly.
+    expect(chatView.match(/if \(!splitPane\.focused\) return;/gu)?.length).toBe(3);
+    expect(chatView).toContain(
+      "usePasteToFocusComposer(splitPane.focused ? activeThreadId : null, composerRef);",
     );
-    expect(chatView.match(/if \(!splitPane\.focused\) return;/gu)?.length).toBe(4);
     // The focus primitive itself stays ungated: a pane's own controls use it.
     expect(chatView).toMatch(
       /const focusComposer = \(\) => \{\s*composerRef\.current\?\.focusAtEnd\(\);/u,
     );
     // Global singletons and broadcasts: the PR-link dialog and palette find.
     expect(chatView).toContain("{splitPane.focused ? <LinkPullRequestDialogHost /> : null}");
-    expect(threadFind).toContain("paneFocused ? subscribeThreadFindOpen(open) : undefined");
+    // Upstream replaced the find broadcast with openThreadFind(threadKey) on the
+    // palette's active thread, which is the focused pane's; nothing to gate.
+    expect(threadFind).not.toContain("subscribeThreadFindOpen");
     expect(dictation).toContain("if (!controller || !paneFocused) return;");
     // A recording left running in a pane that loses focus finishes there.
     expect(dictation).toMatch(
@@ -66,7 +71,7 @@ describe("fork guard: fork-split-threads", () => {
     expect(panes).toContain('Object.defineProperty(paletteComposerRef, "current"');
     // Children with their own window listeners: the stash shortcut and the
     // pending question's digit answers.
-    expect(composer).toMatch(
+    expect(composerStash).toMatch(
       /fork:begin fork-split-threads[\s\S]*?if \(!splitPaneFocused\) return;[\s\S]*?composer\.stash/u,
     );
     expect(questionCard).toContain(

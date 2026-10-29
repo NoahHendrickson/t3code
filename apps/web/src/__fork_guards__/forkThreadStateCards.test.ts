@@ -17,19 +17,23 @@ function readSibling(relativePath: string): string {
 }
 
 const chatView = readSibling("../components/ChatView.tsx");
+// Upstream moved settle/snooze/woke state into useThreadLifecycle.
+const lifecycle = readSibling("../components/chat/useThreadLifecycle.tsx");
 const cards = readSibling("../custom/useThreadStateBanners.tsx");
 
 describe("fork-thread-state-cards", () => {
   it("draws no status line after the last message", () => {
     expect(chatView).not.toContain("<ThreadStatusLine");
-    // Upstream's timeline footer now carries only the pending-handoff row.
-    const footer = chatView.slice(chatView.indexOf("footer={"), chatView.indexOf("footer={") + 400);
+    // The timeline footer keeps the handoff row and ThreadNow but not the status line.
+    const footerStart = chatView.indexOf("const timelineFooter =");
+    const footer = chatView.slice(footerStart, chatView.indexOf("<ThreadNow", footerStart) + 400);
     expect(footer).toContain("<HandoffRow");
-    expect(footer).not.toMatch(/threadStatusLine|ThreadStatusLine/u);
+    expect(footer).not.toContain("{threadStatusLine}");
+    expect(footer).not.toContain("threadStatusLine === null");
   });
 
   it("puts the settled, snoozed and woke cards in the composer banner stack", () => {
-    expect(chatView).toContain("useThreadStateBanners({");
+    expect(lifecycle).toContain("useThreadStateBanners({");
     expect(chatView).toContain(
       "if (activeThreadSettled && parkedThreadBannerItem) return [parkedThreadBannerItem];",
     );

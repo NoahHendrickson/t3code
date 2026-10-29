@@ -73,6 +73,8 @@ describe("fork guard: fork-glass-3d", () => {
 
   it("stamps the root before first render and offers the setting under Glass", () => {
     expect(readSibling("../main.tsx")).toContain("initializeForkGlass3d();");
-    expect(readSibling("../components/settings/SettingsPanels.tsx")).toContain('title="3D glass"');
+    expect(readSibling("../components/settings/AppearanceSettingsPanel.tsx")).toContain(
+      'title="3D glass"',
+    );
   });
 });

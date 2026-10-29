@@ -16,6 +16,7 @@ import { receiveCodexAuthCallback, CodexAuthCallbackError } from "./CodexAuthCal
 import * as ElectronShell from "../electron/ElectronShell.ts";
 import { providerAuthReturnUrl } from "@t3tools/shared/providerAuthReturnUrl";
 import { promptLinkAppPath } from "@t3tools/shared/promptLinks";
+import { readPairingAppLink } from "@t3tools/shared/remote";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { clerkFrontendApiHostnameFromPublishableKey } from "@t3tools/shared/relayAuth";
 import * as ElectronApp from "../electron/ElectronApp.ts";
@@ -88,15 +89,9 @@ export const desktopClerkFrontendApiHostname = resolveDesktopClerkFrontendApiHos
 
 export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolean) {
   // fork:begin fork-clerk-launch-resilience — main.ts is the sole scheme registrar
-  // main.ts already registered both renderer schemes' privileges at module
-  // load with the exact set the bridge would ask for, so the bridge's own
-  // registerSchemesAsPrivileged call adds nothing — and throws once Electron
-  // is "ready", which layer construction can trail on a packaged boot (the
-  // v0.1.7 dry run's launch isolation gate died exactly there). No-op the
-  // registrar for the duration of the bridge call; everything else the
-  // bridge does (token persistence, OAuth transport, passkeys) is untouched.
-  // The optional reads are for unit tests, which import this module in plain
-  // Node where the electron shim exposes no protocol object.
+  // main.ts already registered the renderer schemes' privileges at module load, so the bridge's
+  // own registerSchemesAsPrivileged call adds nothing and throws once Electron is "ready".
+  // No-op it for the bridge call; the optional reads are for unit tests in plain Node.
   const protocol = Electron.protocol as typeof Electron.protocol | undefined;
   const registerSchemesAsPrivileged = protocol?.registerSchemesAsPrivileged;
   if (protocol && registerSchemesAsPrivileged) {
@@ -122,7 +117,7 @@ export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolea
   // fork:end fork-clerk-launch-resilience
 }
 
-/** @public Service construction is part of the canonical Effect module API. */
+/** @public */
 export const make = Effect.gen(function* () {
   const environment = yield* DesktopEnvironment.DesktopEnvironment;
   const electronApp = yield* ElectronApp.ElectronApp;
@@ -132,14 +127,12 @@ export const make = Effect.gen(function* () {
   const userDataPath = yield* DesktopUserData.resolveUserDataPath(environment);
   yield* electronApp.setPath("userData", userDataPath);
 
-  // T3 owns the profile-scoped lock on every platform; Clerk skips it on macOS.
-  // Quit is asynchronous, so interrupt before the application runtime is built.
+  // Clerk skips the profile lock on macOS. Interrupt before runtime construction because quit is asynchronous.
   if (!(yield* electronApp.requestSingleInstanceLock)) {
     yield* electronApp.quit;
     return yield* Effect.interrupt;
   }
 
-  // Retain launch arguments while asynchronous startup builds the application runtime.
   const pendingSecondInstances: Array<readonly string[]> = [];
   let handleSecondInstance = (argv: readonly string[]) => {
     pendingSecondInstances.push(argv);
@@ -147,21 +140,20 @@ export const make = Effect.gen(function* () {
   yield* electronApp.on("second-instance", (_event: unknown, argv: readonly string[]) => {
     handleSecondInstance(argv);
   });
+  // macOS hands a launch link to open-url, which can fire before configure runs.
+  const pendingOpenUrls: Array<string> = [];
+  let handleOpenUrl = (url: string) => {
+    pendingOpenUrls.push(url);
+    return true;
+  };
+  yield* electronApp.on("open-url", (event: { preventDefault: () => void }, url: string) => {
+    if (handleOpenUrl(url)) event.preventDefault();
+  });
 
   // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
-  // A build with no baked Clerk publishable key cannot sign in, so the
-  // bridge is guaranteed dead weight — and a live hazard: createClerkBridge
-  // calls protocol.registerSchemesAsPrivileged, which throws once Electron
-  // is "ready", and layer construction races that event (CI runners lose
-  // deterministically; a cold local boot rolls the same dice). Skip the
-  // bridge outright when there is no key: deterministic, and the renderer's
-  // scheme privileges come from main.ts's synchronous registration, which is
-  // the sole registrar on this path. Keyed builds keep upstream's bridge —
-  // including loud initialization AND cleanup failures, which must stay
-  // fatal there rather than hide behind a warning — except its redundant
-  // scheme re-registration, which createDesktopClerkBridge above suppresses
-  // so a post-"ready" layer build cannot die on it. The single-instance lock
-  // is taken above on both paths, so skipping the bridge cannot drop it.
+  // A keyless build cannot sign in, and createClerkBridge's registerSchemesAsPrivileged throws
+  // once Electron is "ready". Skip the bridge; main.ts is the sole scheme registrar. Keyed builds
+  // keep upstream's bridge, with init and cleanup failures still fatal.
   if (desktopClerkFrontendApiHostname === undefined) {
     yield* Effect.logWarning(
       "No Clerk publishable key in this build; skipping the Clerk bridge (cloud sign-in unavailable).",
@@ -246,7 +238,8 @@ export const make = Effect.gen(function* () {
         return true;
       };
       const openAppLink = (value: string | undefined) => {
-        if (!value || promptLinkAppPath(value) === null) return false;
+        if (!value || (promptLinkAppPath(value) === null && readPairingAppLink(value) === null))
+          return false;
         void runPromise(webLinks.receive(value));
         return true;
       };
@@ -257,15 +250,12 @@ export const make = Effect.gen(function* () {
         void runPromise(webLinks.receive(url));
         return true;
       };
-      yield* electronApp.on("open-url", (event: { preventDefault: () => void }, url: string) => {
-        if (
-          startProviderAuthHandoff(url) ||
-          resumeProviderAuth(url) ||
-          openWebLink(url) ||
-          openAppLink(url)
-        )
-          event.preventDefault();
-      });
+      handleOpenUrl = (url) =>
+        startProviderAuthHandoff(url) ||
+        resumeProviderAuth(url) ||
+        openWebLink(url) ||
+        openAppLink(url);
+      for (const url of pendingOpenUrls.splice(0)) handleOpenUrl(url);
       yield* electronApp.on("open-file", (event: { preventDefault: () => void }, path: string) => {
         if (!DesktopWebLinks.isWebPageFile(path)) return;
         event.preventDefault();

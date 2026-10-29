@@ -13,7 +13,13 @@
  * and only past the last row that was already there, which leaves "Load
  * earlier" history and mid-list group expansion still.
  */
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type ComponentPropsWithoutRef,
+} from "react";
 import type { MessagesTimelineRow } from "~/components/chat/MessagesTimeline.logic";
 
 // The live activity line: the thinking row, the working row, and a running
@@ -144,12 +150,17 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Stands in for the row's `messages-timeline-row-frame` div. */
-export function ForkTimelineRowFrame(props: {
+export function ForkTimelineRowFrame({
+  motion,
+  row,
+  children,
+  ...frameProps
+}: {
   motion: TimelineRowMotion;
   row: MessagesTimelineRow;
   children: ReactNode;
-}) {
-  const { motion } = props;
+} & Omit<ComponentPropsWithoutRef<"div">, "className" | "children">) {
+  const props = { motion, row, children };
   const rowId = props.row.id;
   const live = isLiveRow(props.row);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -211,7 +222,7 @@ export function ForkTimelineRowFrame(props: {
   }, [motion, rowId, live]);
 
   return (
-    <div ref={frameRef} className="messages-timeline-row-frame">
+    <div ref={frameRef} className="messages-timeline-row-frame" {...frameProps}>
       {props.children}
     </div>
   );

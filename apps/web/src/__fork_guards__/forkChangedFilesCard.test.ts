@@ -49,7 +49,7 @@ describe("fork guard: fork-changed-files-card", () => {
   });
 
   it("paints the user's sent bubble from --card too", () => {
-    // MessagesTimeline's bubble is `bg-message` → --message-surface, which
+    // The user row's bubble is `bg-message` → --message-surface, which
     // upstream aliases to --accent (one rung brighter than the card). The
     // fill has to be set on the element: --color-message is declared on
     // :root, so a token retarget computes var(--card) at the root, while the
@@ -57,7 +57,7 @@ describe("fork guard: fork-changed-files-card", () => {
     const bubble = cssRules(theme).find((rule) => rule.selector === `${MARKER}.dark .bg-message`);
     expect(bubble?.body).toMatch(/background-color:\s*var\(--card\)/u);
     expect(theme).not.toMatch(/--message-surface:/u);
-    expect(readSibling("../components/chat/MessagesTimeline.tsx")).toContain("bg-message ");
+    expect(readSibling("../components/chat/TimelineUserMessageRow.tsx")).toContain("bg-message ");
   });
 
   it("hovers as a 4% white lift, never a darker fill", () => {

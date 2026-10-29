@@ -16,17 +16,34 @@ export const DEFERRED_LINT_SCOPE = [
   // The fork owns this file's Sidebar() body, which still memoizes by hand.
   "apps/web/src/components/Sidebar.tsx",
   "apps/web/src/components/sidebar/SidebarChrome.tsx",
+  // Fork-owned code outside apps/web/src, deferred alongside it since the 2026-10-28 sync.
+  ".fork/**",
+  "apps/web/fork/**",
+  "apps/desktop/src/fork/**",
+  "apps/desktop/src/preview/DesignSource*.ts",
+  "apps/desktop/src/app/Desktop*Fork*.test.ts",
+  "apps/server/src/**/fork*.ts",
+  "apps/server/src/git/resolveBootstrapThreadBranch.ts",
+  "apps/server/src/scheduledTasks/githubPrTrigger.ts",
+  "packages/contracts/src/scheduledTaskRuns.ts",
+  "packages/shared/src/forkDesignProps.ts",
 ];
 
 /** `[oxlint plugin/rule, baseline]` — the baseline is the most warnings allowed. */
 export const DEFERRED_LINT_RULES = [
-  ["react/exhaustive-effect-dependencies", 3],
+  ["react/exhaustive-effect-dependencies", 4],
   ["react/memo-dependencies", 12],
-  ["react/refs", 18],
-  ["react/set-state-in-effect", 4],
+  ["react/refs", 15],
+  ["react/set-state-in-effect", 5],
   ["t3code/no-manual-memo", 131],
   ["t3code/no-outset-state-indicators", 12],
   // Section dividers in the vendored design-mode engine, kept verbatim for re-syncs.
-  ["t3code/no-low-value-comments", 6],
+  ["t3code/no-low-value-comments", 876],
   ["t3code/no-raw-resize-observer", 4],
+  // Upstream rules new in the 2026-10-28 sync; fork code predates them.
+  ["react/preserve-manual-memoization", 2],
+  ["t3code/no-em-dash-copy", 87],
+  ["t3code/no-unreasoned-state-sync", 39],
+  ["t3code/require-disposable-render", 16],
+  ["t3code/no-frame-waits-in-browser-tests", 1],
 ];

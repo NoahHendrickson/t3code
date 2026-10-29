@@ -30,7 +30,10 @@ describe("fork guard: fork-transcript-hover", () => {
     // rule stays for any row that regains it, the footer is the live carrier.
     expect(timeline).not.toContain("hover:bg-accent/20");
     expect(timeline).toContain('"fork-timeline-cutoff"');
-    expect(timeline).toContain('data-user-message-footer="true"');
+    // Upstream moved the user row (and its footer) into TimelineUserMessageRow.
+    expect(readSibling("../components/chat/TimelineUserMessageRow.tsx")).toContain(
+      'data-user-message-footer="true"',
+    );
   });
 
   it("hovers transparent transcript rows as a 4% white lift", () => {

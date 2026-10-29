@@ -175,7 +175,7 @@ Recorded so they are not silently re-litigated:
 
 1. **CI behaviour.** Everything in §2 ran on macOS locally. The guard has never run in an
    Actions runner. `vp lint` with an explicit path list under `setup-vp` with `run-install:
-true` is untested there.
+   true` is untested there.
 
 2. **Path list length.** 27 lintable paths today. Whether a growing list hits an argv limit,
    or whether Oxlint dedupes an overlapping dir + file argument sanely, is untested. Passing

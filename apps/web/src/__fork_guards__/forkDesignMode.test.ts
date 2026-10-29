@@ -161,9 +161,7 @@ describe("fork guard: design mode", () => {
       /^t3code:fork:[a-z-]+:v\d+$/u,
     );
     expect(menu).toContain("TRUE_HEIGHT_STORAGE_KEY,\n    false,");
-    expect(menu).toContain(
-      "if (activeResolution) commitCanvasViewport(runtimeTabId, viewportFor(activeResolution, next));",
-    );
+    expect(menu).toContain("if (activeResolution && viewportTarget) {");
 
     // Widths are the identity the panel matches an applied viewport back by.
     const widths = CANVAS_RESOLUTIONS.map((r) => r.width);
@@ -377,7 +375,8 @@ describe("fork guard: design mode", () => {
       "const forkPendingDesignChangeCount = useForkPendingDesignChangeCount(composerDraftTarget)",
     );
     expect(chatComposer).toContain("(isEditingQueuedMessage ? 0 : forkPendingDesignChangeCount)");
-    const chatView = read("src/components/ChatView.tsx");
+    // Upstream moved the send path out of ChatView into useComposerSend.
+    const chatView = read("src/components/chat/useComposerSend.ts");
     expect(chatView).toContain(
       'import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore"',
     );
@@ -393,7 +392,8 @@ describe("fork guard: design mode", () => {
     expect(chatView).toContain("forkDesignChanges.markSent(");
     expect(chatView).toContain("messageCreatedAt,");
     expect(chatView).toContain("messageIdForSend,");
-    expect(chatView).not.toContain("pendingIds");
+    // Upstream's approval-decline path has its own pendingIdsBeforeDecline; only a bare name counts.
+    expect(chatView).not.toMatch(/\bpendingIds\b/u);
   });
 
   it("offers to resolve previews that were sent, claiming only what was measured", () => {
@@ -450,12 +450,13 @@ describe("fork guard: design mode", () => {
   });
 
   it("renders sent design changes as transcript chips, not raw markdown", () => {
-    const timeline = read("src/components/chat/MessagesTimeline.tsx");
+    // Upstream moved the user row into TimelineUserMessageRow; a guest message strips first.
+    const timeline = read("src/components/chat/TimelineUserMessageRow.tsx");
     expect(timeline).toContain(
       'import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript"',
     );
-    expect(timeline).toContain(
-      "const forkDesignChanges = extractTrailingDesignChanges(row.message.text);",
+    expect(timeline).toMatch(
+      /const forkDesignChanges = extractTrailingDesignChanges\(\s*userMessage\.attribution === "guest" \? userMessage\.text : row\.message\.text,\s*\);/u,
     );
     expect(timeline).toContain("<ForkTranscriptDesignChanges");
     expect(timeline).toContain("blocks={forkDesignChanges.blocks}");

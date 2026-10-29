@@ -56,16 +56,10 @@ const isDevelopmentEnvironment = (env: NodeJS.ProcessEnv): boolean =>
   trimNonEmpty(env.VITE_DEV_SERVER_URL) !== null;
 
 /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
-// Mirrors DesktopEnvironment's fork base-dir resolution so the pre-ready
-// settings read and the app proper agree on one directory. An explicit
-// T3CODE_HOME (trimmed, "~" expanded the way the server child expands it)
-// wins; an unpackaged development run keeps upstream's ~/.t3; anything else
-// is fork-owned under ~/.t3-fork. Upstream's resolveDesktopBaseDir defaults
-// to ~/.t3 unconditionally — routing through it here made this read an
-// installed upstream release's desktop-settings.json on packaged builds.
-// The ~/.t3 refusal itself stays in DesktopEnvironment: a refused
-// configuration dies at startup moments after this read, so nothing acted on
-// the wrong value for longer than the splash.
+// Mirrors DesktopEnvironment's fork base-dir resolution so the pre-ready settings read and the
+// app agree: T3CODE_HOME (trimmed, "~" expanded) wins; unpackaged dev keeps ~/.t3; else
+// ~/.t3-fork. Not resolveDesktopBaseDir: it defaults to ~/.t3 and would read an installed
+// upstream release's settings. The ~/.t3 refusal stays in DesktopEnvironment.
 function resolveEarlyForkBaseDir(input: {
   readonly env: NodeJS.ProcessEnv;
   readonly homeDirectory: string;
@@ -123,8 +117,7 @@ const WAYLAND_COLOR_MANAGER_FEATURE = "WaylandWpColorManagerV1";
 const featureListNames = (value: string | null): ReadonlyArray<string> =>
   (value ?? "").split(",").flatMap((entry) => entry.trim().match(/^\*?([^<:]+)/)?.[1] ?? []);
 
-// A stale HYPRLAND_INSTANCE_SIGNATURE is often inherited into other desktops, so only
-// trust the session's desktop names.
+// HYPRLAND_INSTANCE_SIGNATURE can be stale; trust only the session's desktop names.
 const isHyprlandSession = (env: NodeJS.ProcessEnv): boolean =>
   (trimNonEmpty(env.XDG_CURRENT_DESKTOP) ?? trimNonEmpty(env.XDG_SESSION_DESKTOP) ?? "")
     .split(":")
@@ -140,12 +133,8 @@ const HyprctlVersionJson = fromLenientJson(
 );
 const decodeHyprctlVersionJson = Schema.decodeSync(HyprctlVersionJson);
 
-// Hyprland 0.48.0 added wp-color-manager-v1 (hyprwm/Hyprland#9444) advertising
-// FEATURE_SET_PRIMARIES while rejecting set_primaries outside debug mode, which Chromium
-// treats as a fatal protocol error. 0.51.0 accepts them (hyprwm/Hyprland#11499).
-// Only stock builds of these releases count. Matching the commit as well as the tag
-// keeps later development builds that still report an old VERSION and tag (Nix
-// synthesizes `v${VERSION}`) on the default.
+// Hyprland 0.48.0 rejects advertised set_primaries (hyprwm/Hyprland#9444); 0.51.0 accepts it (hyprwm/Hyprland#11499).
+// Check commits because dev and Nix builds can retain release versions and tags.
 const AFFECTED_HYPRLAND_RELEASE_COMMITS: ReadonlyMap<string, string> = new Map([
   ["0.48.0", "5ee35f914f921e5696030698e74fb5566a804768"],
   ["0.48.1", "29e2e59fdbab8ed2cc23a20e3c6043d5decb5cdc"],

@@ -23,13 +23,13 @@ describe("fork guard: fork-transcript-row-motion", () => {
     expect(timeline).toContain(
       "const rowMotion = useTimelineRowMotion(rows, listIdentityKey, forkTimelineSynced);",
     );
-    expect(timeline).toContain("<ForkTimelineRowFrame motion={rowMotion} row={item}>");
+    // Upstream's frame now carries audio playback capture handlers, passed through.
+    expect(timeline).toMatch(/<ForkTimelineRowFrame\s+motion=\{rowMotion\}\s+row=\{item\}/u);
   });
 
   it("tells the timeline when it shows a stand-in snapshot", () => {
-    expect(chatView).toContain(
-      "forkTimelineSynced={!paintOnlyDisplayedTimeline && threadSyncPhase === null}",
-    );
+    // Upstream dropped the paint-only timeline path (#25787), so sync phase alone decides.
+    expect(chatView).toContain("forkTimelineSynced={threadSyncPhase === null}");
   });
 
   it("keeps the conversation list's containers keyed by row", () => {

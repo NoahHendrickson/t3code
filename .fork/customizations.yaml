@@ -131,12 +131,12 @@
     - apps/desktop/vite.config.ts
     - apps/web/src/components/chat/ChatComposer.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
-    - apps/web/src/components/chat/ComposerPrimaryActions.browser.test.tsx
     - apps/web/src/routes/__root.tsx
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     - docs/user/composer.md
     - docs/operations/release.md
+    - apps/web/src/components/chat/ComposerFooterControls.tsx
   verify:
     - apps/web/src/__fork_guards__/forkLocalDictation.test.ts
     - apps/web/src/__fork_guards__/forkDictationThreadOwnership.test.tsx
@@ -185,8 +185,6 @@
   files: []
   shadows: []
   watch:
-    # Fenced override pinning a pnpm-patched transitive dep for Release Smoke.
-    - pnpm-workspace.yaml
     - .github/workflows/ci.yml
     - .github/workflows/mobile-fingerprint-check.yml
     - apps/web/src/lib/imageCompression.test.ts
@@ -307,9 +305,6 @@
     - .github/scripts/launch-isolation-check.sh
   shadows: []
   watch:
-    # Fenced env stub: fork CI sets GITHUB_REPOSITORY, which retargets release links.
-    - apps/web/src/components/desktopUpdate.toast.test.tsx
-    - apps/web/src/components/sidebar/SidebarUpdateReleaseNotes.test.tsx
     # ci.yml carries a fenced fork hunk: release_smoke lints the isolation
     # gate script on every PR, so a defect there costs a check, not a build.
     - .github/workflows/ci.yml
@@ -483,7 +478,6 @@
     - apps/desktop/scripts/electron-launcher.test.mjs
     - apps/server/src/config.ts
     - apps/web/src/branding.ts
-    - apps/web/src/branding.test.ts
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     - apps/web/public/apple-touch-icon.png
     - apps/web/public/favicon-16x16.png
@@ -493,7 +487,6 @@
     # source-tree icon resolution (incl. the darwin dev dock icon) moved into
     # DesktopAssets, which the fork fences onto assets/fork.
     - apps/desktop/src/app/DesktopAssets.ts
-    - apps/desktop/src/app/DesktopAssets.test.ts
     - packages/shared/src/devHome.ts
     - packages/shared/src/HostProcess.ts
     - scripts/build-desktop-artifact.ts
@@ -1601,10 +1594,9 @@
     - apps/web/src/main.tsx
     - apps/web/src/hooks/useTheme.ts
     - apps/web/src/components/settings/SettingsPanels.tsx
-    # Runs useSettingsRestore outside React; fenced to mock the fork palette hook.
-    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
     - apps/web/src/themeBoot.test.ts
     - apps/web/index.html
+    - apps/web/src/components/settings/AppearanceSettingsPanel.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
     - apps/web/src/custom/forkTheme.test.ts
@@ -2174,8 +2166,7 @@
     # The picture switch: its init before first render, and its Settings row.
     - apps/web/src/main.tsx
     - apps/web/src/components/settings/SettingsPanels.tsx
-    # Mocks the switch's hook, which the restore harness cannot run.
-    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
+    - apps/web/src/components/settings/AppearanceSettingsPanel.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlassNewAgentStage.test.ts
     - apps/web/src/__fork_guards__/forkCoolDarkTheme.test.ts
@@ -2429,8 +2420,8 @@
     popover over the current thread rather than the /usage route (see
     fork-usage-popover); the V2 sidebar's footer hides its own Usage icon so
     the row is the one door there; the footer takes a hideUsage flag rather than
-    losing the item, because the legacy sidebar has no Usage row and keeps
-    it. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
+    losing the item, so upstream's default footer keeps it. Upstream now
+    defaults the undo notice off; the fork opts in with showUndoNotice. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
     shrink it.
 
     The Threads row (368:21211, drawn there as "Projects") takes the project
@@ -2550,7 +2541,6 @@
     - apps/desktop/src/window/DesktopWindow.test.ts
     - apps/web/src/components/AppSidebarLayout.tsx
     - apps/web/src/components/SidebarStageBackdrop.tsx
-    - apps/web/src/components/SidebarStageBackdrop.browser.test.tsx
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     # Fenced: SidebarTrigger draws the SidebarSimple glyph open or shut, so the
@@ -2596,14 +2586,12 @@
   shadows: []
   watch:
     - apps/web/src/components/usage/UsagePage.tsx
-    - apps/web/src/components/usage/UsagePage.browser.test.tsx
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/components/Sidebar.tsx
     - docs/user/usage.md
     - docs/user/thread-sidebar.md
   verify:
     - apps/web/src/__fork_guards__/forkUsagePopover.test.ts
-    - apps/web/src/components/usage/UsagePage.browser.test.tsx
 
 - id: fork-usage-limits-surface
   intent: >
@@ -2637,8 +2625,6 @@
   shadows:
     - apps/web/src/components/usage/UsageLimitsPooled.tsx
   watch:
-    # Fenced mock entry and one skipped case (the fork meter draws no reset plate).
-    - apps/web/src/components/usage/UsageLimitsPooled.browser.test.tsx
     - apps/web/src/components/usage/UsagePage.tsx
   verify:
     - apps/web/src/__fork_guards__/forkUsageLimits.test.ts
@@ -2682,7 +2668,6 @@
     - apps/web/src/components/usage/UsagePage.tsx
   verify:
     - apps/web/src/__fork_guards__/forkUsageTabs.test.ts
-    - apps/web/src/components/usage/UsagePage.refresh.browser.test.tsx
 
 - id: fork-sidebar-scheduled-row
   intent: >
@@ -2880,10 +2865,9 @@
     drops the raised treatment that reads as a button floating above a page,
     and opens padding to 10px/7px.
 
-    The not-yet-a-repo "Initialize Git" button (GitActionsControl, !isRepo
-    branch) and the empty-scripts "Add action" button are lone buttons with no
-    Group; each carries its own data-fork-pill so it paints as a single-half
-    pill instead of the raised outline beside the split ones.
+    The empty-scripts "Add action" button is a lone button with no Group; it
+    carries its own data-fork-pill so it paints as a single-half pill instead of
+    the raised outline beside the split ones.
 
     The two panel toggles render at 16px, and their glyphs become SquareHalf and
     SquareHalfBottom via the Phosphor shim rather than at the call site — see
@@ -2893,10 +2877,9 @@
     Since the 2026-10-05 sync the pills are upstream's ActionGroup and
     ThreadDetailsControl, which also render a "panel" presentation inside the
     new thread details panel. The data-fork-pill mark is toolbar-only; the
-    panel is upstream's surface and stays unmarked. Upstream's multiline git
-    progress readout carries a second fenced stamp, data-fork-pill-multiline,
-    that lets it out of the 28px pin so its output row shows; the toolbar path
-    is Button size="sm-multiline", which has no class the CSS could key on.
+    panel is upstream's surface and stays unmarked. Since the 2026-10-28 sync
+    upstream renders GitActionsControl only inside that panel, so git actions
+    carry no pill (and the multiline-readout exception went with them).
   tier: 4
   files:
     - apps/web/src/theme.custom.css
@@ -3009,9 +2992,6 @@
     - apps/web/src/components/WorkspacePageHeader.tsx
     # Defines .drag-region itself — the class the release rule overrides.
     - apps/web/src/index.css
-    # Upstream states the maximum-width case in literal viewports; fenced to
-    # read them relative to the reserve the shadow lowers.
-    - apps/web/src/components/threadSidebarWidth.test.ts
   verify:
     - apps/web/src/__fork_guards__/narrowWorkspaceLayout.test.ts
 
@@ -3403,10 +3383,11 @@
     branch as read-only chips (worktree mark in a worktree), with no
     workspace-mode label, so they show above the composer as well as in the
     details card. Composer context on keeps upstream's interactive strip.
-    Upstream's resting composer layout (#7855) is neutralized in the
-    composerFooterLayout shadow: its helpers are ported so ChatComposer
-    compiles, but shouldUseRestingComposerLayout is fenced to always return
-    false, because the fork keeps one compact layout in every thread state.
+    Upstream deleted its resting composer layout (#25869), so the fork's
+    one-layout rule needs no neutralizing; the composerFooterLayout shadow now
+    only carries the lowered compact thresholds. Since that sync the shell's
+    three slots are built in ChatComposer from upstream's ComposerFooterControls
+    (mode controls and primary actions) instead of upstream's ComposerControlsBar.
   tier: 4
   files:
     - apps/web/src/custom/ComposerShell.tsx
@@ -3476,9 +3457,10 @@
     # the one resting-layout assertion is fenced there to expect the fork's
     # neutralized answer; every other assertion is upstream's.
     - apps/web/src/components/composerFooterLayout.test.ts
-    - apps/web/src/components/chat/useComposerFocusState.browser.test.tsx
     # "The controls retreat…" names what stays once the thread starts.
     - docs/user/appearance.md
+    - apps/web/src/components/chat/ComposerFooterControls.tsx
+    - apps/web/src/components/chat/useThreadLifecycle.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerShell.test.ts
 
@@ -4191,6 +4173,9 @@
     # plugin needs. An upstream lockfile/dep sweep dropping it breaks the
     # bundle guard, not just the dev server.
     - apps/web/package.json
+    - apps/web/src/components/chat/TimelineUserMessageRow.tsx
+    - apps/web/src/components/chat/useComposerSend.ts
+    - apps/web/src/components/chat/chatViewSend.ts
   verify:
     - apps/web/src/__fork_guards__/forkDesignMode.test.ts
     - apps/web/src/__fork_guards__/forkDesignModeCssOrigin.test.ts
@@ -4456,9 +4441,8 @@
     copy. Only the outline, tint and fill variables the surface already reads
     are re-pointed at the fork composer tokens, so the value tracks every
     palette; a dark attached banner draws no card (geometry, below), so the
-    remap is moot there. The peek cap reads the same fill variable without the
-    surface attribute, so the remap lists the peek slot as a second hook and
-    gives it the hairline in place of its severity border utility.
+    remap is moot there. Upstream removed the collapsed stack's peek cap and moved
+    the activity strip to the end of the timeline, so neither needs a hook now.
 
     Geometry (Figma t3-fork 467:33308, earlier 360:11682, 360:10808): upstream's 1.375rem-inset
     16px-corner card tucked 1rem + 1px under the prompt surface becomes no card
@@ -4477,11 +4461,8 @@
     467:33308 card (branch changed) is stamped data-fork-composer-notice so
     drawer density stays on Reconnect / Update / tasks. It drops font-medium /
     leading-7 at the source, stacks title over description, and stamps its
-    primary / dismiss actions by name (data-fork-composer-notice-action). The
-    activity strip
-    stays a single row at 16px padding, including when folded into the stack
-    (the in-drawer activity Root is stamped data-chat-composer-activity-strip).
-    A notice's primary action is the design's white Primary button, which the
+    primary / dismiss actions by name (data-fork-composer-notice-action). Since
+    the 2026-10-28 sync that card is built in chat/ThreadActivityBanners.tsx. A notice's primary action is the design's white Primary button, which the
     fork's --primary already resolves to.
 
     Outline and tint apply in both schemes; the fill and the geometry are
@@ -4498,13 +4479,13 @@
     # variables the rules re-point.
     - apps/web/src/components/chat/ComposerBanner.tsx
     # Renders the notice stack (data-composer-banner-drawer) and stamps
-    # data-fork-composer-notice / the optional-icon fence / the in-drawer
-    # activity strip attribute.
+    # data-fork-composer-notice and the optional-icon fence.
     - apps/web/src/components/chat/ComposerBannerStack.tsx
     - apps/web/src/components/chat/ChatComposer.tsx
     # Carries the fenced variant="default" on the notice primary actions.
     - apps/web/src/components/ChatView.tsx
     - docs/user/thread-sidebar.md
+    - apps/web/src/components/chat/ThreadActivityBanners.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerBannerSurface.test.ts
 
@@ -4549,8 +4530,8 @@
     woke from snooze" notice there too, as before the 2026-10-07 sync.
     Upstream #16782 replaced those cards with a quiet status line after the
     last message (ThreadStatusLine as the timeline footer), which the fork
-    drops: ChatView (fenced) builds the cards in custom/useThreadStateBanners
-    instead of the status line and passes no footer. A settled thread shows
+    drops: useThreadLifecycle (fenced) builds the cards with custom/useThreadStateBanners,
+    and ChatView leaves its status line out of the timeline footer. A settled thread shows
     only its Unsettle card; every other notice comes back, undismissed, once
     the thread is unsettled (docs/user/thread-sidebar.md says so).
   tier: 4
@@ -4565,6 +4546,7 @@
     # stack and the timeline footer the status line rode in.
     - apps/web/src/components/ChatView.tsx
     - apps/web/src/components/chat/ThreadStatusLine.tsx
+    - apps/web/src/components/chat/useThreadLifecycle.tsx
   verify:
     - apps/web/src/__fork_guards__/forkThreadStateCards.test.ts
 
@@ -4753,8 +4735,6 @@
     - apps/web/src/components/chat/ProviderModelPicker.tsx
     - apps/web/src/components/chat/ModelPickerContent.tsx
   watch:
-    # Two fenced skips: upstream's legacy-favorite cases drive its popover roles.
-    - apps/web/src/components/chat/ProviderModelPicker.browser.test.tsx
     # Supplies the Menu, item and separator primitives the pages render.
     # Fenced: MenuPopup passes collisionAvoidance to its Positioner, so the
     # composer's menu can turn flipping off.
@@ -4858,6 +4838,7 @@
     # Fenced import plus the rain replacing the dot cluster in
     # WorkingTimelineRow.
     - apps/web/src/components/chat/MessagesTimeline.tsx
+    - apps/web/src/components/chat/TimelineWorkGroupRows.tsx
   verify:
     - apps/web/src/__fork_guards__/forkChatWorkingRain.test.ts
 
@@ -4882,6 +4863,7 @@
   watch:
     # Fenced import, state, restore-defaults entry and the Interface row.
     - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/src/components/settings/AppearanceSettingsPanel.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Helix.test.ts
 
@@ -4924,7 +4906,7 @@
     - apps/web/src/main.tsx
     # Fenced import, state, restore-defaults entry and the Interface row.
     - apps/web/src/components/settings/SettingsPanels.tsx
-    - apps/web/src/components/settings/SettingsPanels.restore.browser.test.tsx
+    - apps/web/src/components/settings/AppearanceSettingsPanel.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlass3d.test.ts
     - apps/web/src/custom/forkRootSetting.test.ts
@@ -5051,6 +5033,7 @@
     - apps/web/src/components/chat/MessagesTimeline.tsx
     # Fenced: the grouped-batch cases no longer click a collapsed group open.
     - apps/web/src/components/chat/MessagesTimeline.browser.test.tsx
+    - apps/web/src/components/chat/TimelineV2EventRow.tsx
   verify:
     - apps/web/src/__fork_guards__/forkSubagentSpawnCard.test.ts
 
@@ -5161,9 +5144,9 @@
     Every entry point that means "new thread" on the default sidebar agrees:
     the chrome row and the chat.new shortcut start the unassigned draft
     (upstream's palette route for chat.new, and the project-group count that
-    fed it, are deleted from the route rather than left unreachable);
-    chat.newLocal from an unassigned draft has no current project and lands
-    back on it; the legacy sidebar keeps upstream's contextual create. The
+    fed it, are deleted from shortcuts/chatRouteCommands.ts rather than left
+    unreachable); chat.newLocal from an unassigned draft has no current project
+    and lands back on it. Upstream deleted the legacy sidebar (#26238). The
     grouped project header's plus and the palette's "New thread in…" still
     create straight into a named project — they already know the answer. The
     index route's landing draft (most recent project) is unchanged.
@@ -5198,6 +5181,7 @@
     # the thread context readout's) suppresses upstream's automatic title
     # monogram (#11572).
     - apps/web/src/components/ProjectFavicon.tsx
+    - apps/web/src/shortcuts/chatRouteCommands.ts
   verify:
     - apps/web/src/__fork_guards__/forkNewAgentDraft.test.ts
     - apps/web/src/custom/newAgentDraft.test.ts
@@ -5387,7 +5371,6 @@
     - apps/web/src/components/settings/scheduledTasksSettings.logic.ts
   verify:
     - apps/web/src/__fork_guards__/forkScheduledTaskEffort.test.ts
-    - apps/web/src/components/chat/TraitsPicker.test.ts
     - apps/web/src/components/settings/scheduledTasksSettings.logic.test.ts
 
 - id: fork-github-pr-automation
@@ -5417,6 +5400,8 @@
     - apps/server/src/scheduledTasks/ScheduledTaskService.ts
     - apps/server/src/orchestration-v2/runtimeLayer.ts
     - apps/web/src/components/settings/ScheduledTasksSettings.tsx
+    - apps/web/src/providerInstances.ts
+    - apps/web/src/components/settings/scheduledTasksSettings.logic.ts
   verify:
     - apps/web/src/__fork_guards__/forkGithubPrAutomation.test.ts
     - apps/server/src/scheduledTasks/GitHubPrAutomation.test.ts
@@ -5439,6 +5424,7 @@
   shadows: []
   watch:
     - apps/web/src/components/ChatView.tsx
+    - apps/web/src/components/chat/useComposerSelection.ts
   verify:
     - apps/web/src/__fork_guards__/forkNewWorktreeDefaultBase.test.ts
 
@@ -5462,6 +5448,7 @@
   shadows: []
   watch:
     - apps/web/src/components/chat/ChatComposer.tsx
+    - apps/web/src/components/chat/useComposerAttachmentIntake.ts
   verify:
     - apps/web/src/__fork_guards__/forkImageAttachmentNoChip.test.ts
 
@@ -5539,6 +5526,7 @@
     - apps/web/src/components/RightPanelTabs.tsx
     - apps/web/src/components/pullRequest/ThreadPullRequestsPanel.tsx
     - apps/web/src/components/pullRequest/PullRequestListRow.tsx
+    - apps/web/src/connection/clientMetadata.ts
   verify:
     - apps/web/src/__fork_guards__/forkTouchAffordances.test.ts
     - apps/web/src/custom/touchLongPressContextMenu.browser.test.ts
@@ -5700,7 +5688,7 @@
   shadows: []
   watch:
     # Fenced useForkSettingsMarker() in SettingsContentLayout.
-    - apps/web/src/routes/settings.tsx
+    - apps/web/src/routes/_chat.settings.tsx
     # Fenced data-fork-chrome-row on the section buttons.
     - apps/web/src/components/settings/SettingsSidebarNav.tsx
     # The chip rule keys on the dark:bg-input/32 wash both variants paint.
@@ -5846,6 +5834,7 @@
     # Fenced: the card drag source, the list's drop handlers and the
     # split-aware renderThreadRow wrapping upstream's (renamed renderOneThreadRow).
     - apps/web/src/components/Sidebar.tsx
+    - apps/web/src/components/chat/useComposerStash.ts
   verify:
     - apps/web/src/__fork_guards__/forkSplitThreads.test.ts
     - apps/web/src/custom/splitThreads/splitThreads.test.ts

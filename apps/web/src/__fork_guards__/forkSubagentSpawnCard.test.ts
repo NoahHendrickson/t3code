@@ -16,7 +16,8 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
+// Upstream moved V2EventTimelineRow out of MessagesTimeline.
+const timeline = readSibling("../components/chat/TimelineV2EventRow.tsx");
 const group = readSibling("../custom/ForkSubagentGroup.tsx");
 const model = readSibling("../custom/forkSubagentTree.ts");
 const theme = readSibling("../theme.custom.css");
@@ -28,10 +29,7 @@ describe("fork guard: fork-subagent-spawn-card", () => {
       /\(row\.subagents\?\.length \?\? 1\) > 1\) \{[\s\S]{0,400}?<ForkSubagentGroup[\s\S]{0,200}?onOpenThread=\{ctx\.onOpenThread\}/u,
     );
     expect(timeline).not.toContain("return <V2SubagentGroup key={row.id} row={row} />;");
-    // Upstream's grouped-batch cases click a collapsed group open; the fork
-    // tree has no such state, and the fenced cases say so.
-    const timelineTest = readSibling("../components/chat/MessagesTimeline.browser.test.tsx");
-    expect(timelineTest).toContain("fork:begin fork-subagent-spawn-card");
+    // Upstream deleted its grouped-batch browser cases (#22557), so no fenced skips remain.
   });
 
   it("keeps the Figma header and member rows", () => {

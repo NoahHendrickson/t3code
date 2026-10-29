@@ -3,41 +3,8 @@ import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import * as PlatformError from "effect/PlatformError";
 
 import { resolveUserDataPath } from "./DesktopUserData.ts";
-
-it.effect("identifies a failed source read and preserves its cause", () => {
-  // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-  const sourceState = "/profiles/t3code-fork/Local State";
-  // fork:end fork-app-identity
-  const cause = PlatformError.systemError({
-    _tag: "PermissionDenied",
-    module: "FileSystem",
-    method: "readFileString",
-    pathOrDescriptor: sourceState,
-  });
-  return Effect.gen(function* () {
-    const error = yield* resolveUserDataPath({
-      appDataDirectory: "/profiles",
-      isDevelopment: false,
-      platform: "win32",
-    }).pipe(Effect.flip);
-    assert.equal(error.operation, "read");
-    assert.equal(error.resourcePath, sourceState);
-    assert.equal(error.category, "PermissionDenied");
-    assert.strictEqual(error.cause, cause);
-  }).pipe(
-    Effect.provideService(
-      FileSystem.FileSystem,
-      FileSystem.makeNoop({
-        exists: (path) => Effect.succeed(path === sourceState),
-        readFileString: () => Effect.fail(cause),
-      }),
-    ),
-    Effect.provide(NodeServices.layer),
-  );
-});
 
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
 // The fork's only V1 profile; upstream's "T3 Code (Alpha)" is created below

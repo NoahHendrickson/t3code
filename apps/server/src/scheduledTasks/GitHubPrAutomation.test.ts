@@ -7,7 +7,6 @@ import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
 import * as Queue from "effect/Queue";
 import * as Layer from "effect/Layer";
-import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 import * as ProjectStore from "../orchestration-v2/ProjectStore.ts";
@@ -74,22 +73,20 @@ const withService = <A, E>(
     const external = Layer.mergeAll(
       Layer.mock(ProjectStore.ProjectStoreV2)({
         get: (projectId) =>
-          Effect.succeed(
-            Option.some({
-              projectId,
-              title: projectId,
-              workspaceRoot: `/repo/${projectId}`,
-              defaultModelSelection: null,
-              defaultThreadEnvMode: null,
-              autoPull: false,
-              faviconPath: null,
-              projectIcon: null,
-              scripts: [],
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              deletedAt: null,
-            }),
-          ),
+          Effect.succeedSome({
+            projectId,
+            title: projectId,
+            workspaceRoot: `/repo/${projectId}`,
+            defaultModelSelection: null,
+            defaultThreadEnvMode: null,
+            autoPull: false,
+            faviconPath: null,
+            projectIcon: null,
+            scripts: [],
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            deletedAt: null,
+          }),
       }),
       Layer.mock(VcsProcess.VcsProcess)({
         run: (request) =>

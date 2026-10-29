@@ -119,11 +119,12 @@ export const layer = Layer.effect(
   Effect.gen(function* () {
     const threads = yield* ThreadManagement.ThreadManagementService;
     return LocalCheckoutBranchFollower.of({
-      follow: (input) =>
+      follow: Effect.fn("LocalCheckoutBranchFollower.follow")((input) =>
         followLocalCheckoutBranch(input, {
           getThreadShell: threads.getThreadShell,
           dispatch: threads.dispatch,
         }).pipe(Effect.asVoid),
+      ),
     });
   }),
 );

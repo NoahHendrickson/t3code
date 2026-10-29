@@ -67,8 +67,9 @@ describe("fork guard: fork-side-chat", () => {
   it("keeps the side chat out of window lookups and broadcasts", () => {
     expect(sideChatWindow).toContain("markForkAuxiliaryWindow(window);");
     expect(electronWindow).toContain("windows.filter((window) => !isForkAuxiliaryWindow(window))");
-    expect(electronWindow).toContain(
-      "const first = Option.fromNullishOr((yield* listAppWindows)[0] ?? null);",
+    // Upstream now skips its own auxiliary windows here too; the fork keeps both filters.
+    expect(electronWindow).toMatch(
+      /const first = Option\.fromNullishOr\(\s*\(yield\* listAppWindows\)\.find\(\(window\) => !auxiliaryWindows\.has\(window\)\) \?\? null,\s*\);/u,
     );
     // Menu actions, SnapShot and zoom never land in a focused side chat.
     expect(electronWindow).toMatch(

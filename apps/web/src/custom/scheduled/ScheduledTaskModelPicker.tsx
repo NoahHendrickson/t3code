@@ -1,6 +1,7 @@
 import type { ModelSelection } from "@t3tools/contracts";
 import type { ComponentProps } from "react";
 import { ProviderModelPicker } from "~/components/chat/ProviderModelPicker";
+import { readPromptUltrathink } from "~/components/chat/TraitsPicker";
 import { ComposerModelPicker } from "../ComposerModelPicker";
 import { scheduledTaskModelWithOptions } from "./scheduledTaskModel.logic";
 
@@ -30,8 +31,8 @@ export function ScheduledTaskModelPicker({
         models: instance.models,
         model: selection.model,
         modelOptions: selection.options,
-        prompt,
-        onPromptChange,
+        promptUltrathink: readPromptUltrathink(prompt),
+        onPromptEdit: (edit) => onPromptChange(edit(prompt)),
         onModelOptionsChange: (options) =>
           onSelectionChange(scheduledTaskModelWithOptions(selection, options)),
         triggerLabelSeparator: " ",

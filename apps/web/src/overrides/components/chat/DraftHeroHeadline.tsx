@@ -15,12 +15,16 @@
  * view-transition wrapper around it are untouched.
  */
 import type { DraftId } from "~/composerDraftStore";
+import { useComposerDraftStore } from "~/composerDraftStore";
 import type { ScopedProjectRef } from "@t3tools/contracts";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 
 import { isSideChatSurface } from "~/custom/sideChat/surface";
 import { useScratchProject } from "~/hooks/useScratchProject";
+import { isTriagePrompt } from "~/hooks/useStartTriage";
 import { useProjects } from "~/state/entities";
+import { useEnvironments } from "~/state/environments";
+import { TriageDraftHero } from "./TriageDraftHero";
 
 interface DraftHeroHeadlineProps {
   readonly draftId: DraftId | null;
@@ -29,11 +33,17 @@ interface DraftHeroHeadlineProps {
 }
 
 export function DraftHeroHeadline({
+  draftId,
   activeProjectRef,
   activeProjectTitle,
 }: DraftHeroHeadlineProps) {
   const projects = useProjects();
+  const { environments } = useEnvironments();
   const { scratchWorkspaceRootFor } = useScratchProject();
+  // A boolean, so typing in a draft does not re-render the hero.
+  const isTriageDraftPrompt = useComposerDraftStore((store) =>
+    draftId ? isTriagePrompt(store.getComposerDraft(draftId)?.prompt ?? "") : false,
+  );
   const activeProject =
     activeProjectRef === null
       ? null
@@ -46,6 +56,17 @@ export function DraftHeroHeadline({
     activeProject !== null &&
     isScratchProject(activeProject, scratchWorkspaceRootFor(activeProject.environmentId));
   const hasResolvedProject = activeProjectTitle !== null;
+  if (isScratchDraft && isTriageDraftPrompt) {
+    const environment = environments.find(
+      (entry) => entry.environmentId === activeProject.environmentId,
+    );
+    return (
+      <TriageDraftHero
+        machineLabel={environment?.label ?? null}
+        serverVersion={environment?.serverConfig?.environment.serverVersion ?? null}
+      />
+    );
+  }
   return (
     <h1 className="w-full text-center font-normal text-2xl text-foreground tracking-tight sm:text-3xl">
       {isScratchDraft

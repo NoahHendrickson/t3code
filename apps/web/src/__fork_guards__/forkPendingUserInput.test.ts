@@ -48,8 +48,8 @@ describe("fork guard: fork-pending-user-input", () => {
     expect(hook).toContain('addEventListener("keydown"');
     // Number keys stay wired; announce via aria-keyshortcuts without kbd badges.
     expect(override).toContain("aria-keyshortcuts");
+    // Upstream dropped its kbd badges too (#25869), so only the override side is pinned.
     expect(override).not.toContain("shortcutKey");
-    expect(upstream).toContain("shortcutKey");
     expect(upstream).toContain("activeQuestion.header");
     expect(override).not.toContain("activeQuestion.header");
     // The card is memoized, which is what makes a frozen selection closure

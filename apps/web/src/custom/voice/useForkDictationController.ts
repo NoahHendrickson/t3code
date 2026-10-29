@@ -1,9 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   voiceInputBlocksSubmission,
-  voiceInputFreezesEditor,
   type VoiceInputState,
 } from "@t3tools/client-runtime/voice-input";
+
+// Upstream dropped this alias (it always equalled voiceInputBlocksSubmission); the
+// fork keeps the name because the two gates read differently at the call sites.
+const voiceInputFreezesEditor = (state: VoiceInputState): boolean =>
+  voiceInputBlocksSubmission(state);
 import {
   createDictationSession,
   isDictationLive,

@@ -17,7 +17,7 @@ import type {
   ScheduledTaskListRunsInput,
 } from "@t3tools/contracts";
 
-import { useRelativeTimeTick } from "~/components/settings/settingsLayout";
+import { useRelativeTimeTick } from "./useRelativeTimeTick";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";

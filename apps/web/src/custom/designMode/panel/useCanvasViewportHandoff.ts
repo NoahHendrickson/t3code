@@ -45,6 +45,7 @@ export function useCanvasViewportHandoff(options: {
     // Nothing to put back before the first observation — there was no turn-on to undo.
     if (was === undefined) return;
     const applied = tabId ? readThreadPreviewState(threadRef).sessions[tabId]?.viewport : undefined;
-    if (applied) restorePreviewViewport(runtimeTabId, applied, paneRect);
+    if (applied && tabId)
+      restorePreviewViewport({ threadRef, tabId, runtimeTabId }, applied, paneRect);
   }, [canvasOn, runtimeTabId, tabId, threadRef]);
 }

@@ -3,7 +3,7 @@
  * `.fork/customizations.yaml#fork-model-picker`.
  *
  * Same export, same props as upstream, so ProviderModelPicker's import is
- * untouched; the four exported helpers are upstream's verbatim. The render
+ * untouched; the four helpers are upstream's verbatim. The render
  * is the fork's, hosted by ProviderModelPicker's shadow in a Base UI Menu: a
  * provider submenu (Favorites, then one option per provider instance), the
  * search field, then the chosen scope's models, legacy ones behind an inline
@@ -27,7 +27,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { formatProviderUpdateRequiredNotice } from "@t3tools/client-runtime/providerUpdateRequiredModels";
 import { useNavigate } from "@tanstack/react-router";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode, SetStateAction } from "react";
+import type { KeyboardEvent, ReactNode, RefObject, SetStateAction } from "react";
 import { Heart } from "@phosphor-icons/react";
 import { CheckIcon, ChevronDownIcon, SearchIcon, StarIcon } from "lucide-react";
 import { ProviderInstanceIcon } from "./ProviderInstanceIcon";
@@ -40,6 +40,7 @@ import { Badge } from "../ui/badge";
 import { Kbd } from "../ui/kbd";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { isCommandPaletteOpen } from "../../commandPaletteBus";
+import { registerModelPickerContent } from "../../modelPickerVisibility";
 import { primaryServerKeybindingsAtom } from "../../state/server";
 import {
   modelPickerJumpCommandForIndex,
@@ -51,6 +52,7 @@ import {
   useEnvironmentModelPreferences,
   useToggleEnvironmentModelFavorite,
 } from "~/hooks/useSettings";
+import { announce } from "~/lib/announce";
 import { cn } from "~/lib/utils";
 import { stripProviderName } from "~/custom/modelPickerDisplayName";
 import {
@@ -94,7 +96,7 @@ export function resolveModelPickerSelectedModel(input: {
   return input.options.find((option) => option.slug === input.model);
 }
 
-export function shouldIncludeModelPickerOption(input: {
+function shouldIncludeModelPickerOption(input: {
   readonly entry: ProviderInstanceEntry;
   readonly option: ModelEsque;
   readonly activeInstanceId: ProviderInstanceId;
@@ -113,7 +115,7 @@ export function shouldIncludeModelPickerOption(input: {
   );
 }
 
-export function shouldOfferModelPickerSetup(
+function shouldOfferModelPickerSetup(
   entry: ProviderInstanceEntry,
   options: ReadonlyArray<ModelEsque>,
 ): boolean {
@@ -128,7 +130,7 @@ export function shouldOfferModelPickerSetup(
   );
 }
 
-export function adjacentModelPickerProvider(input: {
+function adjacentModelPickerProvider(input: {
   entries: ReadonlyArray<ProviderInstanceEntry>;
   selectedInstanceId: ProviderInstanceId | "favorites";
   direction: 1 | -1;
@@ -215,8 +217,11 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   onOpenProviderSetup?: (instanceId: ProviderInstanceId) => void;
   getModelDisabledReason?: (instanceId: ProviderInstanceId, model: string) => string | null;
   onInstanceModelChange: (instanceId: ProviderInstanceId, model: string) => void;
+  /** The search field; a Menu has no `initialFocus`, so this content focuses it itself. */
+  searchInputRef: RefObject<HTMLInputElement | null>;
 }) {
   const {
+    searchInputRef,
     keybindings: providedKeybindings,
     modelOptionsByInstance,
     instanceEntries,
@@ -225,8 +230,9 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     onToggleModel,
   } = props;
   const [searchQuery, setSearchQueryState] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- publishes this picker's mount to global keydown handlers
+  useLayoutEffect(() => registerModelPickerContent(), []);
   const { favorites } = useEnvironmentModelPreferences(props.environmentId);
   const serverKeybindings = useAtomValue(primaryServerKeybindingsAtom);
   const keybindings = providedKeybindings ?? serverKeybindings;
@@ -275,6 +281,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   // The menu focuses its own popup as it opens; land on the search field
   // after it does, so typing searches straight away.
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- moves DOM focus to the search field after the menu focuses its popup on open
   useLayoutEffect(() => {
     focusSearchInput();
     const frame = window.requestAnimationFrame(focusSearchInput);
@@ -458,21 +465,21 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     modelSlug: string,
     instanceId: ProviderInstanceId,
     additive = false,
-  ) => {
-    if (getModelDisabledReason?.(instanceId, modelSlug)) return;
+  ): string | null => {
+    if (getModelDisabledReason?.(instanceId, modelSlug)) return null;
     const options = modelOptionsByInstance.get(instanceId);
     const entry = entryByInstanceId.get(instanceId);
-    if (!options || !entry) return;
+    if (!options || !entry) return null;
     // `resolveSelectableModel` normalizes by driver kind; custom instances
     // share their driver's rules.
     const resolvedModel = resolveSelectableModel(entry.driverKind, modelSlug, options);
-    if (resolvedModel) {
-      if (additive && onToggleModel) {
-        onToggleModel(instanceId, resolvedModel);
-      } else {
-        onInstanceModelChange(instanceId, resolvedModel);
-      }
+    if (!resolvedModel) return null;
+    if (additive && onToggleModel) {
+      onToggleModel(instanceId, resolvedModel);
+    } else {
+      onInstanceModelChange(instanceId, resolvedModel);
     }
+    return resolvedModel;
   };
 
   // Swap first, focus later. Focusing the search field from the row's click
@@ -496,9 +503,11 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   // and keeps the query, so one search can collect several models, as
   // upstream's does.
   const chooseModel = (model: ModelPickerItem, additive = false) => {
-    handleModelSelect(model.slug, model.instanceId, additive);
-    if (!isSearching || additive) return;
-    selectScope(model.instanceId, { showLegacy: isLegacyModel(model) });
+    const selectedSlug = handleModelSelect(model.slug, model.instanceId, additive);
+    if (isSearching && !additive) {
+      selectScope(model.instanceId, { showLegacy: isLegacyModel(model) });
+    }
+    return selectedSlug;
   };
 
   // The cycling shortcuts step the provider menu. Favorites is skipped while there
@@ -516,6 +525,10 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     if (next === "favorites" && favoriteModels.length === 0) next = step("favorites");
     if (next === "favorites" && favoriteModels.length === 0) return;
     selectScope(next);
+    announce(
+      next === "favorites" ? "Favorites" : (entryByInstanceId.get(next)?.displayName ?? next),
+      "model-picker",
+    );
   };
 
   // ⌘1–9 jump through the list on screen: the search results while
@@ -552,6 +565,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     return mapping.size > 0 ? mapping : EMPTY_MODEL_JUMP_LABELS;
   })();
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes a capture-phase window keydown listener for the picker's lifetime
   useEffect(() => {
     const onWindowKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || isCommandPaletteOpen()) return;
@@ -570,7 +584,13 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       event.preventDefault();
       event.stopPropagation();
       const target = jumpTargets[jumpIndex];
-      if (target) chooseModel(target);
+      if (!target) return;
+      const selectedSlug = chooseModel(target);
+      if (selectedSlug === null) return;
+      const name = flatModels.find(
+        (item) => item.slug === selectedSlug && item.instanceId === target.instanceId,
+      )?.name;
+      announce(`Model: ${name ?? selectedSlug}`, "model-picker");
     };
     window.addEventListener("keydown", onWindowKeyDown, true);
     return () => window.removeEventListener("keydown", onWindowKeyDown, true);
@@ -590,6 +610,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
 
   // When a swap removes the focused row, the menu parks focus on the popup
   // itself, outside this content's own capture; catch typing there too.
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes a capture-phase keydown listener on the menu popup element
   useEffect(() => {
     const popup = contentRef.current?.closest<HTMLElement>('[data-slot="menu-popup"]');
     if (!popup) return;
@@ -665,10 +686,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     const providerLabel = model.subProvider
       ? `${model.instanceDisplayName} · ${model.subProvider}`
       : model.instanceDisplayName;
-    const displayName = getDisplayModelName(
-      model,
-      props.lockedProvider === null ? { preferShortName: true } : undefined,
-    );
+    const displayName = getDisplayModelName(model);
     // The row's provider label, or the provider submenu it sits in, names the
     // provider already.
     const modelName = stripProviderName(displayName, {

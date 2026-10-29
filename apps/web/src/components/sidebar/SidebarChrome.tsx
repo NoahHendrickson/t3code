@@ -178,11 +178,11 @@ function SidebarUtilityItem({
   );
 }
 
-export const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
+const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
   /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
      The V2 sidebar carries Usage as a labeled row in its chrome, so its footer
-     drops the icon rather than offering the same door twice. The legacy
-     sidebar has no such row and keeps it. */
+     drops the icon rather than offering the same door twice. Surfaces without
+     that row (the split-threads pane) keep it. */
   hideUsage = false,
 }: {
   hideUsage?: boolean;
@@ -243,7 +243,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
           {pullRequestsSupported ? (
             <SidebarUtilityItem
               icon={<PullRequestGlyph.pullRequest />}
-              label="Pull Requests"
+              label="Pull requests"
               onClick={handlePullRequestsClick}
             />
           ) : null}
@@ -264,15 +264,17 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
 });
 
 export const SidebarChromeFooter = memo(function SidebarChromeFooter({
+  showUndoNotice = false,
   /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
   hideUsage = false,
 }: {
   hideUsage?: boolean;
   /* fork:end fork-sidebar-chrome */
-} = {}) {
+  showUndoNotice?: boolean;
+}) {
   return (
     <SidebarFooter>
-      <SidebarThreadUndoNotice />
+      {showUndoNotice ? <SidebarThreadUndoNotice /> : null}
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
       {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */}

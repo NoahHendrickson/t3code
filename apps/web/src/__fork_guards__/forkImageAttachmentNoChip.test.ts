@@ -13,7 +13,9 @@ import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 const composer = NodeFS.readFileSync(
-  NodeURL.fileURLToPath(new URL("../components/chat/ChatComposer.tsx", import.meta.url)),
+  NodeURL.fileURLToPath(
+    new URL("../components/chat/useComposerAttachmentIntake.ts", import.meta.url),
+  ),
   "utf8",
 );
 

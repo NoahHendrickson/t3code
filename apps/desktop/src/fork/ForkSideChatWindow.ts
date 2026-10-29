@@ -103,7 +103,7 @@ export const installForkSideChat = Effect.fn("desktop.fork.installSideChat")(fun
       // the fill hides it until the renderer's palette sync clears it.
       vibrancy: FORK_VIBRANCY_MATERIAL,
       visualEffectState: "active",
-      backgroundColor: shouldUseDarkColors ? "#0a0a0a" : "#ffffff",
+      backgroundColor: shouldUseDarkColors ? "#000000" : "#ffffff",
       titleBarStyle: "hiddenInset",
       // The main window's lights sit on its 52px header's axis; the side
       // chat's header is the same chat header, so its lights match.

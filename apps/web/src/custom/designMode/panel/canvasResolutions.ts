@@ -11,7 +11,10 @@ import {
 type FramedViewport = Extract<PreviewViewportSetting, { readonly _tag: "freeform" }>;
 import type { ScopedThreadRef } from "@t3tools/contracts";
 
-import { commitBrowserViewportChange } from "~/browser/browserViewportActions";
+import {
+  type BrowserViewportTarget,
+  commitBrowserViewportChange,
+} from "~/browser/browserViewportActions";
 import { resolveBrowserDeviceViewportArea } from "~/browser/browserViewportLayout";
 import { toastManager } from "~/components/ui/toast";
 import { readThreadPreviewState } from "~/previewStateStore";
@@ -150,9 +153,12 @@ function reportCommitFailure(error: unknown): void {
  * `handOverPreviewToCanvas`. Only on success either way: a refused resize never moved the
  * window, so neither should the view.
  */
-export function commitCanvasViewport(runtimeTabId: string, next: PreviewViewportSetting): void {
-  void commitBrowserViewportChange(runtimeTabId, next).then(
-    () => designModeBridge.canvasCommand(runtimeTabId, "reset-view"),
+export function commitCanvasViewport(
+  target: BrowserViewportTarget,
+  next: PreviewViewportSetting,
+): void {
+  void commitBrowserViewportChange(target, next).then(
+    () => designModeBridge.canvasCommand(target.runtimeTabId, "reset-view"),
     reportCommitFailure,
   );
 }
@@ -187,9 +193,11 @@ export function handOverPreviewToCanvas(
     : FILL_PREVIEW_VIEWPORT;
   // Already full-bleed: nothing to hand over, and issuing the resize anyway would cost a
   // round-trip for no change.
-  if (current._tag === "fill") return;
+  if (current._tag === "fill" || tabId === null) return;
   viewportBeforeCanvas.set(runtimeTabId, current);
-  void commitBrowserViewportChange(runtimeTabId, FILL_PREVIEW_VIEWPORT).catch(reportCommitFailure);
+  void commitBrowserViewportChange({ threadRef, tabId, runtimeTabId }, FILL_PREVIEW_VIEWPORT).catch(
+    reportCommitFailure,
+  );
 }
 
 /**
@@ -205,14 +213,14 @@ export function handOverPreviewToCanvas(
  * A viewport that is neither is the user's own doing and is left alone.
  */
 export function restorePreviewViewport(
-  runtimeTabId: string,
+  target: BrowserViewportTarget,
   applied: PreviewViewportSetting,
   paneRect: { readonly width: number; readonly height: number } | null,
 ): void {
-  const previous = viewportBeforeCanvas.get(runtimeTabId);
-  viewportBeforeCanvas.delete(runtimeTabId);
+  const previous = viewportBeforeCanvas.get(target.runtimeTabId);
+  viewportBeforeCanvas.delete(target.runtimeTabId);
   const next =
     previous ?? (resolutionForViewport(applied, paneRect) ? FILL_PREVIEW_VIEWPORT : null);
   if (!next) return;
-  void commitBrowserViewportChange(runtimeTabId, next).catch(reportCommitFailure);
+  void commitBrowserViewportChange(target, next).catch(reportCommitFailure);
 }

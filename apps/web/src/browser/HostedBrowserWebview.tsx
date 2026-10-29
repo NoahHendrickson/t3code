@@ -1,5 +1,3 @@
-"use client";
-
 import type {
   DesktopPreviewColorScheme,
   PreviewViewportSetting,
@@ -58,10 +56,7 @@ export function HostedBrowserWebview(props: {
   readonly initialUrl: string | null;
   readonly viewport: PreviewViewportSetting;
   readonly pictureInPicture: boolean;
-  /**
-   * Fixed for the tab's lifetime: Electron only honours `partition` before the
-   * guest attaches, so a live change here would not move the tab anyway.
-   */
+  /** Fixed for the tab lifetime; Electron reads partition before guest attachment. */
   readonly profileId: string | undefined;
   readonly zoomFactor: number;
   readonly serverDriven?: boolean;
@@ -85,10 +80,9 @@ export function HostedBrowserWebview(props: {
   const clientSettingsHydrated = useClientSettingsHydrated();
   const config = usePreviewWebviewConfig(threadRef.environmentId, profileId);
   /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
-     This wrapper IS the letterbox around a fixed-size viewport, and its own
-     `bg-muted/35` is what paints it. Canvas mode's gray stops at the webview's edge,
-     so the fork continues it here — the marker lets theme.custom.css repaint exactly
-     this tab's surround. */
+     This wrapper IS the letterbox around a fixed-size viewport; its `bg-muted/35` paints it.
+     Canvas mode's gray stops at the webview's edge, so the fork continues it here; the marker
+     lets theme.custom.css repaint exactly this tab's surround. */
   const canvasOn = useDesignModeStore(
     (state) => selectDesignModeTab(state.byTabId, runtimeTabId).canvas.on,
   );
@@ -122,6 +116,7 @@ export function HostedBrowserWebview(props: {
   const serverColorScheme = serverRendering?.colorScheme;
   const serverZoomFactor = serverRendering?.zoomFactor;
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- leases the desktop preview tab for this webview and releases it on cleanup
   useEffect(() => {
     if (!clientSettingsHydrated) return;
     crashRecoveryRef.current = INITIAL_WEBVIEW_CRASH_RECOVERY_STATE;
@@ -136,11 +131,13 @@ export function HostedBrowserWebview(props: {
     };
   }, [clientSettingsHydrated, runtimeTabId, serverDriven, tabId, threadRef.threadId]);
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- applies the server color scheme to the desktop preview tab through the desktop bridge
   useEffect(() => {
     const bridge = window.desktopBridge?.preview;
     if (!bridge || serverColorScheme === undefined) return;
     withDesktopTab(runtimeTabId, () => bridge.setColorScheme(runtimeTabId, serverColorScheme));
   }, [runtimeTabId, serverColorScheme]);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- applies the server zoom factor to the desktop preview tab through the desktop bridge
   useEffect(() => {
     const bridge = window.desktopBridge?.preview;
     if (!bridge || serverZoomFactor === undefined) return;
@@ -158,6 +155,7 @@ export function HostedBrowserWebview(props: {
     webviewRef.current = node as ElectronWebview | null;
   };
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- registers the webview's webContents with the desktop bridge and listens for crashes and focus
   useEffect(() => {
     const webview = webviewRef.current;
     const bridge = previewBridge;
@@ -169,9 +167,7 @@ export function HostedBrowserWebview(props: {
       if (!lease) return;
       void (async () => {
         try {
-          // The main-process tab and the DOM webview are created by separate
-          // effects. Wait for the former so registration cannot race and fail
-          // with PreviewTabNotFoundError on a fast about:blank attachment.
+          // Tab creation and webview attachment use separate effects; wait to avoid PreviewTabNotFoundError.
           await lease.ready;
           if (disposed || webviewRef.current !== webview) return;
           const webContentsId = webview.getWebContentsId();
@@ -191,9 +187,7 @@ export function HostedBrowserWebview(props: {
         if (!disposed) remountCrashedWebview();
       }, recovery.delayMs);
     };
-    // A click inside the guest only reaches this document as a webview focus
-    // event, so open menus and popovers never see the outside press that
-    // would dismiss them. Replay it as a pointerdown on the webview itself.
+    // Guest clicks only emit focus here; replay pointerdown to dismiss host popups.
     const dismissHostPopups = () => {
       webview.dispatchEvent(
         new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }),
@@ -245,8 +239,7 @@ export function HostedBrowserWebview(props: {
       : content
         ? content.height / content.scale
         : (lastRect?.height ?? 800);
-  // Built from primitives on each side of the resize hook, so neither object is
-  // shared across it and both stay cached; the hook's layout keys the sync effect.
+  // Build from primitives on each side of the resize hook to keep both objects cached.
   const containerSize =
     active && lastRect ? lastRect : { width: hiddenWidth, height: hiddenHeight };
   const deviceToolbarVisible = active && viewport._tag !== "fill" && !presentation.fitSourceContent;
@@ -258,7 +251,7 @@ export function HostedBrowserWebview(props: {
     handleResizePointerDown,
     layout: viewportLayout,
   } = useBrowserViewportResize({
-    tabId: runtimeTabId,
+    target: { threadRef, tabId, runtimeTabId },
     viewport,
     zoomFactor: layoutZoomFactor,
     containerSize,
@@ -288,11 +281,13 @@ export function HostedBrowserWebview(props: {
     });
   };
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- schedules a frame that publishes the webview layout and scroll to the browser surface store
   useEffect(() => {
     const frameId = window.requestAnimationFrame(syncContentPresentation);
     return () => window.cancelAnimationFrame(frameId);
   }, [syncContentPresentation]);
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- scrolls the webview wrapper element to its origin for a new tab or viewport size
   useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
@@ -327,14 +322,10 @@ export function HostedBrowserWebview(props: {
       onScroll={syncContentPresentation}
       data-preview-rendering={renderingActive ? "active" : "suspended"}
       /* fork:begin fork-glass-preview-parking — see .fork/customizations.yaml#fork-glass-preview-parking */
-      /* Upstream parks a rendering-active guest that is not on screen inside the
-         viewport at z-index -1 so capture keeps getting frames: a guest parked
-         fully offscreen stops compositing and capturePage hangs (measured on
-         Electron 43, see the manifest entry). Over an opaque window that park is
-         invisible. Under Glass the app above it is translucent, so an
-         agent's snapshot in a background thread showed that thread's page through
-         the chat. theme.custom.css hides the parked wrapper with opacity, which
-         keeps the guest composited and capturable; the placement stays upstream's. */
+      /* Upstream parks a rendering-active offscreen guest at z-index -1 so capturePage keeps getting
+         frames (fully offscreen stops compositing). Under Glass that park shows through the chat, so
+         theme.custom.css hides the parked wrapper with opacity, which keeps the guest composited
+         and capturable; the placement stays upstream's. */
       data-fork-preview-parked={renderingActive && !active ? "true" : undefined}
       /* fork:end fork-glass-preview-parking */
       data-preview-viewport={runtimeTabId}
@@ -355,11 +346,7 @@ export function HostedBrowserWebview(props: {
         <webview
           key={webviewGeneration}
           ref={setWebviewRef}
-          // Must be an attribute on the element itself: Electron reads it when the
-          // guest attaches, so setting it from the ref callback lands too late and
-          // the guest attaches with popups disabled. React types `allowpopups` as a
-          // boolean, but react-dom drops boolean values for unrecognized attributes,
-          // so the literal string has to be spread past the type.
+          // Electron needs allowpopups at attachment. React drops boolean values for unknown attributes.
           {...({ allowpopups: "true" } as unknown as { readonly allowpopups?: boolean })}
           src={webviewGeneration === 0 ? initialSrc : recoverySrc}
           partition={config.partition}

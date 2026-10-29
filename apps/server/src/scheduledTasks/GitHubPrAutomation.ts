@@ -65,7 +65,7 @@ export const make = Effect.gen(function* () {
         ),
       );
   const decode = <S extends Schema.Top>(schema: S, body: string) =>
-    Schema.decodeUnknownEffect(Schema.fromJsonString(schema))(body).pipe(
+    Schema.decodeEffect(Schema.fromJsonString(schema))(body).pipe(
       Effect.mapError(
         (cause) =>
           new ScheduledTaskError({
@@ -220,4 +220,9 @@ export const make = Effect.gen(function* () {
 
 // GitHubRest comes from the server's source-control layer, which builds it once so
 // these calls share the quota reserve and rate-limit pause with every other GitHub reader.
-export const layer = Layer.effect(GitHubPrAutomation, make).pipe(Layer.provide(ProjectStore.layer));
+// Upstream builds GitHubRest only inside its GitHub driver now, so the automation gets its own.
+// It calls GitHub only to connect or remove a webhook, so a separate quota view is harmless.
+export const layer = Layer.effect(GitHubPrAutomation, make).pipe(
+  Layer.provide(ProjectStore.layer),
+  Layer.provide(GitHubRest.layerWithDependencies),
+);
