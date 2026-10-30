@@ -9,11 +9,12 @@
  *
  * The draft the landing opened is remembered here, and once the route leaves
  * it untouched it is discarded. Untouched means no composer content, no open
- * preview tab and no split or floating pane holding it: the same things the
- * store and the split panes keep a draft alive for. Anything else means the
+ * preview tab, no split or floating pane holding it (the same things the
+ * store and the split panes keep a draft alive for), and the env mode,
+ * branch and worktree the landing gave it. Anything else means the
  * user took the draft up, and it stays like a draft they made themselves.
  *
- * The ids persist because a phone often reloads instead of resuming, and a
+ * The records persist because a phone often reloads instead of resuming, and a
  * landing draft forgotten across a reload is exactly the card that piled up.
  */
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
@@ -34,30 +35,43 @@ const DRAFT_ROUTE_PATTERN = /^\/draft\/([^/]+)\/?$/;
 
 type Router = ReturnType<typeof useRouter>;
 
-function readLandingDraftIds(): DraftId[] {
+/** A landing draft and the workspace the landing gave it, so picking another
+    env mode, branch or worktree counts as taking the draft up. */
+interface LandingDraft {
+  readonly id: DraftId;
+  readonly workspace: string;
+}
+
+const workspaceOf = (session: DraftSessionState) =>
+  JSON.stringify([session.envMode, session.branch, session.worktreePath]);
+
+function readLandingDrafts(): LandingDraft[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(LANDING_DRAFTS_STORAGE_KEY) ?? "[]");
     return Array.isArray(parsed)
-      ? parsed.filter((id): id is DraftId => typeof id === "string")
+      ? parsed.filter(
+          (entry): entry is LandingDraft =>
+            typeof entry?.id === "string" && typeof entry?.workspace === "string",
+        )
       : [];
   } catch {
     return [];
   }
 }
 
-function writeLandingDraftIds(ids: readonly DraftId[]): void {
+function writeLandingDrafts(drafts: readonly LandingDraft[]): void {
   try {
-    if (ids.length === 0) localStorage.removeItem(LANDING_DRAFTS_STORAGE_KEY);
-    else localStorage.setItem(LANDING_DRAFTS_STORAGE_KEY, JSON.stringify(ids));
+    if (drafts.length === 0) localStorage.removeItem(LANDING_DRAFTS_STORAGE_KEY);
+    else localStorage.setItem(LANDING_DRAFTS_STORAGE_KEY, JSON.stringify(drafts));
   } catch {
     // Storage can be unavailable (private mode); the draft then just stays.
   }
 }
 
 /** True while nothing but the landing itself has touched the draft. */
-export function isUntouchedLandingDraft(draftId: DraftId, session: DraftSessionState): boolean {
-  if (session.promotedTo != null) return false;
-  if (composerDraftHasUserContent(useComposerDraftStore.getState().getComposerDraft(draftId))) {
+function isUntouchedLandingDraft(landing: LandingDraft, session: DraftSessionState): boolean {
+  if (session.promotedTo != null || workspaceOf(session) !== landing.workspace) return false;
+  if (composerDraftHasUserContent(useComposerDraftStore.getState().getComposerDraft(landing.id))) {
     return false;
   }
   const ref = scopeThreadRef(session.environmentId, session.threadId);
@@ -79,19 +93,19 @@ export function isUntouchedLandingDraft(draftId: DraftId, session: DraftSessionS
  * untouched, otherwise forgets it. Either way it is no longer a landing draft.
  */
 export function sweepLandingDrafts(openDraftId: DraftId | null): void {
-  const ids = readLandingDraftIds();
-  if (ids.length === 0) return;
+  const drafts = readLandingDrafts();
+  if (drafts.length === 0) return;
   const store = useComposerDraftStore.getState();
-  const kept: DraftId[] = [];
-  for (const id of ids) {
-    if (id === openDraftId) {
-      kept.push(id);
+  const kept: LandingDraft[] = [];
+  for (const landing of drafts) {
+    if (landing.id === openDraftId) {
+      kept.push(landing);
       continue;
     }
-    const session = store.getDraftSession(id);
-    if (session && isUntouchedLandingDraft(id, session)) store.clearDraftThread(id);
+    const session = store.getDraftSession(landing.id);
+    if (session && isUntouchedLandingDraft(landing, session)) store.clearDraftThread(landing.id);
   }
-  writeLandingDraftIds(kept);
+  writeLandingDrafts(kept);
 }
 
 const subscribedRouters = new WeakSet<Router>();
@@ -100,8 +114,13 @@ const subscribedRouters = new WeakSet<Router>();
     leave it. Leftovers from earlier visits are swept on the way in. */
 export function rememberLandingDraft(router: Router, draftId: DraftId): void {
   sweepLandingDrafts(draftId);
-  const ids = readLandingDraftIds();
-  if (!ids.includes(draftId)) writeLandingDraftIds([...ids, draftId]);
+  const session = useComposerDraftStore.getState().getDraftSession(draftId);
+  if (session === null) return;
+  // A reopened landing draft takes the workspace this landing just gave it.
+  writeLandingDrafts([
+    ...readLandingDrafts().filter((landing) => landing.id !== draftId),
+    { id: draftId, workspace: workspaceOf(session) },
+  ]);
   if (subscribedRouters.has(router)) return;
   subscribedRouters.add(router);
   // onResolved, not onBeforeNavigate: a sync clear while still on

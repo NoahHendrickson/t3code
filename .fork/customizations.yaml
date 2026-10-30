@@ -5922,7 +5922,8 @@
     the landing opens is remembered (persisted, since phones reload), and
     when the route resolves somewhere else it is discarded if still
     untouched: no composer content, no open preview tab, not held by a split
-    or floating pane or an in-flight Split agent. A touched landing draft is
+    or floating pane or an in-flight Split agent, and still on the env mode,
+    branch and worktree the landing gave it. A touched landing draft is
     forgotten and kept like any other. Drafts the user creates are never
     tracked. Cleanup is at the source rather than a sidebar filter so drafts
     the user made on purpose (Split agent, New thread with workspace
