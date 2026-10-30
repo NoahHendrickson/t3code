@@ -386,11 +386,7 @@ import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrom
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { MiddleTruncate } from "./ui/middle-truncate";
-import {
-  composerDraftHasUserContent,
-  useComposerDraftStore,
-  useThreadHasUnsentDraft,
-} from "../composerDraftStore";
+import { useComposerDraftStore, useThreadHasUnsentDraft } from "../composerDraftStore";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
 import { SidebarSplitPairRow } from "~/custom/splitThreads/SidebarSplitPairRow";
@@ -2533,9 +2529,6 @@ export default function Sidebar() {
             useComposerDraftStore.getState().getComposerDraft(draftId)?.prompt ?? "",
             (occurrence) => occurrence.label,
           ),
-        hasUserContent: (draftId) =>
-          composerDraftHasUserContent(useComposerDraftStore.getState().getComposerDraft(draftId)),
-        openThreadKey: routeThreadKey,
         hasServerShell: (threadRef) => serverThreadKeys.has(scopedThreadKey(threadRef)),
       }),
     // routeThreadKey: snapshot composer prompts when the open thread changes.
