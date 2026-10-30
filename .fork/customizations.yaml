@@ -4027,6 +4027,18 @@
     surface must stay driven by --fork-design-surface for that to reach it — a
     fill hardcoded onto the container sails past the glass block entirely, which
     is exactly how the panel read as a slab while the rail beside it went glassy.
+
+    Design mode needs more room than the right panel's default width: the
+    325px panel, the preview's own chrome row (which clips its trailing
+    controls, the design toggle among them, below ~290px) and the 208px
+    layers rail when it shows. While a visible preview tab has design mode
+    on, it publishes that width (custom/designMode/designPanelRoom.ts) and
+    ChatView passes it to usePreviewPanelInlineSize as a minimum, capped by
+    the hook's own maximum so the chat column keeps its floor. The width the
+    user dragged to is never written: the hook clamps at render, so turning
+    design mode off hands that width straight back. Each tab publishes under
+    its own key and the thread takes the largest, so a hidden tab can never
+    clear the visible one's request.
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
@@ -4116,6 +4128,8 @@
   shadows:
     - apps/web/src/components/preview/PreviewPanel.tsx
   watch:
+    # Fenced minWidth option: design mode's floor for the right panel width.
+    - apps/web/src/hooks/usePreviewPanelInlineSize.ts
     # Fenced queued-run edit: upstream moved queued-message editing out of
     # ChatView (#20304); the design-change run split/re-append followed it.
     - apps/web/src/components/chat/useQueuedRunEdit.ts
