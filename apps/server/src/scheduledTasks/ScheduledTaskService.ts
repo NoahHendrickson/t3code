@@ -1959,9 +1959,12 @@ export const layer = Layer.effect(
         observeDelivery(request, outcome, receivedAt, now);
       /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
       const githubEvent = schedule.github ? githubPrTrigger(schedule.github, request) : null;
-      // The coalesced path dispatches without the PR trigger. Saving strips
-      // dedupe from a GitHub task, but one stored before that still carries it.
+      // The coalesced path dispatches without the PR trigger, and a replay key can
+      // match PRs in two repositories. Saving strips dedupe from a GitHub task, but
+      // one stored before that still carries it.
       const dedupe = schedule.github ? undefined : schedule.dedupe;
+      const { dedupe: _storedDedupe, ...scheduleWithoutDedupe } = schedule;
+      const dedupeTask = schedule.github ? { ...task, schedule: scheduleWithoutDedupe } : task;
       /* fork:end fork-github-pr-automation */
       const deliveryId = ScheduledTaskWebhookDeliveryId.make(
         /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
@@ -2306,7 +2309,9 @@ export const layer = Layer.effect(
           const admitted = yield* admit(
             Effect.gen(function* () {
               const outcome = yield* acceptImmediateWebhookDedupe(
-                task,
+                /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+                dedupeTask,
+                /* fork:end fork-github-pr-automation */
                 request,
                 deliveryId,
                 DateTime.toEpochMillis(now),

@@ -301,11 +301,19 @@ it.effect("routes a PR with its trigger when the task was stored with a dedupe",
         SELECT schedule_json FROM scheduled_tasks WHERE task_id = ${task.id}`;
       const stored = {
         ...JSON.parse(row!.schedule_json),
-        dedupe: { coalesceKey: "{{body.pull_request.number}}", coalesceWindowSeconds: 10 },
+        dedupe: {
+          replayKey: "{{body.pull_request.number}}",
+          coalesceKey: "{{body.pull_request.number}}",
+          coalesceWindowSeconds: 10,
+        },
       };
       yield* sql`UPDATE scheduled_tasks SET schedule_json = ${JSON.stringify(stored)}
         WHERE task_id = ${task.id}`;
-      yield* service.triggerWebhook(request(secret, token, "owner/no3y", 108));
+      // The same PR number in another repository is a different review.
+      yield* service.triggerWebhook(request(secret, token, "owner/d2", 108));
+      assert.equal((yield* Queue.take(launches)).projectId, ProjectId.make("d2"));
+      const second = yield* service.triggerWebhook(request(secret, token, "owner/no3y", 108));
+      assert.notEqual(second._tag === "accepted" && second.outcome, "duplicate");
       const launch = yield* Queue.take(launches);
       assert.equal(launch.projectId, ProjectId.make("no3y"));
       assert.include(launch.initialMessage!.text, "https://github.com/owner/no3y/pull/108");
