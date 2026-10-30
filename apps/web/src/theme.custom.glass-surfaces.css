@@ -203,6 +203,14 @@
     overflow-clip-margin: 1px;
   }
 
+  /* The design panel's segment strips are tabs on a field track too. Their
+     hairline goes: the glass edge replaces it, and a light drawn inside a
+     1px border would sit a pixel in from the edge. */
+  &.dark[data-fork-theme="cool-darker"] [data-fork-design-segment][aria-pressed="true"] {
+    border-width: 0;
+    box-shadow: var(--fork-glass-halo-soft), var(--fork-glass-light);
+  }
+
   /* The composer as the same glass: the vessel is the pane, with the halo
      round it and the glint, sheens and the popups' top and bottom glows on a
      ::after laid over everything inside. Over, because the prompt well covers

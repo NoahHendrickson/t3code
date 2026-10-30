@@ -1654,8 +1654,9 @@
     menu, the liveness list, the thread sort and settings menus, the thread
     details card) carry data-fork-glass-rim. The selected segment of every
     segmented toggle group (tabs, and the pickers drawn as tabs) and of the
-    fork's SegmentedTabs is one more chip of it; outline pickers and a lone
-    segmented Toggle keep their look. The rules live in
+    fork's SegmentedTabs is one more chip of it, as is the design panel's
+    segment strip (its hairline dropped for the glass edge); outline pickers
+    and a lone segmented Toggle keep their look. The rules live in
     theme.custom.glass-surfaces.css, loaded after the palettes sheet.
     The send button (Figma 467:22121) has a translucent white face, white
     glyph and bright inset rim. Its highlight hues follow the existing
@@ -1699,6 +1700,8 @@
     - apps/web/src/components/ui/toggle-group.tsx
     # Stamps data-fork-segmented-tabs and data-fork-segmented-tab.
     - apps/web/src/custom/SegmentedTabs.tsx
+    # Stamps data-fork-design-segment on the design panel's segment strip.
+    - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
     - apps/web/src/__fork_guards__/forkGlassSurfaces.test.ts

@@ -202,6 +202,15 @@ describe("fork guard: glass surfaces", () => {
     expect(
       ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, "[data-fork-segmented-tabs]"]),
     ).toContain("overflow-clip-margin");
+    expect(readSibling("../custom/designMode/panel/DesignPanelLayoutControls.tsx")).toContain(
+      "data-fork-design-segment\n",
+    );
+    expect(
+      ruleBodyFor(rules, [
+        `${MARKER}.dark${PALETTE}`,
+        '[data-fork-design-segment][aria-pressed="true"]',
+      ]),
+    ).toContain("var(--fork-glass-light)");
     for (const source of [
       "../components/chat/ChatComposer.tsx",
       "../custom/voice/ForkDictationControl.tsx",

@@ -1,4 +1,3 @@
-// oxlint-disable t3code/no-native-title-tooltip -- Vendored design-mode island (see .fork/customizations.yaml#fork-design-mode); native titles kept to stay close to the Forge source.
 import {
   ChevronDownIcon,
   ChevronRight,
@@ -9,6 +8,7 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
+import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "./designModeBridge";
@@ -339,28 +339,34 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
           aria-label="Filter layers"
           className="h-6 w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
         />
+        {/* The ghost icon-xs Button, like the show-layers toggle this pairs with: the 24px
+            box and hover fill every icon-only control in the fork's chrome carries. */}
         {query ? (
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             type="button"
             title="Clear filter"
             aria-label="Clear filter"
             onClick={() => setQuery("")}
-            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3"
           >
             <XIcon />
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             type="button"
             title="Collapse all"
             aria-label="Collapse all"
             onClick={() => setExpanded(Object.fromEntries(rows.map((row) => [row.node.id, false])))}
-            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
           >
             <ChevronsDownUpIcon />
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           type="button"
           title="Hide layers"
           aria-label="Hide layers"
@@ -372,10 +378,9 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
             // This button goes with the rail — hand focus to the control that brings it back.
             focusLayersControl(LAYERS_SHOW_BUTTON);
           }}
-          className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
         >
           <PanelLeftCloseIcon />
-        </button>
+        </Button>
       </header>
       <div
         ref={listRef}

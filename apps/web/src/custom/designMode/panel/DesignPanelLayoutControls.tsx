@@ -46,6 +46,7 @@ export function SegmentField({
             type="button"
             title={option.title}
             aria-pressed={selected ? "true" : "false"}
+            data-fork-design-segment
             onClick={() => onSelect(option.value)}
             className={cn(
               "flex h-full flex-1 items-center justify-center rounded px-1 text-xs transition-colors [&_svg]:size-4",
