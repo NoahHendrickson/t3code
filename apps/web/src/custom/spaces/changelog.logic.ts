@@ -29,6 +29,8 @@ export function parseConventionalTitle(title: string): ConventionalTitle {
 }
 
 export interface ChangelogWeek<T> {
+  /** The week's Monday, local midnight, in ms: unique where labels are not. */
+  readonly start: number;
   readonly label: string;
   readonly entries: readonly T[];
 }

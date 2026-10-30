@@ -42,7 +42,7 @@ const CLAUDE_MASCOT_PATH = CLAUDE_MASCOT_ROWS.flatMap((runs, row) =>
   runs.map(([first, last]) => `M${first} ${row * 2}h${last - first + 1}v2h${first - last - 1}z`),
 ).join("");
 
-export function ClaudeMascotIcon(props: SVGProps<SVGSVGElement>) {
+function ClaudeMascotIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="1 0 16 10" fill="#d97757" shapeRendering="crispEdges" {...props}>
       <path d={CLAUDE_MASCOT_PATH} />
@@ -56,7 +56,7 @@ const CODEX_CLOUD_LOBES = Array.from({ length: 8 }, (_, index) => {
   return { cx: 12 + 6.4 * Math.cos(angle), cy: 12 + 6.4 * Math.sin(angle) };
 });
 
-export function CodexIcon(props: SVGProps<SVGSVGElement>) {
+function CodexIcon(props: SVGProps<SVGSVGElement>) {
   const gradientId = useId();
   return (
     <svg viewBox="0 0 24 24" {...props}>

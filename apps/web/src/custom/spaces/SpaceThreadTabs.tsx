@@ -161,30 +161,48 @@ export function SpaceTabRow(props: {
   readonly focusedKey?: string | undefined;
   /** Opens the space's Home, its draft (the plus does the same). */
   readonly onOpenHome: () => void;
+  /** Threads on screen, read on their own: a split's other pane may sit in
+      another space, outside this space's shells. */
+  readonly onScreenShells?: readonly ThreadShell[] | undefined;
   readonly className?: string | undefined;
 }) {
   const navigate = useNavigate();
   const space = useSpaceOfProject(scopeProjectRef(props.project.environmentId, props.project.id));
-  const shells = useThreadShellsForProjectRefs(space?.memberProjectRefs ?? NO_PROJECT_REFS);
+  const spaceShells = useThreadShellsForProjectRefs(space?.memberProjectRefs ?? NO_PROJECT_REFS);
+  const shells = [
+    ...spaceShells,
+    ...(props.onScreenShells ?? []).filter(
+      (extra) =>
+        !spaceShells.some(
+          (shell) => shell.id === extra.id && shell.environmentId === extra.environmentId,
+        ),
+    ),
+  ];
   const [openKeys, setOpenKeys] = useSpaceTabKeys();
   const providerFor = useThreadProvider();
   const lastVisitedAtById = useUiStateStore((store) => store.threadLastVisitedAtById);
   const { selectedKeys } = props;
   const openSpaceHome = useOpenSpaceHome();
   const onOpenHome = () =>
-    space === null ? props.onOpenHome() : openSpaceHome(space.key, props.onOpenHome);
+    space === null ? props.onOpenHome() : openSpaceHome(space, props.onOpenHome);
   const spaceLabel = space?.label ?? props.project.title;
 
   // The tabs hold what the sidebar would show (no subagents, no automation
-  // runs) plus the threads on screen, whatever they are.
+  // runs) plus the threads on screen, whatever they are. Anything else is
+  // closed, archived threads included, so its stored tab is dropped rather
+  // than coming back unasked.
   const visible = new Set(filterSidebarV2VisibleThreads(shells, null));
-  const threads = shells
-    .map((shell) => ({
-      key: scopedThreadKey(scopeThreadRef(shell.environmentId, shell.id)),
-      closed: shell.settledOverride === "settled" || shell.archivedAt !== null,
+  const threads = shells.map((shell) => {
+    const key = scopedThreadKey(scopeThreadRef(shell.environmentId, shell.id));
+    return {
+      key,
+      closed:
+        shell.settledOverride === "settled" ||
+        shell.archivedAt !== null ||
+        (!visible.has(shell) && !selectedKeys.includes(key)),
       shell,
-    }))
-    .filter((thread) => visible.has(thread.shell) || selectedKeys.includes(thread.key));
+    };
+  });
   const resolved = resolveSpaceTabs({ openKeys, activeKeys: selectedKeys, threads });
   // Drawn by status, as each tab's mark reads it: what needs you leftmost.
   const tabs = rankSpaceTabs(
@@ -507,10 +525,16 @@ export function SplitSpaceTabRow(props: {
   // An unsent draft in the other pane is the space's Home too.
   const partnerDraftId = useComposerDraftStore((store) => store.getDraftIdByRef(props.partnerRef));
   const partnerIsDraft = partnerShell === null && partnerDraftId !== null;
-  const shell = focusedShell ?? partnerShell;
-  const project = useProject(
-    shell === null ? null : scopeProjectRef(shell.environmentId, shell.projectId),
+  // The row is the focused pane's space: a focused draft names its own
+  // project, ahead of a partner that may be in another space.
+  const focusedDraft = useComposerDraftStore((store) =>
+    focusedShell === null ? store.getDraftSessionByRef(props.focusedRef) : null,
   );
+  const owner = focusedShell ?? focusedDraft ?? partnerShell;
+  const project = useProject(
+    owner === null ? null : scopeProjectRef(owner.environmentId, owner.projectId),
+  );
+  const onScreenShells = [focusedShell, partnerShell].filter((shell) => shell !== null);
   const enabled = useSpaceTabsEnabled(project);
   const handleNewThread = useNewThreadHandler();
   if (!enabled || project === null) return null;
@@ -524,6 +548,7 @@ export function SplitSpaceTabRow(props: {
       }
       homeActive={props.focusedIsDraft || partnerIsDraft}
       focusedKey={scopedThreadKey(props.focusedRef)}
+      onScreenShells={onScreenShells}
       onOpenHome={() => void handleNewThread(scopeProjectRef(project.environmentId, project.id))}
       className={props.className}
     />

@@ -4,10 +4,10 @@
  * `.fork/customizations.yaml#fork-spaces`.
  *
  * Spaces live in two upstream files: the sidebar draws each space's rows
- * around its cards, and the chat header draws the open-thread tabs either
- * side of its breadcrumb. A sync that drops either call site silently turns
- * Spaces back into plain project grouping, or leaves the header with no
- * tabs.
+ * around its cards, and the chat view draws the tab row above its header
+ * (a split draws its own, over both panes, from SplitThreadPanes). A sync
+ * that drops either call site silently turns Spaces back into plain project
+ * grouping, or leaves the chat with no tabs.
  */
 
 import * as NodeFS from "node:fs";

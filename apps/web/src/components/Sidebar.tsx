@@ -350,7 +350,7 @@ import {
   summarizeSpaceThreads,
   useSpaceThreadsExpanded,
 } from "~/custom/spaces/spaceSidebar";
-import { useOpenSpaceHome } from "~/custom/spaces/spaceHome";
+import { isSpaceDraft, useHomeDraftIds, useOpenSpaceHome } from "~/custom/spaces/spaceHome";
 /* fork:end fork-spaces */
 /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
 import { SidebarV2StatusSectionHeader } from "~/custom/SidebarV2StatusSectionHeader";
@@ -2244,6 +2244,7 @@ export default function Sidebar() {
   const spacesGrouped = grouping === "spaces";
   const [expandedSpaceThreads, toggleSpaceThreadsExpanded] = useSpaceThreadsExpanded();
   const openSpaceHome = useOpenSpaceHome();
+  const homeDraftIds = useHomeDraftIds();
   /* fork:end fork-spaces */
   /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
   const statusGrouped = grouping === "status";
@@ -2833,13 +2834,17 @@ export default function Sidebar() {
        Spaces section by project too, and for one project as well: a space's
        rows lead somewhere even when its header repeats the only name. */
     if (spacesGrouped) {
+      const homeDrafts = new Set(Object.values(homeDraftIds));
       return buildActiveThreadSections({
-        // A space's unsent draft is its Home, reached from its name, tab
-        // and plus, so it is not one of its threads.
+        // A space's unsent draft is its Home, reached from its name and
+        // tabs, so it is not one of its threads. Older drafts the Home has
+        // moved on from stay listed, or nothing would lead back to them.
         threads: activeThreads.filter(
           (thread) =>
-            !draftIdByThreadKey.has(
-              scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+            !homeDrafts.has(
+              draftIdByThreadKey.get(
+                scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+              ) ?? "",
             ),
         ),
         // Every space in scope, threads or not.
@@ -2863,6 +2868,7 @@ export default function Sidebar() {
     projectRefIndex,
     visibleProjectCount,
     /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
+    homeDraftIds,
     scopedProjectGroups,
     spacesGrouped,
     /* fork:end fork-spaces */
@@ -5205,15 +5211,15 @@ export default function Sidebar() {
                               !previousSection.collapsed));
                         /* fork:end fork-spaces */
                         /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                        const space =
+                        const spaceGroup =
                           spacesGrouped &&
                           header !== null &&
-                          header.projectKey !== UNGROUPED_PROJECT_KEY &&
-                          !section.collapsed
+                          header.projectKey !== UNGROUPED_PROJECT_KEY
                             ? (projectGroups.find(
                                 (group) => group.projectKey === header.projectKey,
                               ) ?? null)
                             : null;
+                        const space = section.collapsed ? null : spaceGroup;
                         /* fork:end fork-spaces */
                         /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
                         if (section.kind === "status") {
@@ -5298,28 +5304,21 @@ export default function Sidebar() {
                                   // A space's Home is its draft: the name opens it
                                   // the way the plus does, and is lit while it is open.
                                   onOpenSpace={
-                                    spacesGrouped && header.projectKey !== UNGROUPED_PROJECT_KEY
+                                    spaceGroup !== null
                                       ? () => {
                                           if (isMobile) setOpenMobile(false);
-                                          openSpaceHome(header.projectKey, () =>
+                                          openSpaceHome(spaceGroup, () =>
                                             handleNewThreadInProject(header.projectKey),
                                           );
                                         }
                                       : undefined
                                   }
                                   spaceActive={
-                                    spacesGrouped &&
+                                    spaceGroup !== null &&
                                     !newThreadContext.activeThread &&
-                                    newThreadContext.activeDraftThread?.logicalProjectKey ===
-                                      header.projectKey
+                                    isSpaceDraft(spaceGroup, newThreadContext.activeDraftThread)
                                   }
-                                  spaceProject={
-                                    spacesGrouped
-                                      ? projectGroups.find(
-                                          (group) => group.projectKey === header.projectKey,
-                                        )
-                                      : undefined
-                                  }
+                                  spaceProject={spaceGroup ?? undefined}
                                   /* fork:end fork-spaces */
                                   onSettleAllThreads={
                                     header.projectKey === UNGROUPED_PROJECT_KEY

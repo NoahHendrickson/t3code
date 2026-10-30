@@ -121,24 +121,9 @@ export function SidebarV2SpaceThreadsRow(props: {
               />
             </span>
           ))}
-          {/* The space header's filled caret (SidebarV2ProjectGroupHeader):
-              up while open, down while folded. */}
-          <svg
-            aria-hidden
-            viewBox="0 0 14 14"
-            fill="currentColor"
-            stroke="currentColor"
-            strokeWidth={1}
-            strokeLinejoin="round"
-            // 3px right: the row's 12px end padding leaves it 3px short of the
-            // header caret's axis, the centre of its 32px button on the row's end.
-            className={cn(
-              "relative left-[3px] size-3.5 shrink-0 transition-transform",
-              props.expanded && "rotate-180",
-            )}
-          >
-            <path d="M2.71 4.75H11.29L7 9.04Z" />
-          </svg>
+          {/* 3px right: the row's 12px end padding leaves it 3px short of the
+              header caret's axis, the centre of its 32px button on the row's end. */}
+          <SidebarV2SpaceCaret open={props.expanded} className="left-[3px]" />
         </>
       }
     />
@@ -269,9 +254,13 @@ export function SidebarV2SpaceCollapsedSummary(props: {
   );
 }
 
-/** The space header's filled caret (status grouping's), for the shelves
-    under a list of spaces: up while open, down while folded. */
-export function SidebarV2SpaceCaret(props: { readonly open: boolean }) {
+/** The space header's filled caret (status grouping's), for the Threads row
+    and the shelves under a list of spaces: up while open, down while folded.
+    1px right puts it on the header carets' axis; `className` moves it. */
+export function SidebarV2SpaceCaret(props: {
+  readonly open: boolean;
+  readonly className?: string | undefined;
+}) {
   return (
     <svg
       aria-hidden
@@ -281,10 +270,10 @@ export function SidebarV2SpaceCaret(props: { readonly open: boolean }) {
       stroke="currentColor"
       strokeWidth={1}
       strokeLinejoin="round"
-      // 1px right puts it on the header carets' axis.
       className={cn(
         "relative left-px size-3.5 shrink-0 transition-transform",
         props.open && "rotate-180",
+        props.className,
       )}
     >
       <path d="M2.71 4.75H11.29L7 9.04Z" />

@@ -5977,8 +5977,12 @@
     first send ends the draft's hero state and the overview with it. Every
     row of tabs starts with the space's Home tab, lit on the draft, and
     closing a space's last tab opens its Home. Being
-    the Home, a space's unsent drafts are not listed or counted among its
-    threads.
+    the Home, a space's current draft is not listed or counted among its
+    threads; an older draft the Home has moved on from stays listed, so
+    nothing written is stranded. Opening the Home resumes a draft with
+    something in it, found by the space's member projects (Scratch gathers
+    several), and the space's PR sections list a pull request once however
+    many environments answer for it.
 
     Under Spaces the chat column opens with a row of tabs, above the header
     and its panel and float controls, never sharing their row. It lists the
@@ -6016,6 +6020,9 @@
     - apps/web/src/custom/spaces/changelog.logic.test.ts
     - apps/web/src/routes/changelog.tsx
     - apps/web/src/custom/spaces/SpaceOverview.tsx
+    - apps/web/src/custom/spaces/spaceHome.ts
+    - apps/web/src/custom/spaces/spacePullRequests.ts
+    - apps/web/src/custom/spaces/spacePullRequests.test.ts
     - apps/web/src/custom/sidebarV2ProjectGrouping.ts
     - apps/web/src/custom/SidebarV2ChromeRows.tsx
     - apps/web/src/custom/scheduled/ScheduledPage.tsx

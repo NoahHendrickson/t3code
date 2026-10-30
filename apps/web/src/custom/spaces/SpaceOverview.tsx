@@ -9,7 +9,7 @@
  * to the full view. Every section reads data the app already fetches for its
  * own page; nothing here is new state.
  */
-import type { EnvironmentId, PullRequestListInput, ScopedProjectRef } from "@t3tools/contracts";
+import type { EnvironmentId, ScopedProjectRef } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
 import { useNavigate } from "@tanstack/react-router";
@@ -17,7 +17,6 @@ import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { filterSidebarV2VisibleThreads } from "~/components/Sidebar.logic";
 import { useThreadShellsForProjectRefs } from "~/state/entities";
-import { usePullRequestList, type EnvironmentQueryTarget } from "~/state/pullRequests";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
 import { buildThreadRouteParams } from "~/threadRoutes";
@@ -34,6 +33,7 @@ import { ProviderMark } from "../icons/ProviderMarks";
 import { ScheduledCard, ScheduledSectionLabel } from "../scheduled/scheduledPageChrome";
 import { parseConventionalTitle } from "./changelog.logic";
 import { spaceHasProject, useSpaceOfProject } from "./spaceProjects";
+import { useSpacePullRequests } from "./spacePullRequests";
 import { ThreadStatusMark, useThreadProvider } from "./SpaceThreadTabs";
 
 type Space = NonNullable<ReturnType<typeof useSpaceOfProject>>;
@@ -67,6 +67,10 @@ function SpaceOverview(props: { readonly space: Space }) {
         {environmentIds.map((environmentId) => (
           <SpaceAutomations key={environmentId} space={space} environmentId={environmentId} />
         ))}
+        {/* Each environment draws only its rows; one empty row stands for all. */}
+        <li className="hidden list-none px-3 py-2.5 text-sm text-muted-foreground only:block">
+          No automations.
+        </li>
       </Section>
     </div>
   );
@@ -174,26 +178,9 @@ function SpaceThreads(props: { readonly space: Space }) {
 function SpacePullRequests(props: { readonly space: Space; readonly state: "open" | "merged" }) {
   const navigate = useNavigate();
   const { space, state } = props;
-  const projectIdsByEnvironment = new Map<
-    EnvironmentId,
-    Array<(typeof space.memberProjectRefs)[number]["projectId"]>
-  >();
-  for (const ref of space.memberProjectRefs) {
-    const projectIds = projectIdsByEnvironment.get(ref.environmentId) ?? [];
-    projectIds.push(ref.projectId);
-    projectIdsByEnvironment.set(ref.environmentId, projectIds);
-  }
-  const targets = [...projectIdsByEnvironment].map(
-    ([environmentId, projectIds]): EnvironmentQueryTarget<PullRequestListInput> => ({
-      environmentId,
-      input: { state, involvement: "all", projectIds, limit: SECTION_LIMIT },
-    }),
-  );
-  const list = usePullRequestList(targets);
-  const entries = (list.data?.entries ?? [])
-    .filter((entry) => spaceHasProject(space, entry.environmentId, entry.projectId))
-    .toSorted((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
-    .slice(0, SECTION_LIMIT);
+  const pullRequests = useSpacePullRequests(space, state, SECTION_LIMIT);
+  const { list } = pullRequests;
+  const entries = pullRequests.entries.slice(0, SECTION_LIMIT);
   const merged = state === "merged";
   return (
     <Section
@@ -261,7 +248,8 @@ function SpacePullRequests(props: { readonly space: Space; readonly state: "open
   );
 }
 
-/** One environment's automations in the space. */
+/** One environment's automations in the space: its rows, or while it loads
+    one pending row, which the first pending environment alone shows. */
 function SpaceAutomations(props: { readonly space: Space; readonly environmentId: EnvironmentId }) {
   const navigate = useNavigate();
   const { space, environmentId } = props;
@@ -271,8 +259,16 @@ function SpaceAutomations(props: { readonly space: Space; readonly environmentId
   const tasks = (query.data?.tasks ?? []).filter((task) =>
     spaceHasProject(space, environmentId, task.projectId),
   );
-  if (query.data === null) return <Empty>{query.error ?? "Loading…"}</Empty>;
-  if (tasks.length === 0) return <Empty>No automations.</Empty>;
+  if (query.data === null) {
+    return (
+      <li
+        data-space-pending=""
+        className="list-none px-3 py-2.5 text-sm text-muted-foreground [[data-space-pending]~&]:hidden"
+      >
+        {query.error ?? "Loading…"}
+      </li>
+    );
+  }
   return tasks.map((task) => (
     <Row
       key={task.id}

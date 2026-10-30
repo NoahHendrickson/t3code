@@ -34,7 +34,7 @@ export function spaceThreadsFolded(
 /** One mark per distinct state among a space's threads, in the order the
     Threads row draws them. Approval, input and a usage limit share a key:
     the cards draw all three as the same amber half circle. */
-export const SPACE_THREAD_MARKS = [
+const SPACE_THREAD_MARKS = [
   "working",
   "monitoring",
   "blocked",

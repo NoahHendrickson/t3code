@@ -37,11 +37,7 @@ export function useSpaceOfProject(project: ScopedProjectRef | null) {
   const groups = useSpaceGroups();
   if (project === null) return null;
   return (
-    groups.find((group) =>
-      group.memberProjectRefs.some(
-        (ref) => ref.environmentId === project.environmentId && ref.projectId === project.projectId,
-      ),
-    ) ?? null
+    groups.find((group) => spaceHasProject(group, project.environmentId, project.projectId)) ?? null
   );
 }
 

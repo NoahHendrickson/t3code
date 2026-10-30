@@ -6,7 +6,6 @@
  * it frames a chat. An entry opens its PR in the PR page; the thread chip
  * opens the thread that linked the PR, when one did.
  */
-import type { PullRequestListInput } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -15,14 +14,14 @@ import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { SidebarInset } from "~/components/ui/sidebar";
 import { isElectron } from "~/env";
-import { usePullRequestList, type EnvironmentQueryTarget } from "~/state/pullRequests";
 import { useThreadShellsForProjectRefs } from "~/state/entities";
 import { buildThreadRouteParams } from "~/threadRoutes";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import { GitMergeIcon, HistoryIcon, MessagesSquareIcon } from "../icons/lucide-phosphor";
 import { groupChangelogByWeek, parseConventionalTitle } from "./changelog.logic";
-import { spaceHasProject, useSpace } from "./spaceProjects";
+import { useSpace } from "./spaceProjects";
+import { useSpacePullRequests } from "./spacePullRequests";
 
 const CHANGELOG_LIMIT = 100;
 
@@ -58,33 +57,13 @@ export function ChangelogPage() {
 function ChangelogList(props: { readonly space: NonNullable<ReturnType<typeof useSpace>> }) {
   const navigate = useNavigate();
   const { space } = props;
-  const projectIdsByEnvironment = new Map<
-    (typeof space.memberProjectRefs)[number]["environmentId"],
-    Array<(typeof space.memberProjectRefs)[number]["projectId"]>
-  >();
-  for (const ref of space.memberProjectRefs) {
-    const projectIds = projectIdsByEnvironment.get(ref.environmentId) ?? [];
-    projectIds.push(ref.projectId);
-    projectIdsByEnvironment.set(ref.environmentId, projectIds);
-  }
-  const targets = [...projectIdsByEnvironment].map(
-    ([environmentId, projectIds]): EnvironmentQueryTarget<PullRequestListInput> => ({
-      environmentId,
-      input: { state: "merged", involvement: "all", projectIds, limit: CHANGELOG_LIMIT },
-    }),
-  );
-  const list = usePullRequestList(targets);
+  const { list, entries } = useSpacePullRequests(space, "merged", CHANGELOG_LIMIT);
   const shells = useThreadShellsForProjectRefs(space.memberProjectRefs);
   const threadByPullRequestUrl = new Map<string, (typeof shells)[number]>();
   for (const shell of shells) {
     for (const link of shell.pullRequests ?? []) threadByPullRequestUrl.set(link.url, shell);
   }
-  const weeks = groupChangelogByWeek(
-    (list.data?.entries ?? [])
-      .filter((entry) => spaceHasProject(space, entry.environmentId, entry.projectId))
-      .toSorted((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)),
-    new Date(),
-  );
+  const weeks = groupChangelogByWeek(entries, new Date());
 
   if (list.error !== null && list.data === null) {
     return <p className="text-sm text-destructive-foreground">{list.error}</p>;
@@ -98,7 +77,7 @@ function ChangelogList(props: { readonly space: NonNullable<ReturnType<typeof us
   return (
     <div className="flex flex-col gap-6" data-testid="space-changelog">
       {weeks.map((week) => (
-        <section key={week.label} className="flex flex-col gap-1">
+        <section key={week.start} className="flex flex-col gap-1">
           <h2 className="px-2 text-xs font-medium text-muted-foreground">{week.label}</h2>
           <ul className="flex flex-col">
             {week.entries.map((entry) => {

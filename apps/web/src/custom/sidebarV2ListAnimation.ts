@@ -58,7 +58,7 @@ export function sidebarV2ListAnimationDurationMs(
 }
 
 /** True for an item in a list that draws spaces: their headers mark it. */
-export function isSidebarV2SpaceListItem(el: Element): boolean {
+function isSidebarV2SpaceListItem(el: Element): boolean {
   return el.parentElement?.querySelector(":scope > li[data-fork-space-header]") != null;
 }
 

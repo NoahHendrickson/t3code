@@ -3284,6 +3284,14 @@
   --workspace-controls-top: calc(env(titlebar-area-y, 0px) + 2.75rem);
 }
 
+/* Except the inline right panel's control, which ChatView positions
+   absolutely inside the header, already below the tabs. */
+[data-chat-column]:has(> [data-fork-space-tab-row])
+  [data-chat-header]
+  > [data-workspace-titlebar-controls].absolute {
+  --workspace-controls-top: env(titlebar-area-y, 0px);
+}
+
 /* A space's tab row sits above the stage: under Glass the card starts below
    it, so the tabs rest on the panel's glass with the sidebar's rows, and the
    header stays on the card. On the space's draft only while the new-agent
