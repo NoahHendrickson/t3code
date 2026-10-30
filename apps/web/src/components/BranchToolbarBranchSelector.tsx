@@ -17,6 +17,9 @@ import {
   type ThreadId,
 } from "@t3tools/contracts";
 import { GitBranchIcon } from "lucide-react";
+/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
+import { ChevronDownIcon } from "../custom/icons/lucide-phosphor";
+/* fork:end fork-composer-shell */
 import {
   useDeferredValue,
   useEffect,
@@ -742,6 +745,12 @@ export function BranchToolbarBranchSelector({
                 className="w-full"
               />
             </ComposerContextLabel>
+            {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+                Upstream dropped the context chips' carets; the fork's chips keep them. */}
+            {displayMode !== "panel" ? (
+              <ChevronDownIcon className="size-3 shrink-0 opacity-50" />
+            ) : null}
+            {/* fork:end fork-composer-shell */}
           </ComboboxTrigger>
         </span>
         {displayMode === "panel" && prNumber !== undefined && prUrl !== undefined ? (

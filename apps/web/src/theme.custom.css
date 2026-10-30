@@ -331,6 +331,7 @@
    Everything below is dark-scoped: the designs are dark-only, and an unmarked
    or light build keeps upstream's shell untouched. */
 :root[data-fork="noahhendrickson-t3code"] [data-slot="composer-shell"]::before,
+:root[data-fork="noahhendrickson-t3code"] [data-slot="composer-host"]::before,
 :root[data-fork="noahhendrickson-t3code"] [data-slot="composer-host"]::after,
 :root[data-fork="noahhendrickson-t3code"] [data-slot="composer-context-strip"]::before,
 :root[data-fork="noahhendrickson-t3code"] [data-fork-composer-box]::after {

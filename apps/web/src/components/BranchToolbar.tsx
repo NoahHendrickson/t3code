@@ -10,7 +10,7 @@ import { PlusIcon, ScaleIcon } from "lucide-react";
 // Workspace marks match the thread readout: the branch mark for a checkout,
 // the fork's worktree mark for any worktree. Aliased so upstream's call sites
 // stay untouched.
-import { GitBranchIcon as FolderIcon } from "../custom/icons/lucide-phosphor";
+import { ChevronDownIcon, GitBranchIcon as FolderIcon } from "../custom/icons/lucide-phosphor";
 import {
   WorktreeIcon as FolderGit2Icon,
   WorktreeIcon as FolderGitIcon,
@@ -338,6 +338,10 @@ const RunContextSelector = memo(function RunContextSelector({
         ].join(" ")}
       >
         {triggerContent}
+        {/* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+            Upstream dropped the context chips' carets; the fork's chips keep them. */}
+        {!isPanel ? <ChevronDownIcon className="size-3 shrink-0 opacity-50" /> : null}
+        {/* fork:end fork-composer-shell */}
       </MenuTrigger>
       <MenuPopup
         align="start"

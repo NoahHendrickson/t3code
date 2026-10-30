@@ -495,6 +495,24 @@ describe("fork guard: fork-composer-shell", () => {
     expect(envModeSelector).not.toContain("displayMode");
   });
 
+  it("spaces the chips off the vessel on upstream's own context-row signal", () => {
+    // The gap keys on the shell's marker; an upstream rename silently drops it.
+    expect(readSibling("../components/chat/ComposerSurface.tsx")).toContain("data-context-row=");
+    expect(readSibling("../custom/ComposerShell.tsx")).toContain(
+      "group-data-context-row/composer-surface:pb-2",
+    );
+  });
+
+  it("keeps the carets on the context chips and the model chip", () => {
+    for (const file of [
+      "../components/BranchToolbar.tsx",
+      "../components/BranchToolbarBranchSelector.tsx",
+      "../overrides/components/chat/ProviderModelPicker.tsx",
+    ]) {
+      expect(readSibling(file), file).toMatch(/<ChevronDownIcon[\s\S]{0,160}shrink-0/u);
+    }
+  });
+
   it("keeps context chips at 24px and the meter outside ghost geometry", () => {
     const context = rules.find(
       (rule) =>
@@ -761,6 +779,8 @@ describe("fork guard: fork-composer-shell", () => {
   it("switches off the stitched glass shell and flattens the context strip", () => {
     for (const selector of [
       '[data-slot="composer-shell"]::before',
+      // Upstream's host paints its own glass when a context row is present.
+      '[data-slot="composer-host"]::before',
       '[data-slot="composer-host"]::after',
       '[data-slot="composer-context-strip"]::before',
     ]) {

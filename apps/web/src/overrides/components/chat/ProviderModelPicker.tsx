@@ -30,6 +30,7 @@ import { Badge } from "../ui/badge";
 import { Menu, MenuPopup, MenuSeparator, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
+import { ChevronDownIcon } from "~/custom/icons/lucide-phosphor";
 import { triggerModelName } from "~/custom/modelPickerDisplayName";
 import { ModelPickerContent, resolveModelPickerSelectedModel } from "./ModelPickerContent";
 import { ChatGptSharingControl } from "./ChatGptSharingControl";
@@ -344,6 +345,14 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             </span>
           ) : null}
         </span>
+        {/* Upstream dropped the composer chips' carets (#25869); the fork's keep them. */}
+        <ChevronDownIcon
+          aria-hidden="true"
+          className={cn(
+            "shrink-0",
+            size === "xs" ? "size-3 text-current opacity-50" : "size-3.5 text-icon-muted",
+          )}
+        />
       </MenuTrigger>
       {/* The composer's trigger ends the row, so its right edge holds still
           while the label's length changes; anchor the menu there. It always
