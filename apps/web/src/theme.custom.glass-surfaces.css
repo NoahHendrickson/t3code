@@ -508,7 +508,7 @@
      glass light on the ::before both components already position. Toggles
      and destructive-outline keep upstream's look. */
   &.dark[data-fork-theme="cool-darker"][data-fork-settings]
-    [data-app-modal]
+    [data-slot$="popup"]
     :is(button, a).dark\:bg-input\/32:not([data-slot="toggle"], .text-destructive-foreground) {
     & {
       box-shadow:

@@ -158,6 +158,8 @@ describe("fork guard: fork-side-chat", () => {
     const stop = appInit.indexOf("if (isSideChatSurface) return router;");
     expect(stop).toBeGreaterThan(-1);
     expect(appInit).toContain("if (!isSideChatSurface) startMainAppLocationTracking(router);");
+    expect(appInit).toContain("if (!isSideChatSurface) startAgentOpenedPreviews();");
+    expect(appInit).toContain("if (!isSideChatSurface) startPreviewTitleRecording();");
     for (const service of [
       "startThreadNotifications(",
       "startSlowRpcRequestToasts(",

@@ -63,7 +63,7 @@ import {
 import { BackgroundThreadContext } from "./backgroundThread";
 import { useStableCallback } from "../../hooks/useStableCallback";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
+import { useOwnsGlobalInput } from "~/custom/splitThreads/splitPaneContext";
 /* fork:end fork-split-threads */
 
 /**
@@ -690,7 +690,7 @@ export function useComposerStash(input: {
   // dialog even when a focused widget (the model picker search) stops the key.
   const backgroundThread = use(BackgroundThreadContext);
   /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-  const splitPaneFocused = useSplitPane().focused;
+  const ownsGlobalInput = useOwnsGlobalInput();
   /* fork:end fork-split-threads */
   const readShortcutContext = useStableCallback(() => ({
     terminalOpen: Boolean(
@@ -705,7 +705,7 @@ export function useComposerStash(input: {
     if (backgroundThread) return;
     /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
     // Every pane's composer registers the shortcut; only the focused one stashes.
-    if (!splitPaneFocused) return;
+    if (!ownsGlobalInput) return;
     /* fork:end fork-split-threads */
     return registerCommands(
       { "composer.stash": handleStashShortcut },
@@ -716,7 +716,7 @@ export function useComposerStash(input: {
     handleStashShortcut,
     readShortcutContext,
     /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-    splitPaneFocused,
+    ownsGlobalInput,
     /* fork:end fork-split-threads */
   ]);
 

@@ -174,9 +174,14 @@ export function startAppServices(): AppRouter {
   startBrowserChromeThemeSync(router);
   startDefaultThemeAdoption();
   startModelPreferencesMigration();
-  startAgentOpenedPreviews();
+  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+  // This and title recording follow every thread with previews; the side chat shows no panels.
+  if (!isSideChatSurface) startAgentOpenedPreviews();
+  /* fork:end fork-side-chat */
   if (isElectron) startElectronBrowserHost();
-  startPreviewTitleRecording();
+  /* fork:begin fork-side-chat — see .fork/customizations.yaml#fork-side-chat */
+  if (!isSideChatSurface) startPreviewTitleRecording();
+  /* fork:end fork-side-chat */
   startBrowserProfileReporting();
   installChatRouteCommands(router);
   installCommandPaletteCommands(router);

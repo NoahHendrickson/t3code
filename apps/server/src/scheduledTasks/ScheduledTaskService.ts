@@ -1959,6 +1959,9 @@ export const layer = Layer.effect(
         observeDelivery(request, outcome, receivedAt, now);
       /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
       const githubEvent = schedule.github ? githubPrTrigger(schedule.github, request) : null;
+      // The coalesced path dispatches without the PR trigger. Saving strips
+      // dedupe from a GitHub task, but one stored before that still carries it.
+      const dedupe = schedule.github ? undefined : schedule.dedupe;
       /* fork:end fork-github-pr-automation */
       const deliveryId = ScheduledTaskWebhookDeliveryId.make(
         /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
@@ -2130,7 +2133,9 @@ export const layer = Layer.effect(
 
           const runWindow = (yield* Ref.get(webhookRateWindows)).get(task.id);
           if (
-            schedule.dedupe === undefined &&
+            /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            dedupe === undefined &&
+            /* fork:end fork-github-pr-automation */
             (runWindow?.accepted.filter((entry) => DateTime.toEpochMillis(now) - entry.at < 60_000)
               .length ?? 0) >= WEBHOOK_RATE_LIMIT_PER_MINUTE
           ) {
@@ -2171,8 +2176,10 @@ export const layer = Layer.effect(
               ),
             );
           const deduped =
-            schedule.dedupe === undefined
-              ? "run"
+            /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
+            dedupe === undefined
+              ? /* fork:end fork-github-pr-automation */
+                "run"
               : yield* admit(
                   Effect.gen(function* () {
                     const outcome = yield* acceptWebhookDedupe(

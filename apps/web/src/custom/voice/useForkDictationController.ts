@@ -19,6 +19,13 @@ import { useOwnsGlobalInput } from "../splitThreads/splitPaneContext";
 
 const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };
 
+/** Ends a session nothing on screen can end: a recording is transcribed, one still preparing is dropped. */
+function settleSession(controller: DictationSession["controller"]): void {
+  const { phase } = controller.currentState;
+  if (phase === "recording") void controller.stop();
+  else if (phase === "preparing") controller.cancel();
+}
+
 /**
  * Composer-owned dictation session, mirroring mobile's `useVoiceInputController`.
  * The composer reads `blocksSubmission` / `freezesEditor` directly; the mic
@@ -139,13 +146,10 @@ export function useForkDictationController(input: DictationInput) {
     });
   }, [controller, ownsInput]);
   // Losing input (another pane focused, or Settings or Usage opened over the
-  // thread) leaves no hotkey to end a live session, so a recording finishes
-  // into its own draft and one still preparing is dropped.
+  // thread) leaves no hotkey to end a live session, so it settles into its own draft.
   useEffect(() => {
     if (ownsInput || !controller) return;
-    const { phase } = controller.currentState;
-    if (phase === "recording") void controller.stop();
-    else if (phase === "preparing") controller.cancel();
+    settleSession(controller);
   }, [controller, ownsInput]);
   useEffect(() => () => controller?.dispose(), [controller]);
 
@@ -164,10 +168,7 @@ export function useForkDictationController(input: DictationInput) {
   // For the composer whose controls just left the screen: a recording is
   // transcribed on the spot rather than left running with nothing to end it.
   const settleWithoutControls = () => {
-    if (!controller) return;
-    const { phase } = controller.currentState;
-    if (phase === "recording") void controller.stop();
-    else if (phase === "preparing") controller.cancel();
+    if (controller) settleSession(controller);
   };
 
   return {

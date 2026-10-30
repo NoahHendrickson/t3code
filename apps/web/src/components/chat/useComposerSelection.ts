@@ -25,6 +25,9 @@ import {
   deriveLockedProvider,
   makeModelDisabledReason,
 } from "../ChatView.logic";
+/* fork:begin fork-new-worktree-default-base — see .fork/customizations.yaml#fork-new-worktree-default-base */
+import { resolveEffectiveEnvMode } from "../BranchToolbar.logic";
+/* fork:end fork-new-worktree-default-base */
 interface ComposerSelectionInput {
   readonly environmentId: EnvironmentId;
   readonly composerDraftTarget: ComposerThreadTarget;
@@ -232,7 +235,11 @@ export function useComposerSelection(input: ComposerSelectionInput) {
            Entering New worktree (from local or a previous worktree's path) drops the carried
            branch, which would become the new base. A reselect must keep the user's base. */
         ...(mode === "worktree" &&
-        (draftThread?.envMode !== "worktree" || draftThread?.worktreePath)
+        resolveEffectiveEnvMode({
+          activeWorktreePath: draftThread?.worktreePath ?? null,
+          hasServerThread: false,
+          draftThreadEnvMode: draftThread?.envMode,
+        }) !== "worktree"
           ? { branch: null, worktreePath: null }
           : {}),
         /* fork:end fork-new-worktree-default-base */

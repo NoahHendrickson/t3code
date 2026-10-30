@@ -39,9 +39,8 @@ describe("fork guard: fork-split-threads", () => {
 
   it("keeps window-level input to the focused pane", () => {
     expect(chatView).toContain("const splitPane = useSplitPane();");
-    expect(chatView).toMatch(
-      /enabled:\s*activeThreadId !== null &&[\s\S]{0,200}splitPane\.focused/u,
-    );
+    expect(chatView).toContain("const ownsGlobalInput = useOwnsGlobalInput();");
+    expect(chatView).toMatch(/enabled:\s*activeThreadId !== null &&[\s\S]{0,200}ownsGlobalInput,/u);
     // Effects that listen on the window or take focus on their own guard on
     // the pane: the snap-shot focus subscription, the timeline scroll keys,
     // thread-switch and window-focus refocus, menu actions and paste-to-focus.
@@ -69,7 +68,10 @@ describe("fork guard: fork-split-threads", () => {
     expect(dictation).toContain("if (!controller || !ownsInput) return;");
     // A recording left running in a pane that loses focus finishes there.
     expect(dictation).toMatch(
-      /if \(ownsInput \|\| !controller\) return;[\s\S]{0,120}if \(phase === "recording"\) void controller\.stop\(\);/u,
+      /if \(ownsInput \|\| !controller\) return;\s*settleSession\(controller\);/u,
+    );
+    expect(dictation).toMatch(
+      /function settleSession[\s\S]{0,160}if \(phase === "recording"\) void controller\.stop\(\);/u,
     );
     // Each slot owns its ChatView's composer ref; the palette reads the focused one.
     expect(panes).toMatch(/ComposerHandleContext value=\{props\.composerRef\}/u);
@@ -77,7 +79,7 @@ describe("fork guard: fork-split-threads", () => {
     // Children with their own window listeners: the stash shortcut and the
     // pending question's digit answers.
     expect(composerStash).toMatch(
-      /fork:begin fork-split-threads[\s\S]*?if \(!splitPaneFocused\) return;[\s\S]*?composer\.stash/u,
+      /fork:begin fork-split-threads[\s\S]*?if \(!ownsGlobalInput\) return;[\s\S]*?composer\.stash/u,
     );
     expect(questionCard).toContain(
       "if (!activeQuestion || responseDisabled || !ownsInput) return;",

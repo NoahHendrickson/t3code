@@ -190,7 +190,7 @@ import { shortcutLabelForCommand } from "../keybindings";
 import { cn } from "~/lib/utils";
 import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-import { useSplitPane } from "~/custom/splitThreads/splitPaneContext";
+import { useOwnsGlobalInput, useSplitPane } from "~/custom/splitThreads/splitPaneContext";
 import { SplitAgentPill, splitAgentPillShown } from "~/custom/splitThreads/SplitAgentPill";
 import { SplitPaneHeaderControls } from "~/custom/splitThreads/SplitPaneHeaderControls";
 /* fork:end fork-split-threads */
@@ -454,6 +454,7 @@ export default function ChatView(props: ChatViewProps) {
   // automatic composer focus: each such effect guards on splitPane.focused;
   // see custom/splitThreads/splitPaneContext.
   const splitPane = useSplitPane();
+  const ownsGlobalInput = useOwnsGlobalInput();
   /* fork:end fork-split-threads */
   const canOperateThread = useEnvironmentScope(environmentId, AuthOrchestrationOperateScope);
   const canOperateTerminal = useEnvironmentScope(environmentId, AuthTerminalOperateScope);
@@ -1682,7 +1683,7 @@ export default function ChatView(props: ChatViewProps) {
       showOpenInPicker &&
       !backgroundThread &&
       /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-      splitPane.focused,
+      ownsGlobalInput,
     /* fork:end fork-split-threads */
     environmentId: activeThread?.environmentId ?? environmentId,
     keybindings,
@@ -2190,9 +2191,7 @@ export default function ChatView(props: ChatViewProps) {
     return () => {
       window.cancelAnimationFrame(frame);
     };
-    // fork-split-threads: splitPane.focused is read, not a dependency. Focus
-    // moving into a pane is a press there; pulling the caret away would eat it.
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- fork:begin fork-split-threads: splitPane.focused is read, not a dependency; focus moving into a pane is a press there, and pulling the caret away would eat it (see .fork/customizations.yaml#fork-split-threads) fork:end fork-split-threads
   }, [activeThread?.id, focusComposerStable, terminalUiState.terminalOpen]);
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- window focus listener that refocuses the composer after the window regains focus
@@ -2605,10 +2604,12 @@ export default function ChatView(props: ChatViewProps) {
     threadId: activeThread?.id ?? null,
     contextWindow: activeContextWindow,
     dismissed: resumeCompactionPermanentlyDismissed || nativeResumeCompactionDismissed,
-    // "Compact idle threads: Never" turns the offer off, as it does upstream's.
+    // Upstream's suppressions: "Compact idle threads: Never", a held queue, a multi-model send.
     hidden:
       pendingUserInputs.length > 0 ||
       phase === "running" ||
+      hasHeldQueuedRuns ||
+      multipleModelSelections !== null ||
       resolveIdleCompaction(
         settings,
         activeProviderInstanceId ?? ProviderInstanceId.make("claudeAgent"),
@@ -2832,7 +2833,7 @@ export default function ChatView(props: ChatViewProps) {
       activeThreadId !== null &&
       !backgroundThread &&
       /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
-      splitPane.focused,
+      ownsGlobalInput,
     /* fork:end fork-split-threads */
     keybindings,
     scriptKeybindings,
