@@ -190,7 +190,9 @@
     box-shadow: var(--fork-glass-light);
   }
 
-  /* A SegmentedTab has no border, so its inset light lands on the edge. */
+  /* A SegmentedTab has no border, so its inset light lands on the edge. The
+     design panel's segment strip stamps the same marker, and its hairline is
+     an inset ring this shadow replaces. */
   &.dark[data-fork-theme="cool-darker"] [data-fork-segmented-tab][data-pressed] {
     box-shadow:
       var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
@@ -201,14 +203,6 @@
      so the halo was cut where the tab meets the track's edge. */
   &.dark[data-fork-theme="cool-darker"] [data-fork-segmented-tabs] {
     overflow-clip-margin: 1px;
-  }
-
-  /* The design panel's segment strips are tabs on a field track too. Their
-     hairline goes: the glass edge replaces it, and a light drawn inside a
-     1px border would sit a pixel in from the edge. */
-  &.dark[data-fork-theme="cool-darker"] [data-fork-design-segment][aria-pressed="true"] {
-    border-width: 0;
-    box-shadow: var(--fork-glass-halo-soft), var(--fork-glass-light);
   }
 
   /* The composer as the same glass: the vessel is the pane, with the halo

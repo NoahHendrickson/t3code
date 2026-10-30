@@ -21,7 +21,10 @@ interface SegmentOption {
 
 /** Compact segmented control — flex direction, wrap, text-align. Figma's tab strip:
  * a field-surface track whose selected segment lifts on a white/8% fill with a
- * hairline border (see the design tokens in theme.custom.css). */
+ * hairline (see the design tokens in theme.custom.css). The selected segment carries
+ * the fork's segmented-tab marker, so Glass gives it the same chip edge as every other
+ * selected tab; the hairline is an inset ring rather than a border so that edge can
+ * replace it without changing the segment's box. */
 export function SegmentField({
   options,
   value,
@@ -46,12 +49,13 @@ export function SegmentField({
             type="button"
             title={option.title}
             aria-pressed={selected ? "true" : "false"}
-            data-fork-design-segment
+            data-fork-segmented-tab
+            data-pressed={selected ? "" : undefined}
             onClick={() => onSelect(option.value)}
             className={cn(
               "flex h-full flex-1 items-center justify-center rounded px-1 text-xs transition-colors [&_svg]:size-4",
               selected
-                ? "border border-border bg-[var(--fork-design-selected)] text-foreground"
+                ? "bg-[var(--fork-design-selected)] text-foreground shadow-[inset_0_0_0_1px_var(--border)]"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

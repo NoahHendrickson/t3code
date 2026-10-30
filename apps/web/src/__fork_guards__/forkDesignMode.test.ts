@@ -219,7 +219,9 @@ describe("fork guard: design mode", () => {
     // while leaving it subscribed would burn that work for a rail the user closed.
     expect(rail).toContain("if (collapsed || !available || !runtimeTabId) return null;");
     expect(rail).toContain("function LayersRail(");
-    expect(rail).toContain('aria-label="Hide layers"');
+    // The rail's icon controls take their accessible name from RailIconButton's label.
+    expect(rail).toContain('label="Hide layers"');
+    expect(rail).toContain("aria-label={label}");
     expect(toggle).toContain('aria-label="Show layers"');
     expect(toggle).toContain("setCollapsed(false)");
     // ...and the slot it mounts into exists on the chrome row and is actually passed.

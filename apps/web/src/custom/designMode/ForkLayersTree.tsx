@@ -6,9 +6,19 @@ import {
   SearchIcon,
   XIcon,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+} from "react";
 
 import { Button } from "~/components/ui/button";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "./designModeBridge";
@@ -33,6 +43,19 @@ import { LayerTypeIcon } from "./panel/LayerTypeIcon";
 /** Marks the disclosure caret so the delegated click handler can tell "expand this" from
  * "select this" without a per-row closure. */
 const TOGGLE_ATTRIBUTE = "data-layer-toggle";
+
+/** The rail header's icon controls, built like the show-layers toggle they swap with
+ * (ForkPreviewLayersToggle) so both halves of that disclosure look and hover alike. */
+function RailIconButton({ label, ...props }: { label: string } & ComponentProps<typeof Button>) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<Button variant="ghost" size="icon-xs" aria-label={label} {...props} />}
+      />
+      <TooltipPopup>{label}</TooltipPopup>
+    </Tooltip>
+  );
+}
 
 /**
  * One row. Memoized on purpose: every interaction on this rail is delegated to the
@@ -339,37 +362,20 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
           aria-label="Filter layers"
           className="h-6 w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
         />
-        {/* The ghost icon-xs Button, like the show-layers toggle this pairs with: the 24px
-            box and hover fill every icon-only control in the fork's chrome carries. */}
         {query ? (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            type="button"
-            title="Clear filter"
-            aria-label="Clear filter"
-            onClick={() => setQuery("")}
-          >
+          <RailIconButton label="Clear filter" onClick={() => setQuery("")}>
             <XIcon />
-          </Button>
+          </RailIconButton>
         ) : (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            type="button"
-            title="Collapse all"
-            aria-label="Collapse all"
+          <RailIconButton
+            label="Collapse all"
             onClick={() => setExpanded(Object.fromEntries(rows.map((row) => [row.node.id, false])))}
           >
             <ChevronsDownUpIcon />
-          </Button>
+          </RailIconButton>
         )}
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          type="button"
-          title="Hide layers"
-          aria-label="Hide layers"
+        <RailIconButton
+          label="Hide layers"
           aria-expanded={true}
           aria-controls={LAYERS_RAIL_ID}
           data-fork-design-layers-hide
@@ -380,7 +386,7 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
           }}
         >
           <PanelLeftCloseIcon />
-        </Button>
+        </RailIconButton>
       </header>
       <div
         ref={listRef}
