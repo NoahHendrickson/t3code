@@ -1258,7 +1258,11 @@
     leaves a named draft in the list. Prompts are read from getState() when
     the open route changes, not subscribed per keystroke. Promoted drafts
     and drafts whose reserved thread id already has a server shell are
-    skipped so the row never doubles.
+    skipped so the row never doubles. An empty draft (no
+    composerDraftHasUserContent) is painted only while it is open:
+    `_chat.index` starts a draft in the most recently updated project, so a
+    client that lands on `/` every visit (a phone) otherwise piled up a
+    blank "New thread" card per project.
 
     Clicking a draft card navigates to /draft/$draftId (not the server
     thread route). The open draft highlights via its reserved thread id —

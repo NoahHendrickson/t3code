@@ -96,6 +96,12 @@ export function buildSidebarDraftShell(input: {
  * dropped for the same reason. A "New agent" draft that has not been given a
  * project yet is skipped too: a row needs a project section to sit in, and
  * the user has not chosen one — see custom/newAgentDraft.
+ *
+ * An empty draft is painted only while it is open. Landing on `/` starts a
+ * draft in the most recently updated project, so a client that opens there
+ * every time (a phone) would otherwise collect a blank "New thread" card per
+ * project as that project changes. The store keeps one draft per project and
+ * the next New thread there reuses it, so hiding it loses nothing.
  */
 export function listSidebarDraftRows(input: {
   readonly draftsById: Readonly<Record<string, DraftSessionState>>;
@@ -104,6 +110,8 @@ export function listSidebarDraftRows(input: {
     draftId: DraftId,
     draft: DraftSessionState,
   ) => string | null | undefined;
+  readonly hasUserContent: (draftId: DraftId) => boolean;
+  readonly openThreadKey: string | null;
   readonly hasServerShell: (threadRef: ScopedThreadRef) => boolean;
 }): readonly SidebarV2DraftRow[] {
   const rows: SidebarV2DraftRow[] = [];
@@ -113,6 +121,9 @@ export function listSidebarDraftRows(input: {
     const threadRef = scopeThreadRef(draft.environmentId, draft.threadId);
     if (input.hasServerShell(threadRef)) continue;
     const draftId = draftIdValue as DraftId;
+    if (!input.hasUserContent(draftId) && scopedThreadKey(threadRef) !== input.openThreadKey) {
+      continue;
+    }
     rows.push({
       draftId,
       shell: buildSidebarDraftShell({

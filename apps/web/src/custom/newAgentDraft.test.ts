@@ -70,6 +70,8 @@ describe("listSidebarDraftRows with a New agent draft", () => {
         "draft-assigned": draft(),
       },
       modelSelectionForDraft: () => modelSelection,
+      hasUserContent: () => true,
+      openThreadKey: null,
       hasServerShell: () => false,
     });
     expect(rows.map((row) => row.draftId)).toEqual(["draft-assigned"]);
@@ -87,6 +89,8 @@ describe("listSidebarDraftRows with a New agent draft", () => {
         }),
       },
       modelSelectionForDraft: () => modelSelection,
+      hasUserContent: () => true,
+      openThreadKey: null,
       hasServerShell: () => false,
     });
     expect(rows).toHaveLength(1);

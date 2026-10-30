@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 
 import type { DraftSessionState } from "../composerDraftStore";
 import { DraftId } from "../composerDraftStore";
@@ -105,6 +105,8 @@ describe("listSidebarDraftRows", () => {
       draftsById: { "draft-1": draft() },
       modelSelectionForDraft: () => modelSelection,
       promptForDraft: () => "typed but not sent",
+      hasUserContent: () => true,
+      openThreadKey: null,
       hasServerShell: () => false,
     });
     expect(rows).toHaveLength(1);
@@ -122,9 +124,27 @@ describe("listSidebarDraftRows", () => {
         "draft-shelled": draft({ threadId: ThreadId.make("thread-live") }),
       },
       modelSelectionForDraft: () => modelSelection,
+      hasUserContent: () => true,
+      openThreadKey: null,
       hasServerShell: (ref) => ref.threadId === "thread-live",
     });
     expect(rows).toEqual([]);
+  });
+
+  it("paints an empty draft only while it is open", () => {
+    const openRef = scopeThreadRef(EnvironmentId.make("env-local"), ThreadId.make("thread-open"));
+    const rows = listSidebarDraftRows({
+      draftsById: {
+        "draft-open": draft({ threadId: ThreadId.make("thread-open") }),
+        "draft-blank": draft({ threadId: ThreadId.make("thread-blank") }),
+        "draft-typed": draft({ threadId: ThreadId.make("thread-typed") }),
+      },
+      modelSelectionForDraft: () => modelSelection,
+      hasUserContent: (draftId) => draftId === "draft-typed",
+      openThreadKey: scopedThreadKey(openRef),
+      hasServerShell: () => false,
+    });
+    expect(rows.map((row) => row.draftId)).toEqual(["draft-open", "draft-typed"]);
   });
 });
 
@@ -133,6 +153,8 @@ describe("draftIdByThreadKey", () => {
     const rows = listSidebarDraftRows({
       draftsById: { [DraftId.make("draft-1")]: draft() },
       modelSelectionForDraft: () => modelSelection,
+      hasUserContent: () => true,
+      openThreadKey: null,
       hasServerShell: () => false,
     });
     const map = draftIdByThreadKey(rows);
