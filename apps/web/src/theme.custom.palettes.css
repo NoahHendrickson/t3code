@@ -243,7 +243,14 @@
   --secondary-label: var(--muted-foreground);
   --icon-muted: var(--muted-foreground);
   --sidebar-muted-foreground: #d0d4d6;
-  --fork-sidebar-card-title-receded: #aeb2b6;
+  /* The panel's quiet ink where it should tint with the glass under it. The
+     opaque #8a8a8a above stays the default; named elements opt in below. */
+  --fork-glass-quiet-ink: rgb(255 255 255 / 65%);
+  --fork-sidebar-card-title-receded: var(--fork-glass-quiet-ink);
+  /* Gray project icons (the server's "No project" default) would otherwise
+     be the one flat grey left among them. gray-400 is only that colour's
+     dark ink in apps/web; the Glass guard holds that. */
+  --color-gray-400: var(--fork-glass-quiet-ink);
   --sidebar-control-surface: #2f3437;
   --sidebar-row-hover: #282d30;
   --sidebar-row-active: #2c3134;
@@ -258,11 +265,13 @@
   border-radius: 9999px;
 }
 
-/* Project chrome — the Projects row, every project header and each thread
-   card's meta line (project chip, branch, model) — rests on white at 65%
-   instead of the panel's #8a8a8a, so the labels, marks and icon buttons tint
-   with the surface under them. The panel's opaque ink above stays for
-   everything else that reads the muted channel.
+/* Project chrome — the Projects row, the recent-projects strip, every project
+   and status section header, each thread card's meta line (project chip,
+   branch, model), its hover actions (pin, snooze, settle) and the idle
+   circle — rests on the quiet ink instead of the panel's #8a8a8a, so the
+   labels, marks, carets and icon buttons tint with the surface under them.
+   This is an allowlist: anything not named here or below keeps the opaque
+   ink.
 
    The derived token, not --muted-foreground: index.css computes
    --contrast-muted-foreground on [data-app-sidebar] and a descendant inherits
@@ -270,8 +279,33 @@
    so the appearance-contrast slider does not move these labels. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
   [data-sidebar-version="v2"]
-  :is([data-fork-projects-row], [data-fork-project-section-header], [data-fork-thread-card-meta]) {
-  --contrast-muted-foreground: rgb(255 255 255 / 65%);
+  :is(
+    [data-fork-projects-row],
+    [data-fork-recent-projects],
+    [data-fork-project-section-header],
+    [data-fork-status-section-header],
+    [data-fork-thread-card-meta],
+    [data-fork-thread-card-actions],
+    [data-fork-idle-mark]
+  ) {
+  --contrast-muted-foreground: var(--fork-glass-quiet-ink);
+}
+
+/* The draft pencil too. It is drawn at muted/70, which would multiply the
+   token above down to 45%, so it takes the ink directly. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"]
+  [data-fork-draft-pencil] {
+  color: var(--fork-glass-quiet-ink);
+}
+
+/* The footer's icons (Settings, Pull Requests, the update pill at rest) ink
+   from --sidebar-icon-color, not the muted channel, which the vibrancy block
+   freezes to opaque #8a8a8a for the rest of the panel. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"]
+  [data-slot="sidebar-footer"] {
+  --sidebar-icon-color: var(--fork-glass-quiet-ink);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1187,8 +1221,11 @@
      60% plus 40% of the panel's alpha, and the rest is wallpaper showing
      through the icon itself, which reads as the icons taking on the desktop's
      colour. Frozen to the value that mix resolves to against the opaque panel (#d0d4d6 60% over
-     #181b1e) so icons stay glass-independent. Anything else derived from the
-     panel fill needs the same treatment. */
+     #181b1e). The freeze guards against that accidental leak of the panel's
+     alpha, so anything else derived from the panel fill needs the same
+     treatment. The deliberate flat white wash some elements take instead
+     (--fork-glass-quiet-ink, the footer included) is a separate, intended
+     choice, not a regression of this one. */
   --sidebar-icon-color: #8a8a8a;
   /* Upstream's appearance-contrast control (#7906) derives these two from
      --sidebar the same way, so they inherit the panel's alpha and every

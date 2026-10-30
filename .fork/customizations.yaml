@@ -1629,9 +1629,14 @@
     live in theme.custom.palettes.css (two-block stage + v2 panel). index.html
     pre-paints #141618.
 
-    The sidebar's project chrome — the Projects row, each project header and
-    each thread card's meta line — rests on white at 65% rather than the
-    panel's opaque #8a8a8a muted ink.
+    The sidebar's project chrome — the Projects row, the recent-projects
+    strip's + marks, each project and status section header, and each
+    thread card's meta line and hover actions — rests on white at 65% rather
+    than the panel's opaque #8a8a8a muted ink (a status section's count stays
+    a step fainter at muted/60). The footer's icons (Settings, Pull Requests,
+    the update pill at rest), the draft pencil, the idle circle, receded card
+    titles and Gray project icons (the server's "No project" default) take
+    the same white.
 
     The thread you are on is a pane of glass (Figma 532:6527): a hairline
     glint on the top and bottom runs, a dark 1px halo, soft inner sheens, and
@@ -1675,6 +1680,8 @@
     - apps/web/index.html
     # Fenced data-fork-glass-rim on the details card.
     - apps/web/src/components/chat/ThreadDetailsCard.tsx
+    # Fenced data-fork-thread-card-actions on the row's hover actions cell.
+    - apps/web/src/components/Sidebar.tsx
     # Imports the glass surfaces sheet after the palettes sheet (fenced).
     - apps/web/src/main.tsx
     # Stamps data-chat-composer-floating-layer on every composer popup, which
