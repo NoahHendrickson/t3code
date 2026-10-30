@@ -345,7 +345,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             </span>
           ) : null}
         </span>
-        {/* Upstream dropped the composer chips' carets (#25869); the fork's keep them. */}
+        {/* Upstream dropped the composer chips' carets; the fork's keep them. */}
         <ChevronDownIcon
           aria-hidden="true"
           className={cn(
