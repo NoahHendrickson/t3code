@@ -291,6 +291,13 @@
   --contrast-muted-foreground: var(--fork-glass-quiet-ink);
 }
 
+/* A space's rows (fork-spaces) are project chrome too. */
+:root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
+  [data-sidebar-version="v2"]
+  [data-fork-space-row] {
+  --contrast-muted-foreground: var(--fork-glass-quiet-ink);
+}
+
 /* The draft pencil too. It is drawn at muted/70, which would multiply the
    token above down to 45%, so it takes the ink directly. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]

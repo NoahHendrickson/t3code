@@ -51,6 +51,24 @@ describe("buildActiveThreadSections", () => {
     expect(result[0]?.threads).toBe(threads);
   });
 
+  it("keeps a project with no active threads only when asked (Spaces)", () => {
+    const projectGroups = [
+      project("first", "First", [["local", "p1"]]),
+      project("empty", "Empty", [["local", "p2"]]),
+    ];
+    const threads = [thread("a", "local", "p1")];
+    expect(headerKeys(sections(threads, projectGroups))).toEqual(["first"]);
+    const kept = buildActiveThreadSections({
+      threads,
+      projectGroups,
+      projectRefIndex: createProjectRefIndex(projectGroups),
+      grouped: true,
+      keepEmptyGroups: true,
+    });
+    expect(headerKeys(kept)).toEqual(["first", "empty"]);
+    expect(kept[1]?.threads).toEqual([]);
+  });
+
   it("sections in the caller's project order, keeping thread order inside a section", () => {
     const result = sections(
       [thread("a", "local", "p1"), thread("b", "local", "p2"), thread("c", "local", "p1")],
