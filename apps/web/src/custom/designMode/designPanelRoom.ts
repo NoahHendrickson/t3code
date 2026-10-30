@@ -12,7 +12,7 @@ export const DESIGN_PANEL_WIDTH_PX = 325;
 export const LAYERS_RAIL_WIDTH_PX = 208;
 /** The narrowest the preview itself can go before upstream's browser chrome row clips its
  * trailing controls, the design-mode toggle among them (measured at 286px). */
-export const PREVIEW_MIN_WIDTH_PX = 300;
+const PREVIEW_MIN_WIDTH_PX = 300;
 
 /** Width the right panel needs to show the design chrome and a usable preview beside it. */
 export function designPaneWidth(railShown: boolean): number {
