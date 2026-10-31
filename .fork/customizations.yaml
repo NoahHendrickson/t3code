@@ -386,9 +386,9 @@
     its gray frame backdrop dropped for transparent corners), committed as the
     n3-web-favicon* rasters with apps/web/public copies; export-icons.ts
     leaves them alone. Filenames still say n3-* for path stability.
-    t3.json's iconPath stays assets/fork/n3-project-icon-180.png, never
-    upstream's assets/dev/blueprint-*; export-icons.ts writes it from the
-    production 180px render, so it follows the app icon.
+    t3.json's iconPath points at the production apple-touch render
+    (assets/fork/n3-web-apple-touch-180.png), never upstream's
+    assets/dev/blueprint-*, so the project icon is the app icon.
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
     app's own internal origin, not just a deep-link handler — two installed
     apps contend for it, untidy but not destructive).
@@ -430,7 +430,6 @@
     - assets/fork/n3-web-favicon-16x16.png
     - assets/fork/n3-web-favicon-32x32.png
     - assets/fork/n3-web-favicon.ico
-    - assets/fork/n3-project-icon-180.png
   shadows: []
   watch:
     - apps/desktop/src/window/DesktopApplicationMenu.test.ts
