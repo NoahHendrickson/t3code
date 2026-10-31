@@ -298,6 +298,7 @@ import { projectScriptIdFromCommand } from "~/projectScripts";
 import { newDraftId, newMessageId, newThreadId } from "~/lib/utils";
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { forkDesignChanges } from "~/custom/designMode/designChangeDraftStore";
+import { useDesignPanelRoom } from "~/custom/designMode/designPanelRoom";
 import {
   extractTrailingDesignChanges,
   withDesignChangesTrailing,
@@ -1740,9 +1741,15 @@ export default function ChatView(props: ChatViewProps) {
     activeThreadRef?.environmentId ?? null,
   );
   const browserAvailable = isPreviewSupportedInRuntime() || activeEnvironmentServerBrowser;
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+  const forkDesignPanelRoom = useDesignPanelRoom(activeThreadKey);
+  /* fork:end fork-design-mode */
   const previewPanelInlineSize = usePreviewPanelInlineSize(undefined, {
     container: workspaceLayoutElement,
     widthStorageKey: `t3code:preview-panel-width:${activeThreadKey}`,
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+    minWidth: forkDesignPanelRoom,
+    /* fork:end fork-design-mode */
   });
   const activeThreadShell = serverThread;
   const timelineThreadError =

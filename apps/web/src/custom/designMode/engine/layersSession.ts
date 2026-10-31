@@ -92,6 +92,15 @@ export class LayersSession {
     this.emit();
   }
 
+  /** Unconditional tree report, bypassing the change gate — canvasSession's reassert, for
+   * the same reason: start()'s emit lands BEFORE the `state` message, the host wipes its
+   * layers mirror on every enabled flip (store setEnabled), and the gate would otherwise
+   * suppress the identical re-emit, leaving the rail missing until the page mutates. */
+  reassert(): void {
+    this.lastJson = "";
+    this.emit();
+  }
+
   stop(): void {
     this.settle.stop();
     this.registry.clearLayersScope();

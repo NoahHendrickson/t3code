@@ -31,6 +31,7 @@ import {
   summarizeDesignChangeBlock,
 } from "../custom/designMode/designChangeTranscript";
 import { resolveBrowserDeviceViewportArea } from "../browser/browserViewportLayout";
+import { DESIGN_PANEL_WIDTH_PX, LAYERS_RAIL_WIDTH_PX } from "../custom/designMode/designPanelRoom";
 import {
   CANVAS_RESOLUTIONS,
   resolutionForViewport,
@@ -186,6 +187,25 @@ describe("fork guard: design mode", () => {
     ).toBeNull();
   });
 
+  it("widens the right panel to the room the docked design chrome takes", () => {
+    // The widths design mode asks for are the widths its columns render at.
+    expect(read("src/custom/designMode/panel/ForkDesignPanel.tsx")).toContain(
+      `w-[${DESIGN_PANEL_WIDTH_PX}px]`,
+    );
+    expect(LAYERS_RAIL_WIDTH_PX).toBe(52 * 4);
+    expect(read("src/custom/designMode/ForkLayersTree.tsx")).toContain('"flex w-52 shrink-0');
+    // The visible preview publishes its need, ChatView hands it to the width hook as a
+    // floor, and the hook caps that floor by its own maximum so the chat column keeps
+    // its minimum on a narrow window.
+    expect(read("src/overrides/components/preview/PreviewPanel.tsx")).toContain(
+      "usePublishDesignPanelRoom(threadRef, runtimeTabId, visible);",
+    );
+    expect(read("src/components/ChatView.tsx")).toContain("minWidth: forkDesignPanelRoom,");
+    expect(read("src/hooks/usePreviewPanelInlineSize.ts")).toContain(
+      "minWidth: Math.max(PREVIEW_PANEL_MIN_WIDTH, Math.min(options.minWidth ?? 0, maxWidth)),",
+    );
+  });
+
   it("keeps a way back out of the collapsed layers rail", () => {
     // A one-way door is the failure mode: collapsed, the rail renders nothing, so the only
     // control that reopens it would go with it. It moves to the chrome row's leading slot
@@ -219,7 +239,9 @@ describe("fork guard: design mode", () => {
     // while leaving it subscribed would burn that work for a rail the user closed.
     expect(rail).toContain("if (collapsed || !available || !runtimeTabId) return null;");
     expect(rail).toContain("function LayersRail(");
-    expect(rail).toContain('aria-label="Hide layers"');
+    // The rail's icon controls take their accessible name from RailIconButton's label.
+    expect(rail).toContain('label="Hide layers"');
+    expect(rail).toContain("aria-label={label}");
     expect(toggle).toContain('aria-label="Show layers"');
     expect(toggle).toContain("setCollapsed(false)");
     // ...and the slot it mounts into exists on the chrome row and is actually passed.

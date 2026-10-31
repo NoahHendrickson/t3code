@@ -25,13 +25,20 @@ export function usePreviewPanelInlineSize(
     readonly widthStorageKey?: string | undefined;
     readonly defaultWidth?: number | undefined;
     readonly container?: HTMLElement | null | undefined;
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+    readonly minWidth?: number | undefined;
+    /* fork:end fork-design-mode */
   } = {},
 ): PreviewPanelInlineSize {
   const maxWidth = useViewportClampedMaxWidth(hostRef, options.enabled ?? true, options.container);
   return useResizableWidth({
     storageKey: options.widthStorageKey ?? PREVIEW_PANEL_WIDTH_STORAGE_KEY,
     defaultWidth: options.defaultWidth ?? PREVIEW_PANEL_DEFAULT_WIDTH,
-    minWidth: PREVIEW_PANEL_MIN_WIDTH,
+    /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
+       A caller's floor (design mode's chrome) yields to the cap, so the sibling column
+       keeps its own minimum on a window too narrow for both. */
+    minWidth: Math.max(PREVIEW_PANEL_MIN_WIDTH, Math.min(options.minWidth ?? 0, maxWidth)),
+    /* fork:end fork-design-mode */
     maxWidth,
     edge: "left",
   });

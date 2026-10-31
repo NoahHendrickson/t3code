@@ -190,7 +190,9 @@
     box-shadow: var(--fork-glass-light);
   }
 
-  /* A SegmentedTab has no border, so its inset light lands on the edge. */
+  /* A SegmentedTab has no border, so its inset light lands on the edge. The
+     design panel's segment strip stamps the same marker, and its hairline is
+     an inset ring this shadow replaces. */
   &.dark[data-fork-theme="cool-darker"] [data-fork-segmented-tab][data-pressed] {
     box-shadow:
       var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
