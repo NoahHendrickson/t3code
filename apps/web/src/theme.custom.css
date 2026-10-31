@@ -1165,6 +1165,12 @@
   color: inherit;
 }
 
+/* Sidebar rows too. A settled slim row mutes the whole tone span at rest, so
+   the number follows it gray and comes back with the glyph on hover. */
+:root[data-fork="noahhendrickson-t3code"] [data-fork-sidebar-pr-badge] .text-secondary-label {
+  color: inherit;
+}
+
 /* Lucide glyphs on these triggers ship with opacity-70 / opacity-50; force
    full ink so white chip labels don't wash back to gray. */
 :root[data-fork="noahhendrickson-t3code"]

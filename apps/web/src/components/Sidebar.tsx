@@ -1596,6 +1596,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                 // oxlint-disable-next-line shadcn/no-restyle -- mutes the badge's state colour
                 "not-group-hover/v2-row:not-group-focus-within/v2-row:[&>span]:text-secondary-label",
             )}
+            // The number takes the glyph's state ink (theme.custom.css).
+            data-fork-sidebar-pr-badge
             /* fork:end sidebar-v2-card-rows */
           />
         }

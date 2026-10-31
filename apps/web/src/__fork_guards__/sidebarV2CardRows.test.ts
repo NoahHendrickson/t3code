@@ -166,6 +166,11 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(sidebarV2).toContain(
       '"not-group-hover/v2-row:not-group-focus-within/v2-row:[&>span]:text-secondary-label"',
     );
+    // Upstream grays the number; the fork's number inherits the glyph's ink.
+    expect(sidebarV2).toContain("data-fork-sidebar-pr-badge");
+    expect(theme).toMatch(
+      /\[data-fork-sidebar-pr-badge\] \.text-secondary-label \{\s*color: inherit;/u,
+    );
   });
 
   it("keeps upstream's terminal-status glyph on the card's repo line", () => {
