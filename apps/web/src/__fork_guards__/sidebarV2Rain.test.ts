@@ -8,16 +8,16 @@
  */
 
 import { describe, expect, it } from "vite-plus/test";
-import { rainOffsetSeconds } from "~/custom/SidebarV2StatusIndicator";
+import { workingMarkOffsetSeconds } from "~/custom/SidebarV2StatusIndicator";
 
-describe("fork guard: sidebar-v2 rain phase offsets", () => {
+describe("fork guard: working mark phase offsets", () => {
   it("is deterministic per thread key", () => {
-    expect(rainOffsetSeconds("thread-abc")).toBe(rainOffsetSeconds("thread-abc"));
+    expect(workingMarkOffsetSeconds("thread-abc")).toBe(workingMarkOffsetSeconds("thread-abc"));
   });
 
   it("stays inside one loop's worth of rewind", () => {
     for (const seed of ["", "a", "thread-1", "🙂", "x".repeat(200)]) {
-      const offset = rainOffsetSeconds(seed);
+      const offset = workingMarkOffsetSeconds(seed);
       expect(Number.isFinite(offset)).toBe(true);
       expect(offset).toBeGreaterThanOrEqual(0);
       expect(offset).toBeLessThan(32);
@@ -29,7 +29,9 @@ describe("fork guard: sidebar-v2 rain phase offsets", () => {
     // differ only in the last character within a second of each other, and the
     // rows then read as one synchronised block. Sequential ids are exactly the
     // shape real thread keys take.
-    const offsets = Array.from({ length: 12 }, (_, index) => rainOffsetSeconds(`thread-${index}`));
+    const offsets = Array.from({ length: 12 }, (_, index) =>
+      workingMarkOffsetSeconds(`thread-${index}`),
+    );
     for (let i = 0; i < offsets.length; i++) {
       for (let j = i + 1; j < offsets.length; j++) {
         expect(Math.abs((offsets[i] ?? 0) - (offsets[j] ?? 0))).toBeGreaterThan(0.25);

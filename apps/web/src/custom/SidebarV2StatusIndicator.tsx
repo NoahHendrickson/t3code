@@ -95,7 +95,7 @@ function rainAlpha(dy: number): number {
   return dy >= 0 ? Math.exp(-dy * 0.8) : Math.exp(dy * 8);
 }
 
-/** Seconds to rewind this row's rain by. Native phanttom drives every tab from
+/** Seconds to rewind this row's working mark by. Native phanttom drives every tab from
     one shared wall clock, so its working tabs all fall in lockstep; here a
     sidebar full of working threads would read as a single blinking block, so
     each row gets its own offset. Hashing the thread key rather than randomizing
@@ -106,7 +106,7 @@ function rainAlpha(dy: number): number {
     one row is continuous across remount.) Every column moves
     by the same absolute amount, which preserves their relationship to each
     other: the row looks exactly like one that started working moments earlier. */
-export function rainOffsetSeconds(seed: string): number {
+export function workingMarkOffsetSeconds(seed: string): number {
   let hash = 0x811c9dc5;
   for (let index = 0; index < seed.length; index++) {
     hash ^= seed.charCodeAt(index);
@@ -140,17 +140,27 @@ interface FilmCell {
   readonly opacity: number;
 }
 
-/** One loop of a mark baked into an SVG mask, frame under frame. `cell` holds
-    the shared cell's rect attributes; `frame(index)` places the lit cells of
-    that frame in frame-local units. Opacities are sampled at each frame's midpoint, so a
-    stepped frame is never more than half a frame early or late. Stretched
-    (`preserveAspectRatio="none"`) because layout rounds the strip to 1/64px,
-    and an aspect-kept fit would drift the deeper frames off the clip. */
+function once<T>(make: () => T): () => T {
+  let value: T | undefined;
+  return () => (value ??= make());
+}
+
+/** `seconds` folded into `[0, period)`, negatives included. */
+function wrap(seconds: number, period: number): number {
+  return ((seconds % period) + period) % period;
+}
+
+/** One loop of a mark baked into an SVG mask, frame under frame. `frame(index)`
+    places the lit cells of that frame in frame-local units. Opacities are
+    sampled at each frame's midpoint, so a stepped frame is never more than
+    half a frame early or late. Stretched (`preserveAspectRatio="none"`)
+    because layout rounds the strip to 1/64px, and an aspect-kept fit would
+    drift the deeper frames off the clip. */
 function bakeFilm(
   width: number,
   frameHeight: number,
   frames: number,
-  cell: string,
+  cell: { readonly width: number; readonly height: number; readonly rx?: number },
   frame: (index: number) => Iterable<FilmCell>,
 ): string {
   let body = "";
@@ -160,7 +170,7 @@ function bakeFilm(
       body += `<use href='#c' x='${x.toFixed(3)}' y='${(index * frameHeight + y).toFixed(3)}' opacity='${opacity.toFixed(3)}'/>`;
     }
   }
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${width} ${frameHeight * frames}' preserveAspectRatio='none'><defs><rect id='c' ${cell}/></defs>${body}</svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${width} ${frameHeight * frames}' preserveAspectRatio='none'><defs><rect id='c' width='${cell.width.toFixed(3)}' height='${cell.height.toFixed(3)}' rx='${(cell.rx ?? 0).toFixed(3)}'/></defs>${body}</svg>`;
   // A blob URL rather than a data URI: every strip names the film in its
   // inline style, and a data URI would copy the whole SVG into each one.
   return `url("${URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }))}")`;
@@ -168,35 +178,35 @@ function bakeFilm(
 
 /** One strip of a working mark: the baked film, coloured by the status token
     through the mask, stepped by a single compositor transform animation.
-    `startSeconds` is how far into its `period` the strip is at time zero. The
-    keyframe name stays in a class so `motion-reduce:animate-none` can still
-    win (a class cannot override an inline `animation-name`); the inline
-    transform is the still frame left once it does. */
+    The strip is `frames` clip boxes tall, so a frame is exactly the clip's
+    height. `startSeconds` is how far into its `period` the strip is at time
+    zero; `column` masks the film to one column, in CSS px. The keyframe name
+    stays in a class so `motion-reduce:animate-none` can still win (a class
+    cannot override an inline `animation-name`); the inline transform is the
+    still frame left once it does. */
 function FilmStrip(props: {
   readonly film: string;
   readonly frames: number;
-  readonly frameHeight: number;
   readonly period: number;
   readonly startSeconds: number;
-  readonly maskSize?: string;
-  readonly maskPosition?: string;
+  readonly column?: { readonly left: number; readonly width: number };
 }) {
-  const start = ((props.startSeconds % props.period) + props.period) % props.period;
+  const start = wrap(props.startSeconds, props.period);
+  // The outer modulo only catches floating-point error at the top of the range.
   const still =
     Math.floor(
-      ((((props.startSeconds + STILL_SECONDS) % props.period) + props.period) % props.period) *
-        (props.frames / props.period),
+      (wrap(props.startSeconds + STILL_SECONDS, props.period) / props.period) * props.frames,
     ) % props.frames;
   return (
     <span
       className="absolute inset-x-0 top-0 bg-sidebar-v2-status-working animate-[sidebar-v2-film_linear_infinite] motion-reduce:animate-none"
       style={{
-        height: props.frameHeight * props.frames,
+        height: `${props.frames * 100}%`,
         maskImage: props.film,
-        maskSize: props.maskSize ?? "100% 100%",
-        maskPosition: props.maskPosition,
+        maskSize: props.column ? `${props.column.width}px 100%` : "100% 100%",
+        maskPosition: props.column ? `${props.column.left}px 0` : undefined,
         maskRepeat: "no-repeat",
-        transform: `translateY(${-still * props.frameHeight}px)`,
+        transform: `translateY(${(-still / props.frames) * 100}%)`,
         animationDuration: `${props.period.toFixed(4)}s`,
         animationTimingFunction: `steps(${props.frames})`,
         animationDelay: `${(-start).toFixed(4)}s`,
@@ -211,22 +221,17 @@ const RAIN_FRAMES = 120;
 
 /** Every column runs the same five-row fall at its own speed, so one film of a
     single column serves all three, each strip masked at its column's x. */
-let rainFilm: string | undefined;
-function getRainFilm(): string {
-  rainFilm ??= bakeFilm(
-    CELL,
-    HEIGHT,
-    RAIN_FRAMES,
-    `width='${CELL}' height='${CELL}' rx='${(CELL * 0.28).toFixed(3)}'`,
-    (index) =>
-      Array.from({ length: ROWS }, (_, row) => ({
-        x: 0,
-        y: row * PITCH,
-        opacity: rainAlpha(((index + 0.5) / RAIN_FRAMES) * RAIN_SPAN - 1.5 - row),
-      })),
-  );
-  return rainFilm;
-}
+const rainFilm = once(() =>
+  bakeFilm(CELL, HEIGHT, RAIN_FRAMES, { width: CELL, height: CELL, rx: CELL * 0.28 }, (index) =>
+    Array.from({ length: ROWS }, (_, row) => ({
+      x: 0,
+      y: row * PITCH,
+      opacity: rainAlpha(((index + 0.5) / RAIN_FRAMES) * RAIN_SPAN - 1.5 - row),
+    })),
+  ),
+);
+/** Mark units to CSS px: the 14px slot over the grid's native height. */
+const RAIN_SCALE = SLOT / HEIGHT;
 
 /** Cells baked into a mask rather than positioned elements on purpose. A
     2.85px box on a 3.8px pitch never lands on a device-pixel boundary, and
@@ -235,8 +240,8 @@ function getRainFilm(): string {
     The SVG keeps the fractional geometry and antialiases it, which is what the
     native Canvas does too, so every drop stays exactly square. */
 function SidebarV2WorkingRain({ seed }: { seed: string }) {
-  const offset = rainOffsetSeconds(seed);
-  const film = getRainFilm();
+  const offset = workingMarkOffsetSeconds(seed);
+  const film = rainFilm();
   return (
     <span
       aria-hidden
@@ -248,13 +253,9 @@ function SidebarV2WorkingRain({ seed }: { seed: string }) {
           key={column.phase}
           film={film}
           frames={RAIN_FRAMES}
-          frameHeight={SLOT}
           period={RAIN_SPAN / column.speed}
           startSeconds={column.phase / column.speed + offset}
-          maskSize={`${(CELL / WIDTH) * 100}% 100%`}
-          // Percentages align the mask's own n% point with the strip's, which
-          // for cells on a uniform pitch puts column `col` at col / (COLS - 1).
-          maskPosition={`${(col / (COLS - 1)) * 100}% 0`}
+          column={{ left: col * PITCH * RAIN_SCALE, width: CELL * RAIN_SCALE }}
         />
       ))}
     </span>
@@ -272,7 +273,6 @@ const HELIX_GRID = 7;
 const HELIX_BOX = 56;
 const HELIX_GAP = 2;
 const HELIX_CELL = (HELIX_BOX - (HELIX_GRID - 1) * HELIX_GAP) / HELIX_GRID;
-const HELIX_SIZE = 12;
 
 /** Radians per second, and the phase each row trails the one above it by. */
 const HELIX_SPEED = 3.2;
@@ -299,42 +299,31 @@ export function helixAlpha(column: number, phase: number): number {
   return alpha > 0.08 ? 0.1 + 0.9 * alpha : 0;
 }
 
-let helixFilm: string | undefined;
-function getHelixFilm(): string {
-  helixFilm ??= bakeFilm(
-    HELIX_BOX,
-    HELIX_BOX,
-    HELIX_FRAMES,
-    `width='${HELIX_CELL.toFixed(3)}' height='${HELIX_CELL.toFixed(3)}'`,
-    (index) =>
-      Array.from({ length: HELIX_GRID * HELIX_GRID }, (_, cell) => {
-        const column = cell % HELIX_GRID;
-        const row = Math.floor(cell / HELIX_GRID);
-        return {
-          x: column * (HELIX_CELL + HELIX_GAP),
-          y: row * (HELIX_CELL + HELIX_GAP),
-          opacity: helixAlpha(
-            column,
-            ((index + 0.5) / HELIX_FRAMES) * Math.PI - row * HELIX_ROW_LAG,
-          ),
-        };
-      }),
-  );
-  return helixFilm;
-}
+const helixFilm = once(() =>
+  bakeFilm(HELIX_BOX, HELIX_BOX, HELIX_FRAMES, { width: HELIX_CELL, height: HELIX_CELL }, (index) =>
+    Array.from({ length: HELIX_GRID * HELIX_GRID }, (_, cell) => {
+      const column = cell % HELIX_GRID;
+      const row = Math.floor(cell / HELIX_GRID);
+      return {
+        x: column * (HELIX_CELL + HELIX_GAP),
+        y: row * (HELIX_CELL + HELIX_GAP),
+        opacity: helixAlpha(column, ((index + 0.5) / HELIX_FRAMES) * Math.PI - row * HELIX_ROW_LAG),
+      };
+    }),
+  ),
+);
 
 /** A baked film rather than the chip's per-frame canvas, so a working row
-    costs no requestAnimationFrame loop — seeded by the rain's per-thread
+    costs no requestAnimationFrame loop — seeded by the shared per-thread
     offset. */
 function SidebarV2WorkingHelix({ seed }: { seed: string }) {
   return (
     <span aria-hidden className="relative block size-3 shrink-0 overflow-hidden">
       <FilmStrip
-        film={getHelixFilm()}
+        film={helixFilm()}
         frames={HELIX_FRAMES}
-        frameHeight={HELIX_SIZE}
         period={HELIX_LOOP}
-        startSeconds={rainOffsetSeconds(seed)}
+        startSeconds={workingMarkOffsetSeconds(seed)}
       />
     </span>
   );
