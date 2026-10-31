@@ -22,20 +22,9 @@ import { useSidebar } from "~/components/ui/sidebar";
 import { cn } from "~/lib/utils";
 
 import { sidebarV2CardHeight, sidebarV2CompactCardHeight } from "../sidebarV2CardAlignment";
-import { SidebarV2StatusMark, type SidebarV2TopStatusMark } from "../SidebarV2StatusIndicator";
-import type { SpaceThreadMark, SpaceThreadSummary } from "./spaceSidebar";
-
-/** Each summary mark as the card status it stands for (sidebarV2CardStatus);
-    idle is the card's empty status, drawn as its ring. */
-const SPACE_MARK_STATUS: Record<SpaceThreadMark, SidebarV2TopStatusMark | null> = {
-  working: { label: "Working", tone: "working", mark: "working" },
-  monitoring: { label: "Monitoring", mark: "monitoring" },
-  blocked: { label: "Needs you", tone: "approval", mark: "dot" },
-  failed: { label: "Failed", tone: "failed", mark: "dot" },
-  woke: { label: "Woke from snooze", tone: "approval", mark: "woke" },
-  done: { label: "Done", tone: "done", mark: "dot" },
-  idle: null,
-};
+import { SidebarV2StatusMark } from "../SidebarV2StatusIndicator";
+import { spaceOpenPullRequestsSearch } from "./spacePullRequests";
+import type { SpaceThreadSummary } from "./spaceSidebar";
 
 import {
   GitPullRequestIcon,
@@ -113,9 +102,9 @@ export function SidebarV2SpaceThreadsRow(props: {
           {/* The cards' own marks, one per state any thread in the space is in,
               while the cards are folded away; open, they show their own. */}
           {(props.expanded ? [] : (props.summary?.marks ?? [])).map((mark) => (
-            <span key={mark} className="flex h-[14px] shrink-0 items-center">
+            <span key={mark.key} className="flex h-[14px] shrink-0 items-center">
               <SidebarV2StatusMark
-                status={SPACE_MARK_STATUS[mark]}
+                status={mark.status}
                 seed={`space-threads:${props.spaceLabel}`}
                 idle="dot"
               />
@@ -169,15 +158,7 @@ export function SidebarV2SpaceLinkRows(props: {
           go(() =>
             navigate({
               to: "/pull-requests",
-              // A fresh view of the space's open PRs, not the list's saved
-              // filters: a search or author filter left there would read as
-              // the space having fewer PRs than it does.
-              search: {
-                involvement: "all",
-                state: "open",
-                environmentId: props.representative.environmentId,
-                projectId: props.representative.id,
-              },
+              search: spaceOpenPullRequestsSearch(props.representative),
             }),
           )
         }
@@ -230,9 +211,9 @@ export function SidebarV2SpaceCollapsedSummary(props: {
           </span>
           <span className="flex h-[14px] min-w-0 flex-wrap items-center gap-1 overflow-hidden">
             {props.summary?.marks.map((mark) => (
-              <span key={mark} className="flex h-[14px] shrink-0 items-center">
+              <span key={mark.key} className="flex h-[14px] shrink-0 items-center">
                 <SidebarV2StatusMark
-                  status={SPACE_MARK_STATUS[mark]}
+                  status={mark.status}
                   seed={`space-summary:${props.spaceLabel}`}
                   idle="dot"
                 />
@@ -264,7 +245,6 @@ export function SidebarV2SpaceCaret(props: {
   return (
     <svg
       aria-hidden
-      data-fork-shelf-caret=""
       viewBox="0 0 14 14"
       fill="currentColor"
       stroke="currentColor"

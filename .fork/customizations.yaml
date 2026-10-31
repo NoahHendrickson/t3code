@@ -6021,6 +6021,8 @@
     - apps/web/src/routes/changelog.tsx
     - apps/web/src/custom/spaces/SpaceOverview.tsx
     - apps/web/src/custom/spaces/spaceHome.ts
+    - apps/web/src/custom/spaces/SidebarV2SpaceHeader.tsx
+    - apps/web/src/custom/spaces/spaceThreadMarks.tsx
     - apps/web/src/custom/spaces/spacePullRequests.ts
     - apps/web/src/custom/spaces/spacePullRequests.test.ts
     - apps/web/src/custom/sidebarV2ProjectGrouping.ts

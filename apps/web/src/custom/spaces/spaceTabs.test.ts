@@ -8,6 +8,7 @@ import {
   openSpaceTab,
   pairSpaceTabs,
   rankSpaceTabs,
+  reconcileSpaceTabs,
   resolveSpaceTabs,
   SPACE_TABS_LIMIT,
 } from "./spaceTabs";
@@ -27,6 +28,20 @@ describe("openSpaceTab", () => {
     expect(next).toHaveLength(SPACE_TABS_LIMIT);
     expect(next[0]).toBe("t1");
     expect(next.at(-1)).toBe("new");
+  });
+});
+
+describe("reconcileSpaceTabs", () => {
+  it("opens what is on screen and drops what left, in one pass", () => {
+    expect(reconcileSpaceTabs(["a", "b"], { opened: ["c"], closed: new Set(["a"]) })).toEqual([
+      "b",
+      "c",
+    ]);
+  });
+
+  it("returns the stored list itself when nothing changes", () => {
+    const keys = ["a", "b"];
+    expect(reconcileSpaceTabs(keys, { opened: ["b"], closed: new Set(["z"]) })).toBe(keys);
   });
 });
 

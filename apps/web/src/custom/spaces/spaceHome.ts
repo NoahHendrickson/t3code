@@ -3,23 +3,28 @@
  *
  * A space's Home is its project's unsent draft. The new-thread handler only
  * reuses that draft while it is empty, and otherwise mints another. So a Home
- * with something in it is resumed as it is; an empty one goes through the
- * handler, which also resets its workspace context the way a new thread would.
+ * with something in it is resumed as it is; otherwise the handler opens one,
+ * resetting its workspace context the way a new thread would, in the project
+ * the caller is in when the space has it, else the space's representative.
  *
  * Drafts are keyed by their own project's logical key, which a space's key is
  * not when it gathers several projects (Scratch), so the Home is found by the
  * space's member projects instead.
  */
-import type { ScopedProjectRef } from "@t3tools/contracts";
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import type { EnvironmentId, ProjectId, ScopedProjectRef } from "@t3tools/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useNavigate } from "@tanstack/react-router";
 
 import { composerDraftHasUserContent, DraftId, useComposerDraftStore } from "~/composerDraftStore";
+import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 import { readThreadShell } from "~/state/entities";
 
 import { spaceHasProject } from "./spaceProjects";
 
 type Space = { readonly memberProjectRefs: ReadonlyArray<ScopedProjectRef> };
+type OpenableSpace = Space & {
+  readonly representative: { readonly environmentId: EnvironmentId; readonly id: ProjectId };
+};
 
 /** The drafts that are a project's Home, one draft id per logical project.
     The store's own record, so it changes only when a Home does. */
@@ -37,7 +42,21 @@ export function isSpaceDraft(
 
 export function useOpenSpaceHome() {
   const navigate = useNavigate();
-  return (space: Space, openNew: () => void) => {
+  const handleNewThread = useNewThreadHandler();
+  /** `from` is the project the caller is in, if any. */
+  return (space: OpenableSpace | null, from: ScopedProjectRef | null = null) => {
+    const openNew = () => {
+      const target =
+        space === null ||
+        (from !== null && spaceHasProject(space, from.environmentId, from.projectId))
+          ? from
+          : scopeProjectRef(space.representative.environmentId, space.representative.id);
+      if (target !== null) void handleNewThread(target);
+    };
+    if (space === null) {
+      openNew();
+      return;
+    }
     const store = useComposerDraftStore.getState();
     const draftId = Object.values(store.logicalProjectDraftThreadKeyByLogicalProjectKey).find(
       (id) => {

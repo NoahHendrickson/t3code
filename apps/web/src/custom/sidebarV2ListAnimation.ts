@@ -57,9 +57,9 @@ export function sidebarV2ListAnimationDurationMs(
   return SIDEBAR_V2_LIST_ANIMATION_DURATION_MS;
 }
 
-/** True for an item in a list that draws spaces: their headers mark it. */
+/** True for an item in a list that draws spaces (fork-spaces). */
 function isSidebarV2SpaceListItem(el: Element): boolean {
-  return el.parentElement?.querySelector(":scope > li[data-fork-space-header]") != null;
+  return el.parentElement?.getAttribute("data-fork-grouping") === "spaces";
 }
 
 /** Timing for an add or remove: the list's own, or the spaces one above. */

@@ -33,8 +33,12 @@ import { ProviderMark } from "../icons/ProviderMarks";
 import { ScheduledCard, ScheduledSectionLabel } from "../scheduled/scheduledPageChrome";
 import { parseConventionalTitle } from "./changelog.logic";
 import { spaceHasProject, useSpaceOfProject } from "./spaceProjects";
-import { useSpacePullRequests } from "./spacePullRequests";
-import { ThreadStatusMark, useThreadProvider } from "./SpaceThreadTabs";
+import {
+  pullRequestSearch,
+  spaceOpenPullRequestsSearch,
+  useSpacePullRequests,
+} from "./spacePullRequests";
+import { ThreadStatusMark, useThreadProvider } from "./spaceThreadMarks";
 
 type Space = NonNullable<ReturnType<typeof useSpaceOfProject>>;
 
@@ -197,12 +201,7 @@ function SpacePullRequests(props: { readonly space: Space; readonly state: "open
               onClick: () =>
                 void navigate({
                   to: "/pull-requests",
-                  search: {
-                    involvement: "all",
-                    state: "open",
-                    environmentId: space.representative.environmentId,
-                    projectId: space.representative.id,
-                  },
+                  search: spaceOpenPullRequestsSearch(space.representative),
                 }),
             }
       }
@@ -231,15 +230,7 @@ function SpacePullRequests(props: { readonly space: Space; readonly state: "open
           onClick={() =>
             void navigate({
               to: "/pull-requests",
-              search: {
-                involvement: "all",
-                state,
-                repository: entry.repository,
-                number: entry.number,
-                selectedHost: entry.host,
-                selectedProjectId: entry.projectId,
-                selectedEnvironmentId: entry.environmentId,
-              },
+              search: pullRequestSearch(entry, state),
             })
           }
         />

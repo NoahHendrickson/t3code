@@ -35,20 +35,15 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
-import { threadWokeAt } from "@t3tools/client-runtime/state/thread-settled";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { resolveRenameCommit } from "~/components/chat/ChatHeader";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { useSplitThreadStore } from "~/custom/splitThreads/splitThreadStore";
-import {
-  filterSidebarV2VisibleThreads,
-  resolveThreadLastVisitedAt,
-} from "~/components/Sidebar.logic";
+import { filterSidebarV2VisibleThreads } from "~/components/Sidebar.logic";
 import { toastManager } from "~/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { useNewThreadHandler } from "~/hooks/useHandleNewThread";
 import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
 import { cn } from "~/lib/utils";
 import {
@@ -57,7 +52,6 @@ import {
   useQuietThreadShell,
   useThreadShellsForProjectRefs,
 } from "~/state/entities";
-import { useEnvironmentProviders } from "~/state/environments";
 import { readEnvironmentScope } from "~/state/session";
 import { threadEnvironment } from "~/state/threads";
 import { useOrchestrationCommand } from "~/state/use-orchestration-command";
@@ -66,17 +60,21 @@ import { buildThreadRouteParams } from "~/threadRoutes";
 
 import { EllipsisVerticalIcon, Home, PlusIcon, XIcon } from "../icons/lucide-phosphor";
 import { ProviderMark } from "../icons/ProviderMarks";
-import { resolveSidebarV2CardStatus } from "../sidebarV2CardStatus";
-import { SidebarV2StatusMark } from "../SidebarV2StatusIndicator";
 import { useSidebarV2Grouping } from "../sidebarV2ProjectGrouping";
 import { useSpaceOfProject } from "./spaceProjects";
 import { useOpenSpaceHome } from "./spaceHome";
 import {
+  threadCardStatus,
+  ThreadStatusMark,
+  useThreadProvider,
+  type ThreadShell,
+} from "./spaceThreadMarks";
+import {
   closeSpaceTabs,
   neighbourAfterClose,
-  openSpaceTab,
   pairSpaceTabs,
   rankSpaceTabs,
+  reconcileSpaceTabs,
   resolveSpaceTabs,
   useSpaceTabKeys,
 } from "./spaceTabs";
@@ -85,47 +83,6 @@ import {
 export function useSpaceTabsEnabled(activeProject: EnvironmentProject | null): boolean {
   const [grouping] = useSidebarV2Grouping();
   return grouping === "spaces" && activeProject !== null;
-}
-
-type ThreadShell = ReturnType<typeof useThreadShellsForProjectRefs>[number];
-
-/** The provider a thread runs on, for its mark: its instance resolved to a
-    driver, falling back to the instance id, which a default instance shares
-    with its driver. */
-export function useThreadProvider() {
-  const providersByEnvironment = useEnvironmentProviders();
-  return (shell: ThreadShell) => {
-    const instanceId = shell.runtime?.providerInstanceId ?? shell.modelSelection.instanceId;
-    const provider = providersByEnvironment
-      .get(shell.environmentId)
-      ?.find((entry) => entry.instanceId === instanceId);
-    return {
-      driverKind: provider?.driver ?? instanceId,
-      displayName: provider?.displayName ?? instanceId,
-    };
-  };
-}
-
-/** A thread's status as its card draws it: the same ladder, read state and
-    wake, in the cards' 14px slot. */
-export function ThreadStatusMark(props: { readonly shell: ThreadShell }) {
-  const { shell } = props;
-  const key = scopedThreadKey(scopeThreadRef(shell.environmentId, shell.id));
-  const localLastVisitedAt = useUiStateStore((store) => store.threadLastVisitedAtById[key]);
-  return (
-    <span className="flex h-[14px] shrink-0 items-center">
-      <SidebarV2StatusMark
-        status={
-          resolveSidebarV2CardStatus(shell, {
-            lastVisitedAt: resolveThreadLastVisitedAt(shell.lastVisitedAt, localLastVisitedAt),
-            wokeAt: threadWokeAt(shell, { now: new Date().toISOString() }),
-          }).topStatus
-        }
-        seed={key}
-        idle="dot"
-      />
-    </span>
-  );
 }
 
 /** The row's own height, which the Glass card starts below (theme.custom.css). */
@@ -159,8 +116,6 @@ export function SpaceTabRow(props: {
   readonly homeActive: boolean;
   /** In a split, the pane the route is on; alone, the one selected key. */
   readonly focusedKey?: string | undefined;
-  /** Opens the space's Home, its draft (the plus does the same). */
-  readonly onOpenHome: () => void;
   /** Threads on screen, read on their own: a split's other pane may sit in
       another space, outside this space's shells. */
   readonly onScreenShells?: readonly ThreadShell[] | undefined;
@@ -183,8 +138,9 @@ export function SpaceTabRow(props: {
   const lastVisitedAtById = useUiStateStore((store) => store.threadLastVisitedAtById);
   const { selectedKeys } = props;
   const openSpaceHome = useOpenSpaceHome();
+  // The Home tab, the plus, and closing the last tab all open the Home.
   const onOpenHome = () =>
-    space === null ? props.onOpenHome() : openSpaceHome(space, props.onOpenHome);
+    openSpaceHome(space, scopeProjectRef(props.project.environmentId, props.project.id));
   const spaceLabel = space?.label ?? props.project.title;
 
   // The tabs hold what the sidebar would show (no subagents, no automation
@@ -205,32 +161,23 @@ export function SpaceTabRow(props: {
   });
   const resolved = resolveSpaceTabs({ openKeys, activeKeys: selectedKeys, threads });
   // Drawn by status, as each tab's mark reads it: what needs you leftmost.
+  const now = new Date().toISOString();
   const tabs = rankSpaceTabs(
     resolved.tabs,
-    (tab) =>
-      resolveSidebarV2CardStatus(tab.shell, {
-        lastVisitedAt: resolveThreadLastVisitedAt(
-          tab.shell.lastVisitedAt,
-          lastVisitedAtById[tab.key],
-        ),
-        wokeAt: threadWokeAt(tab.shell, { now: new Date().toISOString() }),
-      }).kind,
+    (tab) => threadCardStatus(tab.shell, lastVisitedAtById[tab.key], now).kind,
   );
 
-  // Store what is on screen as a tab, and drop tabs whose thread settled.
-  const openable = threads
-    .filter((thread) => selectedKeys.includes(thread.key) && !thread.closed)
-    .map((thread) => thread.key)
-    .join("\n");
+  // Store what is on screen as a tab, and drop tabs whose thread left. The
+  // reconciled list is the stored one itself until something changes.
+  const reconciled = reconcileSpaceTabs(openKeys, {
+    opened: threads
+      .filter((thread) => selectedKeys.includes(thread.key) && !thread.closed)
+      .map((thread) => thread.key),
+    closed: resolved.closedKeys,
+  });
   useEffect(() => {
-    if (openable === "") return;
-    setOpenKeys((keys) => openable.split("\n").reduce(openSpaceTab, keys));
-  }, [openable, setOpenKeys]);
-  const closedSignature = [...resolved.closedKeys].join("\n");
-  useEffect(() => {
-    if (closedSignature === "") return;
-    setOpenKeys((keys) => closeSpaceTabs(keys, new Set(closedSignature.split("\n"))));
-  }, [closedSignature, setOpenKeys]);
+    if (reconciled !== openKeys) setOpenKeys(reconciled);
+  }, [openKeys, reconciled, setOpenKeys]);
 
   const openTab = (key: string) => {
     const ref = parseScopedThreadKey(key);
@@ -536,7 +483,6 @@ export function SplitSpaceTabRow(props: {
   );
   const onScreenShells = [focusedShell, partnerShell].filter((shell) => shell !== null);
   const enabled = useSpaceTabsEnabled(project);
-  const handleNewThread = useNewThreadHandler();
   if (!enabled || project === null) return null;
   return (
     <SpaceTabRow
@@ -549,7 +495,6 @@ export function SplitSpaceTabRow(props: {
       homeActive={props.focusedIsDraft || partnerIsDraft}
       focusedKey={scopedThreadKey(props.focusedRef)}
       onScreenShells={onScreenShells}
-      onOpenHome={() => void handleNewThread(scopeProjectRef(project.environmentId, project.id))}
       className={props.className}
     />
   );

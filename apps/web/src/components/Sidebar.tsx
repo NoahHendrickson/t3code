@@ -345,11 +345,11 @@ import {
 } from "~/custom/spaces/SidebarV2SpaceRows";
 import { ProviderMark } from "~/custom/icons/ProviderMarks";
 import {
-  spaceOpenPullRequests,
-  spaceThreadsFolded,
-  summarizeSpaceThreads,
+  buildSpaceSections,
+  EMPTY_SPACE_SECTIONS,
   useSpaceThreadsExpanded,
 } from "~/custom/spaces/spaceSidebar";
+import { SidebarV2SpaceHeader } from "~/custom/spaces/SidebarV2SpaceHeader";
 import { isSpaceDraft, useHomeDraftIds, useOpenSpaceHome } from "~/custom/spaces/spaceHome";
 /* fork:end fork-spaces */
 /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
@@ -2913,6 +2913,41 @@ export default function Sidebar() {
     [keepCollapsedPinnedRow, pinnedCollapsed, pinnedThreads],
   );
   /* fork:end sidebar-v2-status-grouping */
+  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
+     One model per space: its group, what its Threads row and folded header
+     report (from the cards' own status ladder and PR links), and whether
+     its cards are folded behind the Threads row. */
+  const spaceSections = useMemo(
+    () =>
+      spacesGrouped
+        ? buildSpaceSections({
+            sections: activeSections.flatMap((section) =>
+              section.kind === "project" ? [section] : [],
+            ),
+            groups: projectGroups,
+            expanded: expandedSpaceThreads,
+            statusOf: (thread) =>
+              resolveSidebarV2CardStatus(thread, {
+                lastVisitedAt: resolveThreadLastVisitedAt(
+                  thread.lastVisitedAt,
+                  threadLastVisitedAtById[
+                    scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))
+                  ],
+                ),
+                wokeAt: threadWokeAt(thread, { now: snoozeNow }),
+              }).topStatus,
+          })
+        : EMPTY_SPACE_SECTIONS,
+    [
+      activeSections,
+      expandedSpaceThreads,
+      projectGroups,
+      snoozeNow,
+      spacesGrouped,
+      threadLastVisitedAtById,
+    ],
+  );
+  /* fork:end fork-spaces */
   const visibleActiveSections = useMemo(
     () =>
       activeSections.map((section) => {
@@ -2932,9 +2967,9 @@ export default function Sidebar() {
               /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
                  A space also folds its cards behind its Threads row. The
                  header still reads `collapsed` alone. */
-              (spacesGrouped &&
-                section.kind === "project" &&
-                spaceThreadsFolded(section.header, expandedSpaceThreads)),
+              (section.kind === "project" &&
+                section.header !== null &&
+                spaceSections.get(section.header.projectKey)?.threadsFolded === true),
             /* fork:end fork-spaces */
             keepThread: (thread) =>
               /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
@@ -2953,7 +2988,7 @@ export default function Sidebar() {
       collapsedProjectKeys,
       keptRouteThreadKey,
       /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-      expandedSpaceThreads,
+      spaceSections,
       spacesGrouped,
       /* fork:end fork-spaces */
       /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
@@ -2982,46 +3017,6 @@ export default function Sidebar() {
     [listSections],
   );
   /* fork:end sidebar-v2-project-grouping */
-  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-     The Threads row reports what it would open, folded or not: a count, and
-     whether any of it is working or done and unread, from the cards' own
-     status ladder. */
-  const spaceThreadSummaryByKey = new Map(
-    spacesGrouped
-      ? activeSections.flatMap((section) =>
-          section.kind === "project" && section.header !== null
-            ? [
-                [
-                  section.header.projectKey,
-                  summarizeSpaceThreads(section.threads, (thread) => {
-                    const threadKey = scopedThreadKey(
-                      scopeThreadRef(thread.environmentId, thread.id),
-                    );
-                    return resolveSidebarV2CardStatus(thread, {
-                      lastVisitedAt: resolveThreadLastVisitedAt(
-                        thread.lastVisitedAt,
-                        threadLastVisitedAtById[threadKey],
-                      ),
-                      wokeAt: threadWokeAt(thread, { now: snoozeNow }),
-                    }).kind;
-                  }),
-                ] as const,
-              ]
-            : [],
-        )
-      : [],
-  );
-  // A folded space also names its open PRs, from its threads' own links.
-  const spaceOpenPullRequestsByKey = new Map(
-    spacesGrouped
-      ? activeSections.flatMap((section) =>
-          section.kind === "project" && section.header !== null
-            ? [[section.header.projectKey, spaceOpenPullRequests(section.threads)] as const]
-            : [],
-        )
-      : [],
-  );
-  /* fork:end fork-spaces */
   // The Working shelf (beta) collapses the same way, with the same route
   // exception: sending a message folds the open thread into the shelf, and
   // its row must stay visible there.
@@ -4850,6 +4845,10 @@ export default function Sidebar() {
                   /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
                   {...splitDropHandlers}
                   /* fork:end fork-split-threads */
+                  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
+                     The list's grouping, for the spaces' styles and list animation. */
+                  data-fork-grouping={grouping}
+                  /* fork:end fork-spaces */
                 >
                   {/* fork:end sidebar-v2-card-rows */}
                   {(() => {
@@ -5038,6 +5037,13 @@ export default function Sidebar() {
                         <SidebarSplitPairRow
                           key={splitRow.key}
                           projectSection={options.underProjectHeader === true}
+                          shape={threadRowShape({
+                            variant:
+                              section === "active" || section === "pinned" || section === "working"
+                                ? "card"
+                                : "slim",
+                            compact: compactCards,
+                          })}
                         >
                           {[splitRow.left, splitRow.right].map((card) =>
                             renderOneThreadRow(
@@ -5204,22 +5210,16 @@ export default function Sidebar() {
                           (previousSection.threads.length > 0 ||
                             /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
                                An open space painted its rows. */
-                            (spacesGrouped &&
-                              previousSection.kind === "project" &&
+                            (previousSection.kind === "project" &&
                               previousSection.header !== null &&
-                              previousSection.header.projectKey !== UNGROUPED_PROJECT_KEY &&
+                              spaceSections.has(previousSection.header.projectKey) &&
                               !previousSection.collapsed));
                         /* fork:end fork-spaces */
                         /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                        const spaceGroup =
-                          spacesGrouped &&
-                          header !== null &&
-                          header.projectKey !== UNGROUPED_PROJECT_KEY
-                            ? (projectGroups.find(
-                                (group) => group.projectKey === header.projectKey,
-                              ) ?? null)
-                            : null;
-                        const space = section.collapsed ? null : spaceGroup;
+                        const spaceSection =
+                          header === null ? undefined : spaceSections.get(header.projectKey);
+                        // An open space draws its rows around its cards.
+                        const space = section.collapsed ? undefined : spaceSection?.group;
                         /* fork:end fork-spaces */
                         /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
                         if (section.kind === "status") {
@@ -5234,98 +5234,128 @@ export default function Sidebar() {
                         return [
                           ...(header
                             ? [
-                                <SidebarV2ProjectGroupHeader
-                                  key={`project-group-header:${header.projectKey}`}
-                                  label={header.displayName}
-                                  projectKey={header.projectKey}
-                                  reorderable={
-                                    projectReorderEnabled &&
-                                    header.projectKey !== UNGROUPED_PROJECT_KEY
-                                  }
-                                  isFirst={sectionIndex === 0}
-                                  afterOpenSection={afterOpenSection}
-                                  collapsed={section.collapsed}
-                                  onToggleCollapsed={() =>
-                                    toggleProjectGroupCollapsed(header.projectKey)
-                                  }
-                                  // The unresolved-project section names no project,
-                                  // so there is nowhere for its plus to start a
-                                  // thread. Keyed off the bucket's own identity
-                                  // rather than off its label being null: the label
-                                  // is a rendering detail that happens to correlate
-                                  // today, and one signal carrying two meanings is
-                                  // how it stops correlating later.
-                                  onNewThread={
-                                    header.projectKey === UNGROUPED_PROJECT_KEY
-                                      ? undefined
-                                      : () => handleNewThreadInProject(header.projectKey)
-                                  }
-                                  // Same door as the filter menu's per-project
-                                  // overflow: the project settings page.
-                                  onProjectSettings={
-                                    header.projectKey === UNGROUPED_PROJECT_KEY
-                                      ? undefined
-                                      : () => {
-                                          const group = projectGroups.find(
-                                            (candidate) =>
-                                              candidate.projectKey === header.projectKey,
-                                          );
-                                          if (group) openProjectSettings(group);
-                                        }
-                                  }
-                                  // Settle every active thread in the section —
-                                  // the multi-select "Settle (N)" path, addressed
-                                  // by project instead of by selection. Counted
-                                  // from the unfiltered section so a collapsed
-                                  // group still settles what it hides; drafts,
-                                  // already-settled rows and environments without
-                                  // settlement are left out, and the count names
-                                  // exactly what the click will touch.
-                                  settleAllCount={
-                                    settleAllKeysByProjectKey.get(header.projectKey)?.length ?? 0
-                                  }
-                                  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                                  variant={spacesGrouped ? "space" : "project"}
-                                  collapsedSummary={
-                                    spacesGrouped &&
-                                    section.collapsed &&
-                                    header.projectKey !== UNGROUPED_PROJECT_KEY ? (
-                                      <SidebarV2SpaceCollapsedSummary
-                                        spaceLabel={header.displayName ?? ""}
-                                        summary={
-                                          spaceThreadSummaryByKey.get(header.projectKey) ?? null
-                                        }
-                                        openPullRequests={
-                                          spaceOpenPullRequestsByKey.get(header.projectKey) ?? []
-                                        }
-                                      />
-                                    ) : undefined
-                                  }
-                                  // A space's Home is its draft: the name opens it
-                                  // the way the plus does, and is lit while it is open.
-                                  onOpenSpace={
-                                    spaceGroup !== null
-                                      ? () => {
-                                          if (isMobile) setOpenMobile(false);
-                                          openSpaceHome(spaceGroup, () =>
+                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
+                                   A space's header is its own component; the
+                                   unresolved section, no space, draws one too
+                                   so the list reads alike, without a Home. */
+                                spacesGrouped ? (
+                                  <SidebarV2SpaceHeader
+                                    key={`project-group-header:${header.projectKey}`}
+                                    label={header.displayName}
+                                    projectKey={header.projectKey}
+                                    reorderable={
+                                      projectReorderEnabled && spaceSection !== undefined
+                                    }
+                                    isFirst={sectionIndex === 0}
+                                    afterOpenSection={afterOpenSection}
+                                    collapsed={section.collapsed}
+                                    onToggleCollapsed={() =>
+                                      toggleProjectGroupCollapsed(header.projectKey)
+                                    }
+                                    project={spaceSection?.group ?? null}
+                                    // Its Home is its draft, lit while open.
+                                    active={
+                                      spaceSection !== undefined &&
+                                      !newThreadContext.activeThread &&
+                                      isSpaceDraft(
+                                        spaceSection.group,
+                                        newThreadContext.activeDraftThread,
+                                      )
+                                    }
+                                    onOpen={
+                                      spaceSection === undefined
+                                        ? null
+                                        : () => {
+                                            if (isMobile) setOpenMobile(false);
+                                            openSpaceHome({
+                                              memberProjectRefs:
+                                                spaceSection.group.memberProjectRefs,
+                                              representative: spaceSection.group,
+                                            });
+                                          }
+                                    }
+                                    summary={
+                                      section.collapsed && spaceSection !== undefined ? (
+                                        <SidebarV2SpaceCollapsedSummary
+                                          spaceLabel={spaceSection.group.displayName}
+                                          summary={spaceSection.summary}
+                                          openPullRequests={spaceSection.openPullRequests}
+                                        />
+                                      ) : null
+                                    }
+                                    {...(spaceSection === undefined
+                                      ? {}
+                                      : {
+                                          onNewThread: () =>
                                             handleNewThreadInProject(header.projectKey),
-                                          );
-                                        }
-                                      : undefined
-                                  }
-                                  spaceActive={
-                                    spaceGroup !== null &&
-                                    !newThreadContext.activeThread &&
-                                    isSpaceDraft(spaceGroup, newThreadContext.activeDraftThread)
-                                  }
-                                  spaceProject={spaceGroup ?? undefined}
+                                          onProjectSettings: () =>
+                                            openProjectSettings(spaceSection.group),
+                                          settleAllCount:
+                                            settleAllKeysByProjectKey.get(header.projectKey)
+                                              ?.length ?? 0,
+                                          onSettleAllThreads: () =>
+                                            settleAllThreadsInProject(header.projectKey),
+                                        })}
+                                  />
+                                ) : (
                                   /* fork:end fork-spaces */
-                                  onSettleAllThreads={
-                                    header.projectKey === UNGROUPED_PROJECT_KEY
-                                      ? undefined
-                                      : () => settleAllThreadsInProject(header.projectKey)
-                                  }
-                                />,
+                                  <SidebarV2ProjectGroupHeader
+                                    key={`project-group-header:${header.projectKey}`}
+                                    label={header.displayName}
+                                    projectKey={header.projectKey}
+                                    reorderable={
+                                      projectReorderEnabled &&
+                                      header.projectKey !== UNGROUPED_PROJECT_KEY
+                                    }
+                                    isFirst={sectionIndex === 0}
+                                    afterOpenSection={afterOpenSection}
+                                    collapsed={section.collapsed}
+                                    onToggleCollapsed={() =>
+                                      toggleProjectGroupCollapsed(header.projectKey)
+                                    }
+                                    // The unresolved-project section names no project,
+                                    // so there is nowhere for its plus to start a
+                                    // thread. Keyed off the bucket's own identity
+                                    // rather than off its label being null: the label
+                                    // is a rendering detail that happens to correlate
+                                    // today, and one signal carrying two meanings is
+                                    // how it stops correlating later.
+                                    onNewThread={
+                                      header.projectKey === UNGROUPED_PROJECT_KEY
+                                        ? undefined
+                                        : () => handleNewThreadInProject(header.projectKey)
+                                    }
+                                    // Same door as the filter menu's per-project
+                                    // overflow: the project settings page.
+                                    onProjectSettings={
+                                      header.projectKey === UNGROUPED_PROJECT_KEY
+                                        ? undefined
+                                        : () => {
+                                            const group = projectGroups.find(
+                                              (candidate) =>
+                                                candidate.projectKey === header.projectKey,
+                                            );
+                                            if (group) openProjectSettings(group);
+                                          }
+                                    }
+                                    // Settle every active thread in the section —
+                                    // the multi-select "Settle (N)" path, addressed
+                                    // by project instead of by selection. Counted
+                                    // from the unfiltered section so a collapsed
+                                    // group still settles what it hides; drafts,
+                                    // already-settled rows and environments without
+                                    // settlement are left out, and the count names
+                                    // exactly what the click will touch.
+                                    settleAllCount={
+                                      settleAllKeysByProjectKey.get(header.projectKey)?.length ?? 0
+                                    }
+                                    onSettleAllThreads={
+                                      header.projectKey === UNGROUPED_PROJECT_KEY
+                                        ? undefined
+                                        : () => settleAllThreadsInProject(header.projectKey)
+                                    }
+                                  />
+                                ),
                               ]
                             : []),
                           /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
@@ -5334,7 +5364,7 @@ export default function Sidebar() {
                                 <SidebarV2SpaceThreadsRow
                                   key={`space-threads:${space.projectKey}`}
                                   spaceLabel={space.displayName}
-                                  summary={spaceThreadSummaryByKey.get(space.projectKey) ?? null}
+                                  summary={spaceSection?.summary ?? null}
                                   compact={compactCards}
                                   expanded={expandedSpaceThreads.has(space.projectKey)}
                                   onToggle={() => toggleSpaceThreadsExpanded(space.projectKey)}
@@ -5442,33 +5472,52 @@ export default function Sidebar() {
                             )}
                             /* fork:end sidebar-v2-card-rows */
                           >
-                            <span className="text-xs font-medium text-info-foreground">
+                            <span
+                              className={cn(
+                                "text-xs font-medium text-info-foreground",
+                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
+                                   Under spaces the shelf reads like Settled. */
+                                spacesGrouped && "text-muted-foreground/50",
+                                /* fork:end fork-spaces */
+                              )}
+                            >
                               {snoozedShelfExpanded
                                 ? "Snoozed"
                                 : `Snoozed (${snoozedThreads.length})`}
                             </span>
-                            <span className="h-px flex-1 bg-info/20" />
-                            <ChevronDownIcon
-                              aria-hidden
+                            <span
                               className={cn(
-                                // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
-                                // On the trailing column's axis with nothing owed:
-                                // px-2.5 over the list's 8px inset is 18, and a
-                                // flush 12px chevron centres 6px further — the
-                                // column's 24. The offset constant carries the
-                                // derivation.
-                                // fork:end sidebar-v2-row-action-hit-area
-                                SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
-                                "size-3 text-info-foreground transition-transform",
-                                snoozedShelfExpanded && "rotate-180",
+                                "h-px flex-1 bg-info/20",
+                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
+                                spacesGrouped && "bg-transparent",
+                                /* fork:end fork-spaces */
                               )}
                             />
                             {/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                                Spaces draw their own caret; theme.custom.css hides the chevron. */}
+                                Spaces draw their own filled caret in place of the chevron. */}
                             {spacesGrouped ? (
-                              <SidebarV2SpaceCaret open={snoozedShelfExpanded} />
-                            ) : null}
-                            {/* fork:end fork-spaces */}
+                              <SidebarV2SpaceCaret
+                                open={snoozedShelfExpanded}
+                                className="text-muted-foreground/50"
+                              />
+                            ) : (
+                              /* fork:end fork-spaces */
+                              <ChevronDownIcon
+                                aria-hidden
+                                className={cn(
+                                  // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                                  // On the trailing column's axis with nothing owed:
+                                  // px-2.5 over the list's 8px inset is 18, and a
+                                  // flush 12px chevron centres 6px further — the
+                                  // column's 24. The offset constant carries the
+                                  // derivation.
+                                  // fork:end sidebar-v2-row-action-hit-area
+                                  SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
+                                  "size-3 text-info-foreground transition-transform",
+                                  snoozedShelfExpanded && "rotate-180",
+                                )}
+                              />
+                            )}
                           </button>
                         </li>,
                       );
@@ -5528,24 +5577,35 @@ export default function Sidebar() {
                                 : `Settled (${settledThreads.length})`}
                             </span>
                             {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
-                            <span className="h-px flex-1 bg-(--fork-sidebar-rule)" />
-                            {/* fork:end sidebar-v2-card-rows */}
-                            <ChevronDownIcon
-                              aria-hidden
+                            <span
                               className={cn(
-                                // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
-                                // Same derivation as the snoozed shelf above.
-                                // fork:end sidebar-v2-row-action-hit-area
-                                SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
-                                "size-3 text-muted-foreground/50 transition-transform",
-                                settledShelfExpanded && "rotate-180",
+                                "h-px flex-1 bg-(--fork-sidebar-rule)",
+                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
+                                spacesGrouped && "bg-transparent",
+                                /* fork:end fork-spaces */
                               )}
                             />
+                            {/* fork:end sidebar-v2-card-rows */}
                             {/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */}
                             {spacesGrouped ? (
-                              <SidebarV2SpaceCaret open={settledShelfExpanded} />
-                            ) : null}
-                            {/* fork:end fork-spaces */}
+                              <SidebarV2SpaceCaret
+                                open={settledShelfExpanded}
+                                className="text-muted-foreground/50"
+                              />
+                            ) : (
+                              /* fork:end fork-spaces */
+                              <ChevronDownIcon
+                                aria-hidden
+                                className={cn(
+                                  // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                                  // Same derivation as the snoozed shelf above.
+                                  // fork:end sidebar-v2-row-action-hit-area
+                                  SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
+                                  "size-3 text-muted-foreground/50 transition-transform",
+                                  settledShelfExpanded && "rotate-180",
+                                )}
+                              />
+                            )}
                           </button>
                         </li>,
                       );

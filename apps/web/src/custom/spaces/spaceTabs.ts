@@ -36,6 +36,16 @@ export function closeSpaceTabs(
   return keys.some((key) => closing.has(key)) ? keys.filter((key) => !closing.has(key)) : keys;
 }
 
+/** Stores what is on screen as a tab and drops the tabs whose thread left
+    the space. The same list when nothing changes, so a caller can compare
+    by identity and write only when it must. */
+export function reconcileSpaceTabs(
+  keys: readonly string[],
+  change: { readonly opened: readonly string[]; readonly closed: ReadonlySet<string> },
+): readonly string[] {
+  return change.opened.reduce(openSpaceTab, closeSpaceTabs(keys, change.closed));
+}
+
 export interface SpaceTabThread {
   readonly key: string;
   /** Settled or archived: either way the thread has left the space's

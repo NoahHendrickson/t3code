@@ -51,3 +51,41 @@ export function useSpacePullRequests(space: Space, state: "open" | "merged", lim
   const list = usePullRequestList(targets);
   return { list, entries: spacePullRequestEntries(space, list.data?.entries ?? []) };
 }
+
+/** The PR page on a space's open pull requests: a fresh view, not the list's
+    saved filters, where a search or author filter left there would read as
+    the space having fewer PRs than it does. The page scopes to one project,
+    so it opens on the space's representative. */
+export function spaceOpenPullRequestsSearch(representative: {
+  readonly environmentId: EnvironmentId;
+  readonly id: ProjectId;
+}) {
+  return {
+    involvement: "all",
+    state: "open",
+    environmentId: representative.environmentId,
+    projectId: representative.id,
+  } as const;
+}
+
+/** The PR page opened on one pull request. */
+export function pullRequestSearch(
+  entry: {
+    readonly environmentId: EnvironmentId;
+    readonly projectId: ProjectId;
+    readonly host: string;
+    readonly repository: string;
+    readonly number: number;
+  },
+  state: "open" | "merged",
+) {
+  return {
+    involvement: "all",
+    state,
+    repository: entry.repository,
+    number: entry.number,
+    selectedHost: entry.host,
+    selectedProjectId: entry.projectId,
+    selectedEnvironmentId: entry.environmentId,
+  } as const;
+}

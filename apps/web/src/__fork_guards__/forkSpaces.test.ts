@@ -40,13 +40,16 @@ describe("fork guard: fork-spaces", () => {
     expect(branch).toContain("grouped: true");
   });
 
-  it("draws the space header with its favicon and the status caret", () => {
-    const header = readSibling("../custom/SidebarV2ProjectGroupHeader.tsx");
-    expect(sidebar).toContain('variant={spacesGrouped ? "space" : "project"}');
-    expect(header).toContain('<ProjectFavicon project={props.spaceProject} className="size-4" />');
-    expect(sidebar).toContain("spaceProject={");
+  it("draws a space's header as its own component, with the project header's buttons", () => {
+    const header = readSibling("../custom/spaces/SidebarV2SpaceHeader.tsx");
+    // Spaces swap the header, never mode-switch the project's.
+    expect(sidebar).toMatch(/spacesGrouped \? \(\s*<SidebarV2SpaceHeader/u);
+    expect(readSibling("../custom/SidebarV2ProjectGroupHeader.tsx")).not.toContain("spaceActive");
+    expect(header).toContain('<ProjectFavicon project={props.project} className="size-4" />');
     expect(header).toContain('data-fork-space-caret=""');
-    expect(header).toContain('<path d="M2.71 4.75H11.29L7 9.04Z" />');
+    expect(header).toContain("<SidebarV2SectionActions");
+    // One model per space, looked up once per section.
+    expect(sidebar).toContain("spaceSections.get(header.projectKey)");
   });
 
   it("puts a space's rows in its section and leads its cards with their provider", () => {
@@ -59,7 +62,7 @@ describe("fork guard: fork-spaces", () => {
   it("hangs a space's children off a guide line under its favicon", () => {
     const theme = readSibling("../theme.custom.css");
     const stepAt = theme.indexOf(
-      "ul:has(> li[data-fork-space-header])\n  > li[data-fork-project-section] {",
+      'ul[data-fork-grouping="spaces"]\n  > li[data-fork-project-section] {',
     );
     expect(stepAt).toBeGreaterThan(-1);
     expect(theme.slice(stepAt, theme.indexOf("}", stepAt))).toContain(
@@ -69,7 +72,9 @@ describe("fork guard: fork-spaces", () => {
   });
 
   it("folds a space's cards without changing its header's collapse", () => {
-    expect(sidebar).toContain("spaceThreadsFolded(section.header, expandedSpaceThreads)");
+    expect(sidebar).toContain(
+      "spaceSections.get(section.header.projectKey)?.threadsFolded === true",
+    );
     // The header still reads the one collapsed flag (sidebar-v2-project-grouping).
     expect(sidebar).toContain("collapsed={section.collapsed}");
   });
@@ -156,11 +161,11 @@ describe("fork guard: fork-spaces", () => {
   });
 
   it("draws the shelves under spaces with the spaces' caret and no hairline", () => {
-    expect(sidebar).toContain("<SidebarV2SpaceCaret open={snoozedShelfExpanded} />");
-    expect(sidebar).toContain("<SidebarV2SpaceCaret open={settledShelfExpanded} />");
-    const theme = readSibling("../theme.custom.css");
-    const shelfAt = theme.indexOf("& > span.h-px {");
-    expect(theme.slice(shelfAt, theme.indexOf("}", shelfAt))).toContain("background: transparent;");
+    expect(sidebar).toMatch(/<SidebarV2SpaceCaret\s+open=\{snoozedShelfExpanded\}/u);
+    expect(sidebar).toMatch(/<SidebarV2SpaceCaret\s+open=\{settledShelfExpanded\}/u);
+    // One caret drawn, not two with one hidden; the hairline goes clear.
+    expect(sidebar).toContain('spacesGrouped && "bg-transparent",');
+    expect(sidebar).not.toContain("theme.custom.css hides the chevron");
   });
 
   it("inks a space's rows with Glass's quiet ink", () => {

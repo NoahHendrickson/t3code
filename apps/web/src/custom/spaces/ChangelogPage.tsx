@@ -21,7 +21,7 @@ import { formatRelativeTimeLabel } from "~/timestampFormat";
 import { GitMergeIcon, HistoryIcon, MessagesSquareIcon } from "../icons/lucide-phosphor";
 import { groupChangelogByWeek, parseConventionalTitle } from "./changelog.logic";
 import { useSpace } from "./spaceProjects";
-import { useSpacePullRequests } from "./spacePullRequests";
+import { pullRequestSearch, useSpacePullRequests } from "./spacePullRequests";
 
 const CHANGELOG_LIMIT = 100;
 
@@ -98,15 +98,7 @@ function ChangelogList(props: { readonly space: NonNullable<ReturnType<typeof us
                       onClick={() =>
                         void navigate({
                           to: "/pull-requests",
-                          search: {
-                            involvement: "all",
-                            state: "merged",
-                            repository: entry.repository,
-                            number: entry.number,
-                            selectedHost: entry.host,
-                            selectedProjectId: entry.projectId,
-                            selectedEnvironmentId: entry.environmentId,
-                          },
+                          search: pullRequestSearch(entry, "merged"),
                         })
                       }
                       className="flex min-w-0 cursor-pointer items-baseline gap-2 text-left text-sm text-foreground hover:underline"

@@ -6,7 +6,7 @@
  * collapsed set, shared with Group by project, so switching between the two
  * keeps which projects you had closed.
  */
-import type { SidebarV2CardStatusKind } from "../sidebarV2CardStatus";
+import type { SidebarV2CardTopStatus } from "../sidebarV2CardStatus";
 import { UNGROUPED_PROJECT_KEY, useSidebarV2CollapsedKeys } from "../sidebarV2ProjectGrouping";
 
 const SPACE_THREADS_EXPANDED_STORAGE_KEY = "t3code:fork:space-threads-expanded:v1";
@@ -20,64 +20,57 @@ export function useSpaceThreadsExpanded(): readonly [
   return useSidebarV2CollapsedKeys(SPACE_THREADS_EXPANDED_STORAGE_KEY, isAnyKey);
 }
 
-/** Whether a section's cards are folded behind its Threads row. The
-    unresolved-project section draws no Threads row, so nothing could unfold
-    it; its cards answer to its header alone. */
-export function spaceThreadsFolded(
-  header: { readonly projectKey: string } | null,
-  expanded: ReadonlySet<string>,
-): boolean {
-  if (header === null || header.projectKey === UNGROUPED_PROJECT_KEY) return false;
-  return !expanded.has(header.projectKey);
-}
-
-/** One mark per distinct state among a space's threads, in the order the
-    Threads row draws them. Approval, input and a usage limit share a key:
-    the cards draw all three as the same amber half circle. */
-const SPACE_THREAD_MARKS = [
+/** The order the Threads row draws its marks in: live work first, then what
+    needs you, then what finished, then idle. Order only; each mark is the
+    card's own (sidebarV2CardStatus), so its label and tone cannot drift. */
+const MARK_ORDER = [
   "working",
   "monitoring",
-  "blocked",
-  "failed",
-  "woke",
-  "done",
+  "dot:approval",
+  "dot:input",
+  "dot:failed",
+  "woke:approval",
+  "dot:done",
   "idle",
-] as const;
-export type SpaceThreadMark = (typeof SPACE_THREAD_MARKS)[number];
+];
 
-const MARK_BY_KIND: Record<SidebarV2CardStatusKind, SpaceThreadMark> = {
-  working: "working",
-  // The cards draw one mark for both (sidebarV2CardStatus).
-  waiting: "monitoring",
-  monitoring: "monitoring",
-  approval: "blocked",
-  input: "blocked",
-  limited: "blocked",
-  failed: "failed",
-  woke: "woke",
-  done: "done",
-};
+/** One of a space's marks: a card status, or null for an idle card. */
+export interface SpaceThreadMark {
+  readonly key: string;
+  readonly status: SidebarV2CardTopStatus;
+}
 
-/** What a space's Threads row reports: how many threads it holds, and the
-    marks its cards draw. Read off the cards' own status ladder, so the row
-    and the cards cannot disagree. */
+/** What a space's Threads row reports: how many threads it holds, and one of
+    its cards' marks for each distinct mark they draw. */
 export interface SpaceThreadSummary {
   readonly count: number;
   readonly marks: readonly SpaceThreadMark[];
 }
 
+function markKey(status: SidebarV2CardTopStatus): string {
+  if (status === null) return "idle";
+  return "tone" in status && status.mark !== "working"
+    ? `${status.mark}:${status.tone}`
+    : status.mark;
+}
+
 export function summarizeSpaceThreads<T>(
   threads: readonly T[],
-  kindOf: (thread: T) => SidebarV2CardStatusKind | null,
+  statusOf: (thread: T) => SidebarV2CardTopStatus,
 ): SpaceThreadSummary {
-  const present = new Set<SpaceThreadMark>();
+  const marks = new Map<string, SpaceThreadMark>();
   for (const thread of threads) {
-    const kind = kindOf(thread);
-    present.add(kind === null ? "idle" : MARK_BY_KIND[kind]);
+    const status = statusOf(thread);
+    const key = markKey(status);
+    if (!marks.has(key)) marks.set(key, { key, status });
   }
+  const rank = (mark: SpaceThreadMark) => {
+    const index = MARK_ORDER.indexOf(mark.key);
+    return index === -1 ? MARK_ORDER.length : index;
+  };
   return {
     count: threads.length,
-    marks: SPACE_THREAD_MARKS.filter((mark) => present.has(mark)),
+    marks: [...marks.values()].toSorted((left, right) => rank(left) - rank(right)),
   };
 }
 
@@ -109,3 +102,47 @@ export function spaceOpenPullRequests(
   }
   return [...open.values()].toSorted((left, right) => right - left);
 }
+
+/** What the sidebar draws for one space: its project group, what its Threads
+    row and folded header report, and whether its cards are folded behind that
+    row. */
+export interface SpaceSection<TGroup> {
+  readonly group: TGroup;
+  readonly summary: SpaceThreadSummary;
+  readonly openPullRequests: readonly number[];
+  readonly threadsFolded: boolean;
+}
+
+/** One model per space, by project key, so the list asks one question of a
+    section. The unresolved-project section is not a space: it has no project,
+    so no Home, rows or summary, and its cards answer to its header alone. */
+export function buildSpaceSections<
+  TThread extends { readonly pullRequests?: ReadonlyArray<PullRequestLinkLike> | undefined },
+  TGroup extends { readonly projectKey: string },
+>(input: {
+  readonly sections: ReadonlyArray<{
+    readonly header: { readonly projectKey: string } | null;
+    readonly threads: readonly TThread[];
+  }>;
+  readonly groups: readonly TGroup[];
+  readonly expanded: ReadonlySet<string>;
+  readonly statusOf: (thread: TThread) => SidebarV2CardTopStatus;
+}): ReadonlyMap<string, SpaceSection<TGroup>> {
+  const spaces = new Map<string, SpaceSection<TGroup>>();
+  for (const section of input.sections) {
+    const projectKey = section.header?.projectKey;
+    if (projectKey === undefined || projectKey === UNGROUPED_PROJECT_KEY) continue;
+    const group = input.groups.find((candidate) => candidate.projectKey === projectKey);
+    if (group === undefined) continue;
+    spaces.set(projectKey, {
+      group,
+      summary: summarizeSpaceThreads(section.threads, input.statusOf),
+      openPullRequests: spaceOpenPullRequests(section.threads),
+      threadsFolded: !input.expanded.has(projectKey),
+    });
+  }
+  return spaces;
+}
+
+/** No spaces: the list is grouped some other way. */
+export const EMPTY_SPACE_SECTIONS: ReadonlyMap<string, never> = new Map<string, never>();

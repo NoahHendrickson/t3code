@@ -3123,36 +3123,6 @@
   padding-top: 2rem;
 }
 
-/* The Snoozed and Settled shelves under a list of spaces read like its
-   headers: no hairline (the spacer keeps the caret on the end), the spaces'
-   filled caret in place of the chevron, and Snoozed in Settled's muted ink
-   rather than blue. */
-:root[data-fork="noahhendrickson-t3code"]
-  ul:has(> li[data-fork-space-header])
-  :is(
-    [data-testid="sidebar-v2-snoozed-shelf-toggle"],
-    [data-testid="sidebar-v2-settled-shelf-toggle"]
-  ) {
-  & > span.h-px {
-    background: transparent;
-  }
-
-  & > svg:not([data-fork-shelf-caret]) {
-    display: none;
-  }
-
-  & > [data-fork-shelf-caret] {
-    color: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
-  }
-}
-
-:root[data-fork="noahhendrickson-t3code"]
-  ul:has(> li[data-fork-space-header])
-  [data-testid="sidebar-v2-snoozed-shelf-toggle"]
-  > span:first-child {
-  color: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
-}
-
 /* A space header's buttons take no width at rest and open on hover, focus
    or an open menu, sliding what precedes them (the folded summary, then the
    name, which truncates) over rather than hiding anything. The header's own
@@ -3193,7 +3163,7 @@
    and last round off. Hidden while a project drag
    draws its drop edge, which uses the same pseudo-element. */
 :root[data-fork="noahhendrickson-t3code"]
-  ul:has(> li[data-fork-space-header])
+  ul[data-fork-grouping="spaces"]
   > li[data-fork-project-section] {
   margin-block-start: -2px;
   padding-block-start: 2px;
@@ -3201,7 +3171,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  ul:has(> li[data-fork-space-header]):not(:has(> [data-fork-drop-edge]))
+  ul[data-fork-grouping="spaces"]:not(:has(> [data-fork-drop-edge]))
   > li[data-fork-project-section]::after {
   content: "";
   position: absolute;
@@ -3215,7 +3185,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  ul:has(> li[data-fork-space-header]):not(:has(> [data-fork-drop-edge]))
+  ul[data-fork-grouping="spaces"]:not(:has(> [data-fork-drop-edge]))
   > li[data-fork-space-header]
   + li[data-fork-project-section]::after {
   top: 6px;
@@ -3224,7 +3194,7 @@
 }
 
 :root[data-fork="noahhendrickson-t3code"]
-  ul:has(> li[data-fork-space-header]):not(:has(> [data-fork-drop-edge]))
+  ul[data-fork-grouping="spaces"]:not(:has(> [data-fork-drop-edge]))
   > li[data-fork-project-section]:not(:has(+ li[data-fork-project-section]))::after {
   bottom: 4px;
   border-bottom-left-radius: 9999px;
@@ -3233,9 +3203,11 @@
 
 /* Stepped in, half a sidebar leaves a split's cards no room for a title, so
    under a space the pair stacks, in the same clear tray as its two tabs. The
-   tray's corners are the cards' own plus its 2px pad: a compact card is a
-   pill, a full one rounded-md or 16px, rounder still under Glass. */
-:root[data-fork="noahhendrickson-t3code"] ul:has(> li[data-fork-space-header]) {
+   tray's corners are its cards' plus its 2px pad, by the shape the pair row
+   names (THREAD_ROW_RADIUS in custom/sidebarV2RowPolicy.ts, and Glass's
+   rounder cards in glass-surfaces): change one, change these. A compact card
+   is a 34px pill, so 17px. */
+:root[data-fork="noahhendrickson-t3code"] ul[data-fork-grouping="spaces"] {
   & > li[data-fork-split-pair] > ul {
     grid-template-columns: minmax(0, 1fr);
     padding: 2px;
@@ -3243,29 +3215,29 @@
     background: rgb(0 0 0 / 0.04);
   }
 
-  & > li[data-fork-split-pair] > ul:has(> li > .rounded-\[16px\]) {
+  & > li[data-fork-split-pair] > ul[data-fork-row-shape="card"] {
     border-radius: 18px;
   }
 
-  & > li[data-fork-split-pair] > ul:has(> li > .rounded-full) {
+  & > li[data-fork-split-pair] > ul[data-fork-row-shape="compactCard"] {
     border-radius: 19px;
   }
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark
-  ul:has(> li[data-fork-space-header])
+  ul[data-fork-grouping="spaces"]
   > li[data-fork-split-pair]
   > ul {
   background: rgb(255 255 255 / 0.07);
 }
 
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  ul:has(> li[data-fork-space-header]) {
-  & > li[data-fork-split-pair] > ul:has(> li > .rounded-md) {
+  ul[data-fork-grouping="spaces"] {
+  & > li[data-fork-split-pair] > ul[data-fork-row-shape="shelfRow"] {
     border-radius: 14px;
   }
 
-  & > li[data-fork-split-pair] > ul:has(> li > .rounded-\[16px\]) {
+  & > li[data-fork-split-pair] > ul[data-fork-row-shape="card"] {
     border-radius: 22px;
   }
 }
@@ -3273,7 +3245,7 @@
 /* Glass draws a selected card's dark edge on its li (glass-surfaces); under a
    space the li carries the step-in, so the edge starts where the card does. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  ul:has(> li[data-fork-space-header])
+  ul[data-fork-grouping="spaces"]
   > li[data-thread-item][data-fork-project-section]:has(> [aria-current="page"])::before {
   left: 27px;
 }
@@ -3357,7 +3329,7 @@
    are: the partner wears the open card's row fill and, under Glass, its
    selected glass (glass-surfaces), which keys on aria-current alone. */
 :root[data-fork="noahhendrickson-t3code"]
-  ul:has(> li[data-fork-space-header])
+  ul[data-fork-grouping="spaces"]
   > li[data-fork-split-pair]
   > ul:has(> li > [aria-current="page"])
   > li[data-thread-item]:not(:has(> [aria-current="page"]))
@@ -3367,7 +3339,7 @@
 
 :root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d="off"])) {
   &.dark[data-fork-theme="cool-darker"]
-    ul:has(> li[data-fork-space-header])
+    ul[data-fork-grouping="spaces"]
     > li[data-fork-split-pair]
     > ul:has(> li > [aria-current="page"])
     > li[data-thread-item]:not(:has(> [aria-current="page"])) {
@@ -3376,7 +3348,7 @@
   }
 
   &.dark[data-fork-theme="cool-darker"]
-    ul:has(> li[data-fork-space-header])
+    ul[data-fork-grouping="spaces"]
     > li[data-fork-split-pair]
     > ul:has(> li > [aria-current="page"])
     > li[data-thread-item]:not(:has(> [aria-current="page"]))
@@ -3385,7 +3357,7 @@
   }
 
   &.dark[data-fork-theme="cool-darker"]
-    ul:has(> li[data-fork-space-header])
+    ul[data-fork-grouping="spaces"]
     > li[data-fork-split-pair]
     > ul:has(> li > [aria-current="page"])
     > li[data-thread-item]:not(:has(> [aria-current="page"]))
@@ -3400,7 +3372,7 @@
   }
 
   &.dark[data-fork-theme="cool-darker"]
-    ul:has(> li[data-fork-space-header])
+    ul[data-fork-grouping="spaces"]
     > li[data-fork-split-pair]
     > ul:has(> li > [aria-current="page"])
     > li[data-thread-item]:not(:has(> [aria-current="page"]))::before {
@@ -3417,7 +3389,7 @@
   }
 
   &.dark[data-fork-theme="cool-darker"]
-    ul:has(> li[data-fork-space-header])
+    ul[data-fork-grouping="spaces"]
     > li[data-fork-split-pair]
     > ul:has(> li > [aria-current="page"])
     > li[data-thread-item]:not(:has(> [aria-current="page"])):has(> .rounded-\[16px\])::before {
@@ -3425,7 +3397,7 @@
   }
 
   &.dark[data-fork-theme="cool-darker"]
-    ul:has(> li[data-fork-space-header])
+    ul[data-fork-grouping="spaces"]
     > li[data-fork-split-pair]
     > ul:has(> li > [aria-current="page"])
     > li[data-thread-item]:not(:has(> [aria-current="page"])):has(> .rounded-full)::before {
@@ -3433,7 +3405,7 @@
   }
 
   &[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-    ul:has(> li[data-fork-space-header])
+    ul[data-fork-grouping="spaces"]
     > li[data-fork-split-pair]
     > ul:has(> li > [aria-current="page"])
     > li[data-thread-item]:not(:has(> [aria-current="page"]))

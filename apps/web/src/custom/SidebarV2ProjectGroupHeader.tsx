@@ -63,11 +63,10 @@ import {
   PlusIcon,
   SettingsIcon,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { type SortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { ProjectFavicon, type ProjectFaviconProject } from "~/components/ProjectFavicon";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { cn } from "~/lib/utils";
 // Fork-only glyph from the shim's own path (this file is fork-owned).
@@ -81,7 +80,7 @@ import {
 /** The unresolved-project section: a just-deleted project, or an environment
     whose projects have not loaded yet. Named rather than left blank so the run
     of cards under it does not read as belonging to the project above. */
-const UNGROUPED_PROJECT_LABEL = "Unknown project";
+export const UNGROUPED_PROJECT_LABEL = "Unknown project";
 
 /** Headers are the only sortable items in a list that also holds their
     cards, so a list-sorting strategy would shift the wrong things. Nothing
@@ -116,26 +115,8 @@ export function SidebarV2ProjectGroupHeader(props: {
       rather than hiding it, so the menu keeps its shape. */
   readonly settleAllCount?: number | undefined;
   readonly onSettleAllThreads?: (() => void) | undefined;
-  /** Spaces (fork-spaces) lead with the project's favicon instead of the
-      folder mark. The label opens the space's Home (its draft) instead of
-      folding it; status grouping's filled caret, a button of its own on the row's
-      far end, folds it. */
-  readonly variant?: "project" | "space";
-  /** Opens the space's Home, its draft; omitted for the unresolved section. */
-  readonly onOpenSpace?: (() => void) | undefined;
-  /** The space's Home is the view on screen. */
-  readonly spaceActive?: boolean | undefined;
-  /** What a folded space holds (its threads and open PRs), shown before
-      its buttons, which slide in beside it on hover. */
-  readonly collapsedSummary?: ReactNode;
-  /** The space's project, for its favicon. Absent for the unresolved
-      section, which has no project to draw. */
-  readonly spaceProject?: ProjectFaviconProject | undefined;
 }) {
-  const space = props.variant === "space";
-  const spaceActive = space && props.spaceActive === true;
   const label = props.label ?? UNGROUPED_PROJECT_LABEL;
-  const [menuOpen, setMenuOpen] = useState(false);
   const sortable = useSortable({ id: props.projectKey, disabled: !props.reorderable });
   const dropEdge =
     sortable.isOver && !sortable.isDragging && sortable.activeIndex !== -1
@@ -144,95 +125,11 @@ export function SidebarV2ProjectGroupHeader(props: {
         : "below"
       : null;
   const trailingCount = (props.onProjectSettings ? 1 : 0) + (props.onNewThread ? 1 : 0);
-  const settleAllCount = props.settleAllCount ?? 0;
-  const sectionActions =
-    props.onProjectSettings || props.onNewThread ? (
-      // The design's 32px icon buttons (364:11451, 368:21126) on the
-      // shared box: twMerge lets size-8/rounded-[10px] win over the
-      // class's size-6/rounded-md. -me-3 pulls the group out of the row's
-      // own padding so it sits flush with the list edge, where the
-      // trailing derivation puts it. Above the collapse layer — without
-      // z-10 the absolute button steals the click and the buttons look
-      // dead. Hidden until the section is hovered — see the file note.
-      <span
-        data-fork-section-actions=""
-        data-fork-menu-open={menuOpen ? "" : undefined}
-        className={cn(
-          "-me-3 relative z-10 flex shrink-0 items-center",
-          // A space's caret takes the row's far end instead; the slot that
-          // reveals these (below) owns the spacing.
-          space && "me-0",
-          SIDEBAR_V2_TRAILING_OFFSET.headerPlus,
-        )}
-      >
-        {props.onProjectSettings ? (
-          <Menu open={menuOpen} onOpenChange={setMenuOpen}>
-            <MenuTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label={`Actions for ${label}`}
-                  data-testid="sidebar-v2-project-group-menu"
-                  // The collapse layer sits under the row; a click here
-                  // is the menu's, never a toggle.
-                  onClick={(event) => event.stopPropagation()}
-                  className={cn(
-                    cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]"),
-                    space && "rounded-full",
-                  )}
-                />
-              }
-            >
-              <EllipsisVerticalIcon aria-hidden className="size-4" />
-            </MenuTrigger>
-            <MenuPopup align="end" className="min-w-48">
-              <MenuItem
-                disabled={settleAllCount === 0}
-                onClick={() => props.onSettleAllThreads?.()}
-              >
-                <CheckIcon />
-                {settleAllCount > 1
-                  ? `Settle all threads (${settleAllCount})`
-                  : "Settle all threads"}
-              </MenuItem>
-              <MenuItem onClick={() => props.onProjectSettings?.()}>
-                <SettingsIcon />
-                Settings
-              </MenuItem>
-            </MenuPopup>
-          </Menu>
-        ) : null}
-        {props.onNewThread ? (
-          <button
-            type="button"
-            // Named for the project, not "New thread": a screen reader
-            // running the headings of a grouped sidebar would otherwise
-            // hear the same control repeated once per group with nothing
-            // to tell them apart.
-            aria-label={`New thread in ${label}`}
-            onClick={(event) => {
-              // The collapse layer sits under the row; stop anything from
-              // treating this as a toggle if an ancestor starts listening.
-              event.stopPropagation();
-              props.onNewThread?.();
-            }}
-            className={cn(
-              cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]"),
-              space && "rounded-full",
-            )}
-          >
-            <PlusIcon aria-hidden className="size-4" />
-          </button>
-        ) : null}
-      </span>
-    ) : null;
   return (
     <li
       role="presentation"
       className={cn("list-none", sortable.isDragging && "relative z-20 opacity-80")}
       data-fork-project-section-header=""
-      // Marks a list of spaces for the list animation (sidebarV2ListAnimation).
-      data-fork-space-header={space ? "" : undefined}
       data-fork-drop-edge={dropEdge ?? undefined}
       ref={sortable.setNodeRef}
       style={
@@ -263,163 +160,167 @@ export function SidebarV2ProjectGroupHeader(props: {
               : SIDEBAR_V2_CARD_ALIGNMENT.headerLeadCollapsed,
         )}
       >
-        {/* A space's name and its hit area share one flexible box, so the pill
-            ends wherever the summary or the buttons begin, however wide they
-            are. A project header keeps its fixed columns: the box is
-            display: contents there and changes nothing. */}
-        <span
-          className={
-            space
-              ? "relative flex min-w-10 flex-1 items-center gap-1.5 self-stretch pe-2.5"
-              : "contents"
-          }
-        >
-          {/* The design's label button (364:11475): 32px tall, 10px corners,
+        {/* The design's label button (364:11475): 32px tall, 10px corners,
             ghost hover. It stops one 32px column short of the row's end per
             trailing button, so each of those is its own target. */}
-          <button
-            type="button"
-            data-testid="sidebar-v2-project-group-collapse"
-            {...(space
-              ? {
-                  "aria-label": `Open ${label}`,
-                  "aria-current": spaceActive ? ("page" as const) : undefined,
-                  disabled: props.onOpenSpace === undefined,
-                  onClick: props.onOpenSpace,
-                }
-              : {
-                  "aria-expanded": !props.collapsed,
-                  "aria-label": props.collapsed ? `Expand ${label}` : `Collapse ${label}`,
-                  onClick: props.onToggleCollapsed,
-                })}
-            {...(props.reorderable ? sortable.listeners : {})}
-            className={cn(
-              "absolute inset-y-0 left-0 z-0 cursor-pointer rounded-[10px]",
-              props.reorderable && "cursor-grab active:cursor-grabbing",
-              // A space's hover fills are pills, like the rows under it.
-              space && "rounded-full",
-              trailingCount === 2 ? "right-16" : trailingCount === 1 ? "right-8" : "right-0",
-              // A space's pill spans its own box, out over the row's start
-              // padding; the box pads inside it so a truncated name stops
-              // short of the pill's end.
-              space && "-left-3 right-0",
-              spaceActive && "bg-sidebar-row-hover",
-              "outline-none hover:bg-sidebar-row-hover",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
-            )}
-          />
-          {/* Open folder when expanded, closed when collapsed; chevron on hover
+        <button
+          type="button"
+          data-testid="sidebar-v2-project-group-collapse"
+          aria-expanded={!props.collapsed}
+          aria-label={props.collapsed ? `Expand ${label}` : `Collapse ${label}`}
+          onClick={props.onToggleCollapsed}
+          {...(props.reorderable ? sortable.listeners : {})}
+          className={cn(
+            "absolute inset-y-0 left-0 z-0 cursor-pointer rounded-[10px]",
+            props.reorderable && "cursor-grab active:cursor-grabbing",
+            trailingCount === 2 ? "right-16" : trailingCount === 1 ? "right-8" : "right-0",
+            "outline-none hover:bg-sidebar-row-hover",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
+          )}
+        />
+        {/* Open folder when expanded, closed when collapsed; chevron on hover
             either way. Stacked in one 16px box so the swap does not shift the
             label. pointer-events none so clicks fall through to the collapse
             layer. */}
-          {space ? (
-            props.spaceProject ? (
-              <span
-                className={cn(
-                  "pointer-events-none relative z-[1] flex shrink-0 items-center justify-center",
-                  SIDEBAR_V2_CARD_ALIGNMENT.headerMarkBox,
-                )}
-              >
-                <ProjectFavicon project={props.spaceProject} className="size-4" />
-              </span>
-            ) : null
-          ) : (
-            <span
-              className={cn(
-                "pointer-events-none relative z-[1] flex shrink-0 items-center justify-center text-muted-foreground group-hover/collapse:text-sidebar-foreground",
-                SIDEBAR_V2_CARD_ALIGNMENT.headerMarkBox,
-              )}
-            >
-              <FolderOpenIcon
-                aria-hidden
-                className={cn(
-                  "size-4",
-                  props.collapsed ? "invisible" : "group-hover/collapse:invisible",
-                )}
-              />
-              <FolderClosedIcon
-                aria-hidden
-                className={cn(
-                  "absolute size-4",
-                  props.collapsed ? "group-hover/collapse:invisible" : "invisible",
-                )}
-              />
-              <ChevronDownIcon
-                aria-hidden
-                className={cn(
-                  "absolute size-4 transition-transform invisible group-hover/collapse:visible",
-                  props.collapsed && "-rotate-90",
-                )}
-              />
-            </span>
+        <span
+          className={cn(
+            "pointer-events-none relative z-[1] flex shrink-0 items-center justify-center text-muted-foreground group-hover/collapse:text-sidebar-foreground",
+            SIDEBAR_V2_CARD_ALIGNMENT.headerMarkBox,
           )}
-          {/* The heading is the label, not the collapse button: a heading that
-            wraps the button would take "Collapse <project>" as its name. */}
-          <span
-            role="heading"
-            aria-level={3}
-            // Label/12 Medium at --muted-foreground (368:21364), lifting to
-            // foreground with the mark while the row is hovered.
-            className="pointer-events-none relative z-[1] min-w-0 flex-1 truncate text-[0.75rem] font-medium leading-4 text-muted-foreground group-hover/collapse:text-sidebar-foreground"
-          >
-            {label}
-          </span>
+        >
+          <FolderOpenIcon
+            aria-hidden
+            className={cn(
+              "size-4",
+              props.collapsed ? "invisible" : "group-hover/collapse:invisible",
+            )}
+          />
+          <FolderClosedIcon
+            aria-hidden
+            className={cn(
+              "absolute size-4",
+              props.collapsed ? "group-hover/collapse:invisible" : "invisible",
+            )}
+          />
+          <ChevronDownIcon
+            aria-hidden
+            className={cn(
+              "absolute size-4 transition-transform invisible group-hover/collapse:visible",
+              props.collapsed && "-rotate-90",
+            )}
+          />
         </span>
-        {space ? (
-          <>
-            {/* Folded, a space shows what it holds. ms-1.5 on top of the
-                row's gap: 12px between the pill and the first icon. */}
-            {props.collapsedSummary !== undefined ? (
-              <span
-                data-fork-space-summary=""
-                className="pointer-events-none relative z-10 ms-1.5 flex min-w-0 shrink items-center"
-              >
-                {props.collapsedSummary}
-              </span>
-            ) : null}
-            {/* The buttons take no width at rest and open on hover or focus
-                (theme.custom.css), moving the summary over rather than
-                hiding it; the name truncates to make the room. -me-1.5 spends
-                the row's gap before the caret. */}
-            {sectionActions ? (
-              <span data-fork-space-actions-reveal="" className="relative z-10 -me-1.5 shrink-0">
-                <span className="flex min-w-0 overflow-clip [overflow-clip-margin:4px]">
-                  {sectionActions}
-                </span>
-              </span>
-            ) : null}
-          </>
-        ) : (
-          sectionActions
-        )}
-        {space ? (
-          <button
-            type="button"
-            data-fork-space-caret=""
-            aria-expanded={!props.collapsed}
-            aria-label={props.collapsed ? `Expand ${label}` : `Collapse ${label}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              props.onToggleCollapsed();
-            }}
-            className={cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "-me-3 relative z-10 size-8 rounded-full")}
-          >
-            {/* Status grouping's caret (SidebarV2StatusSectionHeader): up
-                while open, down while folded. */}
-            <svg
-              aria-hidden
-              viewBox="0 0 14 14"
-              fill="currentColor"
-              stroke="currentColor"
-              strokeWidth={1}
-              strokeLinejoin="round"
-              className={cn("size-3.5 transition-transform", !props.collapsed && "rotate-180")}
-            >
-              <path d="M2.71 4.75H11.29L7 9.04Z" />
-            </svg>
-          </button>
+        {/* The heading is the label, not the collapse button: a heading that
+            wraps the button would take "Collapse <project>" as its name. */}
+        <span
+          role="heading"
+          aria-level={3}
+          // Label/12 Medium at --muted-foreground (368:21364), lifting to
+          // foreground with the mark while the row is hovered.
+          className="pointer-events-none relative z-[1] min-w-0 flex-1 truncate text-[0.75rem] font-medium leading-4 text-muted-foreground group-hover/collapse:text-sidebar-foreground"
+        >
+          {label}
+        </span>
+        {trailingCount > 0 ? (
+          <SidebarV2SectionActions
+            label={label}
+            onNewThread={props.onNewThread}
+            onProjectSettings={props.onProjectSettings}
+            settleAllCount={props.settleAllCount}
+            onSettleAllThreads={props.onSettleAllThreads}
+          />
         ) : null}
       </div>
     </li>
+  );
+}
+
+/** A section header's trailing buttons: the project's menu (settle all,
+    settings) and its plus. Shared with the space header (fork-spaces), which
+    rounds the buttons into pills and moves the group off the list edge. */
+export function SidebarV2SectionActions(props: {
+  readonly label: string;
+  readonly onNewThread?: (() => void) | undefined;
+  readonly onProjectSettings?: (() => void) | undefined;
+  readonly settleAllCount?: number | undefined;
+  readonly onSettleAllThreads?: (() => void) | undefined;
+  readonly className?: string | undefined;
+  readonly buttonClassName?: string | undefined;
+}) {
+  const { label } = props;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const settleAllCount = props.settleAllCount ?? 0;
+  return (
+    // The design's 32px icon buttons (364:11451, 368:21126) on the
+    // shared box: twMerge lets size-8/rounded-[10px] win over the
+    // class's size-6/rounded-md. -me-3 pulls the group out of the row's
+    // own padding so it sits flush with the list edge, where the
+    // trailing derivation puts it. Above the collapse layer — without
+    // z-10 the absolute button steals the click and the buttons look
+    // dead. Hidden until the section is hovered — see the file note.
+    <span
+      data-fork-section-actions=""
+      data-fork-menu-open={menuOpen ? "" : undefined}
+      className={cn(
+        "-me-3 relative z-10 flex shrink-0 items-center",
+        SIDEBAR_V2_TRAILING_OFFSET.headerPlus,
+        props.className,
+      )}
+    >
+      {props.onProjectSettings ? (
+        <Menu open={menuOpen} onOpenChange={setMenuOpen}>
+          <MenuTrigger
+            render={
+              <button
+                type="button"
+                aria-label={`Actions for ${label}`}
+                data-testid="sidebar-v2-project-group-menu"
+                // The collapse layer sits under the row; a click here
+                // is the menu's, never a toggle.
+                onClick={(event) => event.stopPropagation()}
+                className={cn(
+                  cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]"),
+                  props.buttonClassName,
+                )}
+              />
+            }
+          >
+            <EllipsisVerticalIcon aria-hidden className="size-4" />
+          </MenuTrigger>
+          <MenuPopup align="end" className="min-w-48">
+            <MenuItem disabled={settleAllCount === 0} onClick={() => props.onSettleAllThreads?.()}>
+              <CheckIcon />
+              {settleAllCount > 1 ? `Settle all threads (${settleAllCount})` : "Settle all threads"}
+            </MenuItem>
+            <MenuItem onClick={() => props.onProjectSettings?.()}>
+              <SettingsIcon />
+              Settings
+            </MenuItem>
+          </MenuPopup>
+        </Menu>
+      ) : null}
+      {props.onNewThread ? (
+        <button
+          type="button"
+          // Named for the project, not "New thread": a screen reader
+          // running the headings of a grouped sidebar would otherwise
+          // hear the same control repeated once per group with nothing
+          // to tell them apart.
+          aria-label={`New thread in ${label}`}
+          onClick={(event) => {
+            // The collapse layer sits under the row; stop anything from
+            // treating this as a toggle if an ancestor starts listening.
+            event.stopPropagation();
+            props.onNewThread?.();
+          }}
+          className={cn(
+            cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]"),
+            props.buttonClassName,
+          )}
+        >
+          <PlusIcon aria-hidden className="size-4" />
+        </button>
+      ) : null}
+    </span>
   );
 }

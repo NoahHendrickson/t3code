@@ -8579,7 +8579,6 @@ export default function ChatView(props: ChatViewProps) {
             project={activeProject}
             selectedKeys={isServerThread && activeThreadKey !== null ? [activeThreadKey] : []}
             homeActive={!isServerThread}
-            onOpenHome={handleNewThreadInActiveProjectStable}
             className={cn(
               "px-3 sm:px-5",
               isElectron && "drag-region",
