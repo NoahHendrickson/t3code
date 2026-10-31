@@ -5912,3 +5912,27 @@
   verify:
     - apps/server/src/vcs/GitVcsDriverCore.test.ts
     - apps/server/src/storageCleanup.test.ts
+
+- id: fork-landing-draft-cleanup
+  intent: >
+    Upstream's `/` route opens a draft in the most recently updated project.
+    The fork's sidebar paints every unsent draft (sidebar-v2-draft-rows), so
+    a client that lands on `/` every visit (a phone) collected a blank "New
+    thread" card per project as the most recent project changed. The draft
+    the landing opens is remembered (persisted, since phones reload), and
+    when the route resolves somewhere else it is discarded if still
+    untouched: no composer content, no open preview tab, not held by a split
+    or floating pane or an in-flight Split agent, and still on the env mode,
+    branch and worktree the landing gave it. A touched landing draft is
+    forgotten and kept like any other. Drafts the user creates are never
+    tracked. Cleanup is at the source rather than a sidebar filter so drafts
+    the user made on purpose (Split agent, New thread with workspace
+    options, a draft with tabs) keep their row.
+  tier: 4
+  files:
+    - apps/web/src/custom/landingDraft.ts
+  shadows: []
+  watch:
+    - apps/web/src/routes/_chat.index.tsx
+  verify:
+    - apps/web/src/custom/landingDraft.test.ts
