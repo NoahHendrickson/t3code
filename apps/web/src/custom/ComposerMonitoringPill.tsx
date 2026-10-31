@@ -52,9 +52,8 @@ function resolveLivenessLabel(props: ComposerBackgroundLivenessPillProps): strin
 /**
  * Context-row chip for background liveness (monitoring watch or working
  * fleets). Sits to the right of the branch pill: leading mark + label + a
- * small stop square. Working uses the sidebar working mark (accepted always-on
- * composer repaint — same SVG opacity contract as the sidebar mark, but the
- * composer has no content-visibility escape); monitoring reuses
+ * small stop square. Working uses the sidebar working mark (a compositor
+ * transform, so always-on here costs no repaint); monitoring reuses
  * `SidebarV2MonitoringMark`. See `.fork/customizations.yaml#fork-composer-shell`.
  */
 export function ComposerBackgroundLivenessPill(props: ComposerBackgroundLivenessPillProps) {
