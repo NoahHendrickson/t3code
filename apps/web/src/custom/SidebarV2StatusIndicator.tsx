@@ -10,7 +10,6 @@ import {
   CircleHalfIcon,
   PenLineIcon,
 } from "./icons/lucide-phosphor";
-import type { CSSProperties } from "react";
 import { cn } from "~/lib/utils";
 import { useForkWorkingMark } from "./forkWorkingMark";
 
@@ -56,7 +55,7 @@ const TONE_TEXT_CLASS: Record<SidebarV2DotTone, string> = {
 const MARK_SLOT_CLASS = "flex h-[14px] w-[12px] shrink-0 items-center justify-center";
 
 // Geometry from PixelSparkleView: a 3x5 grid on a 3.8px pitch with 2.85px cells
-// rounded at 28% of their size. Native units land at 10.45×18.05; the SVG
+// rounded at 28% of their size. Native units land at 10.45×18.05; the mark
 // scales that into the leading 14px status slot (height-bound, aspect kept)
 // so the rain reads with the title text instead of hanging below its baseline.
 //
@@ -88,25 +87,12 @@ const COLUMNS: ReadonlyArray<{ speed: number; phase: number }> = [
     silently crop or pad the box while every drop kept rendering. */
 const COLS = COLUMNS.length;
 
-export const RAIN_SPAN = ROWS + 3;
-const SPAN = RAIN_SPAN;
+const RAIN_SPAN = ROWS + 3;
 
 /** The alpha curve every drop follows: a bright head, an exponential trail
-    above it, a sharp falloff below.
-
-    `rainAlpha` is the bare curve — this is what the generated keyframes in
-    `theme.custom.css` sample. `dropAlpha` adds Swift's "discard anything under
-    0.02" cutoff, which only applies to the still frame: CSS interpolates
-    between stops, so clamping the table would put a visible step in the tail
-    where the native view just fades out. Exported for
-    `__fork_guards__/sidebarV2Rain.test.ts`, which re-derives the table. */
-export function rainAlpha(dy: number): number {
+    above it, a sharp falloff below. Every frame of the rain film samples it. */
+function rainAlpha(dy: number): number {
   return dy >= 0 ? Math.exp(-dy * 0.8) : Math.exp(dy * 8);
-}
-
-export function dropAlpha(dy: number): number {
-  const alpha = rainAlpha(dy);
-  return alpha >= 0.02 ? alpha : 0;
 }
 
 /** Seconds to rewind this row's rain by. Native phanttom drives every tab from
@@ -138,90 +124,140 @@ export function rainOffsetSeconds(seed: string): number {
   return ((hash >>> 0) / 0x1_0000_0000) * 32;
 }
 
-/** One profile per row, spelled out in full because Tailwind only sees class
-    names it can find literally in the source — a template built from the row
-    index would never get generated. (The keyframes themselves are safe either
-    way: they live in `theme.custom.css`, outside the `@theme` block Tailwind
-    prunes, so an unreferenced one survives.) Duration and delay ride in as inline
-    styles; keeping the name in a class is what lets `motion-reduce:animate-none`
-    still win, since a class rule cannot override an inline `animation-name`. */
-export const RAIN_ANIMATION_CLASS = [
-  "animate-[sidebar-v2-rain-0_linear_infinite]",
-  "animate-[sidebar-v2-rain-1_linear_infinite]",
-  "animate-[sidebar-v2-rain-2_linear_infinite]",
-  "animate-[sidebar-v2-rain-3_linear_infinite]",
-  "animate-[sidebar-v2-rain-4_linear_infinite]",
-] as const;
-
 const WIDTH = (COLS - 1) * PITCH + CELL;
 const HEIGHT = (ROWS - 1) * PITCH + CELL;
-/** Drawn size: fit the 14px rain box on the tall axis, keep the native aspect. */
-const DRAW_HEIGHT = SLOT;
+/** Drawn width: fit the 14px rain box on the tall axis, keep the native aspect. */
 const DRAW_WIDTH = (WIDTH / HEIGHT) * SLOT;
 
-/** The grid is fixed and never reorders, so the twenty drops are resolved once
-    at module load — position, clock and keyframe per cell. Only the per-row
-    time offset is left to compute at render. */
-const CELLS = COLUMNS.flatMap((column, col) =>
-  Array.from({ length: ROWS }, (_, row) => ({
-    id: `${col}:${row}`,
-    x: col * PITCH,
-    y: row * PITCH,
-    row,
-    speed: column.speed,
-    phase: column.phase,
-    duration: SPAN / column.speed,
-    animationClass: RAIN_ANIMATION_CLASS[row],
-  })),
-);
+/** Reduce Motion gets a still frame rather than nothing at all, matching the
+    native view, which renders a `t = 0.6` snapshot instead of hiding the
+    indicator. */
+const STILL_SECONDS = 0.6;
 
-/** Drawn as SVG rather than positioned elements on purpose. A 2.85px box on a
-    3.8px pitch never lands on a device-pixel boundary, and browsers snap
-    element backgrounds to whole pixels — so the twenty cells would paint at
-    visibly different widths depending on each one's subpixel offset. SVG keeps
-    the fractional geometry and antialiases it, which is what the native Canvas
-    does too, so every drop stays exactly square. */
+interface FilmCell {
+  readonly x: number;
+  readonly y: number;
+  readonly opacity: number;
+}
+
+/** One loop of a mark baked into an SVG mask, frame under frame. `cell` holds
+    the shared cell's rect attributes; `frame(index)` places the lit cells of
+    that frame in frame-local units. Opacities are sampled at each frame's midpoint, so a
+    stepped frame is never more than half a frame early or late. Stretched
+    (`preserveAspectRatio="none"`) because layout rounds the strip to 1/64px,
+    and an aspect-kept fit would drift the deeper frames off the clip. */
+function bakeFilm(
+  width: number,
+  frameHeight: number,
+  frames: number,
+  cell: string,
+  frame: (index: number) => Iterable<FilmCell>,
+): string {
+  let body = "";
+  for (let index = 0; index < frames; index++) {
+    for (const { x, y, opacity } of frame(index)) {
+      if (opacity < 0.002) continue;
+      body += `<use href='#c' x='${x.toFixed(3)}' y='${(index * frameHeight + y).toFixed(3)}' opacity='${opacity.toFixed(3)}'/>`;
+    }
+  }
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${width} ${frameHeight * frames}' preserveAspectRatio='none'><defs><rect id='c' ${cell}/></defs>${body}</svg>`;
+  // A blob URL rather than a data URI: every strip names the film in its
+  // inline style, and a data URI would copy the whole SVG into each one.
+  return `url("${URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }))}")`;
+}
+
+/** One strip of a working mark: the baked film, coloured by the status token
+    through the mask, stepped by a single compositor transform animation.
+    `startSeconds` is how far into its `period` the strip is at time zero. The
+    keyframe name stays in a class so `motion-reduce:animate-none` can still
+    win (a class cannot override an inline `animation-name`); the inline
+    transform is the still frame left once it does. */
+function FilmStrip(props: {
+  readonly film: string;
+  readonly frames: number;
+  readonly frameHeight: number;
+  readonly period: number;
+  readonly startSeconds: number;
+  readonly maskSize?: string;
+  readonly maskPosition?: string;
+}) {
+  const start = ((props.startSeconds % props.period) + props.period) % props.period;
+  const still =
+    Math.floor(
+      ((((props.startSeconds + STILL_SECONDS) % props.period) + props.period) % props.period) *
+        (props.frames / props.period),
+    ) % props.frames;
+  return (
+    <span
+      className="absolute inset-x-0 top-0 bg-sidebar-v2-status-working animate-[sidebar-v2-film_linear_infinite] motion-reduce:animate-none"
+      style={{
+        height: props.frameHeight * props.frames,
+        maskImage: props.film,
+        maskSize: props.maskSize ?? "100% 100%",
+        maskPosition: props.maskPosition,
+        maskRepeat: "no-repeat",
+        transform: `translateY(${-still * props.frameHeight}px)`,
+        animationDuration: `${props.period.toFixed(4)}s`,
+        animationTimingFunction: `steps(${props.frames})`,
+        animationDelay: `${(-start).toFixed(4)}s`,
+      }}
+    />
+  );
+}
+
+/** Per loop of each column's fall: ~37 fps on the slowest column, ~68 on the
+    fastest. */
+const RAIN_FRAMES = 120;
+
+/** Every column runs the same five-row fall at its own speed, so one film of a
+    single column serves all three, each strip masked at its column's x. */
+let rainFilm: string | undefined;
+function getRainFilm(): string {
+  rainFilm ??= bakeFilm(
+    CELL,
+    HEIGHT,
+    RAIN_FRAMES,
+    `width='${CELL}' height='${CELL}' rx='${(CELL * 0.28).toFixed(3)}'`,
+    (index) =>
+      Array.from({ length: ROWS }, (_, row) => ({
+        x: 0,
+        y: row * PITCH,
+        opacity: rainAlpha(((index + 0.5) / RAIN_FRAMES) * RAIN_SPAN - 1.5 - row),
+      })),
+  );
+  return rainFilm;
+}
+
+/** Cells baked into a mask rather than positioned elements on purpose. A
+    2.85px box on a 3.8px pitch never lands on a device-pixel boundary, and
+    browsers snap element backgrounds to whole pixels — so the cells would
+    paint at visibly different widths depending on each one's subpixel offset.
+    The SVG keeps the fractional geometry and antialiases it, which is what the
+    native Canvas does too, so every drop stays exactly square. */
 function SidebarV2WorkingRain({ seed }: { seed: string }) {
   const offset = rainOffsetSeconds(seed);
+  const film = getRainFilm();
   return (
-    <svg
+    <span
       aria-hidden
-      className="block h-[14px] w-auto shrink-0 overflow-hidden"
-      width={DRAW_WIDTH}
-      height={DRAW_HEIGHT}
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      className="relative block h-[14px] shrink-0 overflow-hidden"
+      style={{ width: DRAW_WIDTH }}
     >
-      {CELLS.map((cell) => (
-        <rect
-          key={cell.id}
-          x={cell.x}
-          y={cell.y}
-          width={CELL}
-          height={CELL}
-          rx={CELL * 0.28}
-          className={cn(
-            "fill-sidebar-v2-status-working",
-            // The keyframe drives opacity while it runs; the inline value is
-            // what remains once motion-reduce cancels the animation.
-            cell.animationClass,
-            "motion-reduce:animate-none",
-          )}
-          style={
-            {
-              // Reduce Motion gets a still frame rather than nothing at all,
-              // matching the native view — which renders a `t = 0.6` snapshot
-              // instead of hiding the indicator. Taken at this row's own offset
-              // so the frozen rows differ from each other too.
-              opacity: dropAlpha(
-                (((0.6 + offset) * cell.speed + cell.phase) % SPAN) - 1.5 - cell.row,
-              ),
-              animationDuration: `${cell.duration.toFixed(4)}s`,
-              animationDelay: `${(-cell.phase / cell.speed - offset).toFixed(4)}s`,
-            } as CSSProperties
-          }
+      {COLUMNS.map((column, col) => (
+        <FilmStrip
+          key={column.phase}
+          film={film}
+          frames={RAIN_FRAMES}
+          frameHeight={SLOT}
+          period={RAIN_SPAN / column.speed}
+          startSeconds={column.phase / column.speed + offset}
+          maskSize={`${(CELL / WIDTH) * 100}% 100%`}
+          // Percentages align the mask's own n% point with the strip's, which
+          // for cells on a uniform pitch puts column `col` at col / (COLS - 1).
+          maskPosition={`${(col / (COLS - 1)) * 100}% 0`}
         />
       ))}
-    </svg>
+    </span>
   );
 }
 
@@ -241,18 +277,18 @@ const HELIX_SIZE = 12;
 /** Radians per second, and the phase each row trails the one above it by. */
 const HELIX_SPEED = 3.2;
 const HELIX_ROW_LAG = 0.785;
-/** One keyframe loop. The curve repeats every half twist (π, not 2π): moving
-    the phase by π swaps the two strands along with their depth weights, which
+/** One film loop. The curve repeats every half twist (π, not 2π): moving the
+    phase by π swaps the two strands along with their depth weights, which
     leaves the `max` in `helixAlpha` unchanged. */
 const HELIX_LOOP = Math.PI / HELIX_SPEED;
+/** ~61 fps over the loop. */
+const HELIX_FRAMES = 60;
 
 /** The drawn opacity of a cell in `column` at strand phase `phase`. Each strand
     lights the cells nearest it with an exponential falloff, dimmed while it is
     on the far side of the twist; cells under 0.08 are not drawn at all, and lit
     ones sit on a 10% floor — the chip's `cellN`. Every row runs the same curve,
-    only phase-shifted, so this one function is what the generated
-    `sidebar-v2-helix-*` keyframes in `theme.custom.css` sample and
-    `__fork_guards__/sidebarV2Helix.test.ts` re-derives. */
+    only phase-shifted. */
 export function helixAlpha(column: number, phase: number): number {
   const sin = Math.sin(phase);
   const cos = Math.cos(phase);
@@ -263,82 +299,44 @@ export function helixAlpha(column: number, phase: number): number {
   return alpha > 0.08 ? 0.1 + 0.9 * alpha : 0;
 }
 
-/** Profiles for columns 0–3 only, spelled out for Tailwind like the rain's.
-    The grid is mirror-symmetric in time — column `6 - c` at phase φ is column
-    `c` at -φ — so columns 4–6 play the 2/1/0 profiles in reverse, which with
-    the same delay is exactly the negated phase. */
-export const HELIX_ANIMATION_CLASS = [
-  "animate-[sidebar-v2-helix-0_linear_infinite]",
-  "animate-[sidebar-v2-helix-1_linear_infinite]",
-  "animate-[sidebar-v2-helix-2_linear_infinite]",
-  "animate-[sidebar-v2-helix-3_linear_infinite]",
-] as const;
-
-/** Which profile a column plays, and whether backwards. */
-export function helixColumnProfile(column: number): { index: number; reverse: boolean } {
-  return column <= 3 ? { index: column, reverse: false } : { index: 6 - column, reverse: true };
+let helixFilm: string | undefined;
+function getHelixFilm(): string {
+  helixFilm ??= bakeFilm(
+    HELIX_BOX,
+    HELIX_BOX,
+    HELIX_FRAMES,
+    `width='${HELIX_CELL.toFixed(3)}' height='${HELIX_CELL.toFixed(3)}'`,
+    (index) =>
+      Array.from({ length: HELIX_GRID * HELIX_GRID }, (_, cell) => {
+        const column = cell % HELIX_GRID;
+        const row = Math.floor(cell / HELIX_GRID);
+        return {
+          x: column * (HELIX_CELL + HELIX_GAP),
+          y: row * (HELIX_CELL + HELIX_GAP),
+          opacity: helixAlpha(
+            column,
+            ((index + 0.5) / HELIX_FRAMES) * Math.PI - row * HELIX_ROW_LAG,
+          ),
+        };
+      }),
+  );
+  return helixFilm;
 }
 
-const HELIX_CELLS = Array.from({ length: HELIX_GRID * HELIX_GRID }, (_, index) => {
-  const column = index % HELIX_GRID;
-  const row = Math.floor(index / HELIX_GRID);
-  const profile = helixColumnProfile(column);
-  return {
-    id: `${column}:${row}`,
-    column,
-    row,
-    x: column * (HELIX_CELL + HELIX_GAP),
-    y: row * (HELIX_CELL + HELIX_GAP),
-    lagSeconds: (row * HELIX_ROW_LAG) / HELIX_SPEED,
-    animationClass: HELIX_ANIMATION_CLASS[profile.index],
-    reverse: profile.reverse,
-  };
-});
-
-/** CSS keyframes rather than the chip's per-frame canvas, so a working row
-    costs no requestAnimationFrame loop — the same SVG opacity contract as the
-    rain, seeded by the same per-thread offset. */
+/** A baked film rather than the chip's per-frame canvas, so a working row
+    costs no requestAnimationFrame loop — seeded by the rain's per-thread
+    offset. */
 function SidebarV2WorkingHelix({ seed }: { seed: string }) {
-  const offset = rainOffsetSeconds(seed);
   return (
-    <svg
-      aria-hidden
-      className="block size-3 shrink-0"
-      width={HELIX_SIZE}
-      height={HELIX_SIZE}
-      viewBox={`0 0 ${HELIX_BOX} ${HELIX_BOX}`}
-    >
-      {HELIX_CELLS.map((cell) => (
-        <rect
-          key={cell.id}
-          x={cell.x}
-          y={cell.y}
-          width={HELIX_CELL}
-          height={HELIX_CELL}
-          className={cn(
-            "fill-sidebar-v2-status-working",
-            cell.animationClass,
-            "motion-reduce:animate-none",
-          )}
-          style={{
-            // Reduce Motion gets the chip's still frame (t = 0.6), taken at
-            // this row's own offset so frozen rows differ from each other.
-            opacity: helixAlpha(
-              cell.column,
-              (0.6 + offset) * HELIX_SPEED - cell.row * HELIX_ROW_LAG,
-            ),
-            animationDuration: `${HELIX_LOOP.toFixed(4)}s`,
-            animationDirection: cell.reverse ? "reverse" : undefined,
-            // Wrapped to (-loop, 0]: a positive delay would show the
-            // still-frame opacity until the animation started.
-            animationDelay: `${(
-              ((((cell.lagSeconds - offset) % HELIX_LOOP) + HELIX_LOOP) % HELIX_LOOP) -
-              HELIX_LOOP
-            ).toFixed(4)}s`,
-          }}
-        />
-      ))}
-    </svg>
+    <span aria-hidden className="relative block size-3 shrink-0 overflow-hidden">
+      <FilmStrip
+        film={getHelixFilm()}
+        frames={HELIX_FRAMES}
+        frameHeight={HELIX_SIZE}
+        period={HELIX_LOOP}
+        startSeconds={rainOffsetSeconds(seed)}
+      />
+    </span>
   );
 }
 

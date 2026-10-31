@@ -366,7 +366,7 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.statusBoxWidth).toBe(12);
     expect(SIDEBAR_V2_CARD_ALIGNMENT_PX.statusBoxHeight).toBe(14);
     const marks = readSibling("../custom/SidebarV2StatusIndicator.tsx");
-    expect(marks).toContain('className="block h-[14px] w-auto shrink-0 overflow-hidden"');
+    expect(marks).toContain('className="relative block h-[14px] shrink-0 overflow-hidden"');
     expect(marks).toContain("const SLOT = 14");
     expect(marks).not.toContain("overflow-visible");
     // The settled forms: a filled dot for Done, the same circle hollow for

@@ -728,7 +728,8 @@
     today, and the slot is built to light up when the shell projection grows
     checkpoint summaries.
 
-    The status palette and the rain keyframes live in the Tier 1 stylesheet;
+    The status palette and the working-mark film keyframe live in the Tier 1
+    stylesheet;
     only the five --color-sidebar-v2-status-* utility registrations sit inline
     in index.css, because Tailwind reads utility names from the @theme block
     alone and will not see them anywhere else.
@@ -4860,7 +4861,7 @@
     rain the Sidebar V2 thread cards draw while an agent runs, instead of
     upstream's three staggered pulsing dots — one "agent is working" mark
     across sidebar and chat. The mark is the fork-owned SidebarV2WorkingMark
-    (rain or helix per fork-working-mark; keyframes in theme.custom.css),
+    (rain or helix per fork-working-mark),
     seeded with the working row's stable id; the timer text beside it is
     untouched, but the row centres its items with an 8px gap (upstream's
     baseline-aligned, gapless row has no leading mark to space). Reduced
@@ -4883,10 +4884,13 @@
     transcript working row, the composer liveness pill, subagent members):
     the pixel rain or a 7x7 DNA helix from the "Sequencing" thinking chip.
     The helix is the default. The choice is device-local (localStorage), not a
-    contracts setting, and Restore defaults resets it. Both marks are SVG
-    rects driven by generated CSS keyframes with a per-thread phase offset —
-    never a per-frame canvas or requestAnimationFrame loop — and both keep a
-    still frame under reduced motion. The helix is drawn at 12px because the
+    contracts setting, and Restore defaults resets it. Each mark bakes one
+    loop of frames into an SVG mask once, and a single stepped transform
+    animation per strip plays it with a per-thread phase offset, so the
+    compositor runs it — never per-cell opacity keyframes (a core of
+    renderer CPU with a few working threads on screen), a per-frame canvas
+    or a requestAnimationFrame loop. Both keep a still frame under reduced
+    motion. The helix is drawn at 12px because the
     card status box is 12px wide and clips.
   tier: 4
   files:
