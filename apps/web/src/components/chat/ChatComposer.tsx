@@ -121,9 +121,6 @@ import type { ThreadSyncPhase } from "../../threadSync";
 import { ComposerBanner } from "./ComposerBanner";
 import { ComposerSurface } from "./ComposerSurface";
 import { ComposerBannerStack, type ComposerBannerStackItem } from "./ComposerBannerStack";
-/* fork:begin fork-composer-one-notice — see .fork/customizations.yaml#fork-composer-one-notice */
-import { frontComposerBanner } from "~/custom/frontComposerBanner";
-/* fork:end fork-composer-one-notice */
 import {
   attachmentsToReleaseOnUploadCapabilityLoss,
   composerOtherFilesForPresentation,
@@ -3602,9 +3599,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         {/* fork:end fork-composer-shell */}
         <ComposerBanner.Dock>
           <ComposerBanner.Column>
-            {/* fork:begin fork-composer-one-notice — see .fork/customizations.yaml#fork-composer-one-notice */}
-            <ComposerBannerStack items={frontComposerBanner(shelfItems)} />
-            {/* fork:end fork-composer-one-notice */}
+            <ComposerBannerStack items={shelfItems} />
             {showComposerTopDrawer ? (
               <ComposerBanner.Attachment>
                 <ComposerBanner.Root data-chat-composer-top-drawer="true" variant="info">
