@@ -42,7 +42,7 @@ const TRANSPARENT_BACKGROUND = "#00000000";
  * active. A fork guard pins these two values against DesktopWindow's.
  */
 function opaqueWindowBackground(): string {
-  return Electron.nativeTheme.shouldUseDarkColors ? "#0a0a0a" : "#ffffff";
+  return Electron.nativeTheme.shouldUseDarkColors ? "#000000" : "#ffffff";
 }
 
 export const ForkSidebarVibrancyRequest = Schema.Struct({

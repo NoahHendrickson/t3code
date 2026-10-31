@@ -29,7 +29,7 @@ const SETTINGS = `:root[${FORK_SETTINGS_ATTRIBUTE}]`;
 
 describe("fork guard: settings glass", () => {
   it("stamps the root while Settings is open", () => {
-    expect(readSibling("../routes/settings.tsx")).toContain("useForkSettingsMarker();");
+    expect(readSibling("../routes/_chat.settings.tsx")).toContain("useForkSettingsMarker();");
   });
 
   it("puts Settings' dropdowns on the glass rim without outweighing it", () => {

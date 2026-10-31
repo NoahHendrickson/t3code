@@ -34,6 +34,7 @@ type DictationSessionModule = typeof import("../custom/voice/forkDictationSessio
 
 let useForkDictationController: DictationHook;
 let sessions: DictationSessionModule;
+let BackgroundThreadContext: typeof import("~/components/chat/backgroundThread").BackgroundThreadContext;
 let fallback: ReturnType<DictationSessionModule["createDictationFallback"]>;
 let uninstallHotkeys: () => void;
 let root: Root;
@@ -42,6 +43,7 @@ let drafts: Map<string, string>;
 let focused: string[];
 let presented: string[];
 const transcribe = vi.fn(async () => "spoken words");
+const prepare = vi.fn(async () => {});
 
 /**
  * Stands in for whatever has focus. Each thread gets its own editor node so
@@ -93,11 +95,16 @@ const Composer = memo(function Composer({
   return null;
 });
 
-async function renderThread(ownerKey: string, options: { disabled?: boolean } = {}) {
+async function renderThread(
+  ownerKey: string,
+  options: { disabled?: boolean; background?: boolean } = {},
+) {
   await act(() => {
     root.render(
       <StrictMode>
-        <Composer ownerKey={ownerKey} disabled={options.disabled ?? false} />
+        <BackgroundThreadContext value={options.background ?? false}>
+          <Composer ownerKey={ownerKey} disabled={options.disabled ?? false} />
+        </BackgroundThreadContext>
       </StrictMode>,
     );
   });
@@ -151,6 +158,7 @@ beforeEach(async () => {
   vi.resetModules();
   ({ useForkDictationController } = await import("../custom/voice/useForkDictationController"));
   sessions = await import("../custom/voice/forkDictationSession");
+  ({ BackgroundThreadContext } = await import("~/components/chat/backgroundThread"));
 
   // The probe renders no host nodes, but ReactDOM still needs an event target.
   const document = { nodeType: 9, addEventListener() {}, removeEventListener() {} };
@@ -173,13 +181,14 @@ beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("forkDesktopBridge", {
     voiceInput: {
-      prepare: async () => {},
+      prepare,
       transcribe,
       cancel: async () => {},
       onDownloadProgress: () => () => {},
     },
   });
   transcribe.mockReset().mockResolvedValue("spoken words");
+  prepare.mockReset().mockResolvedValue(undefined);
   drafts = new Map();
   editors = new Map();
   focused = [];
@@ -356,6 +365,41 @@ describe("dictation thread ownership", () => {
       tapRightCommand(elsewhere);
     });
     expect(presented).toContain("delivered:spoken words");
+    expect(drafts.size).toBe(0);
+  });
+
+  it("offers the transcript to copy while the thread sits behind Settings or Usage", async () => {
+    await renderThread("thread-a", { background: true });
+    await act(async () => {
+      tapRightCommand(elsewhere);
+    });
+    expect(dictation.state.phase).toBe("idle");
+    expect(fallback.controller.currentState.phase).toBe("recording");
+    await act(async () => {
+      tapRightCommand(elsewhere);
+    });
+    expect(presented).toContain("delivered:spoken words");
+    expect(drafts.size).toBe(0);
+  });
+
+  it("drops a session still preparing when its thread goes behind Settings or Usage", async () => {
+    let finishPreparing!: () => void;
+    prepare.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishPreparing = resolve;
+        }),
+    );
+    await renderThread("thread-a");
+    await act(async () => {
+      tapRightCommand(elsewhere);
+    });
+    expect(dictation.state.phase).toBe("preparing");
+    await renderThread("thread-a", { background: true });
+    await act(async () => {
+      finishPreparing();
+    });
+    expect(dictation.state.phase).toBe("idle");
     expect(drafts.size).toBe(0);
   });
 

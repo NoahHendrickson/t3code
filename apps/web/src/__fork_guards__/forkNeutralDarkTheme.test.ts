@@ -39,7 +39,10 @@ const theme = [
 ].join("\n");
 const themeRules = cssRules(theme);
 const indexHtml = readSibling("../../index.html");
-const settingsPanels = readSibling("../components/settings/SettingsPanels.tsx");
+// Upstream #25651 moved the Interface rows to AppearanceSettingsPanel; restore stays in SettingsPanels.
+const settingsPanels =
+  readSibling("../components/settings/SettingsPanels.tsx") +
+  readSibling("../components/settings/AppearanceSettingsPanel.tsx");
 const forkTheme = readSibling("../custom/forkTheme.ts");
 const customizations = readSibling("../../../../.fork/customizations.yaml");
 

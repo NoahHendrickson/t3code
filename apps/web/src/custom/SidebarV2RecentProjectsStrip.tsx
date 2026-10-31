@@ -38,7 +38,8 @@ export function SidebarV2RecentProjectsStrip<
   readonly projectGroups: ReadonlyArray<TProject>;
   readonly onStartAgent: (projectKey: string) => void;
 }) {
-  const threads = filterSidebarV2VisibleThreads(useThreadShells(), null);
+  // No delegated-under-parent set: the strip only asks which projects hold any live thread.
+  const threads = filterSidebarV2VisibleThreads(useThreadShells(), null, new Set());
   const activeRefs = new Set(threads.map(projectRefKey));
   const recentProjects = sortLogicalProjectsForSidebar(
     props.projectGroups.filter((group) =>

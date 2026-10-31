@@ -10,7 +10,6 @@ import type { ProviderOptionDescriptor, ProviderOptionSelections } from "@t3tool
 import {
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
-  isClaudeUltrathinkPrompt,
   normalizeModelSlug,
 } from "@t3tools/shared/model";
 
@@ -84,7 +83,7 @@ export type ComposerModelTraits = ReturnType<typeof resolveComposerModelTraits>;
 
 /** Null when the model has nothing to configure or no destination for edited options. */
 export function resolveComposerModelTraits(input: ComposerModelTraitsInput) {
-  const { provider, model, models, prompt, planModeEnabled } = input;
+  const { provider, model, models, promptUltrathink, planModeEnabled } = input;
   if (
     input.threadRef === undefined &&
     input.draftId === undefined &&
@@ -113,10 +112,10 @@ export function resolveComposerModelTraits(input: ComposerModelTraitsInput) {
     descriptors.find(
       (descriptor): descriptor is SelectDescriptor => descriptor.type === "select",
     ) ?? null;
+  // Upstream reads the prompt once (readPromptUltrathink) and hands the verdict in.
   const ultrathinkPromptControlled =
-    (primarySelect?.promptInjectedValues?.length ?? 0) > 0 && isClaudeUltrathinkPrompt(prompt);
-  const ultrathinkInBodyText =
-    ultrathinkPromptControlled && isClaudeUltrathinkPrompt(prompt.replace(/^Ultrathink:\s*/i, ""));
+    (primarySelect?.promptInjectedValues?.length ?? 0) > 0 && promptUltrathink !== "none";
+  const ultrathinkInBodyText = ultrathinkPromptControlled && promptUltrathink === "body";
 
   return {
     descriptors,

@@ -287,13 +287,9 @@ export default function ProjectScriptsControl({
         </>
       ) : primaryScript ? (
         /* fork:begin fork-workspace-header — see .fork/customizations.yaml#fork-workspace-header
-           `data-fork-pill` is the only hook the fork adds here: it marks this
-           control as one of the workspace header's split pills, and
-           theme.custom.css does the rest. Every toolbar branch carries it — the
-           split Group when a primary script exists, the "Project actions"
-           trigger when only importable scripts exist, and the lone "Add action"
-           button otherwise. Toolbar only: the thread details panel (isPanel) is
-           upstream's surface. fork:end fork-workspace-header */
+           `data-fork-pill` is the only hook the fork adds: it marks this control as a workspace
+           header split pill (theme.custom.css does the rest), on every toolbar branch. Toolbar
+           only; the details panel (isPanel) is upstream's. fork:end fork-workspace-header */
         <ActionGroup
           role="group"
           aria-label="Project scripts"
@@ -312,8 +308,7 @@ export default function ProjectScriptsControl({
                   panel={isPanel}
                   className={isPanel ? undefined : "w-7 sm:w-6 @3xl/header-actions:w-auto!"}
                   aria-label={`Run ${primaryScript.name}`}
-                  // The tooltip wrapper replaces data-slot="button", so themed
-                  // toolbar styling needs its own hook.
+                  // Tooltip replaces the button data-slot, so toolbar theming needs a separate hook.
                   data-toolbar-control=""
                   aria-disabled={!onRunScript || undefined}
                   onClick={() => onRunScript?.(primaryScript)}

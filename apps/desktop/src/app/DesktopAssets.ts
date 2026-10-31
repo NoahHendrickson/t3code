@@ -62,13 +62,9 @@ const resolveResourcePath = Effect.fn("desktop.assets.resolveResourcePath")(func
 });
 
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-// Fork art in place of upstream's blueprint/black tables: on darwin dev this
-// is the runtime dock icon (DesktopAppIdentity), the slot the retired
-// DesktopEnvironment.developmentDockIconPath used to fill. Dev keeps the
-// orange dock art so installed variants stay distinguishable; the fork ships
-// no per-channel ico/universal variants, so both brands share the release
-// ico and universal render. Only the values and the directory segment below
-// are fork-owned — the resolver logic is upstream's verbatim.
+// Fork art in place of upstream's tables; on darwin dev this is the runtime dock icon.
+// Dev keeps the orange art so installed variants stay distinguishable; the fork ships no
+// per-channel ico/universal variants. Only the values and directory segment are fork-owned.
 const sourceTreeIconFileNames = {
   dev: {
     ico: "n3-windows.ico",

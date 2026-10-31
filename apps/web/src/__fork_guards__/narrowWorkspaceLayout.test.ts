@@ -148,7 +148,10 @@ describe("fork guard: narrow-workspace-layout", () => {
     // here is invisible until it throws in a browser.
     const exportsOf = (source: string) =>
       [...source.matchAll(/export (?:const|function) (\w+)/gu)].map((match) => match[1]).sort();
-    expect(exportsOf(overrideWidths)).toEqual(exportsOf(upstreamWidths));
+    // Upstream stopped exporting the minimum width; the shadow keeps it for the guard above.
+    expect(exportsOf(overrideWidths).filter((name) => name !== "THREAD_SIDEBAR_MIN_WIDTH")).toEqual(
+      exportsOf(upstreamWidths),
+    );
   });
 
   it("still defends the column against a sidebar drag", () => {
@@ -275,7 +278,7 @@ describe("fork guard: narrow-workspace-layout", () => {
       return Number(/\bz-\[?(\d+)\]?(?![\w-])/u.exec(line)?.[1]);
     };
     const minimap = zIndexIn(
-      readSibling("../components/chat/MessagesTimeline.tsx"),
+      readSibling("../components/chat/TimelineMinimap.tsx"),
       "group/minimap",
     );
     // The lightbox is DialogPopup's media variant since upstream sync

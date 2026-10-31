@@ -57,10 +57,9 @@ describe("fork guard: fork-sidebar-type-size", () => {
     expect(NodeFS.existsSync(orphanedSidebarPath)).toBe(false);
     expect(sidebarLayout).toContain('import ThreadSidebar from "./Sidebar";');
     expect(sidebarLayout).not.toContain('from "./SidebarV2"');
-    expect(sidebarLayout).toContain("<ThreadSidebar />");
-    expect(sidebarLayout).toContain(
-      'data-sidebar-version={legacySidebarEnabled && !isOnSettings ? "v1" : "v2"}',
-    );
+    expect(sidebarLayout).toContain("<ThreadSidebar routeReveal={sidebarRouteReveal} />");
+    // Upstream deleted the legacy sidebar (#26238), so the panel is always v2.
+    expect(sidebarLayout).toContain('data-sidebar-version="v2"');
     expect(sidebarLayout).toMatch(
       /fork:begin fork-sidebar-type-size[\s\S]*data-sidebar-version[\s\S]*fork:end fork-sidebar-type-size/u,
     );

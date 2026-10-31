@@ -8,7 +8,8 @@
  * act twice. The route's thread is focused until the user presses into the
  * floating window, which then holds focus until a press back in the column.
  */
-import { createContext, useContext } from "react";
+import { createContext, use, useContext } from "react";
+import { BackgroundThreadContext } from "~/components/chat/backgroundThread";
 
 /** The header button that moves a pane between the column and the window. */
 export interface PaneWindowAction {
@@ -50,4 +51,9 @@ export const SplitPaneContext = createContext<SplitPaneState>(SINGLE_PANE);
 
 export function useSplitPane(): SplitPaneState {
   return useContext(SplitPaneContext);
+}
+
+/** This pane takes window-level input: focused in a split, and not behind Settings or Usage. */
+export function useOwnsGlobalInput(): boolean {
+  return useSplitPane().focused && !use(BackgroundThreadContext);
 }

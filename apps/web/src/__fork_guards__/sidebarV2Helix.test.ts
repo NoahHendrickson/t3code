@@ -150,9 +150,10 @@ describe("fork guard: sidebar-v2 helix keyframes", () => {
 
 describe("fork guard: working indicator setting", () => {
   const panels = read("src/components/settings/SettingsPanels.tsx");
+  const appearance = read("src/components/settings/AppearanceSettingsPanel.tsx");
 
   it("offers the switch under Appearance and resets it with Restore defaults", () => {
-    expect(panels).toContain('title="Working indicator"');
+    expect(appearance).toContain('title="Working indicator"');
     expect(panels).toContain('["Working indicator"]');
     expect(panels).toContain("setWorkingMark(DEFAULT_FORK_WORKING_MARK)");
   });

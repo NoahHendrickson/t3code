@@ -350,7 +350,7 @@ test as a follow-up.
 
 > **Point-in-time snapshot (2026-07-26, pre-fix).** Cleanup owed on this
 > machine once a fixed build is verified: delete `/Applications/T3 Code
-Fork.app` (v0.1.1), delete the orphaned `~/.t3/userdata-fork`, and note that
+> Fork.app` (v0.1.1), delete the orphaned `~/.t3/userdata-fork`, and note that
 > `~/.t3/caches/*.json` were rewritten and one `auth_sessions` row was
 > inserted per §2.2 (both inert). The backup can be removed once v0.1.2 is
 > verified by launch.

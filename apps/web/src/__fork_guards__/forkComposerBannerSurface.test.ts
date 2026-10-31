@@ -31,14 +31,15 @@ function readSibling(relativePath: string): string {
 const flat = (selector: string) => selector.replace(/\s+/gu, " ");
 
 const MARKER = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"]`;
-const HOOKS = ':is([data-composer-banner-surface], [data-slot="composer-banner-peek"])';
+// Upstream removed the collapsed stack's peek cap, so the surface attribute is the one hook.
+const HOOKS = "[data-composer-banner-surface]";
 const CARD = '[data-slot="composer-banner"][data-composer-banner-surface="attached"]';
 const theme = readSibling("../theme.custom.css");
 const banner = readSibling("../components/chat/ComposerBanner.tsx");
 const bannerStack = readSibling("../components/chat/ComposerBannerStack.tsx");
-const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 const stashBadge = readSibling("../components/chat/ComposerStashBadge.tsx");
-const chatView = readSibling("../components/ChatView.tsx");
+// Upstream moved ChatView's banner items (branch mismatch) into ThreadActivityBanners.
+const activityBanners = readSibling("../components/chat/ThreadActivityBanners.tsx");
 const rules = cssRules(theme);
 
 /**
@@ -94,7 +95,8 @@ describe("fork guard: fork-composer-banner-surface", () => {
 
   it("targets the attribute, slot and variables upstream's Surface still uses", () => {
     const surface = componentSource("Surface");
-    expect(surface).toContain("data-composer-banner-surface={placement}");
+    // Upstream dropped the floating placement; every Surface is attached now.
+    expect(surface).toContain('data-composer-banner-surface="attached"');
     expect(surface).toContain("before:border-(--chat-composer-attached-outline)");
     // Tailwind's variable shorthand since upstream sync 2026-10-02; the same
     // two variables the fork rules override.
@@ -114,26 +116,8 @@ describe("fork guard: fork-composer-banner-surface", () => {
     }
   });
 
-  it("targets the slot, fill variable and severity borders upstream's Peek still uses", () => {
-    // The peek has no surface attribute but reads the same fill variable, so
-    // the remap lists its slot; its severity edge is a border utility, which
-    // is why the rule also sets border-color rather than only the variable.
-    const peek = componentSource("Peek");
-    expect(peek).toContain('data-slot="composer-banner-peek"');
-    expect(peek).toContain("bg-(--chat-composer-attached-surface)/(--glass-opacity)");
-    expect(peek).toContain("peekBorder[variant]");
-    for (const [variant, token] of [
-      ["error", "destructive"],
-      ["warning", "warning"],
-    ] as const) {
-      expect(banner, variant).toMatch(new RegExp(`${variant}:\\s*"border-${token}/\\d+"`, "u"));
-    }
-    for (const variant of ["info", "success"]) {
-      expect(banner, variant).toMatch(
-        new RegExp(`${variant}:\\s*"border-\\(--chat-composer-attached-outline\\)"`, "u"),
-      );
-    }
-  });
+  // Upstream's banner-stack rewrite (sync 2026-10-28) deleted Peek and its
+  // peekBorder edges along with the collapsed drawer; nothing left to pin.
   it("leaves the banner unpainted so it reads as vessel floor", () => {
     // The design has no card here: a banner is vessel floor above the prompt
     // box, the way the control row is vessel floor below it. Restating the
@@ -201,7 +185,8 @@ describe("fork guard: fork-composer-banner-surface", () => {
       candidate.body.includes("--composer-banner-icon-column"),
     );
     expect(rule?.selector).toContain('[data-fork-composer-notice="true"]');
-    expect(rule?.selector).toContain('[data-chat-composer-activity-strip="true"]');
+    // Upstream moved the activity strip to the end of the timeline (#25401).
+    expect(rule?.selector).not.toContain("activity-strip");
     expect(rule?.selector).not.toContain('[data-composer-banner-drawer="true"]');
     expect(rule?.body).toMatch(/--composer-banner-icon-column:\s*16px/u);
     expect(rule?.body).toMatch(/font-size:\s*14px/u);
@@ -213,12 +198,6 @@ describe("fork guard: fork-composer-banner-surface", () => {
         candidate.body.includes("padding:"),
     );
     expect(noticePadding?.body).toMatch(/padding:\s*12px 8px 12px 16px/u);
-    const stripPadding = rules.find(
-      (candidate) =>
-        flat(candidate.selector).includes('[data-chat-composer-activity-strip="true"]') &&
-        candidate.body.includes("padding:"),
-    );
-    expect(stripPadding?.body).toMatch(/padding:\s*16px 8px 16px 16px/u);
     const iconSvg = rules.find((candidate) =>
       /composer-banner-icon"\]\s*>\s*svg/u.test(flat(candidate.selector)),
     );
@@ -267,15 +246,18 @@ describe("fork guard: fork-composer-banner-surface", () => {
     ]) {
       expect(banner, slot).toContain(`data-slot="${slot}"`);
     }
-    expect(bannerStack).toContain('data-composer-banner-drawer="true"');
-    expect(chatComposer).toContain('data-chat-composer-activity-strip="true"');
+    // The drawer attribute and ChatComposer's activity strip went with
+    // upstream's banner-stack rewrite (sync 2026-10-28); every notice is now
+    // its own attachment.
+    expect(bannerStack).toContain('data-composer-banner-stack="true"');
+    expect(bannerStack).toContain("<ComposerBanner.Attachment");
     expect(stashBadge).toContain("data-composer-shoulder-tab");
   });
 
   it("keeps the notice primary action on the fork's white Primary", () => {
-    const stamped = [...chatView.matchAll(/data-fork-composer-notice-action="primary"/gu)];
+    const stamped = [...activityBanners.matchAll(/data-fork-composer-notice-action="primary"/gu)];
     expect(stamped).toHaveLength(1);
-    const fenced = chatView.matchAll(
+    const fenced = activityBanners.matchAll(
       /fork:begin fork-composer-banner-surface[\s\S]*?fork:end fork-composer-banner-surface/gu,
     );
     const primaries = [...fenced].filter(([body]) =>
@@ -293,11 +275,13 @@ describe("fork guard: fork-composer-banner-surface", () => {
   it("stamps the branch-changed notice card and leaves other drawer banners alone", () => {
     // The settled / snoozed and resume-compaction cards the fork restored over
     // #16782 and #16631 live in custom/ and carry their own primary stamps.
-    expect(chatView).toContain("Branch changed to");
+    expect(activityBanners).toContain("Branch changed from");
+    expect(activityBanners).toMatch(
+      /id: `branch-mismatch:[\s\S]{0,200}fork:begin fork-composer-banner-surface[^\n]*\n\s*noticeCard: true,/u,
+    );
     expect(bannerStack).toContain('"data-fork-composer-notice": "true"');
     expect(bannerStack).toContain("readonly icon?:");
     expect(bannerStack).toContain("item.icon != null");
-    expect(bannerStack).toContain('item.id === "composer-activity"');
     expect(theme).toContain('[data-fork-composer-notice="true"]');
   });
 });

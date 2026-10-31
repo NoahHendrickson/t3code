@@ -1,22 +1,6 @@
-/**
- * Landing drafts — see `.fork/customizations.yaml#fork-landing-draft-cleanup`.
- *
- * Upstream's `/` route opens a draft in the most recently updated project so
- * the app lands on a ready composer. The fork's sidebar paints every unsent
- * draft (sidebar-v2-draft-rows), and the store keeps a project's draft until
- * it is sent, so a client that lands on `/` every visit (a phone) collected a
- * blank "New thread" card in each project that was most recent at the time.
- *
- * The draft the landing opened is remembered here, and once the route leaves
- * it untouched it is discarded. Untouched means no composer content, no open
- * preview tab, no split or floating pane holding it (the same things the
- * store and the split panes keep a draft alive for), and the env mode,
- * branch and worktree the landing gave it. Anything else means the
- * user took the draft up, and it stays like a draft they made themselves.
- *
- * The records persist because a phone often reloads instead of resuming, and a
- * landing draft forgotten across a reload is exactly the card that piled up.
- */
+/* Discards the draft `/` opens once the route leaves it untouched, so a phone landing on
+   `/` every visit stops collecting blank draft cards. Records persist across reloads.
+   See `.fork/customizations.yaml#fork-landing-draft-cleanup`. */
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { useRouter } from "@tanstack/react-router";
 

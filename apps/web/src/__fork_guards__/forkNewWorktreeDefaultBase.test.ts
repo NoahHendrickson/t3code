@@ -14,8 +14,9 @@ import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
+// Upstream moved onEnvModeChange into useComposerSelection.
 const chatView = NodeFS.readFileSync(
-  NodeURL.fileURLToPath(new URL("../components/ChatView.tsx", import.meta.url)),
+  NodeURL.fileURLToPath(new URL("../components/chat/useComposerSelection.ts", import.meta.url)),
   "utf8",
 );
 
@@ -28,7 +29,7 @@ describe("fork guard: fork-new-worktree-default-base", () => {
       chatView.indexOf("fork:end fork-new-worktree-default-base", start),
     );
     expect(fence.replace(/\s+/g, " ")).toContain(
-      '...(mode === "worktree" && envMode !== "worktree" ? { branch: null, worktreePath: null } : {}),',
+      '...(mode === "worktree" && resolveEffectiveEnvMode({ activeWorktreePath: draftThread?.worktreePath ?? null, hasServerThread: false, draftThreadEnvMode: draftThread?.envMode, }) !== "worktree" ? { branch: null, worktreePath: null } : {}),',
     );
   });
 });

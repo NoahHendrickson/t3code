@@ -63,11 +63,8 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
     ...(onAddToMachine ? [{ value: ADD_MACHINE_VALUE, label: "Add to another machine" }] : []),
   ];
 
-  // The static label carries the xs control's height (h-7 sm:h-6) as well as
-  // its padding: the composer context strip has no min-height of its own, and
-  // the glass seam joining it to the composer assumes a fixed strip height, so
-  // a shorter label would drag the seam out of line whenever this label is the
-  // only thing in the strip.
+  // Match the xs control's height and padding: the composer strip has no min-height,
+  // and its glass seam assumes that height even when this label is the only control.
   if (envLocked || (onEnvironmentChange === undefined && onAddToMachine === undefined)) {
     const lockedRow = (
       <span
@@ -86,10 +83,9 @@ export const BranchToolbarEnvironmentSelector = memo(function BranchToolbarEnvir
         <TooltipTrigger
           render={lockedRow}
           /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
-             Locked environment readout is a span; data-fork-context-chip keeps the
-             filled chip paint when there is no select trigger. Base UI merges the
-             trigger's props onto lockedRow's span. Upstream made this selector
-             toolbar-only (#16823), so the chip paint is unconditional. */
+             Locked environment readout is a span; data-fork-context-chip keeps the filled chip
+             paint when there is no select trigger. Upstream made this selector toolbar-only,
+             so the chip paint is unconditional. */
           data-fork-context-chip
           /* fork:end fork-composer-shell */
         />

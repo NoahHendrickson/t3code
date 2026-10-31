@@ -38,10 +38,10 @@ export function shouldUseCompactComposerPrimaryActions(
 
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
    The fork's composer is one compact base layout in every thread state, so it
-   never adopts upstream's resting collapse (#7855). Upstream's predicate and
-   the helpers around it stay upstream's through the re-export above; only the
-   verdict is owned here. Same signature, so ChatComposer's call site is
-   untouched. */
+   never adopts upstream's resting collapse (#7855). Upstream deleted that
+   layout and its predicate in #25869, so the verdict below is now moot; it
+   stays so the fenced ChatComposer/ChatView reads and the guard keep a fixed
+   answer if upstream ever brings a collapsed state back. */
 /** The one switch for upstream's resting composer. ChatComposer and ChatView
  *  read it to skip the measurement pipeline that only feeds the predicate. */
 export const FORK_ADOPTS_RESTING_COMPOSER_LAYOUT: boolean = false;

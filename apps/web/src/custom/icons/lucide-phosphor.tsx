@@ -255,6 +255,10 @@ import {
   UserCheck as PhUserCheck,
   UserFocus as PhUserFocus,
   UserMinus as PhUserMinus,
+  Pause as PhPause,
+  ShieldSlash as PhShieldSlash,
+  StopCircle as PhStopCircle,
+  User as PhUser,
 } from "@phosphor-icons/react";
 import type { FC, ReactElement, SVGProps } from "react";
 import { createElement } from "react";
@@ -662,6 +666,13 @@ export const CalendarIcon = icon("calendar", PhCalendarBlank, "duotone");
 export const Smartphone = SmartphoneIcon;
 export const CircleArrowUpIcon = ArrowUpCircleIcon;
 export const ShieldIcon = icon("shield", PhShield, "duotone");
+export const ShieldOffIcon = icon("shield-off", PhShieldSlash, "duotone");
+export const FlaskConicalOffIcon = icon("flask-conical-off", PhFlask, "duotone");
+export const UserIcon = icon("user", PhUser, "duotone");
+export const CircleStopIcon = icon("circle-stop", PhStopCircle, "duotone");
+export const PauseIcon = icon("pause", PhPause, "duotone");
+export const MaximizeIcon = icon("maximize", PhArrowsOutSimple, "bold");
+export const CircleDotDashedIcon = icon("circle-dot-dashed", PhCircleDashed, "duotone");
 export const ShieldQuestionIcon = icon("shield-question", PhShieldWarning, "duotone");
 export const SquareArrowOutUpRightIcon = ExternalLinkIcon;
 export const FilmIcon = icon("film", PhFilmStrip, "duotone");

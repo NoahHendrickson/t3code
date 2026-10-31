@@ -40,20 +40,9 @@ export const resolveUserDataPath = Effect.fn("desktop.userData.resolveUserDataPa
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-    // Electron-side identity stays forked: both builds are non-development,
-    // so without this override a fork build would open upstream's own
-    // "t3code-v2" profile. Upstream's V2 stepped its profile from "t3code" to
-    // "t3code-v2" and imports the V1 profile's localStorage; the fork takes
-    // the same step from its own V1 profile "t3code-fork" to "t3code-fork-v2"
-    // (DesktopLegacyLocalStorage names "t3code-fork" as the import source,
-    // and the Windows Local State copy below sources it where upstream
-    // sources "t3code"). The legacy slot mirrors upstream's Alpha-era
-    // profile, which the fork never had: "T3 Code (Fork)" is a deliberate
-    // sentinel that has never named a real directory and must never start
-    // to. Do NOT "fix" it to upstream's "T3 Code (Alpha)" (hands the fork the
-    // real app's Windows credential keys) or to a name a fork build once
-    // shipped. Development keeps upstream's pair: `vp dev` here is already
-    // the fork.
+    // Without this a fork build would open upstream's "t3code-v2" profile; the fork steps its own
+    // "t3code-fork" to "t3code-fork-v2". The legacy slot "T3 Code (Fork)" is a sentinel that never
+    // names a real directory. Never "fix" it to "T3 Code (Alpha)": that hands over real credentials.
     const names = input.isDevelopment
       ? { current: "t3code-dev", legacy: "T3 Code (Dev)" }
       : { current: "t3code-fork-v2", legacy: "T3 Code (Fork)" };

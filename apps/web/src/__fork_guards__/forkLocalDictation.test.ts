@@ -135,7 +135,8 @@ describe("fork local dictation", () => {
       /const sendDisabledReason =\s*(?:\/\*[^*]*\*\/\s*)*\(dictation\.blocksSubmission\s*\?/u,
     );
     expect(composer).toMatch(
-      /disabled=\{\s*isConnecting \|\|\s*isComposerApprovalState \|\|\s*(?:\/\*[^*]*\*\/\s*)*dictation\.freezesEditor \|\|/u,
+      // Upstream's editor gate no longer lists isConnecting or the approval state.
+      /disabled=\{\s*(?:\/\*[^*]*\*\/\s*)*dictation\.freezesEditor \|\|/u,
     );
     expect(composer).toContain("<ForkDictationNotices dictation={dictation} />");
     // A session pins the field it started in. A prompt session outlived by a

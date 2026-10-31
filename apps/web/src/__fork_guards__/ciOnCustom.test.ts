@@ -40,4 +40,14 @@ describe("fork guard: ci-on-custom", () => {
     // otherwise schedule a redundant full CI run (macOS jobs included).
     expect(readPushBranches()).not.toContain("main");
   });
+
+  it("compares the agent context budget with the PR's base, not main", () => {
+    const gate = NodeFS.readFileSync(
+      NodePath.join(repoRoot, ".github/workflows/agent-context-budget.yml"),
+      "utf8",
+    );
+    expect(gate).toContain("BASE_REF: ${{ github.base_ref }}");
+    expect(gate).toContain('git fetch --quiet --depth=1 origin "$BASE_REF"');
+    expect(gate).not.toContain("git fetch --quiet --depth=1 origin main");
+  });
 });

@@ -33,7 +33,6 @@ import {
   type MergedUsage,
 } from "@t3tools/shared/usageMerge";
 
-import { isElectron } from "../../env";
 import { cn } from "../../lib/utils";
 import { usePrimarySettings } from "../../hooks/useSettings";
 import { resolveHour12 } from "../../timestampFormat";
@@ -70,7 +69,7 @@ import {
 } from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
-import { SidebarInset } from "../ui/sidebar";
+import { AppRouteModal, AppRouteModalClose } from "../AppRouteModal";
 import { Skeleton } from "../ui/skeleton";
 /* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs */
 import { SegmentedTab as Toggle, SegmentedTabs as ToggleGroup } from "../../custom/SegmentedTabs";
@@ -84,7 +83,6 @@ import {
   WorkspaceBreadcrumbText,
 } from "../WorkspaceBreadcrumb";
 import { WorkspacePageContainer } from "../WorkspacePageContainer";
-import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import { UsageLimitsSection } from "./UsageLimits";
 import { UsagePriceOverrides } from "./UsagePriceOverrides";
 import { UsageProviderChart } from "./UsageProviderChart";
@@ -106,7 +104,6 @@ import {
   resolveUsageShortcut,
   type UsageMetric,
 } from "./usageShortcuts";
-import { useEscapeToGoBack } from "../../hooks/useNavigateBack";
 import { PROVIDER_ORDER, PROVIDER_PRESENTATION, providersWithUsage } from "./usageProviders";
 import {
   readUsagePagePreferences,
@@ -142,10 +139,7 @@ function usageLoading(
   };
 }
 
-/**
- * The model whose detail dialog is open. It lives outside UsagePage so opening
- * or closing the dialog renders only its host, not the whole usage page.
- */
+/** Keep dialog selection outside UsagePage so opening/closing rerenders only its host. */
 const selectedUsageModelKeyAtom = Atom.make<string | null>(null).pipe(
   Atom.keepAlive,
   Atom.withLabel("usage:selected-model-key"),
@@ -164,6 +158,7 @@ function UsageModelDialogHost({
   readonly onSetPrice: (model: string) => void;
 }) {
   const selectedKey = useAtomValue(selectedUsageModelKeyAtom);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- clears the shared selected-model atom on unmount
   useEffect(() => () => selectUsageModel(null), []);
   const model =
     selectedKey === null
@@ -182,15 +177,6 @@ function UsageModelDialogHost({
     />
   );
 }
-
-/* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
-/** Mounted only on the routed page, so the popover never attaches the
-    window-level Escape → history.back() handler. */
-function UsagePageEscapeToGoBack() {
-  useEscapeToGoBack();
-  return null;
-}
-/* fork:end fork-usage-popover */
 
 export function UsagePage(
   /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
@@ -241,7 +227,9 @@ export function UsagePage(
   const refreshingUsage = isRefreshing && !showingLimits;
   const showingKept = shown !== null && shown.window !== window;
   const presentations = useAtomValue(environmentPresentations.presentationsAtom);
-  const providersByEnvironment = useAtomValue(environmentPresentations.providersByEnvironmentAtom);
+  const presentationsWithProviders = useAtomValue(
+    environmentPresentations.presentationsWithProvidersAtom,
+  );
   const cursorAccessEnvironments = hiddenProviders.has("cursor")
     ? []
     : cursorKeychainAccessEnvironments(selectedEnvironments);
@@ -311,6 +299,7 @@ export function UsagePage(
     if (periodOption && !showingLimits) selectWindow(periodOption.days);
   });
 
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- window capture keydown listener for usage metric and period shortcuts
   useEffect(() => {
     globalThis.window.addEventListener("keydown", onUsageKeyDown, true);
     return () => globalThis.window.removeEventListener("keydown", onUsageKeyDown, true);
@@ -357,6 +346,7 @@ export function UsagePage(
   const autoRefreshLimits = useEffectEvent(() => {
     void refreshLimits(true);
   });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- refreshes provider limits from the server when the connected environment set changes
   useEffect(() => {
     if (showingLimits && connectedLimitsEnvironments) autoRefreshLimits();
   }, [showingLimits, connectedLimitsEnvironments]);
@@ -368,10 +358,10 @@ export function UsagePage(
       : enumerateHourStarts(shownWindow.sinceTime, shownWindow.untilTime);
   const showChatGptSharing =
     !hiddenProviders.has("codex") &&
-    [...providersByEnvironment].some(
-      ([id, providers]) =>
+    [...presentationsWithProviders].some(
+      ([id, presentation]) =>
         (selectedEnvironmentIds === null || selectedEnvironmentIds.has(id)) &&
-        providers.some(usesChatGptSharing),
+        (presentation.serverConfig?.providers ?? []).some(usesChatGptSharing),
     );
 
   const windowLabel =
@@ -382,12 +372,12 @@ export function UsagePage(
     <div
       className={
         /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover
-           The page toolbar keys off viewport xl/2xl. Inside the popover those
-           breakpoints still fire, so the date label and toggle groups share
-           one overflowing row. Panel chrome wraps and drops the date label. */
+           The page toolbar keys off the modal header's container width. The popover has none, so
+           the date label and toggle groups would share one overflowing row. Panel chrome wraps and
+           drops the date label. */
         chrome === "panel"
           ? "flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2 py-2"
-          : "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 py-2 xl:flex"
+          : "grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 py-2 @4xl/usage-header:flex"
         /* fork:end fork-usage-popover */
       }
     >
@@ -424,7 +414,7 @@ export function UsagePage(
             /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
             chrome === "panel"
               ? "hidden"
-              : "hidden min-w-0 truncate text-xs text-muted-foreground 2xl:block"
+              : "hidden min-w-0 truncate text-xs text-muted-foreground @7xl/usage-header:block"
             /* fork:end fork-usage-popover */
           }
         >
@@ -436,10 +426,31 @@ export function UsagePage(
           /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
           chrome === "panel"
             ? "ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2"
-            : "ms-auto hidden min-w-0 items-center justify-end gap-2 xl:flex"
+            : "ms-auto hidden shrink-0 items-center justify-end gap-2 @4xl/usage-header:flex"
           /* fork:end fork-usage-popover */
         }
       >
+        {/* Limits are always current, so they have no period. The period sits before the metric
+            tabs so dropping it never moves them. */}
+        {showingLimits ? null : (
+          <ToggleGroup
+            aria-label="Usage period"
+            /* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs
+               The fork's tabs carry their own look, so upstream's variant is gone. */
+            /* fork:end fork-usage-tabs */
+            value={[String(windowDays)]}
+            onValueChange={(next) => {
+              const value = next[0];
+              if (value) selectWindow(Number(value));
+            }}
+          >
+            {WINDOW_OPTIONS.map((option) => (
+              <Toggle key={option.days} value={String(option.days)} title={shortcutTitle(option)}>
+                {option.label}
+              </Toggle>
+            ))}
+          </ToggleGroup>
+        )}
         <ToggleGroup
           aria-label="Usage metric"
           /* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs
@@ -453,24 +464,6 @@ export function UsagePage(
         >
           {METRIC_OPTIONS.map((option) => (
             <Toggle key={option.value} value={option.value} title={shortcutTitle(option)}>
-              {option.label}
-            </Toggle>
-          ))}
-        </ToggleGroup>
-        <ToggleGroup
-          aria-label="Usage period"
-          /* fork:begin fork-usage-tabs — see .fork/customizations.yaml#fork-usage-tabs
-             The fork's tabs carry their own look, so upstream's variant is gone. */
-          /* fork:end fork-usage-tabs */
-          value={[String(windowDays)]}
-          disabled={showingLimits}
-          onValueChange={(next) => {
-            const value = next[0];
-            if (value) selectWindow(Number(value));
-          }}
-        >
-          {WINDOW_OPTIONS.map((option) => (
-            <Toggle key={option.days} value={String(option.days)} title={shortcutTitle(option)}>
               {option.label}
             </Toggle>
           ))}
@@ -491,10 +484,35 @@ export function UsagePage(
           /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */
           chrome === "panel"
             ? "hidden"
-            : "ms-auto flex min-w-0 items-center justify-end gap-1 xl:hidden"
+            : "ms-auto flex shrink-0 items-center justify-end gap-1 @4xl/usage-header:hidden"
           /* fork:end fork-usage-popover */
         }
       >
+        {showingLimits ? null : (
+          <Select value={String(windowDays)} onValueChange={(value) => selectWindow(Number(value))}>
+            <SelectTrigger
+              aria-label="Usage period"
+              size="compact"
+              variant="ghost"
+              className="w-auto min-w-0"
+            >
+              <SelectValue>
+                {WINDOW_OPTIONS.find((option) => option.days === windowDays)?.label}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectPopup align="end" alignItemWithTrigger={false}>
+              {WINDOW_OPTIONS.map((option) => (
+                <SelectItem
+                  key={option.days}
+                  value={String(option.days)}
+                  title={shortcutTitle(option)}
+                >
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        )}
         <Select
           value={metric}
           onValueChange={(value) => {
@@ -519,33 +537,6 @@ export function UsagePage(
             ))}
           </SelectPopup>
         </Select>
-        <Select
-          value={String(windowDays)}
-          disabled={showingLimits}
-          onValueChange={(value) => selectWindow(Number(value))}
-        >
-          <SelectTrigger
-            aria-label="Usage period"
-            size="compact"
-            variant="ghost"
-            className="w-auto min-w-0"
-          >
-            <SelectValue>
-              {WINDOW_OPTIONS.find((option) => option.days === windowDays)?.label}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectPopup align="end" alignItemWithTrigger={false}>
-            {WINDOW_OPTIONS.map((option) => (
-              <SelectItem
-                key={option.days}
-                value={String(option.days)}
-                title={shortcutTitle(option)}
-              >
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectPopup>
-        </Select>
         <Button
           onClick={refreshWindow}
           aria-label={showingLimits ? "Refresh limits" : "Refresh usage"}
@@ -561,7 +552,7 @@ export function UsagePage(
   );
 
   /* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover
-     The body is hoisted so the panel chrome (below) and upstream's page shell
+     The body is hoisted so the panel chrome (below) and upstream's modal shell
      can share it. The JSX inside this fence is upstream's, re-indented one
      level; the fork's own edits carry inner fences. */
   const usageBody = (
@@ -570,7 +561,10 @@ export function UsagePage(
       {chrome === "panel" ? (
         <div className="shrink-0 px-4">{topbarContent}</div>
       ) : (
-        <WorkspacePageHeader electron={isElectron}>{topbarContent}</WorkspacePageHeader>
+        <header className="@container/usage-header flex min-h-12 shrink-0 items-center gap-1 border-b ps-5 pe-2">
+          {topbarContent}
+          <AppRouteModalClose />
+        </header>
       )}
       {/* fork:end fork-usage-popover */}
 
@@ -683,14 +677,9 @@ export function UsagePage(
   /* fork:end fork-usage-popover */
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none isolate">
-      {/* fork:begin fork-usage-popover — see .fork/customizations.yaml#fork-usage-popover */}
-      <UsagePageEscapeToGoBack />
-      {/* fork:end fork-usage-popover */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground">
-        {usageBody}
-      </div>
-    </SidebarInset>
+    <AppRouteModal label="Usage">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{usageBody}</div>
+    </AppRouteModal>
   );
 }
 
@@ -728,16 +717,15 @@ function UsageOverview({
   const [breakdown, setBreakdown] = useState<"model" | "time">("model");
   const shownHourly = shownWindow.resolution === "hour";
   const loading = usageLoading(showingKept, selectedEnvironments, refreshingUsage, hiddenProviders);
-  // A primitive copy: reading `loading.partial` in the JSX would keep `loading` alive
-  // across every derivation below and fold them into one cache scope.
+  // Copy the primitive; JSX reads of loading.partial would merge all derivations into one compiler cache
+  // scope.
   const loadingPartial = loading.partial === true;
   const loadingProviders = new Set(
     PROVIDER_ORDER.filter((provider) => loading.everyProvider || loading.providers.has(provider)),
   );
   const providersWithData = new Set(providersWithUsage(merged.providers));
-  // `everyProvider` marks shown providers as loading; only `loading.providers`, which excludes
-  // hidden ones, may add a provider that has no data yet.
-  // Filtering a fresh copy, not the shared module array, lets the compiler cache this on its own.
+  // Only loading.providers excludes hidden providers without data. Filter a fresh array so the compiler can
+  // cache independently.
   const activeProviders = [...PROVIDER_ORDER].filter(
     (provider) => providersWithData.has(provider) || loading.providers.has(provider),
   );
@@ -890,7 +878,7 @@ function UsageOverview({
                     )}
                   >
                     {awaitingData
-                      ? "—"
+                      ? "-"
                       : metric === "cost"
                         ? formatUsd(totals?.costUsd ?? 0)
                         : formatTokens(totals?.totalTokens ?? 0)}
@@ -1442,7 +1430,7 @@ function UsageEnvironmentFilter({
             />
           ) : (
             <ChevronDownIcon
-              className="size-3.5 opacity-0 transition-opacity group-hover/usage-environment:opacity-100 group-focus-visible/usage-environment:opacity-100 group-data-popup-open/usage-environment:opacity-100"
+              className="size-3.5 opacity-60 transition-opacity group-hover/usage-environment:opacity-100 group-focus-visible/usage-environment:opacity-100 group-data-popup-open/usage-environment:opacity-100"
               aria-hidden
             />
           )}
@@ -1555,7 +1543,7 @@ function UsageProviderFilter({
       <MenuTrigger render={<InlineButton />} className="group/usage-provider min-w-0 max-w-full">
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDownIcon
-          className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/usage-provider:opacity-100 group-focus-visible/usage-provider:opacity-100 group-data-popup-open/usage-provider:opacity-100"
+          className="size-3.5 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover/usage-provider:opacity-100 group-focus-visible/usage-provider:opacity-100 group-data-popup-open/usage-provider:opacity-100"
           aria-hidden
         />
       </MenuTrigger>

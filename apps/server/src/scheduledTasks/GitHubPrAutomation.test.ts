@@ -7,7 +7,6 @@ import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
 import * as Queue from "effect/Queue";
 import * as Layer from "effect/Layer";
-import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 import * as ProjectStore from "../orchestration-v2/ProjectStore.ts";
@@ -53,6 +52,7 @@ const withService = <A, E>(
     launches: Queue.Queue<ThreadLaunchService.ThreadLaunchInput>;
     hooks: Map<string, { id: number; config: { url: string; secret: string } }>;
     calls: Array<GitHubRest.GitHubRestInput>;
+    sql: SqlClient.SqlClient;
   }) => Effect.Effect<A, E>,
   options: {
     failRepo?: string;
@@ -74,22 +74,20 @@ const withService = <A, E>(
     const external = Layer.mergeAll(
       Layer.mock(ProjectStore.ProjectStoreV2)({
         get: (projectId) =>
-          Effect.succeed(
-            Option.some({
-              projectId,
-              title: projectId,
-              workspaceRoot: `/repo/${projectId}`,
-              defaultModelSelection: null,
-              defaultThreadEnvMode: null,
-              autoPull: false,
-              faviconPath: null,
-              projectIcon: null,
-              scripts: [],
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              deletedAt: null,
-            }),
-          ),
+          Effect.succeedSome({
+            projectId,
+            title: projectId,
+            workspaceRoot: `/repo/${projectId}`,
+            defaultModelSelection: null,
+            defaultThreadEnvMode: null,
+            autoPull: false,
+            faviconPath: null,
+            projectIcon: null,
+            scripts: [],
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            deletedAt: null,
+          }),
       }),
       Layer.mock(VcsProcess.VcsProcess)({
         run: (request) =>
@@ -186,7 +184,7 @@ const withService = <A, E>(
     );
     return yield* Effect.gen(function* () {
       const service = yield* ScheduledTaskService.ScheduledTaskService;
-      return yield* body({ service, launches, hooks, calls });
+      return yield* body({ service, launches, hooks, calls, sql });
     }).pipe(Effect.provide(ScheduledTaskService.layer.pipe(Layer.provide(deps))));
   }).pipe(Effect.provide(SqlitePersistence.layerMemory));
 
@@ -236,7 +234,18 @@ it.effect(
         );
         assert.equal(task.threadId, null);
         const callsBeforeRename = calls.length;
-        yield* service.upsert(input({ title: "Renamed" }));
+        // A coalesce window would dispatch the PR without its trigger, so saving drops it.
+        const { task: renamed } = yield* service.upsert(
+          input({
+            title: "Renamed",
+            schedule: {
+              type: "webhook",
+              github: { repositories: [{ projectId: "d2" }, { projectId: "no3y" }] },
+              dedupe: { coalesceKey: "{{body.pull_request.number}}", coalesceWindowSeconds: 10 },
+            },
+          }),
+        );
+        assert.equal(renamed.schedule.type === "webhook" && renamed.schedule.dedupe, undefined);
         assert.equal(calls.length, callsBeforeRename);
         assert.equal(calls.filter((call) => call.method === "POST").length, 2);
         yield* service.delete({ id: task.id });
@@ -279,6 +288,38 @@ it.effect(
         { gate },
       );
     }),
+);
+
+it.effect("routes a PR with its trigger when the task was stored with a dedupe", () =>
+  withService(({ service, launches, hooks, sql }) =>
+    Effect.gen(function* () {
+      const { task } = yield* service.upsert(input());
+      const token = task.webhook!.path.split("/").at(-1)!;
+      const secret = hooks.get("owner/d2")!.config.secret;
+      // Saving strips dedupe now, so plant one the way an older save stored it.
+      const [row] = yield* sql<{ schedule_json: string }>`
+        SELECT schedule_json FROM scheduled_tasks WHERE task_id = ${task.id}`;
+      const stored = {
+        ...JSON.parse(row!.schedule_json),
+        dedupe: {
+          replayKey: "{{body.pull_request.number}}",
+          coalesceKey: "{{body.pull_request.number}}",
+          coalesceWindowSeconds: 10,
+        },
+      };
+      yield* sql`UPDATE scheduled_tasks SET schedule_json = ${JSON.stringify(stored)}
+        WHERE task_id = ${task.id}`;
+      // The same PR number in another repository is a different review.
+      yield* service.triggerWebhook(request(secret, token, "owner/d2", 108));
+      assert.equal((yield* Queue.take(launches)).projectId, ProjectId.make("d2"));
+      const second = yield* service.triggerWebhook(request(secret, token, "owner/no3y", 108));
+      assert.notEqual(second._tag === "accepted" && second.outcome, "duplicate");
+      const launch = yield* Queue.take(launches);
+      assert.equal(launch.projectId, ProjectId.make("no3y"));
+      assert.include(launch.initialMessage!.text, "https://github.com/owner/no3y/pull/108");
+      assert.equal(launch.workspaceStrategy.type, "worktree");
+    }),
+  ),
 );
 
 it.effect(

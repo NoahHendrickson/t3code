@@ -273,7 +273,7 @@ export function relativeLabel(value: string | null): string {
   return `in ${Math.round(hours / 24)}d`;
 }
 
-export const DELIVERY_OUTCOME_LABELS: Record<ScheduledTaskWebhookDeliveryOutcome, string> = {
+const DELIVERY_OUTCOME_LABELS: Record<ScheduledTaskWebhookDeliveryOutcome, string> = {
   accepted: "Ran",
   dispatch_failed: "Run failed",
   rejected_signature: "Bad signature",
@@ -281,11 +281,17 @@ export const DELIVERY_OUTCOME_LABELS: Record<ScheduledTaskWebhookDeliveryOutcome
   rate_limited: "Rate limited",
   expired: "Too old",
   ignored: "Not a new PR",
+  duplicate: "Duplicate delivery",
+  coalesced: "Coalesced",
+  filtered: "Filtered out",
 };
 
-export function deliveryOutcomeTone(
-  outcome: ScheduledTaskWebhookDeliveryOutcome,
-): "success" | "warning" | "error" {
+/** Summaries decode any outcome string so a newer server cannot break the list. */
+export function deliveryOutcomeLabel(outcome: string): string {
+  return (DELIVERY_OUTCOME_LABELS as Record<string, string | undefined>)[outcome] ?? outcome;
+}
+
+export function deliveryOutcomeTone(outcome: string): "success" | "warning" | "error" {
   if (outcome === "accepted") return "success";
   if (
     outcome === "ignored" ||

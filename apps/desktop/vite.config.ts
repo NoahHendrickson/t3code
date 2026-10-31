@@ -6,9 +6,7 @@ import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
 
 const repoEnv = loadRepoEnv();
 
-// The packaged app then installs just those externals, instead of a full
-// production install of apps/desktop's dependency tree next to a server bundle
-// that already carries its own copy of the same libraries.
+// Install only bundle externals; the server bundle already carries its dependency tree.
 const isMainProcessExternal = (id: string) =>
   id === "electron" || id.startsWith("electron/") || isDesktopRuntimeExternalDependency(id);
 const shouldLaunchElectronAfterPack = process.env.T3CODE_DESKTOP_DEV === "1";
@@ -51,6 +49,11 @@ export default defineConfig({
         command: "node scripts/dev-electron.mjs",
         dependsOn: ["t3#build"],
         cache: false,
+      },
+      // tsc (tsc-rs) rewrites the tsbuildinfo it reads, which keeps a task out of the cache.
+      typecheck: {
+        command: "tsc --noEmit",
+        cache: { input: [{ auto: true }, "!*.tsbuildinfo"] },
       },
     },
   },
@@ -114,9 +117,7 @@ export default defineConfig({
       define: publicConfigDefine,
       entry: ["src/preload.ts"],
       deps: {
-        // Sandboxed Electron preloads cannot reliably resolve package imports
-        // from inside the packaged ASAR. Bundle Clerk's preload bridge into the
-        // preload artifact instead of leaving a runtime require() behind.
+        // Sandboxed preloads cannot resolve imports inside ASAR; bundle Clerk's bridge.
         alwaysBundle: (id) => id === "@clerk/electron" || id.startsWith("@clerk/electron/"),
       },
     },
@@ -128,13 +129,10 @@ export default defineConfig({
       outExtensions: () => ({ js: ".cjs" }),
       entry: ["src/preview-pick-preload.ts"],
       deps: {
-        // This preload runs sandboxed (WebviewPreferences.ts pins `sandbox=true`), so its
-        // limited `require` cannot resolve npm packages from the packaged ASAR. Anything
-        // left external here throws before the preload installs the picker or the design
-        // source resolver, taking the whole preview-pick path down. `bippy` rides along
-        // with react-grab: DesignSourceResolver imports it directly for the fiber walk.
-        // `@t3tools/*` is a workspace package and just as unresolvable from here —
-        // DesignSourceResult pulls in the shared design-props policy.
+        // Sandboxed preload (`sandbox=true`): its `require` cannot resolve npm or
+        // `@t3tools/*` packages from the ASAR, so anything left external throws and
+        // takes the preview-pick path down. DesignSourceResolver imports `bippy`
+        // directly; DesignSourceResult pulls in the shared design-props policy.
         alwaysBundle: (id) =>
           id === "react-grab" ||
           id.startsWith("react-grab/") ||
@@ -166,6 +164,9 @@ export default defineConfig({
     // The Windows lane runs workspace suites concurrently; filesystem-heavy
     // desktop integration tests can exceed Vitest's 5 second default there.
     testTimeout: 15_000,
-    setupFiles: ["../../packages/shared/src/testing/longTempDir.ts"],
+    setupFiles: [
+      "../../packages/shared/src/testing/longTempDir.ts",
+      "../../packages/shared/src/testing/providerEnv.ts",
+    ],
   },
 });

@@ -44,6 +44,8 @@ const paletteRules = cssRules(palettes);
 const chatComposer = readSibling("../components/chat/ChatComposer.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const primaryActions = readSibling("../components/chat/ComposerPrimaryActions.tsx");
+// Upstream moved the queued and draft attachment tiles out of ChatComposer.
+const attachmentStrip = readSibling("../components/chat/ComposerAttachmentStrip.tsx");
 const envModeSelector = readSibling("../components/BranchToolbarEnvModeSelector.tsx");
 const stageBackdrop = readSibling("../components/SidebarStageBackdrop.tsx");
 
@@ -191,9 +193,11 @@ describe("fork guard: fork-composer-shell", () => {
       "bg-message-action text-message-action-foreground hover:bg-message-action-hover",
     );
     expect(chatComposer).not.toContain("bg-primary/90 text-primary-foreground");
-    expect(chatComposer).toContain(
+    expect(attachmentStrip).toContain(
       "items-center justify-center px-1 text-center text-3xs text-secondary-label",
     );
+    expect(attachmentStrip).not.toContain("text-muted-foreground/60");
+    expect(attachmentStrip).not.toContain("text-muted-foreground/35");
   });
 
   it("fences the compact Nightly artwork seam used by the send button", () => {
@@ -246,7 +250,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(chatView).not.toContain("isDraftHero={isDraftHeroState}");
     // The greeting rides bottom-full above the composer inside the stack, so
     // the composer itself sits on the centre line; no separate greeting layer.
-    expect(chatView).toMatch(/bottom-full[\s\S]{0,1400}<DraftHeroHeadline/u);
+    expect(chatView).toMatch(/bottom-full[\s\S]{0,2400}<DraftHeroHeadline/u);
     expect(chatView).not.toContain(
       'className="pointer-events-none absolute inset-0 z-10 flex items-center"',
     );
@@ -266,12 +270,13 @@ describe("fork guard: fork-composer-shell", () => {
     // While upstream's strip is hidden, the fallback strip must still lead
     // with the pinned project and branch chips.
     expect(chatView).toMatch(/isServerThread && activeProject && !showComposerContextStrip/u);
-    // One leading value feeds every site: the BranchToolbar spread, both
-    // fallback strips and the Shell's contextStrip predicate.
+    // One leading value feeds every site: the BranchToolbar spread, the
+    // fallback strip and the Shell's contextRow predicate. (Upstream's hidden
+    // measuring strip, and the second fallback beside it, went in #25869.)
     expect(chatView).toContain(
       "const composerContextLeading = draftProjectPill ?? threadContextReadout;",
     );
-    expect(chatView.match(/leading: composerContextLeading\b/gu)).toHaveLength(3);
+    expect(chatView.match(/leading: composerContextLeading\b/gu)).toHaveLength(2);
     expect(chatView).toContain("composerContextLeading != null");
     // A worktree thread keeps its saved branch when the directory is gone
     // (git status then reports no repo), as the strip's own predicates do.
@@ -490,6 +495,24 @@ describe("fork guard: fork-composer-shell", () => {
     expect(envModeSelector).not.toContain("displayMode");
   });
 
+  it("spaces the chips off the vessel on upstream's own context-row signal", () => {
+    // The gap keys on the shell's marker; an upstream rename silently drops it.
+    expect(readSibling("../components/chat/ComposerSurface.tsx")).toContain("data-context-row=");
+    expect(readSibling("../custom/ComposerShell.tsx")).toContain(
+      "group-data-context-row/composer-surface:pb-2",
+    );
+  });
+
+  it("keeps the carets on the context chips and the model chip", () => {
+    for (const file of [
+      "../components/BranchToolbar.tsx",
+      "../components/BranchToolbarBranchSelector.tsx",
+      "../overrides/components/chat/ProviderModelPicker.tsx",
+    ]) {
+      expect(readSibling(file), file).toMatch(/<ChevronDownIcon[\s\S]{0,160}shrink-0/u);
+    }
+  });
+
   it("keeps context chips at 24px and the meter outside ghost geometry", () => {
     const context = rules.find(
       (rule) =>
@@ -679,11 +702,12 @@ describe("fork guard: fork-composer-shell", () => {
     expect(chatComposer).toMatch(/const composerAttachAction = showComposerAttachAction \? \(/u);
     // The whole moved block is one fence, not just its data attribute: a sync
     // conflict inside it must show the fork's boundary.
+    // Since #25869 it shares one fence with the other control-row clusters.
     expect(chatComposer).toMatch(
-      /fork:begin fork-composer-shell[\s\S]{0,400}?const composerAttachAction = showComposerAttachAction \? \(/u,
+      /fork:begin fork-composer-shell(?:(?!fork:end fork-composer-shell)[\s\S])*?const composerAttachAction = showComposerAttachAction \? \(/u,
     );
     expect(chatComposer).toMatch(
-      /\) : null;\s*\/\* fork:end fork-composer-shell \*\/\s*const composerPrimaryActionSlot = \(/u,
+      /const composerAttachAction = showComposerAttachAction \? \([\s\S]*?\) : null;(?:(?!fork:begin fork-composer-shell)[\s\S])*?\/\* fork:end fork-composer-shell \*\//u,
     );
     expect(chatComposer).toMatch(/modeControls=\{\s*<>\s*\{composerAttachAction\}/u);
     expect(theme).not.toContain("leading-actions");
@@ -755,6 +779,8 @@ describe("fork guard: fork-composer-shell", () => {
   it("switches off the stitched glass shell and flattens the context strip", () => {
     for (const selector of [
       '[data-slot="composer-shell"]::before',
+      // Upstream's host paints its own glass when a context row is present.
+      '[data-slot="composer-host"]::before',
       '[data-slot="composer-host"]::after',
       '[data-slot="composer-context-strip"]::before',
     ]) {
@@ -810,19 +836,8 @@ describe("fork guard: fork-composer-shell", () => {
     // Flex only — the wrapper rule's gap and max-width would fight the chips'
     // own 6px gap and the mobile slot's 48% cap.
     expect(everyChild?.body).not.toMatch(/gap:|max-width:/u);
-    // Empty resting host must not occupy a flex slot between checkout and
-    // branch (that doubles the 8px gap to 16px). Desktop never passes the
-    // host ref; the CSS belt hides a leftover empty node.
-    expect(chatView).not.toMatch(/composerControlsHostRef=\{setRestingComposerControlsHost\}/u);
-    expect(chatView).toMatch(
-      /hostsRestingComposerControls[\s\S]{0,160}composerControlsHostRef:\s*setRestingComposerControlsHost/u,
-    );
-    const emptyHost = rules.find(
-      (rule) =>
-        rule.selector.includes("[data-chat-resting-composer-controls-host") &&
-        rule.selector.includes(":empty"),
-    );
-    expect(emptyHost?.body).toMatch(/display:\s*none/u);
+    // Upstream #25869 removed the resting host, so no empty flex slot can open a double gap.
+    expect(chatView).not.toContain("composerControlsHostRef");
   });
 
   it("moves background liveness off the banner stack onto a context-strip pill with stop", () => {
@@ -863,7 +878,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(strip).toContain("<ComposerSurface.ContextStrip>");
     expect(strip).toContain("export function renderComposerContextStripFallback({");
     expect(branchToolbar).toContain("trailing?: ReactNode");
-    expect(branchToolbar).toContain("{trailing ?? null}");
+    expect(branchToolbar).toMatch(/\{trailing\}\s*<\/ComposerSurface\.ContextStrip>/u);
     // The bare fallback strip has one owner: the no-thread branch reuses it
     // instead of re-rendering the strip inline with a dead measure ref.
     expect(branchToolbar).toContain(

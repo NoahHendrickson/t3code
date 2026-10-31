@@ -78,10 +78,9 @@ describe("fork guard: fork-scheduled-runs-off-sidebar", () => {
       automationRun("review"),
       automationRun("kept", { pinnedAt: UPDATED_AT }),
     ];
-    expect(filterSidebarV2VisibleThreads(threads, null).map((thread) => thread.id)).toEqual([
-      "mine",
-      "kept",
-    ]);
+    expect(
+      filterSidebarV2VisibleThreads(threads, null, new Set()).map((thread) => thread.id),
+    ).toEqual(["mine", "kept"]);
   });
 
   it("counts hidden runs in motion, waiting on you, or failed and unopened", () => {

@@ -35,7 +35,7 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 
-import { useRelativeTimeTick } from "~/components/settings/settingsLayout";
+import { useRelativeTimeTick } from "./useRelativeTimeTick";
 import { useNavigateToMainApp } from "~/components/sidebar/mainAppLocation";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";

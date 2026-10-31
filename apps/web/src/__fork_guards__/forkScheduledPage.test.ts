@@ -91,7 +91,9 @@ describe("fork guard: fork-scheduled-page", () => {
     );
     expect(rpc).toMatch(/\n\s+WsScheduledTasksListRunsRpc,\n/u);
     expect(service).toContain("readonly listRuns: (");
-    expect(service).toContain("listRuns: (input) => listScheduledTaskRuns(sql, input)");
+    expect(service).toMatch(
+      /listRuns: Effect\.fn\("ScheduledTaskService\.listRuns"\)\(\(input\) =>\s*listScheduledTaskRuns\(sql, input\),/u,
+    );
     expect(ws).toContain("[WS_METHODS.scheduledTasksListRuns]: (input) =>");
     expect(authorization).toContain(
       "[WS_METHODS.scheduledTasksListRuns]: AuthOrchestrationReadScope",

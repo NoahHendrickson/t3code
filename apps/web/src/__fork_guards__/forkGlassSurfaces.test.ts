@@ -149,7 +149,11 @@ describe("fork guard: glass surfaces", () => {
     const palettes = cssRules(readSibling("../theme.custom.palettes.css"));
     const root = `:root[${FORK_MARKER_ATTRIBUTE}="${FORK_MARKER_VALUE}"].dark${PALETTE}`;
     expect(
-      ruleBodyFor(palettes, [root, '[data-sidebar-version="v2"]', "[data-fork-chrome-row]"]),
+      ruleBodyFor(palettes, [
+        root,
+        ':is([data-sidebar-version="v2"], [data-app-modal])',
+        "[data-fork-chrome-row]",
+      ]),
     ).toContain("border-radius: 9999px;");
     // The 3D sheet rounds thread rows to 12px but leaves the top rows alone.
     expect(

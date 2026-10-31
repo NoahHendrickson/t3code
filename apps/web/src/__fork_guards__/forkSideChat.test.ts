@@ -25,6 +25,7 @@ const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts"
 const desktopPreload = readSibling("../../../desktop/src/preload.ts");
 const main = readSibling("../main.tsx");
 const root = readSibling("../routes/__root.tsx");
+const appInit = readSibling("../appInit.tsx");
 const shell = readSibling("../custom/sideChat/SideChatShell.tsx");
 const settings = readSibling("../hooks/useSettings.ts");
 const surface = readSibling("../custom/sideChat/surface.ts");
@@ -67,8 +68,9 @@ describe("fork guard: fork-side-chat", () => {
   it("keeps the side chat out of window lookups and broadcasts", () => {
     expect(sideChatWindow).toContain("markForkAuxiliaryWindow(window);");
     expect(electronWindow).toContain("windows.filter((window) => !isForkAuxiliaryWindow(window))");
-    expect(electronWindow).toContain(
-      "const first = Option.fromNullishOr((yield* listAppWindows)[0] ?? null);",
+    // Upstream now skips its own auxiliary windows here too; the fork keeps both filters.
+    expect(electronWindow).toMatch(
+      /const first = Option\.fromNullishOr\(\s*\(yield\* listAppWindows\)\.find\(\(window\) => !auxiliaryWindows\.has\(window\)\) \?\? null,\s*\);/u,
     );
     // Menu actions, SnapShot and zoom never land in a focused side chat.
     expect(electronWindow).toMatch(
@@ -145,8 +147,25 @@ describe("fork guard: fork-side-chat", () => {
       "<ForkDictationHotkeyHost",
       "<SnapShotCoordinator",
       "<AppSidebarLayout",
+      // RootRouteView already wraps every branch; a second pair shows each toast twice.
+      "<ToastProvider",
     ]) {
       expect(branch).not.toContain(coordinator);
+    }
+  });
+
+  it("starts the app-wide services only in the main window", () => {
+    const stop = appInit.indexOf("if (isSideChatSurface) return router;");
+    expect(stop).toBeGreaterThan(-1);
+    expect(appInit).toContain("if (!isSideChatSurface) startMainAppLocationTracking(router);");
+    expect(appInit).toContain("if (!isSideChatSurface) startAgentOpenedPreviews();");
+    expect(appInit).toContain("if (!isSideChatSurface) startPreviewTitleRecording();");
+    for (const service of [
+      "startThreadNotifications(",
+      "startSlowRpcRequestToasts(",
+      "startDesktopUpdateLaunchNotice(",
+    ]) {
+      expect(appInit.indexOf(service), service).toBeGreaterThan(stop);
     }
   });
 });

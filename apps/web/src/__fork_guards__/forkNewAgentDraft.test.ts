@@ -20,7 +20,7 @@ function readSibling(relativePath: string): string {
 }
 
 const sidebar = readSibling("../components/Sidebar.tsx");
-const chatRoute = readSibling("../routes/_chat.tsx");
+const chatCommands = readSibling("../shortcuts/chatRouteCommands.ts");
 const chromeRows = readSibling("../custom/SidebarV2ChromeRows.tsx");
 const draftRows = readSibling("../custom/sidebarV2DraftRows.ts");
 const hooks = readSibling("../custom/useNewAgentDraft.ts");
@@ -57,19 +57,23 @@ describe("fork guard: fork-new-agent-draft", () => {
   it("routes the chat.new shortcut through the same door", () => {
     // A behaviour reachable from the button is reachable from the keybinding;
     // the legacy sidebar keeps upstream's contextual create.
-    expect(chatRoute).toMatch(
-      /if \(command === "chat\.new"\) \{[\s\S]{0,600}?if \(!legacySidebarEnabled\) \{\s*void startNewAgentDraft\(\);\s*return;\s*\}/u,
+    // Upstream moved chat shortcuts to shortcuts/chatRouteCommands.ts and deleted the
+    // legacy sidebar, so chat.new always starts the draft.
+    expect(chatCommands).toMatch(
+      /"chat\.new": \(event\) => \{[\s\S]{0,800}?void startNewAgentDraft\(router,/u,
     );
     // From an unassigned draft there is no "current project" for newLocal.
-    expect(chatRoute).toMatch(
-      /if \(command === "chat\.newLocal"\) \{[\s\S]{0,500}?if \(isUnassignedDraft\(activeDraftThread\)\) \{\s*void startNewAgentDraft\(\);\s*return;\s*\}/u,
+    expect(chatCommands).toMatch(
+      /const startNewLocal: CommandHandler[\s\S]{0,500}?if \(isUnassignedDraft\(context\.activeDraftThread\)\) \{\s*void startNewAgentDraft\(/u,
     );
+    expect(chatCommands).not.toContain('open: "new-thread-in"');
+    expect(chatCommands).not.toContain("readProjectGroupCount()");
     // Upstream's palette route for chat.new is unreachable behind that
     // early return, so it is deleted rather than left as dead weight — along
     // with the project-group count that only existed to feed it.
-    expect(chatRoute).not.toContain('open: "new-thread-in"');
-    expect(chatRoute).not.toContain("projectGroupCount");
-    expect(chatRoute).not.toContain("buildSidebarProjectSnapshots(");
+    expect(chatCommands).not.toContain('open: "new-thread-in"');
+    expect(chatCommands).not.toContain("projectGroupCount");
+    expect(chatCommands).not.toContain("buildSidebarProjectSnapshots(");
   });
 
   it("hides the header's title, panel toggles and details card until a project is picked", () => {
@@ -96,12 +100,8 @@ describe("fork guard: fork-new-agent-draft", () => {
     expect(composer).toContain(
       "const promptLockedForProject = projectSelectionRequired && !isUnassignedNewAgentDraft;",
     );
-    expect(composer).toMatch(
-      /disabled=\{\s*isConnecting \|\|\s*isComposerApprovalState \|\|[^}]*?promptLockedForProject \|\|/u,
-    );
-    expect(composer).not.toContain(
-      "disabled={isConnecting || isComposerApprovalState || projectSelectionRequired}",
-    );
+    expect(composer).toMatch(/disabled=\{[^}]*?promptLockedForProject \|\|/u);
+    expect(composer).not.toMatch(/disabled=\{\s*projectSelectionRequired \|\|/u);
   });
 
   it("reuses the live unassigned draft rather than minting a second one", () => {
@@ -190,8 +190,9 @@ describe("fork guard: fork-new-agent-draft", () => {
     // as the strip's leading chip — or to the fallback strip while the draft
     // has no project, and so no toolbar, yet. A started thread gets none.
     expect(chatView).toMatch(/isLocalDraftThread \? \(\s*<DraftProjectPill/u);
+    // The toolbar only renders while the strip is visible, so the leading gate is the branch.
     expect(chatView).toMatch(
-      /\{\.\.\.\(composerContextLeading && showComposerContextStrip\s*\?\s*\{ leading: composerContextLeading \}\s*:\s*\{\}\)\}/u,
+      /composerContextStrip = showComposerContextStrip \?[\s\S]{0,2500}?\{\.\.\.\(composerContextLeading \? \{ leading: composerContextLeading \} : \{\}\)\}/u,
     );
     expect(chatView).toMatch(
       /renderComposerContextStripFallback\(\{\s*leading: composerContextLeading,\s*trailing: composerContextTrailing,\s*\}\)/u,
@@ -288,7 +289,10 @@ describe("fork guard: fork-new-agent-draft", () => {
     );
     // ChatView still drives the slide from the shadowed constants.
     expect(chatView).toContain("DRAFT_HERO_TRANSITION_DURATION_MS");
-    expect(chatView).toContain("DRAFT_HERO_TRANSITION_EASING");
+    // Upstream moved the slide into useDraftHeroLayoutTransition.
+    expect(readSibling("../components/chat/useDraftHeroLayoutTransition.ts")).toContain(
+      "DRAFT_HERO_TRANSITION_EASING",
+    );
     // Reduced motion drops the fold the way upstream drops the slide.
     expect(css).toMatch(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\[data-chat-composer-body="true"\],[^}]*\[data-fork-composer-prompt\],[^}]*\[data-fork-composer-stack="true"\]\s*\{\s*transition:\s*none/u,

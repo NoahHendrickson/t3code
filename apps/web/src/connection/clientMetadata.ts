@@ -32,6 +32,9 @@ function isIpadosDesktopUserAgent(identity: BrowserIdentity): boolean {
   );
 }
 
+/* fork:begin fork-touch-affordances — see .fork/customizations.yaml#fork-touch-affordances */
+// Exported: the fork's long-press context menu needs the browser OS.
+/* fork:end fork-touch-affordances */
 export function browserClientOs(identity: BrowserIdentity): ClientOs {
   const userAgent = identity.userAgent;
   if (userAgent.trim() === "") return "unknown";
@@ -44,7 +47,7 @@ export function browserClientOs(identity: BrowserIdentity): ClientOs {
   return "other";
 }
 
-export function browserFamily(userAgent: string): string {
+function browserFamily(userAgent: string): string {
   if (userAgent.trim() === "") return "unknown";
   if (/edg(?:e|a|ios)?\//i.test(userAgent)) return "Edge";
   if (/opr\/|opios\//i.test(userAgent)) return "Opera";
@@ -55,7 +58,7 @@ export function browserFamily(userAgent: string): string {
   return "other";
 }
 
-export function browserDeviceType(identity: BrowserIdentity): AuthClientMetadataDeviceType {
+function browserDeviceType(identity: BrowserIdentity): AuthClientMetadataDeviceType {
   const userAgent = identity.userAgent;
   if (userAgent.trim() === "") return "unknown";
   if (
@@ -79,7 +82,7 @@ export function clientPresentationMetadata(input: {
     return {
       label: "T3 Code Desktop",
       deviceType: "desktop",
-      os: clientOsFromElectronPlatform(input.desktopBridge.getClientPlatform?.()),
+      os: clientOsFromElectronPlatform(input.desktopBridge.getClientPlatform()),
       surface: "desktop",
       ...(input.appVersion === "0.0.0" ? {} : { appVersion: input.appVersion }),
     };
