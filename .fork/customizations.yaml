@@ -4556,6 +4556,31 @@
   verify:
     - apps/web/src/__fork_guards__/forkResumeCompactionBanner.test.ts
 
+- id: fork-composer-one-notice
+  intent: >
+    The composer shows one notice at a time: the first in upstream's own
+    display order (machine notices, then the rest in the order ChatView lists
+    them). The rest wait until it clears instead of stacking up, since acting
+    on them is moot while the front one stands: no point offering Compact
+    while the usage limit is still hit. Same rule as a settled thread showing
+    only its Unsettle card (fork-thread-state-cards). Before upstream #25869
+    the extra notices collapsed into a hover-to-expand peek cap, which on the
+    fork's cardless banner floor read as a stray dark slab; since then they
+    stack as attached cards. ChatComposer (fenced) hands the stack
+    custom/frontComposerBanner's single item.
+  tier: 4
+  files:
+    - apps/web/src/custom/frontComposerBanner.ts
+    - apps/web/src/components/chat/ChatComposer.tsx
+  shadows: []
+  watch:
+    # Owns the group display order frontComposerBanner mirrors.
+    - apps/web/src/components/chat/ComposerBannerStack.tsx
+    # Builds shelfItems, the notices handed to the stack.
+    - apps/web/src/components/chat/ChatComposer.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkComposerOneNotice.test.ts
+
 - id: fork-thread-state-cards
   intent: >
     A settled or snoozed thread shows its notice card above the composer
