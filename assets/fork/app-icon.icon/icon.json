@@ -1,4 +1,7 @@
 {
+  "fill": {
+    "solid": "srgb:0.21569,0.77255,0.43922,1.00000"
+  },
   "groups": [
     {
       "layers": [
@@ -20,19 +23,6 @@
         "enabled": true,
         "value": 0.2
       }
-    },
-    {
-      "layers": [
-        {
-          "glass": false,
-          "image-name": "background.png",
-          "name": "Gleaming Circuit",
-          "position": {
-            "scale": 1,
-            "translation-in-points": [0, 0]
-          }
-        }
-      ]
     }
   ],
   "supported-platforms": {

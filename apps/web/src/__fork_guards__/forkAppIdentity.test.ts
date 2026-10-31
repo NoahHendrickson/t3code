@@ -169,8 +169,9 @@ describe("fork guard: fork-app-identity", () => {
     );
     expect(windowsIco.readUInt32BE(ico256Offset + 16)).toBe(256);
 
-    // Dev (`vp run dev`) serves apps/web/public — use the orange family there,
-    // while packaged builds stamp the gradient production family above.
+    // Dev (`vp run dev`) serves apps/web/public — the orange apple-touch family
+    // there, while packaged builds stamp the gradient production family above.
+    // Favicons are one flat Figma tile shared by both families.
     for (const [source, target] of [
       ["assets/fork/n3-dev-web-favicon.ico", "apps/web/public/favicon.ico"],
       ["assets/fork/n3-dev-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
@@ -205,12 +206,9 @@ describe("fork guard: fork-app-identity", () => {
       });
       expect(icon.groups[0]?.translucency?.enabled).toBe(true);
     }
-    // Production draws the Figma gradient as its own glass-off layer beneath
-    // the mark; development stays a solid orange tile.
-    expect(productionIcon.groups[1]?.layers[0]).toMatchObject({
-      glass: false,
-      "image-name": "background.png",
-    });
+    // Production is the Figma green tile; development stays a solid orange tile.
+    expect(productionIcon.fill?.solid).toBe("srgb:0.21569,0.77255,0.43922,1.00000");
+    expect(productionIcon.groups).toHaveLength(1);
     expect(developmentIcon.groups).toHaveLength(1);
 
     const mark = read("assets/fork/app-icon.icon/Assets/mark.svg");

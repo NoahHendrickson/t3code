@@ -11,6 +11,8 @@
  * macOS platform so each one carries the system Liquid Glass tile; the Dock
  * PNG pads the 1024 render onto a transparent 1272 canvas, the standard Mac
  * icon footprint. `--check` renders into memory and fails on any stale file.
+ * Web favicons are not rendered here: they are a flat tile from Figma
+ * (t3-fork 598:6596), committed as rasters.
  */
 
 import * as NodeChildProcess from "node:child_process";
@@ -23,7 +25,6 @@ import { encodePngIco, WINDOWS_ICON_SIZES } from "../scripts/lib/icon-export.ts"
 
 const DESIGN_GENERATION = 26;
 const DOCK_CANVAS_SIZE = 1272;
-const FAVICON_ICO_SIZES = [16, 32] as const;
 
 const repoRoot = NodePath.resolve(NodePath.dirname(NodeURL.fileURLToPath(import.meta.url)), "..");
 
@@ -91,10 +92,7 @@ function variantOutputs(source: string, prefix: string): Map<string, Buffer> {
   return new Map([
     [`assets/fork/${prefix}-macos-1024.png`, macos],
     [`assets/fork/${prefix}-macos-dock.png`, padToDockCanvas(macos)],
-    [`assets/fork/${prefix}-web-favicon-16x16.png`, render(source, 16)],
-    [`assets/fork/${prefix}-web-favicon-32x32.png`, render(source, 32)],
     [`assets/fork/${prefix}-web-apple-touch-180.png`, render(source, 180)],
-    [`assets/fork/${prefix}-web-favicon.ico`, ico(source, FAVICON_ICO_SIZES)],
   ]);
 }
 
@@ -112,15 +110,10 @@ try {
   const development = variantOutputs("assets/fork/dev-app-icon.icon", "n3-dev");
   for (const [path, contents] of development) outputs.set(path, contents);
   // `vp run dev` serves apps/web/public, so it carries the development family.
-  const publicCopies = [
-    ["favicon.ico", "n3-dev-web-favicon.ico"],
-    ["favicon-16x16.png", "n3-dev-web-favicon-16x16.png"],
-    ["favicon-32x32.png", "n3-dev-web-favicon-32x32.png"],
-    ["apple-touch-icon.png", "n3-dev-web-apple-touch-180.png"],
-  ] as const;
-  for (const [target, source] of publicCopies) {
-    outputs.set(`apps/web/public/${target}`, development.get(`assets/fork/${source}`)!);
-  }
+  outputs.set(
+    "apps/web/public/apple-touch-icon.png",
+    development.get("assets/fork/n3-dev-web-apple-touch-180.png")!,
+  );
 } finally {
   NodeFS.rmSync(workDir, { recursive: true, force: true });
 }
