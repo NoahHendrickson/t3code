@@ -169,7 +169,7 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     // Upstream grays the number; the fork's number inherits the glyph's ink.
     expect(sidebarV2).toContain("data-fork-sidebar-pr-badge");
     expect(theme).toMatch(
-      /\[data-fork-sidebar-pr-badge\] \.text-secondary-label \{\s*color: inherit;/u,
+      /\[data-fork-sidebar-pr-badge\]\)\s*\.text-secondary-label \{\s*color: inherit;/u,
     );
   });
 

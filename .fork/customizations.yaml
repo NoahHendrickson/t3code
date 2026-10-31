@@ -778,6 +778,9 @@
     # The fork customizes upstream's canonical Sidebar V2 implementation in place.
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/index.css
+    # The PR badge's text-secondary-label number span, which the card's
+    # number-ink rule inherits through.
+    - apps/web/src/components/ThreadStatusIndicators.tsx
   verify:
     - apps/web/src/__fork_guards__/sidebarV2Rain.test.ts
     - apps/web/src/__fork_guards__/sidebarV2CardRows.test.ts
