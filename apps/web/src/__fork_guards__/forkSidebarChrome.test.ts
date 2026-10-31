@@ -413,8 +413,10 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // headings read as one family.
     expect(rows).toContain("CHROME_TYPE");
     expect(rows.split("CHROME_TYPE").length - 1).toBeGreaterThanOrEqual(2);
+    // fork-spaces swaps the word for "Spaces" under that grouping; the type
+    // is the same either way.
     expect(rows).toMatch(
-      /text-\[0\.8125rem\] leading-4 font-semibold text-muted-foreground"\s*>\s*Threads/u,
+      /text-\[0\.8125rem\] leading-4 font-semibold text-muted-foreground"\s*>[\s\S]{0,200}?"Spaces" : "Threads"\}/u,
     );
   });
 
@@ -425,7 +427,9 @@ describe("fork guard: fork-sidebar-chrome", () => {
     const rows = readSibling("../custom/SidebarV2ChromeRows.tsx");
     // Named for what the list shows; it was "Projects" until the filter menu
     // grew grouping and density options that are about threads, not projects.
-    expect(rows).toMatch(/>\s*Threads\s*</u);
+    // Under the Spaces grouping (fork-spaces) the list is spaces, so it
+    // reads "Spaces" there and "Threads" everywhere else.
+    expect(rows).toContain('{props.grouping === "spaces" ? "Spaces" : "Threads"}');
     expect(rows).toContain("<SettingsIcon");
     expect(rows).toContain("ArrowUpDownIcon");
     expect(rows).toContain('data-testid="sidebar-v2-project-sort"');

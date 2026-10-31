@@ -1209,6 +1209,7 @@
   tier: 4
   files:
     - apps/web/src/custom/sidebarV2ListAnimation.ts
+    - apps/web/src/custom/splitThreads/SplitThreadPanes.tsx
   shadows: []
   watch:
     - apps/web/src/components/Sidebar.tsx
@@ -5904,6 +5905,138 @@
   verify:
     - apps/server/src/vcs/GitVcsDriverCore.test.ts
     - apps/server/src/storageCleanup.test.ts
+
+- id: fork-spaces
+  intent: >
+    "Spaces" is a fourth option in the V2 sidebar's grouping radios. While it is on, the
+    list's heading reads "Spaces" instead of "Threads". It draws
+    each project as a space: the project header, then a Threads row, the
+    project's active cards, and PRs, Changelog and Automations rows. The
+    preference is device-local like the other groupings, and the Threads row
+    starts collapsed, with the set of expanded spaces stored on the device. The rows are a thread card's height at the
+    sidebar's density. The Threads row shows its count, then one of the
+    cards' marks for every distinct state among its threads, read off the
+    cards' own status ladder; approval, input and a usage limit share the
+    amber mark the cards draw for all three. The marks show only while the row is
+    collapsed; expanded, the cards show their own and the row its count.
+    Spaces reuse project grouping's sections, collapse set and header, and
+    draw even when only one project is on screen. The header's collapsed
+    flag stays the single value the header and the card filter both read; a
+    folded Threads row only filters the cards on top of it. The unresolved
+    project section has no rows, and its cards answer to its header alone.
+    Pinned, snoozed and settled shelves keep their places; under Spaces the
+    Snoozed and Settled shelves drop their hairline, take the spaces' filled
+    caret, and Snoozed reads in Settled's muted ink instead of blue. In a list of spaces the list animation drops
+    an item that leaves at once and fades one in after half the slide, so the
+    rows under a space's cards never slide over fading text. A space header shows
+    the project's favicon where project grouping draws a folder. Its name
+    opens the space's Home, its new-thread draft (what its plus opens); only
+    status grouping's
+    filled caret, a button on the row's far end, folds it. A folded space
+    shows a summary before its header buttons, which take no width at rest
+    and slide in on the header's hover or focus, moving the summary over and
+    truncating the name rather than hiding anything: its thread count with the Threads row's marks,
+    and how many open PRs its threads link, read from the links the cards'
+    badges draw, so no host is asked. A folded space
+    does not keep the open thread's card, as project grouping does: under
+    Spaces that thread is already a tab. The rows sit on the header
+    label's edge and carry the project-section marker, so the hover reveal
+    and the drop edge count them. The cards under Threads lead with their
+    thread's provider mark in the rows' icon column, so their titles line up
+    with the rows' labels. A space's children step in 28px and hang off a
+    rounded guide line under its favicon, drawn inside each child (cards clip
+    paint to their box) with each box reaching up over the list gap so the
+    line runs unbroken; Glass's selected-card edge follows the step-in. A
+    split's sidebar pair carries the project-section marker under a header,
+    so it joins that run, and under a space its two cards stack: stepped in,
+    half the sidebar leaves no room for a title. They stack in the same clear
+    tray as the split's tabs and, while the split is on screen, both are lit:
+    the partner, which is not aria-current, wears the open card's fill and
+    Glass's selected glass from a mirror of glass-surfaces' rules.
+
+    The rows open existing pages filtered to the space: PRs opens the PR page
+    on the space's representative project with fresh open-PR filters,
+    Automations opens /scheduled with ?space=<project key>, and Changelog
+    opens the fork's /changelog page, which lists the space's merged PRs from
+    the PR list query, newest first by last update and grouped by Monday-start
+    week. A list entry has no body or merge time, so neither is shown.
+
+    A space's Home is its empty draft: the chat view's own composer (model,
+    effort, modes, attachments, an ordinary first send), started near the top
+    instead of centred, with the space's overview scrolling beneath it: its
+    active threads, open and recently merged PRs, and automations, each
+    linking through to the full view, from data the app already reads. The
+    first send ends the draft's hero state and the overview with it. Every
+    row of tabs starts with the space's Home tab, lit on the draft, and
+    closing a space's last tab opens its Home. Being
+    the Home, a space's current draft is not listed or counted among its
+    threads; an older draft the Home has moved on from stays listed, so
+    nothing written is stranded. Opening the Home resumes a draft with
+    something in it, found by the space's member projects (Scratch gathers
+    several), and the space's PR sections list a pull request once however
+    many environments answer for it.
+
+    Under Spaces the chat column opens with a row of tabs, above the header
+    and its panel and float controls, never sharing their row. It lists the
+    threads opened in the open thread's space, ordered by their cards' status
+    (needing you or failed, then done or woken, working, monitoring, idle)
+    and by the order they were opened within a status. The header itself is
+    upstream's, untouched. A tab stays until it is closed or its thread
+    settles or is archived. Closing the open tab moves to its right
+    neighbour, else its left, else home. In a split the row is drawn once,
+    over both panes, and the two split threads sit side by side in one
+    rounded tray, both lit; a float window keeps its own header and no row.
+    Under Glass the stage card starts below the row while a thread is open,
+    so the tabs rest on the panel glass (drafts keep their card unless the
+    new-agent picture is off). A lit tab wears the sidebar's selected-row
+    glass; the rest get a hover fill only. A tab's buttons take no width
+    until it is hovered or focused, then it widens to show them: close, and
+    a ⋯ with the thread's menu; double-clicking a lit tab renames it. Each
+    tab leads with its thread's provider: the Claude Code mascot (from the
+    CLI's block art), the Codex cloud (from the Codex app icon), or the
+    provider's own icon, and ends with its card's status mark. The open-tab
+    list is device-local and capped. The row reads only its own space's
+    thread shells. No contracts, server, or persistence changes.
+  tier: 4
+  files:
+    - apps/web/src/custom/spaces/SidebarV2SpaceRows.tsx
+    - apps/web/src/custom/spaces/SpaceThreadTabs.tsx
+    - apps/web/src/custom/icons/ProviderMarks.tsx
+    - apps/web/src/custom/spaces/spaceTabs.ts
+    - apps/web/src/custom/spaces/spaceTabs.test.ts
+    - apps/web/src/custom/spaces/spaceSidebar.ts
+    - apps/web/src/custom/spaces/spaceSidebar.test.ts
+    - apps/web/src/custom/spaces/spaceProjects.ts
+    - apps/web/src/custom/spaces/ChangelogPage.tsx
+    - apps/web/src/custom/spaces/changelog.logic.ts
+    - apps/web/src/custom/spaces/changelog.logic.test.ts
+    - apps/web/src/routes/changelog.tsx
+    - apps/web/src/custom/spaces/SpaceOverview.tsx
+    - apps/web/src/custom/spaces/spaceHome.ts
+    - apps/web/src/custom/spaces/SidebarV2SpaceHeader.tsx
+    - apps/web/src/custom/spaces/spaceThreadMarks.tsx
+    - apps/web/src/custom/spaces/spacePullRequests.ts
+    - apps/web/src/custom/spaces/spacePullRequests.test.ts
+    - apps/web/src/custom/sidebarV2ProjectGrouping.ts
+    - apps/web/src/custom/SidebarV2ChromeRows.tsx
+    - apps/web/src/custom/scheduled/ScheduledPage.tsx
+    - apps/web/src/custom/scheduled/scheduledPage.logic.ts
+    - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/theme.custom.css
+    - apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx
+    - apps/web/src/custom/sidebarV2ListAnimation.ts
+  shadows: []
+  watch:
+    # Fenced grouping flag, section build, card fold, and the rows around
+    # each space's cards.
+    - apps/web/src/components/Sidebar.tsx
+    # Fenced tab row above the header, and the overview under a space's
+    # empty draft, its Home.
+    - apps/web/src/components/ChatView.tsx
+    # Regenerated with the /changelog route.
+    - apps/web/src/routeTree.gen.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkSpaces.test.ts
 
 - id: fork-landing-draft-cleanup
   intent: >

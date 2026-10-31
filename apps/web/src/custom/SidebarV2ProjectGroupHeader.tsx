@@ -80,7 +80,7 @@ import {
 /** The unresolved-project section: a just-deleted project, or an environment
     whose projects have not loaded yet. Named rather than left blank so the run
     of cards under it does not read as belonging to the project above. */
-const UNGROUPED_PROJECT_LABEL = "Unknown project";
+export const UNGROUPED_PROJECT_LABEL = "Unknown project";
 
 /** Headers are the only sortable items in a list that also holds their
     cards, so a list-sorting strategy would shift the wrong things. Nothing
@@ -117,7 +117,6 @@ export function SidebarV2ProjectGroupHeader(props: {
   readonly onSettleAllThreads?: (() => void) | undefined;
 }) {
   const label = props.label ?? UNGROUPED_PROJECT_LABEL;
-  const [menuOpen, setMenuOpen] = useState(false);
   const sortable = useSortable({ id: props.projectKey, disabled: !props.reorderable });
   const dropEdge =
     sortable.isOver && !sortable.isDragging && sortable.activeIndex !== -1
@@ -126,7 +125,6 @@ export function SidebarV2ProjectGroupHeader(props: {
         : "below"
       : null;
   const trailingCount = (props.onProjectSettings ? 1 : 0) + (props.onNewThread ? 1 : 0);
-  const settleAllCount = props.settleAllCount ?? 0;
   return (
     <li
       role="presentation"
@@ -224,77 +222,105 @@ export function SidebarV2ProjectGroupHeader(props: {
           {label}
         </span>
         {trailingCount > 0 ? (
-          // The design's 32px icon buttons (364:11451, 368:21126) on the
-          // shared box: twMerge lets size-8/rounded-[10px] win over the
-          // class's size-6/rounded-md. -me-3 pulls the group out of the row's
-          // own padding so it sits flush with the list edge, where the
-          // trailing derivation puts it. Above the collapse layer — without
-          // z-10 the absolute button steals the click and the buttons look
-          // dead. Hidden until the section is hovered — see the file note.
-          <span
-            data-fork-section-actions=""
-            data-fork-menu-open={menuOpen ? "" : undefined}
-            className={cn(
-              "-me-3 relative z-10 flex shrink-0 items-center",
-              SIDEBAR_V2_TRAILING_OFFSET.headerPlus,
-            )}
-          >
-            {props.onProjectSettings ? (
-              <Menu open={menuOpen} onOpenChange={setMenuOpen}>
-                <MenuTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label={`Actions for ${label}`}
-                      data-testid="sidebar-v2-project-group-menu"
-                      // The collapse layer sits under the row; a click here
-                      // is the menu's, never a toggle.
-                      onClick={(event) => event.stopPropagation()}
-                      className={cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]")}
-                    />
-                  }
-                >
-                  <EllipsisVerticalIcon aria-hidden className="size-4" />
-                </MenuTrigger>
-                <MenuPopup align="end" className="min-w-48">
-                  <MenuItem
-                    disabled={settleAllCount === 0}
-                    onClick={() => props.onSettleAllThreads?.()}
-                  >
-                    <CheckIcon />
-                    {settleAllCount > 1
-                      ? `Settle all threads (${settleAllCount})`
-                      : "Settle all threads"}
-                  </MenuItem>
-                  <MenuItem onClick={() => props.onProjectSettings?.()}>
-                    <SettingsIcon />
-                    Settings
-                  </MenuItem>
-                </MenuPopup>
-              </Menu>
-            ) : null}
-            {props.onNewThread ? (
-              <button
-                type="button"
-                // Named for the project, not "New thread": a screen reader
-                // running the headings of a grouped sidebar would otherwise
-                // hear the same control repeated once per group with nothing
-                // to tell them apart.
-                aria-label={`New thread in ${label}`}
-                onClick={(event) => {
-                  // The collapse layer sits under the row; stop anything from
-                  // treating this as a toggle if an ancestor starts listening.
-                  event.stopPropagation();
-                  props.onNewThread?.();
-                }}
-                className={cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]")}
-              >
-                <PlusIcon aria-hidden className="size-4" />
-              </button>
-            ) : null}
-          </span>
+          <SidebarV2SectionActions
+            label={label}
+            onNewThread={props.onNewThread}
+            onProjectSettings={props.onProjectSettings}
+            settleAllCount={props.settleAllCount}
+            onSettleAllThreads={props.onSettleAllThreads}
+          />
         ) : null}
       </div>
     </li>
+  );
+}
+
+/** A section header's trailing buttons: the project's menu (settle all,
+    settings) and its plus. Shared with the space header (fork-spaces), which
+    rounds the buttons into pills and moves the group off the list edge. */
+export function SidebarV2SectionActions(props: {
+  readonly label: string;
+  readonly onNewThread?: (() => void) | undefined;
+  readonly onProjectSettings?: (() => void) | undefined;
+  readonly settleAllCount?: number | undefined;
+  readonly onSettleAllThreads?: (() => void) | undefined;
+  readonly className?: string | undefined;
+  readonly buttonClassName?: string | undefined;
+}) {
+  const { label } = props;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const settleAllCount = props.settleAllCount ?? 0;
+  return (
+    // The design's 32px icon buttons (364:11451, 368:21126) on the
+    // shared box: twMerge lets size-8/rounded-[10px] win over the
+    // class's size-6/rounded-md. -me-3 pulls the group out of the row's
+    // own padding so it sits flush with the list edge, where the
+    // trailing derivation puts it. Above the collapse layer — without
+    // z-10 the absolute button steals the click and the buttons look
+    // dead. Hidden until the section is hovered — see the file note.
+    <span
+      data-fork-section-actions=""
+      data-fork-menu-open={menuOpen ? "" : undefined}
+      className={cn(
+        "-me-3 relative z-10 flex shrink-0 items-center",
+        SIDEBAR_V2_TRAILING_OFFSET.headerPlus,
+        props.className,
+      )}
+    >
+      {props.onProjectSettings ? (
+        <Menu open={menuOpen} onOpenChange={setMenuOpen}>
+          <MenuTrigger
+            render={
+              <button
+                type="button"
+                aria-label={`Actions for ${label}`}
+                data-testid="sidebar-v2-project-group-menu"
+                // The collapse layer sits under the row; a click here
+                // is the menu's, never a toggle.
+                onClick={(event) => event.stopPropagation()}
+                className={cn(
+                  cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]"),
+                  props.buttonClassName,
+                )}
+              />
+            }
+          >
+            <EllipsisVerticalIcon aria-hidden className="size-4" />
+          </MenuTrigger>
+          <MenuPopup align="end" className="min-w-48">
+            <MenuItem disabled={settleAllCount === 0} onClick={() => props.onSettleAllThreads?.()}>
+              <CheckIcon />
+              {settleAllCount > 1 ? `Settle all threads (${settleAllCount})` : "Settle all threads"}
+            </MenuItem>
+            <MenuItem onClick={() => props.onProjectSettings?.()}>
+              <SettingsIcon />
+              Settings
+            </MenuItem>
+          </MenuPopup>
+        </Menu>
+      ) : null}
+      {props.onNewThread ? (
+        <button
+          type="button"
+          // Named for the project, not "New thread": a screen reader
+          // running the headings of a grouped sidebar would otherwise
+          // hear the same control repeated once per group with nothing
+          // to tell them apart.
+          aria-label={`New thread in ${label}`}
+          onClick={(event) => {
+            // The collapse layer sits under the row; stop anything from
+            // treating this as a toggle if an ancestor starts listening.
+            event.stopPropagation();
+            props.onNewThread?.();
+          }}
+          className={cn(
+            cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-8 rounded-[10px]"),
+            props.buttonClassName,
+          )}
+        >
+          <PlusIcon aria-hidden className="size-4" />
+        </button>
+      ) : null}
+    </span>
   );
 }

@@ -46,6 +46,11 @@ import {
   resolveThreadRouteRenderState,
 } from "~/threadRoutes";
 
+import { SplitSpaceTabRow } from "~/custom/spaces/SpaceThreadTabs";
+import { isElectron } from "~/env";
+import { cn } from "~/lib/utils";
+import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
+
 import { FLOAT_WINDOW_CLASS, useDockOnPanelOpen, useFloatWindow } from "./floatWindow";
 import {
   SINGLE_PANE,
@@ -448,18 +453,37 @@ export function SplitThreadPanes(props: {
     );
   });
   return (
-    <div
-      data-fork-split-threads={split ? "" : undefined}
-      className={split ? "flex min-h-0 flex-1 flex-row" : "contents"}
-    >
-      {panes}
-      {split ? (
-        <div
-          aria-hidden
-          data-fork-float-behind={floatShown || undefined}
-          className="order-1 w-px shrink-0 bg-border"
+    <>
+      {/* fork-spaces: one tab row over both panes. Drawn as a sibling before
+          the panes, never around them, so they keep their place in the tree
+          as a split opens and closes; a single pane draws its own row inside
+          its chat view instead. */}
+      {split && partnerRef !== null ? (
+        <SplitSpaceTabRow
+          focusedRef={focusedRef}
+          partnerRef={partnerRef}
+          focusedIsDraft={focusedDraftId !== null}
+          focusedLeads={leftFocused}
+          className={cn(
+            "px-3 sm:px-5",
+            isElectron && "drag-region",
+            COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
+          )}
         />
       ) : null}
-    </div>
+      <div
+        data-fork-split-threads={split ? "" : undefined}
+        className={split ? "flex min-h-0 flex-1 flex-row" : "contents"}
+      >
+        {panes}
+        {split ? (
+          <div
+            aria-hidden
+            data-fork-float-behind={floatShown || undefined}
+            className="order-1 w-px shrink-0 bg-border"
+          />
+        ) : null}
+      </div>
+    </>
   );
 }
