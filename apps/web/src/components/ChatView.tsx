@@ -197,6 +197,9 @@ import { SplitPaneHeaderControls } from "~/custom/splitThreads/SplitPaneHeaderCo
 import { toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
 import { newMessageId } from "~/lib/utils";
+/* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+import { useDesignPanelRoom } from "~/custom/designMode/designPanelRoom";
+/* fork:end fork-design-mode */
 import {
   NO_PROVIDER_MODEL_SELECTION,
   providerInstanceEntriesFor,
@@ -1017,6 +1020,9 @@ export default function ChatView(props: ChatViewProps) {
     activeThreadRef?.environmentId ?? null,
   );
   const browserAvailable = isPreviewSupportedInRuntime() || activeEnvironmentServerBrowser;
+  /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+  const forkDesignPanelRoom = useDesignPanelRoom(activeThreadKey);
+  /* fork:end fork-design-mode */
   const activeThreadShell = serverThread;
   const timelineThreadError =
     serverRuntime?.status === "failed" &&
@@ -4174,6 +4180,9 @@ export default function ChatView(props: ChatViewProps) {
           sheet={shouldUsePlanSidebarSheet}
           workspaceLayoutElement={workspaceLayoutElement}
           widthStorageKey={`t3code:preview-panel-width:${activeThreadKey}`}
+          /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
+          minWidth={forkDesignPanelRoom}
+          /* fork:end fork-design-mode */
           sheetAnimationDurationMs={panelAnimationsActive ? panelAnimationDurationMs : 0}
           onCloseSheet={closePreviewPanelStable}
           open={rightPanelOpen}

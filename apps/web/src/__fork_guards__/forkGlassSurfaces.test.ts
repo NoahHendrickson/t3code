@@ -206,6 +206,9 @@ describe("fork guard: glass surfaces", () => {
     expect(
       ruleBodyFor(rules, [`${MARKER}.dark${PALETTE}`, "[data-fork-segmented-tabs]"]),
     ).toContain("overflow-clip-margin");
+    expect(readSibling("../custom/designMode/panel/DesignPanelLayoutControls.tsx")).toMatch(
+      /data-fork-segmented-tab\s+data-pressed=/u,
+    );
     for (const source of [
       "../components/chat/ChatComposer.tsx",
       "../custom/voice/ForkDictationControl.tsx",

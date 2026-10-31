@@ -165,7 +165,7 @@ export function ScreenSizeMenu({
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>
-        <MenuSeparator />
+        <MenuSeparator className="-mx-1" />
         <MenuCheckboxItem
           variant="switch"
           closeOnClick={false}

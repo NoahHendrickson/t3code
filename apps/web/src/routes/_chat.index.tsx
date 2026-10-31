@@ -20,6 +20,9 @@ import {
   useThreadShells,
 } from "../state/entities";
 import { useEnvironments } from "../state/environments";
+/* fork:begin fork-landing-draft-cleanup — see .fork/customizations.yaml#fork-landing-draft-cleanup */
+import { rememberLandingDraft } from "~/custom/landingDraft";
+/* fork:end fork-landing-draft-cleanup */
 
 function ChatIndexRouteView() {
   const { authGateState } = Route.useRouteContext();
@@ -64,11 +67,17 @@ function IndexDraftLanding() {
         if (opened === null) {
           setStartState((state) => ({ ...state, retryRequest: state.retryRequest + 1 }));
         }
+        /* fork:begin fork-landing-draft-cleanup — see .fork/customizations.yaml#fork-landing-draft-cleanup */
+        else rememberLandingDraft(router, opened.draftId);
+        /* fork:end fork-landing-draft-cleanup */
       })
       .catch(() => {
         setStartState((state) => ({ ...state, failed: true }));
       });
-  }, [attempt, handleNewThread, mostRecentProject]);
+    /* fork:begin fork-landing-draft-cleanup — see .fork/customizations.yaml#fork-landing-draft-cleanup */
+    // useRouter is stable, so listing it does not re-run the landing.
+  }, [attempt, handleNewThread, mostRecentProject, router]);
+  /* fork:end fork-landing-draft-cleanup */
 
   if (mostRecentProject !== null) {
     return startState.failed ? (

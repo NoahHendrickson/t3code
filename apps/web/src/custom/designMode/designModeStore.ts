@@ -90,8 +90,8 @@ export const useDesignModeStore = create<DesignModeStoreState>()((set) => ({
       if (current.enabled === enabled) return state;
       // Toggling off keeps drafts alive in the guest but the panel's world view resets
       // symmetrically — selection, layers, tokens AND canvas; the engine re-emits all
-      // four on the next activation (tokens and canvas explicitly after `state`, since
-      // this reset runs on the `state` flip), so nothing stale survives tab reuse or
+      // four on the next activation (tokens, canvas and layers explicitly after `state`,
+      // since this reset runs on the `state` flip), so nothing stale survives tab reuse or
       // navigations.
       return patchTab(state, runtimeTabId, {
         enabled,

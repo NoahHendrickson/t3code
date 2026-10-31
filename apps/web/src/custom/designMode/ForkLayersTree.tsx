@@ -1,4 +1,3 @@
-// oxlint-disable t3code/no-native-title-tooltip -- Vendored design-mode island (see .fork/customizations.yaml#fork-design-mode); native titles kept to stay close to the Forge source.
 import {
   ChevronDownIcon,
   ChevronRight,
@@ -7,8 +6,19 @@ import {
   SearchIcon,
   XIcon,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+} from "react";
 
+import { Button } from "~/components/ui/button";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import { designModeBridge } from "./designModeBridge";
@@ -33,6 +43,19 @@ import { LayerTypeIcon } from "./panel/LayerTypeIcon";
 /** Marks the disclosure caret so the delegated click handler can tell "expand this" from
  * "select this" without a per-row closure. */
 const TOGGLE_ATTRIBUTE = "data-layer-toggle";
+
+/** The rail header's icon controls, built like the show-layers toggle they swap with
+ * (ForkPreviewLayersToggle) so both halves of that disclosure look and hover alike. */
+function RailIconButton({ label, ...props }: { label: string } & ComponentProps<typeof Button>) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<Button variant="ghost" size="icon-xs" aria-label={label} {...props} />}
+      />
+      <TooltipPopup>{label}</TooltipPopup>
+    </Tooltip>
+  );
+}
 
 /**
  * One row. Memoized on purpose: every interaction on this rail is delegated to the
@@ -340,30 +363,19 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
           className="h-6 w-full min-w-0 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
         />
         {query ? (
-          <button
-            type="button"
-            title="Clear filter"
-            aria-label="Clear filter"
-            onClick={() => setQuery("")}
-            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3"
-          >
+          <RailIconButton label="Clear filter" onClick={() => setQuery("")}>
             <XIcon />
-          </button>
+          </RailIconButton>
         ) : (
-          <button
-            type="button"
-            title="Collapse all"
-            aria-label="Collapse all"
+          <RailIconButton
+            label="Collapse all"
             onClick={() => setExpanded(Object.fromEntries(rows.map((row) => [row.node.id, false])))}
-            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
           >
             <ChevronsDownUpIcon />
-          </button>
+          </RailIconButton>
         )}
-        <button
-          type="button"
-          title="Hide layers"
-          aria-label="Hide layers"
+        <RailIconButton
+          label="Hide layers"
           aria-expanded={true}
           aria-controls={LAYERS_RAIL_ID}
           data-fork-design-layers-hide
@@ -372,10 +384,9 @@ function LayersRail({ runtimeTabId }: { runtimeTabId: string }) {
             // This button goes with the rail — hand focus to the control that brings it back.
             focusLayersControl(LAYERS_SHOW_BUTTON);
           }}
-          className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
         >
           <PanelLeftCloseIcon />
-        </button>
+        </RailIconButton>
       </header>
       <div
         ref={listRef}

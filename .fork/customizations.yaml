@@ -1651,8 +1651,9 @@
     menu, the liveness list, the thread sort and settings menus, the thread
     details card) carry data-fork-glass-rim. The selected segment of every
     segmented toggle group (tabs, and the pickers drawn as tabs) and of the
-    fork's SegmentedTabs is one more chip of it; outline pickers and a lone
-    segmented Toggle keep their look. The rules live in
+    fork's SegmentedTabs is one more chip of it, as is the design panel's
+    segment strip, which stamps SegmentedTab's marker; outline pickers and a
+    lone segmented Toggle keep their look. The rules live in
     theme.custom.glass-surfaces.css, loaded after the palettes sheet.
     The send button (Figma 467:22121) has a translucent white face, white
     glyph and bright inset rim. Its highlight hues follow the existing
@@ -1696,6 +1697,8 @@
     - apps/web/src/components/ui/toggle-group.tsx
     # Stamps data-fork-segmented-tabs and data-fork-segmented-tab.
     - apps/web/src/custom/SegmentedTabs.tsx
+    # Stamps data-fork-segmented-tab on the design panel's segment strip.
+    - apps/web/src/custom/designMode/panel/DesignPanelLayoutControls.tsx
   verify:
     - apps/web/src/__fork_guards__/forkCoolDarkerTheme.test.ts
     - apps/web/src/__fork_guards__/forkGlassSurfaces.test.ts
@@ -4011,6 +4014,18 @@
     surface must stay driven by --fork-design-surface for that to reach it — a
     fill hardcoded onto the container sails past the glass block entirely, which
     is exactly how the panel read as a slab while the rail beside it went glassy.
+
+    Design mode needs more room than the right panel's default width: the
+    325px panel, the preview's own chrome row (which clips its trailing
+    controls, the design toggle among them, below ~290px) and the 208px
+    layers rail when it shows. While a visible preview tab has design mode
+    on, it publishes that width (custom/designMode/designPanelRoom.ts) and
+    ChatView passes it through ChatRightPanel to usePreviewPanelInlineSize
+    as a minimum, capped by the hook's own maximum so the chat column keeps
+    its floor. The width the user dragged to is never written: the hook
+    clamps at render, so turning design mode off hands that width straight back. Each tab publishes under
+    its own key and the thread takes the largest, so a hidden tab can never
+    clear the visible one's request.
   tier: 4
   files:
     - apps/web/src/custom/designMode/protocol.ts
@@ -4102,6 +4117,10 @@
   watch:
     # A multi-model send detaches and restores the pills with its cleared draft.
     - apps/web/src/components/chat/useMultipleModelSend.ts
+    # Fenced minWidth option: design mode's floor for the right panel width.
+    - apps/web/src/hooks/usePreviewPanelInlineSize.ts
+    # Fenced minWidth prop: carries that floor from ChatView to the width hook.
+    - apps/web/src/components/chat/ChatRightPanel.tsx
     # Fenced queued-run edit: upstream moved queued-message editing out of
     # ChatView (#20304); the design-change run split/re-append followed it.
     - apps/web/src/components/chat/useQueuedRunEdit.ts
@@ -5885,3 +5904,27 @@
   verify:
     - apps/server/src/vcs/GitVcsDriverCore.test.ts
     - apps/server/src/storageCleanup.test.ts
+
+- id: fork-landing-draft-cleanup
+  intent: >
+    Upstream's `/` route opens a draft in the most recently updated project.
+    The fork's sidebar paints every unsent draft (sidebar-v2-draft-rows), so
+    a client that lands on `/` every visit (a phone) collected a blank "New
+    thread" card per project as the most recent project changed. The draft
+    the landing opens is remembered (persisted, since phones reload), and
+    when the route resolves somewhere else it is discarded if still
+    untouched: no composer content, no open preview tab, not held by a split
+    or floating pane or an in-flight Split agent, and still on the env mode,
+    branch and worktree the landing gave it. A touched landing draft is
+    forgotten and kept like any other. Drafts the user creates are never
+    tracked. Cleanup is at the source rather than a sidebar filter so drafts
+    the user made on purpose (Split agent, New thread with workspace
+    options, a draft with tabs) keep their row.
+  tier: 4
+  files:
+    - apps/web/src/custom/landingDraft.ts
+  shadows: []
+  watch:
+    - apps/web/src/routes/_chat.index.tsx
+  verify:
+    - apps/web/src/custom/landingDraft.test.ts

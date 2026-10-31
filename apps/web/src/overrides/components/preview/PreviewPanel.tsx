@@ -10,6 +10,7 @@ import { usePreviewAvailable } from "~/browser/previewRuntime";
 import { previewRuntimeTabId } from "~/browser/previewRuntimeTabId";
 import { PreviewPanelShell, type PreviewPanelMode } from "~/components/preview/PreviewPanelShell";
 import { PreviewView } from "~/components/preview/PreviewView";
+import { usePublishDesignPanelRoom } from "~/custom/designMode/designPanelRoom";
 import { ForkLayersTree } from "~/custom/designMode/ForkLayersTree";
 import { ForkDesignPanel } from "~/custom/designMode/panel/ForkDesignPanel";
 import { useThreadPreviewState } from "~/previewStateStore";
@@ -41,6 +42,8 @@ export function PreviewPanel({
   const runtimeTabId = activeTabId
     ? previewRuntimeTabId(threadRef, previewState.serverEpoch, activeTabId)
     : null;
+  // Design mode needs more room than the panel's default width; ChatView widens it.
+  usePublishDesignPanelRoom(threadRef, runtimeTabId, visible);
   const available = usePreviewAvailable(threadRef.environmentId);
   const canOperatePreview = useEnvironmentScope(threadRef.environmentId, AuthPreviewOperateScope);
   if (!canOperatePreview || !available) {
