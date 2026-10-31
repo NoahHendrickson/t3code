@@ -106,6 +106,11 @@ try {
     production.get("assets/fork/n3-macos-1024.png")!,
   );
   outputs.set("assets/fork/n3-windows.ico", ico("assets/fork/app-icon.icon", WINDOWS_ICON_SIZES));
+  // t3.json's iconPath: this repo's project mark carries the release art.
+  outputs.set(
+    "assets/fork/n3-project-icon-180.png",
+    production.get("assets/fork/n3-web-apple-touch-180.png")!,
+  );
 
   const development = variantOutputs("assets/fork/dev-app-icon.icon", "n3-dev");
   for (const [path, contents] of development) outputs.set(path, contents);
