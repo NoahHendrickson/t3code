@@ -6,8 +6,13 @@
  * collapsed set, shared with Group by project, so switching between the two
  * keeps which projects you had closed.
  */
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
+
 import type { SidebarV2CardTopStatus } from "../sidebarV2CardStatus";
 import { UNGROUPED_PROJECT_KEY, useSidebarV2CollapsedKeys } from "../sidebarV2ProjectGrouping";
+import { useUiStateStore } from "~/uiStateStore";
+
+import { threadCardStatus, type ThreadShell } from "./spaceThreadMarks";
 
 const SPACE_THREADS_EXPANDED_STORAGE_KEY = "t3code:fork:space-threads-expanded:v1";
 
@@ -145,4 +150,42 @@ export function buildSpaceSections<
 }
 
 /** No spaces: the list is grouped some other way. */
-export const EMPTY_SPACE_SECTIONS: ReadonlyMap<string, never> = new Map<string, never>();
+const NO_VISITS: Readonly<Record<string, string>> = {};
+
+const EMPTY_SPACE_SECTIONS: ReadonlyMap<string, never> = new Map<string, never>();
+
+/** The list's spaces, built from its project sections while it groups by
+    space. A hook (it reads the visit watermarks itself) so the compiler
+    memoizes it, and the section filter that reads it re-runs only when one
+    of its inputs changes. */
+export function useSpaceSections<TGroup extends { readonly projectKey: string }>(input: {
+  readonly enabled: boolean;
+  readonly sections: ReadonlyArray<
+    | {
+        readonly kind: "project";
+        readonly header: { readonly projectKey: string } | null;
+        readonly threads: readonly ThreadShell[];
+      }
+    | { readonly kind: "status" }
+  >;
+  readonly groups: readonly TGroup[];
+  readonly expanded: ReadonlySet<string>;
+  readonly now: string;
+}): ReadonlyMap<string, SpaceSection<TGroup>> {
+  // Subscribed only while grouping by space, as the sidebar's own read is.
+  const lastVisitedAtById = useUiStateStore((store) =>
+    input.enabled ? store.threadLastVisitedAtById : NO_VISITS,
+  );
+  if (!input.enabled) return EMPTY_SPACE_SECTIONS;
+  return buildSpaceSections({
+    sections: input.sections.flatMap((section) => (section.kind === "project" ? [section] : [])),
+    groups: input.groups,
+    expanded: input.expanded,
+    statusOf: (thread) =>
+      threadCardStatus(
+        thread,
+        lastVisitedAtById[scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))],
+        input.now,
+      ).topStatus,
+  });
+}

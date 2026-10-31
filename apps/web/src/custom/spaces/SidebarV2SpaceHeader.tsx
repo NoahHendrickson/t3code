@@ -53,29 +53,21 @@ export function SidebarV2SpaceHeader(props: {
   readonly onSettleAllThreads?: (() => void) | undefined;
 }) {
   const label = props.label ?? UNGROUPED_PROJECT_LABEL;
-  const sortable = useSortable({ id: props.projectKey, disabled: !props.reorderable });
+  const { isOver, isDragging, activeIndex, index, transform, transition, setNodeRef, listeners } =
+    useSortable({ id: props.projectKey, disabled: !props.reorderable });
   const dropEdge =
-    sortable.isOver && !sortable.isDragging && sortable.activeIndex !== -1
-      ? sortable.activeIndex > sortable.index
-        ? "above"
-        : "below"
-      : null;
+    isOver && !isDragging && activeIndex !== -1 ? (activeIndex > index ? "above" : "below") : null;
   const hasActions = props.onProjectSettings !== undefined || props.onNewThread !== undefined;
   return (
     <li
       role="presentation"
-      className={cn("list-none", sortable.isDragging && "relative z-20 opacity-80")}
+      className={cn("list-none", isDragging && "relative z-20 opacity-80")}
       data-fork-project-section-header=""
       data-fork-space-header=""
       data-fork-drop-edge={dropEdge ?? undefined}
-      ref={sortable.setNodeRef}
+      ref={setNodeRef}
       style={
-        props.reorderable
-          ? {
-              transform: CSS.Translate.toString(sortable.transform),
-              transition: sortable.transition,
-            }
-          : undefined
+        props.reorderable ? { transform: CSS.Translate.toString(transform), transition } : undefined
       }
     >
       <div
@@ -102,13 +94,13 @@ export function SidebarV2SpaceHeader(props: {
             aria-current={props.active ? "page" : undefined}
             disabled={props.onOpen === null}
             onClick={props.onOpen ?? undefined}
-            {...(props.reorderable ? sortable.listeners : {})}
+            {...(props.reorderable ? listeners : {})}
             className={cn(
               "absolute inset-y-0 -left-3 right-0 z-0 cursor-pointer rounded-full",
               props.reorderable && "cursor-grab active:cursor-grabbing",
               props.active && "bg-sidebar-row-hover",
               "outline-none hover:bg-sidebar-row-hover",
-              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
+              "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
             )}
           />
           {props.project ? (

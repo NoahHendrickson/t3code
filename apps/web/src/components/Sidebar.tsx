@@ -344,11 +344,7 @@ import {
   SidebarV2SpaceThreadsRow,
 } from "~/custom/spaces/SidebarV2SpaceRows";
 import { ProviderMark } from "~/custom/icons/ProviderMarks";
-import {
-  buildSpaceSections,
-  EMPTY_SPACE_SECTIONS,
-  useSpaceThreadsExpanded,
-} from "~/custom/spaces/spaceSidebar";
+import { useSpaceSections, useSpaceThreadsExpanded } from "~/custom/spaces/spaceSidebar";
 import { SidebarV2SpaceHeader } from "~/custom/spaces/SidebarV2SpaceHeader";
 import { isSpaceDraft, useHomeDraftIds, useOpenSpaceHome } from "~/custom/spaces/spaceHome";
 /* fork:end fork-spaces */
@@ -2917,36 +2913,13 @@ export default function Sidebar() {
      One model per space: its group, what its Threads row and folded header
      report (from the cards' own status ladder and PR links), and whether
      its cards are folded behind the Threads row. */
-  const spaceSections = useMemo(
-    () =>
-      spacesGrouped
-        ? buildSpaceSections({
-            sections: activeSections.flatMap((section) =>
-              section.kind === "project" ? [section] : [],
-            ),
-            groups: projectGroups,
-            expanded: expandedSpaceThreads,
-            statusOf: (thread) =>
-              resolveSidebarV2CardStatus(thread, {
-                lastVisitedAt: resolveThreadLastVisitedAt(
-                  thread.lastVisitedAt,
-                  threadLastVisitedAtById[
-                    scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))
-                  ],
-                ),
-                wokeAt: threadWokeAt(thread, { now: snoozeNow }),
-              }).topStatus,
-          })
-        : EMPTY_SPACE_SECTIONS,
-    [
-      activeSections,
-      expandedSpaceThreads,
-      projectGroups,
-      snoozeNow,
-      spacesGrouped,
-      threadLastVisitedAtById,
-    ],
-  );
+  const spaceSections = useSpaceSections({
+    enabled: spacesGrouped,
+    sections: activeSections,
+    groups: projectGroups,
+    expanded: expandedSpaceThreads,
+    now: snoozeNow,
+  });
   /* fork:end fork-spaces */
   const visibleActiveSections = useMemo(
     () =>
