@@ -36,7 +36,7 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 
 import { WEBHOOK_SIGNATURE_DEFAULTS } from "~/components/settings/scheduledTasksSettings.logic";
-import { useRelativeTimeTick } from "~/components/settings/settingsLayout";
+import { useRelativeTimeTick } from "./useRelativeTimeTick";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
@@ -59,7 +59,7 @@ import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
 import { useAtomCommand } from "~/state/use-atom-command";
 import {
-  DELIVERY_OUTCOME_LABELS,
+  deliveryOutcomeLabel,
   deliveryOutcomeTone,
   draftSignature,
   relativeLabel,
@@ -98,6 +98,11 @@ const EMPTY_DRAFT: DraftState = {
   ...WEBHOOK_SIGNATURE_DEFAULTS,
   signatureSecret: "",
   maxDeliveryAgeMinutes: "",
+  replayKey: "",
+  coalesceKey: "",
+  coalesceWindowSeconds: "",
+  filters: [],
+  savedFilters: [],
 };
 
 function reportFailure(title: string, error: unknown) {
@@ -668,7 +673,7 @@ function WebhookDeliveries(props: {
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant={deliveryOutcomeTone(selected.outcome)}>
-                {DELIVERY_OUTCOME_LABELS[selected.outcome]}
+                {deliveryOutcomeLabel(selected.outcome)}
               </Badge>
               <span>
                 {selected.method} · {relativeLabel(selected.receivedAt)}
@@ -712,7 +717,7 @@ function WebhookDeliveries(props: {
                   onClick={() => setSelectedId(delivery.id)}
                 >
                   <Badge variant={deliveryOutcomeTone(delivery.outcome)}>
-                    {DELIVERY_OUTCOME_LABELS[delivery.outcome]}
+                    {deliveryOutcomeLabel(delivery.outcome)}
                   </Badge>
                   <span>{delivery.method}</span>
                   <span className="text-muted-foreground">

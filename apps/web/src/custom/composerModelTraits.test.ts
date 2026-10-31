@@ -38,8 +38,8 @@ describe("controlled model traits", () => {
       },
     ],
     modelOptions: [{ id: "effort", value: "max" }],
-    prompt: "Review this PR",
-    onPromptChange: () => {},
+    promptUltrathink: "none",
+    onPromptEdit: () => {},
     planModeEnabled: false,
   };
 

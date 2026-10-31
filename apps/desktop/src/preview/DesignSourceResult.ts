@@ -90,7 +90,6 @@ function normalizeFilePath(value: unknown): string | null {
   if (typeof value !== "string" || value.length === 0 || value.length > MAX_FILE_LENGTH) {
     return null;
   }
-  // eslint-disable-next-line no-control-regex -- the class deliberately rejects control characters
   return /[\u0000-\u001f\u007f]/.test(value) ? null : value;
 }
 

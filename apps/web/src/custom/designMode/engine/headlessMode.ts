@@ -467,6 +467,12 @@ export class HeadlessDesignMode {
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────────────
 
+  /** Re-sends the layers tree past its change gate — boot calls it after `state`, beside
+   * canvas.reassert(). See LayersSession.reassert. */
+  reassertLayers(): void {
+    this.layers.reassert();
+  }
+
   setActive(on: boolean): void {
     if (on === this.active) {
       // Re-activating an already-active engine (boot's idempotent same-version path) means

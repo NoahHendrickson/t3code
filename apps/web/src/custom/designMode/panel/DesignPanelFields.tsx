@@ -478,7 +478,7 @@ function SpacingTokenAffordance({
             className={cn(
               "me-1 shrink-0 rounded-[3px] px-1 font-mono text-[9px] leading-4 transition-colors",
               matched !== null
-                ? "bg-primary/15 text-primary"
+                ? "bg-[var(--fork-design-accent-bg)] text-[var(--fork-design-accent)]"
                 : "text-muted-foreground/50 hover:text-foreground",
             )}
           >

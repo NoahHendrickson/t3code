@@ -1,4 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
+import type { EnvironmentIdentificationMode } from "@t3tools/contracts";
 import { useId } from "react";
 
 import { APP_STAGE_LABEL } from "../branding";
@@ -15,9 +16,11 @@ const STAGE_BACKDROP_VIEW_BOX = "0 0 8192 96";
 
 export function resolveSidebarStageBackdropVariant(
   stageLabel: string,
-  enabled = true,
+  mode: EnvironmentIdentificationMode = "artwork",
 ): SidebarStageBackdropVariant | null {
-  if (!enabled) return null;
+  if (mode === "nightly-artwork") return "nightly";
+  if (mode === "dev-artwork") return "dev";
+  if (mode !== "artwork") return null;
   const normalized = stageLabel.trim().toLowerCase();
   if (normalized === "nightly") return "nightly";
   if (normalized === "dev") return "dev";
@@ -43,16 +46,16 @@ export function useEnvironmentStageLabel(): string {
   });
 }
 
-export function useSidebarStageBackdropVariant(enabled = true): SidebarStageBackdropVariant | null {
-  return resolveSidebarStageBackdropVariant(useEnvironmentStageLabel(), enabled);
+export function useSidebarStageBackdropVariant(
+  mode: EnvironmentIdentificationMode,
+): SidebarStageBackdropVariant | null {
+  return resolveSidebarStageBackdropVariant(useEnvironmentStageLabel(), mode);
 }
 
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-   Upstream's SidebarStageBackdrop header art and its focus-ring offset helper
-   have no call site here: the sidebar header stays flat and transparent per
-   the design, and the fork chrome owns its own focus rings. They were kept as
-   dead exports until upstream's knip gate (#9962) started refusing those;
-   StageBackdropArt below is what the auth surface and settings still render. */
+   Upstream's header art and focus-ring offset helper have no call site here: the sidebar
+   header stays flat and the fork chrome owns its focus rings. Kept as dead exports until
+   knip refused them; StageBackdropArt below is what auth and settings render. */
 /* fork:end fork-sidebar-chrome */
 export function StageBackdropArt({ variant }: { variant: SidebarStageBackdropVariant }) {
   return variant === "nightly" ? <NightlySkyArt /> : <DevBlueprintArt />;
@@ -212,12 +215,9 @@ function NightlySkyArt({ compact = false }: { compact?: boolean }) {
 }
 
 /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-   The Dev channel's blueprint art is replaced by the fork's orange ordered
-   dither. Upstream's dispatch and the Nightly sky are untouched, so the two
-   channels still read apart. The name is kept so the two call sites above stay
-   upstream's; the blueprint body it used to hold is gone rather than left
-   unreachable, so an upstream change to that art conflicts here visibly
-   instead of merging into dead code. */
+   The Dev channel's blueprint art is replaced by the fork's orange ordered dither;
+   upstream's dispatch and the Nightly sky are untouched. The name stays so the call sites
+   stay upstream's; the old body is gone so an upstream art change conflicts visibly. */
 function DevBlueprintArt({ compact = false }: { compact?: boolean }) {
   return <SidebarStageDitherArt compact={compact} />;
 }

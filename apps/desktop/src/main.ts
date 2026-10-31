@@ -88,22 +88,9 @@ if (process.argv.includes("--version")) {
 }
 
 // fork:begin fork-clerk-launch-resilience — see .fork/customizations.yaml#fork-clerk-launch-resilience
-// The renderer's scheme privileges are otherwise registered only by the
-// Clerk bridge — which keyless fork builds skip entirely (DesktopClerk), so
-// this synchronous module-load registration is the sole registrar on the
-// fork's own builds, and it is guaranteed to precede Electron's "ready"
-// event (module evaluation completes before the event loop can emit it).
-// Keyed builds create the Clerk bridge too, but its own registration is
-// suppressed (createDesktopClerkBridge in DesktopClerk.ts): layer
-// construction can trail "ready" on a packaged boot — the v0.1.7 dry run's
-// launch isolation gate died on exactly that — and the bridge's privilege
-// set is identical to this one, so this registration is the sole registrar
-// on every path.
-// Both schemes are registered so no env sniffing is needed; the privilege
-// set mirrors @clerk/electron's. try/catch because this runs before the
-// Effect runtime and any observability: a throw here would otherwise be a
-// silent exit, the exact failure shape this customization exists to remove —
-// a broken renderer with a logged reason beats that.
+// Sole registrar of the renderer's scheme privileges (keyless builds skip the Clerk bridge and a
+// keyed bridge's own call is suppressed); it precedes "ready". try/catch: this runs before the
+// Effect runtime, so a throw would be a silent exit; a logged, broken renderer beats that.
 try {
   Electron.protocol.registerSchemesAsPrivileged(
     [ElectronProtocol.getDesktopScheme(false), ElectronProtocol.getDesktopScheme(true)].map(
@@ -155,11 +142,9 @@ const resolveDesktopSshCliRunner = (
     };
   }
   /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-     A packaged fork build carries its own 0.1.x app version, which names no
-     pingdotgg/t3code release, so the archive download 404s and the launch aborts.
-     The remote runs the upstream release this fork is synced to instead: the
-     source tree's package version, which tracks upstream and is bundled here at
-     build time (fork-release.yml only stamps its version into the staged app). */
+     A packaged fork build's 0.1.x version names no pingdotgg/t3code release, so the archive
+     download 404s. The remote runs the upstream release this fork is synced to instead: the
+     source package version, bundled at build time. */
   return { archiveVersion: serverPackageJson.version };
   /* fork:end fork-app-identity */
 };
@@ -211,8 +196,7 @@ const layerDesktopServerExposure = DesktopServerExposure.layer.pipe(
 
 const layerDesktopPreview = PreviewManager.layer.pipe(
   Layer.provideMerge(DesktopBrowserHost.layer),
-  // Merged rather than provided so the IPC handlers can reach the import
-  // service alongside the manager; both sit on the same BrowserSession.
+  // IPC needs both services on the same BrowserSession.
   Layer.provideMerge(BrowserImport.layer.pipe(Layer.provide(LinuxBrowserSecret.layer))),
   Layer.provideMerge(BrowserSession.layer),
   Layer.provideMerge(PreviewPasskeys.layer),
@@ -281,8 +265,7 @@ const layerDesktopApplicationRuntime = layerDesktopApplication.pipe(
   Layer.provideMerge(layerElectron),
 );
 
-// Acquire strict pre-ready setup before Clerk. Nothing before the Clerk bridge
-// may yield, or Electron can emit ready before Clerk registers its scheme.
+// Pre-ready setup and Clerk must not yield before Clerk registers its scheme.
 const layerDesktopRuntime = layerDesktopClerk.pipe(
   Layer.flatMap((clerkContext) =>
     layerDesktopApplicationRuntime.pipe(Layer.provideMerge(Layer.succeedContext(clerkContext))),
@@ -291,11 +274,9 @@ const layerDesktopRuntime = layerDesktopClerk.pipe(
 );
 
 // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-// The ~/.t3 refusal (DesktopEnvironment) fires during layer construction,
-// before any of DesktopApp's fatal-startup dialog handlers exist. Without
-// this tap a GUI launch with T3CODE_HOME pointed at upstream's base bounces
-// in the Dock and quits, with the actionable message lost to a discarded
-// stderr. dialog.showErrorBox is safe before app "ready".
+// The ~/.t3 refusal fires during layer construction, before DesktopApp's fatal-startup dialog
+// handlers exist; without this tap a GUI launch just bounces in the Dock and quits.
+// dialog.showErrorBox is safe before app "ready".
 DesktopApp.program.pipe(
   Effect.provide(layerDesktopRuntime),
   Effect.tapCause((cause) =>

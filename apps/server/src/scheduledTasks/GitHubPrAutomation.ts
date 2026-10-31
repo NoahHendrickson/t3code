@@ -65,7 +65,7 @@ export const make = Effect.gen(function* () {
         ),
       );
   const decode = <S extends Schema.Top>(schema: S, body: string) =>
-    Schema.decodeUnknownEffect(Schema.fromJsonString(schema))(body).pipe(
+    Schema.decodeEffect(Schema.fromJsonString(schema))(body).pipe(
       Effect.mapError(
         (cause) =>
           new ScheduledTaskError({
@@ -218,6 +218,9 @@ export const make = Effect.gen(function* () {
   return GitHubPrAutomation.of({ connect, remove });
 });
 
-// GitHubRest comes from the server's source-control layer, which builds it once so
-// these calls share the quota reserve and rate-limit pause with every other GitHub reader.
-export const layer = Layer.effect(GitHubPrAutomation, make).pipe(Layer.provide(ProjectStore.layer));
+// The same layer value builtInDrivers builds first, so the server's memo map hands this the
+// driver's GitHubRest: one sign-in refresh lock, one quota view.
+export const layer = Layer.effect(GitHubPrAutomation, make).pipe(
+  Layer.provide(ProjectStore.layer),
+  Layer.provide(GitHubRest.layerWithDependencies),
+);

@@ -23,7 +23,6 @@ function readSibling(relativePath: string): string {
 
 const layout = readSibling("../components/AppSidebarLayout.tsx");
 const chrome = readSibling("../components/sidebar/SidebarChrome.tsx");
-const legacySidebar = readSibling("../components/LegacySidebar.tsx");
 const desktopWindow = readSibling("../../../desktop/src/window/DesktopWindow.ts");
 const sidebarPrimitive = readSibling("../components/ui/sidebar.tsx");
 const themeRules = cssRules(readSibling("../theme.custom.css"));
@@ -32,7 +31,8 @@ describe("fork guard: fork-sidebar-chrome", () => {
   it("still offers a toggle while the sidebar is collapsed", () => {
     // The inline toggle leaves with the panel. Without this branch a collapsed
     // sidebar can only be reopened by keyboard or by finding the rail.
-    expect(layout).toContain("if (isSidebarVisible) return null;");
+    // Upstream now keeps the wrapper mounted and swaps the trigger in place.
+    expect(layout).toContain("{isSidebarVisible ? null : (");
     expect(layout).toContain("data-sidebar-control");
   });
 
@@ -42,7 +42,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // open — the one state in which you need it most.
     // Formatting may break the comparison across lines; match the token pair.
     const effect = layout.search(/!==\s*"sidebar\.toggle"/u);
-    const earlyReturn = layout.indexOf("if (isSidebarVisible) return null;");
+    const earlyReturn = layout.indexOf("{isSidebarVisible ? null : (");
     expect(effect).toBeGreaterThanOrEqual(0);
     expect(earlyReturn).toBeGreaterThan(effect);
   });
@@ -121,10 +121,7 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // Those two are what still say "this is a Dev build" now that the sidebar
     // no longer does. Both must keep testing the variant rather than rendering
     // unconditionally.
-    for (const path of [
-      "../components/chat/ComposerPrimaryActions.tsx",
-      "../components/auth/AuthSurfaceShell.tsx",
-    ]) {
+    for (const path of ["../components/chat/ComposerPrimaryActions.tsx"]) {
       const file = readSibling(path);
       expect(file, `${path} stopped gating its stage art`).toMatch(/stage(?:Backdrop)?Variant \?/u);
       expect(file).not.toContain("ForkSidebarHeaderBackdrop");
@@ -181,15 +178,13 @@ describe("fork guard: fork-sidebar-chrome", () => {
     // Usage is a popover over the current thread, not a navigate from Sidebar.
     expect(sidebarV2).not.toContain("onUsage=");
     expect(sidebarV2).not.toContain('void router.navigate({ to: "/usage" });');
-    // One door, not two: the V2 sidebar's footer hides its Usage icon since
-    // the row above is the same overlay. The legacy sidebar has no row and keeps
-    // the icon, so the footer takes the flag rather than dropping the item.
-    expect(sidebarV2).toContain("<SidebarChromeFooter hideUsage />");
+    // One door, not two: the footer hides its Usage icon since the row above is
+    // the same overlay. Upstream now defaults the undo notice off, so it is opted in.
+    expect(sidebarV2).toContain("<SidebarChromeFooter hideUsage showUndoNotice />");
     expect(chrome).toMatch(
       /hideUsage \? null : \(\s*<SidebarUtilityItem\s+icon=\{<ChartNoAxesColumnIcon/u,
     );
     expect(chrome).toContain("<SidebarUtilityMenu hideUsage={hideUsage} />");
-    expect(legacySidebar).toContain("<SidebarChromeFooter />");
   });
 
   it("draws the action rows as the design system's ghost button", () => {

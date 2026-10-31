@@ -107,6 +107,14 @@ describe("fork guard: fork-app-identity", () => {
     expect(workflow).not.toContain("/Applications/T3 Code");
   });
 
+  it("sends startup recovery to the fork's releases", () => {
+    const recovery = read("apps/desktop/src/app/DesktopStartupRecovery.ts");
+    expect(recovery).toContain(
+      'const RELEASES_URL = "https://github.com/NoahHendrickson/t3code/releases";',
+    );
+    expect(recovery).not.toContain("pingdotgg/t3code/releases");
+  });
+
   it("packages with the fork's own artwork", () => {
     // Upstream art would make a fork build indistinguishable from the real
     // app in the Dock and /Applications, exactly where the two must be

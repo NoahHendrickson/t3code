@@ -15,7 +15,7 @@ import * as Path from "effect/Path";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopConfig from "./DesktopConfig.ts";
 import { resolveLinuxDesktopEntryName } from "./DesktopEarlyElectronStartup.ts";
-import { resolveDesktopBaseDir, resolveDesktopStateDir } from "./DesktopStatePaths.ts";
+import { resolveDesktopStateDir } from "./DesktopStatePaths.ts";
 import { isNightlyDesktopVersion } from "../updates/updateChannels.ts";
 import type { OtlpProtocol } from "@t3tools/shared/observability";
 
@@ -78,6 +78,7 @@ export class DesktopEnvironment extends Context.Service<
     readonly linuxDesktopEntryName: string;
     readonly linuxWmClass: string;
     readonly linuxApplicationsDir: string;
+    readonly desktopLauncherPath: Option.Option<string>;
     readonly appImagePath: Option.Option<string>;
     readonly defaultDesktopSettings: DesktopAppSettings.DesktopSettings;
     readonly runtimeInfo: DesktopRuntimeInfo;
@@ -171,24 +172,14 @@ const make = Effect.fn("desktop.environment.make")(function* (
     Option.filter((value) => value.length > 0),
   );
   // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
-  // A fork build must not share ~/.t3 with an installed upstream release. The
-  // base directory is the one input both halves of the app derive shared
-  // state from: the desktop resolves stateDir from it below, and hands it to
-  // the bundled server child as bootstrap t3Home
-  // (DesktopBackendConfiguration), which derives its own stateDir plus caches/
-  // and worktrees/ from it. Forking the base — rather than renaming the
-  // "userdata" leaf, which the server re-derives independently and would not
-  // pick up — keeps both derivations upstream's and isolates all three shared
-  // directories at once. Only an unpackaged development run (`vp dev` — this
-  // repo is already the fork) keeps upstream's ~/.t3; a packaged build stays
-  // fork-owned even when a dev server URL is set.
+  // A fork build must not share ~/.t3 with an installed upstream release. Forking the base dir
+  // isolates every derived path (stateDir, the server child's t3Home, caches/, worktrees/).
+  // Only an unpackaged dev run keeps ~/.t3; a packaged build stays fork-owned.
   const upstreamBaseDir = path.join(homeDirectory, ".t3");
   const isUnpackagedDevelopment = isDevelopment && !input.isPackaged;
-  // The server child resolves T3CODE_HOME itself and expands a leading "~"
-  // (apps/server/src/os-jank.ts expandHomePath); upstream's desktop does not,
-  // so a literal "~/.t3" would send the two halves to different directories —
-  // the child onto upstream's live database. Mirror the server's expansion so
-  // one variable means one directory in both processes.
+  // The server child expands a leading "~" in T3CODE_HOME (os-jank.ts expandHomePath) and
+  // upstream's desktop does not, so a literal "~/.t3" would split the two halves across
+  // directories. Mirror the server's expansion so one variable means one directory.
   const expandedBaseDir = Option.map(configuredBaseDir, (value) =>
     value === "~"
       ? homeDirectory
@@ -199,17 +190,9 @@ const make = Effect.fn("desktop.environment.make")(function* (
   const baseDir = Option.getOrElse(expandedBaseDir, () =>
     isUnpackagedDevelopment ? upstreamBaseDir : path.join(homeDirectory, ".t3-fork"),
   );
-  // A custom T3CODE_HOME still wins — an explicit override is a deliberate,
-  // self-consistent choice (the server child resolves the same variable) —
-  // with one exception: upstream's own base. With T3CODE_HOME=~/.t3 this
-  // process AND the server child (whose env read has precedence over the
-  // bootstrap t3Home) would both land on the real app's live state.sqlite.
-  // That is the exact incident this customization exists to prevent, and it
-  // must fail loudly instead of silently sharing a database with another
-  // running application. The comparison canonicalizes both sides — realpath
-  // where the paths exist, case-folded off Linux (macOS's default filesystem
-  // is case-insensitive) — and refuses anything inside upstream's base, not
-  // just its exact spelling.
+  // A custom T3CODE_HOME still wins, except upstream's own base: ~/.t3 would put this process
+  // and the server child on the real app's live state.sqlite, so it fails loudly. Both sides
+  // are canonicalized (realpath, case-folded off Linux); anything inside that base is refused.
   const fileSystem = yield* FileSystem.FileSystem;
   const canonicalize = (value: string) =>
     Effect.map(fileSystem.realPath(value).pipe(Effect.orElseSucceed(() => value)), (resolved) =>
@@ -306,6 +289,7 @@ const make = Effect.fn("desktop.environment.make")(function* (
     linuxWmClass: isDevelopment ? "t3code-dev" : "t3code-fork",
     // fork:end fork-app-identity
     linuxApplicationsDir,
+    desktopLauncherPath: config.desktopLauncherPath,
     appImagePath: config.appImagePath,
     defaultDesktopSettings: DesktopAppSettings.resolveDefaultDesktopSettings(input.appVersion),
     runtimeInfo: resolveDesktopRuntimeInfo({

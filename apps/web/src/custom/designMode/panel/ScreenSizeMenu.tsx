@@ -86,10 +86,13 @@ export function ScreenSizeMenu({
   const viewportFor = (resolution: (typeof CANVAS_RESOLUTIONS)[number], atTrueHeight: boolean) =>
     atTrueHeight ? viewportAtTrueSize(resolution) : viewportFillingPane(resolution, paneRect);
 
+  // Upstream commits viewports against the server tab too, so a tab still opening has no target.
+  const viewportTarget = tabId ? { threadRef, tabId, runtimeTabId } : null;
   const selectResolution = (value: string) => {
     const resolution = CANVAS_RESOLUTIONS.find((candidate) => candidate.id === value);
+    if (!viewportTarget) return;
     commitCanvasViewport(
-      runtimeTabId,
+      viewportTarget,
       resolution ? viewportFor(resolution, trueHeight) : FILL_PREVIEW_VIEWPORT,
     );
   };
@@ -109,16 +112,18 @@ export function ScreenSizeMenu({
     const timer = setTimeout(() => {
       const next = viewportFillingPane(activeResolution, readPaneRect(runtimeTabId));
       if (viewport._tag === "freeform" && next.height === viewport.height) return;
-      commitCanvasViewport(runtimeTabId, next);
+      if (viewportTarget) commitCanvasViewport(viewportTarget, next);
     }, 300);
     return () => clearTimeout(timer);
-  }, [paneKey, activeResolution, trueHeight, viewport, runtimeTabId]);
+  }, [paneKey, activeResolution, trueHeight, viewport, runtimeTabId, viewportTarget]);
 
   const toggleTrueHeight = (next: boolean) => {
     setTrueHeight(next);
     // Re-commit the applied screen at the other height. Without this the switch reads as
     // broken until the next pick — the frame it describes is already on screen.
-    if (activeResolution) commitCanvasViewport(runtimeTabId, viewportFor(activeResolution, next));
+    if (activeResolution && viewportTarget) {
+      commitCanvasViewport(viewportTarget, viewportFor(activeResolution, next));
+    }
   };
 
   return (
@@ -160,7 +165,7 @@ export function ScreenSizeMenu({
             </MenuRadioItem>
           ))}
         </MenuRadioGroup>
-        <MenuSeparator />
+        <MenuSeparator className="-mx-1" />
         <MenuCheckboxItem
           variant="switch"
           closeOnClick={false}

@@ -71,12 +71,11 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
   });
 
   it("gives the settled tail the status header while status grouping is on", () => {
-    expect(sidebar).toContain(
-      "const settledSectionShown = statusGrouped && settledThreads.length > 0;",
-    );
-    expect(sidebar).toMatch(/settledThreads\.length > 0 &&[\s\S]{0,200}?!settledSectionShown/u);
+    // settledCount includes older settled threads the server has not sent yet.
+    expect(sidebar).toContain("const settledSectionShown = statusGrouped && settledCount > 0;");
+    expect(sidebar).toMatch(/settledCount > 0 &&[\s\S]{0,200}?!settledSectionShown/u);
     expect(sidebar).toContain('section="settled"');
-    expect(sidebar).toContain("count={settledThreads.length}");
+    expect(sidebar).toContain("count={settledCount}");
     expect(sidebar).toContain("collapsed={!settledShelfExpanded}");
     // Flat and project modes keep the hairline shelf header.
     expect(sidebar).toContain('data-testid="sidebar-v2-settled-shelf-toggle"');
@@ -84,7 +83,8 @@ describe("fork guard: sidebar-v2-status-grouping", () => {
 
   it("keeps the Working shelf beta out of the way while status grouping is on", () => {
     expect(sidebar).toContain("const workingShelfActive = workingShelfEnabled && !statusGrouped;");
-    expect(sidebar).toContain("workingShelfActive && isSidebarThreadWorking(thread)");
+    // Upstream's inbox tracker keeps a just-finished run on the shelf for its grace period.
+    expect(sidebar).toContain("workingShelfActive && inboxObservation.isWorking(thread)");
   });
 
   it("stamps the section rows the caret's hover walk reads", () => {

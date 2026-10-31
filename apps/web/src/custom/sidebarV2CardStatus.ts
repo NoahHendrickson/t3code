@@ -40,6 +40,7 @@ export type SidebarV2CardStatusKind =
   | "waiting"
   | "approval"
   | "input"
+  | "request"
   | "limited"
   | "failed"
   | "woke"
@@ -105,6 +106,9 @@ function sidebarV2CardTopStatus(
       return { label: "Needs approval", tone: "approval", mark: "dot" };
     case "input":
       return { label: "Needs input", tone: "input", mark: "dot" };
+    case "request":
+      // A guest message waiting on the thread owner (upstream #25593 shares).
+      return { label: "Message request", tone: "input", mark: "dot" };
     case "limited":
       return { label: "Usage limit reached", tone: "approval", mark: "dot" };
     case "failed":

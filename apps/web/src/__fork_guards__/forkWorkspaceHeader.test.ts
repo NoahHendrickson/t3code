@@ -29,12 +29,13 @@ const chatHeader = readSibling("../components/chat/ChatHeader.tsx");
 const iconShim = readSibling("../custom/icons/lucide-phosphor.tsx");
 
 describe("fork guard: fork-workspace-header", () => {
-  it("keeps all three header controls marked as pills", () => {
-    // One attribute per file, and the whole restyle hangs off it.
+  it("keeps the header controls marked as pills", () => {
+    // One attribute per file, and the whole restyle hangs off it. Upstream's
+    // GitActionsControl now renders only inside the thread details panel, which
+    // is upstream's surface and stays unmarked.
     for (const path of [
       "../components/ProjectScriptsControl.tsx",
       "../components/chat/OpenInPicker.tsx",
-      "../components/GitActionsControl.tsx",
     ]) {
       expect(readSibling(path), `${path} lost data-fork-pill`).toContain("data-fork-pill");
     }
@@ -44,15 +45,8 @@ describe("fork guard: fork-workspace-header", () => {
     expect(scripts).toMatch(
       /aria-label=\{isPanel \? "Add project script" : "Add action"\}[\s\S]{0,80}data-fork-pill/u,
     );
-    // Same story for the not-yet-a-repo "Initialize Git" button in GitActionsControl:
-    // the Group already checked above covers only the isRepo branch. Anchored on the
-    // button's own attributes (initAction is unique to it) so the assertion says the
-    // mark is on this control, not merely somewhere in the preceding lines. The mark
-    // is toolbar-only: the thread details panel (isPanel) is upstream's surface.
-    const git = readSibling("../components/GitActionsControl.tsx");
-    expect(git).toMatch(
-      /<ThreadDetailsControl\s+size="xs"\s+variant=\{isPanel \? "ghost" : "outline"\}\s+part="row"\s+panel=\{isPanel\}\s+data-fork-pill=\{isPanel \? undefined : true\}\s+disabled=\{!canWriteSourceControl \|\| initAction\.isPending\}/u,
-    );
+    // Upstream's "Initialize Git" button now renders only in the thread details panel,
+    // which stays unmarked; see the git-actions case below.
   });
 
   it("styles the pills only under the fork marker", () => {
@@ -93,21 +87,12 @@ describe("fork guard: fork-workspace-header", () => {
     expect(pill?.body).toMatch(/(?:^|;)\s*min-height:\s*28px\s*(?:;|$)/u);
   });
 
-  it("lets the toolbar git-progress readout grow past the 28px pin", () => {
-    // The two-row progress readout is ThreadDetailsControl `multiline`, whose
-    // toolbar path is Button size="sm-multiline" (min-h-8, never h-auto). The
-    // exception has to key on the fork's own stamp; a utility-class selector
-    // matched nothing and left the output row clipped.
+  it("keeps git actions out of the toolbar, so no pill pins its progress readout", () => {
+    // The toolbar variant left upstream with the thread details panel; the
+    // multiline exception it needed went with it.
     const git = readSibling("../components/GitActionsControl.tsx");
-    expect(git).toMatch(
-      /panel=\{isPanel\}\s+multiline\s+(?:\/\*[\s\S]*?\*\/\s+)?data-fork-pill-multiline=\{isPanel \? undefined : true\}/u,
-    );
-    const grow = cssRules(theme).find((rule) =>
-      rule.selector.includes("[data-fork-pill] > button[data-fork-pill-multiline]"),
-    );
-    expect(grow?.selector).toContain(MARKER);
-    expect(grow?.body).toMatch(/(?:^|;)\s*height:\s*auto\s*(?:;|$)/u);
-    expect(theme).not.toContain("button.h-auto");
+    expect(git).not.toContain("isPanel");
+    expect(theme).not.toContain("data-fork-pill-multiline");
   });
 
   it("takes the drawn pill colours in dark and defers to upstream in light", () => {

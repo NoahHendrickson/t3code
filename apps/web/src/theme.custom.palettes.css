@@ -260,7 +260,7 @@
 /* Glass's top sidebar rows (Search, New agent, Usage, Automations, …) are
    pills, hovered or active, whatever the 3D glass setting. */
 :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"]
-  [data-sidebar-version="v2"]
+  :is([data-sidebar-version="v2"], [data-app-modal])
   [data-fork-chrome-row] {
   border-radius: 9999px;
 }
@@ -810,6 +810,9 @@
    their look. The chips' depth is the glass
    surfaces sheet's.
 
+   Scoped to popups: the Settings modal is one, and its own dialogs and menus
+   portal out of it to <body>. The chat behind is inert while it is open.
+
    Same doctrine as the card wash above: these join the utilities layer at
    the weight of what they replace (dark: adds an :is(.dark *)), so the
    trigger's focus and invalid borders, a step heavier, still win. */
@@ -818,6 +821,7 @@
     :root[data-fork="noahhendrickson-t3code"]:not(
         [data-fork-glass-3d]
       ).dark[data-fork-theme="cool-darker"][data-fork-settings]
+      [data-slot$="popup"]
       :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
   ).dark\:bg-input\/32 {
     border-color: rgb(255 255 255 / 0%);
@@ -825,6 +829,7 @@
 
   :where(
       :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+        [data-slot$="popup"]
         :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
     ).dark\:bg-input\/32:is(.dark *) {
     background-color: var(--fork-context-chip-bg);
@@ -832,6 +837,7 @@
 
   :where(
       :root[data-fork="noahhendrickson-t3code"].dark[data-fork-theme="cool-darker"][data-fork-settings]
+        [data-slot$="popup"]
         :is(button, a):not([data-slot="toggle"], .text-destructive-foreground)
     ).dark\:bg-input\/32:is(.dark *):is(:hover, [data-pressed], [data-popup-open]) {
     background-color: var(--fork-context-chip-bg-hover);
@@ -842,6 +848,7 @@
    only its top run. Unlayered, as upstream already drops it in every focus,
    invalid and pressed state. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-glass-3d].dark[data-fork-theme="cool-darker"][data-fork-settings]
+  [data-slot$="popup"]
   :is(button, a):not(
     [data-slot="toggle"],
     .text-destructive-foreground

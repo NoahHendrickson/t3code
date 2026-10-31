@@ -18,10 +18,28 @@
     },
     "scripts": {
       // Knip loads its preprocessor through a CLI option; native verification and
-      // worktree setup (from t3.json) run directly.
-      "entry": ["knip-schemas.ts", "mobile-native-client.ts", "setup-worktree.ts"],
+      // worktree setup (from t3.json) run directly. release-desktop.yml bundles the
+      // Windows verify script with esbuild through a path knip does not trace,
+      // electron-builder loads the macOS signer by path, and mobile-e2e.ts runs
+      // agent-device's CLI by path, and mobile-behavior.ts spawns its runner by path.
+      // release-desktop.yml runs the desktop launch check through xvfb-run, which knip
+      // does not trace.
+      "entry": [
+        // These fixture scripts are injected into a browser page by path.
+        "fixtures/*/*.js",
+        "knip-schemas.ts",
+        "mobile-behavior/run.ts",
+        "mobile-native-client.ts",
+        "setup-worktree.ts",
+        "sign-macos.ts",
+        "smoke-desktop-app.ts",
+        "verify-windows-desktop-artifact.ts",
+      ],
+      "ignoreDependencies": ["agent-device", "esbuild"],
       // The `t3` npm package's files: copied into the package, never imported.
-      "ignore": ["npm-launcher/**"],
+      // knip-schemas.test.ts writes a throwaway project to .knip-test-*, which a
+      // knip run beside it in check:changed must not report.
+      "ignore": ["npm-launcher/**", ".knip-test-*/**"],
     },
     "apps/server": {
       // Vite+ pack entries and the launcher used by installed background services.
@@ -29,9 +47,7 @@
         "src/bin.ts!",
         "src/claude-history-worker.ts!",
         "scripts/cli.ts",
-        "scripts/evaluate-thread-titles.ts",
         "scripts/fetch-expo-schema.ts",
-        "scripts/measure-pr-preview.ts",
         "scripts/probe-claude-fork-local-rollback-replay.ts",
         "scripts/update-test-shard-weights.ts",
         "scripts/verify-background-live.ts",
@@ -67,14 +83,23 @@
       // The injected runtime resolves Playwright by string; release tooling runs
       // electron-builder from this workspace, outside its package scripts.
       "ignoreDependencies": ["playwright-core", "electron-builder"],
+      // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
+      // The fork resolves its own ~/.t3-fork base dir; upstream's resolver stays for syncs.
+      "ignoreIssues": { "src/app/DesktopStatePaths.ts": ["exports"] },
+      // fork:end fork-app-identity
     },
     "apps/web": {
-      // Worktree setup (scripts/setup-worktree.ts) runs this directly.
+      // Worktree setup (scripts/setup-worktree.ts) runs this directly, and evidence
+      // fixtures run under node.
       // fork:begin fork-overrides — see .fork/customizations.yaml#fork-overrides
       // Shadow modules are reached through the fork's Vite/tsconfig alias
       // (apps/web/fork/vitePluginForkOverrides), which knip cannot follow, so
       // they are entries; the custom/ files they import follow from there.
-      "entry": ["scripts/warm-dep-cache.ts", "src/overrides/**/*.{ts,tsx}"],
+      "entry": [
+        "scripts/warm-dep-cache.ts",
+        "test/fixtures/**/*.mjs",
+        "src/overrides/**/*.{ts,tsx}",
+      ],
       // fork:end fork-overrides
       // fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
       // The fork's chrome rows replace upstream's sidebar header (#13029), so
@@ -93,6 +118,20 @@
         // upstream's status line; it stays on disk so syncs merge cleanly.
         "src/components/chat/ThreadStatusLine.tsx",
         // fork:end fork-thread-state-cards
+        // fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows
+        // Upstream split its sidebar rows into these modules; the fork's Sidebar
+        // keeps its own rows, so they stay on disk only so syncs merge cleanly.
+        "src/components/Sidebar.motion.ts",
+        "src/components/sidebar/SidebarDraftBlock.tsx",
+        "src/components/sidebar/SidebarListMarkers.tsx",
+        "src/components/sidebar/SidebarProjectFolderHeader.tsx",
+        "src/components/sidebar/SidebarThreadRow.tsx",
+        // fork:end sidebar-v2-card-rows
+        // fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+        // The shell's slots replace upstream's controls bar and strip permissions chip.
+        "src/components/chat/ComposerControlsBar.tsx",
+        "src/components/ComposerContextPermissions.tsx",
+        // fork:end fork-composer-shell
       ],
       // fork:end fork-sidebar-chrome
       // UI component modules are copied and adapted as cohesive sets. Keep their
@@ -112,13 +151,27 @@
         // Sidebar.tsx calls these.
         "src/components/ThreadStatusIndicators.tsx": ["exports"],
         "src/state/environments.ts": ["exports"],
+        // Upstream's split-out rows (ignored above) were these helpers' callers.
+        "src/components/SidebarStageBackdrop.tsx": ["exports"],
+        "src/lib/sidebarTree.ts": ["exports"],
+        "src/sidebarProjectGrouping.ts": ["exports"],
         // fork:end sidebar-v2-card-rows
+        // fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell
+        // Only upstream's controls bar and bottom toolbar (unrendered here) call these.
+        "src/components/chat/ComposerAttachmentStrip.tsx": ["exports"],
+        "src/components/chat/ComposerFooterControls.tsx": ["exports"],
+        "src/components/chat/composerProviderState.tsx": ["exports"],
+        // fork:end fork-composer-shell
         // fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
         // Vendored verbatim from NoahHendrickson/the-forge and kept whole so
         // re-syncs diff cleanly, the same standing upstream gives _generated/.
         "src/custom/designMode/engine/vendor/**": ["exports", "types", "duplicates"],
         // fork:end fork-design-mode
       },
+    },
+    "apps/marketing": {
+      // `astro check` runs from the typecheck task in vite.config.ts, which knip does not read.
+      "ignoreDependencies": ["@astrojs/check"],
     },
     "apps/mobile": {
       // Expo loads plugins and the fingerprint config by string; Metro embeds the browser entry in the native WebView.
@@ -133,6 +186,7 @@
       // Fonts are configured as asset paths; Expo autolinks the native packages.
       "ignoreDependencies": [
         "@expo-google-fonts/dm-sans",
+        "@t3tools/mobile-highlights-native",
         "@t3tools/mobile-review-diff-native",
         "@t3tools/mobile-terminal-native",
       ],
@@ -141,8 +195,22 @@
       // React Native codegen discovers component specifications by filename.
       "entry": ["src/*NativeComponent.ts!"],
     },
+    "infra/task-cache": {
+      "ignore": ["vendor/**"],
+      // The bootstrap and Vite+ hook are loaded by shell/package configuration.
+      "entry": [
+        "alchemy.run.ts!",
+        "scripts/install.ts",
+        "scripts/install-ci.ts",
+        "src/runHook.ts",
+        "src/flush.ts",
+        "src/nativeRunHook.js",
+        "src/preload.mjs",
+      ],
+    },
     "infra/relay": {
-      "entry": ["alchemy.run.ts!", "src/persistence/schema.ts!"],
+      // Alchemy loads src/worker.ts as the Worker entry and reads its default export.
+      "entry": ["alchemy.run.ts!", "src/persistence/schema.ts!", "src/worker.ts!"],
     },
     "packages/*": {
       // These workspace packages are private to this monorepo.
@@ -161,7 +229,7 @@
     },
     "packages/source-control-github": {
       // graphqlgen reads its config; the generated operations export every selection's class.
-      "entry": ["graphql.config.ts"],
+      "entry": ["graphql.config.ts", "scripts/measure-pr-preview.ts"],
       "ignoreIssues": { "**/*.graphql.ts": ["exports", "types", "namespaceMembers"] },
     },
   },

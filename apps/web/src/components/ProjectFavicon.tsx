@@ -28,8 +28,6 @@ function DynamicProjectIconFallback() {
   return <FolderCodeIcon className="size-full text-inherit" />;
 }
 
-// Every surface must pass the project record itself (or a snapshot spread from it)
-// so the saved title, favicon and icon override always travel together.
 export type ProjectFaviconProject = Pick<
   EnvironmentProject,
   "environmentId" | "workspaceRoot" | "title" | "faviconPath" | "projectIcon"
@@ -85,10 +83,9 @@ export function ProjectFavicon(input: {
   }
   const FallbackIcon = input.fallbackIcon ?? FolderCodeIcon;
   /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
-     A caller that names its own fallback mark (the draft project chip's and
-     the thread context readout's folder marks) gets that mark, not upstream's
-     automatic title monogram. An icon the user chose in project settings
-     still wins above. */
+     A caller that names its own fallback mark (the draft project chip's and the thread
+     context readout's folder marks) gets that mark, not upstream's title monogram. An icon
+     the user chose in project settings still wins. */
   const fallbackProjectName = input.fallbackIcon ? undefined : project.title;
   /* fork:end fork-new-agent-draft */
 

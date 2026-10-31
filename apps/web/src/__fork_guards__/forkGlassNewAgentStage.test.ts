@@ -79,7 +79,7 @@ describe("fork guard: fork-glass-new-agent-stage", () => {
     );
     // React never reads the switch on ChatView's render path.
     expect(chatView).not.toContain("forkGlassNewAgentPicture");
-    expect(readSibling("../components/settings/SettingsPanels.tsx")).toContain(
+    expect(readSibling("../components/settings/AppearanceSettingsPanel.tsx")).toContain(
       'title="New agent picture"',
     );
   });

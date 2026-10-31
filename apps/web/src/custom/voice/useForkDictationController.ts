@@ -1,9 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   voiceInputBlocksSubmission,
-  voiceInputFreezesEditor,
   type VoiceInputState,
 } from "@t3tools/client-runtime/voice-input";
+
+// Upstream dropped this alias (it always equalled voiceInputBlocksSubmission); the
+// fork keeps the name because the two gates read differently at the call sites.
+const voiceInputFreezesEditor = (state: VoiceInputState): boolean =>
+  voiceInputBlocksSubmission(state);
 import {
   createDictationSession,
   isDictationLive,
@@ -11,9 +15,16 @@ import {
   type DictationSession,
 } from "./forkDictationSession";
 import { readForkVoiceInputBridge } from "./forkVoiceInputBridge";
-import { useSplitPane } from "../splitThreads/splitPaneContext";
+import { useOwnsGlobalInput } from "../splitThreads/splitPaneContext";
 
 const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };
+
+/** Ends a session nothing on screen can end: a recording is transcribed, one still preparing is dropped. */
+function settleSession(controller: DictationSession["controller"]): void {
+  const { phase } = controller.currentState;
+  if (phase === "recording") void controller.stop();
+  else if (phase === "preparing") controller.cancel();
+}
 
 /**
  * Composer-owned dictation session, mirroring mobile's `useVoiceInputController`.
@@ -115,13 +126,12 @@ export function useForkDictationController(input: DictationInput) {
     controller?.ownerChanged();
   }, [controller, input.ownerKey]);
 
-  // Registered while this composer's pane is focused (always, outside a
-  // split: fork-split-threads), so the root hotkeys reach the pane the user is
-  // in. Every callback reads the mirror, so they reach the thread this
-  // composer is showing now.
-  const paneFocused = useSplitPane().focused;
+  // Registered while this pane owns window input (focused in a split, not behind
+  // Settings or Usage), so the root hotkeys reach the composer on screen.
+  // Callbacks read the mirror.
+  const ownsInput = useOwnsGlobalInput();
   useEffect(() => {
-    if (!controller || !paneFocused) return;
+    if (!controller || !ownsInput) return;
     return registerDictationComposer({
       controller,
       canStart: () => !inputRef.current.disabled,
@@ -134,15 +144,13 @@ export function useForkDictationController(input: DictationInput) {
         inputRef.current.focusEditor();
       },
     });
-  }, [controller, paneFocused]);
-  // The hotkeys reach only the focused pane, so a recording left running in a
-  // pane that loses focus could not be stopped from the keyboard. It finishes
-  // there instead, into the draft it started in.
+  }, [controller, ownsInput]);
+  // Losing input (another pane focused, or Settings or Usage opened over the
+  // thread) leaves no hotkey to end a live session, so it settles into its own draft.
   useEffect(() => {
-    if (!paneFocused && controller && isDictationLive(controller.currentState)) {
-      void controller.stop();
-    }
-  }, [controller, paneFocused]);
+    if (ownsInput || !controller) return;
+    settleSession(controller);
+  }, [controller, ownsInput]);
   useEffect(() => () => controller?.dispose(), [controller]);
 
   // Through the mirror, not the render scope: a caller that retains these
@@ -160,10 +168,7 @@ export function useForkDictationController(input: DictationInput) {
   // For the composer whose controls just left the screen: a recording is
   // transcribed on the spot rather than left running with nothing to end it.
   const settleWithoutControls = () => {
-    if (!controller) return;
-    const { phase } = controller.currentState;
-    if (phase === "recording") void controller.stop();
-    else if (phase === "preparing") controller.cancel();
+    if (controller) settleSession(controller);
   };
 
   return {

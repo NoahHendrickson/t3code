@@ -7,7 +7,7 @@
     "erasableSyntaxOnly": false,
     "verbatimModuleSyntax": false,
     "jsx": "react-jsx",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": ["ES2023", "ESNext.Disposable", "DOM", "DOM.Iterable"],
     // Fork-only: the shadow tree is a transparent overlay for relative imports
     // too. `../ui/tooltip` inside an override — or inside an upstream file —
     // resolves override-first, then upstream, exactly as the `fork:overrides`
@@ -47,6 +47,7 @@
     "vite.config.ts",
     "vercel.ts",
     "test",
+    "scripts/verify-built-boot.ts",
     "scripts/warm-dep-cache.ts",
     "../../scripts/lib/public-config.ts",
     "../../scripts/lib/third-party-licenses.ts"

@@ -212,17 +212,17 @@ function ComposerModelTraitsPanel(props: {
   // option, and leaving it strips the prefix again.
   const selectOption = (descriptor: SelectDescriptor, value: string) => {
     if (descriptor.promptInjectedValues?.includes(value)) {
-      input.onPromptChange(
-        input.prompt.trim().length === 0
+      input.onPromptEdit((prompt) =>
+        prompt.trim().length === 0
           ? ULTRATHINK_PROMPT_PREFIX
-          : applyClaudePromptEffortPrefix(input.prompt, "ultrathink"),
+          : applyClaudePromptEffortPrefix(prompt, "ultrathink"),
       );
       return;
     }
     const isPrimary = descriptor.id === primarySelectId;
     if (traits.ultrathinkInBodyText && isPrimary) return;
     if (traits.ultrathinkPromptControlled && isPrimary) {
-      input.onPromptChange(input.prompt.replace(/^Ultrathink:\s*/i, ""));
+      input.onPromptEdit((prompt) => prompt.replace(/^Ultrathink:\s*/i, ""));
     }
     updateDescriptors(replaceDescriptorCurrentValue(descriptors, descriptor.id, value));
   };

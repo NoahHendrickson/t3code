@@ -140,6 +140,7 @@ export function sidebarV2StatusBucketForKind(
   switch (kind) {
     case "approval":
     case "input":
+    case "request":
     case "failed":
     case "limited":
       return "input";

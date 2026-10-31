@@ -16,7 +16,8 @@ function readSibling(relativePath: string): string {
   return NodeFS.readFileSync(NodeURL.fileURLToPath(new URL(relativePath, import.meta.url)), "utf8");
 }
 
-const timeline = readSibling("../components/chat/MessagesTimeline.tsx");
+// Upstream moved the working row out of MessagesTimeline into the work-group rows.
+const timeline = readSibling("../components/chat/TimelineWorkGroupRows.tsx");
 
 describe("fork guard: fork-chat-working-rain", () => {
   it("renders the sidebar working mark in the working row", () => {

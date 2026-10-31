@@ -241,7 +241,8 @@ describe("fork guard: fork-popup-surface", () => {
       const source = slot.startsWith("menu") ? menu : slot.startsWith("select") ? select : combobox;
       expect(source, slot).toContain(`data-slot="${slot}"`);
     }
-    expect(combobox).toContain("data-selected:bg-foreground/[0.08]");
+    // Upstream's combobox now washes its own hover (foreground 9%, selected 6%), not --accent.
+    expect(combobox).not.toContain("hover:bg-accent");
     expect(select).toContain("data-selected:bg-foreground/[0.08]");
     expect(menu).toContain("data-checked:bg-foreground/[0.08]");
     const hover = cssRules(theme).find(

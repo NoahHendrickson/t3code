@@ -68,11 +68,12 @@ function boot(): void {
   };
   mode.onStateChange = (active) => {
     emitToHost({ type: "state", active });
-    // Tokens and canvas ride AFTER `state`: the host resets its per-tab world view on
-    // every enabled flip, so anything emitted before `state` would be wiped by it.
+    // Tokens, canvas and layers ride AFTER `state`: the host resets its per-tab world view
+    // on every enabled flip, so anything emitted before `state` would be wiped by it.
     if (active) {
       emitTokens();
       mode.canvas.reassert();
+      mode.reassertLayers();
     }
   };
 

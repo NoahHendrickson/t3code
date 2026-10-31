@@ -70,8 +70,10 @@ describe("fork guard: fork-model-picker", () => {
       "shouldIncludeModelPickerOption",
       "shouldOfferModelPickerSetup",
     ]) {
+      // Upstream stopped exporting two of these; the body must still match.
       const body = (source: string) => {
-        const start = source.indexOf(`export function ${name}(`);
+        const start = source.search(new RegExp(`^(?:export )?function ${name}\\(`, "mu"));
+        if (start < 0) return "";
         return source.slice(start, source.indexOf("\n}\n", start));
       };
       expect(body(upstreamContent), name).not.toBe("");
@@ -117,7 +119,10 @@ describe("fork guard: fork-model-picker", () => {
     // the icon a bare "Opus 5.5" reads as Claude's own.
     expect(picker).toContain("const iconShown = !props.isComposerOwned;");
     expect(
-      picker.match(/triggerModelName\(getTriggerDisplayModelName\(\w+\), \w+, \{ iconShown \}\)/gu),
+      // getTriggerDisplayModelName takes the driver kind since upstream #24205.
+      picker.match(
+        /triggerModelName\(\s*getTriggerDisplayModelName\(\w+, \w+\?\.driverKind\),\s*\w+,\s*\{ iconShown \},?\s*\)/gu,
+      ),
     ).toHaveLength(2);
     expect(picker).toMatch(/\{activeEntry \? \(\s*<ProviderInstanceIcon/u);
     // One class for the single icon and the multi-model avatar stack alike.
@@ -195,7 +200,9 @@ describe("fork guard: fork-model-picker", () => {
   });
 
   it("stamps the popup for shortcuts and the wheel lock", () => {
-    expect(visibility).toContain('"[data-model-picker-content]"');
+    // Upstream made visibility a mount counter; the content shadow must register with it.
+    expect(visibility).toContain("export function registerModelPickerContent");
+    expect(content).toContain("useLayoutEffect(() => registerModelPickerContent(), []);");
     // The list and the provider submenu's popup.
     expect(content.match(/data-model-picker-content="true"/gu)?.length).toBe(2);
     expect(content.match(/data-fork-model-picker="true"/gu)?.length).toBe(1);
@@ -246,9 +253,10 @@ describe("fork guard: fork-model-picker", () => {
     // Both composer placements (footer and resting strip) render the combined
     // picker; no standalone traits picker sits beside it, and the ⋯ menu no
     // longer repeats the traits.
+    // Upstream removed the resting strip (#25869), so the footer is the one placement.
     expect(
       composer.match(/<ComposerModelPicker\s+traitsInput=\{providerTraitsPickerInput\}/gu),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(composer).not.toMatch(/<ProviderModelPicker\b/u);
     expect(composer).not.toMatch(/^\s*const providerTraitsPicker = /mu);
     expect(composer).not.toMatch(/^\s*id: "traits",/mu);
