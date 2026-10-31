@@ -28,8 +28,6 @@ export interface ScheduledPageSearch {
   readonly view?: "runs";
   /** A starter recipe id that prefills the create form. */
   readonly starter?: string;
-  /** A space's key (fork-spaces): the task list shows only its projects. */
-  readonly space?: string;
 }
 
 export function validateScheduledPageSearch(raw: Record<string, unknown>): ScheduledPageSearch {
@@ -47,14 +45,12 @@ export function validateScheduledPageSearch(raw: Record<string, unknown>): Sched
     task === "new" && typeof raw.starter === "string" && isStarterId(raw.starter)
       ? raw.starter
       : undefined;
-  const space = typeof raw.space === "string" && raw.space.length > 0 ? raw.space : undefined;
   return {
     ...(env === undefined ? {} : { env }),
     ...(task === undefined ? {} : { task }),
     ...(tab === undefined ? {} : { tab }),
     ...(view === undefined ? {} : { view }),
     ...(starter === undefined ? {} : { starter }),
-    ...(space === undefined ? {} : { space }),
   };
 }
 

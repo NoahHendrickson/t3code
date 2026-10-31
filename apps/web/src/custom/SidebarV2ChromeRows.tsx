@@ -576,8 +576,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
           aria-level={2}
           className="min-w-0 flex-1 truncate text-left text-[0.8125rem] leading-4 font-semibold text-muted-foreground"
         >
-          {/* Under Spaces (fork-spaces) the list is spaces, each holding threads. */}
-          {props.grouping === "spaces" ? "Spaces" : "Threads"}
+          Threads
         </span>
         <div className="-me-3 flex shrink-0 items-center">
           <Menu>
@@ -662,7 +661,7 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                   rides on the accessible name and the native tooltip, so it
                   reaches both the pointer and the screen reader rather than
                   leaving either to infer it from an option that does nothing. */}
-              {/* Radios: grouping is one choice of four, so picking one
+              {/* Radios: grouping is one choice of three, so picking one
                   clears the others; "No grouping" is the way back to the flat
                   list. The menu stays open so the choice can be seen taking
                   effect behind it. */}
@@ -700,19 +699,10 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                 >
                   Group by status
                 </OptionRadioItem>
-                {/* Never disabled either: a space is worth drawing for one
-                    project, since its rows lead somewhere a card does not. */}
-                <OptionRadioItem
-                  value="spaces"
-                  checked={props.grouping === "spaces"}
-                  testId="sidebar-v2-group-by-space-toggle"
-                >
-                  Spaces
-                </OptionRadioItem>
               </MenuRadioGroup>
               <FullWidthMenuSeparator />
               {/* Set apart from the radios: card density is independent of
-                  grouping and combines with any of the four. */}
+                  grouping and combines with any of the three. */}
               <OptionCheckboxItem
                 checked={props.compactCards}
                 onCheckedChange={props.onCompactCardsChange}

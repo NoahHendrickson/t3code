@@ -80,7 +80,6 @@ import {
 import { ScheduledCard, useConnectedEnvironments } from "./scheduledPageChrome";
 import { ScheduledRunRows, ScheduledRunsHeader } from "./ScheduledRunsTable";
 import { ScheduledTaskDetail } from "./ScheduledTaskDetail";
-import { spaceHasProject, useSpace } from "../spaces/spaceProjects";
 
 /**
  * Escape steps back a level, except from a field or popup: leaving the task
@@ -150,7 +149,7 @@ export function ScheduledPage() {
             ) : search.view === "runs" ? (
               <AllRuns environments={environments} />
             ) : (
-              <TaskList environments={environments} spaceKey={search.space} />
+              <TaskList environments={environments} />
             )}
           </WorkspacePageContainer>
         </ScrollArea>
@@ -159,28 +158,18 @@ export function ScheduledPage() {
   );
 }
 
-function TaskList(props: {
-  readonly environments: ReadonlyArray<EnvironmentPresentation>;
-  /** A space opened from the sidebar (fork-spaces): only its projects' tasks. */
-  readonly spaceKey: string | undefined;
-}) {
+function TaskList(props: { readonly environments: ReadonlyArray<EnvironmentPresentation> }) {
   const navigate = useNavigate();
-  const space = useSpace(props.spaceKey);
   const [query, setQuery] = useState("");
   const [environmentFilter, setEnvironmentFilter] = useState<EnvironmentId | "all">("all");
   const defaultEnvironmentId = props.environments[0]?.environmentId ?? null;
   const canCreate = useAtomValue(
     serverEnvironment.upsertScheduledTask.permissionAtom(defaultEnvironmentId),
   );
-  const visibleEnvironments = (
+  const visibleEnvironments =
     environmentFilter === "all"
       ? props.environments
-      : props.environments.filter((entry) => entry.environmentId === environmentFilter)
-  ).filter(
-    (entry) =>
-      space === null ||
-      space.memberProjectRefs.some((ref) => ref.environmentId === entry.environmentId),
-  );
+      : props.environments.filter((entry) => entry.environmentId === environmentFilter);
   const openNew = () => {
     if (defaultEnvironmentId === null) return;
     void navigate({
@@ -251,18 +240,6 @@ function TaskList(props: {
               <span />
             )}
             <div className="flex items-center gap-3">
-              {space ? (
-                <Link
-                  to="/scheduled"
-                  search={{}}
-                  aria-label={`Show automations in every project, not just ${space.label}`}
-                  className="inline-flex items-center gap-1 rounded-md bg-accent px-2 py-0.5 text-sm text-foreground hover:bg-accent/70"
-                  data-testid="scheduled-space-filter"
-                >
-                  {space.label}
-                  <XIcon className="size-3.5 text-muted-foreground" aria-hidden />
-                </Link>
-              ) : null}
               <Link
                 to="/scheduled"
                 search={{ view: "runs" }}
@@ -307,7 +284,6 @@ function TaskList(props: {
                   environment={environment}
                   showEnvironment={visibleEnvironments.length > 1}
                   query={query}
-                  space={space}
                 />
               ))}
             </Table>
@@ -338,21 +314,14 @@ function EnvironmentTaskRows(props: {
   readonly environment: EnvironmentPresentation;
   readonly showEnvironment: boolean;
   readonly query: string;
-  readonly space: ReturnType<typeof useSpace>;
 }) {
   const { environmentId } = props.environment;
   const tasksQuery = useEnvironmentQuery(
     serverEnvironment.scheduledTasksLive({ environmentId, input: {} }),
   );
-  const { space } = props;
   const tasks = useMemo(
-    () =>
-      tasksQuery.data?.tasks.filter(
-        (task) =>
-          matchesTaskQuery(task, props.query) &&
-          (space === null || spaceHasProject(space, environmentId, task.projectId)),
-      ) ?? null,
-    [environmentId, space, tasksQuery.data, props.query],
+    () => tasksQuery.data?.tasks.filter((task) => matchesTaskQuery(task, props.query)) ?? null,
+    [tasksQuery.data, props.query],
   );
   useRelativeTimeTick(60_000);
   return (
