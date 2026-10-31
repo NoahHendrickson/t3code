@@ -4971,7 +4971,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                         return renderOneThreadRow(thread, section, options);
                       }
                       return (
-                        <SidebarSplitPairRow key={splitRow.key}>
+                        <SidebarSplitPairRow
+                          key={splitRow.key}
+                          projectSection={options.underProjectHeader === true}
+                        >
                           {[splitRow.left, splitRow.right].map((card) =>
                             renderOneThreadRow(
                               card,
