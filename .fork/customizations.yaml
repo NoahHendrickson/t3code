@@ -382,11 +382,10 @@
     The macOS Dock exports add only a transparent outer canvas around the
     rendered artwork, matching the standard Mac icon footprint. The local dev
     splash uses the orange family, while packaged builds stamp the green
-    production family. Web favicons are the exception: one flat green tile
-    from Figma (t3-fork 598:6596, the frame's gray backdrop dropped so the
-    corners stay transparent), committed as rasters and identical across the
-    n3-*, n3-dev-* and apps/web/public copies; export-icons.ts leaves them
-    alone. Filenames still say n3-* for path stability.
+    production family. Web favicons are a flat Figma tile (t3-fork 598:6596,
+    its gray frame backdrop dropped for transparent corners), committed as the
+    n3-web-favicon* rasters with apps/web/public copies; export-icons.ts
+    leaves them alone. Filenames still say n3-* for path stability.
     t3.json's iconPath stays assets/fork/n3-project-icon-180.png, never
     upstream's assets/dev/blueprint-*.
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
@@ -426,9 +425,6 @@
     - assets/fork/n3-universal-1024.png
     - assets/fork/n3-windows.ico
     - assets/fork/n3-dev-web-apple-touch-180.png
-    - assets/fork/n3-dev-web-favicon-16x16.png
-    - assets/fork/n3-dev-web-favicon-32x32.png
-    - assets/fork/n3-dev-web-favicon.ico
     - assets/fork/n3-web-apple-touch-180.png
     - assets/fork/n3-web-favicon-16x16.png
     - assets/fork/n3-web-favicon-32x32.png

@@ -170,12 +170,12 @@ describe("fork guard: fork-app-identity", () => {
     expect(windowsIco.readUInt32BE(ico256Offset + 16)).toBe(256);
 
     // Dev (`vp run dev`) serves apps/web/public — the orange apple-touch family
-    // there, while packaged builds stamp the gradient production family above.
-    // Favicons are one flat Figma tile shared by both families.
+    // there, while packaged builds stamp the green production family above.
+    // Favicons are one flat Figma tile, so dev serves the production set.
     for (const [source, target] of [
-      ["assets/fork/n3-dev-web-favicon.ico", "apps/web/public/favicon.ico"],
-      ["assets/fork/n3-dev-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
-      ["assets/fork/n3-dev-web-favicon-32x32.png", "apps/web/public/favicon-32x32.png"],
+      ["assets/fork/n3-web-favicon.ico", "apps/web/public/favicon.ico"],
+      ["assets/fork/n3-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
+      ["assets/fork/n3-web-favicon-32x32.png", "apps/web/public/favicon-32x32.png"],
       ["assets/fork/n3-dev-web-apple-touch-180.png", "apps/web/public/apple-touch-icon.png"],
     ] as const) {
       expect(NodeFS.readFileSync(NodePath.join(repoRoot, target))).toEqual(
