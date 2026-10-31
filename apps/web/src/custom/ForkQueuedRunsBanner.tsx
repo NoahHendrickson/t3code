@@ -1,5 +1,6 @@
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { deriveThreadQueueWorkflowState } from "@t3tools/client-runtime/state/thread-workflows";
+import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
 import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
 import { replaceComposerContextReferences } from "@t3tools/shared/composerContextReferences";
 import type {
@@ -39,6 +40,21 @@ interface QueuedRowThumbnail {
 }
 
 const QUEUED_RUN_DRAG_TYPE = "application/x-t3code-queued-run";
+
+const SENDER_LABEL = { agent: "Agent", automation: "Automation", t3code: "T3 Code" } as const;
+
+/** Who queued it, when it was not the owner typing: the guest's name, or the agent or automation. */
+function queuedSender(
+  message: Parameters<typeof resolveUserMessagePresentation>[0] | undefined,
+): { readonly label: string; readonly guest: boolean } | null {
+  if (!message) return null;
+  const presentation = resolveUserMessagePresentation(message);
+  if (presentation.attribution === "guest" && presentation.guestName !== undefined) {
+    return { label: presentation.guestName, guest: true };
+  }
+  if (presentation.attribution === null || presentation.attribution === "guest") return null;
+  return { label: SENDER_LABEL[presentation.attribution], guest: false };
+}
 
 type ThreadQueueProjection = Parameters<typeof deriveThreadQueueWorkflowState>[0];
 
@@ -111,8 +127,9 @@ export function ForkQueuedRunsBanner({
     (message) => message.inputIntent === "queued_turn" && !acknowledgedMessageIds.has(message.id),
   );
   const items = [
-    ...queued.map(({ run, text, attachments, context }, serverIndex) => ({
+    ...queued.map(({ run, text, attachments, context, message }, serverIndex) => ({
       key: run.id,
+      sender: queuedSender(message),
       runId: run.id,
       messageId: run.userMessageId,
       serverIndex,
@@ -131,6 +148,7 @@ export function ForkQueuedRunsBanner({
     })),
     ...optimisticQueued.map((message) => ({
       key: message.id,
+      sender: null,
       runId: null,
       messageId: null,
       serverIndex: null,
@@ -390,6 +408,17 @@ export function ForkQueuedRunsBanner({
                             )}
                           </span>
                         ))}
+                      </span>
+                    ) : null}
+                    {item.sender ? (
+                      <span
+                        className={cn(
+                          "shrink-0",
+                          item.sender.guest ? "text-guest-foreground" : "text-muted-foreground",
+                        )}
+                      >
+                        {item.sender.label}
+                        {item.sender.guest ? <span className="sr-only"> (guest)</span> : null}
                       </span>
                     ) : null}
                     {designChangeLabel !== null ? (

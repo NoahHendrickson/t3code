@@ -345,9 +345,6 @@ import {
 import type { QueuedRunsControlHandle } from "./chat/QueuedRunsControl";
 import { ForkQueuedRunsBanner } from "~/custom/ForkQueuedRunsBanner";
 /* fork:end fork-queued-runs-banner */
-/* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice */
-import { FORK_NO_TIMELINE_APPROVALS } from "~/custom/forkApprovalNotice";
-/* fork:end fork-composer-approval-notice */
 import { useThreadLinkedPullRequest } from "./pullRequest/useThreadLinkedPullRequest";
 import { useProactivePanels } from "../hooks/useProactivePanels";
 import { useIncrementalTimelineEntries } from "../hooks/useIncrementalTimelineEntries";
@@ -3690,13 +3687,13 @@ export default function ChatView(props: ChatViewProps) {
               className="relative flex min-h-0 flex-1 flex-col bg-background"
             >
               <ThreadTimeline
-                /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice
-                   Approvals answer from the notice above the composer, so the timeline keeps plain rows. */
-                pendingApprovals={FORK_NO_TIMELINE_APPROVALS}
-                /* fork:end fork-composer-approval-notice */
+                pendingApprovals={pendingApprovals}
                 heldApprovalRequestIds={heldApprovalRequestIds}
                 respondingRequestIds={respondingRequestIds}
-                onRespondToApproval={onRespondToApprovalStable}
+                /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice
+                   No responder: the timeline row is a read-only "Waiting for approval" marker and the
+                   answer lives in the notice above the composer. */
+                /* fork:end fork-composer-approval-notice */
                 canOperateThread={canOperateThread}
                 threadDetailRef={routeThreadDetailRef}
                 entriesInput={timelineEntriesInput}

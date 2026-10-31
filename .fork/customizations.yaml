@@ -6072,7 +6072,8 @@
     queued-run.reorder). The banner lives in custom/ForkQueuedRunsBanner.tsx
     and keeps upstream's later behavior: Send now starts a held queue when
     idle, guest messages are not editable, and editing is blocked while a
-    question is open. ChatView mounts it in the composer dock, not the
+    question is open. Rows name a sender other than the owner (guest name,
+    Agent, Automation, T3 Code). ChatView mounts it in the composer dock, not the
     timeline footer; client-runtime carries the reorderQueuedRun command.
     Mobile keeps upstream's queue.
   tier: 4
@@ -6099,9 +6100,11 @@
     stack and fork notice styling as the other composer notices: shield icon,
     the approval label over the command (mono) and the provider's reason, the
     white Approve primary with Decline and More beside it. Upstream #26255 moved
-    approvals onto their timeline row; the fork hands the timeline an empty
-    pending list so those rows render as plain work entries and the answer
-    lives only above the composer. The notice reads the composer's typing
+    approvals onto their timeline row; the fork still hands the timeline the
+    real pending list (its waiting and liveness rules read it) but no
+    responder, so the row is a read-only "Waiting for approval" marker and the
+    answer lives only above the composer. A send declines only the approval
+    the notice shows, never ones the user has not seen. The notice reads the composer's typing
     guard, so a held approval hides while the user types, as upstream's
     composer drawer did. It joins the blocking state that keeps only machine
     problems beside it. Light stacks the title over the command like dark.

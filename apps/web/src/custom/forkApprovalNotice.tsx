@@ -27,15 +27,17 @@ const DETAIL_LABEL = {
   "mcp-elicitation": "App access request",
 } satisfies Record<PendingApproval["requestKind"], string>;
 
+export type ForkApprovalResponder = ComponentProps<
+  typeof ComposerPendingApprovalActions
+>["onRespondToApproval"];
+
 /** The pending approval as a notice card above the composer, styled like the fork's other notices. */
 export function forkApprovalNoticeItem(input: {
   readonly approval: PendingApproval;
   readonly pendingCount: number;
   readonly disabled: boolean;
   readonly isResponding: boolean;
-  readonly onRespondToApproval: ComponentProps<
-    typeof ComposerPendingApprovalActions
-  >["onRespondToApproval"];
+  readonly onRespondToApproval: ForkApprovalResponder;
 }): ComposerBannerStackItem {
   const { approval } = input;
   const label = APPROVAL_LABEL[approval.requestKind];
@@ -71,10 +73,13 @@ export function forkApprovalNoticeItem(input: {
           data-approval-detail="complete"
           tabIndex={0}
         >
-          {canRespond
-            ? approval.detail || label
-            : "Provider process is gone. Interrupt or restart the run to respond."}
+          {approval.detail || label}
         </Detail>
+        {canRespond ? null : (
+          <span className="text-warning">
+            Provider process is gone. Interrupt or restart the run to respond.
+          </span>
+        )}
         {approval.reason ? (
           <span className="select-text wrap-anywhere">{approval.reason}</span>
         ) : null}
@@ -107,6 +112,3 @@ export function forkApprovalNoticeItem(input: {
     ),
   };
 }
-
-/** Stable empty list, so the timeline renders approvals as plain rows without re-memoizing. */
-export const FORK_NO_TIMELINE_APPROVALS: ReadonlyArray<PendingApproval> = [];

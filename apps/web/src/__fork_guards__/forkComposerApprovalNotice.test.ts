@@ -19,12 +19,19 @@ const composer = read("../components/chat/ChatComposer.tsx");
 const notice = read("../custom/forkApprovalNotice.tsx");
 
 describe("fork-composer-approval-notice", () => {
-  it("keeps approvals off the timeline and hands the composer the respond handler", () => {
-    const timeline = chatView.slice(chatView.indexOf("<ThreadTimeline"));
-    expect(timeline.slice(0, timeline.indexOf("/>"))).toContain(
-      "pendingApprovals={FORK_NO_TIMELINE_APPROVALS}",
-    );
+  it("answers only from the composer while the timeline still knows the run is waiting", () => {
+    const timelineTag = chatView.slice(chatView.indexOf("<ThreadTimeline"));
+    const timelineProps = timelineTag.slice(0, timelineTag.indexOf("/>"));
+    // The real list keeps the timeline's waiting state; without a responder its row is read-only.
+    expect(timelineProps).toContain("pendingApprovals={pendingApprovals}");
+    expect(timelineProps).not.toContain("onRespondToApproval=");
     expect(chatView).toContain("onRespondToApproval={onRespondToApprovalStable}");
+  });
+
+  it("declines on send only the approval the notice shows", () => {
+    expect(composer).toContain(
+      "shownPendingApprovalIds: activePendingApproval ? [activePendingApproval.requestId] : [],",
+    );
   });
 
   it("puts the active approval in the composer banner stack as a notice card", () => {
