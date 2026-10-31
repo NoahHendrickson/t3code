@@ -228,6 +228,13 @@ export interface ResumeThreadQueueInput extends ThreadCommandInput {
   readonly runId?: RunId;
 }
 
+/* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+export interface ReorderQueuedRunInput extends ThreadCommandInput {
+  readonly runId: RunId;
+  readonly beforeRunId: RunId | null;
+}
+/* fork:end fork-queued-runs-banner */
+
 export interface PromoteQueuedRunInput extends ThreadCommandInput {
   readonly queuedRunId: RunId;
   readonly targetRunId: RunId;
@@ -999,6 +1006,20 @@ export const resumeThreadQueue = Effect.fn("EnvironmentCommands.resumeThreadQueu
     threadId: input.threadId,
   });
 });
+
+/* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+export const reorderQueuedRun = Effect.fn("EnvironmentCommands.reorderQueuedRun")(function* (
+  input: ReorderQueuedRunInput,
+) {
+  return yield* dispatch({
+    type: "queued-run.reorder",
+    commandId: yield* allocateCommandId(input),
+    threadId: input.threadId,
+    runId: input.runId,
+    beforeRunId: input.beforeRunId,
+  });
+});
+/* fork:end fork-queued-runs-banner */
 
 export const promoteQueuedRun = Effect.fn("EnvironmentCommands.promoteQueuedRun")(function* (
   input: PromoteQueuedRunInput,

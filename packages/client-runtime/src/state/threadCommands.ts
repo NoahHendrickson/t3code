@@ -31,6 +31,9 @@ import {
   markThreadUnread,
   mergeThreadBack,
   promoteQueuedRun,
+  /* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+  reorderQueuedRun,
+  /* fork:end fork-queued-runs-banner */
   resumeThreadQueue,
   retryWorkspacePreparation,
   linkThreadPullRequest,
@@ -323,6 +326,14 @@ export function createThreadEnvironmentAtoms<R, E>(
       scheduler,
       concurrency,
     }),
+    /* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+    reorderQueuedRun: createEnvironmentCommand(runtime, {
+      label: "environment-data:commands:thread:reorder-queued-run",
+      execute: reorderQueuedRun,
+      scheduler,
+      concurrency,
+    }),
+    /* fork:end fork-queued-runs-banner */
     promoteQueuedRun: createEnvironmentCommand(runtime, {
       label: "environment-data:commands:thread:promote-queued-run",
       execute: promoteQueuedRun,

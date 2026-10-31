@@ -121,6 +121,9 @@ import type { ThreadSyncPhase } from "../../threadSync";
 import { ComposerBanner } from "./ComposerBanner";
 import { ComposerSurface } from "./ComposerSurface";
 import { ComposerBannerStack, type ComposerBannerStackItem } from "./ComposerBannerStack";
+/* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice */
+import { forkApprovalNoticeItem, type ForkApprovalResponder } from "~/custom/forkApprovalNotice";
+/* fork:end fork-composer-approval-notice */
 import {
   attachmentsToReleaseOnUploadCapabilityLoss,
   composerOtherFilesForPresentation,
@@ -429,6 +432,9 @@ export interface ChatComposerProps {
   isPreparingWorktree: boolean;
   isCompacting: boolean;
   bannerItems: readonly ComposerBannerStackItem[];
+  /* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+  forkQueuedRunsBanner?: ReactNode;
+  /* fork:end fork-queued-runs-banner */
   resumeCompactionTokens: number | null;
   keepFullHistory: boolean;
   onToggleKeepFullHistory: () => void;
@@ -440,6 +446,9 @@ export interface ChatComposerProps {
 
   activePendingApproval: PendingApproval | null;
   pendingApprovals: PendingApproval[];
+  /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice */
+  onRespondToApproval: ForkApprovalResponder;
+  /* fork:end fork-composer-approval-notice */
   onHeldRequestIdsChange: (requestIds: ReadonlySet<string>) => void;
   pendingUserInputs: PendingUserInput[];
   activePendingProgress: {
@@ -2434,7 +2443,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     importContextRecords,
     expandMobileComposer: expandMobileComposerStable,
   });
-  const hasBlockingComposerTopDrawer = pendingUserInputs.length > 0;
+  /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice */
+  const hasBlockingComposerTopDrawer =
+    activePendingApproval !== null || pendingUserInputs.length > 0;
+  /* fork:end fork-composer-approval-notice */
   const composerControlsCollapsed = isComposerCollapsedMobile;
   // The collapsed mobile web composer keeps a second controls row inside the card.
   const showInlineRestingControls = isComposerCollapsedMobile;
@@ -2469,6 +2481,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           item.group === "environment" && (item.variant === "error" || item.variant === "warning"),
       )
     : props.bannerItems;
+  /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice
+     A pending approval is a notice card above the composer, not a timeline row. */
+  const forkShelfItems = activePendingApproval
+    ? [
+        ...shelfItems,
+        forkApprovalNoticeItem({
+          approval: activePendingApproval,
+          pendingCount: pendingApprovals.length,
+          disabled: !canOperateThread,
+          isResponding: respondingRequestIds.includes(activePendingApproval.requestId),
+          onRespondToApproval: props.onRespondToApproval,
+        }),
+      ]
+    : shelfItems;
+  /* fork:end fork-composer-approval-notice */
 
   const insertComposerText = (
     text: string,
@@ -3086,9 +3113,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       },
       getSendContext: () => ({
         answeringPendingUserInput: activePendingProgress !== null,
-        shownPendingApprovalIds: pendingApprovals
-          .map((approval) => approval.requestId)
-          .filter((requestId) => !heldRequestIds.has(requestId)),
+        /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice
+           Only the approval the notice shows; a send must not decline ones the user never saw. */
+        shownPendingApprovalIds: activePendingApproval ? [activePendingApproval.requestId] : [],
+        /* fork:end fork-composer-approval-notice */
         prompt: promptRef.current,
         images: composerImagesRef.current,
         files: composerFilesRef.current,
@@ -3599,7 +3627,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         {/* fork:end fork-composer-shell */}
         <ComposerBanner.Dock>
           <ComposerBanner.Column>
-            <ComposerBannerStack items={shelfItems} />
+            {/* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice */}
+            <ComposerBannerStack items={forkShelfItems} />
+            {/* fork:end fork-composer-approval-notice */}
+            {/* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */}
+            {props.forkQueuedRunsBanner}
+            {/* fork:end fork-queued-runs-banner */}
             {showComposerTopDrawer ? (
               <ComposerBanner.Attachment>
                 <ComposerBanner.Root data-chat-composer-top-drawer="true" variant="info">

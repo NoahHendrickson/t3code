@@ -2892,3 +2892,16 @@
   outline-offset: -1px;
 }
 /* fork:end fork-split-threads */
+
+/* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice
+   The approval notice stacks its title over the command in every scheme; the
+   dark notice rules already do this, light keeps upstream's one-line row. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-notice="true"]
+  [data-slot="composer-banner-content"]:has([data-fork-approval-notice]) {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  white-space: normal;
+}
+/* fork:end fork-composer-approval-notice */
