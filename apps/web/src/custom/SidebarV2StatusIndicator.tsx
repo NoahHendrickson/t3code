@@ -90,9 +90,11 @@ const COLS = COLUMNS.length;
 const RAIN_SPAN = ROWS + 3;
 
 /** The alpha curve every drop follows: a bright head, an exponential trail
-    above it, a sharp falloff below. Every frame of the rain film samples it. */
+    above it, a sharp falloff below, with Swift's "discard anything under
+    0.02" cutoff. Every frame of the rain film samples it. */
 function rainAlpha(dy: number): number {
-  return dy >= 0 ? Math.exp(-dy * 0.8) : Math.exp(dy * 8);
+  const alpha = dy >= 0 ? Math.exp(-dy * 0.8) : Math.exp(dy * 8);
+  return alpha >= 0.02 ? alpha : 0;
 }
 
 /** Seconds to rewind this row's working mark by. Native phanttom drives every tab from
