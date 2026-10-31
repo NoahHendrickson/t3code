@@ -1,19 +1,7 @@
-/**
- * Provider marks for a space's thread tabs — see
- * `.fork/customizations.yaml#fork-spaces`.
- *
- * Claude's is the Claude Code mascot, pixel for pixel from the block art the
- * CLI prints on start:
- *
- *    ▐▛███▜▌
- *   ▝▜█████▛▘
- *     ▘▘ ▝▝
- *
- * Each character cell is two quadrant pixels wide and two tall, and a
- * terminal cell is twice as tall as it is wide, so a pixel here is 1 × 2.
- * Codex's is the cloud and prompt from the Codex app icon (ChatGPT.app's
- * icon-codex-*.png), redrawn as a vector so it stays crisp at 14px.
- */
+/* Provider marks for space tabs, see `.fork/customizations.yaml#fork-spaces`. Claude's
+   is the CLI's start-up mascot (▐▛███▜▌ / ▝▜█████▛▘ / ▘▘ ▝▝) at 1 × 2 pixels, since a
+   terminal cell is twice as tall as wide. Codex's is the Codex app icon's cloud and
+   prompt, redrawn as a vector to stay crisp at 14px. */
 import { ProviderDriverKind } from "@t3tools/contracts";
 import { type SVGProps, useId } from "react";
 

@@ -1,13 +1,6 @@
-/**
- * A space's changelog: its merged pull requests, newest first, grouped by
- * week — see `.fork/customizations.yaml#fork-spaces`.
- *
- * Built from the pull request list the PR page already reads. A list entry
- * carries no body and no merge time, so an entry is its title, split on the
- * conventional-commit prefix the fork's PRs use, and it is dated and ordered
- * by its last update: a merged PR rarely changes after it merges, and a
- * comment that bumps one only moves it within the list, never out of it.
- */
+/* A space's merged PRs by week, see `.fork/customizations.yaml#fork-spaces`. A PR list
+   entry has no merge time, so entries are dated by last update: a merged PR rarely
+   changes, and a bump only reorders it within the list. */
 
 export interface ConventionalTitle {
   /** `feat`, `fix`, … — null when the title has no prefix. */

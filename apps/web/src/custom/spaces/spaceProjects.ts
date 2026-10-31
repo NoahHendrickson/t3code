@@ -1,17 +1,12 @@
-/**
- * Which projects make up a space — see `.fork/customizations.yaml#fork-spaces`.
- *
- * A space is one of the sidebar's logical projects (a repository checked out
- * on several machines is one space), keyed by the same group key the project
- * headers use. Built from the project list alone, the same way
- * `useSidebarProjectGroups` builds it, minus the thread-driven sort: the pages
- * and the chat header that read this only look a space up, and reading every
- * thread shell to order a list nobody draws would re-render them on every
- * streamed token.
- */
+/* Which projects make up a space, see `.fork/customizations.yaml#fork-spaces`. Built
+   from the project list alone, without useSidebarProjectGroups' thread-driven sort:
+   readers only look a space up, and reading thread shells would re-render them per token. */
 import type { ScopedProjectRef } from "@t3tools/contracts";
+import {
+  buildProjectGroups,
+  selectProjectGroupingSettings,
+} from "@t3tools/client-runtime/state/project-grouping";
 import { useClientSettings } from "~/hooks/useSettings";
-import { buildProjectGroups, selectProjectGroupingSettings } from "~/logicalProject";
 import { useProjects } from "~/state/entities";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 

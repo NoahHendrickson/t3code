@@ -1,20 +1,7 @@
-/**
- * A space's header in the sidebar — see `.fork/customizations.yaml#fork-spaces`.
- *
- * The project header's sibling (SidebarV2ProjectGroupHeader), not a mode of
- * it: the project's favicon leads; the name is a pill that opens the space's
- * Home (its new-thread draft) and is lit while that is on screen; status
- * grouping's filled caret, a button on the row's far end, folds the space.
- * Folded, a summary of what it holds sits before the header's buttons, which
- * take no width at rest and slide in on the header's hover or focus
- * (theme.custom.css), moving the summary over and truncating the name rather
- * than hiding anything. The buttons are the project header's own
- * (SidebarV2SectionActions), as pills.
- *
- * Under manual project sort the header is its space's drag handle, exactly as
- * a project header is: the same sortable id, the same drop edge, read by the
- * same stylesheet rules.
- */
+/* A space's sidebar header, see `.fork/customizations.yaml#fork-spaces`. The project
+   header's sibling, not a mode of it: favicon, a name pill that opens Home, a fold caret,
+   and a folded summary. The action buttons (SidebarV2SectionActions) slide in on hover. As
+   a drag handle under manual sort it uses the project header's sortable id and drop edge. */
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ReactNode } from "react";

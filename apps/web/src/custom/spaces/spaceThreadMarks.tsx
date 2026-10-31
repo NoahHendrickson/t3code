@@ -52,10 +52,12 @@ export function ThreadStatusMark(props: { readonly shell: ThreadShell }) {
   const { shell } = props;
   const key = scopedThreadKey(scopeThreadRef(shell.environmentId, shell.id));
   const localLastVisitedAt = useUiStateStore((store) => store.threadLastVisitedAtById[key]);
+  // oxlint-disable-next-line react/purity -- snapshot clock for the card status; the mark re-renders with its shell, as the cards do
+  const nowIso = new Date().toISOString();
   return (
     <span className="flex h-[14px] shrink-0 items-center">
       <SidebarV2StatusMark
-        status={threadCardStatus(shell, localLastVisitedAt, new Date().toISOString()).topStatus}
+        status={threadCardStatus(shell, localLastVisitedAt, nowIso).topStatus}
         seed={key}
         idle="dot"
       />

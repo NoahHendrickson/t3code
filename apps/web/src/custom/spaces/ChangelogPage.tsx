@@ -1,11 +1,6 @@
-/**
- * A space's changelog page — see `.fork/customizations.yaml#fork-spaces` and
- * `changelog.logic.ts` for what an entry is made of.
- *
- * Set on the stage card like the Automations page, so Glass frames it the way
- * it frames a chat. An entry opens its PR in the PR page; the thread chip
- * opens the thread that linked the PR, when one did.
- */
+/* A space's changelog page, see `.fork/customizations.yaml#fork-spaces` and
+   `changelog.logic.ts`. Set on the stage card like the Automations page so Glass frames
+   it like a chat. An entry opens its PR; the thread chip opens the thread that linked it. */
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -63,6 +58,7 @@ function ChangelogList(props: { readonly space: NonNullable<ReturnType<typeof us
   for (const shell of shells) {
     for (const link of shell.pullRequests ?? []) threadByPullRequestUrl.set(link.url, shell);
   }
+  // oxlint-disable-next-line react/purity -- labels weeks relative to today; refreshed whenever the list re-renders
   const weeks = groupChangelogByWeek(entries, new Date());
 
   if (list.error !== null && list.data === null) {

@@ -1,13 +1,6 @@
-/**
- * The open-thread tabs above a space's chat column — see
- * `.fork/customizations.yaml#fork-spaces`.
- *
- * A tab is a thread you opened, kept until you close it or the thread
- * settles. One device-local list of thread keys in the order they were
- * opened (the strip draws them by status, `rankSpaceTabs`); each space's strip reads the slice belonging to it. Device-local
- * like the rest of the sidebar's arrangement preferences: which tabs are open
- * is a fact about this screen, not about the threads.
- */
+/* Open-thread tabs above a space's chat column, see `.fork/customizations.yaml#fork-spaces`.
+   One device-local list of thread keys in opened order; each space's strip reads its slice
+   and draws it by status (`rankSpaceTabs`). Which tabs are open is about this screen. */
 import * as Schema from "effect/Schema";
 
 import { useLocalStorage } from "~/hooks/useLocalStorage";
@@ -53,16 +46,10 @@ export interface SpaceTabThread {
   readonly closed: boolean;
 }
 
-/**
- * The tabs one space's strip draws, and the stored keys it should drop.
- *
- * `threads` is the space's own threads, so a stored key missing from it
- * belongs to another space (or has not loaded yet) and is neither drawn nor
- * dropped. The threads on screen (`activeKeys`: the open one, and its split
- * partner) are always drawn, even before the effect that stores them lands
- * and even when settled: a thread on screen needs its tab. A settled one is
- * not stored, though, so it leaves once you move away.
- */
+/** The tabs one space's strip draws and the stored keys it drops. A stored key missing
+    from `threads` belongs to another space (or has not loaded), so it is kept. Threads
+    on screen (`activeKeys`) are always drawn, settled or not, but a settled one is not
+    stored, so it leaves once you move away. */
 export function resolveSpaceTabs<T extends SpaceTabThread>(input: {
   readonly openKeys: readonly string[];
   readonly activeKeys: readonly string[];
@@ -106,10 +93,12 @@ export function useSpaceTabKeys() {
 
 /** A tab's place in the strip by its card's status: what needs you first,
     then what finished, what is working, what is monitoring, what is idle. A
-    failed thread needs you too; a woken one is back like a finished one. */
+    failed thread or a message request needs you too; a woken one is back
+    like a finished one. */
 const TAB_RANK_BY_KIND: Record<SidebarV2CardStatusKind, number> = {
   approval: 0,
   input: 0,
+  request: 0,
   limited: 0,
   failed: 0,
   done: 1,

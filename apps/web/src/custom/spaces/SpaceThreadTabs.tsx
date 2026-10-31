@@ -1,24 +1,7 @@
-/**
- * A space's tab row — see `.fork/customizations.yaml#fork-spaces`.
- *
- * Only under the Spaces grouping. A row of its own at the top of the chat
- * column, above each pane's header, so the tabs never share a row with the
- * header's title, panel and split controls. A single thread draws it inside
- * its chat view (ChatView); a split draws one row over both panes
- * (SplitThreadPanes), with the two threads on screen side by side as a pair.
- * A floating window keeps its own header and draws none.
- *
- * The row starts with the space's Home tab (its new-thread draft, with the
- * overview under the composer — `SpaceOverview`), then the threads opened in
- * the space ordered by status (`rankSpaceTabs`), then a plus. Each tab leads
- * with its thread's provider (`ProviderMarks.tsx`) and ends with its card's
- * status mark; its close and ⋯ buttons take no width until it is hovered or
- * focused. A tab on screen wears the sidebar's selected-row glass
- * (theme.custom.css). Which tabs are open is `spaceTabs.ts`'s business.
- *
- * The row subscribes to its own space's thread shells only, so a busy thread
- * in another project never re-renders it.
- */
+/* A space's tab row, see `.fork/customizations.yaml#fork-spaces`. Its own row above the
+   header, never sharing it; a split draws one row over both panes (SplitThreadPanes), a
+   floating window none. It subscribes to its own space's shells only, so a busy thread
+   in another project never re-renders it. */
 import {
   AuthOrchestrationOperateScope,
   type ScopedProjectRef,
@@ -35,10 +18,11 @@ import {
   squashAtomCommandFailure,
 } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
+import { useAtomValue } from "@effect/atom-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { resolveRenameCommit } from "~/components/chat/ChatHeader";
+import { canShareWithGuestAtom } from "~/components/chat/guestShareAvailability";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { useSplitThreadStore } from "~/custom/splitThreads/splitThreadStore";
 import { filterSidebarV2VisibleThreads } from "~/components/Sidebar.logic";
@@ -48,6 +32,7 @@ import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
 import { cn } from "~/lib/utils";
 import {
   readThreadShell,
+  useDelegatedUnderParent,
   useProject,
   useQuietThreadShell,
   useThreadShellsForProjectRefs,
@@ -136,6 +121,7 @@ export function SpaceTabRow(props: {
   const [openKeys, setOpenKeys] = useSpaceTabKeys();
   const providerFor = useThreadProvider();
   const lastVisitedAtById = useUiStateStore((store) => store.threadLastVisitedAtById);
+  const delegatedUnderParent = useDelegatedUnderParent();
   const { selectedKeys } = props;
   const openSpaceHome = useOpenSpaceHome();
   // The Home tab, the plus, and closing the last tab all open the Home.
@@ -147,7 +133,7 @@ export function SpaceTabRow(props: {
   // runs) plus the threads on screen, whatever they are. Anything else is
   // closed, archived threads included, so its stored tab is dropped rather
   // than coming back unasked.
-  const visible = new Set(filterSidebarV2VisibleThreads(shells, null));
+  const visible = new Set(filterSidebarV2VisibleThreads(shells, null, delegatedUnderParent));
   const threads = shells.map((shell) => {
     const key = scopedThreadKey(scopeThreadRef(shell.environmentId, shell.id));
     return {
@@ -161,6 +147,7 @@ export function SpaceTabRow(props: {
   });
   const resolved = resolveSpaceTabs({ openKeys, activeKeys: selectedKeys, threads });
   // Drawn by status, as each tab's mark reads it: what needs you leftmost.
+  // oxlint-disable-next-line react/purity -- snapshot clock for each tab's status rank, re-read whenever the space's shells change
   const now = new Date().toISOString();
   const tabs = rankSpaceTabs(
     resolved.tabs,
@@ -175,6 +162,7 @@ export function SpaceTabRow(props: {
       .map((thread) => thread.key),
     closed: resolved.closedKeys,
   });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- keeps the device's stored tab list (localStorage) in step with the threads on screen and the ones that closed
   useEffect(() => {
     if (reconciled !== openKeys) setOpenKeys(reconciled);
   }, [openKeys, reconciled, setOpenKeys]);
@@ -297,25 +285,27 @@ function SpaceTab(props: {
   const startRename = () => {
     if (readEnvironmentScope(shell.environmentId, AuthOrchestrationOperateScope)) setRenaming(true);
   };
+  const canShareWithGuest = useAtomValue(canShareWithGuestAtom(shell.environmentId));
   const { openMenu } = useThreadActionMenu({
     threadRef,
     projectCwd: props.projectCwd,
     onStartRename: startRename,
+    canShareWithGuest,
   });
   const updateThreadMetadata = useOrchestrationCommand(threadEnvironment.updateMetadata, {
     reportFailure: false,
   });
   const commitRename = (title: string) => {
     setRenaming(false);
-    const resolution = resolveRenameCommit({ title, originalTitle: shell.title });
-    if (resolution.action === "reject-empty") {
+    const trimmed = title.trim();
+    if (trimmed.length === 0) {
       toastManager.add({ type: "warning", title: "Thread title cannot be empty" });
       return;
     }
-    if (resolution.action === "noop") return;
+    if (trimmed === shell.title) return;
     void updateThreadMetadata({
       environmentId: shell.environmentId,
-      input: { threadId: shell.id, title: resolution.title },
+      input: { threadId: shell.id, title: trimmed },
     }).then((result) => {
       if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
         const error = squashAtomCommandFailure(result);

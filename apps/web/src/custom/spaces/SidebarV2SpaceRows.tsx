@@ -1,19 +1,7 @@
-/**
- * The rows under a space's header in the sidebar — see
- * `.fork/customizations.yaml#fork-spaces`.
- *
- * A space is a project header with its threads folded under a Threads row,
- * plus rows that open the project's other views: its pull requests, its
- * changelog of merged pull requests, and its automations. Each view is an
- * existing page filtered to the space (or, for the changelog, a small page of
- * its own), so the rows carry no data of their own beyond the thread count
- * the sidebar already has.
- *
- * Drawn on the chrome rows' shape (`data-fork-chrome-row`), a step smaller,
- * on the header label's edge, so Glass gives them the same pill and selected
- * glint without a rule of its own. The cards under Threads are what indent
- * (theme.custom.css).
- */
+/* The rows under a space's header, see `.fork/customizations.yaml#fork-spaces`: a
+   Threads row, then rows that open existing pages filtered to the space. Drawn on the
+   chrome rows' shape (`data-fork-chrome-row`) so Glass gives them the same pill and
+   glint without its own rule. */
 import type { EnvironmentId, ProjectId } from "@t3tools/contracts";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import type { ComponentType, ReactNode, SVGProps } from "react";
@@ -183,13 +171,9 @@ export function SidebarV2SpaceLinkRows(props: {
   );
 }
 
-/**
- * A folded space's line on its header: its thread count with one of the
- * cards' marks per state among them (as the Threads row draws them), then
- * how many pull requests are open. A count rather than the numbers: the
- * numbers squeezed the space's own name out of a 280px sidebar, and the cards
- * and the Home page carry them.
- */
+/** A folded space's summary: its thread count with one card mark per state, then
+    its open PR count. Counts, not numbers: the numbers squeezed the space's name out
+    of a 280px sidebar. */
 export function SidebarV2SpaceCollapsedSummary(props: {
   readonly spaceLabel: string;
   readonly summary: SpaceThreadSummary | null;

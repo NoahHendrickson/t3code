@@ -1,14 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off
-/**
- * Fork guard — see `.fork/README.md` §4b and
- * `.fork/customizations.yaml#fork-spaces`.
- *
- * Spaces live in two upstream files: the sidebar draws each space's rows
- * around its cards, and the chat view draws the tab row above its header
- * (a split draws its own, over both panes, from SplitThreadPanes). A sync
- * that drops either call site silently turns Spaces back into plain project
- * grouping, or leaves the chat with no tabs.
- */
+/* Fork guard, see `.fork/customizations.yaml#fork-spaces`. Spaces live in two upstream
+   files: Sidebar draws each space's rows, and ChatView (or SplitThreadPanes, for a split)
+   draws the tab row. A sync that drops either call site silently loses Spaces. */
 
 import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";

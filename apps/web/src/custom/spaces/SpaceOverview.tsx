@@ -1,14 +1,6 @@
-/**
- * A space's overview — see `.fork/customizations.yaml#fork-spaces`.
- *
- * Under Spaces a space's Home is its new-thread draft: the chat view's own
- * composer, centred under the draft's headline, so a thread started there is
- * an ordinary first send. ChatView draws this overview beneath that composer
- * while the draft is empty: the space's active threads, its open pull
- * requests, what merged lately, and its automations, each with a way through
- * to the full view. Every section reads data the app already fetches for its
- * own page; nothing here is new state.
- */
+/* A space's overview, see `.fork/customizations.yaml#fork-spaces`. ChatView draws it under
+   the Home draft's composer while the draft is empty: active threads, open and recently
+   merged PRs, and automations. Every section reads data the app already fetches. */
 import type { EnvironmentId, ScopedProjectRef } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
@@ -16,11 +8,11 @@ import { useNavigate } from "@tanstack/react-router";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { filterSidebarV2VisibleThreads } from "~/components/Sidebar.logic";
-import { useThreadShellsForProjectRefs } from "~/state/entities";
+import { useDelegatedUnderParent, useThreadShellsForProjectRefs } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
 import { buildThreadRouteParams } from "~/threadRoutes";
-import { formatRelativeTimeLabel, formatRelativeTimeUntil } from "~/timestampFormat";
+import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import {
   GitMergeIcon,
@@ -143,8 +135,10 @@ function SpaceThreads(props: { readonly space: Space }) {
   const navigate = useNavigate();
   const providerFor = useThreadProvider();
   const shells = useThreadShellsForProjectRefs(props.space.memberProjectRefs);
+  const delegatedUnderParent = useDelegatedUnderParent();
+  // oxlint-disable-next-line react/purity -- snooze snapshot clock, re-read whenever the space's shells change
   const snapshotNow = new Date().toISOString();
-  const threads = filterSidebarV2VisibleThreads(shells, null)
+  const threads = filterSidebarV2VisibleThreads(shells, null, delegatedUnderParent)
     .filter(
       (shell) =>
         shell.settledOverride !== "settled" && !effectiveSnoozed(shell, { now: snapshotNow }),
@@ -284,7 +278,11 @@ function SpaceAutomations(props: { readonly space: Space; readonly environmentId
 }
 
 function nextRunLabel(nextRunAt: string): string {
-  const until = formatRelativeTimeUntil(nextRunAt);
-  if (until === null || until.suffix === null) return "Runs soon";
-  return `Next in ${until.value}`;
+  const seconds = Math.floor((Date.parse(nextRunAt) - Date.now()) / 1000);
+  if (!Number.isFinite(seconds) || seconds < 5) return "Runs soon";
+  if (seconds < 60) return `Next in ${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `Next in ${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `Next in ${hours}h` : `Next in ${Math.floor(hours / 24)}d`;
 }

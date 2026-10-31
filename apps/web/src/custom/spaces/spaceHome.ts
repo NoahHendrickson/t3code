@@ -1,16 +1,7 @@
-/**
- * Opening a space's Home — see `.fork/customizations.yaml#fork-spaces`.
- *
- * A space's Home is its project's unsent draft. The new-thread handler only
- * reuses that draft while it is empty, and otherwise mints another. So a Home
- * with something in it is resumed as it is; otherwise the handler opens one,
- * resetting its workspace context the way a new thread would, in the project
- * the caller is in when the space has it, else the space's representative.
- *
- * Drafts are keyed by their own project's logical key, which a space's key is
- * not when it gathers several projects (Scratch), so the Home is found by the
- * space's member projects instead.
- */
+/* A space's Home is its project's unsent draft, see `.fork/customizations.yaml#fork-spaces`.
+   A Home with content resumes as it is; otherwise the new-thread handler opens one. Drafts
+   key by their own project, not the space (Scratch spans several), so lookup goes by the
+   space's member projects. */
 import type { EnvironmentId, ProjectId, ScopedProjectRef } from "@t3tools/contracts";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { useNavigate } from "@tanstack/react-router";

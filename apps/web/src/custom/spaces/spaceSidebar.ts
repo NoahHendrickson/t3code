@@ -1,11 +1,6 @@
-/**
- * Sidebar state for spaces — see `.fork/customizations.yaml#fork-spaces`.
- *
- * A space's Threads row starts collapsed, so what is stored is the set that
- * was opened. The space header's own collapse is the project grouping's
- * collapsed set, shared with Group by project, so switching between the two
- * keeps which projects you had closed.
- */
+/* Sidebar state for spaces, see `.fork/customizations.yaml#fork-spaces`. Threads rows
+   start collapsed, so the opened set is stored. The header's own collapse is project
+   grouping's set, so switching groupings keeps which projects you had closed. */
 import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 
 import type { SidebarV2CardTopStatus } from "../sidebarV2CardStatus";
@@ -87,11 +82,9 @@ interface PullRequestLinkLike {
   readonly snapshot: { readonly state: string } | null;
 }
 
-/** The open pull requests a space's threads link, newest number first, each
-    once. Read off the threads' own links, which the cards' badges draw, so a
-    collapsed space reports them without asking the host. A link with no
-    snapshot yet counts as open, as the cards take it; a dismissed stack
-    member does not count. */
+/** A space's open PRs from its threads' own links, newest first, each once, so a
+    collapsed space reports them without asking the host. A link with no snapshot yet
+    counts as open, as the cards take it; a dismissed stack member does not. */
 export function spaceOpenPullRequests(
   threads: ReadonlyArray<{
     readonly pullRequests?: ReadonlyArray<PullRequestLinkLike> | undefined;
