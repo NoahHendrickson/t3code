@@ -341,7 +341,13 @@ import {
   isThreadErrorBannerDismissedForSession,
   shouldShowThreadErrorBanner,
 } from "./chat/ThreadErrorBanner";
-import { QueuedRunsControl, type QueuedRunsControlHandle } from "./chat/QueuedRunsControl";
+/* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+import type { QueuedRunsControlHandle } from "./chat/QueuedRunsControl";
+import { ForkQueuedRunsBanner } from "~/custom/ForkQueuedRunsBanner";
+/* fork:end fork-queued-runs-banner */
+/* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice */
+import { FORK_NO_TIMELINE_APPROVALS } from "~/custom/forkApprovalNotice";
+/* fork:end fork-composer-approval-notice */
 import { useThreadLinkedPullRequest } from "./pullRequest/useThreadLinkedPullRequest";
 import { useProactivePanels } from "../hooks/useProactivePanels";
 import { useIncrementalTimelineEntries } from "../hooks/useIncrementalTimelineEntries";
@@ -3144,10 +3150,12 @@ export default function ChatView(props: ChatViewProps) {
       .some((id) => id !== "" && !previousIds.has(id));
     if (hasNewMessage && timelineLiveFollowEnabled) scrollToEnd(true);
   }, [routeThreadKey, pendingGuestMessageKey, timelineLiveFollowEnabled, scrollToEnd]);
+  /* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner
+     The queue is the "Queued" banner above the composer, not dashed bubbles in the timeline. */
   const queuedRunsControl =
     isServerThread && activeThread ? (
       <>
-        <QueuedRunsControl
+        <ForkQueuedRunsBanner
           ref={queuedRunsControlRef}
           steerShortcutLabel={shortcutLabelForCommand(keybindings, "thread.steerQueuedMessage", {
             context: { terminalFocus: false },
@@ -3164,11 +3172,10 @@ export default function ChatView(props: ChatViewProps) {
           })}
           onEditQueuedRun={queuedRunEdit.beginEdit}
           onCancelEdit={queuedRunEdit.cancelEdit}
-          timestampFormat={timestampFormat}
-          onOpenThread={onOpenRelatedThreadStable}
         />
       </>
     ) : null;
+  /* fork:end fork-queued-runs-banner */
   const resendAfterWorkLocally = () => {
     setWorkLocallyResendDraftId(null);
     void onComposerSendStable();
@@ -3247,8 +3254,9 @@ export default function ChatView(props: ChatViewProps) {
   const timelineFooter =
     pendingHandoff === null &&
     !hasThreadNow &&
-    pendingGuestMessageCount === 0 &&
-    !hasQueuedTurns ? null : (
+    /* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+    pendingGuestMessageCount === 0 ? null : (
+      /* fork:end fork-queued-runs-banner */
       <>
         {pendingHandoff === null ? null : (
           <div className="chat-content-lane">
@@ -3275,7 +3283,6 @@ export default function ChatView(props: ChatViewProps) {
             onFileOpen={openFileAttachmentStable}
           />
         ) : null}
-        {hasQueuedTurns ? queuedRunsControl : null}
       </>
     );
 
@@ -3683,7 +3690,10 @@ export default function ChatView(props: ChatViewProps) {
               className="relative flex min-h-0 flex-1 flex-col bg-background"
             >
               <ThreadTimeline
-                pendingApprovals={pendingApprovals}
+                /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice
+                   Approvals answer from the notice above the composer, so the timeline keeps plain rows. */
+                pendingApprovals={FORK_NO_TIMELINE_APPROVALS}
+                /* fork:end fork-composer-approval-notice */
                 heldApprovalRequestIds={heldApprovalRequestIds}
                 respondingRequestIds={respondingRequestIds}
                 onRespondToApproval={onRespondToApprovalStable}
@@ -3973,6 +3983,9 @@ export default function ChatView(props: ChatViewProps) {
                               }
                               isPreparingWorktree={isPreparingWorktree && !sendQueuesBehindSetup}
                               bannerItems={composerBannerItems}
+                              /* fork:begin fork-queued-runs-banner — see .fork/customizations.yaml#fork-queued-runs-banner */
+                              forkQueuedRunsBanner={hasQueuedTurns ? queuedRunsControl : null}
+                              /* fork:end fork-queued-runs-banner */
                               resumeCompactionTokens={resumeCompactionTokens}
                               keepFullHistory={keepFullHistory}
                               onToggleKeepFullHistory={toggleKeepFullHistoryStable}
@@ -3986,6 +3999,9 @@ export default function ChatView(props: ChatViewProps) {
                               environmentUnavailable={activeEnvironmentUnavailableState}
                               activePendingApproval={activePendingApproval}
                               pendingApprovals={pendingApprovals}
+                              /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice */
+                              onRespondToApproval={onRespondToApprovalStable}
+                              /* fork:end fork-composer-approval-notice */
                               onHeldRequestIdsChange={onHeldRequestIdsChange}
                               pendingUserInputs={pendingUserInputs}
                               activePendingProgress={activePendingProgress}

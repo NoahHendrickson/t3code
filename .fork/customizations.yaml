@@ -6061,3 +6061,63 @@
     - apps/web/src/routes/_chat.index.tsx
   verify:
     - apps/web/src/custom/landingDraft.test.ts
+
+- id: fork-queued-runs-banner
+  intent: >
+    Queued messages show as the collapsible "Queued · N" banner attached above
+    the composer, with one-line rows, a drag grip (and arrow keys) to reorder,
+    Edit, Steer and Remove, as before the 2026-10-28 sync. Upstream #25401
+    moved the queue into the timeline footer as dashed bubbles and #25846
+    dropped reordering (the client command only; the server still accepts
+    queued-run.reorder). The banner lives in custom/ForkQueuedRunsBanner.tsx
+    and keeps upstream's later behavior: Send now starts a held queue when
+    idle, guest messages are not editable, and editing is blocked while a
+    question is open. ChatView mounts it in the composer dock, not the
+    timeline footer; client-runtime carries the reorderQueuedRun command.
+    Mobile keeps upstream's queue.
+  tier: 4
+  files:
+    - apps/web/src/custom/ForkQueuedRunsBanner.tsx
+    - docs/user/composer.md
+  shadows: []
+  watch:
+    # Owns the queue mount, the timeline footer and the composer props.
+    - apps/web/src/components/ChatView.tsx
+    # Renders the banner in its dock column.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # Upstream's unmounted queue; the banner reuses its handle and edit types.
+    - apps/web/src/components/chat/QueuedRunsControl.tsx
+    - packages/client-runtime/src/operations/commands.ts
+    - packages/client-runtime/src/state/threadCommands.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkQueuedRunsBanner.test.ts
+
+- id: fork-composer-approval-notice
+  intent: >
+    A pending approval (command, file change, file read, permission, app
+    access) shows as a notice card above the composer, in the same banner
+    stack and fork notice styling as the other composer notices: shield icon,
+    the approval label over the command (mono) and the provider's reason, the
+    white Approve primary with Decline and More beside it. Upstream #26255 moved
+    approvals onto their timeline row; the fork hands the timeline an empty
+    pending list so those rows render as plain work entries and the answer
+    lives only above the composer. The notice reads the composer's typing
+    guard, so a held approval hides while the user types, as upstream's
+    composer drawer did. It joins the blocking state that keeps only machine
+    problems beside it. Light stacks the title over the command like dark.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkApprovalNotice.tsx
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Passes the timeline its pending approvals and the composer its respond handler.
+    - apps/web/src/components/ChatView.tsx
+    # Owns the shelf items, the blocking-drawer state and the typing-held approval.
+    - apps/web/src/components/chat/ChatComposer.tsx
+    # The approval buttons the notice renders.
+    - apps/web/src/components/chat/ComposerPendingApprovalActions.tsx
+    # Upstream's inline row the empty list keeps unmounted.
+    - apps/web/src/components/chat/TimelinePendingApprovalRow.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkComposerApprovalNotice.test.ts
