@@ -37,6 +37,10 @@ describe("fork-resume-compaction-banner", () => {
     expect(banner.slice(0, banner.indexOf("});"))).toMatch(
       /resolveIdleCompaction\([\s\S]*?\) === "off"/u,
     );
+    // A standing usage limit hides it too: Compact can't run until the limit resets.
+    expect(banner.slice(0, banner.indexOf("});"))).toContain(
+      'serverRuntime.lastErrorClass === "usage_limit"',
+    );
     expect(chatView.match(/\.\.\.resumeCompactionItems,/gu)).toHaveLength(2);
     expect(card).toContain('title: "Resume with less context"');
     expect(card).toContain('dismissLabel: "Keep full history"');

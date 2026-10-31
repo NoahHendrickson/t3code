@@ -4535,9 +4535,10 @@
     resumeCompactionTokens to the composer and the send path, so the composer
     never renders the compact-send button and Enter sends as typed. The card
     lives in custom/useResumeCompactionBanner.tsx with its old gating: hidden
-    while a run is going or a question is pending, dismissed per thread and
-    context snapshot for the session, and permanently by the existing
-    native-dismiss flags. The Claude user doc describes the card, not
+    while a run is going, a question is pending or a usage limit stands
+    (Compact can't run until it resets), dismissed per thread and context
+    snapshot for the session, and permanently by the existing native-dismiss
+    flags. The Claude user doc describes the card, not
     compact-on-send.
   tier: 4
   files:

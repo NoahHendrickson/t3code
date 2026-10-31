@@ -2626,6 +2626,8 @@ export default function ChatView(props: ChatViewProps) {
       phase === "running" ||
       hasHeldQueuedRuns ||
       multipleModelSelections !== null ||
+      // Compact is moot while the usage-limit notice stands; the offer returns with it gone.
+      (serverRuntime?.status === "failed" && serverRuntime.lastErrorClass === "usage_limit") ||
       resolveIdleCompaction(
         settings,
         activeProviderInstanceId ?? ProviderInstanceId.make("claudeAgent"),
