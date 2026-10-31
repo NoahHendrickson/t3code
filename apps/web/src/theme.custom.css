@@ -1158,9 +1158,10 @@
   order: 1;
 }
 
+/* A PR badge's number takes its glyph's state ink, in the composer and the
+   sidebar. A settled slim row mutes the whole tone span, number included. */
 :root[data-fork="noahhendrickson-t3code"]
-  [data-fork-composer-context-row]
-  [data-fork-pr-chip]
+  :is([data-fork-composer-context-row] [data-fork-pr-chip], [data-fork-sidebar-pr-badge])
   .text-secondary-label {
   color: inherit;
 }

@@ -608,8 +608,7 @@ describe("fork guard: fork-composer-shell", () => {
     expect(
       ruleBodyFor(rules, [
         MARKER,
-        "[data-fork-composer-context-row]",
-        "[data-fork-pr-chip]",
+        ":is([data-fork-composer-context-row] [data-fork-pr-chip], [data-fork-sidebar-pr-badge])",
         ".text-secondary-label",
       ]),
     ).toMatch(/color:\s*inherit/u);
