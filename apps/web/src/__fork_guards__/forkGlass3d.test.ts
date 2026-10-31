@@ -1,15 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off
-/**
- * Fork guard — see `.fork/README.md` §4b and
- * `.fork/customizations.yaml#fork-glass-3d`.
- *
- * The 3D glass setting (Full / Selected items only / Off) gates the stage
- * card and the glass surfaces by a root attribute, through parent rules
- * that carry the gate. A rule written outside those parents would ignore the
- * setting, and a rule in a selection parent that is not a selected row (or
- * the recent-project quick-start buttons, kept there by product choice) would
- * leak depth into "Selected items only".
- */
+/* Fork guard, see `.fork/customizations.yaml#fork-glass-3d`. The 3D glass setting gates depth
+   through parent rules on a root attribute; a rule outside them ignores the setting, and one
+   in a selection parent that is not a selected row leaks depth into "Selected items only". */
 
 import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";

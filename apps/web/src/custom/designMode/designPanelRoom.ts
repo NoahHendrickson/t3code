@@ -74,6 +74,7 @@ export function usePublishDesignPanelRoom(
     return designPaneWidth(!collapsed && layersRailAvailable(tab, runtimeTabId));
   });
   const threadKey = scopedThreadKey(threadRef);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- holds this tab's entry in the panel-room registry while it needs the room, withdrawn on cleanup
   useEffect(() => {
     if (width === null || runtimeTabId === null) return;
     const { setRoom } = useDesignPanelRoomStore.getState();
