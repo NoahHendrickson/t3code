@@ -3,8 +3,8 @@
  * Fork guard — see `.fork/customizations.yaml#fork-model-picker`.
  *
  * Two shadows reshape the model picker: ProviderModelPicker swaps upstream's
- * Popover for a Menu, and ModelPickerContent renders a provider dropdown, the
- * search field and the chosen provider's models. In the composer,
+ * Popover for a Menu, and ModelPickerContent renders a rail of provider icon
+ * tabs beside the search field and the chosen provider's models. In the composer,
  * ComposerModelPicker adds the reasoning panel under the list, replacing the
  * separate traits picker. A sync that deletes either shadow
  * falls back to upstream's rail-and-list popover with no error, and a sync
@@ -137,53 +137,47 @@ describe("fork guard: fork-model-picker", () => {
         expect(rule.body, rule.selector).not.toMatch(/display:\s*none/u);
       }
     }
-    // Rows: the submenu or the inline provider label names it.
+    // Rows: the selected tab or the inline provider label names it.
     expect(content).toContain("const modelName = stripProviderName(displayName, {");
   });
 
-  it("scopes the list with a provider submenu above the search field", () => {
-    // A hover submenu, controlled so an option can close it alone.
-    expect(content).toContain(
-      "<MenuSub open={providerMenuOpen} onOpenChange={setProviderMenuOpen}>",
+  it("scopes the list with a rail of provider icon tabs beside the search field", () => {
+    // Tabs are menu rows that set the scope and never close the menu.
+    expect(content).toContain('data-fork-model-picker="providers"');
+    expect(content).toMatch(
+      /const renderScopeTab = [\s\S]*?<MenuItem[^>]*?closeOnClick=\{false\}[\s\S]*?onClick=\{\(\) => selectScope\(input\.target\)\}/u,
     );
-    expect(content).toMatch(/<MenuSubTrigger\s+openOnHover/u);
-    expect(content).toContain('data-model-picker-provider-trigger="true"');
-    // Its popup portals out, so it carries the picker's stamp (focus, wheel
-    // lock), the composer's floating layer (or focus moving in collapses the
-    // composer) and the corner hook.
-    const subPopupAt = content.indexOf("<MenuSubPopup");
-    const subPopup = content.slice(subPopupAt, content.indexOf("</MenuSubPopup>", subPopupAt));
-    expect(subPopup).toContain('data-model-picker-content="true"');
-    expect(subPopup).toContain("{...composerFloatingLayerProps}");
-    expect(subPopup).toContain("data-fork-model-picker=");
-    // Provider menu, then search, then the list.
-    const triggerAt = content.indexOf("{renderProviderMenu()}");
+    // Claude and Codex wear the supplied marks; the rest keep their icon.
+    const glyph = readSibling("../custom/icons/ModelPickerProviderGlyph.tsx");
+    expect(glyph).toContain('entry.driverKind === "claudeAgent"');
+    expect(glyph).toContain('entry.driverKind === "codex"');
+    expect(glyph).toContain('import codexMarkUrl from "../assets/codex-mark.png";');
+    expect(content).toContain("<ModelPickerProviderGlyph");
+    // Rail first, then search, then the list.
+    const railAt = content.indexOf("{renderProviderRail()}");
     const searchAt = content.indexOf('aria-label="Search models"');
     const listAt = content.indexOf("{renderModelList()}");
-    expect(triggerAt).toBeGreaterThan(-1);
-    expect(searchAt).toBeGreaterThan(triggerAt);
+    expect(railAt).toBeGreaterThan(-1);
+    expect(searchAt).toBeGreaterThan(railAt);
     expect(listAt).toBeGreaterThan(searchAt);
-    // Favorites leads the options, then one per provider instance.
-    expect(content.indexOf('providerId: "favorites"')).toBeLessThan(
-      content.indexOf("{providerEntries.map(renderProviderOption)}"),
+    // Favorites leads the tabs, then one per provider instance.
+    expect(content.indexOf('target: "favorites"')).toBeLessThan(
+      content.indexOf("{providerEntries.map(renderProviderTab)}"),
     );
     // Opens on Favorites when one can be picked, else the current provider.
-    // A scope with nothing to show (emptied Favorites, a removed instance)
-    // resolves to Favorites, else the current provider, so the trigger and
-    // list always name a real scope.
+    // Favorites always has a tab and stays chosen when empty; a removed
+    // instance resolves to Favorites, else the current provider.
+    expect(content).toContain('if (storedScope === "favorites") return "favorites";');
+    expect(content).toContain("No favorites yet. Star a model to add it here.");
     expect(content).toMatch(
       /useState<ModelPickerScope>\(\(\) =>[^;]*\? "favorites"\s*: props\.activeInstanceId/u,
     );
     expect(content).toMatch(
       /if \(stored\) return stored;\s*if \(favoriteModels\.length > 0\) return "favorites";\s*return \(\s*entryByInstanceId\.get\(props\.activeInstanceId\)/u,
     );
-    // Editing the query closes the provider submenu, in one place.
-    expect(content).toMatch(
-      /const setSearchQuery = \(next: SetStateAction<string>\) => \{\s*setSearchQueryState\(next\);\s*setProviderMenuOpen\(false\);/u,
-    );
     // Legacy models sit behind an inline toggle.
     expect(content).toContain('data-model-picker-legacy-toggle="true"');
-    // Choosing an option swaps the list and focuses the search field only
+    // Choosing a tab swaps the list and focuses the search field only
     // later: focusing it from the click races the menu's focus-out check
     // against the removed row and closes the menu.
     expect(content).toMatch(
@@ -203,8 +197,7 @@ describe("fork guard: fork-model-picker", () => {
     // Upstream made visibility a mount counter; the content shadow must register with it.
     expect(visibility).toContain("export function registerModelPickerContent");
     expect(content).toContain("useLayoutEffect(() => registerModelPickerContent(), []);");
-    // The list and the provider submenu's popup.
-    expect(content.match(/data-model-picker-content="true"/gu)?.length).toBe(2);
+    expect(content.match(/data-model-picker-content="true"/gu)?.length).toBe(1);
     expect(content.match(/data-fork-model-picker="true"/gu)?.length).toBe(1);
   });
 
