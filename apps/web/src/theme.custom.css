@@ -1121,9 +1121,10 @@
 }
 
 /* The PR chip is the one context chip that carries a state: upstream inks
-   the glyph and number emerald / violet / red for open / merged / closed
+   the glyph emerald / violet / red for open / merged / closed
    (prStatusIndicator), the same colours the sidebar card's PR badge reads
-   in. The white chip ink above exempts it so that colour survives. The fill
+   in, and grays the number; the fork lets the number inherit the glyph's
+   ink. The white chip ink above exempts it so that colour survives. The fill
    stays the sibling chips' glass / raised step — only the mark and #N
    carry the state.
 
@@ -1155,6 +1156,13 @@
   [data-slot="composer-context-strip"]
   [data-fork-pr-chip] {
   order: 1;
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-pr-chip]
+  .text-secondary-label {
+  color: inherit;
 }
 
 /* Lucide glyphs on these triggers ship with opacity-70 / opacity-50; force

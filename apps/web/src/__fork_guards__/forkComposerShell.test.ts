@@ -25,7 +25,7 @@ import {
 } from "../custom/ComposerShell";
 import { FORK_MARKER_ATTRIBUTE, FORK_MARKER_VALUE } from "../custom/forkMarker";
 import { resolveThreadContextBranch } from "../custom/ThreadContextReadout";
-import { cssRules } from "./cssRules";
+import { cssRules, ruleBodyFor } from "./cssRules";
 
 /** Form ceiling from ChatComposer's `max-w-3xl` — keep compact thresholds below it. */
 const COMPOSER_FORM_MAX_WIDTH_PX = 768;
@@ -561,9 +561,9 @@ describe("fork guard: fork-composer-shell", () => {
   });
 
   it("lets the PR chip keep its state colour and ride the strip's far end", () => {
-    // Upstream inks the glyph and number emerald / violet / red by PR state;
-    // the fork's white chip ink would flatten that. The fill stays the sibling
-    // chips' glass — only the mark and #N carry the state.
+    // Upstream inks the glyph emerald / violet / red by PR state and grays #N;
+    // the fork's #N inherits the glyph's ink, which the white chip ink would
+    // flatten. The fill stays the sibling chips' glass.
     const branchSelector = readSibling("../components/BranchToolbarBranchSelector.tsx");
     expect(branchSelector).toContain("data-fork-pr-chip");
     expect(branchSelector).toContain("status={displayedPrStatus}");
@@ -605,6 +605,18 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("color-mix(in oklab, currentColor"),
     );
     expect(prFill).toEqual([]);
+    expect(
+      ruleBodyFor(rules, [
+        MARKER,
+        "[data-fork-composer-context-row]",
+        "[data-fork-pr-chip]",
+        ".text-secondary-label",
+      ]),
+    ).toMatch(/color:\s*inherit/u);
+    // #N inherits through upstream's tone wrapper; a reshaped badge regrays it.
+    expect(readSibling("../components/ThreadStatusIndicators.tsx")).toMatch(
+      /presentation\.toneClassName\)\}\s*>\s*<presentation\.Icon[^>]*\/>\s*<span className="text-secondary-label">\{presentation\.text\}<\/span>/u,
+    );
     // Far end: the wrapper holding the chip may grow again (the packing rule
     // pins every other strip child shrink-only) and spreads its children
     // apart, so the branch stays packed against checkout. The spread has to
