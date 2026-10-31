@@ -1157,6 +1157,16 @@
   order: 1;
 }
 
+/* Upstream grays the number (text-secondary-label); here it reads in the
+   glyph's state ink, which its wrapper span carries. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-fork-composer-context-row]
+  [data-fork-pr-chip]
+  > span
+  > span {
+  color: inherit;
+}
+
 /* Lucide glyphs on these triggers ship with opacity-70 / opacity-50; force
    full ink so white chip labels don't wash back to gray. */
 :root[data-fork="noahhendrickson-t3code"]

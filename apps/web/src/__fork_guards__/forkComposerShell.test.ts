@@ -605,6 +605,12 @@ describe("fork guard: fork-composer-shell", () => {
         rule.body.includes("color-mix(in oklab, currentColor"),
     );
     expect(prFill).toEqual([]);
+    const numberInk = rules.find(
+      (rule) =>
+        rule.selector.includes("[data-fork-pr-chip]") &&
+        /\[data-fork-pr-chip\]\s*>\s*span\s*>\s*span$/u.test(rule.selector.trim()),
+    );
+    expect(numberInk?.body).toMatch(/color:\s*inherit/u);
     // Far end: the wrapper holding the chip may grow again (the packing rule
     // pins every other strip child shrink-only) and spreads its children
     // apart, so the branch stays packed against checkout. The spread has to
