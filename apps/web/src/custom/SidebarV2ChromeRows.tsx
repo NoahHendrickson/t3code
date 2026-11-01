@@ -640,7 +640,6 @@ export function SidebarV2ProjectScopeRow<TProject extends SidebarV2ChromeProject
                         )}
                         aria-label={filterAriaLabel}
                         data-testid="sidebar-v2-project-filter"
-                        data-active={isScoped ? "true" : undefined}
                       />
                     }
                   />
