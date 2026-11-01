@@ -3,6 +3,9 @@ import { defaultInclude, defineConfig } from "vite-plus";
 
 import { isDesktopRuntimeExternalDependency } from "../../scripts/lib/desktop-external-packages.ts";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
+// fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+import { forkBrandName } from "../../scripts/lib/fork-brand-name.ts";
+// fork:end fork-brand-name
 
 const repoEnv = loadRepoEnv();
 
@@ -67,6 +70,9 @@ export default defineConfig({
       define: publicConfigDefine,
       outputOptions: { codeSplitting: false },
       entry: ["src/main.ts"],
+      // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+      plugins: [forkBrandName()],
+      // fork:end fork-brand-name
       clean: true,
       deps: {
         alwaysBundle: (id) => !id.startsWith("node:") && !isMainProcessExternal(id),
@@ -88,6 +94,9 @@ export default defineConfig({
         "src/snapShot/RegionSnapShotWorker.ts",
         "src/snapShot/SnapShotAccessibilityWorker.ts",
       ],
+      // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+      plugins: [forkBrandName()],
+      // fork:end fork-brand-name
       clean: false,
       deps: {
         alwaysBundle: (id) => !id.startsWith("node:") && !isMainProcessExternal(id),

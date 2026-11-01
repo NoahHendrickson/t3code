@@ -511,6 +511,54 @@
   verify:
     - apps/web/src/__fork_guards__/forkAppIdentity.test.ts
 
+- id: fork-brand-name
+  intent: >
+    Every web and desktop string a user reads names the app "no3y Code", the
+    same name fork-app-identity gives the installed app, and the fork still
+    says where it comes from. Upstream writes "T3 Code" inline in hundreds of
+    strings and adds more each sync, so the name is rewritten at build time
+    instead of in each file: one plugin (scripts/lib/fork-brand-name.ts) runs
+    in the web Vite build and dev server and in both desktop pack entries
+    (main, workers), and replaces "T3 Code" in script modules and index.html.
+    The web config leaves it out under Vitest so upstream tests keep
+    asserting upstream copy; desktop pack never runs under Vitest.
+    The whole keep-as-written policy is two lists in that file:
+    PRESERVED_PHRASES (the fork's credit, prose about upstream, the Linux
+    capture extension's own name, upstream's registered "T3 Code for GitHub"
+    app, and the server-issued "T3 Code · <label>" peer session a revoke
+    prompt quotes) and EXCLUDED_MODULES (DesktopUserData's legacy profile
+    names and the dictation vocabulary). A string that must match something
+    outside this bundle (server text, an OS or third-party name) is added
+    there, never as a one-off elsewhere.
+    Decided, not incidental: the rewrite also renames the labels this client
+    sends when it pairs or links ("no3y Code Desktop", "no3y Code Web",
+    "no3y Code link"), so a host's Connections list names the fork's
+    clients; nothing compares those labels. Connection copy about software on
+    another host is renamed too, though a linked VPS may run upstream.
+    T3 Connect, the T3 server, and the t3 CLI keep their names.
+    Not bundled, so edited in place: public/manifest.webmanifest and the
+    macOS permission prompts (local network, screen capture, camera) in
+    build-desktop-artifact.ts, beside fork-local-dictation's microphone
+    prompt. Settings, About carries a row crediting T3 Code with a link to
+    the upstream repository, and the macOS About panel credits it.
+    Server-sent text and the mobile app are out of scope and still say
+    T3 Code.
+  tier: 4
+  files:
+    - scripts/lib/fork-brand-name.ts
+    - apps/web/src/custom/ForkUpstreamCreditRow.tsx
+  shadows: []
+  watch:
+    - apps/web/vite.config.ts
+    - apps/desktop/vite.config.ts
+    - apps/web/public/manifest.webmanifest
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/tsconfig.json
+    - apps/desktop/src/app/DesktopAppIdentity.ts
+    - scripts/build-desktop-artifact.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkBrandName.test.ts
+
 - id: fork-marker
   intent: >
     The running app is identifiable as this fork: the document root carries

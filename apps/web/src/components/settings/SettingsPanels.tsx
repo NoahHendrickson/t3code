@@ -61,6 +61,9 @@ import { DEFAULT_FORK_GLASS_3D_MODE, useForkGlass3d } from "../../custom/forkGla
 /* fork:begin fork-working-mark — see .fork/customizations.yaml#fork-working-mark */
 import { DEFAULT_FORK_WORKING_MARK, useForkWorkingMark } from "../../custom/forkWorkingMark";
 /* fork:end fork-working-mark */
+/* fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name */
+import { ForkUpstreamCreditRow } from "../../custom/ForkUpstreamCreditRow";
+/* fork:end fork-brand-name */
 import {
   useScopedSettings,
   useScopedSettingsMixed,
@@ -2027,6 +2030,9 @@ export function AboutSettingsPanel() {
           </>
         )}
         <MobileAppSettingsRow />
+        {/* fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name */}
+        <ForkUpstreamCreditRow />
+        {/* fork:end fork-brand-name */}
       </SettingsSection>
 
       <SettingsSection id="legal" title="Legal">

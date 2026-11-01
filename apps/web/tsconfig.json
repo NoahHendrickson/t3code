@@ -50,7 +50,10 @@
     "scripts/verify-built-boot.ts",
     "scripts/warm-dep-cache.ts",
     "../../scripts/lib/public-config.ts",
-    "../../scripts/lib/third-party-licenses.ts"
+    "../../scripts/lib/third-party-licenses.ts",
+    // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+    "../../scripts/lib/fork-brand-name.ts"
+    // fork:end fork-brand-name
   ],
   // fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
   // The design-mode engine is its own TS island with the vendored Forge code's laxer
