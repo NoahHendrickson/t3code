@@ -955,7 +955,7 @@ export const layer = Layer.effect(
                     createdBy: active.createdBy,
                     creationSource: active.creationSource,
                     /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
-                    ...(active.showInSidebar === true ? { listInSidebar: true } : {}),
+                    ...(active.showInSidebar === true ? {} : { scheduledTaskId: active.id }),
                     /* fork:end fork-automation-runs-in-sidebar */
                   })
                   .pipe(Effect.map((launched) => launched.threadId)),

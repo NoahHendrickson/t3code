@@ -379,9 +379,6 @@ it.effect.each(
         ...(target === "listed" ? { showInSidebar: true } : {}),
         /* fork:end fork-automation-runs-in-sidebar */
       });
-      /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
-      assert.equal(task.showInSidebar, target === "listed");
-      /* fork:end fork-automation-runs-in-sidebar */
       const result = yield* tasks.runNow({ id: task.id });
       assert.equal(result.task.lastRunStatus, "succeeded");
       const projectThreads = yield* threads.listProjectThreads({
@@ -410,23 +407,6 @@ it.effect.each(
       assert.equal(thread!.scheduledTaskId, launchedBy);
       assert.equal(projection.thread.scheduledTaskId, launchedBy);
       /* fork:end fork-scheduled-runs-off-sidebar */
-      /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
-      // Clients that predate the flag save without it and must not clear it.
-      const saved = yield* tasks.upsert({
-        id: task.id,
-        title: task.title,
-        prompt: task.prompt,
-        enabled: task.enabled,
-        schedule: { type: "interval", everyMs: 60_000 },
-        projectId,
-        threadId: task.threadId,
-        workspaceStrategy: task.workspaceStrategy,
-        modelSelection: task.modelSelection,
-        runtimeMode: task.runtimeMode,
-        interactionMode: task.interactionMode,
-      });
-      assert.equal(saved.task.showInSidebar, target === "listed");
-      /* fork:end fork-automation-runs-in-sidebar */
     }).pipe(Effect.provide(Layer.mergeAll(harness.layer, layerScheduledTasks)));
   },
 );

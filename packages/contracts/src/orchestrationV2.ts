@@ -452,7 +452,7 @@ export const OrchestrationV2AppThread = Schema.Struct({
   linkOrigin: Schema.optional(OrchestrationV2LinkOrigin),
   delegatedFrom: Schema.optional(OrchestrationV2DelegatedFrom),
   /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
-  /** The scheduled task that launched this thread. Forks and subagents do not inherit it. */
+  /** Set by the launching automation unless it lists its runs; the roster hides threads with it. Forks and subagents do not inherit it. */
   scheduledTaskId: Schema.optional(ScheduledTaskId),
   /* fork:end fork-scheduled-runs-off-sidebar */
   lineage: OrchestrationV2AppThreadLineage,

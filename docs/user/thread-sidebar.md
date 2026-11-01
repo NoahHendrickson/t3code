@@ -136,6 +136,7 @@ into a thread you chose keeps that thread where it is.
 
 To list every run of one automation with your other threads, open it, turn on **Show runs in
 sidebar**, and save. It applies to runs that start afterwards; pin an earlier run to bring it back.
+Turning it off later does not hide runs already in the sidebar; archive those you no longer need.
 <!-- fork:end fork-automation-runs-in-sidebar -->
 
 <!-- fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation -->

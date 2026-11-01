@@ -24,6 +24,7 @@ describe("fork guard: automation runs in the sidebar", () => {
     expect(contracts.match(/fork:begin fork-automation-runs-in-sidebar/g)?.length).toBe(2);
     expect(sqlite).toContain("yield* ensureForkSchema();");
     expect(forkSchema).toContain("ADD COLUMN fork_show_in_sidebar");
+    expect(forkSchema).toContain("sql.withTransaction(");
     // Both explicit-column reads, the insert, and the conflict update.
     expect(service.match(/fork_show_in_sidebar/g)?.length).toBeGreaterThanOrEqual(5);
     expect(service).toContain(
@@ -32,8 +33,10 @@ describe("fork guard: automation runs in the sidebar", () => {
   });
 
   it("launches a flagged task's runs without the thread stamp", () => {
-    expect(service).toContain("...(active.showInSidebar === true ? { listInSidebar: true } : {})");
-    expect(launch).toContain("input.listInSidebar === true");
+    expect(service).toContain(
+      "...(active.showInSidebar === true ? {} : { scheduledTaskId: active.id })",
+    );
+    expect(launch).toContain("{ scheduledTaskId: input.scheduledTaskId }");
   });
 
   it("offers the switch on the automation page", () => {
