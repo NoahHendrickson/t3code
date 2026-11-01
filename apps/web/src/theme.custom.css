@@ -2589,3 +2589,11 @@
   white-space: normal;
 }
 /* fork:end fork-composer-approval-notice */
+
+/* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+   The tab strip takes the chat column's titlebar row and clears the window
+   controls itself, so the chat header under it drops the collapsed-sidebar inset. */
+:root[data-fork="noahhendrickson-t3code"] [data-chat-column]:has(> [data-fork-thread-tabs]) {
+  --workspace-titlebar-content-left: var(--workspace-gutter-start);
+}
+/* fork:end fork-collapsed-thread-tabs */

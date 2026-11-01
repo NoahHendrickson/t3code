@@ -6000,3 +6000,61 @@
     - apps/web/src/components/chat/TimelinePendingApprovalRow.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerApprovalNotice.test.ts
+
+- id: fork-collapsed-thread-tabs
+  intent: >
+    While the desktop sidebar is collapsed, the top row of the leading chat
+    column (never the right panel, a split partner or the floating window)
+    shows the threads that are Working, Completed or Need input as tabs,
+    ordered Needs input, Completed, Working. The right panel keeps its full
+    height and the panel controls stay where they are; the row reserves the
+    header's pr-24 for them when they float over its end. The buckets come
+    from status grouping's own pipeline (buildSidebarV2StatusSections, with
+    its own Completed-hold tracker), so a tab and its sidebar card agree;
+    snoozed, settled, archived and subagent threads are left out. A project
+    switcher leads the row: All, then one icon per project with a tab,
+    filtering the tabs; the choice persists per device and falls back to All
+    while its project has no tab. Tabs shrink from their title's width to a
+    112px minimum with the title truncated; past that, the rest go behind an
+    "N more" menu (fitCollapsedThreadTabs), and the open thread keeps a visible tab
+    whenever one fits (More and New agent keep the room below that). A plus button always ends the row and starts a
+    new agent through the sidebar New agent row's own useStartNewAgentDraft,
+    landing on the new agent screen; while the project switcher is on one project it
+    starts there instead, through the sidebar's own handleNewThreadInProject
+    (the recent-project chips' path) via sidebarActionsBridge, so the new
+    thread lands on the same environment. Its width comes out of the tabs' room.
+    The row clears the window controls and the floating
+    sidebar toggle, and the chat header under it drops its collapsed-sidebar
+    inset. It renders only while the desktop sidebar is collapsed, never on
+    mobile; under an open sidebar a render-nothing observer keeps feeding the
+    Completed-hold tracker, so a thread that comes to rest there is still held
+    when the sidebar collapses. Under Glass the open thread's tab and the chosen project wear the
+    selected thread card's glass (selected shadow, glint, dark edge) unless
+    3D glass is off. Unselected tabs have no fill. Hovering a tab (or
+    focusing into it) fades its title under two actions: a check that
+    settles through the sidebar's own settleAndAdvance path, shown only where
+    the server supports settlement, and a three-dot button (or right-click)
+    that opens the sidebar's own thread action menu through
+    sidebarActionsBridge, so the items cannot drift from the card's. The
+    offcanvas sidebar stays mounted while collapsed, so both handlers are
+    live. Rename edits the title on the sidebar card, so a rename started
+    while the desktop sidebar is collapsed opens it.
+  tier: 4
+  files:
+    - apps/web/src/custom/CollapsedThreadTabs.tsx
+    - apps/web/src/custom/collapsedThreadTabsModel.ts
+    - apps/web/src/custom/collapsedThreadTabsModel.test.ts
+    - apps/web/src/custom/sidebarActionsBridge.ts
+    - apps/web/src/custom/SegmentedTabs.tsx
+    - apps/web/src/theme.custom.css
+    - apps/web/src/theme.custom.glass-surfaces.css
+  shadows: []
+  watch:
+    # Fenced import and mount at the top of the leading chat column.
+    - apps/web/src/components/ChatView.tsx
+    # Fenced registration of the thread action menu and the in-project start, its lookup of threads the list hides, and rename opening the sidebar.
+    - apps/web/src/components/Sidebar.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkCollapsedThreadTabs.test.ts
+    - apps/web/src/__fork_guards__/forkGlass3d.test.ts
+    - apps/web/src/custom/collapsedThreadTabsModel.test.ts

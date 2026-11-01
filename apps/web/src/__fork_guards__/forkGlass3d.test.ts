@@ -35,7 +35,11 @@ describe("fork guard: fork-glass-3d", () => {
     expect(selection.length).toBeGreaterThan(0);
     for (const rule of selection) {
       const isTokens = compact(rule.selector) === compact(`${NOT_OFF}${PALETTE}`);
-      const isSelectedRow = /\[data-thread-item\]|\[data-fork-chrome-row\]/u.test(rule.selector);
+      // The collapsed sidebar's tab row (fork-collapsed-thread-tabs) is the list laid sideways.
+      const isSelectedRow =
+        /\[data-thread-item\]|\[data-fork-chrome-row\]|\[data-fork-thread-tabs\]/u.test(
+          rule.selector,
+        );
       // The block's one named exception (fork-sidebar-recent-projects); a
       // new chip belongs under Full, not on this list.
       const isQuickStart = compact(rule.selector).endsWith("[data-fork-recent-project]");
