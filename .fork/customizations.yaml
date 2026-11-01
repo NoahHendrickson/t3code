@@ -383,9 +383,9 @@
     rendered artwork, matching the standard Mac icon footprint. The local dev
     splash uses the orange family, while packaged builds stamp the green
     production family. Web favicons and the project icon are the bare leaf
-    with no tile (t3-fork 556:28871, its gray backdrop rect dropped and
-    shape-rendering="crispEdges" added so adjacent cells don't seam):
-    assets/fork/n3-project-icon.svg is that SVG, and the n3-web-favicon*
+    with no tile (t3-fork 556:28871): assets/fork/n3-project-icon.svg is
+    SidebarBrandMark's integer cells on the 23-unit grid with crispEdges,
+    literal fills, and a #373737 outline, and the n3-web-favicon*
     rasters (with apps/web/public copies) are rendered from it at an exact
     multiple of its 23-cell grid, then downscaled; export-icons.ts leaves
     them alone. Filenames still say n3-* for path stability. t3.json's
