@@ -786,7 +786,7 @@
 @layer utilities {
   :where(
       :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-        [data-slot="sidebar-inset"]
+        :is([data-slot="sidebar-inset"], [data-app-modal])
     )
     :is(.bg-card, .bg-card\/40) {
     background-color: rgb(255 255 255 / 5%);
@@ -955,6 +955,7 @@
     ).dropdown-glass,
     [data-slot="select-popup"] > .dropdown-glass,
     .dropdown-glass:has(> [data-slot="combobox-popup"]),
+    [data-slot="dialog-popup"][data-app-modal],
     :where(
       [data-thread-details-panel="popover"]:is([data-fork-popup], [data-fork-glass-picture="off"] *)
         > [data-thread-details-card].dropdown-glass
@@ -1052,6 +1053,7 @@
       ).dropdown-glass[data-starting-style],
     [data-slot="select-popup"][data-starting-style]:has(> .dropdown-glass),
     .dropdown-glass > [data-slot="combobox-popup"][data-starting-style],
+    [data-slot="dialog-popup"][data-app-modal][data-starting-style],
     [data-slot="popover-popup"][data-starting-style]:has([data-fork-popup]),
     [data-fork-glass-picture="off"]
       [data-slot="popover-popup"][data-starting-style]:has([data-thread-details-panel="popover"])
@@ -1150,9 +1152,20 @@
    class match cannot find them on its own, and the vibrancy guard enumerates
    index.css for exactly that. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-slot="sidebar-inset"]
+  :is([data-slot="sidebar-inset"], [data-app-modal])
   .bg-background:not([data-slot="switch-thumb"]) {
   background-color: transparent;
+}
+
+/* The route modals portal out of the inset, so they are a glass popup of their
+   own and the stage's clears and washes carry a modal arm. Settings' docked
+   nav drops its opaque bg-sidebar; below md it is an overlay that must cover. */
+@media (width >= 48rem) {
+  :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    [data-app-modal]
+    nav.bg-sidebar {
+    background-color: transparent;
+  }
 }
 
 /* Structural wrappers must not repaint the stage colour over the glass.

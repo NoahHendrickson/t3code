@@ -29,15 +29,16 @@ function readSibling(relativePath: string): string {
 const customizations = readSibling("../../../../.fork/customizations.yaml");
 
 const VIEWPORT = { width: 1200, height: 800 };
-const ROOT = { key: "root", layer: -1, rect: { x: 0, y: 0, ...VIEWPORT } };
+const ROOT = { key: "root", layer: -1, z: 0, rect: { x: 0, y: 0, ...VIEWPORT } };
 
-const hole = (layer: number, x: number, y: number): CutoutHole => ({
+const hole = (layer: number, x: number, y: number, z = 0): CutoutHole => ({
   x,
   y,
   width: 200,
   height: 120,
   radius: 10,
   layer,
+  z,
 });
 
 afterEach(() => {
@@ -61,14 +62,21 @@ describe("fork guard: fork-glass-popup-cutout", () => {
     const usagePanel = {
       key: "usage",
       layer: 0,
+      z: 0,
       rect: { x: 100, y: 100, width: 600, height: 500 },
     };
     const menuPositioner = {
       key: "menu",
       layer: 1,
+      z: 0,
       rect: { x: 300, y: 200, width: 200, height: 120 },
     };
-    const farToast = { key: "toast", layer: 0, rect: { x: 1000, y: 700, width: 150, height: 60 } };
+    const farToast = {
+      key: "toast",
+      layer: 0,
+      z: 0,
+      rect: { x: 1000, y: 700, width: 150, height: 60 },
+    };
     const menu = hole(1, 300, 200);
 
     const plan = planCutout([ROOT, usagePanel, menuPositioner, farToast], [menu]);
@@ -81,11 +89,19 @@ describe("fork guard: fork-glass-popup-cutout", () => {
   });
 
   it("never lets a popup cut a surface opened after it", () => {
-    const panel = { key: "panel", layer: 0, rect: { x: 0, y: 0, width: 400, height: 400 } };
-    const later = { key: "later", layer: 2, rect: { x: 0, y: 0, width: 400, height: 400 } };
+    const panel = { key: "panel", layer: 0, z: 0, rect: { x: 0, y: 0, width: 400, height: 400 } };
+    const later = { key: "later", layer: 2, z: 0, rect: { x: 0, y: 0, width: 400, height: 400 } };
     const plan = planCutout([panel, later], [hole(1, 50, 50)]);
     expect(plan.has("panel")).toBe(true);
     expect(plan.has("later")).toBe(false);
+  });
+
+  it("never lets a popup cut a surface that paints above it", () => {
+    // A toast (z-100) opened before Settings stays over the modal (z-50), but
+    // a select (z-130) opened over the toast still clears it.
+    const toast = { key: "toast", layer: 0, z: 100, rect: { x: 0, y: 0, width: 400, height: 400 } };
+    expect(planCutout([toast], [hole(1, 50, 50, 50)]).has("toast")).toBe(false);
+    expect(planCutout([toast], [hole(1, 50, 50, 130)]).has("toast")).toBe(true);
   });
 
   it("moves a hole by position alone, without a new mask image", () => {
