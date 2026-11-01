@@ -12,8 +12,10 @@
  *
  * "Beneath" is #root plus any portal opened before the popup — a menu over
  * the Usage panel, a select inside a dialog. Popups portal into <body> in the
- * order they open, so a portal container is under every popup whose container
- * comes after it. An empty-box portal container cannot carry the mask for its
+ * order they open, and a popup opened from inside another portal (the select
+ * in the Settings modal) nests its portal after the opener's children, beside
+ * a dialog's backdrop, so a portal child is under every popup that lives in a
+ * later one. An empty-box portal container cannot carry the mask for its
  * fixed children, so the mask goes on the container's children instead
  * (positioners, backdrops), and only on those a hole actually touches.
  *
@@ -41,6 +43,8 @@ export const FORK_GLASS_POPUP_SELECTOR = [
   ':is([data-slot="menu-popup"], [data-slot="menu-sub-content"], [data-slot="popover-popup"], [data-slot="tooltip-popup"], [data-slot="dialog-popup"]).dropdown-glass',
   '[data-slot="select-popup"] > .dropdown-glass',
   '.dropdown-glass:has(> [data-slot="combobox-popup"])',
+  // The Settings and Usage route modals (AppRouteModal), which carry no dropdown-glass.
+  '[data-slot="dialog-popup"][data-app-modal]',
   // The thread details card, popover-presented where nothing is frosted: the
   // portaled wrapper carries data-fork-popup outside a new agent's draft, and
   // the root attribute stands in for it while the picture is switched off.
@@ -54,6 +58,9 @@ export const FORK_GLASS_POPUP_SELECTOR = [
  * while the picture is switched off (forkGlassNewAgentPicture.ts).
  */
 const DRAFT_CARD_SELECTOR = `:root:not(${PICTURE_OFF}) [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero]):not(:has([data-preview-mini-player] [data-browser-surface-slot]))`;
+
+const TOAST_VIEWPORT_SELECTOR =
+  '[data-slot="toast-viewport"], [data-slot="toast-viewport-anchored"]';
 
 /** Stamped on a popup that frosts over the draft card instead of cutting it. */
 const FORK_GLASS_FROST_ATTRIBUTE = "data-fork-glass-frost";
@@ -97,7 +104,7 @@ type Rect = {
 
 export type CutoutHole = Rect & {
   readonly radius: number;
-  /** Index of the portal container the popup lives in; higher opened later. */
+  /** Paint order of the portal child the popup lives in; higher paints above. */
   readonly layer: number;
 };
 
@@ -297,12 +304,23 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
     }
     const holes: Array<CutoutHole> = [];
     let card: Rect | null | undefined;
-    containers.forEach((container, layer) => {
-      for (const popup of container.querySelectorAll<HTMLElement>(FORK_GLASS_POPUP_SELECTOR)) {
+    // Toasts paint above every popup (z-100), so no hole is cut through them.
+    const layers = containers.flatMap((container) =>
+      Array.from(container.children).filter(
+        (child): child is HTMLElement =>
+          child instanceof HTMLElement && !child.matches(TOAST_VIEWPORT_SELECTOR),
+      ),
+    );
+    layers.forEach((child, layer) => {
+      const popups = Array.from(child.querySelectorAll<HTMLElement>(FORK_GLASS_POPUP_SELECTOR));
+      if (child.matches(FORK_GLASS_POPUP_SELECTOR)) popups.push(child);
+      for (const popup of popups) {
         const hole = measure(popup, layer);
         if (hole === null) continue;
         if (card === undefined) card = draftCard(appRoot);
-        if (!frost(popup, hole, card)) holes.push(hole);
+        // The route modal carries no dropdown-glass, so it has no frost layer to show.
+        const frostCard = popup.hasAttribute("data-app-modal") ? null : card;
+        if (!frost(popup, hole, frostCard)) holes.push(hole);
       }
     });
 
@@ -313,12 +331,7 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
         return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
       };
       surfaces.push({ key: appRoot, layer: -1, rect: toRect(appRoot) });
-      containers.forEach((container, layer) => {
-        for (const child of container.children) {
-          if (child instanceof HTMLElement)
-            surfaces.push({ key: child, layer, rect: toRect(child) });
-        }
-      });
+      layers.forEach((child, layer) => surfaces.push({ key: child, layer, rect: toRect(child) }));
     }
     const plan = planCutout(surfaces, holes);
 

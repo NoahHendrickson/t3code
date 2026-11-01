@@ -171,6 +171,15 @@ describe("fork guard: fork-popup-surface", () => {
     for (const slot of ["menu-popup", "menu-sub-content", "select-popup", "combobox-popup"]) {
       expect(opening?.selector, slot).toContain(`[data-slot="${slot}"]`);
     }
+    // The Settings and Usage route modals join the recipe under Glass only;
+    // every other palette keeps upstream's opaque modal.
+    const modalArm = '[data-slot="dialog-popup"][data-app-modal]';
+    expect(flat(glassPopup?.selector ?? "")).toContain(modalArm);
+    expect(FORK_GLASS_POPUP_SELECTOR).toContain(modalArm);
+    expect(opening?.selector).toContain(`${modalArm}[data-starting-style]`);
+    const routeModal = readSibling("../components/AppRouteModal.tsx");
+    expect(routeModal).toContain('data-slot="dialog-popup"');
+    expect(routeModal).toContain('data-app-modal=""');
     // The cutout script finds the same popups the rule paints.
     const tight = (selector: string) =>
       flat(selector).replace(/\(\s+/gu, "(").replace(/\s+\)/gu, ")");

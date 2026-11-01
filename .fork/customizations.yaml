@@ -4437,7 +4437,8 @@
 - id: fork-glass-popup-cutout
   intent: >
     Under Glass, popups (menu, select, combobox, popover, glass tooltip,
-    the Usage dialog — the fork-popup-surface arms — and, in a started
+    the Usage dialog — the fork-popup-surface arms — upstream's Settings and
+    Usage route modals, and, in a started
     thread, the thread details card opened as a popover) read as the same live
     glass as the sidebar and the composer's control row, not as an
     estimated solid. While one is open, custom/forkGlassPopupCutout.ts masks
@@ -4446,9 +4447,11 @@
     composer row reads as glass, where the timeline cutoff clears the
     transcript from behind it. Beneath means #root plus every portal opened
     before the popup (a menu over the Usage panel, a select in a dialog):
-    portals mount into <body> in open order, and the mask goes on the
-    children of each lower portal container, since an empty-box container
-    cannot mask its fixed children. Each masked surface wears one solid
+    portals mount into <body> in open order, a popup opened from inside a
+    portal nests its own portal after the opener's children (a dialog's
+    backdrop is one of those children too), so the order is each portal
+    container's children in turn, and the mask goes on those children,
+    since an empty-box container cannot mask its fixed children. Each masked surface wears one solid
     viewport-sized layer with every hole subtracted from it, one small
     rounded-rect image per hole placed by mask-position, so a moving popup
     only moves its layer and never mints an image to decode; mask-clip
@@ -5739,7 +5742,11 @@
     destructive-outline excepted; its groups take the stage card's 5% white
     wash under desktop vibrancy instead of upstream's 40% --card, which
     composited darker than the stage; and its active section is drawn as the
-    sidebar's selected row. The chips' fill and hover hold with 3D glass off
+    sidebar's selected row. Settings opens as upstream's route modal
+    (AppRouteModal), portaled out of the stage, so under desktop vibrancy the
+    modal is a glass popup itself (the popup recipe and its cutout), the
+    stage's bg-background clear and card wash reach into it, and its section
+    nav drops bg-sidebar to stand on the same glass. The chips' fill and hover hold with 3D glass off
     (palettes sheet); only Full 3D drops their hairline for the rim, so below
     it they keep upstream's --input edge and never vanish into the card.
     These sit in Tailwind's utilities layer at the replaced utilities' weight,
