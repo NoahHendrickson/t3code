@@ -2612,11 +2612,12 @@
   --workspace-native-controls-inset: 0px;
 }
 
-/* A visible tab already names the open thread and its project. */
+/* A visible tab already names the open thread and its project. The breadcrumb stays while
+   renaming, since the title input lives inside it. */
 :root[data-fork="noahhendrickson-t3code"]
   [data-chat-column]:has(> [data-fork-thread-tabs][data-open-thread-tabbed])
   > [data-chat-header]
-  nav[aria-label="Thread breadcrumb"] {
+  nav[aria-label="Thread breadcrumb"]:not(:has(input)) {
   display: none;
 }
 /* fork:end fork-collapsed-thread-tabs */

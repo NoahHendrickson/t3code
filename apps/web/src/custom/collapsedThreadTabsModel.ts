@@ -15,6 +15,8 @@ import {
 /** The statuses the tab menu offers, in tab order. Settled is never offered. */
 export const COLLAPSED_TAB_STATUSES = ["input", "done", "working", "idle"] as const;
 export type CollapsedThreadTabStatus = (typeof COLLAPSED_TAB_STATUSES)[number];
+const isCollapsedTabStatus = (status: SidebarV2StatusBucket): status is CollapsedThreadTabStatus =>
+  (COLLAPSED_TAB_STATUSES as readonly string[]).includes(status);
 export const DEFAULT_COLLAPSED_TAB_STATUSES: readonly CollapsedThreadTabStatus[] = [
   "input",
   "done",
@@ -31,7 +33,7 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
   /** Already filtered to the threads the sidebar lists (filterSidebarV2VisibleThreads). */
   readonly threads: readonly EnvironmentThreadShell[];
   readonly projectGroups: readonly TProject[];
-  readonly statuses: ReadonlySet<SidebarV2StatusBucket>;
+  readonly statuses: ReadonlySet<CollapsedThreadTabStatus>;
   readonly localLastVisitedAtById: Readonly<Record<string, string>>;
   /** A precise ISO time, as the sidebar's partition uses. */
   readonly now: string;
@@ -65,7 +67,7 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
     }
   }
   const tabs = sections
-    .filter((section) => input.statuses.has(section.status))
+    .filter((section) => isCollapsedTabStatus(section.status) && input.statuses.has(section.status))
     .flatMap((section) => section.threads)
     .map((thread) => ({
       thread,
@@ -77,6 +79,22 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
     tabs,
     projects: input.projectGroups.filter((group) => projectKeys.has(group.projectKey)),
   };
+}
+
+/**
+ * The tab to open when the project filter changes: the new filter's first tab, but only when
+ * the open thread had a tab before and the new filter hides it. A thread that never had a tab
+ * stays open, and so does a draft, whose tab shows under every filter.
+ */
+export function collapsedFilterSwitchTarget<TTab extends { readonly threadKey: string }>(input: {
+  readonly before: readonly TTab[];
+  readonly after: readonly TTab[];
+  readonly openThreadKey: string | null;
+  readonly draftOpen: boolean;
+}): TTab | null {
+  const isOpen = (tab: TTab) => tab.threadKey === input.openThreadKey;
+  if (input.draftOpen || !input.before.some(isOpen) || input.after.some(isOpen)) return null;
+  return input.after[0] ?? null;
 }
 
 /** Geometry the strip's classes draw: min-w-[112px] tabs, gap-1.5 and a w-[72px] More button. */

@@ -49,9 +49,9 @@ describe("fork guard: fork-collapsed-thread-tabs", () => {
     expect(theme).toContain(
       "[data-chat-column]:has(> [data-fork-thread-tabs][data-open-thread-tabbed])",
     );
-    expect(theme).toContain('nav[aria-label="Thread breadcrumb"] {');
+    expect(theme).toContain('nav[aria-label="Thread breadcrumb"]:not(:has(input)) {');
     expect(chatHeader).toContain('ariaLabel="Thread breadcrumb"');
-    expect(strip).toContain('data-open-thread-tabbed={openThreadTabbed ? "" : undefined}');
+    expect(strip).toContain('data-open-thread-tabbed={paneThreadTabbed ? "" : undefined}');
     expect(theme).not.toContain("--workspace-controls-top: calc(");
     expect(strip).toContain('data-fork-thread-tabs=""');
   });

@@ -3,14 +3,13 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   buildCollapsedThreadTabs,
+  collapsedFilterSwitchTarget,
   DEFAULT_COLLAPSED_TAB_STATUSES,
   fitCollapsedThreadTabs,
+  type CollapsedThreadTabStatus,
 } from "./collapsedThreadTabsModel";
 import { buildSidebarDraftShell } from "./sidebarV2DraftRows";
-import {
-  createSidebarV2CompletedHoldTracker,
-  type SidebarV2StatusBucket,
-} from "./sidebarV2StatusGrouping";
+import { createSidebarV2CompletedHoldTracker } from "./sidebarV2StatusGrouping";
 
 const environmentId = EnvironmentId.make("local");
 const NOW = "2026-01-02T00:00:00.000Z";
@@ -66,7 +65,7 @@ describe("buildCollapsedThreadTabs", () => {
   ];
   const build = (
     supported: boolean,
-    statuses: readonly SidebarV2StatusBucket[] = DEFAULT_COLLAPSED_TAB_STATUSES,
+    statuses: readonly CollapsedThreadTabStatus[] = DEFAULT_COLLAPSED_TAB_STATUSES,
   ) =>
     buildCollapsedThreadTabs({
       threads,
@@ -103,6 +102,21 @@ describe("buildCollapsedThreadTabs", () => {
         .tabs.map((tab) => tab.thread.id)
         .toSorted(),
     ).toEqual(["asking", "settled", "snoozed", "working"]);
+  });
+});
+
+describe("collapsedFilterSwitchTarget", () => {
+  const tab = (threadKey: string) => ({ threadKey });
+  const [a, b, c] = [tab("a"), tab("b"), tab("c")];
+  it.each([
+    // [label, before, after, open, draftOpen, expected]
+    ["opens the first tab when the filter hides the open tab", [a, b], [c], "a", false, c],
+    ["stays when the open tab is still shown", [a, b], [b, a], "a", false, null],
+    ["stays on a thread that never had a tab", [a, b], [c], "z", false, null],
+    ["stays on the draft", [a, b], [c], null, true, null],
+    ["has nowhere to go in an empty filter", [a], [], "a", false, null],
+  ] as const)("%s", (_label, before, after, openThreadKey, draftOpen, expected) => {
+    expect(collapsedFilterSwitchTarget({ before, after, openThreadKey, draftOpen })).toBe(expected);
   });
 });
 

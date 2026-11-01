@@ -6092,8 +6092,9 @@
     each snooze deadline), as the sidebar's partition does. A project
     switcher leads the row: All, then one icon per project with a tab,
     filtering the tabs; the choice persists per device and falls back to All
-    while its project has no tab. Picking a project that hides the open thread
-    opens that project's first tab. Tabs shrink from their title's width to a
+    while its project has no tab. Picking a project that hides the open thread's tab
+    opens that project's first tab (collapsedFilterSwitchTarget); a thread that
+    had no tab, or the open draft, stays open. Tabs shrink from their title's width to a
     112px minimum with the title truncated; past that, the rest go behind an
     "N more" menu (fitCollapsedThreadTabs), and the open thread keeps a visible tab
     whenever one fits (More keeps the room below that). Each tab leads with its thread's provider mark from the model picker
@@ -6105,8 +6106,9 @@
     draft (where the plus lands) takes the first tab, active and under any
     project filter, until its first send makes it a thread: its prompt as the
     title (the sidebar's draft label), the composer's provider, the draft
-    pencil, and on hover an X that discards it and opens the first tab (else
-    home). A plus button right after the three-dot menu starts a
+    pencil, and on hover an X that discards it and opens the first tab (else the most
+    recent thread, since home would start a fresh draft); with no room it moves
+    into the More menu. A plus button right after the three-dot menu starts a
     new agent through the sidebar New agent row's own useStartNewAgentDraft,
     landing on the new agent screen; while the project switcher is on one project it
     starts there instead, through the sidebar's own handleNewThreadInProject
@@ -6114,9 +6116,9 @@
     thread lands on the same environment.
     The row clears the window controls and the floating
     sidebar toggle, and the chat header under it drops its collapsed-sidebar
-    inset. While the open thread has a visible tab, the header's project and
-    title breadcrumb is hidden (the tab names both); the header row stays for
-    its panel controls. It renders only while the desktop sidebar is collapsed, never on
+    inset. While the pane's own thread has a visible tab, the header's project and
+    title breadcrumb is hidden (the tab names both) except while renaming,
+    whose input lives in it; the header row stays for its panel controls. It renders only while the desktop sidebar is collapsed, never on
     mobile; under an open sidebar a render-nothing observer keeps feeding the
     Completed-hold tracker, so a thread that comes to rest there is still held
     when the sidebar collapses. Under Glass the open thread's tab and the chosen project wear the
