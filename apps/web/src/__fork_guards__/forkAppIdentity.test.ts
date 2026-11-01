@@ -51,6 +51,23 @@ const SERVER_CONFIG = "apps/server/src/config.ts";
 const BUILD_SCRIPT = "scripts/build-desktop-artifact.ts";
 const FORK_RELEASE_WORKFLOW = ".github/workflows/fork-release.yml";
 
+// Every 1-row rect inside a `<g fill>` group, expanded to "x,y" -> lowercase hex fill.
+const cellFills = (svg: string) => {
+  const cells = new Map<string, string>();
+  let grouped = 0;
+  for (const [, fill = "", body = ""] of svg.matchAll(/<g fill="([^"]+)">([\s\S]*?)<\/g>/gu)) {
+    const hex = (/#[0-9a-f]{6}/iu.exec(fill)?.[0] ?? fill).toLowerCase();
+    for (const [, w, x, y] of body.matchAll(
+      /<rect height="1" width="(\d+)" x="(\d+)" y="(\d+)" \/>/gu,
+    )) {
+      grouped += 1;
+      for (let dx = 0; dx < Number(w); dx += 1) cells.set(`${Number(x) + dx},${y}`, hex);
+    }
+  }
+  expect(svg.match(/<rect\b/gu)?.length ?? 0).toBe(grouped);
+  return cells;
+};
+
 describe("fork guard: fork-app-identity", () => {
   it("packages under a fork-owned bundle id", () => {
     const script = read(BUILD_SCRIPT);
@@ -230,11 +247,15 @@ describe("fork guard: fork-app-identity", () => {
   });
 
   it("shows the fork's own icon beside this repo's project", () => {
-    expect(JSON.parse(read("t3.json")).iconPath).toBe("assets/fork/n3-web-apple-touch-180.png");
-    const icon = NodeFS.readFileSync(
-      NodePath.join(repoRoot, "assets/fork/n3-web-apple-touch-180.png"),
+    expect(JSON.parse(read("t3.json")).iconPath).toBe("assets/fork/n3-project-icon.svg");
+    const icon = read("assets/fork/n3-project-icon.svg");
+    expect(icon).toContain('viewBox="0 0 23 23"');
+    // The bare leaf is the sidebar mark's cells with a #373737 outline, and no backdrop.
+    const sidebar = cellFills(read("apps/web/src/custom/SidebarBrandMark.tsx"));
+    const outlined = new Map(
+      [...sidebar].map(([cell, fill]) => [cell, fill === "#000000" ? "#373737" : fill]),
     );
-    expect([icon.readUInt32BE(16), icon.readUInt32BE(20)]).toEqual([180, 180]);
+    expect(cellFills(icon)).toEqual(outlined);
   });
 
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {

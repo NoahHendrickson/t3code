@@ -390,13 +390,16 @@
     The macOS Dock exports add only a transparent outer canvas around the
     rendered artwork, matching the standard Mac icon footprint. The local dev
     splash uses the orange family, while packaged builds stamp the green
-    production family. Web favicons are a flat Figma tile (t3-fork 598:6596,
-    its gray frame backdrop dropped for transparent corners), committed as the
-    n3-web-favicon* rasters with apps/web/public copies; export-icons.ts
-    leaves them alone. Filenames still say n3-* for path stability.
-    t3.json's iconPath points at the production apple-touch render
-    (assets/fork/n3-web-apple-touch-180.png), never upstream's
-    assets/dev/blueprint-*, so the project icon is the app icon.
+    production family. Web favicons and the project icon are the bare leaf
+    with no tile (t3-fork 556:28871): assets/fork/n3-project-icon.svg is
+    SidebarBrandMark's integer cells on the 23-unit grid with crispEdges,
+    literal fills, and a #373737 outline, and the n3-web-favicon*
+    rasters (with apps/web/public copies) are rendered from it at an exact
+    multiple of its 23-cell grid, then downscaled; export-icons.ts leaves
+    them alone. Filenames still say n3-* for path stability. t3.json's
+    iconPath points at n3-project-icon.svg, never upstream's
+    assets/dev/blueprint-*. The apple-touch icons keep the tile because iOS
+    fills transparency with black.
     Deliberately shared: the t3code:// URL scheme stays shared (it is the
     app's own internal origin, not just a deep-link handler — two installed
     apps contend for it, untidy but not destructive).
@@ -438,6 +441,7 @@
     - assets/fork/n3-web-favicon-16x16.png
     - assets/fork/n3-web-favicon-32x32.png
     - assets/fork/n3-web-favicon.ico
+    - assets/fork/n3-project-icon.svg
   shadows: []
   watch:
     - apps/desktop/src/window/DesktopApplicationMenu.test.ts
