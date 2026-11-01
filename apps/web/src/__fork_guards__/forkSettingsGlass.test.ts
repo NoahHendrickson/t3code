@@ -94,6 +94,17 @@ describe("fork guard: settings glass", () => {
     );
     expect(wash?.body).toMatch(/background-color:\s*rgb\(255 255 255 \/ 5%\)/u);
     expect(readSibling("../components/settings/SettingsGroup.tsx")).toContain("bg-card/40");
+    // The route modal portals out of the inset, so the wash carries a modal arm,
+    // and the docked nav clears its opaque fill; below md it is an overlay.
+    expect(wash?.selector).toContain("[data-app-modal]");
+    const nav = palettes.find((rule) =>
+      rule.selector.replace(/\s+/gu, " ").includes("[data-app-modal] nav.bg-sidebar"),
+    );
+    expect(nav?.body).toContain("background-color: transparent");
+    expect(nav?.atRules.join(" ")).toContain("48rem");
+    expect(readSibling("../components/settings/SettingsSidebarNav.tsx")).toMatch(
+      /<nav[\s\S]*?"[^"]*bg-sidebar[^"]*max-md:/u,
+    );
   });
 
   it("draws the active section as the sidebar's selected row", () => {
