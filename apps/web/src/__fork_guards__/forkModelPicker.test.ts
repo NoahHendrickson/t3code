@@ -161,6 +161,9 @@ describe("fork guard: fork-model-picker", () => {
     expect(listAt).toBeGreaterThan(searchAt);
     expect(railAt).toBeGreaterThan(listAt);
     expect(content).toContain("flex min-h-0 flex-row-reverse");
+    // No ancestor-:last-child variants (group-last/*): Chromium restyles far more on
+    // DOM changes, and MessagesTimeline's huge-list browser test slowed past its timeout.
+    expect(content).not.toMatch(/group-last\//u);
     // Many providers scroll inside the rail instead of growing the popup.
     expect(content).toMatch(/className="flex max-h-92 shrink-0 flex-col gap-1 overflow-y-auto/u);
     // Favorites leads the tabs, then one per provider instance.

@@ -846,7 +846,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     <div
       role="group"
       aria-label="Providers"
-      className="flex max-h-92 shrink-0 flex-col gap-1 overflow-y-auto overscroll-contain border-e border-border px-1 pt-2 pb-1 [scrollbar-width:none] group-last/picker:pb-2 [&::-webkit-scrollbar]:hidden"
+      className="flex max-h-92 shrink-0 flex-col gap-1 overflow-y-auto overscroll-contain border-e border-border px-1 pt-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       data-fork-model-picker="providers"
     >
       {renderScopeTab({
@@ -941,12 +941,12 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
           the DOM, shows on the left. */}
       <div
         ref={contentRef}
-        className="group/picker -mx-1 -mt-1 flex min-h-0 flex-row-reverse last:-mb-1"
+        className="-mx-1 -mt-1 flex min-h-0 flex-row-reverse last:-mb-1"
         data-model-picker-content="true"
         data-fork-model-picker="true"
         onKeyDownCapture={redirectTypingToSearch}
       >
-        <div className="flex min-w-0 flex-1 flex-col gap-1 px-2 pt-2 pb-1 group-last/picker:pb-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 p-2">
           <label className="flex h-8 shrink-0 items-center gap-2 rounded-[4px] border border-foreground/12 bg-foreground/4 px-2">
             <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <input
