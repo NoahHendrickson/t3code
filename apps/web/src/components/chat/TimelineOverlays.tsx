@@ -1,6 +1,9 @@
 import { ChevronDownIcon, PaperclipIcon } from "lucide-react";
 
 import { Button } from "../ui/button";
+/* fork:begin fork-glass-scroll-pill — see .fork/customizations.yaml#fork-glass-scroll-pill */
+import { useForkGlassScrollPillHole } from "~/custom/forkGlassScrollPillHole";
+/* fork:end fork-glass-scroll-pill */
 
 export function WorkspaceFileDropOverlay() {
   return (
@@ -28,8 +31,14 @@ export function ScrollToEndButton(props: {
   readonly summary: string | null;
   readonly onScrollToEnd: () => void;
 }) {
+  /* fork:begin fork-glass-scroll-pill — see .fork/customizations.yaml#fork-glass-scroll-pill */
+  const forkPillLaneRef = useForkGlassScrollPillHole(props.bottom);
+  /* fork:end fork-glass-scroll-pill */
   return (
     <div
+      /* fork:begin fork-glass-scroll-pill — see .fork/customizations.yaml#fork-glass-scroll-pill */
+      ref={forkPillLaneRef}
+      /* fork:end fork-glass-scroll-pill */
       className="chat-scroll-to-bottom pointer-events-none absolute z-30 flex justify-center py-1.5"
       style={{ bottom: props.bottom }}
     >

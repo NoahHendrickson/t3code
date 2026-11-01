@@ -74,7 +74,8 @@ describe("fork guard: fork-popup-surface", () => {
   it("keeps the overlays' floor opaque", () => {
     // The surface-glass overlays sit over transcript inside #root, where the
     // popup cutout cannot clear, so their floor must be an opaque rgb()
-    // triple: any alpha shows the text through the scroll-to-end pill.
+    // triple: any alpha shows the text through them, and through the
+    // scroll-to-end pill until its hole is cut.
     const glassTokens = cssRules(palettes).find(
       (candidate) =>
         candidate.selector.trim() === GLASS_GATE &&

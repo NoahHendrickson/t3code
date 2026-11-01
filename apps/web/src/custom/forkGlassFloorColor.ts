@@ -1,10 +1,10 @@
 /**
  * Fork glass floor colour — see `.fork/customizations.yaml#fork-glass-floor-color`.
  *
- * The opaque Glass surface-glass overlays (the scroll-to-end pill and its
- * kin) stand on `--fork-popup-glass-floor`, the colour the sidebar panel
- * reads on screen. Popups no longer do; they sit on the live glass through
- * the popup cutout. The palette carries a hand-measured value;
+ * The opaque Glass surface-glass overlays stand on `--fork-popup-glass-floor`,
+ * the colour the sidebar panel reads on screen. Popups no longer do, nor does
+ * the scroll-to-end pill once its hole is cut; they sit on the live glass
+ * through holes cut beneath them. The palette carries a hand-measured value;
  * on the desktop the main process can do better, estimating it from the
  * wallpaper under the window (apps/desktop/src/fork/ForkGlassFloorColor.ts).
  * This module asks for that estimate once glass is actually on, writes it

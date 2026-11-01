@@ -547,6 +547,37 @@
   --fork-timeline-cutoff-ramp: 5.5rem;
 }
 
+/* Set on the scroller only; non-inheriting so writes skip the transcript rows. */
+@property --fork-timeline-hole {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-image {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-x {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-y {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-w {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-h {
+  syntax: "*";
+  inherits: false;
+}
+
 :root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff {
   --fork-timeline-top-fade: 0px;
   --fork-timeline-cutoff-inset: calc(
@@ -569,6 +600,8 @@
   --fork-timeline-cutoff-tail-end: calc(
     var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp)
   );
+  /* Third layer: the Glass scroll pill's hole (fork-glass-scroll-pill), cut out
+     of the cutoff layer. Unset, it is `none`, and subtracting it changes nothing. */
   -webkit-mask-image:
     linear-gradient(
       to bottom,
@@ -588,12 +621,18 @@
       rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
       rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
       black var(--fork-timeline-cutoff-tail-end)
-    );
-  -webkit-mask-position: top, bottom;
+    ),
+    var(--fork-timeline-hole, none);
+  -webkit-mask-composite: source-over, source-out, source-over;
+  -webkit-mask-position:
+    top,
+    bottom,
+    var(--fork-pill-hole-x, 0px) var(--fork-pill-hole-y, 0px);
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size:
     100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade));
+    100% calc(100% - var(--fork-timeline-top-fade)),
+    var(--fork-pill-hole-w, 0px) var(--fork-pill-hole-h, 0px);
   mask-image:
     linear-gradient(
       to bottom,
@@ -613,12 +652,18 @@
       rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
       rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
       black var(--fork-timeline-cutoff-tail-end)
-    );
-  mask-position: top, bottom;
+    ),
+    var(--fork-timeline-hole, none);
+  mask-composite: add, subtract, add;
+  mask-position:
+    top,
+    bottom,
+    var(--fork-pill-hole-x, 0px) var(--fork-pill-hole-y, 0px);
   mask-repeat: no-repeat;
   mask-size:
     100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade));
+    100% calc(100% - var(--fork-timeline-top-fade)),
+    var(--fork-pill-hole-w, 0px) var(--fork-pill-hole-h, 0px);
   scrollbar-width: none;
 }
 
