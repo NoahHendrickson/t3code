@@ -144,11 +144,21 @@ describe("collapsedFilterSwitchTarget", () => {
 
 describe("collapsedTabProjectForScope", () => {
   it.each([
-    ["an unscoped sidebar shows every project", [], "all"],
-    ["one scoped project becomes the filter", ["p1"], "p1"],
-    ["several scoped projects show every project", ["p1", "p2"], "all"],
-  ] as const)("%s", (_label, scope, expected) => {
-    expect(collapsedTabProjectForScope(new Set(scope))).toBe(expected);
+    ["an unscoped sidebar leaves the strip's choice", [], null, null],
+    ["one scoped project becomes the filter", ["p1"], null, "p1"],
+    ["one scoped project holding the open thread", ["p1"], "p1", "p1"],
+    ["one scoped project would hide the open thread's tab", ["p1"], "p2", "all"],
+    ["several scoped projects show every project", ["p1", "p2"], "p1", "all"],
+  ] as const)("%s", (_label, scope, openProjectId, expected) => {
+    expect(
+      collapsedTabProjectForScope({
+        scope: scope.map(project),
+        openThread:
+          openProjectId === null
+            ? null
+            : { environmentId, projectId: ProjectId.make(openProjectId) },
+      }),
+    ).toBe(expected);
   });
 });
 
