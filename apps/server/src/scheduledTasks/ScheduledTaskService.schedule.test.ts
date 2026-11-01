@@ -167,3 +167,45 @@ it.effect("keeps the task list order when a toggle or edit rewrites updated_at",
     }).pipe(Effect.provide(ScheduledTaskService.layer.pipe(Layer.provide(layerDependencies))));
   }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
 );
+
+/* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+it.effect("keeps a task's sidebar listing when a save omits it", () =>
+  Effect.gen(function* () {
+    const layerDependencies = Layer.mergeAll(
+      NodeCrypto.layer,
+      Scheduler.layer,
+      Layer.mock(ThreadLaunchService.ThreadLaunchService)({}),
+      Layer.mock(ManagedProjectFolders.ManagedProjectFolders)({
+        namedProjectsRoot: "/projects",
+        isScratchProject: () => Effect.succeed(false),
+      }),
+      Layer.mock(ThreadManagementService.ThreadManagementService)({}),
+      Layer.mock(SecretRequests.SecretRequests)({}),
+    );
+    yield* Effect.gen(function* () {
+      const service = yield* ScheduledTaskService.ScheduledTaskService;
+      // Clients that predate the field (mobile, MCP, the settings editor) send no flag.
+      const input = yield* decodeUpsertInput({
+        id: "scheduled-task:listed",
+        title: "Review",
+        prompt: "Review the open pull requests.",
+        enabled: true,
+        schedule: { type: "interval", everyMs: 60_000 },
+        projectId: "project-listed",
+        workspaceStrategy: { type: "root" },
+        modelSelection: { instanceId: "codex", model: "gpt-5.4" },
+        runtimeMode: "full-access",
+        interactionMode: "default",
+      });
+      expect((yield* service.upsert(input)).task.showInSidebar).toBe(false);
+      expect((yield* service.upsert({ ...input, showInSidebar: true })).task.showInSidebar).toBe(
+        true,
+      );
+      expect((yield* service.upsert({ ...input, title: "Edited" })).task.showInSidebar).toBe(true);
+      expect((yield* service.upsert({ ...input, showInSidebar: false })).task.showInSidebar).toBe(
+        false,
+      );
+    }).pipe(Effect.provide(ScheduledTaskService.layer.pipe(Layer.provide(layerDependencies))));
+  }).pipe(Effect.provide(SqlitePersistence.layerMemory)),
+);
+/* fork:end fork-automation-runs-in-sidebar */

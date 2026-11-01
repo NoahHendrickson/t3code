@@ -106,6 +106,10 @@ export interface ThreadLaunchInput {
   readonly linkOrigin?: OrchestrationV2LinkOrigin;
   /** The parent there, when that environment's agent delegated this as a task. */
   readonly delegatedFrom?: OrchestrationV2DelegatedFrom;
+  /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
+  /** Marks the thread as an automation run the roster hides; distinct from the message's stamp. */
+  readonly scheduledTaskId?: ScheduledTaskId;
+  /* fork:end fork-scheduled-runs-off-sidebar */
 }
 
 type PreparationInput = Pick<
@@ -944,9 +948,9 @@ const make = Effect.gen(function* () {
                 branch: initialBranch,
                 worktreePath: initialWorktreePath,
                 /* fork:begin fork-scheduled-runs-off-sidebar — see .fork/customizations.yaml#fork-scheduled-runs-off-sidebar */
-                ...(input.initialMessage?.scheduledTaskId === undefined
+                ...(input.scheduledTaskId === undefined
                   ? {}
-                  : { scheduledTaskId: input.initialMessage.scheduledTaskId }),
+                  : { scheduledTaskId: input.scheduledTaskId }),
                 /* fork:end fork-scheduled-runs-off-sidebar */
                 ...(input.importedNativeThread === undefined
                   ? {}

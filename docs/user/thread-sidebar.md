@@ -132,6 +132,12 @@ instead. While any are running, waiting on you, or failed and not yet opened, **
 shows how many, and clicking it opens **All runs**. To keep a run in the sidebar, open it and pin it. An automation that sends
 into a thread you chose keeps that thread where it is.
 <!-- fork:end fork-scheduled-runs-off-sidebar -->
+<!-- fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar -->
+
+To list every run of one automation with your other threads, open it, turn on **Show runs in
+sidebar**, and save. It applies to runs that start afterwards; pin an earlier run to bring it back.
+Turning it off later does not hide runs already in the sidebar; archive those you no longer need.
+<!-- fork:end fork-automation-runs-in-sidebar -->
 
 <!-- fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation -->
 

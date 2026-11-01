@@ -410,6 +410,7 @@ function TaskDetailForm(props: {
       runtimeMode: draft.runtimeMode,
       interactionMode: draft.interactionMode,
       creationSource: "web",
+      showInSidebar: draft.showInSidebar === true,
     };
     submissionPending.current = true;
     setSaving(true);
@@ -571,6 +572,25 @@ function TaskDetailForm(props: {
               model={model}
               disabled={disabled}
             />
+            {/* A thread-bound automation posts into that thread; the server unbinds GitHub PR tasks. */}
+            {draft.threadId && !draft.githubPrOpened ? null : (
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 space-y-1">
+                  <Label htmlFor="scheduled-task-show-in-sidebar">Show runs in sidebar</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Runs that start after you save appear in their project with your other threads.
+                    Turning this off does not hide runs already listed.
+                  </p>
+                </div>
+                <Switch
+                  id="scheduled-task-show-in-sidebar"
+                  checked={draft.showInSidebar === true}
+                  onCheckedChange={(showInSidebar) =>
+                    setDraft((current) => ({ ...current, showInSidebar }))
+                  }
+                />
+              </div>
+            )}
           </fieldset>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

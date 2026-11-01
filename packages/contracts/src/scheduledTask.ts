@@ -225,6 +225,9 @@ export const ScheduledTask = Schema.Struct({
   lastRunError: Schema.NullOr(Schema.String),
   runCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   webhook: Schema.optional(ScheduledTaskWebhookEndpoint),
+  /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+  showInSidebar: Schema.optional(Schema.Boolean),
+  /* fork:end fork-automation-runs-in-sidebar */
 });
 export type ScheduledTask = typeof ScheduledTask.Type;
 
@@ -254,6 +257,11 @@ export const ScheduledTaskUpsertInput = Schema.Struct({
   interactionMode: ProviderInteractionMode,
   createdBy: Schema.optional(OrchestrationV2Actor),
   creationSource: Schema.optional(OrchestrationV2CreationSource),
+  /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+  showInSidebar: Schema.optional(Schema.Boolean).annotate({
+    description: "List new runs in the sidebar. Omitted: keep stored.",
+  }),
+  /* fork:end fork-automation-runs-in-sidebar */
 });
 export type ScheduledTaskUpsertInput = typeof ScheduledTaskUpsertInput.Type;
 

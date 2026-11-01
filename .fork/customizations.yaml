@@ -2787,7 +2787,11 @@
     live on the Automations page, so automated runs such as PR reviews do not
     flood the roster. The server stamps the launching task's id on the thread
     (AppThread.scheduledTaskId, carried by thread.create and copied onto the
-    thread shell); an automation bound to an existing thread never stamps it,
+    thread shell) unless the task lists its runs
+    (fork-automation-runs-in-sidebar), so the field marks a run the roster
+    hides rather than every thread a task launched; ScheduledTaskService
+    passes it explicitly on the launch input, apart from the message's own
+    task id. An automation bound to an existing thread never stamps it,
     and forks and subagent children clear it. It rides in the thread's stored
     payload, so there is no migration and older threads read as unstamped.
     The roster rule sits in filterSidebarV2VisibleThreads beside the subagent
@@ -2825,6 +2829,7 @@
     - apps/server/src/orchestration-v2/Orchestrator.ts
     - apps/server/src/orchestration-v2/ProjectionStore.ts
     - apps/server/src/orchestration-v2/ThreadLaunchService.ts
+    - apps/server/src/scheduledTasks/ScheduledTaskService.ts
     - apps/server/src/orchestration-v2/ThreadForkService.ts
     - packages/provider-core/src/server/subagentProjection.ts
     - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
@@ -2834,6 +2839,51 @@
     - apps/web/src/__fork_guards__/forkScheduledRunsOffSidebar.test.ts
     - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
     - apps/server/src/orchestration-v2/ThreadForkService.test.ts
+
+- id: fork-automation-runs-in-sidebar
+  intent: >
+    An automation's Settings tab carries a "Show runs in sidebar" switch,
+    saved with the task. When it is on, the threads the automation launches
+    are launched without the thread-level task stamp, so the roster lists them
+    in their project groups like any other thread and the Automations row
+    stops counting them; the initial message still carries the task id, so
+    Run history and the message's automation link are unchanged. It applies
+    to runs launched after the save; pinning still brings back an earlier
+    run, and turning the switch off does not hide runs already listed (the
+    user guide says so; archiving clears them). The switch is hidden for an
+    automation bound to an existing thread, which never launches one, unless
+    it uses the GitHub PR trigger, which the server always unbinds. MCP and
+    mobile neither show nor set the flag. The flag lives in a fork column,
+    scheduled_tasks.fork_show_in_sidebar, added idempotently after
+    upstream's migrations by persistence/forkSchema.ts rather than by a
+    migration, because the migrator skips every id up to the highest
+    recorded and a fork-numbered migration would make a later upstream one
+    with that id never run. A save that omits the field (MCP, mobile, the
+    upstream settings editor, older clients) keeps the stored value. The
+    check and the column add run in one BEGIN IMMEDIATE transaction, so two
+    processes opening the database at once cannot both add it.
+  tier: 4
+  files:
+    - apps/server/src/persistence/forkSchema.ts
+    - apps/web/src/custom/scheduled/ScheduledTaskDetail.tsx
+    - apps/web/src/custom/scheduled/githubAutomation.logic.ts
+  shadows: []
+  watch:
+    # Fenced call to ensureForkSchema after runMigrations.
+    - apps/server/src/persistence/Sqlite.ts
+    # Fenced showInSidebar on ScheduledTask and ScheduledTaskUpsertInput.
+    - packages/contracts/src/scheduledTask.ts
+    # Fenced row field, column reads and writes, upsert default, and the launch opt-out.
+    - apps/server/src/scheduledTasks/ScheduledTaskService.ts
+    # Every upstream migration edits the registry; check none rebuilds scheduled_tasks, which would drop the column.
+    - apps/server/src/persistence/Migrations.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
+    - apps/server/src/scheduledTasks/ScheduledTaskService.schedule.test.ts
+    - docs/user/thread-sidebar.md
+  verify:
+    - apps/web/src/__fork_guards__/forkAutomationRunsInSidebar.test.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
+    - apps/server/src/scheduledTasks/ScheduledTaskService.schedule.test.ts
 
 - id: fork-scheduled-page
   intent: >

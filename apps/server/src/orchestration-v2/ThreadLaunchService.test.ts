@@ -327,9 +327,15 @@ function launchInput(input: {
 }
 
 it.effect.each(
-  (["new", "existing"] as const).flatMap((target) =>
-    (["user", "agent"] as const).map((createdBy) => ({ target, createdBy })),
-  ),
+  (
+    [
+      "new",
+      "existing",
+      /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+      "listed",
+      /* fork:end fork-automation-runs-in-sidebar */
+    ] as const
+  ).flatMap((target) => (["user", "agent"] as const).map((createdBy) => ({ target, createdBy }))),
 )(
   "attributes $createdBy-configured automations in $target threads without changing their prompt",
   ({ target, createdBy }) => {
@@ -369,6 +375,9 @@ it.effect.each(
         interactionMode: "default",
         createdBy,
         creationSource: createdBy === "agent" ? "mcp" : "web",
+        /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+        ...(target === "listed" ? { showInSidebar: true } : {}),
+        /* fork:end fork-automation-runs-in-sidebar */
       });
       const result = yield* tasks.runNow({ id: task.id });
       assert.equal(result.task.lastRunStatus, "succeeded");

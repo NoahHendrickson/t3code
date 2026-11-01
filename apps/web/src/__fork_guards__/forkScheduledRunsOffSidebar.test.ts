@@ -115,7 +115,7 @@ describe("fork guard: fork-scheduled-runs-off-sidebar", () => {
   it("keeps the server stamping the launching task on the thread shell", () => {
     // AppThread, the thread shell, and the thread.create command.
     expect(contracts.match(/fork:begin fork-scheduled-runs-off-sidebar/g)?.length).toBe(3);
-    expect(launch).toContain("scheduledTaskId: input.initialMessage.scheduledTaskId");
+    expect(launch).toContain("{ scheduledTaskId: input.scheduledTaskId }");
     expect(projectionStore).toContain("scheduledTaskId: projection.thread.scheduledTaskId");
     expect(projectionStore).toContain("scheduledTaskId: input.state.thread.scheduledTaskId");
   });

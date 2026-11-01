@@ -223,6 +223,9 @@ interface ScheduledTaskRow {
   readonly run_count: number;
   readonly webhook_token: string | null;
   readonly webhook_secret: string | null;
+  /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+  readonly fork_show_in_sidebar: number;
+  /* fork:end fork-automation-runs-in-sidebar */
 }
 
 interface WebhookDeliveryRow {
@@ -381,6 +384,9 @@ const decodeRow = Effect.fnUntraced(
       lastRunError: row.last_run_error,
       runCount: row.run_count,
       ...(webhook === undefined ? {} : { webhook }),
+      /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+      showInSidebar: row.fork_show_in_sidebar === 1,
+      /* fork:end fork-automation-runs-in-sidebar */
     });
   },
   (effect, row, _origin?) =>
@@ -517,7 +523,10 @@ export const layer = Layer.effect(
         last_run_error,
         run_count,
         webhook_token,
-        webhook_secret
+        webhook_secret,
+        -- fork:begin fork-automation-runs-in-sidebar
+        fork_show_in_sidebar
+        -- fork:end fork-automation-runs-in-sidebar
       FROM scheduled_tasks
       -- Not updated_at: toggles, runs and edits rewrite it, and clients render
       -- this order as-is, so rows would move under the pointer.
@@ -554,7 +563,10 @@ export const layer = Layer.effect(
         last_run_error,
         run_count,
         webhook_token,
-        webhook_secret
+        webhook_secret,
+        -- fork:begin fork-automation-runs-in-sidebar
+        fork_show_in_sidebar
+        -- fork:end fork-automation-runs-in-sidebar
       FROM scheduled_tasks
       WHERE task_id = ${id}
     `.pipe(NodeSqliteClient.readOnly);
@@ -629,7 +641,10 @@ export const layer = Layer.effect(
           last_run_error,
           run_count,
           webhook_token,
-          webhook_secret
+          webhook_secret,
+          -- fork:begin fork-automation-runs-in-sidebar
+          fork_show_in_sidebar
+          -- fork:end fork-automation-runs-in-sidebar
         )
         SELECT
           ${task.id},
@@ -653,7 +668,10 @@ export const layer = Layer.effect(
           ${task.lastRunError},
           ${task.runCount},
           ${webhook.token},
-          ${webhook.secret}
+          ${webhook.secret},
+          -- fork:begin fork-automation-runs-in-sidebar
+          ${task.showInSidebar === true ? 1 : 0}
+          -- fork:end fork-automation-runs-in-sidebar
         WHERE ${requireExisting ? 0 : 1} = 1
            OR EXISTS (SELECT 1 FROM scheduled_tasks WHERE task_id = ${task.id})
         ON CONFLICT (task_id)
@@ -680,7 +698,10 @@ export const layer = Layer.effect(
           webhook_secret = CASE
             WHEN ${webhook.secretChanged ? 1 : 0} = 1 THEN excluded.webhook_secret
             ELSE scheduled_tasks.webhook_secret
-          END
+          END,
+          -- fork:begin fork-automation-runs-in-sidebar
+          fork_show_in_sidebar = excluded.fork_show_in_sidebar
+          -- fork:end fork-automation-runs-in-sidebar
         RETURNING task_id
       `.pipe(
         Effect.mapError((cause) =>
@@ -933,6 +954,9 @@ export const layer = Layer.effect(
                     },
                     createdBy: active.createdBy,
                     creationSource: active.creationSource,
+                    /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+                    ...(active.showInSidebar === true ? {} : { scheduledTaskId: active.id }),
+                    /* fork:end fork-automation-runs-in-sidebar */
                   })
                   .pipe(Effect.map((launched) => launched.threadId)),
               )
@@ -1321,6 +1345,9 @@ export const layer = Layer.effect(
         lastRunStatus: existingTask?.lastRunStatus ?? "never",
         lastRunError: existingTask?.lastRunError ?? null,
         runCount: existingTask?.runCount ?? 0,
+        /* fork:begin fork-automation-runs-in-sidebar — see .fork/customizations.yaml#fork-automation-runs-in-sidebar */
+        showInSidebar: input.showInSidebar ?? existingTask?.showInSidebar ?? false,
+        /* fork:end fork-automation-runs-in-sidebar */
       };
       /* fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation */
       yield* saveTask(task, input.requireExisting === true, webhook).pipe(
