@@ -569,51 +569,34 @@
   --fork-timeline-cutoff-tail-end: calc(
     var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp)
   );
-  -webkit-mask-image:
-    linear-gradient(
-      to bottom,
-      transparent 0%,
-      rgb(0 0 0 / 10%) 10%,
-      rgb(0 0 0 / 30%) 24%,
-      rgb(0 0 0 / 58%) 42%,
-      rgb(0 0 0 / 82%) 62%,
-      rgb(0 0 0 / 96%) 82%,
-      black 100%
-    ),
-    linear-gradient(
-      to top,
-      transparent 0,
-      transparent var(--fork-timeline-cutoff-inset),
-      rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
-      rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
-      rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
-      black var(--fork-timeline-cutoff-tail-end)
-    );
+  /* Named so the Glass scroll pill's hole (fork-glass-scroll-pill) can restate
+     the stack with a third layer: mask layers cannot be composed across rules. */
+  --fork-timeline-top-mask: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 10%) 10%,
+    rgb(0 0 0 / 30%) 24%,
+    rgb(0 0 0 / 58%) 42%,
+    rgb(0 0 0 / 82%) 62%,
+    rgb(0 0 0 / 96%) 82%,
+    black 100%
+  );
+  --fork-timeline-cutoff-mask: linear-gradient(
+    to top,
+    transparent 0,
+    transparent var(--fork-timeline-cutoff-inset),
+    rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
+    rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
+    rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
+    black var(--fork-timeline-cutoff-tail-end)
+  );
+  -webkit-mask-image: var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask);
   -webkit-mask-position: top, bottom;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size:
     100% var(--fork-timeline-top-fade),
     100% calc(100% - var(--fork-timeline-top-fade));
-  mask-image:
-    linear-gradient(
-      to bottom,
-      transparent 0%,
-      rgb(0 0 0 / 10%) 10%,
-      rgb(0 0 0 / 30%) 24%,
-      rgb(0 0 0 / 58%) 42%,
-      rgb(0 0 0 / 82%) 62%,
-      rgb(0 0 0 / 96%) 82%,
-      black 100%
-    ),
-    linear-gradient(
-      to top,
-      transparent 0,
-      transparent var(--fork-timeline-cutoff-inset),
-      rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
-      rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
-      rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
-      black var(--fork-timeline-cutoff-tail-end)
-    );
+  mask-image: var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask);
   mask-position: top, bottom;
   mask-repeat: no-repeat;
   mask-size:

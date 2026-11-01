@@ -4393,9 +4393,10 @@
 
 - id: fork-glass-floor-color
   intent: >
-    Under Glass the opaque surface-glass overlays (the scroll-to-end pill
-    and its kin, which live inside #root and so cannot take the popup
-    cutout) stand on --fork-popup-glass-floor, the colour the sidebar panel
+    Under Glass the opaque surface-glass overlays (the thread hover card,
+    the PR button and their kin, which live inside #root and so cannot take
+    the popup cutout; the scroll-to-end pill has its own hole,
+    fork-glass-scroll-pill) stand on --fork-popup-glass-floor, the colour the sidebar panel
     reads on screen. Nothing can read that colour
     off the screen — it is the wallpaper drawn by macOS behind a transparent
     window, outside the page and outside capturePage — so the desktop main
@@ -4433,6 +4434,33 @@
     - apps/desktop/src/fork/ForkGlassState.ts
   verify:
     - apps/web/src/__fork_guards__/forkGlassFloorColor.test.ts
+
+- id: fork-glass-scroll-pill
+  intent: >
+    Under Glass the scroll-to-end pill wears the thread details popover's
+    recipe: the composer vessel's 6% wash, an 8% hairline and the popover's
+    soft drop shadow, straight on the stage. It is not opaque and does not
+    stand on the glass floor estimate, which is sampled beside the sidebar
+    and painted the pill in the wallpaper's average colour instead of the
+    stage behind it. Nothing in the transcript paints beneath it: the pill
+    lives inside #root, where the popup cutout cannot open, so the
+    transcript scroller cuts a pill-shaped hole at the pill's frame as a
+    third layer of the timeline cutoff mask. The pill's lane measures the
+    pill and writes its frame onto the scroller as custom properties while
+    it is shown; the mask rule is Glass-only, so other palettes ignore them.
+    The cutoff's two gradients are named custom properties so the hole rule
+    restates the stack without copying them.
+  tier: 4
+  files:
+    - apps/web/src/custom/forkGlassScrollPillHole.ts
+    - apps/web/src/theme.custom.palettes.css
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch:
+    # Fenced hook call and lane ref on the pill's wrapper.
+    - apps/web/src/components/chat/TimelineOverlays.tsx
+  verify:
+    - apps/web/src/__fork_guards__/forkGlassScrollPill.test.ts
 
 - id: fork-glass-popup-cutout
   intent: >
