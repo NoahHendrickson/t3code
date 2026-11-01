@@ -526,10 +526,8 @@ describe("fork guard: sidebar-v2-card-rows", () => {
     expect(header).toMatch(
       /props\.isFirst\s*\?\s*"mt-0"\s*:\s*props\.afterOpenSection\s*\?\s*SIDEBAR_V2_CARD_ALIGNMENT\.headerLead\s*:\s*SIDEBAR_V2_CARD_ALIGNMENT\.headerLeadCollapsed/u,
     );
-    // fork-spaces adds one more way a section is open: a space painted its
-    // rows. Cards painted still count first.
-    expect(sidebarV2).toMatch(
-      /previousSection !== undefined &&\s*\(previousSection\.threads\.length > 0 \|\|/u,
+    expect(sidebarV2).toContain(
+      "previousSection !== undefined && previousSection.threads.length > 0;",
     );
     expect(sidebarV2).toContain("afterOpenSection={afterOpenSection}");
     // Every margin here is only correct relative to the list gap it sits on,

@@ -6,7 +6,6 @@ import {
   SIDEBAR_V2_LIST_ANIMATION_EASING,
   SIDEBAR_V2_LIST_REMOVE_KEYFRAMES,
   sidebarV2ListAnimationDurationMs,
-  sidebarV2ListEnterExitTiming,
 } from "./sidebarV2ListAnimation";
 
 describe("sidebarV2ListAnimation", () => {
@@ -26,23 +25,5 @@ describe("sidebarV2ListAnimation", () => {
     const matchMedia = vi.fn().mockReturnValue({ matches: true });
     expect(sidebarV2ListAnimationDurationMs(matchMedia)).toBe(0);
     expect(matchMedia).toHaveBeenCalledWith("(prefers-reduced-motion: reduce)");
-  });
-
-  it("keeps every list's enter and exit timing outside spaces", () => {
-    for (const action of ["add", "remove"] as const) {
-      expect(sidebarV2ListEnterExitTiming(action, 150, false)).toEqual({
-        duration: 150,
-        easing: SIDEBAR_V2_LIST_ANIMATION_EASING,
-      });
-    }
-  });
-
-  it("in spaces, leaves at once and arrives after half the slide", () => {
-    expect(sidebarV2ListEnterExitTiming("remove", 150, true)).toMatchObject({ duration: 0 });
-    expect(sidebarV2ListEnterExitTiming("add", 150, true)).toMatchObject({
-      duration: 150,
-      delay: 75,
-      fill: "backwards",
-    });
   });
 });

@@ -29,13 +29,6 @@ describe("validateScheduledPageSearch", () => {
     expect(validateScheduledPageSearch({ view: "runs" })).toEqual({ view: "runs" });
     expect(validateScheduledPageSearch({ view: "runs", task: "t1" })).toEqual({ task: "t1" });
   });
-
-  it("keeps a space filter and drops an empty one", () => {
-    expect(validateScheduledPageSearch({ space: "repo:github.com/a/b" })).toEqual({
-      space: "repo:github.com/a/b",
-    });
-    expect(validateScheduledPageSearch({ space: "" })).toEqual({});
-  });
 });
 
 describe("matchesTaskQuery", () => {

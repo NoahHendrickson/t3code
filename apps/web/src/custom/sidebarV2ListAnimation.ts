@@ -20,13 +20,6 @@
  * below slid up unevenly. Sidebar.tsx now reads the keep off a deferred route
  * key, so the card leaves in the quiet re-render after that frame and the
  * ordinary fade and FLIP run clean.
- *
- * Spaces (fork-spaces) stack rows under a space's cards (PRs, Changelog,
- * Automations), so the rows that slide on a fold or unfold pass over the
- * cards' own spot. A fading card under a sliding row reads as two lines of
- * text on top of each other. In a list of spaces, then, what leaves goes at
- * once and the rest slide into clear space, and what arrives waits half the
- * slide before fading in, by when the rows below have mostly moved off it.
  */
 import { getTransitionSizes, type AutoAnimationPlugin } from "@formkit/auto-animate";
 
@@ -57,41 +50,16 @@ export function sidebarV2ListAnimationDurationMs(
   return SIDEBAR_V2_LIST_ANIMATION_DURATION_MS;
 }
 
-/** True for an item in a list that draws spaces (fork-spaces). */
-function isSidebarV2SpaceListItem(el: Element): boolean {
-  return el.parentElement?.getAttribute("data-fork-grouping") === "spaces";
-}
-
-/** Timing for an add or remove: the list's own, or the spaces one above. */
-export function sidebarV2ListEnterExitTiming(
-  action: "add" | "remove",
-  duration: number,
-  inSpaces: boolean,
-): KeyframeEffectOptions {
-  const easing = SIDEBAR_V2_LIST_ANIMATION_EASING;
-  if (!inSpaces) return { duration, easing };
-  if (action === "remove") return { duration: 0, easing };
-  return { duration, easing, delay: duration / 2, fill: "backwards" };
-}
-
 export const sidebarV2ListAnimation: AutoAnimationPlugin = (el, action, first, second) => {
   const duration = sidebarV2ListAnimationDurationMs();
   const easing = SIDEBAR_V2_LIST_ANIMATION_EASING;
 
   if (action === "add") {
-    return new KeyframeEffect(
-      el,
-      [...SIDEBAR_V2_LIST_ADD_KEYFRAMES],
-      sidebarV2ListEnterExitTiming("add", duration, isSidebarV2SpaceListItem(el)),
-    );
+    return new KeyframeEffect(el, [...SIDEBAR_V2_LIST_ADD_KEYFRAMES], { duration, easing });
   }
 
   if (action === "remove") {
-    return new KeyframeEffect(
-      el,
-      [...SIDEBAR_V2_LIST_REMOVE_KEYFRAMES],
-      sidebarV2ListEnterExitTiming("remove", duration, isSidebarV2SpaceListItem(el)),
-    );
+    return new KeyframeEffect(el, [...SIDEBAR_V2_LIST_REMOVE_KEYFRAMES], { duration, easing });
   }
 
   // Runtime passes (oldCoords, newCoords) for remain — see AutoAnimate's

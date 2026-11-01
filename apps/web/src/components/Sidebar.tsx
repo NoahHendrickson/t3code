@@ -356,18 +356,6 @@ import {
   useSidebarV2Grouping,
 } from "~/custom/sidebarV2ProjectGrouping";
 /* fork:end sidebar-v2-project-grouping */
-/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-import {
-  SidebarV2SpaceCaret,
-  SidebarV2SpaceCollapsedSummary,
-  SidebarV2SpaceLinkRows,
-  SidebarV2SpaceThreadsRow,
-} from "~/custom/spaces/SidebarV2SpaceRows";
-import { ProviderMark } from "~/custom/icons/ProviderMarks";
-import { useSpaceSections, useSpaceThreadsExpanded } from "~/custom/spaces/spaceSidebar";
-import { SidebarV2SpaceHeader } from "~/custom/spaces/SidebarV2SpaceHeader";
-import { isSpaceDraft, useHomeDraftIds, useOpenSpaceHome } from "~/custom/spaces/spaceHome";
-/* fork:end fork-spaces */
 /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
 import { SidebarV2StatusSectionHeader } from "~/custom/SidebarV2StatusSectionHeader";
 import { resolveSidebarV2CardStatus } from "~/custom/sidebarV2CardStatus";
@@ -1024,11 +1012,6 @@ type SidebarThreadRowProps = {
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   projectTitleHidden?: boolean;
   /* fork:end sidebar-v2-project-grouping */
-  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-     Under a space the card leads with its provider, in the Threads row's
-     icon column. */
-  spaceProviderMark?: boolean;
-  /* fork:end fork-spaces */
   /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
   // Card variant only: draw the title line alone, with the repo line reduced
   // to marks on it. The hover card carries the names.
@@ -1949,20 +1932,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                   <SidebarV2CompactCardLead project={props.project} />
                   {title}
                 </span>
-              ) : /* fork:end sidebar-v2-compact-cards */
-              /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-              props.spaceProviderMark === true ? (
-                <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                  <span className="flex size-4 shrink-0 items-center justify-center">
-                    <ProviderMark
-                      driverKind={providerEntry?.driverKind ?? modelInstanceId}
-                      displayName={providerEntry?.displayName ?? modelInstanceId}
-                    />
-                  </span>
-                  {title}
-                </span>
               ) : (
-                /* fork:end fork-spaces */
+                /* fork:end sidebar-v2-compact-cards */
                 title
               )}
               {isRegeneratingTitle ? (
@@ -2268,13 +2239,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const groupByProject = grouping === "project";
   const [collapsedProjectKeys, toggleProjectGroupCollapsed] = useSidebarV2CollapsedProjects();
   /* fork:end sidebar-v2-project-grouping */
-  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-     Spaces are project sections with rows under each header. */
-  const spacesGrouped = grouping === "spaces";
-  const [expandedSpaceThreads, toggleSpaceThreadsExpanded] = useSpaceThreadsExpanded();
-  const openSpaceHome = useOpenSpaceHome();
-  const homeDraftIds = useHomeDraftIds();
-  /* fork:end fork-spaces */
   /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
   const statusGrouped = grouping === "status";
   const [collapsedStatusSections, toggleStatusSectionCollapsed] =
@@ -2285,13 +2249,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   // Only status grouping reads it; the other modes select a stable empty
   // record so a visit cannot re-render and re-section them.
   const threadLastVisitedAtById = useUiStateStore((store) =>
-    statusGrouped ||
-    /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-       A space's Threads row reads it too, for its unread dot. */
-    spacesGrouped
-      ? /* fork:end fork-spaces */
-        store.threadLastVisitedAtById
-      : EMPTY_LAST_VISITED_AT_BY_ID,
+    statusGrouped ? store.threadLastVisitedAtById : EMPTY_LAST_VISITED_AT_BY_ID,
   );
   /* fork:end sidebar-v2-status-grouping */
   /* fork:begin sidebar-v2-compact-cards — see .fork/customizations.yaml#sidebar-v2-compact-cards */
@@ -2893,31 +2851,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     }
     completedHolds.reset();
     /* fork:end sidebar-v2-status-grouping */
-    /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-       Spaces section by project too, and for one project as well: a space's
-       rows lead somewhere even when its header repeats the only name. */
-    if (spacesGrouped) {
-      const homeDrafts = new Set(Object.values(homeDraftIds));
-      return buildActiveThreadSections({
-        // A space's unsent draft is its Home, reached from its name and
-        // tabs, so it is not one of its threads. Older drafts the Home has
-        // moved on from stay listed, or nothing would lead back to them.
-        threads: activeThreads.filter(
-          (thread) =>
-            !homeDrafts.has(
-              draftIdByThreadKey.get(
-                scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
-              ) ?? "",
-            ),
-        ),
-        // Every space in scope, threads or not.
-        projectGroups: scopedProjectGroups.length === 0 ? projectGroups : scopedProjectGroups,
-        projectRefIndex,
-        grouped: true,
-        keepEmptyGroups: true,
-      });
-    }
-    /* fork:end fork-spaces */
     return buildActiveThreadSections({
       threads: activeThreads,
       projectGroups,
@@ -2930,11 +2863,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     projectGroups,
     projectRefIndex,
     visibleProjectCount,
-    /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-    homeDraftIds,
-    scopedProjectGroups,
-    spacesGrouped,
-    /* fork:end fork-spaces */
     /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
     draftIdByThreadKey,
     snoozeNow,
@@ -2976,18 +2904,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     [keepCollapsedPinnedRow, pinnedCollapsed, pinnedThreads],
   );
   /* fork:end sidebar-v2-status-grouping */
-  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-     One model per space: its group, what its Threads row and folded header
-     report (from the cards' own status ladder and PR links), and whether
-     its cards are folded behind the Threads row. */
-  const spaceSections = useSpaceSections({
-    enabled: spacesGrouped,
-    sections: activeSections,
-    groups: projectGroups,
-    expanded: expandedSpaceThreads,
-    now: snoozeNow,
-  });
-  /* fork:end fork-spaces */
   const visibleActiveSections = useMemo(
     () =>
       activeSections.map((section) => {
@@ -3002,21 +2918,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           collapsed,
           threads: threadsVisibleInProjectSection({
             threads: section.threads,
-            collapsed:
-              collapsed ||
-              /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                 A space also folds its cards behind its Threads row. The
-                 header still reads `collapsed` alone. */
-              (section.kind === "project" &&
-                section.header !== null &&
-                spaceSections.get(section.header.projectKey)?.threadsFolded === true),
-            /* fork:end fork-spaces */
+            collapsed,
             keepThread: (thread) =>
-              /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                 A space's open thread is already its tab, so a folded space
-                 does not keep its card. */
-              !spacesGrouped &&
-              /* fork:end fork-spaces */
               keptRouteThreadKey !== null &&
               scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)) ===
                 keptRouteThreadKey,
@@ -3027,10 +2930,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       activeSections,
       collapsedProjectKeys,
       keptRouteThreadKey,
-      /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-      spaceSections,
-      spacesGrouped,
-      /* fork:end fork-spaces */
       /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
       collapsedStatusSections,
       /* fork:end sidebar-v2-status-grouping */
@@ -4640,10 +4539,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   // take hold of, and a scoped list shows a subset of the order being edited.
   const projectReorderEnabled =
     sidebarProjectSortOrder === "manual" &&
-    (groupByProject ||
-      /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-      spacesGrouped) &&
-    /* fork:end fork-spaces */
+    groupByProject &&
     scopedProjectKeys === null &&
     projectGroups.length > 1;
   const projectHeaderSortableKeys = useMemo(
@@ -4893,10 +4789,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                   /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
                   {...splitDropHandlers}
                   /* fork:end fork-split-threads */
-                  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                     The list's grouping, for the spaces' styles and list animation. */
-                  data-fork-grouping={grouping}
-                  /* fork:end fork-spaces */
                 >
                   {/* fork:end sidebar-v2-card-rows */}
                   {(() => {
@@ -5034,9 +4926,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                           // dropped: assistive tech has no "two rows up".
                           projectTitleHidden={underProjectHeader}
                           /* fork:end sidebar-v2-project-grouping */
-                          /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                          spaceProviderMark={spacesGrouped && underProjectHeader}
-                          /* fork:end fork-spaces */
                           providerEntryByInstanceId={
                             providerEntriesByEnvironment.get(thread.environmentId) ??
                             EMPTY_PROVIDER_ENTRIES
@@ -5087,13 +4976,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                         <SidebarSplitPairRow
                           key={splitRow.key}
                           projectSection={options.underProjectHeader === true}
-                          shape={threadRowShape({
-                            variant:
-                              section === "active" || section === "pinned" || section === "working"
-                                ? "card"
-                                : "slim",
-                            compact: compactCards,
-                          })}
                         >
                           {[splitRow.left, splitRow.right].map((card) =>
                             renderOneThreadRow(
@@ -5256,21 +5138,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                         // open — it painted a card.
                         const previousSection = listSections[sectionIndex - 1];
                         const afterOpenSection =
-                          previousSection !== undefined &&
-                          (previousSection.threads.length > 0 ||
-                            /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                               An open space painted its rows. */
-                            (previousSection.kind === "project" &&
-                              previousSection.header !== null &&
-                              spaceSections.has(previousSection.header.projectKey) &&
-                              !previousSection.collapsed));
-                        /* fork:end fork-spaces */
-                        /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                        const spaceSection =
-                          header === null ? undefined : spaceSections.get(header.projectKey);
-                        // An open space draws its rows around its cards.
-                        const space = section.collapsed ? undefined : spaceSection?.group;
-                        /* fork:end fork-spaces */
+                          previousSection !== undefined && previousSection.threads.length > 0;
                         /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
                         if (section.kind === "status") {
                           // Below a Drafts or Pinned header, the first status
@@ -5284,162 +5152,69 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                         return [
                           ...(header
                             ? [
-                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                                   A space's header is its own component; the
-                                   unresolved section, no space, draws one too
-                                   so the list reads alike, without a Home. */
-                                spacesGrouped ? (
-                                  <SidebarV2SpaceHeader
-                                    key={`project-group-header:${header.projectKey}`}
-                                    label={header.displayName}
-                                    projectKey={header.projectKey}
-                                    reorderable={
-                                      projectReorderEnabled && spaceSection !== undefined
-                                    }
-                                    isFirst={sectionIndex === 0}
-                                    afterOpenSection={afterOpenSection}
-                                    collapsed={section.collapsed}
-                                    onToggleCollapsed={() =>
-                                      toggleProjectGroupCollapsed(header.projectKey)
-                                    }
-                                    project={spaceSection?.group ?? null}
-                                    // Its Home is its draft, lit while open.
-                                    active={
-                                      spaceSection !== undefined &&
-                                      !newThreadContext.activeThread &&
-                                      isSpaceDraft(
-                                        spaceSection.group,
-                                        newThreadContext.activeDraftThread,
-                                      )
-                                    }
-                                    onOpen={
-                                      spaceSection === undefined
-                                        ? null
-                                        : () => {
-                                            if (isMobile) setOpenMobile(false);
-                                            openSpaceHome({
-                                              memberProjectRefs:
-                                                spaceSection.group.memberProjectRefs,
-                                              representative: spaceSection.group,
-                                            });
-                                          }
-                                    }
-                                    summary={
-                                      section.collapsed && spaceSection !== undefined ? (
-                                        <SidebarV2SpaceCollapsedSummary
-                                          spaceLabel={spaceSection.group.displayName}
-                                          summary={spaceSection.summary}
-                                          openPullRequests={spaceSection.openPullRequests}
-                                        />
-                                      ) : null
-                                    }
-                                    {...(spaceSection === undefined
-                                      ? {}
-                                      : {
-                                          onNewThread: () =>
-                                            handleNewThreadInProject(header.projectKey),
-                                          onProjectSettings: () =>
-                                            openProjectSettings(spaceSection.group),
-                                          settleAllCount:
-                                            settleAllKeysByProjectKey.get(header.projectKey)
-                                              ?.length ?? 0,
-                                          onSettleAllThreads: () =>
-                                            settleAllThreadsInProject(header.projectKey),
-                                        })}
-                                  />
-                                ) : (
-                                  /* fork:end fork-spaces */
-                                  <SidebarV2ProjectGroupHeader
-                                    key={`project-group-header:${header.projectKey}`}
-                                    label={header.displayName}
-                                    projectKey={header.projectKey}
-                                    reorderable={
-                                      projectReorderEnabled &&
-                                      header.projectKey !== UNGROUPED_PROJECT_KEY
-                                    }
-                                    isFirst={sectionIndex === 0}
-                                    afterOpenSection={afterOpenSection}
-                                    collapsed={section.collapsed}
-                                    onToggleCollapsed={() =>
-                                      toggleProjectGroupCollapsed(header.projectKey)
-                                    }
-                                    // The unresolved-project section names no project,
-                                    // so there is nowhere for its plus to start a
-                                    // thread. Keyed off the bucket's own identity
-                                    // rather than off its label being null: the label
-                                    // is a rendering detail that happens to correlate
-                                    // today, and one signal carrying two meanings is
-                                    // how it stops correlating later.
-                                    onNewThread={
-                                      header.projectKey === UNGROUPED_PROJECT_KEY
-                                        ? undefined
-                                        : () => handleNewThreadInProject(header.projectKey)
-                                    }
-                                    // Same door as the filter menu's per-project
-                                    // overflow: the project settings page.
-                                    onProjectSettings={
-                                      header.projectKey === UNGROUPED_PROJECT_KEY
-                                        ? undefined
-                                        : () => {
-                                            const group = projectGroups.find(
-                                              (candidate) =>
-                                                candidate.projectKey === header.projectKey,
-                                            );
-                                            if (group) openProjectSettings(group);
-                                          }
-                                    }
-                                    // Settle every active thread in the section —
-                                    // the multi-select "Settle (N)" path, addressed
-                                    // by project instead of by selection. Counted
-                                    // from the unfiltered section so a collapsed
-                                    // group still settles what it hides; drafts,
-                                    // already-settled rows and environments without
-                                    // settlement are left out, and the count names
-                                    // exactly what the click will touch.
-                                    settleAllCount={
-                                      settleAllKeysByProjectKey.get(header.projectKey)?.length ?? 0
-                                    }
-                                    onSettleAllThreads={
-                                      header.projectKey === UNGROUPED_PROJECT_KEY
-                                        ? undefined
-                                        : () => settleAllThreadsInProject(header.projectKey)
-                                    }
-                                  />
-                                ),
-                              ]
-                            : []),
-                          /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                          ...(space
-                            ? [
-                                <SidebarV2SpaceThreadsRow
-                                  key={`space-threads:${space.projectKey}`}
-                                  spaceLabel={space.displayName}
-                                  summary={spaceSection?.summary ?? null}
-                                  compact={compactCards}
-                                  expanded={expandedSpaceThreads.has(space.projectKey)}
-                                  onToggle={() => toggleSpaceThreadsExpanded(space.projectKey)}
+                                <SidebarV2ProjectGroupHeader
+                                  key={`project-group-header:${header.projectKey}`}
+                                  label={header.displayName}
+                                  projectKey={header.projectKey}
+                                  reorderable={
+                                    projectReorderEnabled &&
+                                    header.projectKey !== UNGROUPED_PROJECT_KEY
+                                  }
+                                  isFirst={sectionIndex === 0}
+                                  afterOpenSection={afterOpenSection}
+                                  collapsed={section.collapsed}
+                                  onToggleCollapsed={() =>
+                                    toggleProjectGroupCollapsed(header.projectKey)
+                                  }
+                                  // The unresolved-project section names no project,
+                                  // so there is nowhere for its plus to start a
+                                  // thread. Keyed off the bucket's own identity
+                                  // rather than off its label being null: the label
+                                  // is a rendering detail that happens to correlate
+                                  // today, and one signal carrying two meanings is
+                                  // how it stops correlating later.
+                                  onNewThread={
+                                    header.projectKey === UNGROUPED_PROJECT_KEY
+                                      ? undefined
+                                      : () => handleNewThreadInProject(header.projectKey)
+                                  }
+                                  // Same door as the filter menu's per-project
+                                  // overflow: the project settings page.
+                                  onProjectSettings={
+                                    header.projectKey === UNGROUPED_PROJECT_KEY
+                                      ? undefined
+                                      : () => {
+                                          const group = projectGroups.find(
+                                            (candidate) =>
+                                              candidate.projectKey === header.projectKey,
+                                          );
+                                          if (group) openProjectSettings(group);
+                                        }
+                                  }
+                                  // Settle every active thread in the section —
+                                  // the multi-select "Settle (N)" path, addressed
+                                  // by project instead of by selection. Counted
+                                  // from the unfiltered section so a collapsed
+                                  // group still settles what it hides; drafts,
+                                  // already-settled rows and environments without
+                                  // settlement are left out, and the count names
+                                  // exactly what the click will touch.
+                                  settleAllCount={
+                                    settleAllKeysByProjectKey.get(header.projectKey)?.length ?? 0
+                                  }
+                                  onSettleAllThreads={
+                                    header.projectKey === UNGROUPED_PROJECT_KEY
+                                      ? undefined
+                                      : () => settleAllThreadsInProject(header.projectKey)
+                                  }
                                 />,
                               ]
                             : []),
-                          /* fork:end fork-spaces */
                           ...section.threads.map((thread) =>
                             renderThreadRow(thread, "active", {
                               underProjectHeader: header !== null,
                             }),
                           ),
-                          /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                          ...(space
-                            ? [
-                                <SidebarV2SpaceLinkRows
-                                  key={`space-links:${space.projectKey}`}
-                                  spaceKey={space.projectKey}
-                                  spaceLabel={space.displayName}
-                                  representative={space}
-                                  compact={compactCards}
-                                />,
-                              ]
-                            : []),
-                          /* fork:end fork-spaces */
                         ];
                       }),
                     );
@@ -5522,52 +5297,27 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             )}
                             /* fork:end sidebar-v2-card-rows */
                           >
-                            <span
-                              className={cn(
-                                "text-xs font-medium text-info-foreground",
-                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                                   Under spaces the shelf reads like Settled. */
-                                spacesGrouped && "text-muted-foreground/50",
-                                /* fork:end fork-spaces */
-                              )}
-                            >
+                            <span className="text-xs font-medium text-info-foreground">
                               {snoozedShelfExpanded
                                 ? "Snoozed"
                                 : `Snoozed (${snoozedThreads.length})`}
                             </span>
-                            <span
+                            <span className="h-px flex-1 bg-info/20" />
+                            <ChevronDownIcon
+                              aria-hidden
                               className={cn(
-                                "h-px flex-1 bg-info/20",
-                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                                spacesGrouped && "bg-transparent",
-                                /* fork:end fork-spaces */
+                                // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                                // On the trailing column's axis with nothing owed:
+                                // px-2.5 over the list's 8px inset is 18, and a
+                                // flush 12px chevron centres 6px further — the
+                                // column's 24. The offset constant carries the
+                                // derivation.
+                                // fork:end sidebar-v2-row-action-hit-area
+                                SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
+                                "size-3 text-info-foreground transition-transform",
+                                snoozedShelfExpanded && "rotate-180",
                               )}
                             />
-                            {/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                                Spaces draw their own filled caret in place of the chevron. */}
-                            {spacesGrouped ? (
-                              <SidebarV2SpaceCaret
-                                open={snoozedShelfExpanded}
-                                className="text-muted-foreground/50"
-                              />
-                            ) : (
-                              /* fork:end fork-spaces */
-                              <ChevronDownIcon
-                                aria-hidden
-                                className={cn(
-                                  // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
-                                  // On the trailing column's axis with nothing owed:
-                                  // px-2.5 over the list's 8px inset is 18, and a
-                                  // flush 12px chevron centres 6px further — the
-                                  // column's 24. The offset constant carries the
-                                  // derivation.
-                                  // fork:end sidebar-v2-row-action-hit-area
-                                  SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
-                                  "size-3 text-info-foreground transition-transform",
-                                  snoozedShelfExpanded && "rotate-180",
-                                )}
-                              />
-                            )}
                           </button>
                         </li>,
                       );
@@ -5625,35 +5375,19 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                               {settledShelfExpanded ? "Settled" : `Settled (${settledCount})`}
                             </span>
                             {/* fork:begin sidebar-v2-card-rows — see .fork/customizations.yaml#sidebar-v2-card-rows */}
-                            <span
+                            <span className="h-px flex-1 bg-(--fork-sidebar-rule)" />
+                            {/* fork:end sidebar-v2-card-rows */}
+                            <ChevronDownIcon
+                              aria-hidden
                               className={cn(
-                                "h-px flex-1 bg-(--fork-sidebar-rule)",
-                                /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-                                spacesGrouped && "bg-transparent",
-                                /* fork:end fork-spaces */
+                                // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
+                                // Same derivation as the snoozed shelf above.
+                                // fork:end sidebar-v2-row-action-hit-area
+                                SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
+                                "size-3 text-muted-foreground/50 transition-transform",
+                                settledShelfExpanded && "rotate-180",
                               )}
                             />
-                            {/* fork:end sidebar-v2-card-rows */}
-                            {/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */}
-                            {spacesGrouped ? (
-                              <SidebarV2SpaceCaret
-                                open={settledShelfExpanded}
-                                className="text-muted-foreground/50"
-                              />
-                            ) : (
-                              /* fork:end fork-spaces */
-                              <ChevronDownIcon
-                                aria-hidden
-                                className={cn(
-                                  // fork:begin sidebar-v2-row-action-hit-area — see .fork/customizations.yaml#sidebar-v2-row-action-hit-area
-                                  // Same derivation as the snoozed shelf above.
-                                  // fork:end sidebar-v2-row-action-hit-area
-                                  SIDEBAR_V2_TRAILING_OFFSET.shelfChevron,
-                                  "size-3 text-muted-foreground/50 transition-transform",
-                                  settledShelfExpanded && "rotate-180",
-                                )}
-                              />
-                            )}
                           </button>
                         </li>,
                       );

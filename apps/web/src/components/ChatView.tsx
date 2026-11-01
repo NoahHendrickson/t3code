@@ -286,10 +286,6 @@ import { ProviderSubagentBar } from "./chat/ProviderSubagentBar";
 import { getTriggerDisplayModelName } from "./chat/providerIconUtils";
 import { resolveScrollToEndClearance } from "./composerFooterLayout";
 import { ChatHeader } from "./chat/ChatHeader";
-/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */
-import { SpaceDraftOverview } from "~/custom/spaces/SpaceOverview";
-import { SpaceTabRow, useSpaceTabsEnabled } from "~/custom/spaces/SpaceThreadTabs";
-/* fork:end fork-spaces */
 import { useRemoteOpenState } from "~/remoteOpen";
 import { shouldShowOpenInPicker } from "./chat/OpenInPicker.logic";
 import { useOpenFavoriteEditorShortcut } from "./chat/OpenInPickerShortcut";
@@ -1631,12 +1627,6 @@ export default function ChatView(props: ChatViewProps) {
     backgroundSubmissionPending,
     hasWorktreeSetupCard: worktreeSetup !== null,
   });
-  /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-     Under Spaces a project's empty draft is the space's Home. */
-  const forkSpacesOn = useSpaceTabsEnabled(activeProject ?? null);
-  const forkSpaceHome = forkSpacesOn && isDraftHeroState;
-  const forkSpaceTabRow = forkSpacesOn && !splitPane.split && !splitPane.floating;
-  /* fork:end fork-spaces */
   const {
     transitionGroupRef: draftHeroTransitionGroupRef,
     composerAnchorRef: draftHeroComposerAnchorRef,
@@ -3572,23 +3562,6 @@ export default function ChatView(props: ChatViewProps) {
         data-chat-column
         inert={rightPanelMaximized}
       >
-        {/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-            A space's tabs, on a row of their own above the header. A split
-            draws one row over both panes (SplitThreadPanes) instead, and a
-            floating window keeps its own header. */}
-        {forkSpaceTabRow && activeProject ? (
-          <SpaceTabRow
-            project={activeProject}
-            selectedKeys={isServerThread && activeThreadKey !== null ? [activeThreadKey] : []}
-            homeActive={!isServerThread}
-            className={cn(
-              "px-3 sm:px-5",
-              isElectron && "drag-region",
-              splitPane.leading && COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
-            )}
-          />
-        ) : null}
-        {/* fork:end fork-spaces */}
         <header
           ref={threadPanelPopoverAnchorRef}
           data-chat-header
@@ -3811,11 +3784,6 @@ export default function ChatView(props: ChatViewProps) {
                  overlay, folds the prompt and lifts the floor off it. */
               data-draft-hero={isDraftHeroState || undefined}
               /* fork:end fork-new-agent-draft */
-              /* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces
-                 A space's empty draft is its Home: the overlay scrolls, with
-                 the space's overview under the composer (theme.custom.css). */
-              data-fork-space-home={forkSpaceHome || undefined}
-              /* fork:end fork-spaces */
               /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
                  One docked className: theme.custom.css centres the overlay off the
                  data-draft-hero stamp, so the layout mode has a single owner. Upstream
@@ -4103,13 +4071,6 @@ export default function ChatView(props: ChatViewProps) {
                   </div>
                 </div>
               </div>
-              {/* fork:begin fork-spaces — see .fork/customizations.yaml#fork-spaces */}
-              {forkSpaceHome && activeProjectRef ? (
-                <div className="pointer-events-auto mx-auto w-full max-w-(--chat-content-max-width) px-4 pb-10 sm:px-6">
-                  <SpaceDraftOverview project={activeProjectRef} />
-                </div>
-              ) : null}
-              {/* fork:end fork-spaces */}
             </div>
 
             {canOperatePreview && activeThreadRef && activeEnvironmentServerBrowser ? (

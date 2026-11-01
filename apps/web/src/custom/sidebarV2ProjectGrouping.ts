@@ -31,7 +31,6 @@ import { useLocalStorage } from "~/hooks/useLocalStorage";
 
 const SIDEBAR_V2_GROUP_BY_PROJECT_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-project:v1";
 const SIDEBAR_V2_GROUP_BY_STATUS_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-status:v1";
-const SIDEBAR_V2_GROUP_BY_SPACE_STORAGE_KEY = "t3code:fork:sidebar-v2-group-by-space:v1";
 const SIDEBAR_V2_COLLAPSED_PROJECTS_STORAGE_KEY = "t3code:fork:sidebar-v2-collapsed-projects:v1";
 
 /** Threads whose project no longer resolves to a group — a just-deleted
@@ -46,11 +45,11 @@ const CollapsedKeys = Schema.Array(Schema.String);
 const EMPTY_COLLAPSED_KEYS: readonly string[] = [];
 
 /** How the active cards are sectioned: one flat run, one section per project,
-    one per status (`sidebar-v2-status-grouping`), or one space per project
-    (`fork-spaces`). One value, so the groupings cannot both be on. It is
-    still stored as one boolean per switch, so preferences saved before the
-    modes merged survive; project wins if several were ever stored on. */
-export type SidebarV2Grouping = "none" | "project" | "status" | "spaces";
+    or one per status (`sidebar-v2-status-grouping`). One value, so the two
+    groupings cannot both be on. It is still stored as the two booleans each
+    switch shipped with, so preferences saved before the modes merged
+    survive; project wins if both were ever stored on. */
+export type SidebarV2Grouping = "none" | "project" | "status";
 
 export function useSidebarV2Grouping(): readonly [
   SidebarV2Grouping,
@@ -66,25 +65,13 @@ export function useSidebarV2Grouping(): readonly [
     false,
     Schema.Boolean,
   );
-  const [bySpace, setBySpace] = useLocalStorage(
-    SIDEBAR_V2_GROUP_BY_SPACE_STORAGE_KEY,
-    false,
-    Schema.Boolean,
-  );
-  const grouping: SidebarV2Grouping = byProject
-    ? "project"
-    : byStatus
-      ? "status"
-      : bySpace
-        ? "spaces"
-        : "none";
+  const grouping: SidebarV2Grouping = byProject ? "project" : byStatus ? "status" : "none";
   const setGrouping = useCallback(
     (next: SidebarV2Grouping) => {
       setByProject(next === "project");
       setByStatus(next === "status");
-      setBySpace(next === "spaces");
     },
-    [setByProject, setBySpace, setByStatus],
+    [setByProject, setByStatus],
   );
   return [grouping, setGrouping];
 }
@@ -214,9 +201,6 @@ export function buildActiveThreadSections<
   readonly projectGroups: readonly TProject[];
   readonly projectRefIndex: ReadonlyMap<string, string>;
   readonly grouped: boolean;
-  /** Spaces (fork-spaces): a project with no active threads keeps its header,
-      whose rows still lead to its Home, PRs, changelog and automations. */
-  readonly keepEmptyGroups?: boolean;
 }): ReadonlyArray<SidebarV2ActiveSection<TThread>> {
   if (!input.grouped) return [{ kind: "project", header: null, threads: input.threads }];
 
@@ -236,11 +220,11 @@ export function buildActiveThreadSections<
   const sections: SidebarV2ActiveSection<TThread>[] = [];
   for (const group of input.projectGroups) {
     const grouped = threadsByProjectKey.get(group.projectKey);
-    if (grouped === undefined && input.keepEmptyGroups !== true) continue;
+    if (grouped === undefined) continue;
     sections.push({
       kind: "project",
       header: { projectKey: group.projectKey, displayName: group.displayName },
-      threads: grouped ?? [],
+      threads: grouped,
     });
   }
   const ungrouped = threadsByProjectKey.get(UNGROUPED_PROJECT_KEY);
