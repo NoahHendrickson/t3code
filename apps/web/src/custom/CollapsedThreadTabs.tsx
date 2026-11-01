@@ -70,6 +70,7 @@ import {
   buildCollapsedThreadTabs,
   collapsedDraftTabKey,
   collapsedFilterSwitchTarget,
+  COLLAPSED_TAB_MIN_WIDTH,
   COLLAPSED_TAB_STATUSES,
   DEFAULT_COLLAPSED_TAB_STATUSES,
   fitCollapsedThreadTabs,
@@ -104,6 +105,10 @@ const STATUSES_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-statuses:v1";
 const StoredStatuses = Schema.Array(Schema.Literals(COLLAPSED_TAB_STATUSES));
 const ALL_PROJECTS = "all";
 const TRAILING_CONTROLS_GAP = 8;
+// Shrinks from its title's width to the minimum fitCollapsedThreadTabs counts on.
+const TAB_SHELL_CLASS =
+  "group/tab relative flex h-7 max-w-56 shrink items-center rounded-full text-xs font-medium";
+const TAB_SHELL_STYLE = { minWidth: COLLAPSED_TAB_MIN_WIDTH };
 const TAB_ACTION_CLASS = cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-5 rounded-full");
 
 // Its own tracker: the sidebar's resets whenever status grouping is off.
@@ -629,12 +634,12 @@ function ThreadTab(props: {
       data-fork-thread-tab=""
       data-active={props.active ? "true" : undefined}
       className={cn(
-        // Shrinks from its title's width to the minimum fitCollapsedThreadTabs counts on.
-        "group/tab relative flex h-7 max-w-56 min-w-[132px] shrink items-center rounded-full text-xs font-medium",
+        TAB_SHELL_CLASS,
         props.active
           ? "bg-black/10 text-foreground dark:bg-white/16"
           : "text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/8",
       )}
+      style={TAB_SHELL_STYLE}
       onContextMenu={(event) => {
         event.preventDefault();
         openMenu({ x: event.clientX, y: event.clientY });
@@ -731,7 +736,8 @@ function DraftTab(props: {
     <div
       data-fork-thread-tab=""
       data-active="true"
-      className="group/tab relative flex h-7 max-w-56 min-w-[132px] shrink items-center rounded-full bg-black/10 text-xs font-medium text-foreground dark:bg-white/16"
+      className={cn(TAB_SHELL_CLASS, "bg-black/10 text-foreground dark:bg-white/16")}
+      style={TAB_SHELL_STYLE}
     >
       <span aria-current="page" className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5">
         {provider ? <ModelPickerProviderGlyph entry={provider} showBadge={false} /> : null}
