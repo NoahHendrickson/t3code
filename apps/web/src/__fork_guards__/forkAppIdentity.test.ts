@@ -230,11 +230,11 @@ describe("fork guard: fork-app-identity", () => {
   });
 
   it("shows the fork's own icon beside this repo's project", () => {
-    expect(JSON.parse(read("t3.json")).iconPath).toBe("assets/fork/n3-web-apple-touch-180.png");
-    const icon = NodeFS.readFileSync(
-      NodePath.join(repoRoot, "assets/fork/n3-web-apple-touch-180.png"),
-    );
-    expect([icon.readUInt32BE(16), icon.readUInt32BE(20)]).toEqual([180, 180]);
+    expect(JSON.parse(read("t3.json")).iconPath).toBe("assets/fork/n3-project-icon.svg");
+    const icon = read("assets/fork/n3-project-icon.svg");
+    expect(icon).toContain('viewBox="0 0 600 600"');
+    // The project icon is the bare leaf: no full-canvas backdrop rect.
+    expect(icon).not.toMatch(/<rect width="600" height="600"/);
   });
 
   it("keeps packaged state out of the shared ~/.t3 base directory", () => {
