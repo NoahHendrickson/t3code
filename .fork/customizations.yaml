@@ -2838,8 +2838,10 @@
     Run history and the message's automation link are unchanged. It applies
     to runs launched after the save; pinning still brings back an earlier
     run, and turning the switch off does not hide runs already listed (the
-    user guide says so; archiving clears them). The switch is hidden for an automation bound to an existing thread,
-    which never launches one. The flag lives in a fork column,
+    user guide says so; archiving clears them). The switch is hidden for an
+    automation bound to an existing thread, which never launches one, unless
+    it uses the GitHub PR trigger, which the server always unbinds. MCP and
+    mobile neither show nor set the flag. The flag lives in a fork column,
     scheduled_tasks.fork_show_in_sidebar, added idempotently after
     upstream's migrations by persistence/forkSchema.ts rather than by a
     migration, because the migrator skips every id up to the highest
