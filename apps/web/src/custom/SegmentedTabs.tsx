@@ -6,6 +6,8 @@
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 
+import { useLayoutEffect, useRef } from "react";
+
 import { cn } from "~/lib/utils";
 
 const GLIDE_TIMING: KeyframeAnimationOptions = {
@@ -13,48 +15,69 @@ const GLIDE_TIMING: KeyframeAnimationOptions = {
   easing: "cubic-bezier(0.32, 0.72, 0, 1)",
 };
 
+interface Glide {
+  readonly tab: HTMLElement;
+  readonly animations: readonly [Animation, Animation];
+}
+
 const pressedTab = (group: Element) =>
   group.querySelector<HTMLElement>(":scope > [data-fork-segmented-tab][data-pressed]");
 
 // The selected look lives on the tab itself (the glass themes dress it with
 // pseudo-elements), so the new tab glides in from the old one's spot while its
-// label glides back the same distance and stays put. Under its siblings, so it
-// passes beneath their labels.
-function glide(group: Element, from: DOMRect) {
-  const tab = pressedTab(group);
-  const label = tab?.firstElementChild;
-  if (!tab || !label) return;
+// label glides back the same distance and stays put. z-index stays out of the
+// keyframes so the transform runs on the compositor.
+function glide(tab: HTMLElement, from: DOMRect): Glide | null {
+  const label = tab.firstElementChild;
   const to = tab.getBoundingClientRect();
   const dx = from.left + from.width / 2 - (to.left + to.width / 2);
-  if (Math.abs(dx) < 1) return;
-  tab.animate(
-    [
-      { transform: `translateX(${dx}px)`, zIndex: -1 },
-      { transform: "translateX(0)", zIndex: -1 },
-    ],
+  if (!label || Math.abs(dx) < 1) return null;
+  // Beneath its siblings, so it passes under their labels.
+  tab.style.zIndex = "-1";
+  const slide = tab.animate(
+    [{ transform: `translateX(${dx}px)` }, { transform: "translateX(0)" }],
     GLIDE_TIMING,
   );
-  label.animate(
+  const counter = label.animate(
     [{ transform: `translateX(${-dx}px)` }, { transform: "translateX(0)" }],
     GLIDE_TIMING,
   );
+  return { tab, animations: [slide, counter] };
 }
 
-export function SegmentedTabs({ className, onValueChange, ...props }: ToggleGroup.Props) {
+function settle(glide: Glide) {
+  for (const animation of glide.animations) animation.cancel();
+  glide.tab.style.removeProperty("z-index");
+}
+
+export function SegmentedTabs({ className, ...props }: ToggleGroup.Props) {
+  const group = useRef<HTMLDivElement>(null);
+  const shownTab = useRef<HTMLElement | null>(null);
+  const running = useRef<Glide | null>(null);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- animates the DOM when the pressed tab moves, reading both positions in one layout before paint
+  useLayoutEffect(() => {
+    const previous = shownTab.current;
+    const next = group.current && pressedTab(group.current);
+    shownTab.current = next;
+    if (!previous?.isConnected || !next || previous === next) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Mid-glide, this is where the pill visibly is.
+    const from = previous.getBoundingClientRect();
+    // A glide still moving would sit over the new tab and take its clicks.
+    if (running.current) settle(running.current);
+    const started = glide(next, from);
+    running.current = started;
+    if (!started) return;
+    void started.animations[0].finished.then(
+      () => running.current === started && settle(started),
+      () => {},
+    );
+  });
+
   return (
     <ToggleGroup
       {...props}
-      onValueChange={(value, details) => {
-        const group =
-          details.event.target instanceof Element
-            ? details.event.target.closest("[data-fork-segmented-tabs]")
-            : null;
-        const from = group ? pressedTab(group)?.getBoundingClientRect() : undefined;
-        onValueChange?.(value, details);
-        if (!group || !from || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-        // The click's update commits before the next frame paints.
-        requestAnimationFrame(() => glide(group, from));
-      }}
+      ref={group}
       data-fork-segmented-tabs
       className={cn(
         "isolate flex w-max items-center overflow-clip rounded-sm bg-muted p-0.5 dark:bg-white/6",
