@@ -1,7 +1,7 @@
 /* The model picker's provider marks, see `.fork/customizations.yaml#fork-model-picker`.
    Claude's is the Claude Code mascot; Codex's art is a one-colour cloud with the prompt cut
-   out, so it masks the app icon's gradient over a white patch that fills the cutout. Every
-   other provider keeps its instance icon. */
+   out, so it masks a solid purple (the app icon gradient's top stop, darkened) over a white
+   patch that fills the cutout. Every other provider keeps its instance icon. */
 import { ProviderDriverKind } from "@t3tools/contracts";
 import type { CSSProperties, JSX } from "react";
 
@@ -14,7 +14,7 @@ const CODEX_MARK_STYLE: CSSProperties = {
   maskSize: "contain",
   maskRepeat: "no-repeat",
   maskPosition: "center",
-  backgroundImage: "linear-gradient(#ada8ff, #7b9dff, #3b43ff)",
+  backgroundColor: "#8680ff",
 };
 
 function ClaudeCodeMark() {
