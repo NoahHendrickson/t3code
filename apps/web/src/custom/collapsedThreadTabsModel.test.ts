@@ -6,6 +6,7 @@ import {
   buildCollapsedThreadTabs,
   collapsedDraftTabKey,
   collapsedFilterSwitchTarget,
+  collapsedTabProjectForScope,
   DEFAULT_COLLAPSED_TAB_STATUSES,
   fitCollapsedThreadTabs,
   type CollapsedThreadTabStatus,
@@ -138,6 +139,16 @@ describe("collapsedFilterSwitchTarget", () => {
     ["has nowhere to go in an empty filter", [a], [], "a", false, null],
   ] as const)("%s", (_label, before, after, openThreadKey, draftOpen, expected) => {
     expect(collapsedFilterSwitchTarget({ before, after, openThreadKey, draftOpen })).toBe(expected);
+  });
+});
+
+describe("collapsedTabProjectForScope", () => {
+  it.each([
+    ["an unscoped sidebar shows every project", [], "all"],
+    ["one scoped project becomes the filter", ["p1"], "p1"],
+    ["several scoped projects show every project", ["p1", "p2"], "all"],
+  ] as const)("%s", (_label, scope, expected) => {
+    expect(collapsedTabProjectForScope(new Set(scope))).toBe(expected);
   });
 });
 

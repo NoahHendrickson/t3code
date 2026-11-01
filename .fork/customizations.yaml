@@ -6250,6 +6250,7 @@
     - apps/web/src/custom/CollapsedThreadTabs.tsx
     - apps/web/src/custom/collapsedThreadTabsModel.ts
     - apps/web/src/custom/collapsedThreadTabsModel.test.ts
+    - apps/web/src/custom/collapsedThreadTabsProjectFilter.ts
     - apps/web/src/custom/sidebarActionsBridge.ts
     - apps/web/src/custom/SegmentedTabs.tsx
     - apps/web/src/theme.custom.css

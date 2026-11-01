@@ -67,6 +67,7 @@ import { useThreadSelectionStore } from "~/threadSelectionStore";
 import type { EnvironmentId, ModelSelection } from "@t3tools/contracts";
 
 import {
+  ALL_PROJECTS,
   buildCollapsedThreadTabs,
   collapsedDraftTabKey,
   collapsedFilterSwitchTarget,
@@ -77,6 +78,7 @@ import {
   type CollapsedThreadTab,
   type CollapsedThreadTabStatus,
 } from "./collapsedThreadTabsModel";
+import { useCollapsedTabsProjectFilter } from "./collapsedThreadTabsProjectFilter";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -88,12 +90,7 @@ import {
 import { ModelPickerProviderGlyph } from "./icons/ModelPickerProviderGlyph";
 import { SegmentedTab, SegmentedTabs } from "./SegmentedTabs";
 import { ScopeCheckboxItem } from "./SidebarV2ChromeRows";
-import {
-  COLLAPSED_TABS_ALL_PROJECTS as ALL_PROJECTS,
-  COLLAPSED_TABS_PROJECT_STORAGE_KEY as PROJECT_STORAGE_KEY,
-  openSidebarThreadMenu,
-  startSidebarThreadInProject,
-} from "./sidebarActionsBridge";
+import { openSidebarThreadMenu, startSidebarThreadInProject } from "./sidebarActionsBridge";
 import { SIDEBAR_V2_ICON_BUTTON_CLASS } from "./sidebarV2TrailingColumn";
 import { resolveSidebarV2CardStatus } from "./sidebarV2CardStatus";
 import { SidebarV2StatusMark } from "./SidebarV2StatusIndicator";
@@ -208,11 +205,7 @@ function CollapsedThreadTabsStrip(props: {
   const allProjects = useProjects();
   const source = useTabSource();
   const { localLastVisitedAtById, now, openThreadKey } = source;
-  const [storedProjectKey, setStoredProjectKey] = useLocalStorage(
-    PROJECT_STORAGE_KEY,
-    ALL_PROJECTS,
-    Schema.String,
-  );
+  const [storedProjectKey, setStoredProjectKey] = useCollapsedTabsProjectFilter();
   const [storedStatuses, setStoredStatuses] = useLocalStorage(
     STATUSES_STORAGE_KEY,
     DEFAULT_COLLAPSED_TAB_STATUSES,

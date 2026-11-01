@@ -204,10 +204,10 @@ import { isCommandPaletteOpen, openCommandPalette } from "../commandPaletteBus";
 import { registerSettleAndAdvance } from "../settleAndAdvance";
 /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
 import {
-  handSidebarProjectScopeToTabs,
   registerSidebarStartThreadInProject,
   registerSidebarThreadMenu,
 } from "../custom/sidebarActionsBridge";
+import { handSidebarProjectScopeToTabs } from "../custom/collapsedThreadTabsProjectFilter";
 /* fork:end fork-collapsed-thread-tabs */
 /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
 import { useThreadDiscoveredPorts } from "../portDiscoveryState";

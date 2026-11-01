@@ -96,6 +96,15 @@ export function collapsedDraftTabKey(input: {
   return input.tabs.some((tab) => tab.threadKey === threadKey) ? null : threadKey;
 }
 
+/** The project filter's value for every project. */
+export const ALL_PROJECTS = "all";
+
+/** The tabs' filter for the sidebar's project scope: its one project, else All. */
+export function collapsedTabProjectForScope(scope: ReadonlySet<string>): string {
+  const [only = ALL_PROJECTS, ...rest] = scope;
+  return rest.length === 0 ? only : ALL_PROJECTS;
+}
+
 /**
  * The tab to open when the project filter changes: the new filter's first tab, but only when
  * the open thread had a tab before and the new filter hides it. A thread that never had a tab
