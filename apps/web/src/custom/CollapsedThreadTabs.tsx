@@ -67,6 +67,7 @@ import { useThreadSelectionStore } from "~/threadSelectionStore";
 import type { EnvironmentId, ModelSelection } from "@t3tools/contracts";
 
 import {
+  ALL_PROJECTS,
   buildCollapsedThreadTabs,
   collapsedDraftTabKey,
   collapsedFilterSwitchTarget,
@@ -77,6 +78,7 @@ import {
   type CollapsedThreadTab,
   type CollapsedThreadTabStatus,
 } from "./collapsedThreadTabsModel";
+import { useCollapsedTabsProjectFilter } from "./collapsedThreadTabsProjectFilter";
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -100,10 +102,8 @@ import {
 } from "./sidebarV2StatusGrouping";
 import { useStartNewAgentDraft } from "./useNewAgentDraft";
 
-const PROJECT_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-project:v1";
 const STATUSES_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-statuses:v1";
 const StoredStatuses = Schema.Array(Schema.Literals(COLLAPSED_TAB_STATUSES));
-const ALL_PROJECTS = "all";
 const TRAILING_CONTROLS_GAP = 8;
 // Shrinks from its title's width to the minimum fitCollapsedThreadTabs counts on.
 const TAB_SHELL_CLASS =
@@ -205,11 +205,7 @@ function CollapsedThreadTabsStrip(props: {
   const allProjects = useProjects();
   const source = useTabSource();
   const { localLastVisitedAtById, now, openThreadKey } = source;
-  const [storedProjectKey, setStoredProjectKey] = useLocalStorage(
-    PROJECT_STORAGE_KEY,
-    ALL_PROJECTS,
-    Schema.String,
-  );
+  const [storedProjectKey, setStoredProjectKey] = useCollapsedTabsProjectFilter();
   const [storedStatuses, setStoredStatuses] = useLocalStorage(
     STATUSES_STORAGE_KEY,
     DEFAULT_COLLAPSED_TAB_STATUSES,

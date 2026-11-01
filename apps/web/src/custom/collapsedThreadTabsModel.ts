@@ -96,6 +96,30 @@ export function collapsedDraftTabKey(input: {
   return input.tabs.some((tab) => tab.threadKey === threadKey) ? null : threadKey;
 }
 
+/** The project filter's value for every project. */
+export const ALL_PROJECTS = "all";
+
+/**
+ * The tabs' filter for the scope the sidebar shows as it collapses: its one project, else All,
+ * and All too when that project doesn't hold the open thread, whose tab it would hide. An
+ * unscoped sidebar hands nothing over, so the strip keeps its own saved choice.
+ */
+export function collapsedTabProjectForScope<TProject extends SidebarV2GroupableProject>(input: {
+  readonly scope: readonly TProject[];
+  readonly openThread: Pick<EnvironmentThreadShell, "environmentId" | "projectId"> | null;
+}): string | null {
+  const [only, ...rest] = input.scope;
+  if (only === undefined) return null;
+  const { openThread } = input;
+  const holdsOpenThread =
+    openThread === null ||
+    only.memberProjectRefs.some(
+      (ref) =>
+        ref.environmentId === openThread.environmentId && ref.projectId === openThread.projectId,
+    );
+  return rest.length === 0 && holdsOpenThread ? only.projectKey : ALL_PROJECTS;
+}
+
 /**
  * The tab to open when the project filter changes: the new filter's first tab, but only when
  * the open thread had a tab before and the new filter hides it. A thread that never had a tab

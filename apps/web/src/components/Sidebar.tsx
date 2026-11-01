@@ -207,6 +207,8 @@ import {
   registerSidebarStartThreadInProject,
   registerSidebarThreadMenu,
 } from "../custom/sidebarActionsBridge";
+import { collapsedTabProjectForScope } from "../custom/collapsedThreadTabsModel";
+import { handSidebarProjectScopeToTabs } from "../custom/collapsedThreadTabsProjectFilter";
 /* fork:end fork-collapsed-thread-tabs */
 /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
 import { useThreadDiscoveredPorts } from "../portDiscoveryState";
@@ -2234,7 +2236,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const { isMobile, setOpenMobile } = useSidebar();
   /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
   // A stable store function, so rename keeps its identity across sidebar toggles.
-  const { setOpen: setSidebarOpen } = useSidebar();
+  const { setOpen: setSidebarOpen, onCollapse: onSidebarCollapse } = useSidebar();
   /* fork:end fork-collapsed-thread-tabs */
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const confirmThreadDelete = useClientSettings((s) => s.confirmThreadDelete);
@@ -4678,6 +4680,24 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   useEffect(
     () => registerSidebarStartThreadInProject(handleNewThreadInProject),
     [handleNewThreadInProject],
+  );
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to the sidebar store's collapse event, which hands the project scope to the collapsed tabs
+  useEffect(
+    () =>
+      onSidebarCollapse(() => {
+        const openRef = routeTarget?.kind === "server" ? routeTarget.threadRef : null;
+        const openThread =
+          openRef &&
+          (threads.find(
+            (thread) =>
+              thread.environmentId === openRef.environmentId && thread.id === openRef.threadId,
+          ) ??
+            null);
+        handSidebarProjectScopeToTabs(
+          collapsedTabProjectForScope({ scope: scopedProjectGroups, openThread }),
+        );
+      }),
+    [onSidebarCollapse, routeTarget, scopedProjectGroups, threads],
   );
   /* fork:end fork-collapsed-thread-tabs */
   /* fork:end sidebar-v2-project-grouping */

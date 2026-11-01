@@ -6195,7 +6195,9 @@
     each snooze deadline), as the sidebar's partition does. A project
     switcher leads the row: All, then one icon per project with a tab,
     filtering the tabs; the choice persists per device and falls back to All
-    while its project has no tab. Picking a project that hides the open thread's tab
+    while its project has no tab. Collapsing a scoped sidebar hands its shown scope to the
+    switcher: its one project, else All, and All when that project doesn't hold the open
+    thread; an unscoped sidebar leaves the switcher's choice. Picking a project that hides the open thread's tab
     opens that project's first tab (collapsedFilterSwitchTarget); a thread that
     had no tab, or the open draft, stays open. Tabs shrink from their title's width to a
     132px minimum with the title truncated (room for the provider mark, a five-digit PR
@@ -6249,6 +6251,7 @@
     - apps/web/src/custom/CollapsedThreadTabs.tsx
     - apps/web/src/custom/collapsedThreadTabsModel.ts
     - apps/web/src/custom/collapsedThreadTabsModel.test.ts
+    - apps/web/src/custom/collapsedThreadTabsProjectFilter.ts
     - apps/web/src/custom/sidebarActionsBridge.ts
     - apps/web/src/custom/SegmentedTabs.tsx
     - apps/web/src/theme.custom.css
