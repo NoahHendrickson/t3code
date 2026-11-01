@@ -1157,16 +1157,15 @@
   background-color: transparent;
 }
 
-/* The Settings and Usage route modals (AppRouteModal) portal out of the inset,
-   so they are a glass popup of their own (the popup rule's modal arm, cut out
-   beneath like any popup) and the stage's clears and washes reach into them
-   by the modal arm on each. Settings' section nav paints bg-sidebar, the
-   app's opaque panel colour outside the v2 block, so it stands on the same
-   glass as the page beside it. */
-:root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-app-modal]
-  [data-workspace-area="settings-nav"] {
-  background-color: transparent;
+/* The route modals portal out of the inset, so they are a glass popup of their
+   own and the stage's clears and washes carry a modal arm. Settings' docked
+   nav drops its opaque bg-sidebar; below md it is an overlay that must cover. */
+@media (width >= 48rem) {
+  :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    [data-app-modal]
+    nav.bg-sidebar {
+    background-color: transparent;
+  }
 }
 
 /* Structural wrappers must not repaint the stage colour over the glass.

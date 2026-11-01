@@ -11,13 +11,13 @@
  * directly on the glass.
  *
  * "Beneath" is #root plus any portal opened before the popup — a menu over
- * the Usage panel, a select inside a dialog. Popups portal into <body> in the
- * order they open, and a popup opened from inside another portal (the select
- * in the Settings modal) nests its portal after the opener's children, beside
- * a dialog's backdrop, so a portal child is under every popup that lives in a
- * later one. An empty-box portal container cannot carry the mask for its
- * fixed children, so the mask goes on the container's children instead
- * (positioners, backdrops), and only on those a hole actually touches.
+ * the Usage panel, a select inside a dialog — that paints at or below its
+ * z-index, so a toast stays above the Settings modal. Popups portal into
+ * <body> in the order they open, and a portal opened from inside another
+ * nests in its node, after the opener's backdrop and positioner. An empty-box
+ * portal node cannot carry the mask for its fixed children, so the walk
+ * follows the nesting and the mask goes on what each node paints
+ * (positioners, backdrops, viewports), only on those a hole actually touches.
  *
  * The new-agent draft is the exception (fork-glass-new-agent-stage): its card
  * paints the portrait over the glass, and a hole would cut the picture away
@@ -59,8 +59,8 @@ export const FORK_GLASS_POPUP_SELECTOR = [
  */
 const DRAFT_CARD_SELECTOR = `:root:not(${PICTURE_OFF}) [data-chat-column-maximized-away]:has([data-chat-composer-overlay="true"][data-draft-hero]):not(:has([data-preview-mini-player] [data-browser-surface-slot]))`;
 
-const TOAST_VIEWPORT_SELECTOR =
-  '[data-slot="toast-viewport"], [data-slot="toast-viewport-anchored"]';
+/** Base UI's portal node, which nests a portal opened from inside it. */
+const PORTAL_SELECTOR = "[data-base-ui-portal]";
 
 /** Stamped on a popup that frosts over the draft card instead of cutting it. */
 const FORK_GLASS_FROST_ATTRIBUTE = "data-fork-glass-frost";
@@ -104,16 +104,39 @@ type Rect = {
 
 export type CutoutHole = Rect & {
   readonly radius: number;
-  /** Paint order of the portal child the popup lives in; higher paints above. */
+  /** DOM order of the painted layer the popup lives in; higher opened later. */
   readonly layer: number;
+  /** That layer's z-index. */
+  readonly z: number;
 };
 
-/** Something that may paint under a popup: #root (layer -1) or a portal's child. */
+/** Something that may paint under a popup: #root (layer -1) or a portal's painted layer. */
 export type CutoutSurface<Key> = {
   readonly key: Key;
   readonly layer: number;
+  readonly z: number;
   readonly rect: Rect;
 };
+
+type PaintLayer = { readonly element: HTMLElement; readonly z: number };
+
+/** What a body container paints, in DOM order, following portals nested inside it. */
+function paintLayers(parent: Element): Array<PaintLayer> {
+  return Array.from(parent.children).flatMap((child) => {
+    if (!(child instanceof HTMLElement)) return [];
+    if (child.matches(PORTAL_SELECTOR)) return paintLayers(child);
+    return [{ element: child, z: paintZ(child) }];
+  });
+}
+
+/** A layer's z-index, or its first child's when it sets none (the anchored toast viewport). */
+function paintZ(layer: HTMLElement): number {
+  for (const node of [layer, layer.firstElementChild]) {
+    const z = node === null ? Number.NaN : Number.parseInt(getComputedStyle(node).zIndex, 10);
+    if (!Number.isNaN(z)) return z;
+  }
+  return 0;
+}
 
 const round = (value: number) => Math.round(value * 2) / 2;
 
@@ -130,7 +153,7 @@ function isClosing(popup: HTMLElement): boolean {
   );
 }
 
-function measure(popup: HTMLElement, layer: number): CutoutHole | null {
+function measure(popup: HTMLElement, layer: number, z: number): CutoutHole | null {
   if (isClosing(popup)) return null;
   const rect = popup.getBoundingClientRect();
   if (rect.width < 1 || rect.height < 1) return null;
@@ -143,6 +166,7 @@ function measure(popup: HTMLElement, layer: number): CutoutHole | null {
     height: rect.height,
     radius: Number.parseFloat(style.borderTopLeftRadius) || 0,
     layer,
+    z,
   };
 }
 
@@ -157,7 +181,8 @@ function touches(rect: Rect, hole: Rect): boolean {
 
 /**
  * Which holes each surface carries: only popups opened after it (a higher
- * layer), and only those that reach it. Surfaces that carry none are absent.
+ * layer) that paint at or above it, and only those that reach it. Surfaces
+ * that carry none are absent.
  */
 export function planCutout<Key>(
   surfaces: ReadonlyArray<CutoutSurface<Key>>,
@@ -165,7 +190,9 @@ export function planCutout<Key>(
 ): Map<Key, Array<CutoutHole>> {
   const plan = new Map<Key, Array<CutoutHole>>();
   for (const surface of surfaces) {
-    const cut = holes.filter((hole) => hole.layer > surface.layer && touches(surface.rect, hole));
+    const cut = holes.filter(
+      (hole) => hole.layer > surface.layer && hole.z >= surface.z && touches(surface.rect, hole),
+    );
     if (cut.length > 0) plan.set(surface.key, cut);
   }
   return plan;
@@ -253,6 +280,9 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
   let frostChanged = false;
   let containers: Array<Element> = [];
   let popups: Array<HTMLElement> = [];
+  let layers: Array<PaintLayer> = [];
+  /** Each open popup with the index of the layer it lives in. */
+  let placed: Array<{ readonly popup: HTMLElement; readonly layer: number }> = [];
   let frame = 0;
   let stillFrames = 0;
 
@@ -304,25 +334,14 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
     }
     const holes: Array<CutoutHole> = [];
     let card: Rect | null | undefined;
-    // Toasts paint above every popup (z-100), so no hole is cut through them.
-    const layers = containers.flatMap((container) =>
-      Array.from(container.children).filter(
-        (child): child is HTMLElement =>
-          child instanceof HTMLElement && !child.matches(TOAST_VIEWPORT_SELECTOR),
-      ),
-    );
-    layers.forEach((child, layer) => {
-      const popups = Array.from(child.querySelectorAll<HTMLElement>(FORK_GLASS_POPUP_SELECTOR));
-      if (child.matches(FORK_GLASS_POPUP_SELECTOR)) popups.push(child);
-      for (const popup of popups) {
-        const hole = measure(popup, layer);
-        if (hole === null) continue;
-        if (card === undefined) card = draftCard(appRoot);
-        // The route modal carries no dropdown-glass, so it has no frost layer to show.
-        const frostCard = popup.hasAttribute("data-app-modal") ? null : card;
-        if (!frost(popup, hole, frostCard)) holes.push(hole);
-      }
-    });
+    for (const { popup, layer } of placed) {
+      const hole = measure(popup, layer, layers[layer]?.z ?? 0);
+      if (hole === null) continue;
+      if (card === undefined) card = draftCard(appRoot);
+      // The frost layer paints only on dropdown-glass (theme.custom.glass.css).
+      const frostCard = popup.classList.contains("dropdown-glass") ? card : null;
+      if (!frost(popup, hole, frostCard)) holes.push(hole);
+    }
 
     const surfaces: Array<CutoutSurface<HTMLElement>> = [];
     if (holes.length > 0) {
@@ -330,8 +349,10 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
         const rect = element.getBoundingClientRect();
         return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
       };
-      surfaces.push({ key: appRoot, layer: -1, rect: toRect(appRoot) });
-      layers.forEach((child, layer) => surfaces.push({ key: child, layer, rect: toRect(child) }));
+      surfaces.push({ key: appRoot, layer: -1, z: 0, rect: toRect(appRoot) });
+      layers.forEach(({ element, z }, layer) =>
+        surfaces.push({ key: element, layer, z, rect: toRect(element) }),
+      );
     }
     const plan = planCutout(surfaces, holes);
 
@@ -407,9 +428,14 @@ function startCutout(body: HTMLElement, appRoot: HTMLElement): () => void {
   function refresh() {
     const nextContainers = Array.from(body.children).filter((child) => child !== appRoot);
     if (!sameElements(containers, nextContainers)) rewatchContainers(nextContainers);
-    const nextPopups = containers.flatMap((container) =>
-      Array.from(container.querySelectorAll<HTMLElement>(FORK_GLASS_POPUP_SELECTOR)),
+    layers = containers.flatMap(paintLayers);
+    placed = layers.flatMap(({ element }, layer) =>
+      Array.from(element.querySelectorAll<HTMLElement>(FORK_GLASS_POPUP_SELECTOR), (popup) => ({
+        popup,
+        layer,
+      })),
     );
+    const nextPopups = placed.map(({ popup }) => popup);
     if (!sameElements(popups, nextPopups)) rewatchPopups(nextPopups);
     stillFrames = 0;
     apply();
