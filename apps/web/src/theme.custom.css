@@ -2589,3 +2589,11 @@
   white-space: normal;
 }
 /* fork:end fork-composer-approval-notice */
+
+/* File links in chat — see `.fork/customizations.yaml#fork-file-link-ink`.
+   Upstream inks the chip in its own accent; the fork inks it like every other
+   chat link (index.css `.chat-markdown a`). Document icons keep their accent. */
+:root[data-fork="noahhendrickson-t3code"] .chat-markdown-file-link:not([data-state="invalid"]) {
+  --context-chip-ink: var(--info-foreground);
+  --document-icon-stroke: var(--context-chip-accent);
+}

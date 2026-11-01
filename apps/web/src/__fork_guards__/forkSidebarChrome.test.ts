@@ -441,7 +441,10 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).toContain("updateClientSettings({ sidebarProjectSortOrder: sortOrder })");
     expect(rows).toContain("FolderPlusIcon");
     // Scope on-state: glyph lifts and aria/tooltip name the active project.
-    expect(rows).toContain("data-active={isScoped");
+    // Glyph only: data-active paints SidebarMenuButton's selected fill, which
+    // reads as a hover stuck on.
+    expect(rows).toContain('isScoped && "text-sidebar-foreground"');
+    expect(rows).not.toContain("data-active={isScoped");
     expect(rows).toContain("scopedProjectDisplayName");
     expect(rows).toContain("Filter threads by project — showing");
     expect(rows).toContain("TooltipPopup");
