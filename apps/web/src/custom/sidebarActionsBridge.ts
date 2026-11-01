@@ -1,4 +1,21 @@
 import type { ScopedThreadRef } from "@t3tools/contracts";
+import * as Schema from "effect/Schema";
+
+import { writeLocalStorageValue } from "~/hooks/useLocalStorage";
+
+export const COLLAPSED_TABS_PROJECT_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-project:v1";
+export const COLLAPSED_TABS_ALL_PROJECTS = "all";
+
+/** Collapsing hands the sidebar's project scope to the tabs' switcher: its one project, else All. */
+export function handSidebarProjectScopeToTabs(scope: ReadonlySet<string>): void {
+  const [only] = scope;
+  writeLocalStorageValue(
+    COLLAPSED_TABS_PROJECT_STORAGE_KEY,
+    scope.size === 1 && only !== undefined ? only : COLLAPSED_TABS_ALL_PROJECTS,
+    COLLAPSED_TABS_ALL_PROJECTS,
+    Schema.String,
+  );
+}
 
 /** Sidebar actions reached from outside it (fork-collapsed-thread-tabs), so both run the
     sidebar's own code. The collapsed sidebar stays mounted offcanvas, so they stay live. */

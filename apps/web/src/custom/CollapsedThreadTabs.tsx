@@ -88,7 +88,12 @@ import {
 import { ModelPickerProviderGlyph } from "./icons/ModelPickerProviderGlyph";
 import { SegmentedTab, SegmentedTabs } from "./SegmentedTabs";
 import { ScopeCheckboxItem } from "./SidebarV2ChromeRows";
-import { openSidebarThreadMenu, startSidebarThreadInProject } from "./sidebarActionsBridge";
+import {
+  COLLAPSED_TABS_ALL_PROJECTS as ALL_PROJECTS,
+  COLLAPSED_TABS_PROJECT_STORAGE_KEY as PROJECT_STORAGE_KEY,
+  openSidebarThreadMenu,
+  startSidebarThreadInProject,
+} from "./sidebarActionsBridge";
 import { SIDEBAR_V2_ICON_BUTTON_CLASS } from "./sidebarV2TrailingColumn";
 import { resolveSidebarV2CardStatus } from "./sidebarV2CardStatus";
 import { SidebarV2StatusMark } from "./SidebarV2StatusIndicator";
@@ -100,10 +105,8 @@ import {
 } from "./sidebarV2StatusGrouping";
 import { useStartNewAgentDraft } from "./useNewAgentDraft";
 
-const PROJECT_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-project:v1";
 const STATUSES_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-statuses:v1";
 const StoredStatuses = Schema.Array(Schema.Literals(COLLAPSED_TAB_STATUSES));
-const ALL_PROJECTS = "all";
 const TRAILING_CONTROLS_GAP = 8;
 // Shrinks from its title's width to the minimum fitCollapsedThreadTabs counts on.
 const TAB_SHELL_CLASS =
