@@ -4671,43 +4671,50 @@
     the "Claude" family name they are resold under. The strip is a per-provider
     list of family words, not the provider's display name: Grok's "Grok Build"
     keeps its name because "Build" alone is nothing. Picker rows drop the name
-    too, since the provider trigger or the row's provider label names it.
-    The menu is a provider submenu trigger, then a search field, then the
-    chosen scope's models. The trigger, a plain row like the models, names the
-    scope and opens a submenu on hover (or click, or ArrowRight), set 12px out
-    so it clears the menu on whichever side it opens, whose options
-    are Favorites (heart, only when favorites exist), then one per enabled
-    provider instance with its glyph and name, a check on the chosen one and,
-    when another scope is chosen, a dot on the current model's provider. The
-    submenu is controlled so an option closes it without closing the menu, and
-    its portaled popup carries the stamps itself: [data-model-picker-content],
-    the composer's floating-layer attribute (focus moving into it must not
-    read as leaving the composer, which would collapse it under the menu), and
-    the corner hook on its wrapper. The menu opens scoped to Favorites when one of
+    too, since the selected provider tab or the row's provider label names it.
+    The menu is a vertical rail of provider icon tabs on the left, beside a
+    search field over the chosen scope's models. The rail comes after the
+    list in the DOM (the row is reversed to show it on the left), so ArrowDown
+    from the search field reaches the models before the tabs, and it scrolls
+    once it is taller than the list column, so many providers never grow the
+    popup. The rail runs edge to edge
+    of the popup (top to the traits panel's rule, or to the popup's bottom),
+    divided from the list by a full-height rule; its 32px tabs line up with
+    the search field and the rows. The tabs are Favorites (heart, always
+    shown; empty, it says how to add one), then one per enabled provider instance, icon only with
+    a tooltip naming it (or why it is disabled), a tint on the chosen one and,
+    when another scope is chosen, a dot on the current model's provider (its
+    accessible name says "current model").
+    Claude and Codex wear supplied marks (the Claude Code mascot, and the
+    Codex cloud prompt in the app icon's purple-to-blue gradient with a white
+    prompt); other providers keep their
+    instance icon, and the same glyphs mark search and Favorites rows. Tabs
+    are menu rows, so a pick never closes the menu and the arrow keys walk
+    them. The menu opens scoped to Favorites when one of
     them can be picked, else to the current model's provider. It decides once
-    per open, so favorites that load later join the submenu instead of
+    per open, so favorites that load later join the rail instead of
     swapping the list under the user. It opens on Favorites even when the
     current model is not a favorite, by product choice: one click to a
-    favorite is the point. An emptied Favorites shows the current provider.
-    Choosing an option clears any query, closes the submenu and swaps the list to that
+    favorite is the point. An emptied Favorites stays chosen and shows its hint.
+    Choosing a tab clears any query and swaps the list to that
     provider's current models; legacy models sit behind an inline "Legacy
-    models" toggle at the end of the list. Escape closes an open submenu
-    before it closes the menu. Choosing swaps the list without touching
+    models" toggle at the end of the list. Choosing swaps the list without touching
     focus; the search field takes focus a frame and a tick after the swap.
-    Focusing it from the option's click closes the menu: the option re-takes
-    focus on click, and the menu's focus-out check, a microtask later, sees
-    focus heading to a row the swap already removed. Typing anywhere lands in
+    A pick from search results swaps to its provider's list, removing the
+    clicked row; focusing the field from that click closes the menu, because
+    the menu's focus-out check, a microtask later, sees focus heading to a row
+    the swap already removed. Typing anywhere lands in
     the search field (capture-phase redirect, ahead of the menu's type-ahead,
-    also on the popup itself, where the menu parks focus after a swap) and
-    closes the submenu, and any query swaps the list for one flat,
+    also on the popup itself, where the menu parks focus after a swap),
+    and any query swaps the list for one flat,
     provider-agnostic list of every matching model — glyph and instance name
     inline, ranked like upstream's search, locked provider still respected;
     Enter picks the first result and Escape clears the query before it
     closes the menu. Rows reveal the favorites star and ⌘1–9 badge on hover;
     the star toggles without choosing the row. ⌘1–9 map to the search
     results, else the listed models in order, and the provider-cycling
-    shortcuts step the provider menu. Providers locked out of the thread or not
-    ready stay listed in the submenu but disabled, with the reason as a
+    shortcuts step the provider tabs. Providers locked out of the thread or not
+    ready stay in the rail but disabled, with the reason as a
     tooltip; a provider needing setup lists its status and an "Open provider
     setup" item. The popup stamps [data-model-picker-content] (shortcut
     arbitration, wheel lock) on the list and on the traits panel under it. Model rows never close the menu
@@ -4769,6 +4776,8 @@
     - apps/web/src/custom/modelPickerFocus.ts
     - apps/web/src/custom/modelPickerDisplayName.ts
     - apps/web/src/custom/modelPickerDisplayName.test.ts
+    - apps/web/src/custom/icons/ModelPickerProviderGlyph.tsx
+    - apps/web/src/custom/assets/codex-mark.png
     - apps/web/src/theme.custom.css
   shadows:
     - apps/web/src/components/chat/ProviderModelPicker.tsx
@@ -6000,6 +6009,21 @@
     - apps/web/src/components/chat/TimelinePendingApprovalRow.tsx
   verify:
     - apps/web/src/__fork_guards__/forkComposerApprovalNotice.test.ts
+
+- id: fork-file-link-ink
+  intent: >
+    Inline file links in chat take the same color as every other chat link
+    (--info-foreground), not upstream's per-kind chip accent, so all links
+    in a message read as one color. Document icons keep their accent stroke.
+    Only file links: other chip kinds (PR state, skills) keep upstream's
+    accent ink, which carries meaning.
+  tier: 3
+  files:
+    - apps/web/src/theme.custom.css
+  shadows: []
+  watch: []
+  verify:
+    - apps/web/src/__fork_guards__/forkFileLinkInk.test.ts
 
 - id: fork-collapsed-thread-tabs
   intent: >

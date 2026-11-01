@@ -2,7 +2,7 @@
  * Fork replacement for the two legacy-favorite cases upstream's
  * ProviderModelPicker.browser.test.tsx skips behind `fork-model-picker`
  * (see `.fork/customizations.yaml#fork-model-picker`). The fork's picker is a
- * Base UI Menu with a provider submenu, so these drive menu items instead of
+ * Base UI Menu with a rail of provider tabs, so these drive menu items instead of
  * upstream's provider buttons and listbox options.
  */
 import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@t3tools/contracts";
@@ -78,9 +78,8 @@ async function click(target: Parameters<typeof userEvent.click>[0]) {
 
 const menuItem = (name: RegExp) => page.getByRole("menuitem", { name });
 
-// With favorites set, the menu opens scoped to Favorites. Upstream clicks the
-// provider straight away; here it is an option of the provider submenu, whose
-// trigger names the current scope.
+// With favorites set, the menu opens scoped to Favorites; the provider's tab
+// in the rail swaps the list to its models.
 async function openProviderPage(activeModel: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const entry = providerEntry("codex", "codex");
@@ -118,8 +117,6 @@ async function openProviderPage(activeModel: string) {
     ),
   );
   await click(document.querySelector("button")!);
-  await click(menuItem(/^Favorites$/));
-  // The active provider's option also names its "Current" dot.
   await click(menuItem(new RegExp(`^${entry.displayName}`)));
 }
 

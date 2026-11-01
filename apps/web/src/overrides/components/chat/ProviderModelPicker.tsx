@@ -3,7 +3,7 @@
  * `.fork/customizations.yaml#fork-model-picker`.
  *
  * Upstream's file with three changes. The Popover shell becomes a Base UI
- * Menu holding a provider dropdown, search and the chosen provider's models
+ * Menu holding provider icon tabs, search and the chosen provider's models
  * (ModelPickerContent's shadow renders them). Non-modal like the popover
  * it replaces; upstream's own wheel/touch lock still guards the page.
  * The trigger label drops the provider name ("Opus 5.5", not "Claude Opus
@@ -366,7 +366,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         {...(props.isComposerOwned
           ? { side: "top" as const, collisionAvoidance: { side: "none" as const } }
           : {})}
-        className={props.combined ? "w-64" : "w-56"}
+        className={props.combined ? "w-72" : "w-64"}
       >
         <ModelPickerContent
           searchInputRef={searchInputRef}
