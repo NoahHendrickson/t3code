@@ -112,8 +112,11 @@ export function collapsedFilterSwitchTarget<TTab extends { readonly threadKey: s
   return input.after[0] ?? null;
 }
 
-/** Geometry the strip's classes draw: min-w-[112px] tabs, gap-1.5 and a w-[72px] More button. */
-const COLLAPSED_TAB_MIN_WIDTH = 112;
+/**
+ * Geometry the strip's classes draw: min-w-[132px] tabs, gap-1.5 and a w-[72px] More button.
+ * 132px holds the provider mark, a five-digit PR badge, the status mark and the hover actions.
+ */
+const COLLAPSED_TAB_MIN_WIDTH = 132;
 const COLLAPSED_TAB_GAP = 6;
 const COLLAPSED_TAB_MORE_WIDTH = 72;
 
