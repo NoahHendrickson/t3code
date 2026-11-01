@@ -21,6 +21,9 @@ import {
 
 import { loadRepoEnv } from "../../scripts/lib/public-config";
 import { forkOverrides } from "./fork/vitePluginForkOverrides";
+/* fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name */
+import { forkBrandName } from "../../scripts/lib/fork-brand-name";
+/* fork:end fork-brand-name */
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { forkDesignModeEngine } from "./fork/vitePluginForkDesignMode";
 /* fork:end fork-design-mode */
@@ -276,6 +279,9 @@ export default defineConfig(() => {
       // first — it claims `~/*` ahead of `resolve.tsconfigPaths`.
       // See `.fork/README.md` §3.
       forkOverrides({ srcDir: NodeURL.fileURLToPath(new URL("./src", import.meta.url)) }),
+      /* fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name */
+      forkBrandName(),
+      /* fork:end fork-brand-name */
       /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
       // Bundles the vendored design-mode engine into the injectable IIFE string served
       // as `virtual:fork-design-mode-engine`.

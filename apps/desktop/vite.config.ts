@@ -3,6 +3,9 @@ import { defaultInclude, defineConfig } from "vite-plus";
 
 import { isDesktopRuntimeExternalDependency } from "../../scripts/lib/desktop-external-packages.ts";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
+// fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+import { forkBrandName } from "../../scripts/lib/fork-brand-name.ts";
+// fork:end fork-brand-name
 
 const repoEnv = loadRepoEnv();
 
@@ -10,6 +13,17 @@ const repoEnv = loadRepoEnv();
 const isMainProcessExternal = (id: string) =>
   id === "electron" || id.startsWith("electron/") || isDesktopRuntimeExternalDependency(id);
 const shouldLaunchElectronAfterPack = process.env.T3CODE_DESKTOP_DEV === "1";
+// fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+// The legacy profile names and the dictation vocabulary are identities, not display copy.
+const forkBrandNamePlugins = [
+  forkBrandName({
+    exclude: [
+      /\/apps\/desktop\/src\/app\/DesktopUserData\.ts$/u,
+      /\/apps\/desktop\/src\/fork\/voice\/LocalSpeechEngine\.ts$/u,
+    ],
+  }),
+];
+// fork:end fork-brand-name
 const publicConfigDefine = {
   __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
     repoEnv.T3CODE_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
@@ -67,6 +81,9 @@ export default defineConfig({
       define: publicConfigDefine,
       outputOptions: { codeSplitting: false },
       entry: ["src/main.ts"],
+      // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+      plugins: forkBrandNamePlugins,
+      // fork:end fork-brand-name
       clean: true,
       deps: {
         alwaysBundle: (id) => !id.startsWith("node:") && !isMainProcessExternal(id),
@@ -88,6 +105,9 @@ export default defineConfig({
         "src/snapShot/RegionSnapShotWorker.ts",
         "src/snapShot/SnapShotAccessibilityWorker.ts",
       ],
+      // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
+      plugins: forkBrandNamePlugins,
+      // fork:end fork-brand-name
       clean: false,
       deps: {
         alwaysBundle: (id) => !id.startsWith("node:") && !isMainProcessExternal(id),

@@ -511,6 +511,42 @@
   verify:
     - apps/web/src/__fork_guards__/forkAppIdentity.test.ts
 
+- id: fork-brand-name
+  intent: >
+    Every web and desktop string a user reads names the app "no3y Code", the
+    same name fork-app-identity gives the installed app, and the fork still
+    says where it comes from. Upstream writes "T3 Code" inline in hundreds of
+    strings and adds more each sync, so the name is rewritten at build time
+    instead of in each file: one plugin (scripts/lib/fork-brand-name.ts) runs
+    in the web Vite build and dev server and in the desktop main and worker
+    bundles, and replaces "T3 Code" in script modules and index.html. It never
+    runs under Vitest, so upstream tests keep asserting upstream copy. Kept as
+    written: "fork of T3 Code" credit, prose about upstream itself, the Linux
+    capture extension's own name ("T3 Code SnapShots", "the T3 Code
+    extension"), the server-issued "T3 Code · <label>" session name a
+    revoke prompt quotes, and two desktop files whose strings are identities, not
+    copy: DesktopUserData's legacy profile names and the dictation
+    vocabulary. T3 Connect, the T3 server, and the t3 CLI keep their names.
+    public/manifest.webmanifest is copied, not bundled, so its names are
+    edited in place. Settings, About carries a row crediting T3 Code with a
+    link to the upstream repository, and the macOS About panel credits it.
+    Server-sent text and the mobile app are out of scope and still say
+    T3 Code.
+  tier: 4
+  files:
+    - scripts/lib/fork-brand-name.ts
+    - apps/web/src/custom/ForkUpstreamCreditRow.tsx
+  shadows: []
+  watch:
+    - apps/web/vite.config.ts
+    - apps/desktop/vite.config.ts
+    - apps/web/public/manifest.webmanifest
+    - apps/web/src/components/settings/SettingsPanels.tsx
+    - apps/web/tsconfig.json
+    - apps/desktop/src/app/DesktopAppIdentity.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkBrandName.test.ts
+
 - id: fork-marker
   intent: >
     The running app is identifiable as this fork: the document root carries
