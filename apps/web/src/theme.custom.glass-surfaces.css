@@ -692,6 +692,61 @@
       var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
       var(--fork-glass-rim);
   }
+
+  /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+     The collapsed sidebar's tab row: the open thread's tab and the chosen
+     project wear the selected thread card's glass, not the generic segmented
+     chip, so the row reads as the sidebar's list laid sideways. The extra
+     marker outranks the SegmentedTab rule above. */
+  &.dark[data-fork-theme="cool-darker"]
+    [data-fork-thread-tabs]
+    :is([data-fork-thread-tab][data-active="true"], [data-fork-segmented-tab][data-pressed]) {
+    position: relative;
+    background-color: var(--sidebar-row-active);
+    box-shadow:
+      var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+      var(--fork-glass-selected-shadow);
+  }
+
+  &.dark[data-fork-theme="cool-darker"]
+    [data-fork-thread-tabs]
+    :is(
+      [data-fork-thread-tab][data-active="true"],
+      [data-fork-segmented-tab][data-pressed]
+    )::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--fork-glass-selected-glint);
+    pointer-events: none;
+  }
+
+  &.dark[data-fork-theme="cool-darker"]
+    [data-fork-thread-tabs]
+    :is(
+      [data-fork-thread-tab][data-active="true"],
+      [data-fork-segmented-tab][data-pressed]
+    )::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    padding: 1px;
+    border-radius: inherit;
+    background: var(--fork-glass-dark-edge);
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+
+  /* Figma's 6% white, under real glass only. */
+  &[data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
+    [data-fork-thread-tabs]
+    :is([data-fork-thread-tab][data-active="true"], [data-fork-segmented-tab][data-pressed]) {
+    background-color: rgb(255 255 255 / 6%);
+  }
+  /* fork:end fork-collapsed-thread-tabs */
 }
 
 :root[data-fork="noahhendrickson-t3code"]:where(:not([data-fork-glass-3d])) {

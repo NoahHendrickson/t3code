@@ -2597,3 +2597,18 @@
   --context-chip-ink: var(--info-foreground);
   --document-icon-stroke: var(--context-chip-accent);
 }
+
+/* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+   The tab strip takes the chat column's titlebar row and clears the window
+   controls itself, so the chat header under it drops the collapsed-sidebar inset
+   and the native window controls' inset (Windows/Linux overlay). */
+:root[data-fork="noahhendrickson-t3code"] [data-chat-column]:has(> [data-fork-thread-tabs]) {
+  --workspace-titlebar-content-left: var(--workspace-gutter-start);
+}
+
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-column]:has(> [data-fork-thread-tabs])
+  > [data-chat-header] {
+  --workspace-native-controls-inset: 0px;
+}
+/* fork:end fork-collapsed-thread-tabs */

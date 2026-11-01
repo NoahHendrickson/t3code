@@ -202,6 +202,12 @@ import { useStartNewAgentDraft } from "~/custom/useNewAgentDraft";
 /* fork:end fork-new-agent-draft */
 import { isCommandPaletteOpen, openCommandPalette } from "../commandPaletteBus";
 import { registerSettleAndAdvance } from "../settleAndAdvance";
+/* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
+import {
+  registerSidebarStartThreadInProject,
+  registerSidebarThreadMenu,
+} from "../custom/sidebarActionsBridge";
+/* fork:end fork-collapsed-thread-tabs */
 /* fork:begin sidebar-v2-dev-server-pulse — see .fork/customizations.yaml#sidebar-v2-dev-server-pulse */
 import { useThreadDiscoveredPorts } from "../portDiscoveryState";
 /* fork:end sidebar-v2-dev-server-pulse */
@@ -2226,6 +2232,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const delegatedUnderParent = useDelegatedUnderParent();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
+  /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
+  // A stable store function, so rename keeps its identity across sidebar toggles.
+  const { setOpen: setSidebarOpen } = useSidebar();
+  /* fork:end fork-collapsed-thread-tabs */
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const confirmThreadDelete = useClientSettings((s) => s.confirmThreadDelete);
   const confirmThreadArchive = useClientSettings((s) => s.confirmThreadArchive);
@@ -3173,16 +3183,27 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   );
   const [renamingThreadKey, setRenamingThreadKey] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
-  const startThreadRename = useCallback((threadRef: ScopedThreadRef, title: string) => {
-    if (!readEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope)) return;
-    /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
-    // Drafts are client-only until the first send; there is no server title
-    // to rename, and the painted label is fixed ("New thread").
-    if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
-    /* fork:end sidebar-v2-draft-rows */
-    setRenamingThreadKey(scopedThreadKey(threadRef));
-    setRenamingTitle(title);
-  }, []);
+  const startThreadRename = useCallback(
+    (threadRef: ScopedThreadRef, title: string) => {
+      if (!readEnvironmentScope(threadRef.environmentId, AuthOrchestrationOperateScope)) return;
+      /* fork:begin sidebar-v2-draft-rows — see .fork/customizations.yaml#sidebar-v2-draft-rows */
+      // Drafts are client-only until the first send; there is no server title
+      // to rename, and the painted label is fixed ("New thread").
+      if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
+      /* fork:end sidebar-v2-draft-rows */
+      /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+       The title edits in place on the card: a rename from the collapsed tabs opens
+       the sidebar, and one for a card the list hides never starts a hidden editor. */
+      if (!threadByKeyRef.current.has(scopedThreadKey(threadRef))) return;
+      if (!isMobile) setSidebarOpen(true);
+      /* fork:end fork-collapsed-thread-tabs */
+      setRenamingThreadKey(scopedThreadKey(threadRef));
+      setRenamingTitle(title);
+      /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
+    },
+    [isMobile, setSidebarOpen],
+  );
+  /* fork:end fork-collapsed-thread-tabs */
   const cancelThreadRename = useCallback(() => setRenamingThreadKey(null), []);
   const commitThreadRename = useCallback(
     (threadRef: ScopedThreadRef, title: string, originalTitle: string) => {
@@ -3249,7 +3270,12 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const planForwardNavigation = useCallback(
     (threadKey: string, coParkingKeys?: ReadonlySet<string>): (() => void) | null => {
       if (routeThreadKeyRef.current !== threadKey) return null;
-      const shell = threadByKeyRef.current.get(threadKey);
+      /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+         A tab can settle the open thread while the list hides its card: start in its project, not at home. */
+      const parsedRef = parseScopedThreadKey(threadKey);
+      const shell =
+        threadByKeyRef.current.get(threadKey) ?? (parsedRef ? readThreadShell(parsedRef) : null);
+      /* fork:end fork-collapsed-thread-tabs */
       const orderedKeys = orderedThreadKeysRef.current;
       const settledKeys = settledThreadKeysRef.current;
       const snoozedKeys = snoozedThreadKeysRef.current;
@@ -4122,7 +4148,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           await handleMultiSelectContextMenu(position);
           return;
         }
-        const thread = threadByKeyRef.current.get(threadKey);
+        /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+           The collapsed tabs open this for threads a collapsed section or the project scope hides. */
+        const thread = threadByKeyRef.current.get(threadKey) ?? readThreadShell(threadRef);
+        /* fork:end fork-collapsed-thread-tabs */
         if (!thread) return;
         const threadWorkspacePath =
           thread.worktreePath ??
@@ -4425,6 +4454,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       timestampFormat,
     ],
   );
+  /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- registers this menu in the module-level registry the collapsed tabs open it through
+  useEffect(() => registerSidebarThreadMenu(handleThreadContextMenu), [handleThreadContextMenu]);
+  /* fork:end fork-collapsed-thread-tabs */
 
   // Thread jump (cmd+1..9) and prev/next traversal reuse the same commands as
   // v1 — the keybinding layer is shared, only the ordered list differs.
@@ -4640,6 +4673,13 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     },
     [isMobile, newThreadContext, projectGroups, setOpenMobile],
   );
+  /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- registers this handler in the module-level registry the collapsed tabs' plus starts through
+  useEffect(
+    () => registerSidebarStartThreadInProject(handleNewThreadInProject),
+    [handleNewThreadInProject],
+  );
+  /* fork:end fork-collapsed-thread-tabs */
   /* fork:end sidebar-v2-project-grouping */
 
   // The button mirrors chat.new: in multi-project setups both route through

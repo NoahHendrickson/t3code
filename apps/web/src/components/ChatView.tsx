@@ -194,6 +194,9 @@ import { useOwnsGlobalInput, useSplitPane } from "~/custom/splitThreads/splitPan
 import { SplitAgentPill, splitAgentPillShown } from "~/custom/splitThreads/SplitAgentPill";
 import { SplitPaneHeaderControls } from "~/custom/splitThreads/SplitPaneHeaderControls";
 /* fork:end fork-split-threads */
+/* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
+import { CollapsedThreadTabs } from "~/custom/CollapsedThreadTabs";
+/* fork:end fork-collapsed-thread-tabs */
 import { toastManager } from "./ui/toast";
 import { projectScriptIdFromCommand } from "~/projectScripts";
 import { newMessageId } from "~/lib/utils";
@@ -3562,6 +3565,14 @@ export default function ChatView(props: ChatViewProps) {
         data-chat-column
         inert={rightPanelMaximized}
       >
+        {/* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+            Only the leading column carries the tabs, so the right panel and a split partner keep the full height. */}
+        {splitPane.leading && !splitPane.floating ? (
+          <CollapsedThreadTabs
+            reserveTrailingControls={!inlineRightPanelOwnsTitleBar && !splitPane.split}
+          />
+        ) : null}
+        {/* fork:end fork-collapsed-thread-tabs */}
         <header
           ref={threadPanelPopoverAnchorRef}
           data-chat-header

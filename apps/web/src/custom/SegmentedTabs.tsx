@@ -21,12 +21,18 @@ export function SegmentedTabs({ className, ...props }: ToggleGroup.Props) {
   );
 }
 
-export function SegmentedTab(props: Toggle.Props) {
+export function SegmentedTab({
+  className,
+  ...props
+}: Omit<Toggle.Props, "className"> & { readonly className?: string }) {
   return (
     <Toggle
       {...props}
       data-fork-segmented-tab
-      className="inline-flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-[calc(var(--radius-sm)-2px)] px-2.5 text-xs leading-4 font-medium whitespace-nowrap text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-64 data-pressed:bg-background data-pressed:text-foreground dark:data-pressed:bg-white/16 dark:data-pressed:text-white"
+      className={cn(
+        "inline-flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-[calc(var(--radius-sm)-2px)] px-2.5 text-xs leading-4 font-medium whitespace-nowrap text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-64 data-pressed:bg-background data-pressed:text-foreground dark:data-pressed:bg-white/16 dark:data-pressed:text-white",
+        className,
+      )}
     />
   );
 }
