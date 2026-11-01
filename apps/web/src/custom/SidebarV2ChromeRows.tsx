@@ -369,7 +369,8 @@ function ChromeAutomationsRow() {
   );
   return (
     <Tooltip disabled={live === 0}>
-      <TooltipTrigger render={row} />
+      {/* Outside the thread list's provider; match its 150ms open. */}
+      <TooltipTrigger render={row} delay={150} closeDelay={0} />
       <SidebarV2AutomationsHoverCard
         title={activityLabel.charAt(0).toUpperCase() + activityLabel.slice(1)}
         runs={runs}
