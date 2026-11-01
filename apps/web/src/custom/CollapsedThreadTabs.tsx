@@ -67,6 +67,7 @@ import type { EnvironmentId } from "@t3tools/contracts";
 
 import {
   buildCollapsedThreadTabs,
+  collapsedDraftTabKey,
   collapsedFilterSwitchTarget,
   COLLAPSED_TAB_STATUSES,
   DEFAULT_COLLAPSED_TAB_STATUSES,
@@ -209,10 +210,10 @@ function CollapsedThreadTabsStrip(props: {
     StoredStatuses,
   );
   const statuses = new Set(storedStatuses);
-  const toggleStatus = (status: CollapsedThreadTabStatus, checked: boolean) =>
+  const toggleStatus = (status: CollapsedThreadTabStatus) =>
     setStoredStatuses((previous) =>
       COLLAPSED_TAB_STATUSES.filter((option) =>
-        option === status ? checked : previous.includes(option),
+        option === status ? !previous.includes(option) : previous.includes(option),
       ),
     );
   // The sidebar's New agent row: the unassigned draft, its project picked in the column.
@@ -256,16 +257,9 @@ function CollapsedThreadTabsStrip(props: {
   const openDraft = useComposerDraftStore((store) =>
     openDraftId === null ? null : store.getDraftSession(openDraftId),
   );
-  const draftThreadKey =
-    openDraft === null
-      ? null
-      : scopedThreadKey(scopeThreadRef(openDraft.environmentId, openDraft.threadId));
+  const draftThreadKey = collapsedDraftTabKey({ draft: openDraft, tabs });
   const draftEntry: StripEntry | null =
-    openDraftId !== null &&
-    openDraft !== null &&
-    draftThreadKey !== null &&
-    openDraft.promotedTo == null &&
-    !tabs.some((tab) => tab.threadKey === draftThreadKey)
+    openDraftId !== null && openDraft !== null && draftThreadKey !== null
       ? {
           kind: "draft",
           draftId: openDraftId,
@@ -430,7 +424,7 @@ function CollapsedThreadTabsStrip(props: {
                 <ScopeCheckboxItem
                   key={status}
                   checked={statuses.has(status)}
-                  onCheckedChange={() => toggleStatus(status, !statuses.has(status))}
+                  onCheckedChange={() => toggleStatus(status)}
                 >
                   {SIDEBAR_V2_STATUS_SECTION_LABELS[status]}
                 </ScopeCheckboxItem>

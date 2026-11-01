@@ -5,6 +5,7 @@ import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environ
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import { effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
 
+import type { DraftSessionState } from "../composerDraftStore";
 import type { SidebarV2GroupableProject } from "./sidebarV2ProjectGrouping";
 import {
   buildSidebarV2StatusSections,
@@ -79,6 +80,20 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
     tabs,
     projects: input.projectGroups.filter((group) => projectKeys.has(group.projectKey)),
   };
+}
+
+/**
+ * The open draft's thread key when it gets the leading tab: open and unsent, and not already a
+ * thread tab (mid-promotion, its reserved id has a server shell), else null.
+ */
+export function collapsedDraftTabKey(input: {
+  readonly draft: Pick<DraftSessionState, "environmentId" | "threadId" | "promotedTo"> | null;
+  readonly tabs: readonly { readonly threadKey: string }[];
+}): string | null {
+  const { draft } = input;
+  if (draft === null || draft.promotedTo != null) return null;
+  const threadKey = scopedThreadKey(scopeThreadRef(draft.environmentId, draft.threadId));
+  return input.tabs.some((tab) => tab.threadKey === threadKey) ? null : threadKey;
 }
 
 /**

@@ -1,8 +1,10 @@
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
   buildCollapsedThreadTabs,
+  collapsedDraftTabKey,
   collapsedFilterSwitchTarget,
   DEFAULT_COLLAPSED_TAB_STATUSES,
   fitCollapsedThreadTabs,
@@ -102,6 +104,25 @@ describe("buildCollapsedThreadTabs", () => {
         .tabs.map((tab) => tab.thread.id)
         .toSorted(),
     ).toEqual(["asking", "settled", "snoozed", "working"]);
+  });
+});
+
+describe("collapsedDraftTabKey", () => {
+  const draft = { environmentId, threadId: ThreadId.make("draft"), promotedTo: null };
+  const key = scopedThreadKey(scopeThreadRef(environmentId, draft.threadId));
+  it.each([
+    // [label, draft, tabs, expected]
+    ["gives the open draft a tab", draft, [], key],
+    ["has no draft open", null, [], null],
+    [
+      "drops a draft that was sent",
+      { ...draft, promotedTo: scopeThreadRef(environmentId, draft.threadId) },
+      [],
+      null,
+    ],
+    ["defers to the thread tab of a draft mid-promotion", draft, [{ threadKey: key }], null],
+  ] as const)("%s", (_label, open, tabs, expected) => {
+    expect(collapsedDraftTabKey({ draft: open, tabs })).toBe(expected);
   });
 });
 
