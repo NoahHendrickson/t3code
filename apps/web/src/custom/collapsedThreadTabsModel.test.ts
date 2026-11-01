@@ -42,34 +42,47 @@ const project = (projectKey: string) => ({
 });
 
 describe("buildCollapsedThreadTabs", () => {
-  it("orders needs-input before working whatever their age, with only their projects", () => {
-    const { tabs, projects } = buildCollapsedThreadTabs({
-      threads: [
-        { ...shell("asking", "p1", "2026-01-01T03:00:00.000Z"), hasPendingUserInput: true },
-        { ...shell("working", "p2", "2026-01-01T01:00:00.000Z"), runtime: running },
-        shell("idle", "p3", "2026-01-01T02:00:00.000Z"),
-        {
-          ...shell("snoozed", "p3", "2026-01-01T04:00:00.000Z"),
-          runtime: running,
-          snoozedUntil: "2026-01-03T00:00:00.000Z",
-        },
-        {
-          ...shell("settled", "p3", "2026-01-01T05:00:00.000Z"),
-          runtime: running,
-          settledOverride: "settled",
-        },
-      ],
+  const threads = [
+    { ...shell("asking", "p1", "2026-01-01T03:00:00.000Z"), hasPendingUserInput: true },
+    { ...shell("working", "p2", "2026-01-01T01:00:00.000Z"), runtime: running },
+    shell("idle", "p3", "2026-01-01T02:00:00.000Z"),
+    {
+      ...shell("snoozed", "p3", "2026-01-01T04:00:00.000Z"),
+      runtime: running,
+      snoozedUntil: "2026-01-03T00:00:00.000Z",
+    },
+    {
+      ...shell("settled", "p3", "2026-01-01T05:00:00.000Z"),
+      runtime: running,
+      settledOverride: "settled" as const,
+    },
+  ];
+  const build = (supported: boolean) =>
+    buildCollapsedThreadTabs({
+      threads,
       projectGroups: [project("p1"), project("p2"), project("p3")],
       localLastVisitedAtById: {},
       now: NOW,
       openThreadKey: null,
       holds: createSidebarV2CompletedHoldTracker(),
+      supports: () => ({ settlement: supported, snooze: supported }),
     });
+
+  it("orders needs-input before working whatever their age, with only their projects", () => {
+    const { tabs, projects } = build(true);
     expect(tabs.map((tab) => [tab.thread.id, tab.projectKey])).toEqual([
       ["asking", "p1"],
       ["working", "p2"],
     ]);
     expect(projects.map((group) => group.projectKey)).toEqual(["p1", "p2"]);
+  });
+
+  it("keeps parked threads where the environment cannot park them, as the sidebar does", () => {
+    expect(
+      build(false)
+        .tabs.map((tab) => tab.thread.id)
+        .toSorted(),
+    ).toEqual(["asking", "settled", "snoozed", "working"]);
   });
 });
 

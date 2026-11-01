@@ -18,6 +18,7 @@ import { useSidebar, useSidebarVisibility } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useNowMinute } from "~/hooks/useNowMinute";
+import { useSnoozeWakeClock } from "~/components/Sidebar.logic";
 import { useSidebarProjectGroups } from "~/hooks/useSidebarProjectGroups";
 import { useThreadRouteTarget } from "~/hooks/useThreadRouteTarget";
 import { shortcutLabelForCommand } from "~/keybindings";
@@ -28,6 +29,8 @@ import { primaryServerKeybindingsAtom } from "~/state/server";
 import { settleAndAdvance } from "~/settleAndAdvance";
 import { buildThreadRouteParams } from "~/threadRoutes";
 import { useUiStateStore } from "~/uiStateStore";
+import { useThreadSelectionStore } from "~/threadSelectionStore";
+import type { EnvironmentId } from "@t3tools/contracts";
 
 import {
   buildCollapsedThreadTabs,
@@ -58,6 +61,11 @@ const TAB_ACTION_CLASS = cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-5 rounded-full")
 const completedHolds = createSidebarV2CompletedHoldTracker();
 const NO_PROJECT_GROUPS: readonly SidebarV2GroupableProject[] = [];
 
+const clearSidebarSelection = () => {
+  const selection = useThreadSelectionStore.getState();
+  if (selection.hasSelection()) selection.clearSelection();
+};
+
 type TabStatus = ReturnType<typeof resolveSidebarV2CardStatus>["topStatus"];
 
 export function CollapsedThreadTabs(props: {
@@ -77,16 +85,30 @@ export function CollapsedThreadTabs(props: {
 function useTabSource() {
   const threads = useQuietThreadShells();
   const delegatedUnderParent = useDelegatedUnderParent();
+  const serverConfigs = useServerConfigs();
   const localLastVisitedAtById = useUiStateStore((store) => store.threadLastVisitedAtById);
-  const now = useNowMinute();
   const routeTarget = useThreadRouteTarget();
   return {
     threads: filterSidebarV2VisibleThreads(threads, null, delegatedUnderParent),
     localLastVisitedAtById,
-    now,
+    // The minute re-reads it for hold expiry, the wake clock at each snooze deadline.
+    now: preciseNow(useNowMinute(), useSnoozeWakeClock(threads)),
     openThreadKey: routeTarget?.kind === "server" ? scopedThreadKey(routeTarget.threadRef) : null,
     holds: completedHolds,
+    supports: (environmentId: EnvironmentId) => {
+      const capabilities = serverConfigs.get(environmentId)?.environment.capabilities;
+      return {
+        settlement: capabilities?.threadSettlement === true,
+        snooze: capabilities?.threadSnooze === true,
+      };
+    },
   };
+}
+
+/** The real time as ISO, for snooze checks: the minute clock carries no zone. Its
+    arguments are only the clocks that should re-read it. */
+function preciseNow(_minute: string, _wakeClockMs: number): string {
+  return new Date().toISOString();
 }
 
 function CompletedHoldObserver() {
@@ -99,7 +121,7 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
   const serverConfigs = useServerConfigs();
   const projectGroups = useSidebarProjectGroups();
   const source = useTabSource();
-  const { localLastVisitedAtById, now: nowMinute, openThreadKey } = source;
+  const { localLastVisitedAtById, now, openThreadKey } = source;
   const [storedProjectKey, setStoredProjectKey] = useLocalStorage(
     PROJECT_STORAGE_KEY,
     ALL_PROJECTS,
@@ -149,17 +171,21 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
         thread.lastVisitedAt,
         localLastVisitedAtById[threadKey],
       ),
-      wokeAt: threadWokeAt(thread, { now: nowMinute }),
+      wokeAt: threadWokeAt(thread, { now }),
     }).topStatus;
-  const openThread = ({ thread }: CollapsedThreadTab) =>
+  const openThread = ({ thread }: CollapsedThreadTab) => {
+    clearSidebarSelection();
     void router.navigate({
       to: "/$environmentId/$threadId",
       params: buildThreadRouteParams(scopeThreadRef(thread.environmentId, thread.id)),
     });
+  };
 
   return (
     <div
       data-fork-thread-tabs=""
+      // Shared by both panes of a split: a press here must not first focus the left one.
+      data-split-pane-action=""
       className={cn(
         "drag-region flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center gap-3",
         // Clears the window controls and the floating sidebar toggle.
@@ -177,7 +203,8 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
           const next = value[0];
           if (typeof next === "string") setStoredProjectKey(next);
         }}
-        className="shrink-0"
+        // Scrolls sideways before it can squeeze out More and New agent.
+        className="min-w-0 shrink overflow-x-auto [scrollbar-width:none]"
       >
         <ProjectTab value={ALL_PROJECTS} label="All projects">
           <LayersIcon className="size-3.5" />
@@ -196,7 +223,8 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
       <nav
         ref={measureNav}
         aria-label="Active threads"
-        className="-mx-1 -my-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden px-1 py-1"
+        // The min width keeps More (72px), New agent (28px) and their gap on screen.
+        className="-mx-1 -my-1 flex min-w-[114px] flex-1 items-center gap-1.5 overflow-hidden px-1 py-1"
       >
         {shownTabs.length === 0 ? (
           <span className="px-1 text-xs text-muted-foreground">No active threads</span>
@@ -276,8 +304,11 @@ function ThreadTab(props: {
 }) {
   const { thread, threadKey } = props.tab;
   const threadRef = scopeThreadRef(thread.environmentId, thread.id);
-  const openMenu = (position: { x: number; y: number }) =>
+  // A tab's menu is for its one thread, never a selection made in the sidebar.
+  const openMenu = (position: { x: number; y: number }) => {
+    clearSidebarSelection();
     openSidebarThreadMenu(threadRef, position);
+  };
   return (
     <div
       data-fork-thread-tab=""

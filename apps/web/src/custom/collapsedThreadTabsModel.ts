@@ -25,14 +25,23 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
   readonly threads: readonly EnvironmentThreadShell[];
   readonly projectGroups: readonly TProject[];
   readonly localLastVisitedAtById: Readonly<Record<string, string>>;
+  /** A precise ISO time, as the sidebar's partition uses. */
   readonly now: string;
   readonly openThreadKey: string | null;
   readonly holds: SidebarV2CompletedHoldTracker;
+  /** The sidebar's capability gates: an environment without them never parks a thread. */
+  readonly supports: (environmentId: EnvironmentThreadShell["environmentId"]) => {
+    readonly settlement: boolean;
+    readonly snooze: boolean;
+  };
 }): { readonly tabs: CollapsedThreadTab[]; readonly projects: TProject[] } {
-  const live = input.threads.filter(
-    (thread) =>
-      thread.settledOverride !== "settled" && !effectiveSnoozed(thread, { now: input.now }),
-  );
+  const live = input.threads.filter((thread) => {
+    const supports = input.supports(thread.environmentId);
+    return !(
+      (supports.settlement && thread.settledOverride === "settled") ||
+      (supports.snooze && effectiveSnoozed(thread, { now: input.now }))
+    );
+  });
   const sections = buildSidebarV2StatusSections({
     threads: live,
     localLastVisitedAtById: input.localLastVisitedAtById,

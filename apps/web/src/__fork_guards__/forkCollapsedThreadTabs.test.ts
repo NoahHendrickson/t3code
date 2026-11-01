@@ -54,7 +54,7 @@ describe("fork guard: fork-collapsed-thread-tabs", () => {
     );
     expect(strip).toContain("openSidebarThreadMenu(threadRef, position)");
     expect(strip).toContain("settleAndAdvance(threadRef)");
-    expect(sidebar).toContain("if (!isMobile && !sidebarOpen) setSidebarOpen(true);");
+    expect(sidebar).toContain("if (!isMobile) setSidebarOpen(true);");
   });
 
   it("dresses the selected tab and project in the selected card's glass", () => {

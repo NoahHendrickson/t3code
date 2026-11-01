@@ -6035,7 +6035,9 @@
     header's pr-24 for them when they float over its end. The buckets come
     from status grouping's own pipeline (buildSidebarV2StatusSections, with
     its own Completed-hold tracker), so a tab and its sidebar card agree;
-    snoozed, settled, archived and subagent threads are left out. A project
+    snoozed, settled, archived and subagent threads are left out, under the
+    sidebar's own capability gates and a precise, zoned clock (re-read at
+    each snooze deadline), as the sidebar's partition does. A project
     switcher leads the row: All, then one icon per project with a tab,
     filtering the tabs; the choice persists per device and falls back to All
     while its project has no tab. Tabs shrink from their title's width to a
@@ -6059,10 +6061,18 @@
     settles through the sidebar's own settleAndAdvance path, shown only where
     the server supports settlement, and a three-dot button (or right-click)
     that opens the sidebar's own thread action menu through
-    sidebarActionsBridge, so the items cannot drift from the card's. The
+    sidebarActionsBridge, so the items cannot drift from the card's. A
+    tab's menu and navigation clear any sidebar multi-selection first, so a
+    bulk menu is never reached from a single tab. The row carries
+    data-split-pane-action, so a press in it never first focuses the left
+    pane of a split. The project switcher scrolls sideways before More and
+    New agent can be squeezed out. The
     offcanvas sidebar stays mounted while collapsed, so both handlers are
     live. Rename edits the title on the sidebar card, so a rename started
-    while the desktop sidebar is collapsed opens it.
+    while the desktop sidebar is collapsed opens it, and a rename for a card
+    the list hides does nothing rather than leave a hidden editor. Settling
+    the open thread from a tab while its card is hidden starts a thread in
+    its project rather than going home.
   tier: 4
   files:
     - apps/web/src/custom/CollapsedThreadTabs.tsx

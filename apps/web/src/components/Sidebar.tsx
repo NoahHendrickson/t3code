@@ -2233,7 +2233,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
-  const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
+  // A stable store function, so rename keeps its identity across sidebar toggles.
+  const { setOpen: setSidebarOpen } = useSidebar();
   /* fork:end fork-collapsed-thread-tabs */
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const confirmThreadDelete = useClientSettings((s) => s.confirmThreadDelete);
@@ -3191,15 +3192,16 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       if (draftIdByThreadKeyRef.current.has(scopedThreadKey(threadRef))) return;
       /* fork:end sidebar-v2-draft-rows */
       /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
-       The title edits in place on the card, so a rename started from the collapsed
-       tabs opens the sidebar to show it. */
-      if (!isMobile && !sidebarOpen) setSidebarOpen(true);
+       The title edits in place on the card: a rename from the collapsed tabs opens
+       the sidebar, and one for a card the list hides never starts a hidden editor. */
+      if (!threadByKeyRef.current.has(scopedThreadKey(threadRef))) return;
+      if (!isMobile) setSidebarOpen(true);
       /* fork:end fork-collapsed-thread-tabs */
       setRenamingThreadKey(scopedThreadKey(threadRef));
       setRenamingTitle(title);
       /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs */
     },
-    [isMobile, setSidebarOpen, sidebarOpen],
+    [isMobile, setSidebarOpen],
   );
   /* fork:end fork-collapsed-thread-tabs */
   const cancelThreadRename = useCallback(() => setRenamingThreadKey(null), []);
@@ -3268,7 +3270,12 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const planForwardNavigation = useCallback(
     (threadKey: string, coParkingKeys?: ReadonlySet<string>): (() => void) | null => {
       if (routeThreadKeyRef.current !== threadKey) return null;
-      const shell = threadByKeyRef.current.get(threadKey);
+      /* fork:begin fork-collapsed-thread-tabs — see .fork/customizations.yaml#fork-collapsed-thread-tabs
+         A tab can settle the open thread while the list hides its card: start in its project, not at home. */
+      const parsedRef = parseScopedThreadKey(threadKey);
+      const shell =
+        threadByKeyRef.current.get(threadKey) ?? (parsedRef ? readThreadShell(parsedRef) : null);
+      /* fork:end fork-collapsed-thread-tabs */
       const orderedKeys = orderedThreadKeysRef.current;
       const settledKeys = settledThreadKeysRef.current;
       const snoozedKeys = snoozedThreadKeysRef.current;
