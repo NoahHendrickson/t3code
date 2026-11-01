@@ -410,6 +410,7 @@ function TaskDetailForm(props: {
       runtimeMode: draft.runtimeMode,
       interactionMode: draft.interactionMode,
       creationSource: "web",
+      showInSidebar: draft.showInSidebar === true,
     };
     submissionPending.current = true;
     setSaving(true);
@@ -571,6 +572,24 @@ function TaskDetailForm(props: {
               model={model}
               disabled={disabled}
             />
+            {/* A thread-bound automation posts into that thread instead of launching runs. */}
+            {draft.threadId ? null : (
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 space-y-1">
+                  <Label htmlFor="scheduled-task-show-in-sidebar">Show runs in sidebar</Label>
+                  <p className="text-sm text-muted-foreground">
+                    New runs appear in their project with your other threads, not only here.
+                  </p>
+                </div>
+                <Switch
+                  id="scheduled-task-show-in-sidebar"
+                  checked={draft.showInSidebar === true}
+                  onCheckedChange={(showInSidebar) =>
+                    setDraft((current) => ({ ...current, showInSidebar }))
+                  }
+                />
+              </div>
+            )}
           </fieldset>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

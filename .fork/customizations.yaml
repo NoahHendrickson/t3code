@@ -2823,6 +2823,44 @@
     - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
     - apps/server/src/orchestration-v2/ThreadForkService.test.ts
 
+- id: fork-automation-runs-in-sidebar
+  intent: >
+    An automation's Settings tab carries a "Show runs in sidebar" switch,
+    saved with the task. When it is on, the threads the automation launches
+    are left without the thread-level task stamp, so the roster lists them
+    in their project groups like any other thread and the Automations row
+    stops counting them; the initial message still carries the task id, so
+    Run history and the message's automation link are unchanged. It applies
+    to runs launched after the save; pinning still brings back an earlier
+    run. The switch is hidden for an automation bound to an existing thread,
+    which never launches one. The flag lives in a fork column,
+    scheduled_tasks.fork_show_in_sidebar, added idempotently after
+    upstream's migrations by persistence/forkSchema.ts rather than by a
+    migration, because the migrator skips every id up to the highest
+    recorded and a fork-numbered migration would make a later upstream one
+    with that id never run. A save that omits the field (MCP, mobile, the
+    upstream settings editor, older clients) keeps the stored value.
+  tier: 4
+  files:
+    - apps/server/src/persistence/forkSchema.ts
+    - apps/web/src/custom/scheduled/ScheduledTaskDetail.tsx
+    - apps/web/src/custom/scheduled/githubAutomation.logic.ts
+  shadows: []
+  watch:
+    # Fenced call to ensureForkSchema after runMigrations.
+    - apps/server/src/persistence/Sqlite.ts
+    # Fenced showInSidebar on ScheduledTask and ScheduledTaskUpsertInput.
+    - packages/contracts/src/scheduledTask.ts
+    # Fenced row field, column reads and writes, upsert default, and the launch opt-out.
+    - apps/server/src/scheduledTasks/ScheduledTaskService.ts
+    # Fenced listInSidebar input; the stamp condition sits in fork-scheduled-runs-off-sidebar's hunk.
+    - apps/server/src/orchestration-v2/ThreadLaunchService.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
+    - docs/user/thread-sidebar.md
+  verify:
+    - apps/web/src/__fork_guards__/forkAutomationRunsInSidebar.test.ts
+    - apps/server/src/orchestration-v2/ThreadLaunchService.test.ts
+
 - id: fork-scheduled-page
   intent: >
     /scheduled is a workspace page, laid out like Cursor's Automations: a

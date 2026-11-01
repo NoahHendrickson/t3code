@@ -8,6 +8,7 @@ import {
 export type AutomationDraft = DraftState & {
   readonly githubPrOpened?: boolean;
   readonly githubProjectIds?: ReadonlyArray<string>;
+  readonly showInSidebar?: boolean;
 };
 
 export function automationTaskToDraft(task: ScheduledTask): AutomationDraft {
@@ -18,6 +19,7 @@ export function automationTaskToDraft(task: ScheduledTask): AutomationDraft {
       task.schedule.type === "webhook"
         ? (task.schedule.github?.repositories.map((entry) => entry.projectId) ?? [])
         : [],
+    showInSidebar: task.showInSidebar === true,
   };
 }
 
