@@ -149,17 +149,20 @@ describe("fork guard: fork-model-picker", () => {
     );
     // Claude and Codex wear the supplied marks; the rest keep their icon.
     const glyph = readSibling("../custom/icons/ModelPickerProviderGlyph.tsx");
-    expect(glyph).toContain('entry.driverKind === "claudeAgent"');
-    expect(glyph).toContain('entry.driverKind === "codex"');
+    expect(glyph).toContain('[ProviderDriverKind.make("claudeAgent")]: ClaudeCodeMark,');
+    expect(glyph).toContain('[ProviderDriverKind.make("codex")]: CodexMark,');
     expect(glyph).toContain('import codexMarkUrl from "../assets/codex-mark.png";');
     expect(content).toContain("<ModelPickerProviderGlyph");
-    // Rail first, then search, then the list.
-    const railAt = content.indexOf("{renderProviderRail()}");
+    // Search, then the list, then the rail: ArrowDown from the search field
+    // reaches the models first. The row is reversed to show the rail on the left.
     const searchAt = content.indexOf('aria-label="Search models"');
     const listAt = content.indexOf("{renderModelList()}");
-    expect(railAt).toBeGreaterThan(-1);
-    expect(searchAt).toBeGreaterThan(railAt);
+    const railAt = content.indexOf("{renderProviderRail()}");
     expect(listAt).toBeGreaterThan(searchAt);
+    expect(railAt).toBeGreaterThan(listAt);
+    expect(content).toContain("flex min-h-0 flex-row-reverse");
+    // Many providers scroll inside the rail instead of growing the popup.
+    expect(content).toMatch(/className="flex max-h-92 shrink-0 flex-col gap-1 overflow-y-auto/u);
     // Favorites leads the tabs, then one per provider instance.
     expect(content.indexOf('target: "favorites"')).toBeLessThan(
       content.indexOf("{providerEntries.map(renderProviderTab)}"),

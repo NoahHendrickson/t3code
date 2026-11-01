@@ -2,15 +2,10 @@
    Claude's is the Claude Code mascot; Codex's art is a one-colour cloud with the prompt cut
    out, so it masks the app icon's gradient over a white patch that fills the cutout. Every
    other provider keeps its instance icon. */
-import {
-  normalizeProviderAccentColor,
-  providerAccentForegroundColor,
-  providerInstanceInitials,
-} from "@t3tools/client-runtime/state/provider-instance-display";
-import type { CSSProperties } from "react";
+import { ProviderDriverKind } from "@t3tools/contracts";
+import type { CSSProperties, JSX } from "react";
 
 import { ProviderInstanceIcon } from "~/components/chat/ProviderInstanceIcon";
-import { cn } from "~/lib/utils";
 import type { ProviderInstanceEntry } from "~/providerInstances";
 import codexMarkUrl from "../assets/codex-mark.png";
 
@@ -40,62 +35,38 @@ function CodexMark() {
   );
 }
 
+const FORK_MARK_BY_DRIVER: Partial<Record<ProviderDriverKind, () => JSX.Element>> = {
+  [ProviderDriverKind.make("claudeAgent")]: ClaudeCodeMark,
+  [ProviderDriverKind.make("codex")]: CodexMark,
+};
+
 export function ModelPickerProviderGlyph(props: {
   readonly entry: ProviderInstanceEntry;
   /** Set when several instances share a driver, so the initials tell them apart. */
   readonly showBadge: boolean;
 }) {
   const { entry } = props;
-  const mark =
-    entry.driverKind === "claudeAgent" ? (
-      <ClaudeCodeMark />
-    ) : entry.driverKind === "codex" ? (
-      <CodexMark />
-    ) : null;
-
-  if (!mark) {
-    return (
-      <ProviderInstanceIcon
-        driverKind={entry.driverKind}
-        displayName={entry.displayName}
-        accentColor={entry.accentColor}
-        acpRegistryAgentId={entry.acpRegistryAgentId}
-        acpRegistryIconUrl={entry.acpRegistryIconUrl}
-        showBadge={props.showBadge}
-        className="size-4"
-        iconClassName="size-4"
-        indicatorBackground="var(--popover)"
-        badgeClassName="right-[-0.25rem] bottom-[-0.25rem] h-3 min-w-3 px-0.5 text-[7px]"
-      />
-    );
-  }
-
-  // The same corner badge ProviderInstanceIcon draws for the other providers.
-  const accentColor = normalizeProviderAccentColor(entry.accentColor);
+  const Mark = FORK_MARK_BY_DRIVER[entry.driverKind];
+  const icon = (className: string, iconClassName: string) => (
+    <ProviderInstanceIcon
+      driverKind={entry.driverKind}
+      displayName={entry.displayName}
+      accentColor={entry.accentColor}
+      acpRegistryAgentId={entry.acpRegistryAgentId}
+      acpRegistryIconUrl={entry.acpRegistryIconUrl}
+      showBadge={props.showBadge}
+      className={className}
+      iconClassName={iconClassName}
+      indicatorBackground="var(--popover)"
+      badgeClassName="right-[-0.25rem] bottom-[-0.25rem] h-3 min-w-3 px-0.5 text-[7px]"
+    />
+  );
+  if (!Mark) return icon("size-4", "size-4");
+  // Upstream's icon with its glyph hidden, laid over the mark, draws the badge.
   return (
     <span className="relative inline-flex size-4 shrink-0 items-center justify-center">
-      {mark}
-      {props.showBadge ? (
-        <span
-          className={cn(
-            "pointer-events-none absolute right-[-0.25rem] bottom-[-0.25rem] flex h-3 min-w-3 items-center justify-center rounded-full border border-(--popover) px-0.5 text-[7px] font-semibold leading-none shadow-sm",
-            accentColor
-              ? "bg-(--provider-accent) text-(--provider-accent-foreground)"
-              : "bg-card text-muted-foreground",
-          )}
-          style={
-            accentColor
-              ? ({
-                  "--provider-accent": accentColor,
-                  "--provider-accent-foreground": providerAccentForegroundColor(accentColor),
-                } as CSSProperties)
-              : undefined
-          }
-          aria-hidden
-        >
-          {providerInstanceInitials(entry.displayName)}
-        </span>
-      ) : null}
+      <Mark />
+      {props.showBadge ? icon("absolute inset-0", "hidden") : null}
     </span>
   );
 }

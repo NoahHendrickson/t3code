@@ -4674,13 +4674,18 @@
     keeps its name because "Build" alone is nothing. Picker rows drop the name
     too, since the selected provider tab or the row's provider label names it.
     The menu is a vertical rail of provider icon tabs on the left, beside a
-    search field over the chosen scope's models. The rail runs edge to edge
+    search field over the chosen scope's models. The rail comes after the
+    list in the DOM (the row is reversed to show it on the left), so ArrowDown
+    from the search field reaches the models before the tabs, and it scrolls
+    once it is taller than the list column, so many providers never grow the
+    popup. The rail runs edge to edge
     of the popup (top to the traits panel's rule, or to the popup's bottom),
     divided from the list by a full-height rule; its 32px tabs line up with
     the search field and the rows. The tabs are Favorites (heart, always
     shown; empty, it says how to add one), then one per enabled provider instance, icon only with
     a tooltip naming it (or why it is disabled), a tint on the chosen one and,
-    when another scope is chosen, a dot on the current model's provider.
+    when another scope is chosen, a dot on the current model's provider (its
+    accessible name says "current model").
     Claude and Codex wear supplied marks (the Claude Code mascot, and the
     Codex cloud prompt in the app icon's purple-to-blue gradient with a white
     prompt); other providers keep their
@@ -4696,9 +4701,10 @@
     provider's current models; legacy models sit behind an inline "Legacy
     models" toggle at the end of the list. Choosing swaps the list without touching
     focus; the search field takes focus a frame and a tick after the swap.
-    Focusing it from the tab's click closes the menu: the tab re-takes
-    focus on click, and the menu's focus-out check, a microtask later, sees
-    focus heading to a row the swap already removed. Typing anywhere lands in
+    A pick from search results swaps to its provider's list, removing the
+    clicked row; focusing the field from that click closes the menu, because
+    the menu's focus-out check, a microtask later, sees focus heading to a row
+    the swap already removed. Typing anywhere lands in
     the search field (capture-phase redirect, ahead of the menu's type-ahead,
     also on the popup itself, where the menu parks focus after a swap),
     and any query swaps the list for one flat,
