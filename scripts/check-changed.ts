@@ -32,7 +32,10 @@ const git = (...args: Array<string>) =>
     .split("\n")
     .filter(Boolean);
 
-const ref = process.argv[2] ?? "origin/main";
+/* fork:begin fork-check-changed-base — see .fork/customizations.yaml#fork-check-changed-base */
+// origin/main is the upstream mirror here, so diffing against it rechecks the whole fork.
+const ref = process.argv[2] ?? "origin/custom";
+/* fork:end fork-check-changed-base */
 const mergeBase = NodeChildProcess.spawnSync("git", ["merge-base", "HEAD", ref], {
   cwd: root,
   encoding: "utf8",

@@ -6140,3 +6140,19 @@
     - apps/web/src/__fork_guards__/forkCollapsedThreadTabs.test.ts
     - apps/web/src/__fork_guards__/forkGlass3d.test.ts
     - apps/web/src/custom/collapsedThreadTabsModel.test.ts
+
+- id: fork-check-changed-base
+  intent: >
+    vp run check:changed compares a branch against origin/custom by default,
+    not origin/main. In this fork origin/main is the read-only upstream mirror,
+    so diffing against it treats every fork customization as a change and each
+    run rechecks hundreds of files and their browser tests. An explicit ref
+    argument still wins.
+  tier: 4
+  files: []
+  shadows: []
+  watch:
+    # Fenced default ref.
+    - scripts/check-changed.ts
+  verify:
+    - apps/web/src/__fork_guards__/forkCheckChangedBase.test.ts
