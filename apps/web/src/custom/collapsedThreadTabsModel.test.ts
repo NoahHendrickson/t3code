@@ -146,10 +146,10 @@ describe("fitCollapsedThreadTabs", () => {
     // [count, width, activeIndex, visible, overflow]
     [3, 0, -1, [0, 1, 2], []],
     // Three minimum tabs and their gaps fill the row exactly.
-    [3, 3 * 112 + 2 * 6, -1, [0, 1, 2], []],
+    [3, 3 * 132 + 2 * 6, -1, [0, 1, 2], []],
     // A pixel short, the last tab goes behind More.
-    [3, 3 * 112 + 2 * 6 - 1, -1, [0, 1], [2]],
-    // 500px holds three 118px steps beside More.
+    [3, 3 * 132 + 2 * 6 - 1, -1, [0, 1], [2]],
+    // 500px holds three 138px steps beside More.
     [6, 500, -1, [0, 1, 2], [3, 4, 5]],
     [6, 500, 4, [0, 1, 4], [2, 3, 5]],
     [6, 60, 4, [], [0, 1, 2, 3, 4, 5]],

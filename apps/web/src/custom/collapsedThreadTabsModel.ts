@@ -112,15 +112,19 @@ export function collapsedFilterSwitchTarget<TTab extends { readonly threadKey: s
   return input.after[0] ?? null;
 }
 
-/** Geometry the strip's classes draw: min-w-[112px] tabs, gap-1.5 and a w-[72px] More button. */
-const COLLAPSED_TAB_MIN_WIDTH = 112;
+/**
+ * The tab minimum both tab shells set inline, which holds the provider mark, a five-digit PR
+ * badge, the status mark and the hover actions. The gap and More width match the strip's
+ * gap-1.5 and w-[72px] classes.
+ */
+export const COLLAPSED_TAB_MIN_WIDTH = 132;
 const COLLAPSED_TAB_GAP = 6;
 const COLLAPSED_TAB_MORE_WIDTH = 72;
 
 /**
  * How many tabs fit at their minimum width, the rest going behind More. The open
- * thread takes the last visible slot when it would overflow; with no slot at all (under
- * about 190px), More keeps the room, and the header still names the thread.
+ * thread takes the last visible slot when it would overflow; with no slot at all (narrower
+ * than one tab plus More), More keeps the room, and the header still names the thread.
  * An unmeasured row (width 0) shows every tab.
  */
 export function fitCollapsedThreadTabs(input: {

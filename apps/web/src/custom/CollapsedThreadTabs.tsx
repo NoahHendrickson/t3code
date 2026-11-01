@@ -56,6 +56,7 @@ import {
 import { useEnvironmentProviders } from "~/state/environments";
 import {
   deriveProviderEntriesByEnvironment,
+  NO_PROVIDER_MODEL_SELECTION,
   type ProviderInstanceEntry,
 } from "~/providerInstances";
 import { primaryServerKeybindingsAtom } from "~/state/server";
@@ -63,12 +64,13 @@ import { settleAndAdvance } from "~/settleAndAdvance";
 import { buildThreadRouteParams } from "~/threadRoutes";
 import { useUiStateStore } from "~/uiStateStore";
 import { useThreadSelectionStore } from "~/threadSelectionStore";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, ModelSelection } from "@t3tools/contracts";
 
 import {
   buildCollapsedThreadTabs,
   collapsedDraftTabKey,
   collapsedFilterSwitchTarget,
+  COLLAPSED_TAB_MIN_WIDTH,
   COLLAPSED_TAB_STATUSES,
   DEFAULT_COLLAPSED_TAB_STATUSES,
   fitCollapsedThreadTabs,
@@ -90,7 +92,7 @@ import { openSidebarThreadMenu, startSidebarThreadInProject } from "./sidebarAct
 import { SIDEBAR_V2_ICON_BUTTON_CLASS } from "./sidebarV2TrailingColumn";
 import { resolveSidebarV2CardStatus } from "./sidebarV2CardStatus";
 import { SidebarV2StatusMark } from "./SidebarV2StatusIndicator";
-import { sidebarDraftTitleFromPrompt } from "./sidebarV2DraftRows";
+import { sidebarDraftModelSelection, sidebarDraftTitleFromPrompt } from "./sidebarV2DraftRows";
 import type { SidebarV2GroupableProject } from "./sidebarV2ProjectGrouping";
 import {
   createSidebarV2CompletedHoldTracker,
@@ -103,6 +105,10 @@ const STATUSES_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-statuses:v1";
 const StoredStatuses = Schema.Array(Schema.Literals(COLLAPSED_TAB_STATUSES));
 const ALL_PROJECTS = "all";
 const TRAILING_CONTROLS_GAP = 8;
+// Shrinks from its title's width to the minimum fitCollapsedThreadTabs counts on.
+const TAB_SHELL_CLASS =
+  "group/tab relative flex h-7 max-w-56 shrink items-center rounded-full text-xs font-medium";
+const TAB_SHELL_STYLE = { minWidth: COLLAPSED_TAB_MIN_WIDTH };
 const TAB_ACTION_CLASS = cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-5 rounded-full");
 
 // Its own tracker: the sidebar's resets whenever status grouping is off.
@@ -184,7 +190,7 @@ type StripEntry =
       readonly draftId: DraftId;
       readonly threadKey: string;
       readonly environmentId: EnvironmentId;
-      readonly defaultInstanceId: string | null;
+      readonly defaultModelSelection: ModelSelection;
     }
   | { readonly kind: "thread"; readonly tab: CollapsedThreadTab };
 
@@ -266,12 +272,12 @@ function CollapsedThreadTabsStrip(props: {
           threadKey: draftThreadKey,
           environmentId: openDraft.environmentId,
           // The sidebar's draft card falls back to the project's default model.
-          defaultInstanceId:
+          defaultModelSelection:
             allProjects.find(
               (project) =>
                 project.environmentId === openDraft.environmentId &&
                 project.id === openDraft.projectId,
-            )?.defaultModelSelection?.instanceId ?? null,
+            )?.defaultModelSelection ?? NO_PROVIDER_MODEL_SELECTION,
         }
       : null;
   // The draft leads the row; thread tabs follow it.
@@ -461,7 +467,9 @@ function CollapsedThreadTabsStrip(props: {
         className="-mx-1 -my-1 flex min-w-[80px] flex-1 items-center gap-1.5 overflow-hidden px-1 py-1"
       >
         {entries.length === 0 ? (
-          <span className="px-1 text-xs text-muted-foreground">No active threads</span>
+          <span className="px-1 text-xs text-muted-foreground">
+            {statuses.size === 0 ? "No statuses selected" : "No active threads"}
+          </span>
         ) : null}
         {visibleEntries.map((entry) => {
           if (entry.kind === "draft") {
@@ -469,7 +477,7 @@ function CollapsedThreadTabsStrip(props: {
               <DraftTab
                 key={entry.threadKey}
                 draftId={entry.draftId}
-                defaultInstanceId={entry.defaultInstanceId}
+                defaultModelSelection={entry.defaultModelSelection}
                 providerOf={(instanceId) =>
                   providerEntries.get(entry.environmentId)?.get(instanceId) ?? null
                 }
@@ -626,12 +634,12 @@ function ThreadTab(props: {
       data-fork-thread-tab=""
       data-active={props.active ? "true" : undefined}
       className={cn(
-        // Shrinks from its title's width to the minimum fitCollapsedThreadTabs counts on.
-        "group/tab relative flex h-7 max-w-56 min-w-[112px] shrink items-center rounded-full text-xs font-medium",
+        TAB_SHELL_CLASS,
         props.active
           ? "bg-black/10 text-foreground dark:bg-white/16"
           : "text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/8",
       )}
+      style={TAB_SHELL_STYLE}
       onContextMenu={(event) => {
         event.preventDefault();
         openMenu({ x: event.clientX, y: event.clientY });
@@ -648,18 +656,18 @@ function ThreadTab(props: {
         <span className="sr-only">{thread.title}</span>
       </button>
       <span className="pointer-events-none flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5">
-        {/* The model picker's marks: the Claude Code mascot, the Codex cloud. */}
-        {props.provider ? (
-          <ModelPickerProviderGlyph entry={props.provider} showBadge={false} />
-        ) : null}
-        {/* The hover actions cover the title's end, which fades under them rather than
-            sliding them in, so no tab moves and the PR badge and status stay clickable. */}
+        {/* The hover actions cover the end of the mark and title, which fade under them
+            rather than sliding them in, so no tab moves and the PR badge and status stay
+            clickable. On a minimum-width tab they reach over the mark. */}
         <span className="relative flex h-full min-w-0 flex-1 items-center">
-          <span
-            aria-hidden
-            className="min-w-0 flex-1 truncate text-start group-focus-within/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.5rem),#0000_calc(100%-2.75rem))] group-hover/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.5rem),#0000_calc(100%-2.75rem))]"
-          >
-            {thread.title}
+          <span className="flex min-w-0 flex-1 items-center gap-1.5 group-focus-within/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.5rem),#0000_calc(100%-2.75rem))] group-hover/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.5rem),#0000_calc(100%-2.75rem))]">
+            {/* The model picker's marks: the Claude Code mascot, the Codex cloud. */}
+            {props.provider ? (
+              <ModelPickerProviderGlyph entry={props.provider} showBadge={false} />
+            ) : null}
+            <span aria-hidden className="min-w-0 flex-1 truncate text-start">
+              {thread.title}
+            </span>
           </span>
           <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 opacity-0 group-focus-within/tab:pointer-events-auto group-focus-within/tab:opacity-100 group-hover/tab:pointer-events-auto group-hover/tab:opacity-100 [@media(any-hover:none)]:hidden">
             {props.canSettle ? (
@@ -712,23 +720,24 @@ function ThreadTab(props: {
     provider, the draft pencil, and an X that discards it. */
 function DraftTab(props: {
   readonly draftId: DraftId;
-  readonly defaultInstanceId: string | null;
+  readonly defaultModelSelection: ModelSelection;
   readonly providerOf: (instanceId: string) => ProviderInstanceEntry | null;
   readonly onDiscard: () => void;
 }) {
-  // As sidebarDraftModelSelection: the composer's pick, else the project's default.
-  const instanceId =
-    useComposerDraftStore((store) => {
-      const composer = store.getComposerDraft(props.draftId);
-      const provider = composer?.activeProvider;
-      return provider ? (composer.modelSelectionByProvider[provider]?.instanceId ?? null) : null;
-    }) ?? props.defaultInstanceId;
-  const provider = instanceId === null ? null : props.providerOf(instanceId);
+  const instanceId = useComposerDraftStore(
+    (store) =>
+      sidebarDraftModelSelection({
+        composerDraft: store.getComposerDraft(props.draftId),
+        fallback: props.defaultModelSelection,
+      }).instanceId,
+  );
+  const provider = props.providerOf(instanceId);
   return (
     <div
       data-fork-thread-tab=""
       data-active="true"
-      className="group/tab relative flex h-7 max-w-56 min-w-[112px] shrink items-center rounded-full bg-black/10 text-xs font-medium text-foreground dark:bg-white/16"
+      className={cn(TAB_SHELL_CLASS, "bg-black/10 text-foreground dark:bg-white/16")}
+      style={TAB_SHELL_STYLE}
     >
       <span aria-current="page" className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5">
         {provider ? <ModelPickerProviderGlyph entry={provider} showBadge={false} /> : null}
