@@ -2879,12 +2879,14 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       extendInfo: {
         // macOS 26 offers Messages/Mail codes in every text field unless opted out.
         NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac: true,
+        // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
         NSLocalNetworkUsageDescription:
-          "T3 Code connects to devices on your local network for remote environments and commands run by terminals and coding agents.",
+          "no3y Code connects to devices on your local network for remote environments and commands run by terminals and coding agents.",
         NSScreenCaptureUsageDescription:
-          "T3 Code captures the active window when you use the window capture shortcut.",
+          "no3y Code captures the active window when you use the window capture shortcut.",
         NSCameraUsageDescription:
-          "T3 Code lets commands run by terminals and coding agents use the camera.",
+          "no3y Code lets commands run by terminals and coding agents use the camera.",
+        // fork:end fork-brand-name
         // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         NSMicrophoneUsageDescription:
           "no3y Code uses your microphone to transcribe prompts on your device, and lets commands run by terminals and coding agents use it.",

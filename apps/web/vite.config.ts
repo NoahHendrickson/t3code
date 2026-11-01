@@ -280,7 +280,8 @@ export default defineConfig(() => {
       // See `.fork/README.md` §3.
       forkOverrides({ srcDir: NodeURL.fileURLToPath(new URL("./src", import.meta.url)) }),
       /* fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name */
-      forkBrandName(),
+      // Upstream tests assert upstream copy, so only built and served code is rebranded.
+      process.env.VITEST === undefined ? forkBrandName() : undefined,
       /* fork:end fork-brand-name */
       /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
       // Bundles the vendored design-mode engine into the injectable IIFE string served

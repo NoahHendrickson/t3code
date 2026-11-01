@@ -13,17 +13,6 @@ const repoEnv = loadRepoEnv();
 const isMainProcessExternal = (id: string) =>
   id === "electron" || id.startsWith("electron/") || isDesktopRuntimeExternalDependency(id);
 const shouldLaunchElectronAfterPack = process.env.T3CODE_DESKTOP_DEV === "1";
-// fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
-// The legacy profile names and the dictation vocabulary are identities, not display copy.
-const forkBrandNamePlugins = [
-  forkBrandName({
-    exclude: [
-      /\/apps\/desktop\/src\/app\/DesktopUserData\.ts$/u,
-      /\/apps\/desktop\/src\/fork\/voice\/LocalSpeechEngine\.ts$/u,
-    ],
-  }),
-];
-// fork:end fork-brand-name
 const publicConfigDefine = {
   __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
     repoEnv.T3CODE_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
@@ -82,7 +71,7 @@ export default defineConfig({
       outputOptions: { codeSplitting: false },
       entry: ["src/main.ts"],
       // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
-      plugins: forkBrandNamePlugins,
+      plugins: [forkBrandName()],
       // fork:end fork-brand-name
       clean: true,
       deps: {
@@ -106,7 +95,7 @@ export default defineConfig({
         "src/snapShot/SnapShotAccessibilityWorker.ts",
       ],
       // fork:begin fork-brand-name — see .fork/customizations.yaml#fork-brand-name
-      plugins: forkBrandNamePlugins,
+      plugins: [forkBrandName()],
       // fork:end fork-brand-name
       clean: false,
       deps: {
