@@ -50,4 +50,10 @@ describe("fork guard: ci-on-custom", () => {
     expect(gate).toContain('git fetch --quiet --depth=1 origin "$BASE_REF"');
     expect(gate).not.toContain("git fetch --quiet --depth=1 origin main");
   });
+
+  it("defaults check:changed to custom, not main", () => {
+    const script = NodeFS.readFileSync(NodePath.join(repoRoot, "scripts/check-changed.ts"), "utf8");
+    expect(script).toContain('"origin/custom"');
+    expect(script).not.toContain('"origin/main"');
+  });
 });

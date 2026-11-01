@@ -5,7 +5,9 @@
 // A dependency change also gets the unused-patch install check below. CI still
 // runs the full test suites and the jobs listed in the summary.
 //
-//   vp run check:changed          compare against the merge base with origin/main
+// fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom
+//   vp run check:changed          compare against the merge base with origin/custom
+// fork:end ci-on-custom
 //   vp run check:changed <ref>    compare against the merge base with <ref>
 //
 // Uncommitted and untracked files count. Affected packages come from
@@ -32,10 +34,10 @@ const git = (...args: Array<string>) =>
     .split("\n")
     .filter(Boolean);
 
-/* fork:begin fork-check-changed-base — see .fork/customizations.yaml#fork-check-changed-base */
+/* fork:begin ci-on-custom — see .fork/customizations.yaml#ci-on-custom */
 // origin/main is the upstream mirror here, so diffing against it rechecks the whole fork.
 const ref = process.argv[2] ?? "origin/custom";
-/* fork:end fork-check-changed-base */
+/* fork:end ci-on-custom */
 const mergeBase = NodeChildProcess.spawnSync("git", ["merge-base", "HEAD", ref], {
   cwd: root,
   encoding: "utf8",
