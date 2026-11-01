@@ -1,9 +1,16 @@
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildCollapsedThreadTabs, fitCollapsedThreadTabs } from "./collapsedThreadTabsModel";
+import {
+  buildCollapsedThreadTabs,
+  DEFAULT_COLLAPSED_TAB_STATUSES,
+  fitCollapsedThreadTabs,
+} from "./collapsedThreadTabsModel";
 import { buildSidebarDraftShell } from "./sidebarV2DraftRows";
-import { createSidebarV2CompletedHoldTracker } from "./sidebarV2StatusGrouping";
+import {
+  createSidebarV2CompletedHoldTracker,
+  type SidebarV2StatusBucket,
+} from "./sidebarV2StatusGrouping";
 
 const environmentId = EnvironmentId.make("local");
 const NOW = "2026-01-02T00:00:00.000Z";
@@ -57,10 +64,14 @@ describe("buildCollapsedThreadTabs", () => {
       settledOverride: "settled" as const,
     },
   ];
-  const build = (supported: boolean) =>
+  const build = (
+    supported: boolean,
+    statuses: readonly SidebarV2StatusBucket[] = DEFAULT_COLLAPSED_TAB_STATUSES,
+  ) =>
     buildCollapsedThreadTabs({
       threads,
       projectGroups: [project("p1"), project("p2"), project("p3")],
+      statuses: new Set(statuses),
       localLastVisitedAtById: {},
       now: NOW,
       openThreadKey: null,
@@ -77,6 +88,15 @@ describe("buildCollapsedThreadTabs", () => {
     expect(projects.map((group) => group.projectKey)).toEqual(["p1", "p2"]);
   });
 
+  it("adds idle threads after working, and drops statuses left out", () => {
+    expect(build(true, ["input", "working", "idle"]).tabs.map((tab) => tab.thread.id)).toEqual([
+      "asking",
+      "working",
+      "idle",
+    ]);
+    expect(build(true, ["working"]).tabs.map((tab) => tab.thread.id)).toEqual(["working"]);
+  });
+
   it("keeps parked threads where the environment cannot park them, as the sidebar does", () => {
     expect(
       build(false)
@@ -90,11 +110,11 @@ describe("fitCollapsedThreadTabs", () => {
   it.each([
     // [count, width, activeIndex, visible, overflow]
     [3, 0, -1, [0, 1, 2], []],
-    // Three minimum tabs plus the 28px New agent button and its gap.
-    [3, 3 * 112 + 2 * 6 + 34, -1, [0, 1, 2], []],
-    // Without room for the New agent button, the last tab goes behind More.
-    [3, 3 * 112 + 2 * 6, -1, [0, 1], [2]],
-    // 500px holds three 118px steps beside More and New agent.
+    // Three minimum tabs and their gaps fill the row exactly.
+    [3, 3 * 112 + 2 * 6, -1, [0, 1, 2], []],
+    // A pixel short, the last tab goes behind More.
+    [3, 3 * 112 + 2 * 6 - 1, -1, [0, 1], [2]],
+    // 500px holds three 118px steps beside More.
     [6, 500, -1, [0, 1, 2], [3, 4, 5]],
     [6, 500, 4, [0, 1, 4], [2, 3, 5]],
     [6, 60, 4, [], [0, 1, 2, 3, 4, 5]],

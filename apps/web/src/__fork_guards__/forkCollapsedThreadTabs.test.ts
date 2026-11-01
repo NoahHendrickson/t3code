@@ -11,6 +11,7 @@ function readSibling(relativePath: string): string {
 }
 
 const chatView = readSibling("../components/ChatView.tsx");
+const chatHeader = readSibling("../components/chat/ChatHeader.tsx");
 const strip = readSibling("../custom/CollapsedThreadTabs.tsx");
 const theme = readSibling("../theme.custom.css");
 const glassSurfaces = readSibling("../theme.custom.glass-surfaces.css");
@@ -44,6 +45,13 @@ describe("fork guard: fork-collapsed-thread-tabs", () => {
 
   it("pulls the chat header under the strip back to the gutter", () => {
     expect(theme).toContain("[data-chat-column]:has(> [data-fork-thread-tabs]) {");
+    // The breadcrumb hides only while the open thread has a visible tab.
+    expect(theme).toContain(
+      "[data-chat-column]:has(> [data-fork-thread-tabs][data-open-thread-tabbed])",
+    );
+    expect(theme).toContain('nav[aria-label="Thread breadcrumb"] {');
+    expect(chatHeader).toContain('ariaLabel="Thread breadcrumb"');
+    expect(strip).toContain('data-open-thread-tabbed={openThreadTabbed ? "" : undefined}');
     expect(theme).not.toContain("--workspace-controls-top: calc(");
     expect(strip).toContain('data-fork-thread-tabs=""');
   });

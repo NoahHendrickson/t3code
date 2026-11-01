@@ -4734,8 +4734,8 @@
     when another scope is chosen, a dot on the current model's provider (its
     accessible name says "current model").
     Claude and Codex wear supplied marks (the Claude Code mascot, and the
-    Codex cloud prompt in the app icon's purple-to-blue gradient with a white
-    prompt); other providers keep their
+    Codex cloud prompt in solid #8680ff, the app icon gradient's top stop
+    darkened, with a white prompt); other providers keep their
     instance icon, and the same glyphs mark search and Favorites rows. Tabs
     are menu rows, so a pick never closes the menu and the arrow keys walk
     them. The menu opens scoped to Favorites when one of
@@ -6078,9 +6078,13 @@
     While the desktop sidebar is collapsed, the top row of the leading chat
     column (never the right panel, a split partner or the floating window)
     shows the threads that are Working, Completed or Need input as tabs,
-    ordered Needs input, Completed, Working. The right panel keeps its full
-    height and the panel controls stay where they are; the row reserves the
-    header's pr-24 for them when they float over its end. The buckets come
+    ordered Needs input, Completed, Working. A three-dot menu between the
+    project switcher and the tabs checks which statuses show (Needs input,
+    Completed, Working, Idle; the first three by default, persisted per
+    device); Idle tabs follow Working, and Settled is never offered. The right panel keeps its full
+    height and the panel controls stay where they are; when they float over the
+    row's end, the row measures them and stops 8px short, however many
+    buttons they hold (the header's pr-24 until measured). The buckets come
     from status grouping's own pipeline (buildSidebarV2StatusSections, with
     its own Completed-hold tracker), so a tab and its sidebar card agree;
     snoozed, settled, archived and subagent threads are left out, under the
@@ -6088,18 +6092,31 @@
     each snooze deadline), as the sidebar's partition does. A project
     switcher leads the row: All, then one icon per project with a tab,
     filtering the tabs; the choice persists per device and falls back to All
-    while its project has no tab. Tabs shrink from their title's width to a
+    while its project has no tab. Picking a project that hides the open thread
+    opens that project's first tab. Tabs shrink from their title's width to a
     112px minimum with the title truncated; past that, the rest go behind an
     "N more" menu (fitCollapsedThreadTabs), and the open thread keeps a visible tab
-    whenever one fits (More and New agent keep the room below that). A plus button always ends the row and starts a
+    whenever one fits (More keeps the room below that). Each tab leads with its thread's provider mark from the model picker
+    (ModelPickerProviderGlyph; the runtime instance, else the selected model's, looked up per environment as the sidebar does) and
+    ends with its status mark, which the hover actions cover. A thread with a
+    pull request shows the sidebar card's own PR badge before the status mark
+    (same resolution, tooltip and click routing); the tab's open button
+    spans the whole tab behind its content so the badge can be its own link. The open
+    draft (where the plus lands) takes the first tab, active and under any
+    project filter, until its first send makes it a thread: its prompt as the
+    title (the sidebar's draft label), the composer's provider, the draft
+    pencil, and on hover an X that discards it and opens the first tab (else
+    home). A plus button right after the three-dot menu starts a
     new agent through the sidebar New agent row's own useStartNewAgentDraft,
     landing on the new agent screen; while the project switcher is on one project it
     starts there instead, through the sidebar's own handleNewThreadInProject
     (the recent-project chips' path) via sidebarActionsBridge, so the new
-    thread lands on the same environment. Its width comes out of the tabs' room.
+    thread lands on the same environment.
     The row clears the window controls and the floating
     sidebar toggle, and the chat header under it drops its collapsed-sidebar
-    inset. It renders only while the desktop sidebar is collapsed, never on
+    inset. While the open thread has a visible tab, the header's project and
+    title breadcrumb is hidden (the tab names both); the header row stays for
+    its panel controls. It renders only while the desktop sidebar is collapsed, never on
     mobile; under an open sidebar a render-nothing observer keeps feeding the
     Completed-hold tracker, so a thread that comes to rest there is still held
     when the sidebar collapses. Under Glass the open thread's tab and the chosen project wear the
@@ -6113,8 +6130,8 @@
     tab's menu and navigation clear any sidebar multi-selection first, so a
     bulk menu is never reached from a single tab. The row carries
     data-split-pane-action, so a press in it never first focuses the left
-    pane of a split. The project switcher scrolls sideways before More and
-    New agent can be squeezed out. The
+    pane of a split. The project switcher scrolls sideways before More can
+    be squeezed out. The
     offcanvas sidebar stays mounted while collapsed, so both handlers are
     live. Rename edits the title on the sidebar card, so a rename started
     while the desktop sidebar is collapsed opens it, and a rename for a card

@@ -4,27 +4,54 @@
 import { useAtomValue } from "@effect/atom-react";
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import { threadWokeAt } from "@t3tools/client-runtime/state/thread-settled";
+import {
+  resolveThreadCurrentPullRequestLink,
+  resolveThreadPullRequestBadge,
+} from "@t3tools/client-runtime/thread-pull-requests";
 import { useRouter } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 
 import { ProjectFavicon } from "~/components/ProjectFavicon";
 import {
   filterSidebarV2VisibleThreads,
   resolveThreadLastVisitedAt,
 } from "~/components/Sidebar.logic";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
+import {
+  ThreadPullRequestBadgeControl,
+  prStatusIndicator,
+  useLinkedThreadPullRequest,
+} from "~/components/ThreadStatusIndicators";
+import { InlineButton } from "~/components/ui/button";
+import {
+  Menu,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuPopup,
+  MenuTrigger,
+} from "~/components/ui/menu";
 import { useSidebar, useSidebarVisibility } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useNowMinute } from "~/hooks/useNowMinute";
+import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
+import { useOpenPrLink } from "~/lib/openPullRequestLink";
+import { useRightPanelStore } from "~/rightPanelStore";
 import { useSnoozeWakeClock } from "~/components/Sidebar.logic";
 import { useSidebarProjectGroups } from "~/hooks/useSidebarProjectGroups";
 import { useThreadRouteTarget } from "~/hooks/useThreadRouteTarget";
+import { useComposerDraftStore, type DraftId } from "~/composerDraftStore";
+import { releaseComposerDraftUploads } from "~/lib/composerDraftUploads";
 import { shortcutLabelForCommand } from "~/keybindings";
 import { observeResize } from "~/lib/observeResize";
 import { cn } from "~/lib/utils";
 import { useDelegatedUnderParent, useQuietThreadShells, useServerConfigs } from "~/state/entities";
+import { useEnvironmentProviders } from "~/state/environments";
+import {
+  deriveProviderEntriesByEnvironment,
+  type ProviderInstanceEntry,
+} from "~/providerInstances";
 import { primaryServerKeybindingsAtom } from "~/state/server";
 import { settleAndAdvance } from "~/settleAndAdvance";
 import { buildThreadRouteParams } from "~/threadRoutes";
@@ -34,8 +61,11 @@ import type { EnvironmentId } from "@t3tools/contracts";
 
 import {
   buildCollapsedThreadTabs,
+  COLLAPSED_TAB_STATUSES,
+  DEFAULT_COLLAPSED_TAB_STATUSES,
   fitCollapsedThreadTabs,
   type CollapsedThreadTab,
+  type CollapsedThreadTabStatus,
 } from "./collapsedThreadTabsModel";
 import {
   CheckIcon,
@@ -43,23 +73,37 @@ import {
   EllipsisIcon,
   LayersIcon,
   PlusIcon,
+  XIcon,
 } from "./icons/lucide-phosphor";
+import { ModelPickerProviderGlyph } from "./icons/ModelPickerProviderGlyph";
 import { SegmentedTab, SegmentedTabs } from "./SegmentedTabs";
+import { ScopeCheckboxItem } from "./SidebarV2ChromeRows";
 import { openSidebarThreadMenu, startSidebarThreadInProject } from "./sidebarActionsBridge";
 import { SIDEBAR_V2_ICON_BUTTON_CLASS } from "./sidebarV2TrailingColumn";
 import { resolveSidebarV2CardStatus } from "./sidebarV2CardStatus";
 import { SidebarV2StatusMark } from "./SidebarV2StatusIndicator";
+import { sidebarDraftTitleFromPrompt } from "./sidebarV2DraftRows";
 import type { SidebarV2GroupableProject } from "./sidebarV2ProjectGrouping";
-import { createSidebarV2CompletedHoldTracker } from "./sidebarV2StatusGrouping";
+import {
+  createSidebarV2CompletedHoldTracker,
+  SIDEBAR_V2_STATUS_SECTION_LABELS,
+} from "./sidebarV2StatusGrouping";
 import { useStartNewAgentDraft } from "./useNewAgentDraft";
 
 const PROJECT_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-project:v1";
+const STATUSES_STORAGE_KEY = "t3code:fork:collapsed-thread-tabs-statuses:v1";
+const StoredStatuses = Schema.Array(Schema.String);
 const ALL_PROJECTS = "all";
+const TRAILING_CONTROLS_GAP = 8;
 const TAB_ACTION_CLASS = cn(SIDEBAR_V2_ICON_BUTTON_CLASS, "size-5 rounded-full");
 
 // Its own tracker: the sidebar's resets whenever status grouping is off.
 const completedHolds = createSidebarV2CompletedHoldTracker();
 const NO_PROJECT_GROUPS: readonly SidebarV2GroupableProject[] = [];
+const DEFAULT_STATUS_SET = new Set(DEFAULT_COLLAPSED_TAB_STATUSES);
+const STATUS_MENU_LABEL = "Choose which threads show as tabs";
+const isTabStatus = (value: string): value is CollapsedThreadTabStatus =>
+  (COLLAPSED_TAB_STATUSES as readonly string[]).includes(value);
 
 const clearSidebarSelection = () => {
   const selection = useThreadSelectionStore.getState();
@@ -112,13 +156,18 @@ function preciseNow(_minute: string, _wakeClockMs: number): string {
 }
 
 function CompletedHoldObserver() {
-  buildCollapsedThreadTabs({ ...useTabSource(), projectGroups: NO_PROJECT_GROUPS });
+  buildCollapsedThreadTabs({
+    ...useTabSource(),
+    projectGroups: NO_PROJECT_GROUPS,
+    statuses: DEFAULT_STATUS_SET,
+  });
   return null;
 }
 
 function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boolean }) {
   const router = useRouter();
   const serverConfigs = useServerConfigs();
+  const providersByEnvironment = useEnvironmentProviders();
   const projectGroups = useSidebarProjectGroups();
   const source = useTabSource();
   const { localLastVisitedAtById, now, openThreadKey } = source;
@@ -127,12 +176,26 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
     ALL_PROJECTS,
     Schema.String,
   );
+  const [storedStatuses, setStoredStatuses] = useLocalStorage(
+    STATUSES_STORAGE_KEY,
+    DEFAULT_COLLAPSED_TAB_STATUSES,
+    StoredStatuses,
+  );
+  const statuses = new Set(storedStatuses.filter(isTabStatus));
+  const toggleStatus = (status: CollapsedThreadTabStatus, checked: boolean) =>
+    setStoredStatuses((previous) =>
+      COLLAPSED_TAB_STATUSES.filter((option) =>
+        option === status ? checked : previous.includes(option),
+      ),
+    );
   // The sidebar's New agent row: the unassigned draft, its project picked in the column.
   const startNewAgentDraft = useStartNewAgentDraft();
   const newAgentShortcutLabel = shortcutLabelForCommand(
     useAtomValue(primaryServerKeybindingsAtom),
     "chat.new",
   );
+  const [strip, setStrip] = useState<HTMLDivElement | null>(null);
+  const trailingInset = useTrailingControlsInset(props.reserveTrailingControls ? strip : null);
   const [navWidth, setNavWidth] = useState(0);
   // Created once so the ref never re-subscribes.
   const [measureNav] = useState(
@@ -142,13 +205,14 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
         : observeResize(node, (entries) => setNavWidth(entries.at(-1)?.contentRect.width ?? 0)),
   );
 
-  const { tabs, projects } = buildCollapsedThreadTabs({ ...source, projectGroups });
+  const { tabs, projects } = buildCollapsedThreadTabs({ ...source, projectGroups, statuses });
   // A project that drops out of the strip falls back to All without forgetting the choice.
   const projectKey = projects.some((project) => project.projectKey === storedProjectKey)
     ? storedProjectKey
     : ALL_PROJECTS;
-  const shownTabs =
-    projectKey === ALL_PROJECTS ? tabs : tabs.filter((tab) => tab.projectKey === projectKey);
+  const tabsIn = (key: string) =>
+    key === ALL_PROJECTS ? tabs : tabs.filter((tab) => tab.projectKey === key);
+  const shownTabs = tabsIn(projectKey);
   // Filtered to a project, the plus starts in it through the sidebar's own in-project path.
   const filteredProject = projects.find((project) => project.projectKey === projectKey) ?? null;
   const newAgentLabel = filteredProject
@@ -158,12 +222,58 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
     if (filteredProject && startSidebarThreadInProject(filteredProject.projectKey)) return;
     void startNewAgentDraft();
   };
+  // The open draft (the plus lands on one) gets the first tab until its first send turns it into
+  // a thread, whatever the project filter.
+  const routeTarget = useThreadRouteTarget();
+  const openDraftId = routeTarget?.kind === "draft" ? routeTarget.draftId : null;
+  const openDraft = useComposerDraftStore((store) =>
+    openDraftId === null ? null : store.getDraftSession(openDraftId),
+  );
+  const draftTab =
+    openDraftId !== null &&
+    openDraft !== null &&
+    openDraft.promotedTo == null &&
+    !tabs.some(
+      (tab) =>
+        tab.thread.environmentId === openDraft.environmentId &&
+        tab.thread.id === openDraft.threadId,
+    )
+      ? { draftId: openDraftId, environmentId: openDraft.environmentId }
+      : null;
+  // The draft leads the row; thread tabs follow it.
+  const draftIndex = draftTab === null ? -1 : 0;
+  const tabAt = (index: number) => shownTabs[draftTab === null ? index : index - 1];
   const fit = fitCollapsedThreadTabs({
-    count: shownTabs.length,
+    count: shownTabs.length + (draftTab === null ? 0 : 1),
     width: navWidth,
-    activeIndex: shownTabs.findIndex((tab) => tab.threadKey === openThreadKey),
+    activeIndex:
+      draftTab === null
+        ? shownTabs.findIndex((tab) => tab.threadKey === openThreadKey)
+        : draftIndex,
   });
-  const overflowTabs = fit.overflow.flatMap((index) => shownTabs[index] ?? []);
+  const overflowTabs = fit.overflow.flatMap((index) => tabAt(index) ?? []);
+  const openThreadTabbed = fit.visible.some(
+    (index) => index === draftIndex || tabAt(index)?.threadKey === openThreadKey,
+  );
+  const discardDraft = (draftId: DraftId) => {
+    const next = shownTabs[0];
+    void (async () => {
+      // Leave first, then clear: clearing while still on /draft/$id races the
+      // missing-session redirect into a fresh draft (the sidebar's discard does the same).
+      if (next) {
+        clearSidebarSelection();
+        await router.navigate({
+          to: "/$environmentId/$threadId",
+          params: buildThreadRouteParams(scopeThreadRef(next.thread.environmentId, next.thread.id)),
+          replace: true,
+        });
+      } else {
+        await router.navigate({ to: "/", replace: true });
+      }
+      releaseComposerDraftUploads(draftId);
+      useComposerDraftStore.getState().clearDraftThread(draftId);
+    })();
+  };
 
   const statusOf = ({ thread, threadKey }: CollapsedThreadTab): TabStatus =>
     resolveSidebarV2CardStatus(thread, {
@@ -173,6 +283,17 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
       ),
       wokeAt: threadWokeAt(thread, { now }),
     }).topStatus;
+  // The sidebar's per-environment lookup: default instance ids collide across environments.
+  const providerEntries = deriveProviderEntriesByEnvironment(
+    [...serverConfigs].map(
+      ([environmentId, config]) =>
+        [environmentId, providersByEnvironment.get(environmentId) ?? [], config.settings] as const,
+    ),
+  );
+  const providerOf = ({ thread }: CollapsedThreadTab) =>
+    providerEntries
+      .get(thread.environmentId)
+      ?.get(thread.runtime?.providerInstanceId ?? thread.modelSelection.instanceId) ?? null;
   const openThread = ({ thread }: CollapsedThreadTab) => {
     clearSidebarSelection();
     void router.navigate({
@@ -183,27 +304,43 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
 
   return (
     <div
+      ref={setStrip}
       data-fork-thread-tabs=""
+      // The open thread's tab names it, so the chat header drops its breadcrumb (theme.custom.css).
+      data-open-thread-tabbed={openThreadTabbed ? "" : undefined}
       // Shared by both panes of a split: a press here must not first focus the left one.
       data-split-pane-action=""
       className={cn(
         "drag-region flex h-[var(--workspace-topbar-height)] min-h-[var(--workspace-topbar-height)] shrink-0 items-center gap-3",
         // Clears the window controls and the floating sidebar toggle.
         "pl-[calc(var(--workspace-controls-left)+var(--workspace-titlebar-control-size)+var(--workspace-titlebar-control-gap))]",
-        // The chat header's pr-24, for the same floating panel controls.
+        // The chat header's pr-24 until the floating panel controls are measured.
         props.reserveTrailingControls
           ? "pr-[calc(var(--workspace-gutter-end)+6rem)] wco:pr-[calc(var(--workspace-native-controls-inset)+6rem)]"
           : "pr-(--workspace-gutter-end)",
       )}
+      style={trailingInset === null ? undefined : { paddingRight: trailingInset }}
     >
       <SegmentedTabs
         aria-label="Filter threads by project"
         value={[projectKey]}
         onValueChange={(value) => {
           const next = value[0];
-          if (typeof next === "string") setStoredProjectKey(next);
+          if (typeof next !== "string") return;
+          setStoredProjectKey(next);
+          // A filter that hides the open thread opens its first tab instead; the open draft's
+          // tab shows under every filter, so it stays.
+          const nextTabs = tabsIn(next);
+          const first = nextTabs[0];
+          if (
+            first &&
+            draftTab === null &&
+            !nextTabs.some((tab) => tab.threadKey === openThreadKey)
+          ) {
+            openThread(first);
+          }
         }}
-        // Scrolls sideways before it can squeeze out More and New agent.
+        // Scrolls sideways before it can squeeze out More.
         className="min-w-0 shrink overflow-x-auto [scrollbar-width:none]"
       >
         <ProjectTab value={ALL_PROJECTS} label="All projects">
@@ -219,18 +356,86 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
           </ProjectTab>
         ))}
       </SegmentedTabs>
+      <span className="flex shrink-0 items-center gap-1">
+        <Menu>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <MenuTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-label={STATUS_MENU_LABEL}
+                      className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-black/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-popup-open:bg-black/5 data-popup-open:text-foreground dark:hover:bg-white/8 dark:data-popup-open:bg-white/8"
+                    />
+                  }
+                />
+              }
+            >
+              <EllipsisIcon className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipPopup side="bottom">{STATUS_MENU_LABEL}</TooltipPopup>
+          </Tooltip>
+          <MenuPopup align="start" className="min-w-40">
+            <MenuGroup>
+              <MenuGroupLabel>Show as tabs</MenuGroupLabel>
+              {COLLAPSED_TAB_STATUSES.map((status) => (
+                <ScopeCheckboxItem
+                  key={status}
+                  checked={statuses.has(status)}
+                  onCheckedChange={() => toggleStatus(status, !statuses.has(status))}
+                >
+                  {SIDEBAR_V2_STATUS_SECTION_LABELS[status]}
+                </ScopeCheckboxItem>
+              ))}
+            </MenuGroup>
+          </MenuPopup>
+        </Menu>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                aria-label={newAgentLabel}
+                disabled={projectGroups.length === 0}
+                className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-black/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-64 dark:hover:bg-white/8"
+                onClick={startNewAgent}
+              />
+            }
+          >
+            <PlusIcon className="size-3.5" />
+          </TooltipTrigger>
+          <TooltipPopup side="bottom">
+            {filteredProject === null && newAgentShortcutLabel
+              ? `${newAgentLabel} (${newAgentShortcutLabel})`
+              : newAgentLabel}
+          </TooltipPopup>
+        </Tooltip>
+      </span>
       {/* px-1 and py-1 keep the selected tab's glass halo inside the clip. */}
       <nav
         ref={measureNav}
         aria-label="Active threads"
-        // The min width keeps More (72px), New agent (28px) and their gap on screen.
-        className="-mx-1 -my-1 flex min-w-[114px] flex-1 items-center gap-1.5 overflow-hidden px-1 py-1"
+        // The min width keeps More (72px) and the halo padding on screen.
+        className="-mx-1 -my-1 flex min-w-[80px] flex-1 items-center gap-1.5 overflow-hidden px-1 py-1"
       >
-        {shownTabs.length === 0 ? (
+        {shownTabs.length === 0 && draftTab === null ? (
           <span className="px-1 text-xs text-muted-foreground">No active threads</span>
         ) : null}
         {fit.visible.map((index) => {
-          const tab = shownTabs[index];
+          if (index === draftIndex && draftTab !== null) {
+            return (
+              <DraftTab
+                key={`draft:${draftTab.draftId}`}
+                draftId={draftTab.draftId}
+                providerOf={(instanceId) =>
+                  providerEntries.get(draftTab.environmentId)?.get(instanceId) ?? null
+                }
+                onDiscard={() => discardDraft(draftTab.draftId)}
+              />
+            );
+          }
+          const tab = tabAt(index);
           if (tab === undefined) return null;
           return (
             <ThreadTab
@@ -238,6 +443,8 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
               tab={tab}
               active={tab.threadKey === openThreadKey}
               status={statusOf(tab)}
+              provider={providerOf(tab)}
+              pullRequestsInRightPanel={openThreadKey !== null}
               canSettle={
                 serverConfigs.get(tab.thread.environmentId)?.environment.capabilities
                   .threadSettlement === true
@@ -270,40 +477,86 @@ function CollapsedThreadTabsStrip(props: { readonly reserveTrailingControls: boo
             </MenuPopup>
           </Menu>
         )}
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <button
-                type="button"
-                aria-label={newAgentLabel}
-                disabled={projectGroups.length === 0}
-                className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-black/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-64 dark:hover:bg-white/8"
-                onClick={startNewAgent}
-              />
-            }
-          >
-            <PlusIcon className="size-3.5" />
-          </TooltipTrigger>
-          <TooltipPopup side="bottom">
-            {filteredProject === null && newAgentShortcutLabel
-              ? `${newAgentLabel} (${newAgentShortcutLabel})`
-              : newAgentLabel}
-          </TooltipPopup>
-        </Tooltip>
       </nav>
     </div>
   );
+}
+
+/** How far the window's floating panel controls reach into the row from its right end, plus a
+    gap, so the tabs and New agent stop short of them however many buttons they hold. */
+function useTrailingControlsInset(strip: HTMLElement | null): number | null {
+  const [inset, setInset] = useState<number | null>(null);
+  const subscription = useRef<{
+    readonly strip: HTMLElement;
+    readonly controls: Element;
+    readonly dispose: () => void;
+  } | null>(null);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- holds a ResizeObserver on the floating controls, which ChatView remounts (root or header) outside this component, so each render re-finds them
+  useLayoutEffect(() => {
+    const controls =
+      strip === null ? null : document.querySelector("[data-workspace-titlebar-controls]");
+    const current = subscription.current;
+    if (current?.strip === strip && current.controls === controls) return;
+    current?.dispose();
+    subscription.current = null;
+    if (strip === null || controls === null) return;
+    const measure = () =>
+      setInset(
+        Math.max(
+          0,
+          Math.ceil(strip.getBoundingClientRect().right - controls.getBoundingClientRect().left),
+        ) + TRAILING_CONTROLS_GAP,
+      );
+    // Measured now as well: the observer reports a frame later, and never in a hidden window.
+    measure();
+    subscription.current = { strip, controls, dispose: observeResize([strip, controls], measure) };
+  });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- releases that observer on unmount
+  useEffect(() => () => subscription.current?.dispose(), []);
+  return strip === null ? null : inset;
 }
 
 function ThreadTab(props: {
   readonly tab: CollapsedThreadTab;
   readonly active: boolean;
   readonly status: TabStatus;
+  readonly provider: ProviderInstanceEntry | null;
+  /** As the sidebar card does: with a thread open, a PR opens in the right panel. */
+  readonly pullRequestsInRightPanel: boolean;
   readonly canSettle: boolean;
   readonly onOpen: () => void;
 }) {
   const { thread, threadKey } = props.tab;
   const threadRef = scopeThreadRef(thread.environmentId, thread.id);
+  // The sidebar card's PR badge: same resolution, same click routing.
+  const openPrLink = useOpenPrLink();
+  const supportsMultiplePullRequests = useSupportsMultiplePullRequests(thread.environmentId);
+  const linkedPullRequest = useLinkedThreadPullRequest(
+    thread.environmentId,
+    thread.linkedPullRequest,
+    true,
+    thread.pullRequests,
+    thread.branchPullRequest,
+  );
+  const pr = linkedPullRequest?.pr ?? null;
+  const currentLinkedPr = supportsMultiplePullRequests
+    ? resolveThreadCurrentPullRequestLink(thread.pullRequests)
+    : null;
+  const prBadge = supportsMultiplePullRequests
+    ? resolveThreadPullRequestBadge(thread.pullRequests)
+    : null;
+  const openPullRequest = (event: MouseEvent<HTMLElement>, targetUrl?: string) => {
+    const url = targetUrl ?? pr?.url ?? currentLinkedPr?.url;
+    if (!url) return;
+    const inRightPanel = targetUrl !== undefined || props.pullRequestsInRightPanel;
+    if (openPrLink(event, url, inRightPanel ? threadRef : undefined) && inRightPanel) {
+      if (!props.active) props.onOpen();
+    }
+  };
+  const openPullRequestList = () => {
+    useRightPanelStore.getState().open(threadRef, "pull-requests");
+    if (!props.active) props.onOpen();
+  };
   // A tab's menu is for its one thread, never a selection made in the sidebar.
   const openMenu = (position: { x: number; y: number }) => {
     clearSidebarSelection();
@@ -325,39 +578,115 @@ function ThreadTab(props: {
         openMenu({ x: event.clientX, y: event.clientY });
       }}
     >
+      {/* Stretched under the content so the PR badge can be its own link: the content
+          ignores the pointer, and every press but the badge's reaches this button. */}
       <button
         type="button"
         aria-current={props.active ? "page" : undefined}
-        className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-full px-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        className="absolute inset-0 cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         onClick={props.onOpen}
       >
-        <SidebarV2StatusMark status={props.status} seed={threadKey} idle="dot" />
-        {/* Fades out under the hover actions rather than sliding them in, so no tab moves. */}
-        <span className="min-w-0 flex-1 truncate text-start group-focus-within/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.25rem),#0000_calc(100%-2.5rem))] group-hover/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.25rem),#0000_calc(100%-2.5rem))]">
-          {thread.title}
-        </span>
+        <span className="sr-only">{thread.title}</span>
       </button>
-      <span className="pointer-events-none absolute inset-y-0 right-1 flex items-center gap-0.5 opacity-0 group-focus-within/tab:pointer-events-auto group-focus-within/tab:opacity-100 group-hover/tab:pointer-events-auto group-hover/tab:opacity-100 [@media(any-hover:none)]:hidden">
-        {props.canSettle ? (
-          <button
-            type="button"
-            aria-label="Settle thread"
-            className={TAB_ACTION_CLASS}
-            onClick={() => settleAndAdvance(threadRef)}
-          >
-            <CheckIcon className="size-3" />
-          </button>
+      <span className="pointer-events-none flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5">
+        {/* The model picker's marks: the Claude Code mascot, the Codex cloud. */}
+        {props.provider ? (
+          <ModelPickerProviderGlyph entry={props.provider} showBadge={false} />
         ) : null}
+        {/* The hover actions cover the title's end, which fades under them rather than
+            sliding them in, so no tab moves and the PR badge and status stay clickable. */}
+        <span className="relative flex h-full min-w-0 flex-1 items-center">
+          <span
+            aria-hidden
+            className="min-w-0 flex-1 truncate text-start group-focus-within/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.5rem),#0000_calc(100%-2.75rem))] group-hover/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-3.5rem),#0000_calc(100%-2.75rem))]"
+          >
+            {thread.title}
+          </span>
+          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 opacity-0 group-focus-within/tab:pointer-events-auto group-focus-within/tab:opacity-100 group-hover/tab:pointer-events-auto group-hover/tab:opacity-100 [@media(any-hover:none)]:hidden">
+            {props.canSettle ? (
+              <button
+                type="button"
+                aria-label="Settle thread"
+                className={TAB_ACTION_CLASS}
+                onClick={() => settleAndAdvance(threadRef)}
+              >
+                <CheckIcon className="size-3" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              aria-label="More thread actions"
+              className={TAB_ACTION_CLASS}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                openMenu({ x: rect.left, y: rect.bottom + 4 });
+              }}
+            >
+              <EllipsisIcon className="size-3.5" />
+            </button>
+          </span>
+        </span>
+        {prBadge?.kind === "stack" || pr || currentLinkedPr ? (
+          <ThreadPullRequestBadgeControl
+            render={
+              <InlineButton
+                className="pointer-events-auto relative flex items-center gap-1 [&>span]:text-[0.75rem] [&>span]:leading-4"
+                data-fork-sidebar-pr-badge
+              />
+            }
+            badge={prBadge}
+            pullRequests={thread.pullRequests}
+            number={pr?.number ?? currentLinkedPr?.number}
+            url={pr?.url ?? currentLinkedPr?.url}
+            status={prStatusIndicator(pr, linkedPullRequest?.sourceControlProvider)}
+            onOpenList={openPullRequestList}
+            onOpenPullRequest={openPullRequest}
+          />
+        ) : null}
+        <SidebarV2StatusMark status={props.status} seed={threadKey} idle="dot" />
+      </span>
+    </div>
+  );
+}
+
+/** The open draft's tab: its prompt as the title (the sidebar's draft label), the composer's
+    provider, the draft pencil, and an X that discards it. */
+function DraftTab(props: {
+  readonly draftId: DraftId;
+  readonly providerOf: (instanceId: string) => ProviderInstanceEntry | null;
+  readonly onDiscard: () => void;
+}) {
+  const title = useComposerDraftStore((store) =>
+    sidebarDraftTitleFromPrompt(store.getComposerDraft(props.draftId)?.prompt),
+  );
+  const instanceId = useComposerDraftStore((store) => {
+    const composer = store.getComposerDraft(props.draftId);
+    const provider = composer?.activeProvider;
+    return provider ? (composer.modelSelectionByProvider[provider]?.instanceId ?? null) : null;
+  });
+  const provider = instanceId === null ? null : props.providerOf(instanceId);
+  return (
+    <div
+      data-fork-thread-tab=""
+      data-active="true"
+      className="group/tab relative flex h-7 max-w-56 min-w-[112px] shrink items-center rounded-full bg-black/10 text-xs font-medium text-foreground dark:bg-white/16"
+    >
+      <span aria-current="page" className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5">
+        {provider ? <ModelPickerProviderGlyph entry={provider} showBadge={false} /> : null}
+        {/* Fades out under the discard button rather than sliding it in, so no tab moves. */}
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 group-focus-within/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),#0000_calc(100%-1.25rem))] group-hover/tab:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),#0000_calc(100%-1.25rem))]">
+          <span className="min-w-0 flex-1 truncate text-start">{title}</span>
+          <SidebarV2StatusMark status={null} seed={props.draftId} idle="draft" />
+        </span>
+      </span>
+      <span className="pointer-events-none absolute inset-y-0 right-1 flex items-center opacity-0 group-focus-within/tab:pointer-events-auto group-focus-within/tab:opacity-100 group-hover/tab:pointer-events-auto group-hover/tab:opacity-100 [@media(any-hover:none)]:pointer-events-auto [@media(any-hover:none)]:opacity-100">
         <button
           type="button"
-          aria-label="More thread actions"
+          aria-label="Discard draft"
           className={TAB_ACTION_CLASS}
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            openMenu({ x: rect.left, y: rect.bottom + 4 });
-          }}
+          onClick={props.onDiscard}
         >
-          <EllipsisIcon className="size-3.5" />
+          <XIcon className="size-3" />
         </button>
       </span>
     </div>

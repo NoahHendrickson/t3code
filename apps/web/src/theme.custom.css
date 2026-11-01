@@ -2611,4 +2611,12 @@
   > [data-chat-header] {
   --workspace-native-controls-inset: 0px;
 }
+
+/* A visible tab already names the open thread and its project. */
+:root[data-fork="noahhendrickson-t3code"]
+  [data-chat-column]:has(> [data-fork-thread-tabs][data-open-thread-tabbed])
+  > [data-chat-header]
+  nav[aria-label="Thread breadcrumb"] {
+  display: none;
+}
 /* fork:end fork-collapsed-thread-tabs */

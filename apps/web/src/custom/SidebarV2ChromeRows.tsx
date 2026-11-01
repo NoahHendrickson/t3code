@@ -410,7 +410,7 @@ const EMPTY_PROJECT_SCOPE: ReadonlySet<string> = new Set();
     ui/menu's MenuCheckboxItem, whose indicator unmounts when unchecked and
     draws a bare check glyph — the box has to stay on screen either way. The
     data-slot keeps the fork's dark-mode hover wash (theme.custom.css) on it. */
-function ScopeCheckboxItem(props: {
+export function ScopeCheckboxItem(props: {
   readonly checked: boolean;
   readonly onCheckedChange: () => void;
   readonly testId?: string | undefined;

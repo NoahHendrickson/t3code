@@ -1,6 +1,6 @@
 /** Which threads the collapsed-sidebar tabs show (fork-collapsed-thread-tabs): Needs input,
- * Completed and Working, in that order, from status grouping's own pipeline so a tab and its sidebar
- * card always agree, Completed hold included. */
+ * Completed and Working by default, Idle on request, in that order, from status grouping's own
+ * pipeline so a tab and its sidebar card always agree, Completed hold included. */
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime/environment";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import { effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
@@ -12,7 +12,14 @@ import {
   type SidebarV2StatusBucket,
 } from "./sidebarV2StatusGrouping";
 
-const TAB_BUCKETS: ReadonlySet<SidebarV2StatusBucket> = new Set(["input", "done", "working"]);
+/** The statuses the tab menu offers, in tab order. Settled is never offered. */
+export const COLLAPSED_TAB_STATUSES = ["input", "done", "working", "idle"] as const;
+export type CollapsedThreadTabStatus = (typeof COLLAPSED_TAB_STATUSES)[number];
+export const DEFAULT_COLLAPSED_TAB_STATUSES: readonly CollapsedThreadTabStatus[] = [
+  "input",
+  "done",
+  "working",
+];
 
 export interface CollapsedThreadTab {
   readonly thread: EnvironmentThreadShell;
@@ -24,6 +31,7 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
   /** Already filtered to the threads the sidebar lists (filterSidebarV2VisibleThreads). */
   readonly threads: readonly EnvironmentThreadShell[];
   readonly projectGroups: readonly TProject[];
+  readonly statuses: ReadonlySet<SidebarV2StatusBucket>;
   readonly localLastVisitedAtById: Readonly<Record<string, string>>;
   /** A precise ISO time, as the sidebar's partition uses. */
   readonly now: string;
@@ -57,7 +65,7 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
     }
   }
   const tabs = sections
-    .filter((section) => TAB_BUCKETS.has(section.status))
+    .filter((section) => input.statuses.has(section.status))
     .flatMap((section) => section.threads)
     .map((thread) => ({
       thread,
@@ -71,17 +79,15 @@ export function buildCollapsedThreadTabs<TProject extends SidebarV2GroupableProj
   };
 }
 
-/** Geometry the strip's classes draw: min-w-[112px] tabs, gap-1.5, a w-[72px] More button,
-    and the size-7 New agent button that always ends the row. */
+/** Geometry the strip's classes draw: min-w-[112px] tabs, gap-1.5 and a w-[72px] More button. */
 const COLLAPSED_TAB_MIN_WIDTH = 112;
 const COLLAPSED_TAB_GAP = 6;
 const COLLAPSED_TAB_MORE_WIDTH = 72;
-const COLLAPSED_TAB_NEW_WIDTH = 28;
 
 /**
  * How many tabs fit at their minimum width, the rest going behind More. The open
  * thread takes the last visible slot when it would overflow; with no slot at all (under
- * about 224px), More and New agent keep the room, and the header still names the thread.
+ * about 190px), More keeps the room, and the header still names the thread.
  * An unmeasured row (width 0) shows every tab.
  */
 export function fitCollapsedThreadTabs(input: {
@@ -91,9 +97,8 @@ export function fitCollapsedThreadTabs(input: {
 }): { readonly visible: number[]; readonly overflow: number[] } {
   const all = Array.from({ length: input.count }, (_, index) => index);
   const step = COLLAPSED_TAB_MIN_WIDTH + COLLAPSED_TAB_GAP;
-  // The New agent button and its gap always take their share.
-  const width = input.width - COLLAPSED_TAB_NEW_WIDTH - COLLAPSED_TAB_GAP;
-  if (input.width <= 0 || input.count * step - COLLAPSED_TAB_GAP <= width) {
+  const width = input.width;
+  if (width <= 0 || input.count * step - COLLAPSED_TAB_GAP <= width) {
     return { visible: all, overflow: [] };
   }
   const fit = Math.max(0, Math.floor((width - COLLAPSED_TAB_MORE_WIDTH) / step));
