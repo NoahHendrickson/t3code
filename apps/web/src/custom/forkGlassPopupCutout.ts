@@ -108,7 +108,7 @@ export type CutoutSurface<Key> = {
   readonly rect: Rect;
 };
 
-const round = (value: number) => Math.round(value * 2) / 2;
+export const round = (value: number) => Math.round(value * 2) / 2;
 
 /**
  * Closing, in either element split: menu, popover, tooltip and dialog stamp
@@ -164,9 +164,13 @@ export function planCutout<Key>(
   return plan;
 }
 
-/** A hole as its own small image, keyed on size and radius only. */
-function holeImage(hole: CutoutHole): string {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${round(hole.width)}' height='${round(hole.height)}'><rect width='100%' height='100%' rx='${round(hole.radius)}'/></svg>`;
+/**
+ * A hole as its own small image, keyed on size and radius only. SVG clamps rx
+ * and ry to each half separately, so an unclamped pill radius goes elliptical.
+ */
+export function roundedHoleImage(width: number, height: number, radius: number): string {
+  const rx = round(Math.min(radius, width / 2, height / 2));
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${round(width)}' height='${round(height)}'><rect width='100%' height='100%' rx='${rx}'/></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
@@ -225,7 +229,10 @@ export function cutoutMaskStyle(
 ): Record<string, string> {
   const at = (x: number, y: number) => `${round(x - surface.x)}px ${round(y - surface.y)}px`;
   return {
-    "mask-image": ["linear-gradient(#000, #000)", ...holes.map(holeImage)].join(", "),
+    "mask-image": [
+      "linear-gradient(#000, #000)",
+      ...holes.map((hole) => roundedHoleImage(hole.width, hole.height, hole.radius)),
+    ].join(", "),
     "mask-composite": ["subtract", ...holes.map(() => "add")].join(", "),
     "mask-position": [at(0, 0), ...holes.map((hole) => at(hole.x, hole.y))].join(", "),
     "mask-size": [

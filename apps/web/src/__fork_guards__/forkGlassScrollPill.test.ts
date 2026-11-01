@@ -1,15 +1,19 @@
 // @effect-diagnostics nodeBuiltinImport:off
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-glass-scroll-pill`.
- * Without the hook, the pill stamp or the cutoff's named gradients, the pill
- * is a 6% wash over live transcript text, and everything still compiles.
+ * Without the hook, its stamp or the cutoff's third layer, the pill is a 6%
+ * wash over live transcript text, and everything still compiles.
  */
 
 import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
-import { FORK_PILL_HOLE_ATTRIBUTE, pillHoleStyle } from "../custom/forkGlassScrollPillHole";
+import {
+  FORK_PILL_HOLE_CUT_ATTRIBUTE,
+  HOLE_PROPERTIES,
+  pillHoleStyle,
+} from "../custom/forkGlassScrollPillHole";
 import { cssRules } from "./cssRules";
 
 function readSibling(relativePath: string): string {
@@ -21,7 +25,9 @@ const GLASS_GATE =
 
 const flat = (text: string) => text.replace(/\s+/gu, " ").trim();
 const palettes = cssRules(readSibling("../theme.custom.palettes.css"));
-const theme = cssRules(readSibling("../theme.custom.css"));
+const themeText = readSibling("../theme.custom.css");
+const theme = cssRules(themeText);
+const PILL = `[data-scroll-to-end][${FORK_PILL_HOLE_CUT_ATTRIBUTE}].surface-glass`;
 const glassRule = (selector: string) =>
   palettes.find((rule) => flat(rule.selector) === `${GLASS_GATE} ${selector}`);
 
@@ -40,12 +46,12 @@ describe("fork guard: fork-glass-scroll-pill", () => {
     );
   });
 
-  it("paints the popover's wash on the stage, not the floor estimate", () => {
-    const rest = glassRule("[data-scroll-to-end].surface-glass");
+  it("paints the popover's wash on the stage only once the hole is cut", () => {
+    const rest = glassRule(PILL);
     expect(flat(rest?.body ?? "")).toContain(
       "background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg));",
     );
-    const hover = glassRule("[data-scroll-to-end].surface-glass:is(:hover, [data-pressed])");
+    const hover = glassRule(`${PILL}:is(:hover, [data-pressed])`);
     expect(hover?.body).toBeDefined();
     for (const rule of [rest, hover]) {
       expect(rule?.body).not.toContain("--fork-popup-glass-floor");
@@ -55,22 +61,28 @@ describe("fork guard: fork-glass-scroll-pill", () => {
   it("cuts the pill out of the transcript as a third cutoff layer", () => {
     const base = theme.find(
       (rule) =>
-        rule.selector.includes(".fork-timeline-cutoff") &&
-        !rule.selector.includes(".topbar-scroll-fade") &&
-        rule.body.includes("--fork-timeline-cutoff-mask:"),
+        flat(rule.selector) === ':root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff',
     );
-    expect(base?.body).toContain("--fork-timeline-top-mask:");
-    expect(flat(base?.body ?? "")).toContain(
-      "mask-image: var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask);",
-    );
-
-    const hole = glassRule(`.fork-timeline-cutoff[${FORK_PILL_HOLE_ATTRIBUTE}]`);
-    const body = flat(hole?.body ?? "");
-    expect(body).toContain(
-      "mask-image: var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask), var(--fork-pill-hole-image, none);",
-    );
+    const body = flat(base?.body ?? "");
+    expect(body.match(/var\(--fork-timeline-hole, none\);/gu)).toHaveLength(2);
     expect(body).toMatch(/(?<!-webkit-)mask-composite: add, subtract, add;/u);
     expect(body).toContain("-webkit-mask-composite: source-over, source-out, source-over;");
+    expect(
+      body.match(/var\(--fork-pill-hole-x, 0px\) var\(--fork-pill-hole-y, 0px\);/gu),
+    ).toHaveLength(2);
+    expect(
+      body.match(/var\(--fork-pill-hole-w, 0px\) var\(--fork-pill-hole-h, 0px\);/gu),
+    ).toHaveLength(2);
+    // Only Glass fills the layer; elsewhere it stays `none`.
+    expect(flat(glassRule(".fork-timeline-cutoff")?.body ?? "")).toBe(
+      "--fork-timeline-hole: var(--fork-pill-hole-image, none);",
+    );
+  });
+
+  it("keeps the hole's properties off the transcript rows", () => {
+    for (const property of ["--fork-timeline-hole", ...HOLE_PROPERTIES]) {
+      expect(flat(themeText)).toContain(`@property ${property} { syntax: "*"; inherits: false; }`);
+    }
   });
 
   it("places the hole on the pill's frame in the scroller's box", () => {
@@ -83,6 +95,6 @@ describe("fork guard: fork-glass-scroll-pill", () => {
     expect(style["--fork-pill-hole-y"]).toBe("588px");
     expect(style["--fork-pill-hole-w"]).toBe("120px");
     expect(style["--fork-pill-hole-h"]).toBe("24px");
-    expect(decodeURIComponent(style["--fork-pill-hole-image"] ?? "")).toContain("rx='12'");
+    expect(decodeURIComponent(style["--fork-pill-hole-image"])).toContain("rx='12'");
   });
 });

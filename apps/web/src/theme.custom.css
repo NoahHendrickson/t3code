@@ -547,6 +547,37 @@
   --fork-timeline-cutoff-ramp: 5.5rem;
 }
 
+/* Set on the scroller only; non-inheriting so writes skip the transcript rows. */
+@property --fork-timeline-hole {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-image {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-x {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-y {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-w {
+  syntax: "*";
+  inherits: false;
+}
+
+@property --fork-pill-hole-h {
+  syntax: "*";
+  inherits: false;
+}
+
 :root[data-fork="noahhendrickson-t3code"] .fork-timeline-cutoff {
   --fork-timeline-top-fade: 0px;
   --fork-timeline-cutoff-inset: calc(
@@ -569,39 +600,70 @@
   --fork-timeline-cutoff-tail-end: calc(
     var(--fork-timeline-cutoff-knee) + var(--fork-timeline-cutoff-ramp)
   );
-  /* Named so the Glass scroll pill's hole (fork-glass-scroll-pill) can restate
-     the stack with a third layer: mask layers cannot be composed across rules. */
-  --fork-timeline-top-mask: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgb(0 0 0 / 10%) 10%,
-    rgb(0 0 0 / 30%) 24%,
-    rgb(0 0 0 / 58%) 42%,
-    rgb(0 0 0 / 82%) 62%,
-    rgb(0 0 0 / 96%) 82%,
-    black 100%
-  );
-  --fork-timeline-cutoff-mask: linear-gradient(
-    to top,
-    transparent 0,
-    transparent var(--fork-timeline-cutoff-inset),
-    rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
-    rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
-    rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
-    black var(--fork-timeline-cutoff-tail-end)
-  );
-  -webkit-mask-image: var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask);
-  -webkit-mask-position: top, bottom;
+  /* Third layer: the Glass scroll pill's hole (fork-glass-scroll-pill), cut out
+     of the cutoff layer. Unset, it is `none`, and subtracting it changes nothing. */
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgb(0 0 0 / 10%) 10%,
+      rgb(0 0 0 / 30%) 24%,
+      rgb(0 0 0 / 58%) 42%,
+      rgb(0 0 0 / 82%) 62%,
+      rgb(0 0 0 / 96%) 82%,
+      black 100%
+    ),
+    linear-gradient(
+      to top,
+      transparent 0,
+      transparent var(--fork-timeline-cutoff-inset),
+      rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
+      rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
+      rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
+      black var(--fork-timeline-cutoff-tail-end)
+    ),
+    var(--fork-timeline-hole, none);
+  -webkit-mask-composite: source-over, source-out, source-over;
+  -webkit-mask-position:
+    top,
+    bottom,
+    var(--fork-pill-hole-x, 0px) var(--fork-pill-hole-y, 0px);
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size:
     100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade));
-  mask-image: var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask);
-  mask-position: top, bottom;
+    100% calc(100% - var(--fork-timeline-top-fade)),
+    var(--fork-pill-hole-w, 0px) var(--fork-pill-hole-h, 0px);
+  mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgb(0 0 0 / 10%) 10%,
+      rgb(0 0 0 / 30%) 24%,
+      rgb(0 0 0 / 58%) 42%,
+      rgb(0 0 0 / 82%) 62%,
+      rgb(0 0 0 / 96%) 82%,
+      black 100%
+    ),
+    linear-gradient(
+      to top,
+      transparent 0,
+      transparent var(--fork-timeline-cutoff-inset),
+      rgb(0 0 0 / 55%) var(--fork-timeline-cutoff-knee),
+      rgb(0 0 0 / 80%) var(--fork-timeline-cutoff-tail-early),
+      rgb(0 0 0 / 93%) var(--fork-timeline-cutoff-tail-late),
+      black var(--fork-timeline-cutoff-tail-end)
+    ),
+    var(--fork-timeline-hole, none);
+  mask-composite: add, subtract, add;
+  mask-position:
+    top,
+    bottom,
+    var(--fork-pill-hole-x, 0px) var(--fork-pill-hole-y, 0px);
   mask-repeat: no-repeat;
   mask-size:
     100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade));
+    100% calc(100% - var(--fork-timeline-top-fade)),
+    var(--fork-pill-hole-w, 0px) var(--fork-pill-hole-h, 0px);
   scrollbar-width: none;
 }
 

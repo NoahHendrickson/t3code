@@ -620,7 +620,7 @@
   --fork-context-chip-bg-hover: rgb(255 255 255 / 17%);
   /* The panel as it reads ON SCREEN — the glass tint with the wallpaper's
      light through it — not the tint itself. The surface-glass overlays
-     (rules below; the scroll-to-end pill has its own) stand on this instead of the translucent panel: they sit
+     (rules below) stand on this instead of the translucent panel: they sit
      over transcript inside #root, where the popup cutout cannot clear under
      them, so anything less than opaque shows the text through them, while a
      filter over the native material never blurs it. Measured off the running app between the sidebar's
@@ -1077,60 +1077,33 @@
   border-color: rgb(255 255 255 / 12%);
 }
 
-/* The scroll-to-end pill wears the thread details popover's recipe instead
-   (fork-glass-scroll-pill). The floor is an estimate sampled beside the
-   sidebar, so the pill read as the wallpaper's average rather than as the
-   stage it sits on. Here the transcript cuts a hole at the pill's frame and
-   the vessel's wash lands on the real stage beneath. */
+/* Once its hole is cut (fork-glass-scroll-pill), the scroll-to-end pill wears
+   the thread details popover's recipe over the real stage. Until then it keeps
+   the opaque floor above, so transcript text never shows through it. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-scroll-to-end].surface-glass {
+  [data-scroll-to-end][data-fork-hole-cut].surface-glass {
   background: linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg));
   border-color: rgb(255 255 255 / 8%);
 }
 
 /* The button's focus ring is a box-shadow too. */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-scroll-to-end].surface-glass:not(:focus-visible) {
+  [data-scroll-to-end][data-fork-hole-cut].surface-glass:not(:focus-visible) {
   box-shadow: 0 2px 16px rgb(0 0 0 / 25%);
 }
 
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  [data-scroll-to-end].surface-glass:is(:hover, [data-pressed]) {
+  [data-scroll-to-end][data-fork-hole-cut].surface-glass:is(:hover, [data-pressed]) {
   background:
     linear-gradient(var(--fork-pill-hover), var(--fork-pill-hover)),
     linear-gradient(var(--fork-composer-vessel-bg), var(--fork-composer-vessel-bg));
   border-color: rgb(255 255 255 / 12%);
 }
 
-/* The hole: the cutoff's own two layers, with the pill subtracted from the
-   bottom one (the top fade never reaches it). Fallbacks keep the stack valid
-   if a property is missing; an unresolved var() would void the whole mask. */
+/* Glass turns on the cutoff mask's third layer (theme.custom.css). */
 :root[data-fork="noahhendrickson-t3code"][data-fork-sidebar-vibrancy="true"].dark[data-fork-theme="cool-darker"]
-  .fork-timeline-cutoff[data-fork-pill-hole] {
-  -webkit-mask-image:
-    var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask),
-    var(--fork-pill-hole-image, none);
-  -webkit-mask-composite: source-over, source-out, source-over;
-  -webkit-mask-position:
-    top,
-    bottom,
-    var(--fork-pill-hole-x, 0px) var(--fork-pill-hole-y, 0px);
-  -webkit-mask-size:
-    100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade)),
-    var(--fork-pill-hole-w, 0px) var(--fork-pill-hole-h, 0px);
-  mask-image:
-    var(--fork-timeline-top-mask), var(--fork-timeline-cutoff-mask),
-    var(--fork-pill-hole-image, none);
-  mask-composite: add, subtract, add;
-  mask-position:
-    top,
-    bottom,
-    var(--fork-pill-hole-x, 0px) var(--fork-pill-hole-y, 0px);
-  mask-size:
-    100% var(--fork-timeline-top-fade),
-    100% calc(100% - var(--fork-timeline-top-fade)),
-    var(--fork-pill-hole-w, 0px) var(--fork-pill-hole-h, 0px);
+  .fork-timeline-cutoff {
+  --fork-timeline-hole: var(--fork-pill-hole-image, none);
 }
 
 /* NO backdrop-filter anywhere in the composer, and this is the one rule in the

@@ -4395,7 +4395,7 @@
   intent: >
     Under Glass the opaque surface-glass overlays (the thread hover card,
     the PR button and their kin, which live inside #root and so cannot take
-    the popup cutout; the scroll-to-end pill has its own hole,
+    the popup cutout; the scroll-to-end pill until its own hole is cut,
     fork-glass-scroll-pill) stand on --fork-popup-glass-floor, the colour the sidebar panel
     reads on screen. Nothing can read that colour
     off the screen — it is the wallpaper drawn by macOS behind a transparent
@@ -4445,14 +4445,18 @@
     stage behind it. Nothing in the transcript paints beneath it: the pill
     lives inside #root, where the popup cutout cannot open, so the
     transcript scroller cuts a pill-shaped hole at the pill's frame as a
-    third layer of the timeline cutoff mask. The pill's lane measures the
-    pill and writes its frame onto the scroller as custom properties while
-    it is shown; the mask rule is Glass-only, so other palettes ignore them.
-    The cutoff's two gradients are named custom properties so the hole rule
-    restates the stack without copying them.
+    third layer of the timeline cutoff mask. The layer is always in the
+    stack and stays `none` outside Glass, so the hole cannot drift from the
+    cutoff's sizes and positions. The pill's lane measures the pill and
+    writes its frame onto the scroller as non-inheriting custom properties
+    while it is shown, binding to the scroller once it mounts and again if
+    it is replaced. The pill takes the translucent wash only after its hole
+    is cut (data-fork-hole-cut); until then it keeps the opaque floor, so
+    transcript text never shows through it.
   tier: 4
   files:
     - apps/web/src/custom/forkGlassScrollPillHole.ts
+    - apps/web/src/custom/forkGlassScrollPillHole.browser.test.tsx
     - apps/web/src/theme.custom.palettes.css
     - apps/web/src/theme.custom.css
   shadows: []
@@ -4461,6 +4465,7 @@
     - apps/web/src/components/chat/TimelineOverlays.tsx
   verify:
     - apps/web/src/__fork_guards__/forkGlassScrollPill.test.ts
+    - apps/web/src/custom/forkGlassScrollPillHole.browser.test.tsx
 
 - id: fork-glass-popup-cutout
   intent: >

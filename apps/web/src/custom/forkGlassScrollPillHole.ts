@@ -1,24 +1,28 @@
 /**
  * Fork glass scroll pill — see `.fork/customizations.yaml#fork-glass-scroll-pill`.
  * Writes the pill's frame onto the transcript scroller; the Glass mask in
- * theme.custom.palettes.css cuts it out so the pill's wash lands on the stage.
+ * theme.custom.css cuts it out so the pill's wash lands on the stage.
  */
 
 import { useLayoutEffect, useRef } from "react";
 
 import { observeResize } from "~/lib/observeResize";
+import { round, roundedHoleImage } from "./forkGlassPopupCutout";
 
-export const FORK_PILL_HOLE_ATTRIBUTE = "data-fork-pill-hole";
+/** On the pill once its hole is cut; the Glass wash keys on it, so a miss stays opaque. */
+export const FORK_PILL_HOLE_CUT_ATTRIBUTE = "data-fork-hole-cut";
 
-const HOLE_PROPERTIES = [
+export const HOLE_PROPERTIES = [
   "--fork-pill-hole-image",
   "--fork-pill-hole-x",
   "--fork-pill-hole-y",
   "--fork-pill-hole-w",
   "--fork-pill-hole-h",
-];
+] as const;
 
-const round = (value: number) => Math.round(value * 2) / 2;
+type HoleProperty = (typeof HOLE_PROPERTIES)[number];
+
+const SCROLLER_SELECTOR = ".fork-timeline-cutoff";
 
 /** The pill's frame in the scroller's border box, which the mask is laid out in. */
 export function pillHoleStyle(
@@ -30,17 +34,13 @@ export function pillHoleStyle(
     readonly radius: number;
   },
   scroller: { readonly x: number; readonly y: number },
-): Record<string, string> {
-  const width = round(pill.width);
-  const height = round(pill.height);
-  const radius = round(Math.min(pill.radius, pill.height / 2));
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}'><rect width='100%' height='100%' rx='${radius}'/></svg>`;
+): Record<HoleProperty, string> {
   return {
-    "--fork-pill-hole-image": `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
+    "--fork-pill-hole-image": roundedHoleImage(pill.width, pill.height, pill.radius),
     "--fork-pill-hole-x": `${round(pill.centerX - pill.width / 2 - scroller.x)}px`,
     "--fork-pill-hole-y": `${round(pill.centerY - pill.height / 2 - scroller.y)}px`,
-    "--fork-pill-hole-w": `${width}px`,
-    "--fork-pill-hole-h": `${height}px`,
+    "--fork-pill-hole-w": `${round(pill.width)}px`,
+    "--fork-pill-hole-h": `${round(pill.height)}px`,
   };
 }
 
@@ -50,15 +50,38 @@ export function pillHoleStyle(
  */
 export function useForkGlassScrollPillHole(bottom: number) {
   const laneRef = useRef<HTMLDivElement>(null);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- writes the pill's measured frame onto a sibling component's DOM node for the Glass mask
+  const cutRef = useRef<(() => void) | null>(null);
+
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- binds the pill to a sibling component's scroller DOM node for the Glass mask
   useLayoutEffect(() => {
     const lane = laneRef.current;
     const pill = lane?.querySelector<HTMLElement>("[data-scroll-to-end]");
-    const scroller = lane?.parentElement?.querySelector<HTMLElement>(".fork-timeline-cutoff");
-    if (!lane || !pill || !scroller) return;
+    const host = lane?.parentElement;
+    if (!lane || !pill || !host) return;
 
+    let scroller: HTMLElement | null = null;
+    let unobserve = () => {};
     let written = "";
+    // Only while unbound: the transcript renders a placeholder before its scroller.
+    const waiting = new MutationObserver(() => {
+      if (host.querySelector(SCROLLER_SELECTOR)) bind();
+    });
+
+    const release = () => {
+      unobserve();
+      unobserve = () => {};
+      pill.removeAttribute(FORK_PILL_HOLE_CUT_ATTRIBUTE);
+      for (const property of HOLE_PROPERTIES) scroller?.style.removeProperty(property);
+      scroller = null;
+      written = "";
+    };
+
     const cut = () => {
+      // A replaced scroller reports one last resize as it detaches.
+      if (!scroller?.isConnected) {
+        bind();
+        return;
+      }
       // Size from layout and position from the centre, so a press's scale
       // never shrinks the hole.
       const rect = pill.getBoundingClientRect();
@@ -76,22 +99,38 @@ export function useForkGlassScrollPillHole(bottom: number) {
       const next = Object.values(style).join("|");
       if (next === written) return;
       written = next;
-      for (const [property, value] of Object.entries(style)) {
-        scroller.style.setProperty(property, value);
-      }
+      for (const property of HOLE_PROPERTIES) scroller.style.setProperty(property, style[property]);
+      pill.setAttribute(FORK_PILL_HOLE_CUT_ATTRIBUTE, "");
     };
 
-    cut();
-    scroller.setAttribute(FORK_PILL_HOLE_ATTRIBUTE, "");
-    const unobserve = observeResize([pill, lane, scroller], cut);
-    return () => {
-      unobserve();
-      scroller.removeAttribute(FORK_PILL_HOLE_ATTRIBUTE);
-      for (const property of HOLE_PROPERTIES) scroller.style.removeProperty(property);
+    const bind = () => {
+      release();
+      scroller = host.querySelector<HTMLElement>(SCROLLER_SELECTOR);
+      if (!scroller) {
+        waiting.observe(host, { childList: true, subtree: true });
+        return;
+      }
+      waiting.disconnect();
+      unobserve = observeResize([pill, lane, scroller], cut);
+      cut();
     };
+
+    bind();
+    cutRef.current = cut;
+    return () => {
+      cutRef.current = null;
+      waiting.disconnect();
+      release();
+    };
+  }, []);
+
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- re-cuts the hole on the scroller, a sibling component's DOM node
+  useLayoutEffect(() => {
+    cutRef.current?.();
   }, [
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- A new bottom moves the pill without resizing anything observed, so it re-cuts.
     bottom,
   ]);
+
   return laneRef;
 }
